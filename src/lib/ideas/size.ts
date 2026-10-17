@@ -36,23 +36,24 @@ export function sizeMatches(size: string | undefined | null, d: Dims): boolean {
   });
 }
 
-/** Inches as the shop prints them: whole or nearest 1/8 ("31 1/2"). */
+/** Inches as the shop prints them: whole or nearest 1/16, the drawings' own precision ("31 1/2", "6 5/16"). */
 export function inch(n: number): string {
-  const e = Math.round(n * 8) / 8;
+  const e = Math.round(n * 16) / 16;
   const w = Math.floor(e);
-  const f = Math.round((e - w) * 8);
-  if (!f) return String(w);
-  const g = f % 4 === 0 ? 2 : f % 2 === 0 ? 4 : 8;
-  const num = g === 2 ? 1 : g === 4 ? f / 2 : f;
-  return `${w ? `${w} ` : ""}${num}/${g}`;
+  let num = Math.round((e - w) * 16);
+  if (!num) return String(w);
+  let den = 16;
+  while (num % 2 === 0) { num /= 2; den /= 2; }
+  return `${w ? `${w} ` : ""}${num}/${den}`;
 }
 
-/** Inches spoken: 31.5 → "31 and a half", 17.75 → "17 and three quarters". */
+/** Inches spoken: 31.5 → "31 and a half", 17.75 → "17 and three quarters", 6.3125 → "6 and five sixteenths". */
 export function inchWords(n: number): string {
-  const e = Math.round(n * 8) / 8;
+  const e = Math.round(n * 16) / 16;
   const w = Math.floor(e);
-  const f = Math.round((e - w) * 8);
-  const FR = ["", "an eighth", "a quarter", "three eighths", "a half", "five eighths", "three quarters", "seven eighths"];
+  const f = Math.round((e - w) * 16);
+  const FR = ["", "a sixteenth", "an eighth", "three sixteenths", "a quarter", "five sixteenths", "three eighths", "seven sixteenths", "a half",
+    "nine sixteenths", "five eighths", "eleven sixteenths", "three quarters", "thirteen sixteenths", "seven eighths", "fifteen sixteenths"];
   if (!f) return String(w);
   return w ? `${w} and ${FR[f]}` : FR[f];
 }

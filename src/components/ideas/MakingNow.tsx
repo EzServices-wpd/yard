@@ -8,7 +8,8 @@ import { useOffscreen } from "@/hooks/use-offscreen";
 
 /**
  * "People are making right now" (R10–R12). Loads the CDN snapshot at idle, no engine import.
- * Fixed-height slot from SSR (CLS 0). CSS-only scroll (transform), paused on hover/focus/off-screen;
+ * Fixed-height slot from SSR (CLS 0): 44px on a phone so every link is a 44px target (row 57), 36px from sm.
+ * CSS-only scroll (transform), paused on hover/focus/off-screen;
  * prefers-reduced-motion shows a static list. Every prompt is re-sanitised before it is shown.
  */
 export function MakingNow() {
@@ -24,7 +25,7 @@ export function MakingNow() {
     };
   }, []);
   return (
-    <div ref={ref} data-offscreen={off || undefined} className="yard-making-now mx-auto mt-8 h-9 max-w-3xl overflow-hidden text-sm text-ink-muted" data-yard-making-now aria-live="off">
+    <div ref={ref} data-offscreen={off || undefined} className="yard-making-now mx-auto mt-8 h-11 max-w-3xl overflow-hidden sm:h-9 text-sm text-ink-muted" data-yard-making-now aria-live="off">
       {rows.length ? (
         <div className="flex items-center gap-3 whitespace-nowrap">
           <span className="shrink-0 font-medium text-ink">People are making right now:</span>
@@ -32,7 +33,7 @@ export function MakingNow() {
             <ul className="yard-making-list inline-flex gap-4">
               {[...rows, ...rows].map((r, i) => (
                 <li key={`${r.key}-${i}`} aria-hidden={i >= rows.length || undefined}>
-                  <Link to="/workspace" search={{ q: r.prompt, ...currentTestFlags() }} tabIndex={i >= rows.length ? -1 : undefined} className="hover:text-ink hover:underline">
+                  <Link to="/workspace" search={{ q: r.prompt, ...currentTestFlags() }} tabIndex={i >= rows.length ? -1 : undefined} className="inline-flex min-h-11 items-center hover:text-ink hover:underline sm:min-h-0">
                     {r.prompt}
                   </Link>
                 </li>

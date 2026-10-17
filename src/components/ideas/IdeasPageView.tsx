@@ -60,7 +60,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
             autoComplete="off"
             enterKeyHint="go"
             data-ideas-search
-            className="h-12 w-full rounded-full border border-rule bg-paper px-5 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow,border-color] duration-150 focus:border-ink/30 focus:ring-2"
+            className="h-12 w-full rounded-full border border-transparent bg-[var(--yard-fill)] px-5 text-base text-ink outline-none ring-ink/20 placeholder:text-ink-muted transition-[box-shadow] duration-150 focus:ring-2"
           />
         </label>
       </form>
@@ -72,7 +72,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
             type="button"
             onClick={() => onBuild(q)}
             data-ideas-build-instead
-            className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-ink/25 px-4 text-sm text-ink hover:bg-surface/50 lg:min-h-9"
+            className="mt-3 inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-transparent bg-[var(--yard-fill)] px-4 text-sm text-ink hover:bg-rule/60 lg:min-h-9"
           >
             <span className="truncate">Build “{q}” instead</span>
             <ArrowRight className="size-4 shrink-0" aria-hidden />

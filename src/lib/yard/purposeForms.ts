@@ -8,6 +8,8 @@ export type Purpose = { re: RegExp; form: string; why: string };
 
 export const PURPOSES: Purpose[] = [
   { re: /\b(?:hang|hold|keep|store)\s+(?:my\s+|our\s+|the\s+)?(?:car\s+|house\s+)?keys?\b/, form: "key peg rail", why: "keys hang on the pegs of a peg rail" },
+  // Row 51 widened: a bare "key holder" / "key rack" is the same peg rail (its hooks builder runs when hooks are typed).
+  { re: /\bkey\s+(?:holder|hanger|rack)\b(?!.*\bhooks?\b)/, form: "key peg rail", why: "keys hang on the pegs of a peg rail" },
   { re: /\b(?:place|spot|somewhere|bed)\s+for\s+(?:my\s+|our\s+|the\s+)?(?:dog|puppy)\s+to\s+(?:sleep|nap|rest|lie)\b|\b(?:my\s+|our\s+)?(?:dog|puppy)\s+to\s+sleep\b|\bdog\s+sleep\b/, form: "dog bed", why: "a dog sleeps on a dog bed" },
   { re: /\b(?:place|spot|somewhere|bed)\s+for\s+(?:my\s+|our\s+|the\s+)?(?:cat|kitten)\s+to\s+(?:sleep|nap|rest)\b|\b(?:cat|kitten)\s+to\s+sleep\b/, form: "cat bed", why: "a cat sleeps on a cat bed" },
   { re: /\borgani[sz]e\s+(?:my\s+|our\s+|the\s+)?tools?\b|\b(?:hang|store)\s+(?:my\s+|our\s+)?tools\b|\btool\s+organi[sz]er\b/, form: "pegboard", why: "tools hang on a pegboard wall" },
