@@ -7,6 +7,7 @@ import { panelStockThickness } from "./modelJoints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
+import { rotorChain, type RotorLink } from "./solids";
 import { ANATOMY_NOTE } from "./classAnatomy";
 
 type Part = { key: string; name: string; kind: string; ids?: Set<string> };
@@ -153,6 +154,8 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   const onto = supportTalk(project, info);
   // A moving part rides free on its pin; a dowel part is glued into drilled holes. Neither takes screws.
   const panel = project.panels.find((p) => p.id === part.key);
+  const link = panel ? rotorChain(project.panels).get(panel.id) : undefined;
+  if (panel && link && (info?.on ?? []).includes(link.pin)) return rotorSentence(project, panel, link, fix);
   // A bored bead threads onto the rod it rides on, never through the bead before it.
   if (panel?.turns && /^dowel-/.test(panel.materialId) && panel.polygon?.holes?.length) {
     const c = (p: typeof panel, a: "x" | "y" | "z", k: "width" | "height" | "depth") => p.position[a] + p.size[k] / 2;
@@ -196,6 +199,36 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
     default:
       return `Fasten the ${part.name} to ${onto} with ${fix}`;
   }
+}
+
+/**
+ * A rotor part threads onto its axle, in order from the glued end: a collar is glued to the axle (never
+ * to the wheel), a wheel part slides on and is fixed only to the wheel parts it touches.
+ */
+function rotorSentence(project: YardProject, panel: YardProject["panels"][number], link: RotorLink, fix: string): string {
+  const byId = (k: string) => project.panels.find((p) => p.id === k);
+  const pin = byId(link.pin)!;
+  const others = link.on.filter((k) => k !== link.pin).map(byId).filter((p): p is NonNullable<typeof p> => !!p);
+  if (link.collar === "fixed") {
+    const carrier = project.panels.find((q) => q !== panel && q !== pin && !q.turns && !/^dowel-/.test(q.materialId) && meetsBox(q, panel) && !/collar/i.test(q.name));
+    return `Slide the ${panel.name} onto the ${pin.name}${carrier ? ` up against the ${carrier.name}` : ""} and glue it to the ${pin.name} there. It is the wheel's stop on this side.`;
+  }
+  if (link.collar === "free") {
+    const near = others[0];
+    return `Slide the ${panel.name} onto the ${pin.name}${near ? ` up to the ${near.name}` : ""}, hold a card (1/32") between them, and glue the ${panel.name} to the ${pin.name}. Pull the card once the glue grabs: the wheel turns free but can't slide along the ${pin.name}.`;
+  }
+  const collars = others.filter((q) => !q.turns);
+  const fixedTo = others.filter((q) => q.turns);
+  const names = (ps: typeof others) => listNames(ps.map((q) => `the ${q.name}`));
+  let s = `Slide the ${panel.name} onto the ${pin.name}`;
+  if (collars.length) s += ` up to ${names(collars)}, a card's thickness (1/32") off it so it spins clear`;
+  s += fixedTo.length ? ` and fasten it to ${names(fixedTo)} with ${fix}` : `. The next wheel parts fasten to it.`;
+  return `${s} Nothing is glued or screwed into the ${pin.name}: the wheel turns on it as one assembly.`;
+}
+
+function meetsBox(a: YardProject["panels"][number], b: YardProject["panels"][number]): boolean {
+  const k = { x: "width", y: "height", z: "depth" } as const;
+  return (["x", "y", "z"] as const).every((x) => a.position[x] <= b.position[x] + b.size[k[x]] + 0.05 && b.position[x] <= a.position[x] + a.size[k[x]] + 0.05);
 }
 
 /** True when the step already says what the part sits on and how it holds. */
@@ -247,7 +280,8 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   // A rotor's hub goes on the axle first; the wheel parts on the axle are fixed to the hub, so it is their support.
   {
     const isPin = (k: string) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? "");
-    const riders = project.panels.filter((p) => p.turns && !/^dowel-/.test(p.materialId) && (supports.get(p.id)?.on ?? []).some(isPin));
+    const chain = rotorChain(project.panels);
+    const riders = project.panels.filter((p) => p.turns && !chain.has(p.id) && !/^dowel-/.test(p.materialId) && (supports.get(p.id)?.on ?? []).some(isPin));
     const span = (p: (typeof riders)[number]) => Math.max(p.size.width, p.size.height, p.size.depth);
     const hub = riders.length > 1 ? riders.reduce((a, b) => (span(b) < span(a) ? b : a)) : undefined;
     for (const p of riders) if (hub && p !== hub) supports.set(p.id, { ...supports.get(p.id)!, on: [hub.id] });
@@ -307,7 +341,8 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       }
       const sentence = placeSentence(project, part, info, fix);
       const turns = project.panels.find((p) => p.id === part.key)?.turns;
-      const verb = turns && (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? "")) ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
+      const onPinNow = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
+      const verb = (turns || /\bcollar/i.test(part.name)) && onPinNow ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
       out.splice(insertAt, 0, {
         step: insertAt + 1,
         title: `${verb} the ${part.name}`,
@@ -352,6 +387,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   // steps, not fallbacks.
   // A recipe build's own steps (hang it, confirm the size) don't make the model's steps fallbacks either.
   if (!steps.some(isBuild) || project.kind === "custom") out = out.map((s) => (s.tips === INSERTED || s.tips === LIFTED ? { ...s, tips: undefined } : s));
+  out = rotorInOrder(project, out, supports, fix);
   out = rotorBeforeSecondSupport(project, out, supports);
   out = hingedLidLast(project, out);
   return renumber(out);
@@ -647,6 +683,54 @@ export function restsOnLaterStep(project: YardProject, steps: AssemblyStep[]): (
 }
 
 /**
+ * A built-up rotor threads onto its axle in one order (rotorChain): from the collar at the glued end, part by
+ * part along the axle, to the collar at the free end. Its steps follow that order, right after the axle goes
+ * in; a run of like parts (the paddles) is one step.
+ */
+function rotorInOrder(project: YardProject, steps: AssemblyStep[], supports: ReturnType<typeof supportsOf>, fix: string): AssemblyStep[] {
+  const chain = rotorChain(project.panels);
+  if (!chain.size) return steps;
+  const parts = new Map(partsOf(project).map((p) => [p.key, p]));
+  const panel = (k: string) => project.panels.find((p) => p.id === k)!;
+  let out = steps;
+  for (const pinId of new Set([...chain.values()].map((l) => l.pin))) {
+    const ids = [...chain.entries()].filter(([, l]) => l.pin === pinId).map(([k]) => k);
+    const names = new Set(ids.map((k) => panel(k).name));
+    const ai = placementIndex(project, out).get(pinId);
+    if (ai == null) continue;
+    // Steps that place rotor parts with anything else are left alone (hand-written steps).
+    const touches = (st: AssemblyStep) => isBuild(st) && (st.partsUsed ?? []).some((n) => names.has(n));
+    if (out.some((st, i) => i !== ai && touches(st) && !(st.partsUsed ?? []).every((n) => names.has(n)))) continue;
+    if (touches(out[ai])) continue;
+    const kept = out.filter((st, i) => i === ai || !touches(st));
+    const runs: string[][] = [];
+    for (const k of ids) {
+      const last = runs[runs.length - 1];
+      const fam = (q: string) => familyWord(panel(q).name);
+      if (last && fam(last[0]) === fam(k) && /paddle|bucket|blade|vane|slat/i.test(fam(k)) && !last.some((q) => (supports.get(k)?.on ?? []).includes(q))) last.push(k);
+      else runs.push([k]);
+    }
+    const fresh: AssemblyStep[] = runs.map((run) => {
+      const first = panel(run[0]);
+      const onPin = (supports.get(run[0])?.on ?? []).includes(pinId);
+      const verb = onPin ? "Slide on" : "Fasten";
+      return {
+        step: 0,
+        title: run.length > 1 ? `${verb} the ${run.length} ${plural(familyWord(first.name), run.length)}` : `${verb} the ${first.name}`,
+        description: run.length > 1 && run.every((k) => (supports.get(k)?.on ?? []).join() === (supports.get(run[0])?.on ?? []).join())
+          ? `Fasten the ${run.length} ${plural(familyWord(first.name), run.length)} to ${supportTalk(project, supports.get(run[0]))} with ${fix} Space them evenly round the wheel, ${Math.round(360 / run.length)}° apart, the first ${Math.round(180 / run.length)}° past a spoke so none lands on a spoke.`
+          : run.map((k) => placeSentence(project, parts.get(k) ?? { key: k, name: panel(k).name, kind: panel(k).type }, supports.get(k), fix)).join(" "),
+        tips: "Work along the axle from the glued end, one part at a time, in this order: each part goes on against the one before it.",
+        partsUsed: run.map((k) => panel(k).name),
+      };
+    });
+    const at = kept.indexOf(out[ai]) + 1;
+    out = [...kept.slice(0, at), ...fresh, ...kept.slice(at)];
+  }
+  return out;
+}
+
+/**
  * A part that turns between two supports goes on the axle before the axle is glued into the second
  * support: the axle is glued into the first, the rotor goes on, then the second support slides onto
  * the axle's free end.
@@ -654,6 +738,8 @@ export function restsOnLaterStep(project: YardProject, steps: AssemblyStep[]): (
 function rotorBeforeSecondSupport(project: YardProject, steps: AssemblyStep[], supports: ReturnType<typeof supportsOf>): AssemblyStep[] {
   const pin = (k: string) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? "");
   let out = steps;
+  const chain = rotorChain(project.panels);
+  const SZK = { x: "width", y: "height", z: "depth" } as const;
   for (const axle of project.panels.filter((p) => p.turns && pin(p.id) && !p.polygon?.holes?.length)) {
     const carriers = (supports.get(axle.id)?.on ?? []).filter((k) => !pin(k));
     const rotor = new Set(project.panels.filter((p) => !pin(p.id) && (supports.get(p.id)?.on ?? []).includes(axle.id)).map((p) => p.id));
@@ -664,12 +750,27 @@ function rotorBeforeSecondSupport(project: YardProject, steps: AssemblyStep[], s
     if (carriers.length < 2 || !rotor.size) continue;
     const at = placementIndex(project, out);
     const ai = at.get(axle.id), lastR = Math.max(...[...rotor].map((k) => at.get(k) ?? -1));
-    const second = carriers.reduce((m, k) => ((at.get(k) ?? -1) > (at.get(m) ?? -1) ? k : m));
-    const si = at.get(second), first = project.panels.find((p) => p.id === carriers.find((k) => k !== second))!, sec = project.panels.find((p) => p.id === second)!;
+    // A rotor chained along the axle threads on from its low end: the low carrier is the free one.
+    const chained = [...rotor].some((k) => chain.get(k)?.pin === axle.id);
+    const L = (["x", "y", "z"] as const).reduce((m, a) => (axle.size[SZK[a]] > axle.size[SZK[m]] ? a : m), "x" as "x" | "y" | "z");
+    const byKey = (k: string) => project.panels.find((p) => p.id === k)!;
+    const second = chained
+      ? carriers.reduce((m, k) => (byKey(k).position[L] < byKey(m).position[L] ? k : m))
+      : carriers.reduce((m, k) => ((at.get(k) ?? -1) > (at.get(m) ?? -1) ? k : m));
+    const si = at.get(second), first = project.panels.find((p) => p.id === carriers.find((k) => k !== second))!, sec = byKey(second);
     if (ai == null || si == null || si > ai || lastR < ai || (out[si].partsUsed ?? [sec.name]).length > 1) continue;
     const moved = { ...out[si], description: `Slide the ${sec.name} onto the free end of the ${axle.name} and glue the ${axle.name} in it. ${out[si].description}` };
     out = out.map((st, i) => (i === ai ? { ...st, description: st.description.replace(/^Pass the (.+?) through [^.]+\./, `Pass the $1 through the ${first.name} and glue it there; the other end stays free until the rotor is on.`) } : st));
-    out = [...out.slice(0, si), ...out.slice(si + 1, lastR + 1), moved, ...out.slice(lastR + 1)];
+    // Parts fastened to the free carrier (a cross rail between the posts) wait for it.
+    const deps = new Set<string>([second]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const p of project.panels) if (!deps.has(p.id) && !rotor.has(p.id) && p.id !== axle.id && (supports.get(p.id)?.on ?? []).some((k) => deps.has(k))) { deps.add(p.id); grew = true; }
+    }
+    deps.delete(second);
+    const waits = (i: number) => i > si && i <= lastR && i !== ai && (out[i].partsUsed ?? []).length > 0 && (out[i].partsUsed ?? []).every((n) => project.panels.some((p) => p.name === n && deps.has(p.id)));
+    const later = out.filter((_, i) => waits(i));
+    out = [...out.slice(0, si), ...out.slice(si + 1, lastR + 1).filter((_, j) => !waits(si + 1 + j)), moved, ...later, ...out.slice(lastR + 1)];
   }
   return out;
 }
