@@ -3,7 +3,7 @@
  * engine's REST pipe, Budget and monthly command counter (`ideas:cmds:<month>`) by import, and changes none of it.
  * Missing env → every call is a no-op. Never throws.
  */
-import { restPipe, Budget, type Pipe } from "@/lib/yard/ideaLog.server";
+import { restPipe, Budget, RETAIN_S, type Pipe } from "@/lib/yard/ideaLog.server";
 import type { FeedbackRecord } from "./shop";
 
 export const K = {
@@ -11,20 +11,24 @@ export const K = {
   meta: "ideas:meta",
   recent: "ideas:recent",
   top: "ideas:top",
-  review: "ideas:review", // field = query-log key → JSON ReviewMark; no field = not reviewed
-  feedback: "feedback:list",
+  review: "ideas:review", // field = query-log key → JSON ReviewMark (no text); each field has its own TTL
+  /** One list per UTC day, newest first; the whole key expires RETAIN_DAYS after that day began. */
+  feedback: (d: string) => `feedback:list:${d}`,
   day: (d: string) => `feedback:day:${d}`,
   client: (d: string, cid: string) => `feedback:cid:${d}:${cid}`, // a counter only, gone after a day
 };
-export const FEEDBACK_KEEP = 2000;
-/** Feedback older than this is deleted on the next write (privacy page: 90-day retention). */
+/**
+ * 90-day retention (privacy page), enforced by Redis: a note goes into its UTC day's list, and that list expires
+ * RETAIN_DAYS (88) after the day began, so no note is ever older than 88 days, with or without later traffic.
+ * The old single list (feedback:list, only ever written by preview builds) is aged by the engine's daily sweep.
+ * Size: DAY_CAP notes a day × 88 days at most (the old 2,000 cap and the tail paging are gone).
+ */
 export const FEEDBACK_DAYS = 90;
-/** Tail entries read per pass when ageing out; passes per write are capped so one write stays bounded. */
-export const AGE_PAGE = 100;
-export const AGE_PASSES = Math.ceil(FEEDBACK_KEEP / AGE_PAGE); // a fully stale list clears in one write
+/** When a day's list goes: midnight UTC that day + RETAIN_S (unix seconds). */
+export const dayExpiry = (now: Date) => Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000) + RETAIN_S;
 /** Review marks checked for a missing query-log entry per unreviewed read. */
 export const ORPHAN_SWEEP = 20;
-export const DAY_CAP = 300; // ≤ 300 × 11 cmds × 31 days ≈ 102K/month (9 per write, +2 when the tail ages out), inside the shared 450K budget
+export const DAY_CAP = 300; // ≤ 300 × 8 cmds × 31 days ≈ 74K/month (5 for the gate + 3 for the write), inside the shared 450K budget
 export const CLIENT_DAY_CAP = 10; // per anonymous browser id, so one noisy client can't spend the day's 300
 export const INSTANCE_PER_MIN = 12;
 
@@ -64,30 +68,9 @@ export class ShopStore {
     const gate = await this.run(5, [["INCR", K.client(d, cid)], ["EXPIRE", K.client(d, cid), 86_400], ["INCR", K.day(d)], ["EXPIRE", K.day(d), 172_800]], now);
     if (!gate) return "dropped";
     if (Number(gate[0]) > CLIENT_DAY_CAP || Number(gate[2]) > DAY_CAP) return "limited";
-    // The write, the 2,000 cap, and a look at the oldest entries (the list is newest-first, so the tail is the oldest).
-    const out = await this.run(4, [["LPUSH", K.feedback, JSON.stringify(rec)], ["LTRIM", K.feedback, 0, FEEDBACK_KEEP - 1], ["LRANGE", K.feedback, -AGE_PAGE, -1]], now);
-    if (!out) return "dropped";
-    await this.ageOut(out[2] as string[] | null, now);
-    return "saved";
-  }
-
-  /**
-   * 90-day retention: trims tail entries older than FEEDBACK_DAYS. Normally the tail read rode along with the
-   * write and at most one LTRIM follows; after a long quiet spell it pages through (≤ AGE_PASSES), all budgeted.
-   */
-  private async ageOut(tail: string[] | null, now: Date): Promise<void> {
-    const cutoff = new Date(now.getTime() - FEEDBACK_DAYS * 86_400_000).toISOString();
-    for (let pass = 0; pass < AGE_PASSES && tail?.length; pass++) {
-      const old = staleTail(tail, cutoff);
-      if (!old) return;
-      if (old < tail.length || tail.length < AGE_PAGE) {
-        await this.run(2, [["LTRIM", K.feedback, 0, -(old + 1)]], now);
-        return;
-      }
-      // The whole page was stale: drop it and look at the next one in the same pipeline.
-      const next = await this.run(3, [["LTRIM", K.feedback, 0, -(old + 1)], ["LRANGE", K.feedback, -AGE_PAGE, -1]], now);
-      tail = (next?.[1] as string[] | null) ?? null;
-    }
+    // The write and its day list's expiry, in one pipeline (EXPIREAT is idempotent: the same deadline every time).
+    const out = await this.run(3, [["LPUSH", K.feedback(d), JSON.stringify(rec)], ["EXPIREAT", K.feedback(d), dayExpiry(now)]], now);
+    return out ? "saved" : "dropped";
   }
 
   /** Review marks whose query-log entry is gone (no field in ideas:meta) are deleted. Budgeted; never throws. */
@@ -134,7 +117,7 @@ export class ShopStore {
     const prev = await this.run(2, [["HGET", K.review, key]], now);
     const old = prev?.[0] ? (JSON.parse(String(prev[0])) as ReviewMark) : null;
     const mark: ReviewMark = { reviewed: true, grade, reviewedAt: now.toISOString(), lastSampledAt: old?.lastSampledAt ?? null };
-    return (await this.run(2, [["HSET", K.review, key, JSON.stringify(mark)]], now)) ? "marked" : "off";
+    return (await this.run(2, [["HSETEX", K.review, "EX", RETAIN_S, "FIELDS", 1, key, JSON.stringify(mark)]], now)) ? "marked" : "off";
   }
 
   /** A random sample of reviewed entries; stamps lastSampledAt on each. */
@@ -147,7 +130,7 @@ export class ShopStore {
     await this.dropOrphans(keys, (got[1] as (string | null)[]) ?? [], now); // marks whose log entry is gone
     const at = now.toISOString();
     const rows: ReviewRow[] = [];
-    const sets: (string | number)[] = [];
+    const sets: string[] = [];
     keys.forEach((key, i) => {
       const meta = parseMeta((got[1] as (string | null)[])[i]);
       const raw = (got[0] as (string | null)[])[i];
@@ -156,21 +139,10 @@ export class ShopStore {
       rows.push({ key, ...meta, ...mark });
       sets.push(key, JSON.stringify(mark));
     });
-    if (sets.length) await this.run(2, [["HSET", K.review, ...sets]], now);
+    // KEEPTTL: being sampled doesn't extend a mark's life.
+    if (sets.length) await this.run(2, [["HSETEX", K.review, "KEEPTTL", "FIELDS", sets.length / 2, ...sets]], now);
     return rows;
   }
-}
-
-/** How many entries at the end of a newest-first tail are older than `cutoff` (unreadable entries count as stale). */
-export function staleTail(tail: string[], cutoff: string): number {
-  let n = 0;
-  for (let i = tail.length - 1; i >= 0; i--) {
-    let at = "";
-    try { at = String((JSON.parse(tail[i]) as { at?: unknown }).at ?? ""); } catch { /* unreadable → stale */ }
-    if (at && at >= cutoff) break;
-    n++;
-  }
-  return n;
 }
 
 function parseMeta(s: string | null): { prompt: string; size: string; resultKey: string } | null {

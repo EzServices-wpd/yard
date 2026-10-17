@@ -22,6 +22,7 @@ function fakeRedis() {
         case "INCRBY": log.billed += Number(a[0]); return log.billed;
         case "HSET": hs(key).set(String(a[0]), String(a[1])); return 1;
         case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
+        case "HSETEX": { const i = a.indexOf("FIELDS"); const n = Number(a[i + 1]); const kv = a.slice(i + 2, i + 2 + 2 * n).map(String); if (a.slice(0, i).includes("FNX") && kv.some((f, j) => j % 2 === 0 && hs(key).has(f))) return 0; for (let j = 0; j < kv.length; j += 2) hs(key).set(kv[j], kv[j + 1]); return 1; }
         case "HINCRBY": { const v = Number(hs(key).get(String(a[0])) ?? 0) + Number(a[1]); hs(key).set(String(a[0]), String(v)); return v; }
         case "EXPIRE": ttl.set(key, Number(a[0])); return 1;
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;

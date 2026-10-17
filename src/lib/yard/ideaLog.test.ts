@@ -22,6 +22,13 @@ function fakeRedis() {
         case "HINCRBY": { const v = Number(hs(key).get(String(a[0])) ?? 0) + Number(a[1]); hs(key).set(String(a[0]), String(v)); return v; }
         case "EXPIRE": return 1;
         case "HSETNX": if (hs(key).has(String(a[0]))) return 0; hs(key).set(String(a[0]), String(a[1])); return 1;
+        case "HSETEX": { const i = a.indexOf("FIELDS"); const n = Number(a[i + 1]); const kv = a.slice(i + 2, i + 2 + 2 * n).map(String); if (a.slice(0, i).includes("FNX") && kv.some((f, j) => j % 2 === 0 && hs(key).has(f))) return 0; for (let j = 0; j < kv.length; j += 2) hs(key).set(kv[j], kv[j + 1]); return 1; }
+        case "HKEYS": return [...hs(key).keys()];
+        case "ZRANGE": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); return a.includes("WITHSCORES") ? asc.flatMap(([m, s]) => [m, String(s)]) : asc.map(([m]) => m); }
+        case "HEXPIREAT": { const i = a.indexOf("FIELDS"); return a.slice(i + 2).map((f) => (hs(key).has(String(f)) ? 1 : -2)); }
+        case "EXPIREAT": return 0;
+        case "ZREM": { let n = 0; for (const m of a) if (zs(key).delete(String(m))) n++; return n; }
+        case "HDEL": { let n = 0; for (const f of a) if (hs(key).delete(String(f))) n++; return n; }
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return 1;
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
         case "ZREMRANGEBYRANK": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); const keep = asc.slice(-200); z.set(key, new Map(keep)); return 0; }
@@ -152,7 +159,8 @@ test("F36: snapshot reads are memoised and a rebuild happens at most once per 10
   // 300 hits in the window, spread over three cold instances (any query string: the handler never reads it).
   for (let i = 0; i < 300; i++) await [a, b, c][i % 3].served(new Date(t + i * 1000));
   assert.equal(a.rebuilds + b.rebuilds + c.rebuilds, 1, "one rebuild");
-  assert.ok(r.calls - before <= 3 * 1 + 3, `store calls ${r.calls - before}`);
+  // 3 cold GET+lock pipelines + the rebuild's 3 + the day's first retention sweep (2: its reads, its fixes).
+  assert.ok(r.calls - before <= 3 * 1 + 3 + 2, `store calls ${r.calls - before}`);
   const s1 = await b.served(new Date(t + 299_000));
   assert.deepEqual(s1.rows.map((x) => x.prompt), ["bookshelf"]);
   // After the window a new rebuild is allowed, still only one.

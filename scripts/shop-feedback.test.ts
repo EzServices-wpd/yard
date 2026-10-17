@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cleanFeedback, cleanCid, scrubNote } from "../src/lib/feedback/shop";
-import { ShopStore, DAY_CAP, CLIENT_DAY_CAP, INSTANCE_PER_MIN, FEEDBACK_KEEP, FEEDBACK_DAYS, staleTail } from "../src/lib/feedback/store.server";
+import { ShopStore, DAY_CAP, CLIENT_DAY_CAP, INSTANCE_PER_MIN } from "../src/lib/feedback/store.server";
 
 // A tiny in-memory Redis for the commands the store uses.
 function fakeRedis() {
@@ -21,6 +21,8 @@ function fakeRedis() {
       case "HGET": return (kv.get(k) ?? {})[a[0]] ?? null;
       case "HEXISTS": return (kv.get(k) ?? {})[a[0]] ? 1 : 0;
       case "HSET": { const h = kv.get(k) ?? {}; for (let i = 0; i < a.length; i += 2) h[a[i]] = a[i + 1]; kv.set(k, h); return 1; }
+      case "HSETEX": { const h = kv.get(k) ?? {}; const i = a.indexOf("FIELDS"); const n = Number(a[i + 1]); for (let j = 0; j < n; j++) h[a[i + 2 + 2 * j]] = a[i + 3 + 2 * j]; kv.set(k, h); return 1; }
+      case "EXPIREAT": return 1;
       case "HRANDFIELD": return Object.keys(kv.get(k) ?? {}).slice(0, a[0]);
     } return null; });
   return { kv, calls, pipe };
@@ -92,7 +94,9 @@ test("per-client soft cap: 10 a day per anonymous id, others unaffected, id neve
   assert.equal(await s.addFeedback(rec, quiet, t(21)), "saved");
   assert.equal(await s.addFeedback(rec, noisy, new Date("2026-10-17T09:00:00Z")), "saved", "a new day resets it");
   assert.ok(f.calls.some((c) => c[0] === "EXPIRE" && String(c[1]).startsWith("feedback:cid:")), "the counter expires");
-  assert.ok(!(f.kv.get("feedback:list") as string[]).some((r) => r.includes(noisy)), "the id is never in a record");
+  const lists = [...f.kv.keys()].filter((k) => k.startsWith("feedback:list:"));
+  assert.ok(lists.length === 2, `one list per day: ${lists}`);
+  for (const k of lists) assert.ok(!(f.kv.get(k) as string[]).some((r) => r.includes(noisy)), "the id is never in a record");
   assert.equal(cleanCid("x; DROP"), "none");
   assert.equal(cleanCid(noisy), noisy);
 });
@@ -106,58 +110,7 @@ test("the feedback request sends no referrer, cookies or identity (the page URL 
   assert.doesNotMatch(call, /email|name:|location\.href|document\.referrer/);
 });
 
-// --- 90-day retention and orphaned review marks ---
-const DAY = 86_400_000;
-const ages = (f: ReturnType<typeof fakeRedis>, now: Date) => ((f.kv.get("feedback:list") ?? []) as string[]).map((r) => (now.getTime() - Date.parse(JSON.parse(r).at)) / DAY);
-
-test("retention: after writes spanning 200 days, nothing older than 90 days survives", async () => {
-  const f = fakeRedis();
-  const s = new ShopStore(f.pipe);
-  const start = Date.UTC(2026, 0, 1, 12);
-  let now = new Date(start);
-  for (let d = 0; d < 200; d++) {
-    for (let i = 0; i < 3; i++) {
-      now = new Date(start + d * DAY + i * 3_600_000);
-      const rec = cleanFeedback({ chips: ["other"] }, "", now)!;
-      assert.equal(await s.addFeedback(rec, `c${d % 7}`.padEnd(16, "0"), now), "saved");
-      s["hits"] = []; // the per-instance minute limiter is not under test here
-    }
-    const a = ages(f, now);
-    assert.ok(Math.max(...a) <= FEEDBACK_DAYS, `day ${d}: oldest entry is ${Math.max(...a).toFixed(1)} days old`);
-  }
-  assert.ok(ages(f, now).length >= FEEDBACK_DAYS * 3 - 3, "everything inside 90 days is kept");
-});
-
-test("retention: the 2,000 cap still holds, and a fully stale list clears in one write", async () => {
-  const f = fakeRedis();
-  const s = new ShopStore(f.pipe);
-  const old = new Date("2026-01-01T00:00:00Z");
-  f.kv.set("feedback:list", Array.from({ length: FEEDBACK_KEEP + 50 }, (_, i) => JSON.stringify({ chips: ["other"], at: new Date(old.getTime() - i * 60_000).toISOString() })));
-  const now = new Date(old.getTime() + 120 * DAY);
-  assert.equal(await s.addFeedback(cleanFeedback({ chips: ["price"] }, "", now)!, "none", now), "saved");
-  assert.deepEqual(ages(f, now), [0], "only the new entry is left");
-  // Cap: 2,100 fresh writes leave 2,000.
-  const fresh = Array.from({ length: FEEDBACK_KEEP + 100 }, () => JSON.stringify({ chips: ["other"], at: now.toISOString() }));
-  f.kv.set("feedback:list", fresh);
-  assert.equal(await s.addFeedback(cleanFeedback({ chips: ["price"] }, "", now)!, "x".repeat(16), now), "saved");
-  assert.equal((f.kv.get("feedback:list") as string[]).length, FEEDBACK_KEEP);
-});
-
-test("retention costs one extra command per normal write (+2 when something ages out)", async () => {
-  const f = fakeRedis();
-  const s = new ShopStore(f.pipe);
-  const now = new Date("2026-10-16T10:00:00Z");
-  await s.addFeedback(cleanFeedback({ chips: ["other"] }, "", now)!, "none", now);
-  const writeOnly = f.calls.length; // INCRBY, INCR, EXPIRE, INCR, EXPIRE | INCRBY, LPUSH, LTRIM, LRANGE
-  assert.equal(writeOnly, 9);
-  assert.equal(f.kv.get("ideas:cmds:2026-10"), 9, "the budget counts every command");
-  f.kv.get("feedback:list").push(JSON.stringify({ chips: ["other"], at: "2026-06-01T00:00:00.000Z" }));
-  const later = new Date("2026-10-16T10:05:00Z");
-  await s.addFeedback(cleanFeedback({ chips: ["other"] }, "", later)!, "none", later);
-  assert.equal(f.calls.length - writeOnly, 11, "the same 9, plus INCRBY + LTRIM for the aged-out tail");
-  assert.equal(staleTail(['{"at":"2026-10-01T00:00:00Z"}', "not json", '{"at":"2026-01-01T00:00:00Z"}'], "2026-07-18"), 2);
-});
-
+// --- orphaned review marks (90-day retention itself: scripts/retention.test.ts) ---
 test("orphaned review marks (query-log entry gone) are removed on unreviewed and sample reads", async () => {
   const f = fakeRedis();
   f.kv.set("ideas:recent", ["aaaaaaaa"]);
