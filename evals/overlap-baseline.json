@@ -1,7 +1,6 @@
 {
  "note": "I16 known overlaps (count per build) at the start of the ratchet, 2026-10-15. A build not listed, or a higher count, fails CI; a lower count fails as STALE until lowered here.",
  "known": {
-  "adirondack footrest": 12,
   "barn birdhouse": 11,
   "beehive box": 2,
   "bench 31 wide 17.5 tall 14 deep": 2,
@@ -15,7 +14,7 @@
   "ferris wheel": 1,
   "glider": 1,
   "knife block": 16,
-  "laptop stand": 14,
+  "laptop stand": 2,
   "laundry fold-down 48 wide 36 high 6 deep": 2,
   "mudroom locker": 32,
   "murphy bed": 2,
@@ -25,7 +24,6 @@
   "sandbox with seat": 12,
   "sawbuck": 12,
   "toy airplane with propeller": 5,
-  "toy train track riser": 4,
   "wall mounted mail organizer": 6,
   "water wheel": 2
  }

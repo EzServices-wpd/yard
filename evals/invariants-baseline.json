@@ -225,10 +225,6 @@
    "class": "F30",
    "msg": "Rim runs into Dial with no joint cut for it"
   },
-  "I26|toy train track riser": {
-   "class": "F30",
-   "msg": "Front left leg runs into Front brace with no joint cut for it"
-  },
   "I26|barn birdhouse": {
    "class": "F30",
    "msg": "Front runs into Left with no joint cut for it"
@@ -236,10 +232,6 @@
   "I26|knife block": {
    "class": "F30",
    "msg": "Back runs into Divider 1 with no joint cut for it"
-  },
-  "I26|adirondack footrest": {
-   "class": "F30",
-   "msg": "Front left leg runs into Left side rail with no joint cut for it"
   },
   "I26|wall mounted mail organizer": {
    "class": "F30",
@@ -252,6 +244,94 @@
   "I26|bench 31 wide 17.5 tall 14 deep": {
    "class": "F30",
    "msg": "Front apron runs into Center support 1 with no joint cut for it"
+  },
+  "I28|sundial": {
+   "class": "F32",
+   "msg": "Plinth is 2.94\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|pergola 10 by 12": {
+   "class": "F32",
+   "msg": "Front beam is 3.60\" thick, not a whole number of 1.5\" 2×8 (8 ft) layers"
+  },
+  "I28|colosseum": {
+   "class": "F32",
+   "msg": "Arena floor is 0.36\" thick, not a whole number of 0.16\" Corrugated cardboard sheet 48×96 layers"
+  },
+  "I28|murphy bed": {
+   "class": "F32",
+   "msg": "Plinth is 3.44\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|sawbuck": {
+   "class": "F32",
+   "msg": "Left leg A is 2.16\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|marble run": {
+   "class": "F32",
+   "msg": "Base is 1.20\" thick, not a whole number of 0.16\" Corrugated cardboard sheet 48×96 layers"
+  },
+  "I28|laptop stand": {
+   "class": "F32",
+   "msg": "Top platform is 0.60\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|glider": {
+   "class": "F32",
+   "msg": "Tailplane is 0.20\" thick, not a whole number of 0.25\" 1/4\" Plywood 4×8 layers"
+  },
+  "I28|toy airplane with propeller": {
+   "class": "F32",
+   "msg": "Left wheel is 0.70\" thick, not a whole number of 0.75\" 1×4 Board (8 ft) layers"
+  },
+  "I28|reindeer": {
+   "class": "F32",
+   "msg": "Body top is 0.80\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|pergola": {
+   "class": "F32",
+   "msg": "Front beam is 3.60\" thick, not a whole number of 1.5\" 2×8 (8 ft) layers"
+  },
+  "I28|taj mahal": {
+   "class": "F32",
+   "msg": "Plinth is 10 layers of Corrugated cardboard sheet 48×96 but no glue-up step says so"
+  },
+  "I28|mudroom locker": {
+   "class": "F32",
+   "msg": "Back is 0.48\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|knife block maple": {
+   "class": "F32",
+   "msg": "Base is 0.60\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|birdhouse shaped like church": {
+   "class": "F32",
+   "msg": "Floor is 0.80\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|router table": {
+   "class": "F32",
+   "msg": "Table top is 1.44\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|wall clock frame": {
+   "class": "F32",
+   "msg": "Dial is 0.30\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|toy train track riser": {
+   "class": "F32",
+   "msg": "Base is 0.32\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|window box": {
+   "class": "F32",
+   "msg": "Left end is 0.90\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|barn birdhouse": {
+   "class": "F32",
+   "msg": "Floor is 0.70\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|knife block": {
+   "class": "F32",
+   "msg": "Back is 0.81\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
+  },
+  "I28|wall mounted mail organizer": {
+   "class": "F32",
+   "msg": "Backboard is 0.49\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
   }
  }
 }
