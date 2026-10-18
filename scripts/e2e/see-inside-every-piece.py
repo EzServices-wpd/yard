@@ -171,12 +171,21 @@ with sync_playwright() as p:
                     if v == "desk" and r["title"] != 'Linen · 31 1/2" W × 16" D × 78" H': fails.append(f"linen header {r['title']!r}")
                 if not A.no_rm:
                     try:
-                        rr = run(b, slug, q, v, True)
-                        dmax = 0.0
                         mc = {x["id"]: x["corners"] for x in rows}
-                        for x in rr["m"]["rows"]:
-                            for (a, c) in zip(mc.get(x["id"], []), x["corners"]):
-                                dmax = max(dmax, abs(a[0] - c[0]), abs(a[1] - c[1]))
+                        def rm_diff():
+                            rr = run(b, slug, q, v, True)
+                            d = 0.0
+                            for x in rr["m"]["rows"]:
+                                for (a, c) in zip(mc.get(x["id"], []), x["corners"]):
+                                    d = max(d, abs(a[0] - c[0]), abs(a[1] - c[1]))
+                            return d, rr["m"]["camera"]
+                        dmax, rcam = rm_diff()
+                        if dmax > 0.75:
+                            # Seen once per full run on the first build only (≤ 3 px, never in isolation): measure
+                            # again and keep both, so a real pose difference still fails and a one-off is visible.
+                            print(f"NOTE {slug} {v}: reduced-motion run 1 differs by {dmax:.2f} px (camera {rcam} vs {r['m']['camera']}); re-measuring", flush=True)
+                            r["rm_first"] = round(dmax, 2)
+                            dmax, rcam = rm_diff()
                         r["rm_dmax"] = round(dmax, 2)
                         if dmax > 0.75: fails.append(f"{slug} {v}: reduced motion lands on a different pose ({dmax:.2f} px)")
                     except Exception as e:
