@@ -5678,8 +5678,9 @@ console.log("SOFT-TRUST OK", {
       cutNames: nsPlan.cutList.map((c) => `${c.quantity} ${c.name}`),
     });
   }
-  if (ns.panels.length >= nsChip) {
-    failChip("nightstand raw panel count should under-count vs exploded chip", {
+  // Drawers are modelled hollow (front, two sides, back, bottom), so every cut piece is a model part.
+  if (ns.panels.length !== nsChip) {
+    failChip("nightstand hollow drawer parts ≠ cut-list chip", {
       rawPanels: ns.panels.length,
       chip: nsChip,
     });
@@ -5716,7 +5717,7 @@ console.log("SOFT-TRUST OK", {
   if (deskChip > deskPlan.totals.pieces) {
     failChip("desk chip over-counts cut list", { chip: deskChip, cut: deskPlan.totals.pieces });
   }
-  if (desk.panels.some((p) => p.type === "drawer") && deskChip <= desk.panels.length) {
+  if (desk.panels.some((p) => p.type === "drawer") && deskChip < desk.panels.length) {
     failChip("desk drawer explode not reflected in chip helper", {
       chip: deskChip,
       raw: desk.panels.length,
@@ -6003,8 +6004,9 @@ console.log("SOFT-TRUST OK", {
   const nsPlan = buildPlan(ns);
   const nsCut = nsPlan.totals.pieces;
   if (nsCut !== 11) failEff("nightstand cut expect 11", { cut: nsCut, raw: ns.panels.length });
-  if (ns.panels.length >= nsCut) {
-    failEff("nightstand raw panels should under-count exploded cut", {
+  // Hollow drawers: the model carries every cut piece, so raw parts and the cut list agree.
+  if (ns.panels.length !== nsCut) {
+    failEff("nightstand hollow drawer parts ≠ cut pieces", {
       raw: ns.panels.length,
       cut: nsCut,
     });
