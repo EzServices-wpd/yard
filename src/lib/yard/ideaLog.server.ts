@@ -57,12 +57,12 @@ const TIMEOUT_MS = 1500;
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
 /**
  * ideas:ptest counts a row's possible-test writes (row key → count, no text), for the sticky-live rule. Every count
- * write carries its expiry: HEXPIRE on that one field, PTEST_TTL_S (88 days, as #39's retention), refreshed by each
- * possible-test write (Upstash hashes take a TTL per field). A field only lapses after 88 days with no possible-test
+ * write carries its expiry: HEXPIRE on that one field, PTEST_TTL_S (85 days, #39's RETAIN_DAYS), refreshed by each
+ * possible-test write (Upstash hashes take a TTL per field). A field only lapses after 85 days with no possible-test
  * write; the row's ideas:top count then outweighs it, so the row reads as having had live writes and a later burst
  * only counts, never re-stamps (the safe side: a lapse can't turn a live row into test traffic).
  */
-export const PTEST_TTL_S = 88 * 86_400;
+export const PTEST_TTL_S = 85 * 86_400;
 const ptestCount = (key: string, n: number): Cmd[] => [["HINCRBY", K.ptest, key, n], ["HEXPIRE", K.ptest, PTEST_TTL_S, "FIELDS", 1, key]];
 const bucket = (now: Date) => Math.floor(now.getTime() / (BURST_WINDOW_S * 1000));
 const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", ptest: "ideas:ptest", burst: (now: Date, back = 0) => `ideas:burst:${bucket(now) - back}` };

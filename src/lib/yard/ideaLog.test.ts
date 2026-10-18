@@ -125,12 +125,12 @@ test("a rejected pipeline command logs one warning with only its name and key pr
   console.warn = (...a: unknown[]) => { warned.push(a); };
   try {
     const pipe = restPipe({ url: secretUrl, token })!;
-    const out = await pipe([["HINCRBY", "ideas:ptest", "kitchen-island-48", 1], ["HEXPIRE", "ideas:ptest", 7603200, "FIELDS", 1, "kitchen-island-48"], ["HGET", "ideas:meta", "kitchen-island-48"]]);
+    const out = await pipe([["HINCRBY", "ideas:ptest", "kitchen-island-48", 1], ["HEXPIRE", "ideas:ptest", 7344000, "FIELDS", 1, "kitchen-island-48"], ["HGET", "ideas:meta", "kitchen-island-48"]]);
     assert.deepEqual(out, [1, null, 3], "the rest of the pipeline still applies");
     assert.equal(warned.length, 1, "exactly one warning");
     assert.deepEqual(warned[0], ["[ideas] store rejected HEXPIRE ideas:ptest"]);
     const line = String(warned[0][0]);
-    for (const leak of ["kitchen", "7603200", "FIELDS", "secret", "SECRET", "tok_", "upstash", "unknown command", "prompt"]) assert.ok(!line.includes(leak), `no ${leak}`);
+    for (const leak of ["kitchen", "7344000", "FIELDS", "secret", "SECRET", "tok_", "upstash", "unknown command", "prompt"]) assert.ok(!line.includes(leak), `no ${leak}`);
     // No warning when nothing is rejected.
     globalThis.fetch = (async () => new Response(JSON.stringify([{ result: 1 }]), { status: 200 })) as typeof fetch;
     await pipe([["GET", "ideas:snap"]]);

@@ -334,7 +334,7 @@ test("router: the root route keeps the test flags (offline, local, test) on ever
   assert.match(fs.readFileSync("src/router.tsx", "utf8"), /installTestHeader\(\);/);
 });
 
-test("ideas:ptest: every count write carries its own field TTL (88 days) in the same pipeline: new row, live row, test-only row, held repeats", async () => {
+test("ideas:ptest: every count write carries its own field TTL (85 days) in the same pipeline: new row, live row, test-only row, held repeats", async () => {
   const r = fakeRedis();
   const held: Promise<unknown>[] = [];
   const s = new IdeaStore(r.pipe, undefined, (p) => held.push(p), async () => {});
@@ -351,7 +351,7 @@ test("ideas:ptest: every count write carries its own field TTL (88 days) in the 
     assert.ok(ex, `HINCRBY ideas:ptest ${c[2]} without its HEXPIRE`);
     assert.equal(Number(ex![2]), PTEST_TTL_S);
   }
-  assert.equal(PTEST_TTL_S, 88 * 86_400, "inside the privacy page's 90 days, as #39's retention");
+  assert.equal(PTEST_TTL_S, 85 * 86_400, "85 days: #39's RETAIN_DAYS, so every copy is gone well inside the privacy page's 90 days");
   for (const k of r.hs("ideas:ptest").keys()) assert.equal(r.ttl.get(`ideas:ptest/${k}`), PTEST_TTL_S, k);
   for (const [, v] of r.hs("ideas:ptest")) assert.match(v, /^\d+$/, "counts only, no text");
   assert.equal(r.log.billed, r.log.cmds, "the budget bills the HEXPIREs too");
