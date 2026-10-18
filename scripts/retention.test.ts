@@ -118,7 +118,7 @@ function orphans(r: ReturnType<typeof ttlRedis>): string[] {
   return bad;
 }
 
-test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − RETAIN_DAYS) in place of the rank trim; 9 commands, unchanged", async () => {
+test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − RETAIN_DAYS) in place of the rank trim; 10 commands with #83 merged (+ HMGET previous burst bucket)", async () => {
   const clock = { now: Date.UTC(2026, 9, 21, 12) };
   const r = ttlRedis(clock);
   const s = mk(r);
@@ -131,8 +131,8 @@ test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − RETAI
   }
   assert.ok(Math.min(...r.zs("ideas:recent").values()) >= clock.now - RETAIN_MS, "nothing in recent is older than RETAIN_DAYS");
   assert.equal(r.zs("ideas:recent").size, RETAIN_DAYS, "one a day, the one exactly RETAIN_DAYS old trimmed");
-  assert.equal(WRITE_CMDS, 9);
-  assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSETNX", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYSCORE", "HSET", "HINCRBY", "EXPIRE"]);
+  assert.equal(WRITE_CMDS, 10);
+  assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSETNX", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYSCORE", "HSET", "HINCRBY", "EXPIRE", "HMGET"]);
 });
 
 test("last-seen: the later of the recent score and the stamp; LEGACY_SINCE for a row with neither", () => {
@@ -266,10 +266,10 @@ test("cost cap: a run never sends more than maxCmds (budget counter agrees); a c
   for (let i = 0; i < 5000; i++) { const k = i.toString(16).padStart(8, "0"); r2.exec(["ZINCRBY", "ideas:top", 1, k]); r2.exec(["ZADD", "ideas:recent", Date.UTC(2026, 9, 30), k]); }
   const fresh = await mk(r2).sweep(new Date(Date.UTC(2026, 10, 1)));
   assert.ok(fresh.done && fresh.dropped === 0 && fresh.cmds === 19, `${fresh.cmds}`);
-  // The most rows the store can hold: writes stop at BUDGET and a new row costs ≥ WRITE_CMDS, so ≤ 50,000 new rows a
+  // The most rows the store can hold: writes stop at BUDGET and a new row costs ≥ WRITE_CMDS − 1 (9: no bucket TTL, no run id), so ≤ 50,000 new rows a
   // month and ≤ 200,000 in any 88 days (4 calendar months) = 100 pages of SWEEP_BATCH. Every one stale, one run still
   // finishes the pass: GET 2 + 100 × (5 + 8) + DEL cursor 2 = 1,304 ≤ 1,500. (Scaled here: 100 pages of 200 rows.)
-  const maxRows = 4 * Math.floor(450_000 / WRITE_CMDS);
+  const maxRows = 4 * Math.floor(450_000 / (WRITE_CMDS - 1));
   assert.equal(maxRows, 200_000);
   assert.equal(Math.ceil(maxRows / SWEEP_BATCH), 100);
   const r4 = ttlRedis({ now: Date.UTC(2027, 2, 1, 8) });
