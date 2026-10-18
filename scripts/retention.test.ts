@@ -2,7 +2,7 @@
 // whose last-seen (recent score or stamp time; LEGACY_SINCE if neither) is past RETAIN_DAYS from ideas:meta, top,
 // status, stamp, recent and review together (no orphans), capped by a batch size and a max-commands limit; the
 // feedback store keeps its tail trim and the cron runs it too, so a quiet spell keeps nothing. /api/cron/retention and
-// /api/critic-review answer 404 to a missing or wrong secret.
+// /api/critic-review are request middleware: without the right secret they go to the app like any unknown path.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -300,45 +300,72 @@ test("cost cap: a run never sends more than maxCmds (budget counter agrees); a c
   assert.equal((await quiet().sweep()).done, true, "no store: a no-op");
 });
 
-test("cron: daily in vercel.json; /api/cron/retention is 404 without the right Bearer CRON_SECRET", async () => {
+/** Runs the request middleware the way src/start.ts does; `next` stands for the app (a real not-found here). */
+async function viaMiddleware(req: Request, env: Record<string, string | undefined>) {
+  const { secretRoute } = await import("../src/lib/server/secretRoutes");
+  const nf = new Response("<!DOCTYPE html>app not-found", { status: 404, headers: { "content-type": "text/html; charset=utf-8" } });
+  let nextCalls = 0;
+  const out = (await secretRoute(req, new URL(req.url).pathname, env)) ?? (nextCalls++, nf);
+  return { out, wentToApp: out === nf && nextCalls === 1 };
+}
+
+test("cron: two daily jobs in vercel.json; /api/cron/retention without the right Bearer CRON_SECRET goes to the app like an unknown path", async () => {
   const v = JSON.parse(fs.readFileSync("vercel.json", "utf8"));
   assert.deepEqual(v.crons, [{ path: "/api/cron/retention", schedule: "17 8 * * *" }, { path: "/api/cron/retention", schedule: "17 20 * * *" }], "two daily jobs (each once a day: free plan)");
-  const { Route } = await import("../src/routes/api/cron/retention");
-  const h = (Route as unknown as { options: { server: { handlers: { GET: (a: { request: Request }) => Promise<Response> } } } }).options.server.handlers;
+  assert.ok(!fs.existsSync("src/routes/api/cron/retention.ts") && !fs.readFileSync("src/routeTree.gen.ts", "utf8").includes("/api/cron/retention"), "not a router route");
   const req = (auth?: string, extra: Record<string, string> = {}) => new Request("https://yard.test/api/cron/retention", { headers: { ...(auth ? { authorization: auth } : {}), ...extra } });
-  const prev = process.env.CRON_SECRET;
-  try {
-    const sec = "c".repeat(32);
-    for (const env of [undefined, "short", sec]) {
-      if (env === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = env;
-      for (const auth of [undefined, "", "Bearer ", "Bearer wrong", sec, `Bearer ${sec}x`, `Basic ${sec}`]) assert.equal((await h.GET({ request: req(auth, { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }) })).status, 404, `env=${env} auth=${auth}`);
-    }
-    process.env.CRON_SECRET = sec;
-    const ok = await h.GET({ request: req(`Bearer ${sec}`) });
-    assert.equal(ok.status, 200);
-    assert.deepEqual(Object.keys(((await ok.json()) as { ideas: object }).ideas).sort(), ["cmds", "done", "dropped", "scanned"], "counts only");
-  } finally {
-    if (prev === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = prev;
+  const sec = "c".repeat(32);
+  for (const env of [undefined, "short", sec]) {
+    for (const auth of [undefined, "", "Bearer ", "Bearer wrong", sec, `Bearer ${sec}x`, `Basic ${sec}`, `bearer ${sec}`])
+      assert.ok((await viaMiddleware(req(auth, { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }), { CRON_SECRET: env })).wentToApp, `env=${env} auth=${auth}`);
   }
+  assert.ok((await viaMiddleware(new Request("https://yard.test/api/cron/retention", { method: "POST", headers: { authorization: `Bearer ${sec}` } }), { CRON_SECRET: sec })).wentToApp, "other methods too");
+  const ok = (await viaMiddleware(req(`Bearer ${sec}`), { CRON_SECRET: sec })).out;
+  assert.equal(ok.status, 200);
+  assert.deepEqual(Object.keys(((await ok.json()) as { ideas: object }).ideas).sort(), ["cmds", "done", "dropped", "scanned"], "counts only");
 });
 
-test("/api/critic-review: a missing or wrong secret is 404, never 401", async () => {
-  const { Route } = await import("../src/routes/api/critic-review");
-  const h = (Route as unknown as { options: { server: { handlers: Record<"GET" | "POST", (a: { request: Request }) => Promise<Response>> } } }).options.server.handlers;
+test("/api/critic-review: a missing or wrong secret goes to the app like an unknown path, never 401", async () => {
+  assert.ok(!fs.existsSync("src/routes/api/critic-review.ts") && !fs.readFileSync("src/routeTree.gen.ts", "utf8").includes("/api/critic-review"), "not a router route");
   const req = (method: string, auth?: string) => new Request("https://yard.test/api/critic-review?op=unreviewed", { method, headers: auth ? { authorization: auth } : {}, body: method === "POST" ? JSON.stringify({ key: "aaaaaaaa", grade: "A" }) : undefined });
-  const prev = process.env.CRITIC_REVIEW_SECRET;
-  try {
-    for (const env of [undefined, "short", "s".repeat(24)]) {
-      if (env === undefined) delete process.env.CRITIC_REVIEW_SECRET; else process.env.CRITIC_REVIEW_SECRET = env;
-      for (const m of ["GET", "POST"] as const) for (const auth of [undefined, "", "Bearer ", "Bearer wrong", `Bearer ${"s".repeat(23)}`, "s".repeat(24) + "x", `Basic ${"s".repeat(24)}`])
-        assert.equal((await h[m]({ request: req(m, auth) })).status, 404, `${m} env=${env} auth=${auth}`);
-    }
-    process.env.CRITIC_REVIEW_SECRET = "s".repeat(24);
-    assert.equal((await h.GET({ request: req("GET", `Bearer ${"s".repeat(24)}`) })).status, 200, "the right secret still works");
-  } finally {
-    if (prev === undefined) delete process.env.CRITIC_REVIEW_SECRET; else process.env.CRITIC_REVIEW_SECRET = prev;
+  const good = "s".repeat(24);
+  for (const env of [undefined, "short", good]) {
+    for (const m of ["GET", "POST", "HEAD", "PUT"] as const) for (const auth of [undefined, "", "Bearer ", "Bearer wrong", `Bearer ${"s".repeat(23)}`, good, good + "x", `Basic ${good}`])
+      assert.ok((await viaMiddleware(req(m, auth), { CRITIC_REVIEW_SECRET: env })).wentToApp, `${m} env=${env} auth=${auth}`);
   }
-  assert.doesNotMatch(fs.readFileSync("src/routes/api/critic-review.ts", "utf8"), /,\s*401\s*\)|status:\s*401/);
+  assert.equal((await viaMiddleware(req("GET", `Bearer ${good}`), { CRITIC_REVIEW_SECRET: good })).out.status, 200, "the right secret still works");
+  assert.doesNotMatch(fs.readFileSync("src/lib/server/criticReviewHandler.ts", "utf8") + fs.readFileSync("src/lib/server/secretRoutes.ts", "utf8"), /\b401\b/);
+});
+
+test("secret check: constant-time compare and the same work for every path, secret or not (timing)", async () => {
+  const { authorised, secretRoute } = await import("../src/lib/server/secretRoutes");
+  const src = fs.readFileSync("src/lib/server/secretRoutes.ts", "utf8");
+  assert.match(src, /timingSafeEqual\(got, want\) && valid/, "the digest compare runs even when the secret is unset");
+  assert.ok(src.indexOf("authorised(request.headers.get") < src.indexOf("entry.load()"), "nothing is loaded before the check");
+  assert.equal(authorised("Bearer " + "k".repeat(32), "k".repeat(32)), true);
+  assert.equal(authorised("Bearer " + "k".repeat(32), undefined), false);
+  assert.equal(authorised("Bearer short", "short"), false);
+  // Median time per decision: an unknown path, the cron path with a wrong secret, with no env, and a near-miss secret.
+  const env = { CRON_SECRET: "k".repeat(64) };
+  const cases: [string, string, Record<string, string | undefined>][] = [
+    ["/api/zq7x3k9m", "Bearer " + "x".repeat(64), env],
+    ["/api/cron/retention", "Bearer " + "x".repeat(64), env],
+    ["/api/cron/retention", "Bearer " + "x".repeat(64), {}],
+    ["/api/cron/retention", "Bearer " + "k".repeat(63) + "x", env],
+  ];
+  const median = async ([path, auth, e]: (typeof cases)[number]) => {
+    const req = new Request(`https://yard.test${path}`, { headers: { authorization: auth } });
+    const ts: number[] = [];
+    for (let i = 0; i < 4000; i++) { const t = process.hrtime.bigint(); const r = await secretRoute(req, path, e); ts.push(Number(process.hrtime.bigint() - t)); assert.equal(r, null); }
+    ts.sort((a, b) => a - b);
+    return ts[ts.length >> 1];
+  };
+  for (const c of cases) await median(c); // warm up
+  const m = [];
+  for (const c of cases) m.push(await median(c));
+  const spread = Math.max(...m) - Math.min(...m);
+  console.log(`# secret check medians (ns): ${m.join(", ")}; spread ${spread} ns`);
+  assert.ok(spread < 20_000, `decisions within 20 µs of each other: ${m}`);
 });
 
 test("day 90 − 1 s: every copy of a day-0 prompt and note is gone (row, indexes, stamp, ptest, review, feedback, rate-limit keys, snapshot, memo, CDN), with the cron's worst timing, a missed run, a cursor needing three runs and a store outage", async () => {

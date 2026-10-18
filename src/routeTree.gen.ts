@@ -16,7 +16,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
-import { Route as ApiCriticReviewRouteImport } from './routes/api/critic-review'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiIdeasRouteImport } from './routes/api/ideas'
 import { Route as ApiIdeasLogRouteImport } from './routes/api/ideas-log'
@@ -25,7 +24,6 @@ import { Route as GalleryIndexRouteImport } from './routes/gallery/index'
 import { Route as GallerySlugRouteImport } from './routes/gallery/$slug'
 import { Route as PlansSlugRouteImport } from './routes/plans/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiCronRetentionRouteImport } from './routes/api/cron/retention'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,11 +58,6 @@ const TermsRoute = TermsRouteImport.update({
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCriticReviewRoute = ApiCriticReviewRouteImport.update({
-  id: '/api/critic-review',
-  path: '/api/critic-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
@@ -107,11 +100,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronRetentionRoute = ApiCronRetentionRouteImport.update({
-  id: '/api/cron/retention',
-  path: '/api/cron/retention',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,7 +109,6 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
-  '/api/critic-review': typeof ApiCriticReviewRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
@@ -130,7 +117,6 @@ export interface FileRoutesByFullPath {
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/cron/retention': typeof ApiCronRetentionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,7 +126,6 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
-  '/api/critic-review': typeof ApiCriticReviewRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
@@ -149,7 +134,6 @@ export interface FileRoutesByTo {
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/cron/retention': typeof ApiCronRetentionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,7 +144,6 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
-  '/api/critic-review': typeof ApiCriticReviewRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
@@ -169,7 +152,6 @@ export interface FileRoutesById {
   '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/cron/retention': typeof ApiCronRetentionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,7 +163,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
-    | '/api/critic-review'
     | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
@@ -190,7 +171,6 @@ export interface FileRouteTypes {
     | '/plans/$slug'
     | '/gallery/'
     | '/api/auth/$'
-    | '/api/cron/retention'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -200,7 +180,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
-    | '/api/critic-review'
     | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
@@ -209,7 +188,6 @@ export interface FileRouteTypes {
     | '/plans/$slug'
     | '/gallery'
     | '/api/auth/$'
-    | '/api/cron/retention'
   id:
     | '__root__'
     | '/'
@@ -219,7 +197,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
-    | '/api/critic-review'
     | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
@@ -228,7 +205,6 @@ export interface FileRouteTypes {
     | '/plans/$slug'
     | '/gallery/'
     | '/api/auth/$'
-    | '/api/cron/retention'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -239,7 +215,6 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
-  ApiCriticReviewRoute: typeof ApiCriticReviewRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiIdeasRoute: typeof ApiIdeasRoute
   ApiIdeasLogRoute: typeof ApiIdeasLogRoute
@@ -248,7 +223,6 @@ export interface RootRouteChildren {
   PlansSlugRoute: typeof PlansSlugRoute
   GalleryIndexRoute: typeof GalleryIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiCronRetentionRoute: typeof ApiCronRetentionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -300,13 +274,6 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/critic-review': {
-      id: '/api/critic-review'
-      path: '/api/critic-review'
-      fullPath: '/api/critic-review'
-      preLoaderRoute: typeof ApiCriticReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/feedback': {
@@ -365,13 +332,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cron/retention': {
-      id: '/api/cron/retention'
-      path: '/api/cron/retention'
-      fullPath: '/api/cron/retention'
-      preLoaderRoute: typeof ApiCronRetentionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -383,7 +343,6 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
-  ApiCriticReviewRoute: ApiCriticReviewRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiIdeasRoute: ApiIdeasRoute,
   ApiIdeasLogRoute: ApiIdeasLogRoute,
@@ -392,17 +351,17 @@ const rootRouteChildren: RootRouteChildren = {
   PlansSlugRoute: PlansSlugRoute,
   GalleryIndexRoute: GalleryIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiCronRetentionRoute: ApiCronRetentionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
