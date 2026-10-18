@@ -13,7 +13,7 @@ import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
 import type { YardProject } from "@/lib/yard/types";
 import { BENCH_FOV, type BenchView, type Rect } from "@/lib/yard/benchFrame";
-import { CLOSE_MS, EXPLODE_MS, EXPLODE_VIEW, REDUCED_FADE_MS, stageWindow, windowed } from "@/components/workspace/explode-layout";
+import { CLOSE_MS, EXPLODE_MS, EXPLODE_VIEW, REDUCED_FADE_MS, poseAt } from "@/components/workspace/explode-layout";
 import { explodeClock, startTween, stepTween, type ExplodeSolved } from "@/components/workspace/explode-state";
 import { solveSteps } from "@/components/workspace/explode-solver";
 import { revealState } from "@/components/workspace/reveal-clock";
@@ -49,17 +49,15 @@ function applyOne(id: string, g: Groups) {
     outer.position.set(0, 0, 0); outer.quaternion.identity(); inner.position.set(0, 0, 0);
     return;
   }
-  const w = stageWindow(s!.roles.get(id) ?? "case");
-  const m = windowed(u, w.move);
-  const [tx, ty, tz] = pose.t;
-  if (pose.rot) {
-    const r = windowed(u, w.swing);
-    const [px, py, pz] = pose.rot.pivot;
-    outer.position.set(px + tx * m, py + ty * m, pz + tz * m);
-    outer.quaternion.copy(Q.setFromAxisAngle(AX.set(...pose.rot.axis), pose.rot.ang * r));
+  const at = poseAt(pose, s!.roles.get(id) ?? "case", u);
+  const [tx, ty, tz] = at.t;
+  if (at.rot) {
+    const [px, py, pz] = at.rot.pivot;
+    outer.position.set(px + tx, py + ty, pz + tz);
+    outer.quaternion.copy(Q.setFromAxisAngle(AX.set(...at.rot.axis), at.rot.ang));
     inner.position.set(-px, -py, -pz);
   } else {
-    outer.position.set(tx * m, ty * m, tz * m);
+    outer.position.set(tx, ty, tz);
     outer.quaternion.identity();
     inner.position.set(0, 0, 0);
   }
