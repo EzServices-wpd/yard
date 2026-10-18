@@ -20,3 +20,4 @@ Spec: /workspace/see-inside-walk/PLAN.md. Push once, then PR -> release/2026-10-
 
 ## Log
 - Artifacts: /workspace/see-inside-research/{before,after}/ (screenshots, logs, json), lighthouse.log, guards.log
+- [x] drawer lookup for SWE's hollow drawers (drawerIdOf/drawerPartOf/setDrawerTag in explode-layout.ts; field name TBD)
