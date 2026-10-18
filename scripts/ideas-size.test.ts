@@ -87,7 +87,7 @@ test("a card with a labelled drawing prints exactly the drawing's labels (no 1/1
   assert.equal(by["birdhouse"], "6 7/8 × 7 1/2 × 11 13/16 in");
   assert.equal(by["recipe-wall-mounted-mail-organizer"], "12 × 3 3/4 × 14 3/16 in");
   assert.deepEqual([...TURNED], ["recipe-water-wheel"]);
-  assert.equal(by["recipe-water-wheel"], "18 × 24 9/16 × 31 1/8 in");
+  assert.equal(by["recipe-water-wheel"], "18 × 23 7/16 × 30 1/4 in");
   assert.equal(by["recipe-laptop-stand"], "11 3/8 × 8 7/8 × 6 5/16 in");
   assert.equal(by["recipe-jewelry-box"], "10 × 5 1/2 × 3 7/16 in");
   assert.equal(by["recipe-bird-feeder"], "10 × 7 11/16 × 10 5/8 in");

@@ -80,7 +80,7 @@ for (const [prompt, slug] of corpus) {
     const d = drawnDims(planStepSvg(p, plan, i).svg);
     if (d && !d.round && ov && !ov.round && near(d, ov)) steps.push(f3(d)); // a full view (not a sub-assembly)
   });
-  // Step 1 says the size in words: "Unit 18" wide × 24 9/16" deep × 31 1/8" high".
+  // Step 1 says the size in words: "Unit 18" wide × 23 7/16" deep × 30 1/4" high".
   const m = plan.instructions.map((s) => s.description).join(" ").match(/Unit ([\d\s/]+)" wide × ([\d\s/]+)" deep × ([\d\s/]+)" high/);
   const notes: Row["notes"] = {};
   for (const n of plan.instructions.map((s) => s.description).join(" ").matchAll(/Assumed ([\d\s/]+)" (wide|tall|deep) \(default size\)/g)) notes[n[2] === "wide" ? "width" : n[2] === "tall" ? "height" : "depth"] = n[1].trim();
@@ -89,12 +89,12 @@ for (const [prompt, slug] of corpus) {
   rows.push({ prompt, slug, notes, iso, header: headerTitle(p), drawn: ov && !ov.round ? f3(ov) : null, round: !!ov?.round, steps, unitText: m ? `${m[1].trim()} × ${m[2].trim()} × ${m[3].trim()}` : null, assumed: typedAxesTalk(p).assumed, size: headerSize(p) });
 }
 
-test("canaries: linen says its typed 31 1/2 × 16 × 78; the water wheel says its true 18 × 24 9/16 × 31 1/8", () => {
+test("canaries: linen says its typed 31 1/2 × 16 × 78; the water wheel says its true 18 × 23 7/16 × 30 1/4 (#85's rotors wheel, 23.458 × 30.229)", () => {
   const linen = rows.find((r) => r.prompt.startsWith("linen"))!;
   assert.match(linen.header, /31 1\/2" W × 16" D × 78" H/);
   const ww = rows.find((r) => r.prompt === "water wheel")!;
-  assert.match(ww.header, /18" W × 24 9\/16" D × 31 1\/8" H/);
-  assert.equal(formatSize(ww.size).text, "18 × 24 9/16 × 31 1/8 in");
+  assert.match(ww.header, /18" W × 23 7\/16" D × 30 1\/4" H/);
+  assert.equal(formatSize(ww.size).text, "18 × 23 7/16 × 30 1/4 in");
 });
 
 test("header = drawings on every assumed axis, for every build and idea (typed axes are said back)", () => {

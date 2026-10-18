@@ -16,12 +16,12 @@
    "id": "recipe-water-wheel",
    "label": "Water Wheel",
    "prompt": "water wheel",
-   "size": "18″ W × 24 9/16″ D × 31 1/8″ H",
-   "blurb": "Rim cut from exterior plywood, joined to the hub by crossed spokes",
+   "size": "18″ W × 23 7/16″ D × 30 1/4″ H",
+   "blurb": "Two exterior plywood rims, each with a hub in its open centre between two crossed spokes, one on each face of the rim",
    "box": {
     "width": 18,
-    "height": 31.14,
-    "depth": 24.58
+    "height": 30.228955624828444,
+    "depth": 23.457911249656892
    }
   },
   {

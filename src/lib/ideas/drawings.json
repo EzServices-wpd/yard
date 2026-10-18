@@ -681,17 +681,17 @@
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.87ed9387.json"
  },
  "recipe-water-wheel": {
-  "v": "90c92cc6",
+  "v": "259bb4ac",
   "w": 480,
   "h": 360,
-  "parts": 13,
-  "bytes": 12215,
+  "parts": 24,
+  "bytes": 25102,
   "dims": {
    "width": 18,
-   "height": 31.125,
-   "depth": 24.5625
+   "height": 30.25,
+   "depth": 23.4375
   },
-  "model": "/ideas/models/recipe-water-wheel.e5b730ba.json"
+  "model": "/ideas/models/recipe-water-wheel.353ff83b.json"
  },
  "recipe-abacus": {
   "v": "db000855",
