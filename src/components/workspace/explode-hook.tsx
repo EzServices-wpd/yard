@@ -12,6 +12,7 @@ import type { YardProject } from "@/lib/yard/types";
 import { classify } from "@/components/workspace/explode-layout";
 import { partMeshes, renderIds } from "@/components/workspace/id-pass";
 import { explodeClock, explodeSettled } from "@/components/workspace/explode-state";
+import { overlayRects } from "@/components/workspace/explode-driver";
 import type { Rect } from "@/lib/yard/benchFrame";
 
 export function isTestRun(): boolean {
@@ -26,6 +27,8 @@ type Hook = {
   corners(id: string): { x: number; y: number }[];
   readonly camera: { position: number[]; target: number[]; fov: number; viewOffset: number[] | null; view: { azimuthDeg: number; elevationDeg: number } };
   readonly safeRect: Rect | null;
+  /** The last camera fit used today's overlay cards and canvas size (no refit still pending). */
+  readonly frameFresh: boolean;
   readonly viewport: { w: number; h: number };
   readonly solved: { rounds: number; failing: string[] } | null;
   stepper: { groups: string[]; index: number; go(i: number): boolean };
@@ -78,6 +81,15 @@ export function ExplodeTestHook({ project }: { project: YardProject }) {
         };
       },
       get safeRect() { return ((window as unknown as { __yardFrame?: { safe?: Rect } }).__yardFrame?.safe) ?? null; },
+      get frameFresh() {
+        const f = (window as unknown as { __yardFrame?: { overlays?: Rect[]; viewport?: { w: number; h: number } } }).__yardFrame;
+        if (!f?.overlays || !f.viewport || Math.abs(f.viewport.w - w()) > 0.5 || Math.abs(f.viewport.h - h()) > 0.5) return false;
+        const now = overlayRects(gl.domElement);
+        return now.length === f.overlays.length && now.every((r, i) => {
+          const o = f.overlays![i];
+          return Math.abs(r.left - o.left) + Math.abs(r.top - o.top) + Math.abs(r.right - o.right) + Math.abs(r.bottom - o.bottom) < 1;
+        });
+      },
       get viewport() { return { w: w(), h: h() }; },
       get solved() { const s = explodeClock.solved; return s ? { rounds: s.rounds, failing: s.failing } : null; },
       // PR 2 fills this in (PLAN §2.6); until then there are no steps to go to.

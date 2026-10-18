@@ -134,7 +134,10 @@ def run(b, slug, q, vname, rm):
     t0 = time.time()
     pg.wait_for_function("() => window.__yardExplode && window.__yardExplode.settled === true", timeout=60000)
     settle_ms = int((time.time() - t0) * 1000)
-    pg.wait_for_timeout(400)
+    # A late card resize (fonts, tray) refits with a short glide: measure only once the frame is current and settled.
+    for _ in range(20):
+        pg.wait_for_timeout(400)
+        if pg.evaluate("() => window.__yardExplode.settled === true && window.__yardExplode.frameFresh === true"): break
     m = pg.evaluate(MEASURE)
     shot = ""
     if A.out:
