@@ -3,12 +3,16 @@
  * camera read in useFrame, so the whole move is transform-only and renders only while it runs
  * (frameloop "demand": the driver invalidates while busy, then stops).
  */
-import type { Box3, Pose } from "@/components/workspace/explode-layout";
+import type { Box3, Pose, Role, V3 } from "@/components/workspace/explode-layout";
 
 export type ExplodeSolved = {
   key: string;
   poses: Map<string, Pose>;
+  /** Stage role per part (hardware takes its host's), for stageWindow. */
+  roles: Map<string, Role>;
   box: Box3;
+  /** Every part's posed corners: the explode camera fits these (explode-frame.ts). */
+  points: V3[];
   rounds: number;
   /** Parts the solver could not make pass in one frame (handed to the stepper, PR 2). */
   failing: string[];

@@ -142,6 +142,11 @@ export type Mover = {
   cap: number;
   /** Drawer bank membership: lift = (n − 1 − k) × drawer height × bank.spread. */
   bank?: { spread: number };
+  /** Sideways shift of the whole bank (its column stays aligned): lat.side × dir along X. One lat for every
+   * bank, so side-by-side banks part from the middle by the same amount. */
+  lat?: { side: number }; dir?: number;
+  /** Movers that keep one distance (both sides, both doors, matching drawers), so gaps stay even. */
+  link?: string;
   k?: number; n?: number; hh?: number;
 };
 
@@ -165,9 +170,9 @@ export function layoutFor(panels: readonly Panel[]): Layout {
   const movers = new Map<string, Mover>();
   const hingeLeft = new Map<string, boolean>();
   const src = new Map(panels.map((p) => [p.id, p]));
-  const add = (key: string, p: ExplodePart, axis: V3, d0: number) => {
+  const add = (key: string, p: ExplodePart, axis: V3, d0: number, link?: string) => {
     let m = movers.get(key);
-    if (!m) movers.set(key, (m = { key, parts: [], axis: norm(axis), dist: d0, cap }));
+    if (!m) movers.set(key, (m = { key, parts: [], axis: norm(axis), dist: d0, cap, link }));
     m.parts.push(p);
   };
   const T = 0.75;
@@ -177,17 +182,17 @@ export function layoutFor(panels: readonly Panel[]): Layout {
       case "bottom": add("anchor", p, [0, 0, 0], 0); break;
       case "top": add(`top:${p.id}`, p, [0, 1, 0], g); break;
       case "back": add(`back:${p.id}`, p, [0, 0, -1], g); break;
-      case "sideL": add(`sideL:${p.id}`, p, [-1, 0, 0], g); break;
-      case "sideR": add(`sideR:${p.id}`, p, [1, 0, 0], g); break;
+      case "sideL": add(`sideL:${p.id}`, p, [-1, 0, 0], g, "side"); break;
+      case "sideR": add(`sideR:${p.id}`, p, [1, 0, 0], g, "side"); break;
       case "front": add(`front:${p.id}`, p, [0, 0, 1], g); break;
-      case "kick": add(`kick:${p.id}`, p, [0, 0, 1], 0.6 * g); break;
+      case "kick": add(`kick:${p.id}`, p, [0, 0, 1], 0.6 * g, "kick"); break;
       case "inset": add(`inset:${p.id}`, p, [0, 0, 1], 0.35 * g); break;
-      case "divider": add(`div:${p.id}`, p, p.h < 0.5 * H ? [0, 1, 0] : [0, 0, -1], 0.25 * g); break;
+      case "divider": { const short = p.h < 0.5 * H; add(`div:${p.id}`, p, short ? [0, 1, 0] : [0, 0, -1], 0.25 * g, short ? "div-lift" : "div-back"); break; }
       case "shelf": add(p.unit, p, [0, 0.25, 1], 0.55 * D); break;
       case "door": {
         const left = doorHingesLeft(src.get(p.id)!);
         hingeLeft.set(p.id, left);
-        add(p.unit, p, [left ? -1 : 1, 0, 0.35], g + T);
+        add(p.unit, p, [left ? -1 : 1, 0, 0.35], g + T, "door");
         break;
       }
       case "lid": add(p.unit, p, [0, 1, -0.2], 1.4 * g); break;
@@ -197,9 +202,12 @@ export function layoutFor(panels: readonly Panel[]): Layout {
         else add("anchor", p, [0, 0, 0], 0);
     }
   }
-  // Drawers: a staggered fan. Banks by X overlap, top drawer first (k = 0). Forward with a sideways fan of
-  // 0.25 × (k + 1); banks fan away from the middle, a single bank toward camera-left (right when a left door
-  // exists). Start = depth × (0.85 + 0.45 k): lower drawers sit further out. Each bank also spreads upward.
+  // Drawers: an aligned staircase. Banks by X overlap, top drawer first (k = 0). Each drawer slides straight
+  // out, start = depth × (0.85 + 0.45 k), so lower drawers sit further out and each top shows past the one
+  // above; each bank also spreads upward (even gaps). The whole bank then steps sideways as one column, so it
+  // clears the open carcase: two banks part from the middle (the desk's knee space stays open), a single
+  // bank goes toward camera-left (right when a left door swings there). PLAN §2.2 fanned each drawer by
+  // 0.25 × (k + 1); one shift per bank keeps the columns aligned and the gaps even instead of a fan.
   type Env = { m: Mover; b: Box3 };
   const env: Env[] = [...movers.values()].filter((m) => m.key.startsWith("D:")).map((m) => ({ m, b: boxOf(m.parts.filter((q) => q.role !== "drawerFront")) }));
   const cols: { minX: number; maxX: number; list: Env[] }[] = [];
@@ -209,16 +217,19 @@ export function layoutFor(panels: readonly Panel[]): Layout {
     c.list.push(e);
   }
   const leftDoor = parts.some((q) => q.role === "door" && hingeLeft.get(q.id));
+  const bank = { spread: 0.35 };
+  const lat = { side: cols.length > 1 ? 0.25 * D : 0.5 * W };
   for (const c of cols) {
     c.list.sort((a, b) => b.b.minY - a.b.minY);
     const n = c.list.length;
     const colLeft = (c.minX + c.maxX) / 2 <= midX;
-    const bank = { spread: 0.35 };
+    const dir = cols.length > 1 ? (colLeft ? -1 : 1) : leftDoor ? 1 : -1;
     c.list.forEach((e, k) => {
       const dd = e.b.maxZ - e.b.minZ, hh = e.b.maxY - e.b.minY;
-      const fan = 0.25 * (k + 1) * (cols.length > 1 ? (colLeft ? -1 : 1) : leftDoor ? 1 : -1);
-      e.m.axis = norm([fan, 0, 1]);
+      e.m.axis = [0, 0, 1];
       e.m.dist = dd * (0.85 + 0.45 * k);
+      e.m.lat = lat; e.m.dir = dir;
+      e.m.link = `drawer:${k}`;
       e.m.bank = bank; e.m.k = k; e.m.n = n; e.m.hh = hh;
     });
   }
@@ -234,7 +245,7 @@ export function posesFor(L: Layout): Map<string, Pose> {
   for (const m of L.movers.values()) {
     const lift = m.bank ? ((m.n ?? 1) - 1 - (m.k ?? 0)) * (m.hh ?? 0) * m.bank.spread : 0;
     for (const p of m.parts) {
-      const t: V3 = [m.axis[0] * m.dist, m.axis[1] * m.dist + lift, m.axis[2] * m.dist];
+      const t: V3 = [m.axis[0] * m.dist + (m.lat ? m.lat.side * (m.dir ?? 0) : 0), m.axis[1] * m.dist + lift, m.axis[2] * m.dist];
       const pose: Pose = { t };
       if (p.role === "door") {
         // Swing 105° on the real hinge side, then move outward: the open door never lands in front of its case.
@@ -282,6 +293,13 @@ export function applyPose(v: V3, pose?: Pose, u = 1): V3 {
   return [x + pose.t[0] * u, y + pose.t[1] * u, z + pose.t[2] * u];
 }
 
+/** Every part's posed corners (what the explode camera fits). */
+export function posedPoints(L: Layout, poses: Map<string, Pose>): V3[] {
+  const out: V3[] = [];
+  for (const p of L.parts) out.push(...cornersOf(p, poses.get(p.id)));
+  return out;
+}
+
 /** The exploded model's box (every part's posed corners). */
 export function explodedBox(L: Layout, poses: Map<string, Pose>): Box3 {
   const b: Box3 = { minX: Infinity, minY: Infinity, minZ: Infinity, maxX: -Infinity, maxY: -Infinity, maxZ: -Infinity };
@@ -301,6 +319,24 @@ export const EXPLODE_MS = 1200;
 export const CLOSE_MS = Math.round(EXPLODE_MS * 0.7);
 /** Reduced motion: no tween, a 150 ms fade on the final pose. */
 export const REDUCED_FADE_MS = 150;
+
+/**
+ * Staged by unit: each role moves inside its own window of the one tween (fractions of it), so doors and
+ * lids swing clear first, the case opens, then shelves and drawers slide out. Closing runs the same path
+ * backwards (drawers home first, doors shut last). [start, end] of the move, and of a swing.
+ */
+export function stageWindow(role: Role): { move: [number, number]; swing: [number, number] } {
+  switch (role) {
+    case "door": case "lid": return { move: [0.12, 0.72], swing: [0, 0.5] };
+    case "shelf": return { move: [0.3, 0.95], swing: [0, 1] };
+    case "drawerBox": case "drawerFront": return { move: [0.35, 1], swing: [0, 1] };
+    default: return { move: [0.12, 0.85], swing: [0, 1] };
+  }
+}
+
+export function windowed(u: number, w: [number, number]): number {
+  return easeParts(Math.min(1, Math.max(0, (u - w[0]) / Math.max(1e-6, w[1] - w[0]))));
+}
 
 /** Strong ease-out for parts (no ease-in on UI). */
 export const easeParts = (u: number) => 1 - (1 - u) ** 3;
