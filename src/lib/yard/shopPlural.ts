@@ -42,7 +42,7 @@ export function drawerPartStock(boxMaterialId: string, part: { type: string; wid
 }
 
 export function isBoundingDrawerPanel(name: string, type?: string): boolean {
-  return type === "drawer" && !/drawer\s*front/i.test(name);
+  return type === "drawer" && !/drawer\s*(?:front|side|back|bottom)/i.test(name);
 }
 
 /** Glass vanity/door mirror (and drawn hardware) — bought, kept off the plywood nest. */

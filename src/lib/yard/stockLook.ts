@@ -148,7 +148,7 @@ export function slideForDepth(insideDepth: number): number {
 
 /** The slide the drawers in this model ride on: the longest standard slide their deepest box takes. */
 export function drawerSlideInches(panels: { type: string; name: string; size: { depth: number } }[], carcaseDepth: number): number {
-  const boxes = panels.filter((p) => p.type === "drawer" && !/drawer\s*front/i.test(p.name));
+  const boxes = panels.filter((p) => p.type === "drawer" && !/drawer\s*(?:front|back|bottom)/i.test(p.name));
   return boxes.length ? slideForDepth(Math.max(...boxes.map((b) => b.size.depth))) : slideInches(carcaseDepth);
 }
 

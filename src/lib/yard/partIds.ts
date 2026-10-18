@@ -47,7 +47,8 @@ export function cutRowPartIds(project: YardProject, cutList: CutLine[]): Map<Cut
   for (const c of cutList) {
     const ids = out.get(c)!;
     if (ids.length) continue;
-    if (/^drawer (?:side|back|bottom|front)/i.test(c.name)) { for (const p of panels) if (p.type === "drawer") ids.push(p.id); continue; }
+    // A hollow drawer's part is its own row's; a drawer envelope is every row it is cut into.
+    if (/^drawer (?:side|back|bottom|front)/i.test(c.name)) { for (const p of panels) if (p.type === "drawer" && (!p.drawerId || cutListName(p.name, p.type) === c.name)) ids.push(p.id); continue; }
     const fam = base(c.name);
     for (const p of panels) if (p.type !== "drawer" && (base(p.name) === fam || base(cutListName(p.name, p.type)) === fam)) { ids.push(p.id); claimed.add(p.id); }
   }

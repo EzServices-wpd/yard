@@ -1,4 +1,5 @@
 import { withSaidHardware } from "./hardwareSaid";
+import { drawerBoxes } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
 import { storeTermsFromBuy } from "./listings";
 import { checkedRow, HARDWARE } from "./checkedStock";
@@ -101,7 +102,10 @@ function closetCuts(project: YardProject): CutLine[] {
   ) => {
     // Numbered copies ("rod 1", "Paddle 3") are one part: identical copies share one line and letter.
     let family = partFamily(name, type).replace(/\s+\d+$/, "");
-    const side = name.match(/^(Left|Right)\s+(.+)$/i);
+    // A hollow drawer's parts are one row per part kind ("Left drawer side 2 (right)" is a Drawer side).
+    const drawerPart = /\bdrawer (?:side|back|bottom)\b/i.test(name);
+    if (drawerPart) family = cutListName(name, type);
+    const side = drawerPart ? null : name.match(/^(Left|Right)\s+(.+)$/i);
     if (side) {
       const twin = side[1].toLowerCase() === "left" ? "Right" : "Left";
       const other = project.panels.find((panel) => panel.name.toLowerCase() === `${twin} ${side[2]}`.toLowerCase());
@@ -851,9 +855,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     });
   }
   // Drawer fronts are typed as rail with "Drawer front" names — slides count boxes only.
-  const drawers = project.panels.filter(
-    (panel) => panel.type === "drawer" && !/drawer front/i.test(panel.name),
-  );
+  const drawers = drawerBoxes(project.panels);
   if (drawers.length) {
     // A box shallower than the shortest slide runs on wood runners: it buys no slides.
     const onSlides = Math.max(...drawers.map((d) => d.size.depth)) >= SLIDE_LENGTHS_IN[0] - 1e-6;

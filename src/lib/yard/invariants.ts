@@ -1,4 +1,5 @@
 import { hardwareSaidNotBought } from "./hardwareSaid";
+import { drawerBoxes, isSolidDrawer } from "./hollowDrawers";
 import { finishFor } from "./typedFinish";
 import { panelRenderLook, WOOD_CATEGORIES } from "./partStock";
 import { refineProject, DERIVED_TYPES } from "./refine";
@@ -8,6 +9,9 @@ import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy,
 import { contactBuild, interiorSheet } from "./materialForUse";
 import { genericFormMark, routesToLearner } from "./formOwnership";
 import { closedCarcaseReadsAsk } from "./closedStorage";
+import { askedDrawerCount, asksDoors, asksDrawers, DRAWER_COLUMN_MAX_IN } from "./frontSections";
+import { slideForDepth } from "./stockLook";
+import { inchFrac } from "./inchText";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
@@ -41,10 +45,10 @@ import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -336,8 +340,71 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...i29(plan), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
-    ...i26(project), ...i27(project, prompt),
+    ...i26(project), ...i27(project, prompt), ...i31(project, prompt, plan), ...i32(project, plan),
   ];
+}
+
+/**
+ * I32 (F17 hollow drawers): every drawer is a hollow five-part box (a front, two sides, a back and a 1/4" bottom, all
+ * carrying the drawer's id) whose bottom is the cut list's 1/4" sheet, with an open top and nothing inside it.
+ */
+export function i32(p: YardProject, plan: BuildPlan): Violation[] {
+  const out: string[] = [];
+  const solid = p.panels.find((x) => isSolidDrawer(x));
+  if (solid) out.push(`${solid.name} is a solid drawer block`);
+  const ids = [...new Set(p.panels.filter((x) => x.type === "drawer" && x.drawerId).map((x) => x.drawerId!))];
+  const bottomRows = plan.cutList.filter((c) => /^drawer bottom$/i.test(c.name));
+  if (ids.length && bottomRows.some((c) => Math.abs(c.thicknessIn - 0.25) > 0.01 || !/1\/4"? plywood/i.test(c.material ?? ""))) out.push(`the cut list's drawer bottoms are not 1/4" plywood`);
+  for (const id of ids) {
+    const parts = p.panels.filter((x) => x.drawerId === id);
+    const n = (k: string) => parts.filter((x) => x.drawerPart === k).length;
+    const name = parts.find((x) => x.drawerPart === "back")?.name ?? id;
+    if (n("side") !== 2 || n("back") !== 1 || n("bottom") !== 1 || n("front") !== 1) { out.push(`${name}: ${n("front")} front, ${n("side")} sides, ${n("back")} back, ${n("bottom")} bottom (a drawer is 1, 2, 1, 1)`); continue; }
+    const bottom = parts.find((x) => x.drawerPart === "bottom")!;
+    if (Math.abs(Math.min(bottom.size.width, bottom.size.height, bottom.size.depth) - 0.25) > 0.01) out.push(`${bottom.name} is not 1/4" thick`);
+    const sides = parts.filter((x) => x.drawerPart === "side").sort((a, b) => a.position.x - b.position.x);
+    const back = parts.find((x) => x.drawerPart === "back")!;
+    const inner = { x0: sides[0].position.x + sides[0].size.width, x1: sides[1].position.x, y0: bottom.position.y + bottom.size.height, y1: sides[0].position.y + sides[0].size.height, z0: back.position.z + back.size.depth, z1: sides[0].position.z + sides[0].size.depth };
+    const fill = p.panels.find((q) => !parts.includes(q) && Math.min(q.position.x + q.size.width, inner.x1) - Math.max(q.position.x, inner.x0) > 0.1 && Math.min(q.position.y + q.size.height, inner.y1) - Math.max(q.position.y, inner.y0) > 0.1 && Math.min(q.position.z + q.size.depth, inner.z1) - Math.max(q.position.z, inner.z0) > 0.1);
+    if (fill) out.push(`${fill.name} fills the inside of ${name.replace(/\s*\bback\b/i, "")}`);
+  }
+  return out.slice(0, 4).map((m) => v("I32", m));
+}
+
+/**
+ * I31 (F17 front sections): doors, drawers and shelves never share one opening or volume, and requested drawers build.
+ * A door face never lies over a drawer front; a shelf never runs through a drawer box; a typed drawer count is the
+ * model's (bare "drawers" builds at least one); an ask naming drawers and no doors has no doors; no drawer is wider
+ * than one drawer column; a drawer on slides rides the longest standard slide its box takes; and the drawer bottoms are
+ * cut from the cut list's stock in the steps too.
+ */
+export function i31(p: YardProject, prompt: string, plan: BuildPlan): Violation[] {
+  if (p.displayOnly || p.standIn || p.unmatched) return [];
+  const lower = (prompt || p.prompt || "").toLowerCase();
+  const out: string[] = [];
+  const doors = p.panels.filter((x) => x.type === "door");
+  const fronts = p.panels.filter((x) => /\bdrawer front\b/i.test(x.name));
+  const boxes = drawerBoxes(p.panels);
+  const shelves = p.panels.filter((x) => x.type === "shelf" || /\bshelf\b/i.test(x.name));
+  const span = (a: number, al: number, b: number, bl: number) => Math.min(a + al, b + bl) - Math.max(a, b);
+  const face = (a: (typeof p.panels)[number], b: (typeof p.panels)[number]) => span(a.position.x, a.size.width, b.position.x, b.size.width) > 0.25 && span(a.position.y, a.size.height, b.position.y, b.size.height) > 0.25;
+  const solid = (a: (typeof p.panels)[number], b: (typeof p.panels)[number]) => face(a, b) && span(a.position.z, a.size.depth, b.position.z, b.size.depth) > 0.25;
+  for (const d of doors) { const f = fronts.find((q) => face(d, q)); if (f) { out.push(`${d.name} lies over ${f.name}`); break; } }
+  for (const sh of shelves) { const b = boxes.find((q) => solid(sh, q)); if (b) { out.push(`${sh.name} runs through ${b.name}`); break; } }
+  const typed = /\b(?:\d+|an?|one|single|two|three|four|five|six|seven|eight|nine|ten)\s+(?:[a-z]+\s+)?drawers?\b/.test(lower);
+  const want = askedDrawerCount(lower);
+  if (want && (typed ? boxes.length !== want : boxes.length === 0)) out.push(`asks for ${typed ? want : "some"} drawer${want === 1 ? "" : "s"}, the model has ${boxes.length}`);
+  if (asksDrawers(lower) && !asksDoors(lower) && doors.length) out.push(`names drawers and no doors, the model has ${doors.length} door${doors.length === 1 ? "" : "s"}`);
+  const wide = boxes.find((b) => b.size.width > DRAWER_COLUMN_MAX_IN + 1e-6);
+  if (wide) out.push(`${wide.name} is ${inchFrac(wide.size.width)}" wide, more than one ${DRAWER_COLUMN_MAX_IN}" drawer column`);
+  const slideRow = plan.bom.find((b) => /side-mount drawer slides/i.test(b.name));
+  const slideLen = slideRow ? Number(slideRow.name.match(/^(\d+)"/)?.[1]) : NaN;
+  const deep = boxes.length ? Math.max(...boxes.map((b) => b.size.depth)) : 0;
+  if (slideRow && (slideLen > deep + 0.01 || slideLen !== slideForDepth(deep))) out.push(`${slideLen}" slides on a ${inchFrac(deep)}" deep drawer box (it takes ${slideForDepth(deep)}")`);
+  const bottomRow = plan.cutList.find((c) => /^drawer bottom$/i.test(c.name));
+  const boardBottoms = plan.instructions.find((st) => /\bDrawer bottom \(\d+ boards/.test(st.description ?? ""));
+  if (bottomRow && /plywood/i.test(bottomRow.material ?? "") && boardBottoms) out.push(`step ${boardBottoms.step} glues the drawer bottoms from boards, the cut list cuts them from ${bottomRow.material}`);
+  return out.map((m) => v("I31", m));
 }
 
 /** I26 (F30 no hidden overlap): no two solid parts share space unless a joint the plan cuts makes room (solids.ts). */

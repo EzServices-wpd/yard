@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { drawerBoxes } from "./hollowDrawers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
@@ -72,13 +73,15 @@ function drawerBoxSteps(drawers: Panel[], panels: Panel[], slide: number, onDivi
   const names = (list: Panel[]) => list.map((p) => p.name);
   const runners = Math.max(...drawers.map((d) => d.size.depth)) < SLIDE_LENGTHS_IN[0] - 1e-6;
   const many = drawers.length !== 1;
+  // The parts the person handles: a hollow drawer's sides, back and bottom (or the envelope of one not yet hollowed).
+  const boxParts = panels.filter((p) => p.type === "drawer" && !/drawer\s*front/i.test(p.name));
   return [
     {
       step: 0,
       title: many ? `Build ${drawers.length} drawers (sides, fronts, backs, and bottoms)` : "Build drawer sides, front, back, and bottom",
       description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} drawer${many ? "s" : ""}). Glue and nail each box square. The fronts go on after the boxes are ${runners ? "in" : "hung"}, so every gap lines up.`,
       tips: "Dry-fit the box in the bay (assemble without glue) before the glue goes on.",
-      partsUsed: names(drawers),
+      partsUsed: names(boxParts),
     },
     runners
       ? {
@@ -86,14 +89,14 @@ function drawerBoxSteps(drawers: Panel[], panels: Panel[], slide: number, onDivi
           title: many ? `Slide ${drawers.length} drawers in on wood runners` : "Slide the drawer in on wood runners",
           description: `Each box is shallower than the shortest side-mount slide, so it runs wood on wood: wax the box bottoms and the case floor, then slide each box in. It should glide with a 1/16" gap each side.`,
           tips: "Paste wax or a candle stub on the runners makes a small drawer glide.",
-          partsUsed: names(drawers),
+          partsUsed: names(boxParts),
         }
       : {
           step: 0,
           title: `Hang ${many ? `${drawers.length} drawers` : "the drawer"} on ${slide}" slides`,
           description: `One pair of ${slide}" side-mount slides ${many ? "per drawer " : ""}(metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${onDividers ? "dividers" : "uprights"} first, then set the box${many ? "es" : ""}. Confirm the slide against the ${round(D)}" main box before you buy.`,
           tips: `A ${slide}" box takes a ${slide}" slide. ${drawers.length} pair${many ? "s" : ""} of ${slide}" slides total.`,
-          partsUsed: names(drawers),
+          partsUsed: names(boxParts),
         },
     {
       step: 0,
@@ -101,7 +104,7 @@ function drawerBoxSteps(drawers: Panel[], panels: Panel[], slide: number, onDivi
       description: `Each Drawer front is a false front — the show face screwed onto the front of its box, standing proud of the cabinet. With the boxes ${runners ? "in" : "hung"}, set each Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
       tips: "A playing card between neighbouring fronts keeps the 1/8\" gaps even while you drive the screws.",
       // The fronts are their own parts: this step owns them (F12), the boxes are what they screw onto.
-      partsUsed: names([...drawers, ...panels.filter((p) => /drawer front/i.test(p.name))]),
+      partsUsed: names([...boxParts, ...panels.filter((p) => /drawer front/i.test(p.name))]),
     },
   ];
 }
@@ -546,7 +549,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const bottoms = of("bottom");
   const dividers = of("divider");
   const shelves = of("shelf");
-  const drawers = of("drawer");
+  // One box per drawer (a hollow drawer's five parts read back as one drawer).
+  const drawers = drawerBoxes(panels);
   const doors = of("door");
   const kicks = of("kick");
   const mirrors = of("mirror");
