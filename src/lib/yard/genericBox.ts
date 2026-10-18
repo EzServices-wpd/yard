@@ -46,6 +46,8 @@ const WALL_ASK = /\b(?:wall|mounted|hanging|hung)\b/;
  *   noun, but not a wall-hung ask: a bare box with nothing to hang it by (wall planter, wall mounted planter).
  */
 export function genericBoxOverAsk(prompt: string, p: YardProject): boolean {
+  // A sheet shell of the typed envelope (the prompt names the sheet) is the engine's own build for an unmatched sheet noun, not a generic box over the ask.
+  if (p.panels && p.panels.length >= 4 && /sheet|cardboard|plywood|corrugated/i.test(p.primaryMaterialId ?? "") && /cardboard|plywood|sheet/i.test(prompt)) return false;
   if (!genericFallbackBox(p)) return false;
   const title = stem(p.name);
   const own = stem(p.fitted?.name) || title;

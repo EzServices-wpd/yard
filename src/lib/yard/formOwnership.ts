@@ -17,7 +17,8 @@ export function genericFormMark(p: YardProject): string | null {
   if (p.displayOnly) return "Not learned yet";
   const notes = (p.notes ?? []).join(" / ");
   if (/No class matched/.test(notes)) return "unmatched body";
-  if (/Yard built an? .{1,80}? as a simple /.test(notes)) return "simple stand-in";
+  // A sheet shell of the typed envelope is the engine's own build, not a stand-in the learner replaces.
+  if (/Yard built an? .{1,80}? as a simple /.test(notes) && !(p.panels && p.panels.length >= 4 && /sheet|cardboard|plywood|corrugated/i.test(p.primaryMaterialId ?? ""))) return "simple stand-in";
   if (p.kind === "vessel" && p.name === "Boat" && (p.instances?.length ?? 0) < 20) return "spine-only boat";
   return null;
 }
@@ -38,6 +39,8 @@ export function namedFormOwnsHead(prompt: string): boolean {
 
 /** The engine built this prompt from its own form library or purpose table (not a generic stand-in). */
 export function engineBuiltForm(prompt: string, p: YardProject): boolean {
+  // A sheet shell of the typed envelope (the prompt names the sheet) is the engine's own build; the learner does not replace it with a placeholder.
+  if (p.panels && p.panels.length >= 4 && /sheet|cardboard|plywood|corrugated/i.test(p.primaryMaterialId ?? "") && /cardboard|plywood|sheet/i.test(prompt) && !p.unmatched) return true;
   if (genericFormMark(p) || p.standIn || p.unmatched) return false;
   // Hotfix #41: locked landmarks and a dedicated builder's custom build (submarine) are forms too.
   // Row 51 widened: a dedicated builder whose own name carries the typed head noun ("Train engine" for "a steam train").
