@@ -17,6 +17,9 @@ import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stic
 import { buildOrder } from "@/components/workspace/build-order";
 import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
+import { ExplodeTestHook } from "@/components/workspace/explode-hook";
+import { classify } from "@/components/workspace/explode-layout";
+import { explodeClock, resetExplodeClock, startTween } from "@/components/workspace/explode-state";
 
 const HULL = "#8a8478";
 const BENCH_BG = "#1a1612";
@@ -292,6 +295,7 @@ export function WorkspaceCanvas() {
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
+        <ExplodeTestHook project={project} />
       </Canvas>
     </div>
   );
@@ -718,6 +722,13 @@ function BenchScene({
 }) {
   const assemble = useAssemble(project.panels.length > 0 && !pending);
   const explodeScale = explode ? 1.35 : assemble;
+  // Baseline (today's explode, centre × 1.35): settled as soon as it is on. The staged explode replaces this.
+  useEffect(() => {
+    if (!explode) { resetExplodeClock(); return; }
+    startTween(1, 0);
+    const parts = classify(project.panels);
+    explodeClock.solved = { key: project.id, poses: new Map(), box: { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 }, rounds: 0, failing: [], groups: [...new Set(parts.map((p) => p.group))] };
+  }, [explode, project]);
   const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);

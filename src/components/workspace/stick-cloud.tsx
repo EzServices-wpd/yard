@@ -238,6 +238,7 @@ export function PanelMesh({
       <group position={groupPos} rotation={groupRot}>
         <group
           position={meshPos}
+          userData={{ yardPart: panel.id, yardPartGlyph: true }}
           onPointerDown={(e) => {
             e.stopPropagation();
             onSelect();
@@ -254,6 +255,7 @@ export function PanelMesh({
       <group position={meshPos}>
         <mesh
           frustumCulled={false}
+          userData={{ yardPart: panel.id, yardGhost: ghost }}
           castShadow={shadows}
           receiveShadow={shadows}
           onPointerDown={(e) => {
