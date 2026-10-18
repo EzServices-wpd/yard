@@ -8438,6 +8438,207 @@
     "Hands pivot on center pin"
    ],
    "learned": true
+  },
+  {
+   "key": "mailbox",
+   "synonyms": [
+    "cardboard mailbox"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Cardboard Mailbox",
+   "size": {
+    "width": 8,
+    "height": 18,
+    "depth": 8
+   },
+   "feet": false,
+   "outdoor": true,
+   "wall": true,
+   "defining": [
+    "lid",
+    "bay"
+   ],
+   "parts": [
+    {
+     "role": "deck",
+     "name": "Bottom",
+     "box": [
+      0,
+      0,
+      0,
+      1,
+      0.03,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "bay",
+     "name": "Back",
+     "box": [
+      0,
+      0.03,
+      0.94,
+      1,
+      0.92,
+      0.06
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "bay",
+     "name": "Left side",
+     "box": [
+      0,
+      0.03,
+      0,
+      0.06,
+      0.92,
+      0.94
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "bay",
+     "name": "Right side",
+     "box": [
+      0.94,
+      0.03,
+      0,
+      0.06,
+      0.92,
+      0.94
+     ],
+     "kind": "panel",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "roof",
+     "name": "Top",
+     "box": [
+      0,
+      0.95,
+      0,
+      1,
+      0.05,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Back",
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Left hinge",
+     "box": [
+      0.15,
+      0.03,
+      0,
+      0.12,
+      0.04,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "hinge",
+     "name": "Right hinge",
+     "box": [
+      0.73,
+      0.03,
+      0,
+      0.12,
+      0.04,
+      0.06
+     ],
+     "kind": "hardware",
+     "on": [
+      "Bottom"
+     ]
+    },
+    {
+     "role": "lid",
+     "name": "Door",
+     "box": [
+      0.06,
+      0.03,
+      0,
+      0.88,
+      0.9,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Left hinge",
+      "Right hinge"
+     ]
+    },
+    {
+     "role": "cable",
+     "name": "Lid stay",
+     "box": [
+      0.06,
+      0.25,
+      0.02,
+      0.04,
+      0.45,
+      0.25
+     ],
+     "kind": "hardware",
+     "on": [
+      "Left side",
+      "Door"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Flag",
+     "box": [
+      0.94,
+      0.55,
+      0.25,
+      0.06,
+      0.22,
+      0.4
+     ],
+     "kind": "panel",
+     "on": [
+      "Right side"
+     ]
+    }
+   ],
+   "moving": [
+    {
+     "part": "Door",
+     "motion": "hinge"
+    },
+    {
+     "part": "Flag",
+     "motion": "pivot"
+    }
+   ],
+   "notes": [
+    "Front door hinged at bottom edge via two hinges",
+    "LidStay links LeftSide to Door to control swing",
+    "Simple cardboard craft proportions"
+   ],
+   "learned": true,
+   "held": "Flagged by the learned-recipe checks: Left hinge 1: no catalogue item (hardware); Right hinge 1: no catalogue item (hardware); Lid stay 1: no catalogue item (hardware)"
   }
  ]
 }
