@@ -65,6 +65,9 @@ export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean)
 export function routesToLearner(prompt: string, p: YardProject, half: boolean): boolean {
   if (findRecipe(prompt) || p.pocket) return false;
   if ((p.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE))) return false;
+  // A sheet shell of the typed envelope is the engine's own build. The learner does not replace it with a placeholder.
+  const sheetShell = (p.panels ?? []).length >= 4 && /sheet|cardboard|plywood/i.test(p.primaryMaterialId ?? "") && /simple open box|faces of the typed|sheet shell/i.test((p.notes ?? []).join(" "));
+  if (sheetShell) return false;
   // Critic 10-17: a build wins over the learner only when it is the asked-for form, never the generic fallback box.
   if (genericBoxOverAsk(prompt, p)) return true;
   // A real half-read ("lap desk" → Desk) still learns; "Dutch Windmill" / a purpose ask read every word.
