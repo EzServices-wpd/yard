@@ -10,7 +10,9 @@ Spec: /workspace/see-inside-walk/PLAN.md. Push once, then PR -> release/2026-10-
 - [x] (b2) tween safety: scripts/see-inside-layout.test.ts (no part passes through another unit at any frame; hardware rides host).
       Fixes: drawers slide out first, then step sideways + spread (Pose.lat); drawer start dist ≥ clear of case front;
       shelves after drawers; hardware follows host's stage window; filing (doors both sides) slides out past the doors then steps aside
-- [ ] (c) camera: fit the exploded box, 32° look-down, phone pose (PLAN §3)
+- [x] guards at 8781905: all STEP_OK (tsc … build; see-inside-layout.test 41 ok), /tmp/si/guards.log
+- [x] e2e frameFresh wait (f630031): a late card refit raced the reduced-motion comparison (0.9–3 px, first build only)
+- [x] (c) camera (in 50a09c2: fitPoints over posed corners, 32° look-down, overlay refit glide, phone DPR) — committed with (b)
 - [ ] guards, Lighthouse, after-run, screenshots
 
 ## Log
