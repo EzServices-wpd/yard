@@ -87,8 +87,8 @@ function drawerBoxSteps(drawers: Panel[], panels: Panel[], slide: number, onDivi
       ? {
           step: 0,
           title: many ? `Slide ${drawers.length} drawers in on wood runners` : "Slide the drawer in on wood runners",
-          description: `Each box is shallower than the shortest side-mount slide, so it runs wood on wood: wax the box bottoms and the case floor, then slide each box in. It should glide with a 1/16" gap each side.`,
-          tips: "Paste wax or a candle stub on the runners makes a small drawer glide.",
+          description: `Each box is shallower than the shortest side-mount slide, so it runs wood on wood: wax the box bottoms and the case floor, then slide each box in. It should run smoothly with a 1/16" gap each side.`,
+          tips: "Paste wax or a candle stub on the runners makes a small drawer run smoothly.",
           partsUsed: names(boxParts),
         }
       : {
