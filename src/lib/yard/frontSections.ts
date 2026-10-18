@@ -1,7 +1,7 @@
 import type { Panel } from "./types";
-import { P, panel, isNoDoorsPrompt, isNoDrawersPrompt } from "./fittedShared";
-import { drawerBoxFromOpening } from "./shopPlural";
-import { slideForDepth } from "./stockLook";
+import { frontCue } from "./cueRules";
+import { createId } from "@/lib/utils";
+import { SLIDE_LENGTHS_IN, slideForDepth } from "./stockLook";
 
 /**
  * Front sections (class F17 doors-drawers, 10-17). A carcase's front is split into sections, and each section owns its
@@ -16,11 +16,27 @@ export const DRAWER_COLUMN_MAX_IN = 36;
 /** A drawer opening that shares the carcase with doors or shelves: a sensible utensil/tool drawer. */
 export const SHARED_DRAWER_ROW_IN = 7;
 const BACK_T = 0.25;
+const P = 0.75;
+const isNoDrawersPrompt = (lower: string) => frontCue(lower, "drawers").none;
+const isNoDoorsPrompt = (lower: string) => frontCue(lower, "doors").none;
+/** A part of a front section (materialId: the carcase stock; 3/4" plywood unless the caller sets one). */
+function panel(type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, materialId = "plywood-3-4-4x8"): Panel {
+  return { id: createId(type.slice(0, 2)), type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId };
+}
 
 /** The ask names drawers (and does not take them away). */
 export const asksDrawers = (lower: string) => /\bdrawers?\b/.test(lower) && !isNoDrawersPrompt(lower);
 /** The ask names doors (and does not take them away). */
 export const asksDoors = (lower: string) => /\bdoors?\b/.test(lower) && !isNoDoorsPrompt(lower);
+
+const WORD_N: Record<string, number> = { a: 1, an: 1, one: 1, single: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+/** The drawer count the ask names: "3 drawers", "two drawers", "a drawer"; bare "drawers" is two, "drawer" one. */
+export function askedDrawerCount(lower: string): number {
+  if (!asksDrawers(lower)) return 0;
+  const m = lower.match(/\b(\d+|an?|one|single|two|three|four|five|six|seven|eight|nine|ten)\s+(?:[a-z]+\s+)?drawers?\b/);
+  const n = m ? WORD_N[m[1]] ?? Number(m[1]) : /\bdrawers\b/.test(lower) ? 2 : 1;
+  return Math.max(1, Math.min(12, n));
+}
 
 /** Doors stay on only when the ask does not name drawers without doors. */
 export function doorsKept(lower: string, unitDoors: boolean): boolean {
@@ -50,11 +66,11 @@ export type DrawerSection = {
  * (the bottom's top face). It fills the carcase when nothing else shares the front; otherwise it takes a sensible
  * height at the top and sits on its own floor, so the doors or shelves below have their own opening.
  */
-export function drawerSection(o: { x0: number; innerW: number; yBottom: number; yTop: number; depth: number; count: number; width: number; shares: boolean }): DrawerSection {
+export function drawerSection(o: { x0: number; innerW: number; yBottom: number; yTop: number; depth: number; count: number; width: number; shares: boolean; rowIn?: number }): DrawerSection {
   const columns = drawerColumns(o.count, o.width);
   const rows = Math.max(...columns);
   const clear = o.yTop - o.yBottom;
-  const secH = o.shares ? Math.round(Math.min(clear / 2, rows * SHARED_DRAWER_ROW_IN) * 8) / 8 : clear;
+  const secH = o.shares ? Math.round(Math.min(clear / 2, rows * (o.rowIn ?? SHARED_DRAWER_ROW_IN)) * 8) / 8 : clear;
   const y0 = o.yTop - secH;
   const panels: Panel[] = [];
   if (o.shares) panels.push(panel("bottom", "Drawer bay bottom", o.x0, y0 - P, BACK_T, o.innerW, P, o.depth - BACK_T));
@@ -62,12 +78,17 @@ export function drawerSection(o: { x0: number; innerW: number; yBottom: number; 
   const colW = (o.innerW - (cols - 1) * P) / cols;
   for (let k = 1; k < cols; k++) panels.push(panel("divider", cols === 2 ? "Drawer bay divider" : `Drawer bay divider ${k}`, o.x0 + k * colW + (k - 1) * P, y0, BACK_T, P, secH, o.depth - BACK_T));
   // The box is as deep as the longest standard slide the inside depth takes, so the slide on the Buy list is the box's.
-  const boxD = slideForDepth(o.depth - BACK_T);
+  // A box shallower than the shortest slide runs on its own wood runners, an 1/8" short of the back.
+  const inside = o.depth - BACK_T;
+  const runners = inside < SLIDE_LENGTHS_IN[0];
+  const boxD = runners ? Math.floor((inside - 0.125) * 8) / 8 : slideForDepth(inside);
+  const r8 = (n: number) => Math.round(n * 8) / 8;
   columns.forEach((m, k) => {
     const rowH = secH / m;
     const cx = o.x0 + k * (colW + P);
     for (let i = 0; i < m; i++) {
-      const box = drawerBoxFromOpening(colW, rowH, o.depth);
+      // Side-mount slides take 1/2" a side; wood runners a 1/16" a side.
+      const box = { boxW: r8(colW - (runners ? 0.125 : 1)), boxH: r8(rowH - 0.125), frontW: r8(colW - (runners ? 0.0625 : 0.25)) };
       const one = o.count === 1;
       const word = COLUMN_WORD(k, cols);
       const boxName = one ? "Drawer" : `${word}${word ? "drawer" : "Drawer"} ${i + 1}`;

@@ -48,7 +48,7 @@ import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMoun
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
-import { drawerSlideInches } from "./stockLook";
+import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
@@ -61,6 +61,49 @@ import { casterRise, modelFinishedDepth, modelProudNote, stampFinishedDepth } fr
 /** A part's cut size: its rectangular blank when the box is not the blank (a splayed leg), else the box. */
 function dim(p: Panel) {
   return p.blank ? fmtSheetCut(p.blank.thicknessIn, p.blank.lengthIn, p.blank.widthIn) : fmtSheetCut(p.size.width, p.size.height, p.size.depth);
+}
+
+/**
+ * Build, hang and front every drawer (class F17 doors-drawers): one set of steps for every carcase, chest and box that
+ * carries drawers. Each drawer is five parts (two sides, a back, a bottom and its front). A box at least as deep as the
+ * shortest standard slide hangs on that slide; a shallower box runs on its own wood runners.
+ */
+function drawerBoxSteps(drawers: Panel[], panels: Panel[], slide: number, onDividers: boolean, D: number): AssemblyStep[] {
+  const names = (list: Panel[]) => list.map((p) => p.name);
+  const runners = Math.max(...drawers.map((d) => d.size.depth)) < SLIDE_LENGTHS_IN[0] - 1e-6;
+  const many = drawers.length !== 1;
+  return [
+    {
+      step: 0,
+      title: many ? `Build ${drawers.length} drawers (sides, fronts, backs, and bottoms)` : "Build drawer sides, front, back, and bottom",
+      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} drawer${many ? "s" : ""}). Glue and nail each box square. The fronts go on after the boxes are ${runners ? "in" : "hung"}, so every gap lines up.`,
+      tips: "Dry-fit the box in the bay (assemble without glue) before the glue goes on.",
+      partsUsed: names(drawers),
+    },
+    runners
+      ? {
+          step: 0,
+          title: many ? `Slide ${drawers.length} drawers in on wood runners` : "Slide the drawer in on wood runners",
+          description: `Each box is shallower than the shortest side-mount slide, so it runs wood on wood: wax the box bottoms and the case floor, then slide each box in. It should glide with a 1/16" gap each side.`,
+          tips: "Paste wax or a candle stub on the runners makes a small drawer glide.",
+          partsUsed: names(drawers),
+        }
+      : {
+          step: 0,
+          title: `Hang ${many ? `${drawers.length} drawers` : "the drawer"} on ${slide}" slides`,
+          description: `One pair of ${slide}" side-mount slides ${many ? "per drawer " : ""}(metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${onDividers ? "dividers" : "uprights"} first, then set the box${many ? "es" : ""}. Confirm the slide against the ${round(D)}" main box before you buy.`,
+          tips: `A ${slide}" box takes a ${slide}" slide. ${drawers.length} pair${many ? "s" : ""} of ${slide}" slides total.`,
+          partsUsed: names(drawers),
+        },
+    {
+      step: 0,
+      title: many ? `Fit ${drawers.length} drawer fronts (false fronts)` : "Fit the drawer front (false front)",
+      description: `Each Drawer front is a false front — the show face screwed onto the front of its box, standing proud of the cabinet. With the boxes ${runners ? "in" : "hung"}, set each Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
+      tips: "A playing card between neighbouring fronts keeps the 1/8\" gaps even while you drive the screws.",
+      // The fronts are their own parts: this step owns them (F12), the boxes are what they screw onto.
+      partsUsed: names([...drawers, ...panels.filter((p) => /drawer front/i.test(p.name))]),
+    },
+  ];
 }
 
 function round(n: number) {
@@ -2168,11 +2211,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       anyLid;
     if (lidChest && anyLid) {
       const carcaseOnly = [...uprights, ...backs, ...bottoms, ...rails].filter(
-        (p) => !/^Lid$/i.test(p.name) && !/^Lift-off lid$/i.test(p.name),
+        (p) => !/^Lid$/i.test(p.name) && !/^Lift-off lid$/i.test(p.name) && !/drawer front/i.test(p.name),
       );
+      // A chest that carries drawers builds and fits them right after its box stands.
+      const withDrawers = (list: AssemblyStep[]) =>
+        drawers.length ? [...list.slice(0, 3), ...drawerBoxSteps(drawers, panels, slide, dividers.length > 0, D), ...list.slice(3)].map((st, k) => ({ ...st, step: k + 1 })) : list;
       const lidPanel = panels.filter((p) => /^Lid$/i.test(p.name) || /^Lift-off lid$/i.test(p.name));
       if (liftOff) {
-        return [
+        return withDrawers([
           {
             step: 1,
             title: "Confirm the footprint — do not cut yet",
@@ -2215,9 +2261,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
             partsUsed: names([...carcaseOnly, ...lidPanel]),
           },
-        ];
+        ]);
       }
-      return [
+      return withDrawers([
         {
           step: 1,
           title: "Confirm the footprint — do not cut yet",
@@ -2266,7 +2312,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           tips: "Guidance only — confirm the real size before you cut. Not stamped engineering.",
           partsUsed: names([...carcaseOnly, ...lidPanel]),
         },
-      ];
+      ]);
     }
   }
 
@@ -2455,31 +2501,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   if (drawers.length) {
-    steps.push({
-      step: n++,
-      title:
-        drawers.length === 1
-          ? "Build drawer sides, front, back, and bottom"
-          : `Build ${drawers.length} drawers (sides, fronts, backs, and bottoms)`,
-      description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom per drawer (${drawers.length} drawer${drawers.length === 1 ? "" : "s"}). Glue and nail each box square. The fronts go on after the boxes are hung, so every gap lines up.`,
-      tips: "Dry-fit the box in the bay (assemble without glue) before the glue goes on.",
-      partsUsed: names(drawers),
-    });
-    steps.push({
-      step: n++,
-      title: `Hang ${drawers.length} drawers on ${slide}" slides`,
-      description: `One pair of ${slide}" side-mount slides per drawer (metal tracks that screw to the sides of the box and the cabinet). Slide length = box depth. Hang the slides on the ${dividers.length ? "dividers" : "uprights"} first, then set the boxes. Confirm the slide against the ${round(D)}" main box before you buy.`,
-      tips: `A 16" box does not take an 18" slide. ${drawers.length} pairs of ${slide}" slides total.`,
-      partsUsed: names(drawers),
-    });
-    steps.push({
-      step: n++,
-      title: drawers.length === 1 ? "Fit the drawer front (false front)" : `Fit ${drawers.length} drawer fronts (false fronts)`,
-      description: `Each Drawer front is a false front — the show face screwed onto the front of its box, standing proud of the cabinet. With the boxes hung, set each Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge) if the carcase is ply. One cup pull centered on each front.`,
-      tips: "A playing card between neighbouring fronts keeps the 1/8\" gaps even while you drive the screws.",
-      // The fronts are their own parts: this step owns them (F12), the boxes are what they screw onto.
-      partsUsed: names([...drawers, ...panels.filter((p) => /drawer front/i.test(p.name))]),
-    });
+    for (const st of drawerBoxSteps(drawers, panels, slide, dividers.length > 0, D)) steps.push({ ...st, step: n++ });
   }
 
   if (shelves.length) {

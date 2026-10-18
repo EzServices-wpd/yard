@@ -27,7 +27,7 @@ import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } fro
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
-import { drawerSlideInches } from "./stockLook";
+import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, drawerPartStock, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
@@ -855,10 +855,12 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     (panel) => panel.type === "drawer" && !/drawer front/i.test(panel.name),
   );
   if (drawers.length) {
+    // A box shallower than the shortest slide runs on wood runners: it buys no slides.
+    const onSlides = Math.max(...drawers.map((d) => d.size.depth)) >= SLIDE_LENGTHS_IN[0] - 1e-6;
     const carcaseD =
       project.pocket?.unit.depth ?? project.fitted?.unit.depth ?? project.overall.depth;
     const slide = drawerSlideInches(project.panels, carcaseD);
-    bom.push({
+    if (onSlides) bom.push({
       name: `${slide}" side-mount drawer slides`,
       quantity: drawers.length,
       unit: drawers.length === 1 ? "pair" : "pairs",
