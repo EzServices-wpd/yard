@@ -21,3 +21,9 @@ Spec: /workspace/see-inside-walk/PLAN.md. Push once, then PR -> release/2026-10-
 ## Log
 - Artifacts: /workspace/see-inside-research/{before,after}/ (screenshots, logs, json), lighthouse.log, guards.log
 - [x] drawer lookup for SWE's hollow drawers (drawerIdOf/drawerPartOf/setDrawerTag in explode-layout.ts; field name TBD)
+- [x] every-drawer rule (73611d7): e2e checks each drawer bottom's INNER face >= 30% (faceUp ID pass, drawerPartOf);
+      solid drawers = PENDING. Real builds today: every-piece 16/16 runs green, 38 drawer checks PENDING (all solid),
+      rm 0.0. Hollow sim (--sim-hollow): before fix inner 4–49% (dresser 31/19/4); after front stand-off (front.out,
+      solver-grown) dresser/nightstand/desk/filing all drawers >= 39% at both viewports. Open for PR 2: desk phone
+      hollow backs/sides 152–172 px² (< 200, frame too small) and pocket vanity inner 18–30% (stepper build).
+      Shots: /workspace/see-inside-research/drawer-top/
