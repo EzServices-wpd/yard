@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, memo } from "react";
 import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { MakingNow } from "@/components/ideas/MakingNow";
 import { useOffscreen } from "@/hooks/use-offscreen";
@@ -358,13 +358,7 @@ function LandingPage() {
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                   {shows[h.id] ? (
-                    <div
-                      role="img"
-                      aria-label={`Yard drawing of the ${h.label}, ${shows[h.id]!.sizeAria}`}
-                      data-yard-showcase={h.id}
-                      className="yard-alive h-full w-full"
-                      dangerouslySetInnerHTML={{ __html: shows[h.id]!.svg }}
-                    />
+                    <ShowcaseArt id={h.id} label={`Yard drawing of the ${h.label}, ${shows[h.id]!.sizeAria}`} svg={shows[h.id]!.svg} />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-sm text-ink">Drawing the model…</div>
                   )}
@@ -413,6 +407,14 @@ function LandingPage() {
     </div>
   );
 }
+
+/**
+ * A card's engine drawing, memoized: a parent re-render (the idle stock-merge load ~1 s after hydration) must not
+ * re-set its innerHTML, which swaps the SVG nodes the door swings animate and cancels a swing mid-way.
+ */
+const ShowcaseArt = memo(function ShowcaseArt({ id, label, svg }: { id: string; label: string; svg: string }) {
+  return <div role="img" aria-label={label} data-yard-showcase={id} className="yard-alive h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
+});
 
 /** Home sample models turn in once when the grid first comes on screen (held paused until then). */
 function ShowcaseGrid({ children }: { children: ReactNode }) {
