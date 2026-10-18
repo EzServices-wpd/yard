@@ -315,14 +315,59 @@ test("cron: two daily jobs in vercel.json; /api/cron/retention without the right
   assert.ok(!fs.existsSync("src/routes/api/cron/retention.ts") && !fs.readFileSync("src/routeTree.gen.ts", "utf8").includes("/api/cron/retention"), "not a router route");
   const req = (auth?: string, extra: Record<string, string> = {}) => new Request("https://yard.test/api/cron/retention", { headers: { ...(auth ? { authorization: auth } : {}), ...extra } });
   const sec = "c".repeat(32);
-  for (const env of [undefined, "short", sec]) {
-    for (const auth of [undefined, "", "Bearer ", "Bearer wrong", sec, `Bearer ${sec}x`, `Basic ${sec}`, `bearer ${sec}`])
+  for (const auth of [undefined, "", "Bearer ", "Bearer wrong", sec, `Bearer ${sec}x`, `Basic ${sec}`, `bearer ${sec}`])
+    assert.ok((await viaMiddleware(req(auth, { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }), { CRON_SECRET: sec })).wentToApp, `auth=${auth}`);
+  // CRON_SECRET missing or short: requests that don't look like the cron still go to the app (the fail-loud test below).
+  const quiet = console.error; console.error = () => {};
+  try {
+    for (const env of [undefined, "short"]) for (const auth of [undefined, "", sec, `Basic ${sec}`])
       assert.ok((await viaMiddleware(req(auth, { "x-vercel-cron": "1", "user-agent": "vercel-cron/1.0" }), { CRON_SECRET: env })).wentToApp, `env=${env} auth=${auth}`);
-  }
+  } finally { console.error = quiet; }
   assert.ok((await viaMiddleware(new Request("https://yard.test/api/cron/retention", { method: "POST", headers: { authorization: `Bearer ${sec}` } }), { CRON_SECRET: sec })).wentToApp, "other methods too");
   const ok = (await viaMiddleware(req(`Bearer ${sec}`), { CRON_SECRET: sec })).out;
   assert.equal(ok.status, 200);
   assert.deepEqual(Object.keys(((await ok.json()) as { ideas: object }).ideas).sort(), ["cmds", "done", "dropped", "scanned"], "counts only");
+});
+
+test("cron fail-loud: CRON_SECRET missing or under 16 → console.error on every hit, a cron-looking call gets 500, a public probe still gets the app's not-found; never the user agent", async () => {
+  const { CRON_MIN_SECRET } = await import("../src/lib/server/secretRoutes");
+  assert.equal(CRON_MIN_SECRET, 16);
+  const src = fs.readFileSync("src/lib/server/secretRoutes.ts", "utf8");
+  assert.doesNotMatch(src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""), /user-agent|userAgent|navigator|cookie/i, "no user agent, cookie or browser detail is read");
+  const req = (h: Record<string, string>) => new Request("https://yard.test/api/cron/retention", { headers: h });
+  const errs: unknown[][] = [];
+  const quiet = console.error; console.error = (...a: unknown[]) => { errs.push(a); };
+  try {
+    const short15 = "c".repeat(15);
+    for (const env of [undefined, "", "short", short15]) {
+      // What Vercel sends: x-vercel-cron-schedule always; Authorization: Bearer <CRON_SECRET> once the var exists.
+      for (const h of [{ "x-vercel-cron-schedule": "17 8 * * *" }, { authorization: `Bearer ${env || "x"}`, "x-vercel-cron-schedule": "17 20 * * *" }, { authorization: "Bearer anything" }]) {
+        const n = errs.length;
+        const { out, wentToApp } = await viaMiddleware(req(h), { CRON_SECRET: env });
+        assert.ok(!wentToApp && out.status === 500, `env=${JSON.stringify(env)} ${JSON.stringify(h)}: 500`);
+        assert.equal(out.headers.get("cache-control"), "no-store");
+        assert.doesNotMatch(await out.text(), /c{8}|short/, "the reply never carries the (short) value");
+        assert.deepEqual(errs.slice(n), [["[retention] CRON_SECRET missing or too short"]]);
+      }
+      // A public probe (no cron header, no Bearer): the app's real not-found, but the error is still logged.
+      for (const h of [{}, { accept: "text/html", "user-agent": "vercel-cron/1.0" }, { authorization: "Basic abc" }]) {
+        const n = errs.length;
+        assert.ok((await viaMiddleware(req(h), { CRON_SECRET: env })).wentToApp, `env=${JSON.stringify(env)} ${JSON.stringify(h)}: not-found`);
+        assert.equal(errs.length, n + 1);
+      }
+    }
+    // Set and ≥ 16 (exactly 16 and 32): no error, a wrong or missing Bearer is a not-found even with the cron header; the right one sweeps.
+    const n = errs.length;
+    for (const sec of ["c".repeat(16), "c".repeat(32)]) {
+      for (const h of [{ "x-vercel-cron-schedule": "17 8 * * *" }, { authorization: "Bearer wrong", "x-vercel-cron-schedule": "17 8 * * *" }, { authorization: `Bearer ${sec.slice(1)}`, "x-vercel-cron-schedule": "17 8 * * *" }, {}])
+        assert.ok((await viaMiddleware(req(h), { CRON_SECRET: sec })).wentToApp, `len ${sec.length} ${JSON.stringify(h)}: not-found`);
+      assert.equal((await viaMiddleware(req({ authorization: `Bearer ${sec}`, "x-vercel-cron-schedule": "17 8 * * *" }), { CRON_SECRET: sec })).out.status, 200, `len ${sec.length}: sweeps`);
+    }
+    assert.equal(errs.length, n, "no error when CRON_SECRET is fine");
+    // The other secret path is unchanged: a missing CRITIC_REVIEW_SECRET is a quiet not-found.
+    assert.ok((await viaMiddleware(new Request("https://yard.test/api/critic-review", { headers: { authorization: "Bearer x", "x-vercel-cron-schedule": "1" } }), {})).wentToApp);
+    assert.equal(errs.length, n);
+  } finally { console.error = quiet; }
 });
 
 test("/api/critic-review: a missing or wrong secret goes to the app like an unknown path, never 401", async () => {
@@ -350,7 +395,7 @@ test("secret check: constant-time compare and the same work for every path, secr
   const cases: [string, string, Record<string, string | undefined>][] = [
     ["/api/zq7x3k9m", "Bearer " + "x".repeat(64), env],
     ["/api/cron/retention", "Bearer " + "x".repeat(64), env],
-    ["/api/cron/retention", "Bearer " + "x".repeat(64), {}],
+    ["/api/cron/retention", "", {}], // no env, no Bearer (a public probe): still null, after one console.error (stubbed)
     ["/api/cron/retention", "Bearer " + "k".repeat(63) + "x", env],
   ];
   const median = async ([path, auth, e]: (typeof cases)[number]) => {
@@ -360,9 +405,12 @@ test("secret check: constant-time compare and the same work for every path, secr
     ts.sort((a, b) => a - b);
     return ts[ts.length >> 1];
   };
-  for (const c of cases) await median(c); // warm up
+  const quiet = console.error; console.error = () => {};
   const m = [];
-  for (const c of cases) m.push(await median(c));
+  try {
+    for (const c of cases) await median(c); // warm up
+    for (const c of cases) m.push(await median(c));
+  } finally { console.error = quiet; }
   const spread = Math.max(...m) - Math.min(...m);
   console.log(`# secret check medians (ns): ${m.join(", ")}; spread ${spread} ns`);
   assert.ok(spread < 20_000, `decisions within 20 µs of each other: ${m}`);
