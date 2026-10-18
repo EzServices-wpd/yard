@@ -7,6 +7,7 @@ import { hiddenOverlaps, rotorPlayFailures } from "./solids.ts";
 import { rodArrayFailures, rodArrays, instanceRods, TOUCH } from "./rodArrays.ts";
 import { corpus } from "../../../scripts/invariants-corpus.ts";
 import { offline } from "../../../scripts/eval-lib.ts";
+import { getCatalogItem } from "./catalog.ts";
 
 // Class: stock thickness never scales. A resized build stretches lengths and widths; every part stays as thick as
 // its sheet or board (or whole layers of it, with a glue-up that says so). Default-size authored thicknesses are
@@ -60,7 +61,7 @@ it("lamination text reads off the real layers: count × stock thickness", () =>
 
 // Rod arrays fit their span (I30): any row of like round rods, and what rides on them, lies inside the parts that
 // bound the row and clears its neighbours. Rod-array prompts beyond the corpus: racks, ladders, stands, frames.
-const ROD_SWEEP = ["abacus 6 wide", "abacus 8 wide", "abacus 10 wide", "abacus 12 wide", "abacus", "abacus 24 wide", "cardboard abacus",
+const ROD_SWEEP = ["abacus 4 wide", "abacus 8 wide 12 rods", "abacus 6 wide", "abacus 8 wide", "abacus 10 wide", "abacus 12 wide", "abacus", "abacus 24 wide", "cardboard abacus",
   "dowel drying rack 12 wide", "dowel drying rack 6 wide", "pvc drying rack", "1/4 inch dowel ladder", "1/4 inch dowel ladder 3 wide", "dowel ladder 4 wide", "pvc ladder",
   "dowel shoe rack", "dowel shoe rack 6 wide", "pvc shoe rack", "dowel coat rack", "dowel wine rack", "dowel magazine rack", "dowel plant stand",
   "picture frame from bamboo skewers", "spool rack", "thread spool holder", "towel rack 10 wide", "blanket ladder 8 wide"];
@@ -77,30 +78,42 @@ it("rod arrays fit their span on every rod-array build in the corpus and the rod
     assert.ok(arrays >= 20, `only ${arrays} rod-array builds swept`);
   }));
 
-// Prices before the stock-thickness class (#85 head a46a10c). The one allowed rise: a build whose beads fit their span
-// keeps the recipe's own bead dowel (I28) where the old build shrank it with the width; it then costs no more than
-// the default abacus, which uses that same bead.
-const ABACUS: [string, number, number][] = [["abacus 6 wide", 6, 27.6], ["abacus 8 wide", 8, 27.8], ["abacus 10 wide", 10, 30.96], ["abacus 12 wide", 12, 27], ["abacus", 16, 30]];
+// Base (release/2026-10-21, before this class): total and what its bead dowel cost. The frame (everything but the
+// rider stock) may never cost more than the base frame: a post is never upsized. The rider stock may differ only
+// for a stated reason: it is the recipe's own 3/4" bead where that fits, or the floor bead (the thinnest whole dowel
+// that takes a 3/8" running bore on the 1/4" rod, 1/2") where the base used a 3/16"-3/8" bead that could not.
+const ABACUS: { q: string; w: number; asked: number; base: number; baseBead: number }[] = [
+  { q: "abacus 4 wide", w: 4, asked: 9, base: 25.8, baseBead: 0.8 },
+  { q: "abacus 6 wide", w: 6, asked: 9, base: 27.6, baseBead: 1.6 },
+  { q: "abacus 8 wide", w: 8, asked: 9, base: 27.8, baseBead: 1.8 },
+  { q: "abacus 8 wide 12 rods", w: 8, asked: 12, base: 28.8, baseBead: 1.6 },
+  { q: "abacus 10 wide", w: 10, asked: 9, base: 30.96, baseBead: 4.96 },
+  { q: "abacus 12 wide", w: 12, asked: 9, base: 27, baseBead: 5 },
+  { q: "abacus", w: 16, asked: 9, base: 30, baseBead: 8 },
+];
 
-it("abacus at 6, 8, 10, 12 and default: no overlap, beads clear the posts and each other, stated width, price held", () =>
+it("abacus at 4, 6, 8, 8 with 12 rods, 10, 12 and default: riders on every rod, no overlap, stated width, Assumed when the count drops, frame never dearer", () =>
   offline(() => {
-    for (const [q, w, was] of ABACUS) {
+    for (const { q, w, asked, base, baseBead } of ABACUS) {
       const p = generateFromPrompt(q);
       assert.deepEqual(hiddenOverlaps(p), [], q);
       assert.deepEqual(rodArrayFailures(p), [], q);
       const xs = p.panels.flatMap((x) => [x.position.x, x.position.x + x.size.width]);
       assert.ok(Math.abs(Math.max(...xs) - Math.min(...xs) - w) < 0.01 && Math.abs(p.overall.width - w) < 0.01, `${q}: ${Math.max(...xs) - Math.min(...xs)} wide`);
       const [arr] = rodArrays(p.panels);
-      assert.ok(arr && arr.L != null && arr.R != null && arr.strung.every((s) => s.length), `${q}: beads strung between the posts`);
-      const beads = arr.strung.flat(), posts = { L: arr.L!, R: arr.R! };
-      assert.ok(Math.min(...beads.map((b) => b.position.x)) - posts.L >= TOUCH - 1e-6, `${q}: beads clear the left post`);
-      assert.ok(posts.R - Math.max(...beads.map((b) => b.position.x + b.size.width)) >= TOUCH - 1e-6, `${q}: beads clear the right post`);
-      // Every bead is a whole dowel with a running bore and a wall: 1/4" rod, 3/8" bore, at least 1/2" across.
+      assert.ok(arr && arr.L != null && arr.R != null, `${q}: the row is found between its posts`);
+      const loads = arr.strung.map((x) => x.length);
+      assert.ok(Math.min(...loads) > 0 && Math.min(...loads) === Math.max(...loads), `${q}: riders per rod ${loads}`);
+      const beads = arr.strung.flat();
+      assert.ok(Math.min(...beads.map((b) => b.position.x)) - arr.L! >= TOUCH - 1e-6 && arr.R! - Math.max(...beads.map((b) => b.position.x + b.size.width)) >= TOUCH - 1e-6, `${q}: beads clear the posts`);
       assert.ok(beads.every((b) => b.size.width >= 0.5 - 1e-6), `${q}: bead ${beads[0].size.width}`);
-      const price = buildPlan(p).totals.estCostUsd;
-      const own = generateFromPrompt("abacus"), ownBead = rodArrays(own.panels)[0].strung[0][0];
-      const keepsOwnBead = beads.every((b) => b.materialId === ownBead.materialId && Math.abs(b.size.width - ownBead.size.width) < 1e-6);
-      const cap = keepsOwnBead ? Math.max(was, buildPlan(own).totals.estCostUsd) : was;
-      assert.ok(price <= cap + 0.005, `${q}: $${price} > $${cap}`);
+      const rods = arr.rods.length;
+      if (rods < asked) assert.ok((p.notes ?? []).some((n) => new RegExp(`^Assumed ${rods} rods: ${asked} rods don't fit in `).test(n)), `${q}: no Assumed note for ${rods} of ${asked} rods`);
+      else assert.equal(rods, asked, q);
+      const plan = buildPlan(p);
+      const beadLine = plan.bom.find((b) => b.catalogId === beads[0].materialId || b.name === getCatalogItem(beads[0].materialId)?.name);
+      const beadCost = beadLine?.estimatedCost ?? 0;
+      assert.ok(plan.totals.estCostUsd - beadCost <= base - baseBead + 0.005, `${q}: frame $${(plan.totals.estCostUsd - beadCost).toFixed(2)} > base frame $${(base - baseBead).toFixed(2)}`);
+      assert.ok(["dowel-3-4-36", "dowel-1-2-36"].includes(beads[0].materialId), `${q}: bead stock ${beads[0].materialId}`);
     }
   }));

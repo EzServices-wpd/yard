@@ -46,19 +46,31 @@ export function rodArrays(panels: Panel[]): RodArray[] {
     // One row: side by side along one axis, level with each other along their length and across it.
     if (spread(row) < 0.1 || spread(third) > 0.05 || spread(long) > 0.05) continue;
     const rods = [...all].sort((a, b) => mid(a, row) - mid(b, row));
-    const pitch = spread(row) / (rods.length - 1);
-    // Strung on a rod: round across the rod (both cross sides one diameter), holds the rod's centre line, lies along it.
-    const strung = rods.map((r) => panels.filter((q) => q !== r && !rods.includes(q) && q.size[row[1]] < 2 * pitch && Math.abs(q.size[row[1]] - q.size[third[1]]) <= 0.1 * q.size[row[1]] &&
-      [row, third].every((ax) => lo(q, ax) < mid(r, ax) && hi(q, ax) > mid(r, ax)) && lo(q, long) >= lo(r, long) - 0.01 && hi(q, long) <= hi(r, long) + 0.01));
-    const members = [...rods, ...strung.flat()];
+    // A rider: round across the rod (both cross sides one diameter), holding a rod's centre line, lying along it.
+    // Each rider rides on exactly one rod, the one nearest its middle.
+    const riders = panels.filter((q) => !rods.includes(q) && Math.abs(q.size[row[1]] - q.size[third[1]]) <= 0.1 * q.size[row[1]] &&
+      rods.some((r) => [row, third].every((ax) => lo(q, ax) < mid(r, ax) && hi(q, ax) > mid(r, ax)) && lo(q, long) >= lo(r, long) - 0.01 && hi(q, long) <= hi(r, long) + 0.01));
+    const strung: Panel[][] = rods.map(() => []);
+    for (const q of riders) {
+      const i = rods.reduce((m, r, j) => (Math.abs(mid(r, row) - mid(q, row)) < Math.abs(mid(rods[m], row) - mid(q, row)) ? j : m), 0);
+      strung[i].push(q);
+    }
+    const members = [...rods, ...riders];
     const span = (ax: Axis) => [Math.min(...members.map((m) => lo(m, ax))), Math.max(...members.map((m) => hi(m, ax)))];
     const [l0, l1] = span(long), [t0, t1] = span(third);
-    const a0 = mid(rods[0], row), a1 = mid(rods[rods.length - 1], row);
-    // Bounds: parts beside the row (their middle outside the first and last rods) that share its length and depth.
-    const beside = panels.filter((q) => !members.includes(q) && lo(q, long) < l1 - 0.01 && hi(q, long) > l0 + 0.01 && lo(q, third) < t1 - 0.01 && hi(q, third) > t0 + 0.01);
-    const left = beside.filter((q) => mid(q, row) < a0), right = beside.filter((q) => mid(q, row) > a1);
+    const centre = (mid(rods[0], row) + mid(rods[rods.length - 1], row)) / 2;
+    // Bounds: parts that share the row's length and depth and stand to one side of its centre without crossing it
+    // (end posts), even when a narrow row's rods were set inside them. Rails the rods are set in cross the centre.
+    // A bound runs alongside the row (an end post, a side): it shares most of the row's length. A part a rod
+    // meets at a joint (a foot, a socket, a crossing arm or rail) is not a bound, even when it holds the rod.
+    const alongside = (q: Panel) => Math.min(hi(q, long), l1) - Math.max(lo(q, long), l0) >= 0.5 * (l1 - l0);
+    const beside = panels.filter((q) => !members.includes(q) && alongside(q) && lo(q, third) < t1 - 0.01 && hi(q, third) > t0 + 0.01);
+    const left = beside.filter((q) => hi(q, row) <= centre + 1e-6), right = beside.filter((q) => lo(q, row) >= centre - 1e-6);
+    // A row every rod of which lies inside those parts (a sleeve, a doubled member) is part of them, not bounded by them.
+    const inside = (r: Panel) => [...left, ...right].some((q) => [row, third].every((ax) => lo(q, ax) < mid(r, ax) && hi(q, ax) > mid(r, ax)));
+    const bounded = left.length && right.length && !rods.every(inside);
     out.push({ family, rods, long, row, third, strung,
-      ...(left.length && right.length ? { L: Math.max(...left.map((q) => hi(q, row))), R: Math.min(...right.map((q) => lo(q, row))) } : {}) });
+      ...(bounded ? { L: Math.max(...left.map((q) => hi(q, row))), R: Math.min(...right.map((q) => lo(q, row))) } : {}) });
   }
   return out;
 }
@@ -103,6 +115,9 @@ export function rodArrayFailures(project: { panels: Panel[]; instances?: Inst[] 
     const what = (i: number) => (arr.strung[i].length ? `${arr.rods[i].name} and its ${fam(arr.strung[i][0]).toLowerCase()}s` : arr.rods[i].name);
     if (arr.L != null && cols[0][0] < arr.L - 0.005) out.push(`${what(0)} sink ${(arr.L - cols[0][0]).toFixed(2)}" into the part beside the row`);
     const n = cols.length - 1;
+    // Riders spread across every rod in the row, never stacked on some while others stand bare.
+    const loads = arr.strung.map((x) => x.length);
+    if (Math.max(...loads) > 0 && Math.min(...loads) === 0) out.push(`${arr.family} riders sit on ${loads.filter((k) => k > 0).length} of ${loads.length} rods; the rest stand bare`);
     if (arr.R != null && cols[n][1] > arr.R + 0.005) out.push(`${what(n)} sink ${(cols[n][1] - arr.R).toFixed(2)}" into the part beside the row`);
     for (let i = 1; i < cols.length; i++) {
       const gap = cols[i][0] - cols[i - 1][1];
