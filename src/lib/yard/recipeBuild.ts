@@ -44,6 +44,11 @@ export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
   return out;
 }
 
+/** Whether the prompt names the recipe's count ("7 rods"). */
+export function countWasTyped(prompt: string, recipe: Recipe): boolean {
+  return !!recipe.count && new RegExp(String.raw`\b(\d+|${Object.keys(NUM).join("|")})\s+${recipe.count.word.replace(/s$/, "")}s?\b`).test(prompt.toLowerCase());
+}
+
 export function typedCount(prompt: string, recipe: Recipe): number {
   if (!recipe.count) return 1;
   const m = prompt.toLowerCase().match(new RegExp(String.raw`\b(\d+|${Object.keys(NUM).join("|")})\s+${recipe.count.word.replace(/s$/, "")}s?\b`));
@@ -1053,6 +1058,91 @@ function buttBetween(recipe: Recipe, panels: Panel[]): Panel[] {
   return panels;
 }
 
+/**
+ * A stated size is the build's size: a part the recipe sets flush with an outer face (an end post) keeps that
+ * face when its kept stock thickness or its board snap made it thicker, growing inward, never past the face.
+ */
+function keepStatedFaces(recipe: Recipe, panels: Panel[], size: Size, stated: Partial<Size>): Panel[] {
+  const AX = [["x", "width", 0, 3], ["z", "depth", 2, 5]] as const;
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (!part) continue;
+    for (const [a, k, o, w] of AX) {
+      if (stated[k] == null || p.size[k] > size[k] + 1e-6) continue;
+      if (part.box[o] <= 1e-6 && p.position[a] < -1e-6) p.position = { ...p.position, [a]: 0 };
+      else if (part.box[o] + part.box[w] >= 1 - 1e-6 && p.position[a] + p.size[k] > size[k] + 1e-6) p.position = { ...p.position, [a]: size[k] - p.size[k] };
+    }
+  }
+  return panels;
+}
+
+/**
+ * Repeated round parts strung on parallel rods (beads on an abacus's wires, rollers on pins) are sized and counted
+ * to the clear span between the parts that bound the row. The rods share the span at one even pitch; each round
+ * part is a whole dowel at most the pitch less 1/16" across (so neighbours and the end carriers clear), never
+ * larger than the recipe gives it, and never thinner than its bore plus a 1/16" wall each side. When even the
+ * thinnest such dowel can't share the span, the row has fewer rods (unless the count was typed). Returns the rod count.
+ */
+function stringRows(recipe: Recipe, panels: Panel[], count: number, countTyped: boolean): number {
+  const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
+  type A = (typeof AX)[number];
+  const fam = (p: Panel) => p.name.replace(/ \d+$/, "");
+  const dowels = Object.values(CATALOG_BY_ID).filter((c) => c.formFactor === "dowel" && /^dowel-/.test(c.id)).map((c) => c.dims.diameter ?? 0).filter((d) => d > 0).sort((a, b) => a - b);
+  const movers = new Set((recipe.moving ?? []).map((m) => m.part));
+  for (const rodPart of recipe.parts.filter((q) => q.repeat === "each" && PIN.test(`${q.role} ${q.name}`))) {
+    const rods = panels.filter((p) => fam(p) === rodPart.name && /^dowel-/.test(p.materialId));
+    const strung = recipe.parts.filter((q) => q.repeat === "each" && (q.on ?? []).includes(rodPart.name) && (q.shape === "bead" || q.shape === "ring" || q.shape === "disc" || q.shape === "cylinder"));
+    if (rods.length < 2 || strung.length !== 1) continue;
+    const bead = strung[0];
+    const beads = panels.filter((p) => fam(p) === bead.name);
+    const long = [...AX].sort((a, b) => rods[0].size[b[1]] - rods[0].size[a[1]])[0];
+    const mid = (p: Panel, [a, k]: A) => p.position[a] + p.size[k] / 2;
+    const spread = ([a, k]: A) => Math.max(...rods.map((r) => mid(r, [a, k] as A))) - Math.min(...rods.map((r) => mid(r, [a, k] as A)));
+    const row = AX.filter((x) => x !== long).sort((a, b) => spread(b) - spread(a))[0];
+    const third = AX.find((x) => x !== long && x !== row)!;
+    if (spread(row) < 0.1 || !beads.length) continue;
+    const lo = Math.min(...rods.map((r) => mid(r, row))), hi = Math.max(...rods.map((r) => mid(r, row)));
+    const spanOf = (p: Panel, [a, k]: A) => [p.position[a], p.position[a] + p.size[k]];
+    const across = (p: Panel) => [long, third].every((ax) => { const [u0, u1] = spanOf(p, ax), [v0, v1] = [Math.min(...beads.map((b) => spanOf(b, ax)[0])), Math.max(...beads.map((b) => spanOf(b, ax)[1]))]; return u0 < v1 - 0.01 && u1 > v0 + 0.01; });
+    const others = panels.filter((p) => !rods.includes(p) && !beads.includes(p) && across(p));
+    const left = others.filter((p) => mid(p, row) < lo), right = others.filter((p) => mid(p, row) > hi);
+    if (!left.length || !right.length) continue;
+    const L = Math.max(...left.map((p) => spanOf(p, row)[1])), R = Math.min(...right.map((p) => spanOf(p, row)[0]));
+    if (R - L < 0.5) continue;
+    const span = R - L;
+    const rodDia = Math.min(rods[0].size[row[1]], rods[0].size[third[1]]);
+    const d0 = Math.min(beads[0].size[row[1]], beads[0].size[third[1]]);
+    const hole = (bead.bore ?? rodDia + 1 / 16) + (movers.has(bead.name) ? 1 / 16 : 0);
+    const thinnest = dowels.find((d) => d >= hole + 1 / 8 - 1e-6) ?? hole + 1 / 8;
+    const CLR = 1 / 16;
+    let n = rods.length;
+    if (!countTyped && span / n - CLR < thinnest - 1e-6) n = Math.max(1, Math.floor((span + 1e-6) / (thinnest + CLR)));
+    const pitch = span / n;
+    const room = pitch - CLR;
+    const d = d0 <= room + 1e-6 ? d0 : Math.max(thinnest, ...dowels.filter((x) => x <= room + 1e-6 && x <= d0 + 1e-6));
+    if (n === rods.length && Math.abs(d - d0) < 1e-6 && rods.every((r, i) => Math.abs(mid(r, row) - (L + pitch * (i + 0.5))) < 0.02)) continue;
+    const order = [...rods].sort((a, b) => mid(a, row) - mid(b, row));
+    const owner = (b: Panel) => order.reduce((m, r) => (Math.abs(mid(r, row) - mid(b, row)) < Math.abs(mid(m, row) - mid(b, row)) ? r : m), order[0]);
+    const kept = order.slice(0, n);
+    const dropped = new Set<Panel>([...order.slice(n), ...beads.filter((b) => !kept.includes(owner(b)))]);
+    const rodOf = new Map(beads.filter((b) => !dropped.has(b)).map((b) => [b, kept[kept.indexOf(owner(b))]] as const));
+    kept.forEach((r, i) => { const c = L + pitch * (i + 0.5); r.position = { ...r.position, [row[0]]: c - r.size[row[1]] / 2 }; });
+    for (const b of beads) {
+      if (dropped.has(b)) continue;
+      const r = rodOf.get(b)!;
+      const cr = mid(r, row), ct = mid(b, third);
+      b.position = { ...b.position, [row[0]]: cr - d / 2, [third[0]]: ct - d / 2 };
+      b.size = { ...b.size, [row[1]]: d, [third[1]]: d };
+    }
+    if (!dropped.size) continue;
+    panels.splice(0, panels.length, ...panels.filter((p) => !dropped.has(p)));
+    // Numbering stays whole: rod 1..n, bead 1..k.
+    for (const f of [rodPart.name, bead.name]) panels.filter((p) => fam(p) === f).forEach((p, i) => { p.name = `${f} ${i + 1}`; });
+    count = n;
+  }
+  return count;
+}
+
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
 
 /** The model a recipe names at the typed size, count and stock. Pure: same inputs, same model. */
@@ -1075,7 +1165,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   const own: Size = base;
   // Flat parts (a base, a bottom board) whose kept thickness moved their top: the parts that sat on them follow.
   const seats: { top0: number; top: number; x: [number, number]; z: [number, number] }[] = [];
-  const count = typedCount(prompt, recipe);
+  let count = typedCount(prompt, recipe);
   // A counted unit has its own real size: 3 bays are three bays wide, 3 steps three rises tall.
   const unit = recipe.count?.unit ?? {};
   const perUnit = Object.fromEntries((["width", "height", "depth"] as const).filter((a) => unit[a]).map((a) => [a, unit[a]! * count]));
@@ -1158,9 +1248,10 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     }
   }
   definingShapes(recipe, panels);
-  const fitted = buttBetween(recipe, snapMembers(recipe, panels, stock.member));
+  const fitted = buttBetween(recipe, keepStatedFaces(recipe, snapMembers(recipe, panels, stock.member), size, { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }));
   // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
+  count = stringRows(recipe, panels, count, countWasTyped(prompt, recipe));
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
   seatHardwareAndNotches(panels);
