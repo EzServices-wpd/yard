@@ -18,7 +18,9 @@ import {
   type Box3, type Layout, type Pose, type V3,
 } from "@/components/workspace/explode-layout";
 import type { ExplodeSolved } from "@/components/workspace/explode-state";
-import { renderIds } from "@/components/workspace/id-pass";
+import { faceUpMaterial, renderIds } from "@/components/workspace/id-pass";
+/** An id no part uses: a drawer bottom's non-inner faces, so only its inner face counts. */
+const OTHER_ID = 0xfffffe;
 
 export const SOLVE_N = 0.3;
 export const SOLVE_O = 0.6;
@@ -95,7 +97,9 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
     const m = new THREE.Mesh(new THREE.BoxGeometry(Math.max(p.w, 0.01), Math.max(p.h, 0.01), Math.max(p.d, 0.01)));
     m.matrixAutoUpdate = false;
     scene.add(m);
-    return { mesh: m, id: i + 1, part: p };
+    // A hollow drawer's bottom is judged by its INNER face (every-drawer rule): only its up faces keep its id.
+    const material = p.drawerPart === "bottom" ? faceUpMaterial(i + 1, OTHER_ID) : undefined;
+    return { mesh: m, id: i + 1, part: p, material };
   });
   const step = 0.2 * L.g;
   const selfOcc = new Set<string>();
@@ -119,16 +123,18 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
           const v = new THREE.Vector3(...c).project(cam);
           return [((v.x + 1) / 2) * vw, ((1 - v.y) / 2) * vh] as [number, number];
         });
+        const inner = part.drawerPart === "bottom";
         const area = hullArea(pts);
         if (!(area > 0)) continue;
         const frac = vis[id] / area;
-        if (frac >= Math.max(SOLVE_N, 1 - SOLVE_O)) continue;
+        if (!inner && frac >= Math.max(SOLVE_N, 1 - SOLVE_O)) continue;
         const solo = renderIds(inp.gl, scene, cam, [meshes[id - 1]], vw, vh);
         const cnt = new Map<number, number>();
         let foot = 0;
         for (let k = 0; k < solo.length; k++) if (solo[k] === id) { foot++; if (ids[k] && ids[k] !== id) cnt.set(ids[k], (cnt.get(ids[k]) ?? 0) + 1); }
         let top = 0;
         for (const n of cnt.values()) top = Math.max(top, n);
+        if (inner) { if (foot > 0 && vis[id] / foot < SOLVE_N) fails.push({ i: id, cnt }); continue; }
         if (frac < SOLVE_N || (foot > 0 && top / foot > SOLVE_O)) fails.push({ i: id, cnt });
       }
       failing = fails.map((f) => meshes[f.i - 1].part.id);
@@ -143,6 +149,11 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
         let occ = 0, best = 0;
         for (const [o, n] of cnt) if (n > best && L.owner.get(meshes[o - 1].part.id) !== own) { best = n; occ = o; }
         let m = occ ? L.owner.get(meshes[occ - 1].part.id) : undefined;
+        if (!m && cnt.size && P.drawerPart === "bottom" && own?.front) {
+          // A drawer's inside hidden by its own front: stand every front further off its box (one value).
+          if (!pushed.has("front") && own.front.out < 1.2 * (P.d + 1)) { own.front.out += step; pushed.add("front"); }
+          continue;
+        }
         if (!m && cnt.size) { selfOcc.add(P.id); continue; }
         if (m && own && m.bank && m.bank === own.bank) {
           // A drawer hidden by a drawer: spread the banks upward (even gaps).
@@ -165,7 +176,7 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
       yield rounds;
     }
   } finally {
-    for (const { mesh } of meshes) mesh.geometry.dispose();
+    for (const { mesh, material } of meshes) { mesh.geometry.dispose(); material?.dispose(); }
   }
   poses = posesFor(L);
   const box = unionBox(assembled, explodedBox(L, poses));

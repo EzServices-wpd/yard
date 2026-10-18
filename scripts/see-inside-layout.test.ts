@@ -9,6 +9,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
+import { simulateHollowDrawers, SIM_DRAWER_TAG } from "../src/components/workspace/explode-sim.ts";
 import {
   CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, layoutFor, posesFor, poseAt, applyPose, classify, setDrawerTag,
   type ExplodePart, type Layout, type Pose, type V3,
@@ -97,6 +98,32 @@ for (const [build, prompt] of Object.entries(BUILDS)) {
     });
   }
 
+  test(`${build} (simulated hollow 5-part drawers): no part passes through another unit at any frame`, () => {
+    const panels = generateFromPrompt(prompt).panels;
+    if (!panels.some((p) => p.type === "drawer")) return;
+    setDrawerTag(SIM_DRAWER_TAG);
+    try {
+      for (const steps of [0, 3]) {
+        const L = grown(layoutFor(simulateHollowDrawers(panels)), steps);
+        const poses = posesFor(L);
+        const hits = new Set<string>();
+        for (let f = 0; f <= 60; f++) {
+          const u = f / 60;
+          const box = new Map(L.parts.map((p) => { const pose = poses.get(p.id); return [p.id, obb(p, pose && poseAt(pose, p.role, u), 0.05)]; }));
+          for (const a of L.parts.filter(moving)) for (const b of L.parts) {
+            if (a.id === b.id || b.role === "hardware") continue;
+            if (a.unit === b.unit && !(a.role === "drawerFront" || b.role === "drawerFront")) continue;
+            if (overlap(obb(a, undefined, 0.05), obb(b, undefined, 0.05))) continue;
+            if (overlap(box.get(a.id)!, box.get(b.id)!)) hits.add(`${a.name} × ${b.name} @${Math.round(u * EXPLODE_MS)}ms (steps ${steps})`);
+          }
+        }
+        assert.deepEqual([...hits].slice(0, 8), []);
+      }
+    } finally {
+      setDrawerTag(null);
+    }
+  });
+
   test(`${build}: hardware rides its host, the anchor stays put, closing reverses opening`, () => {
     const L = layoutFor(generateFromPrompt(prompt).panels);
     const poses = posesFor(L);
@@ -152,8 +179,14 @@ test("hollow drawers (SWE, stacked on #92): one drawer id groups front, sides, b
     const L = layoutFor(hollow);
     const poses = posesFor(L);
     for (const list of [...new Set(L.parts.filter((p) => p.unit.startsWith("D:")).map((p) => p.unit))]) {
-      const ts = L.parts.filter((p) => p.unit === list).map((p) => JSON.stringify(poses.get(p.id)?.t));
-      assert.equal(new Set(ts).size, 1, `${list} moves as one`);
+      // The box (sides, back, bottom) moves as one; the front stands off it straight forward by front.out.
+      const mine = L.parts.filter((p) => p.unit === list);
+      const box = mine.filter((p) => p.role !== "drawerFront").map((p) => poses.get(p.id)!.t);
+      assert.equal(new Set(box.map((t) => JSON.stringify(t))).size, 1, `${list} box moves as one`);
+      const f = poses.get(mine.find((p) => p.role === "drawerFront")!.id)!.t;
+      const out = L.owner.get(mine[0].id)!.front!.out;
+      assert.ok(out > 0);
+      assert.deepEqual(f.map((v) => +v.toFixed(6)), [box[0][0], box[0][1], box[0][2] + out].map((v) => +v.toFixed(6)), `${list} front stands off by ${out}`);
     }
   } finally {
     setDrawerTag(null);

@@ -9,8 +9,9 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
 import type { YardProject } from "@/lib/yard/types";
-import { classify } from "@/components/workspace/explode-layout";
-import { partMeshes, renderIds } from "@/components/workspace/id-pass";
+import { classify, setDrawerTag } from "@/components/workspace/explode-layout";
+import { faceUpMaterial, partMeshes, renderIds } from "@/components/workspace/id-pass";
+import { SIM_DRAWER_TAG, simulateHollowDrawers } from "@/components/workspace/explode-sim";
 import { explodeClock, explodeSettled } from "@/components/workspace/explode-state";
 import { overlayRects } from "@/components/workspace/explode-driver";
 import type { Rect } from "@/lib/yard/benchFrame";
@@ -21,7 +22,13 @@ export function isTestRun(): boolean {
 
 type Hook = {
   readonly settled: boolean;
-  parts: { id: string; name: string; role: string; unit: string; group: string }[];
+  parts: { id: string; name: string; role: string; unit: string; group: string; drawerPart?: string }[];
+  /** Every drawer (unit D:*): its name and its bottom part (drawerPartOf), or null for a solid drawer. */
+  drawers: { unit: string; name: string; bottom: string | null }[];
+  /** A part's up-facing faces (a drawer bottom's inner face): pixels visible in the full scene / its solo footprint. */
+  faceUp(id: string): { visible: number; footprint: number };
+  /** Test only: swap today's solid drawers for simulated hollow 5-part drawers (explode-sim.ts). */
+  simHollow(): boolean;
   idPass(): Uint32Array;
   soloPass(id: string): Uint32Array;
   corners(id: string): { x: number; y: number }[];
@@ -54,7 +61,36 @@ export function ExplodeTestHook({ project }: { project: YardProject }) {
     const w = () => Math.round(size.width), h = () => Math.round(size.height);
     const hook: Hook = {
       get settled() { return explodeSettled(); },
-      parts: parts.map(({ id, name, role, unit, group }) => ({ id, name, role, unit, group })),
+      parts: parts.map(({ id, name, role, unit, group, drawerPart }) => ({ id, name, role, unit, group, drawerPart })),
+      drawers: [...new Set(parts.filter((p) => p.unit.startsWith("D:")).map((p) => p.unit))].map((unit) => {
+        const mine = parts.filter((p) => p.unit === unit);
+        const bottom = mine.find((p) => p.drawerPart === "bottom");
+        const named = mine.find((p) => p.role === "drawerFront") ?? mine.find((p) => p.role === "drawerBox") ?? mine[0];
+        return { unit, name: named.name, bottom: bottom ? bottom.id : null };
+      }),
+      faceUp: (id) => {
+        const n = index.get(id);
+        if (!n) return { visible: 0, footprint: 0 };
+        // The part's up faces keep its id; its other faces get an id no part uses, so only the inner face counts.
+        const other = parts.length + 1;
+        const mat = faceUpMaterial(n, other);
+        try {
+          const all = live().map((m) => (m.id === n ? { ...m, material: mat } : m));
+          const count = (buf: Uint32Array) => { let c = 0; for (let i = 0; i < buf.length; i++) if (buf[i] === n) c++; return c; };
+          const visible = count(renderIds(gl, scene, camera, all, w(), h()));
+          const footprint = count(renderIds(gl, scene, camera, all.filter((m) => m.id === n), w(), h()));
+          return { visible, footprint };
+        } finally {
+          mat.dispose();
+        }
+      },
+      simHollow: () => {
+        const st = useYard.getState();
+        if (!st.project.panels.some((p) => p.type === "drawer")) return false;
+        setDrawerTag(SIM_DRAWER_TAG);
+        st.setProject({ ...st.project, id: `${st.project.id}-hollow`, panels: simulateHollowDrawers(st.project.panels) });
+        return true;
+      },
       idPass: () => renderIds(gl, scene, camera, live(), w(), h()),
       soloPass: (id) => { const n = index.get(id); return renderIds(gl, scene, camera, live().filter((m) => m.id === n), w(), h()); },
       corners: (id) => {

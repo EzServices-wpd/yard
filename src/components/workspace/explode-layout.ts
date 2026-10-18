@@ -185,6 +185,9 @@ export type Mover = {
   /** Sideways shift of the whole bank (its column stays aligned): lat.side × dir along X. One lat for every
    * bank, so side-by-side banks part from the middle by the same amount. */
   lat?: { side: number }; dir?: number;
+  /** Hollow drawers only: the front stands off its box by `out` inches (one value for every drawer), so the
+   * box's inside (its bottom's inner face) shows from above. Solid drawers have no inside to show. */
+  front?: { out: number };
   /** Movers that keep one distance (both sides, both doors, matching drawers), so gaps stay even. */
   link?: string;
   k?: number; n?: number; hh?: number;
@@ -259,6 +262,9 @@ export function layoutFor(panels: readonly Panel[]): Layout {
   const leftDoor = parts.some((q) => q.role === "door" && hingeLeft.get(q.id));
   const rightDoor = parts.some((q) => q.role === "door" && hingeLeft.get(q.id) === false);
   const bank = { spread: 0.35 };
+  const hollow = env.filter((e) => e.m.parts.some((q) => q.drawerPart === "bottom"));
+  const front = { out: 0.5 * Math.max(0, ...hollow.map((e) => e.b.maxZ - e.b.minZ)) };
+  for (const e of hollow) e.m.front = front;
   const lat = { side: cols.length > 1 ? 0.25 * D : 0.5 * W };
   for (const c of cols) {
     c.list.sort((a, b) => b.b.minY - a.b.minY);
@@ -301,7 +307,8 @@ export function posesFor(L: Layout): Map<string, Pose> {
     for (const p of m.parts) {
       const side = m.lat ? Math.max(m.lat.side, clear.get(m.dir ?? 0) ?? 0) * (m.dir ?? 0) : 0;
       const dz = m.lat ? Math.max(0, shiftZ.get(m.dir ?? 0) ?? 0) : 0;
-      const t: V3 = [m.axis[0] * m.dist + side, m.axis[1] * m.dist + lift, m.axis[2] * m.dist + dz];
+      const fz = m.front && p.role === "drawerFront" ? m.front.out : 0;
+      const t: V3 = [m.axis[0] * m.dist + side, m.axis[1] * m.dist + lift, m.axis[2] * m.dist + dz + fz];
       const pose: Pose = { t, stage: p.role };
       // The slide-out comes first; the column's sideways step and upward spread second (lat).
       if (side || lift) pose.lat = [side, lift, 0];

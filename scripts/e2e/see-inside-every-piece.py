@@ -13,6 +13,11 @@ Built like drawer-cover.py: the truth is per pixel, from the engine's own parts.
   - canary: the result card (parts, price), the plan's cut list / Buy / totals and every panel are byte-identical
     before and after See inside; the linen run also checks 31 1/2 x 16 x 78, 11 parts, $183.70.
   - reduced motion: the same final pose (every part's projected corners within 0.75 px of the motion run).
+Every drawer (Ezra, 2026-10-17): each drawer's bottom INNER face (its up-facing face, drawerPartOf "bottom" in
+the drawer group) must be >= 30% visible: ID pass with that face split out (faceUp: up-face pixels in the full
+scene / the same face rendered alone). A drawer with no bottom part (today's solid drawers) is PENDING and
+counted, never passing. --sim-hollow swaps the solid drawers for simulated hollow 5-part drawers (explode-sim.ts,
+the shape SWE is shipping) before See inside, to prove the rule on that geometry.
 Expected-stepper parts (PLAN §4: pass per stepper group, PR 2) are reported as STEP, not as failures.
 Exits 1 on any failure that is not expected-stepper.
 """
@@ -26,6 +31,7 @@ ap.add_argument("--only", default="")
 ap.add_argument("--views", default="desk,phone")
 ap.add_argument("--no-rm", action="store_true")
 ap.add_argument("--json", default="")
+ap.add_argument("--sim-hollow", action="store_true", help="simulated hollow 5-part drawers (test only)")
 ap.add_argument("--strict", action="store_true", help="expected-stepper parts fail too")
 A = ap.parse_args()
 BASE = A.base.rstrip("/")
@@ -52,6 +58,18 @@ EXPECTED_STEPPER = {
     "filing": r"^shelf 1$",
 }
 N, M, O = 0.30, 200, 0.60
+DRAWER_INNER = 0.30
+DRAWERS = r"""
+() => {
+  const X = window.__yardExplode;
+  return X.drawers.map(d => {
+    if (!d.bottom) return { unit: d.unit, name: d.name, state: "PENDING" };
+    const f = X.faceUp(d.bottom);
+    const frac = f.footprint ? f.visible / f.footprint : 0;
+    return { unit: d.unit, name: d.name, state: frac >= %s ? "PASS" : "FAIL", frac, visible: f.visible, footprint: f.footprint };
+  });
+}
+""" % DRAWER_INNER
 
 MEASURE = r"""
 () => {
@@ -127,6 +145,12 @@ def run(b, slug, q, vname, rm):
     pg.wait_for_function("() => !!window.__yardExplode", timeout=30000)
     pg.wait_for_timeout(800)
     pg.keyboard.press("Escape")
+    if A.sim_hollow:
+        if pg.evaluate("() => window.__yardExplode.simHollow()"):
+            pg.wait_for_function("() => window.__yardExplode && window.__yardExplode.drawers.length > 0 && window.__yardExplode.drawers.every(d => d.bottom)", timeout=60000)
+            pg.wait_for_function("/^(done|skip)/.test(document.querySelector('[data-bench-host]')?.getAttribute('data-yard-reveal')||'')", timeout=120000)
+            pg.wait_for_timeout(800)
+            pg.keyboard.press("Escape")
     before = pg.evaluate("() => window.__yardExplode.canary()")
     card0 = pg.evaluate("() => document.querySelector('[data-yard-result-card]')?.textContent || ''")
     title0 = pg.evaluate("() => document.querySelector('[data-yard-workbench-title]')?.textContent || ''")
@@ -139,6 +163,7 @@ def run(b, slug, q, vname, rm):
         pg.wait_for_timeout(400)
         if pg.evaluate("() => window.__yardExplode.settled === true && window.__yardExplode.frameFresh === true"): break
     m = pg.evaluate(MEASURE)
+    m["drawers"] = pg.evaluate(DRAWERS)
     shot = ""
     if A.out:
         shot = os.path.join(A.out, f"{slug}-{vname}{'-rm' if rm else ''}.png"); pg.screenshot(path=shot)
@@ -194,8 +219,16 @@ with sync_playwright() as p:
                 bad = [x for x in rows if x["v"] == "FAIL"]
                 for x in bad: fails.append(f"{slug} {v}: {x['name']} ({', '.join(x['why'])})")
                 r["pass"], r["step"], r["total"] = np_, ns, n
+                dr = r["m"].get("drawers", [])
+                r["dr_pass"] = sum(x["state"] == "PASS" for x in dr); r["dr_pending"] = sum(x["state"] == "PENDING" for x in dr)
+                r["dr_fail"] = sum(x["state"] == "FAIL" for x in dr); r["dr_total"] = len(dr)
+                r["dr_min"] = min((x["frac"] for x in dr if "frac" in x), default=None)
+                for x in dr:
+                    if x["state"] == "FAIL": fails.append(f"{slug} {v}: drawer {x['name']} inner bottom {x['frac']*100:.0f}% (< {DRAWER_INNER*100:.0f}%)")
                 results.append(r)
-                print(f"{slug:14s} {v:5s} {np_:2d}/{n:2d} pass  step {ns:2d}  fail {len(bad):2d}  settle {r['settle_ms']}ms  rm {r.get('rm_dmax','-')}  "
+                dtxt = "" if not dr else (f"  drawers {r['dr_pass']}/{r['dr_total']} inner>=30%" + (f" (min {r['dr_min']*100:.0f}%)" if r["dr_min"] is not None else "")
+                                          + (f" PENDING {r['dr_pending']} solid" if r["dr_pending"] else "") + (f" FAIL {r['dr_fail']}" if r["dr_fail"] else ""))
+                print(f"{slug:14s} {v:5s} {np_:2d}/{n:2d} pass  step {ns:2d}  fail {len(bad):2d}{dtxt}  settle {r['settle_ms']}ms  rm {r.get('rm_dmax','-')}  "
                       + "; ".join(f"{x['name']}: {', '.join(x['why'])}" for x in rows if x["v"] != "PASS"), flush=True)
     finally:
         b.close()
@@ -203,9 +236,14 @@ with sync_playwright() as p:
 if A.json:
     json.dump(results, open(A.json, "w"), indent=1)
 print()
-print("| build | view | pass | stepper | fail |")
-print("|---|---|---|---|---|")
-for r in results: print(f"| {r['slug']} | {r['view']} | {r['pass']}/{r['total']} | {r['step']} | {r['total'] - r['pass'] - r['step']} |")
+print("| build | view | pass | stepper | fail | drawers inner ≥30% | drawers PENDING (solid) |")
+print("|---|---|---|---|---|---|---|")
+for r in results:
+    dmin = f" (min {r['dr_min']*100:.0f}%)" if r.get("dr_min") is not None else ""
+    print(f"| {r['slug']} | {r['view']} | {r['pass']}/{r['total']} | {r['step']} | {r['total'] - r['pass'] - r['step']} | "
+          + (f"{r['dr_pass']}/{r['dr_total']}{dmin}" if r.get("dr_total") else "–") + f" | {r.get('dr_pending', 0) or '–'} |")
+pend = sum(r.get("dr_pending", 0) for r in results)
+if pend: print(f"PENDING: {pend} drawer checks have no drawer bottom (solid drawers); they are not counted as passing")
 for f in fails: print("FAILING:", f)
 print("FAIL" if fails else "PASS", f"{len(results)} runs, {len(fails)} failing")
 sys.exit(1 if fails else 0)

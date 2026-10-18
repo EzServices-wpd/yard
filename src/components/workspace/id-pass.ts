@@ -45,20 +45,35 @@ function target(w: number, h: number): Target {
  * (0 = nothing). Everything else in the scene is off for the pass (camera on ID_LAYER only); the live
  * materials, layers, background and fog are put back after.
  */
+/**
+ * Face-split id material: writes `upId` where the surface faces up in world space (normal·Y > 0.5),
+ * `otherId` elsewhere. Used to measure one face (a drawer bottom's inner face) with the same ID buffer.
+ */
+export function faceUpMaterial(upId: number, otherId: number): THREE.ShaderMaterial {
+  const rgb = (id: number) => new THREE.Vector3((id & 255) / 255, ((id >> 8) & 255) / 255, ((id >> 16) & 255) / 255);
+  return new THREE.ShaderMaterial({
+    uniforms: { up: { value: rgb(upId) }, other: { value: rgb(otherId) } },
+    vertexShader: "varying vec3 vN; void main(){ vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: "uniform vec3 up; uniform vec3 other; varying vec3 vN; void main(){ vec3 n = gl_FrontFacing ? vN : -vN; gl_FragColor = vec4(n.y > 0.5 ? up : other, 1.0); }",
+    side: THREE.DoubleSide,
+    toneMapped: false,
+  });
+}
+
 export function renderIds(
   gl: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
-  meshes: { mesh: THREE.Mesh; id: number }[],
+  meshes: { mesh: THREE.Mesh; id: number; material?: THREE.Material }[],
   w: number,
   h: number,
 ): Uint32Array {
   const saved = meshes.map(({ mesh }) => ({ mesh, mat: mesh.material, layers: mesh.layers.mask }));
   const mats = new Map<number, THREE.MeshBasicMaterial>();
-  for (const { mesh, id } of meshes) {
+  for (const { mesh, id, material } of meshes) {
     let m = mats.get(id);
     if (!m) mats.set(id, (m = idMaterial(id)));
-    mesh.material = m;
+    mesh.material = material ?? m;
     mesh.layers.enable(ID_LAYER);
   }
   const camLayers = camera.layers.mask;
