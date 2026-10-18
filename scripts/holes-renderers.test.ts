@@ -115,7 +115,8 @@ test("parts plate: a holed part's flat shape keeps its holes inside the outline 
     }
   }
   assert.ok(checked >= 3, `only ${checked} holed plate shapes checked`);
-  assert.deepEqual(wheelPlates.sort(), ["hub", "wheel"], "water wheel: the wheel's open centre and the glued-up hub's bore are both on the plate");
+  // #85's rotors wheel: the rim's open centre, the hub's and collar's axle bores and the spokes' bores are all on the plate.
+  assert.deepEqual(wheelPlates.sort(), ["Collar 1", "Rim 1", "Spoke 1", "hub 1"], "water wheel: the rim's open centre and the hub, collar and spoke bores are all on the plate");
 });
 
 test("/ideas hero model: every holed plate carries its holes (the 3D hero cuts them)", () => {
