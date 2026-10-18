@@ -58,7 +58,7 @@ it("lamination text reads off the real layers: count × stock thickness", () =>
     assert.match(qp.cutList.find((c) => c.name.toLowerCase() === "rim")!.notes ?? "", /Glue up 2 layers face to face for each 1 1\/2" rim/);
   }));
 
-// Rod arrays fit their span (I29): any row of like round rods, and what rides on them, lies inside the parts that
+// Rod arrays fit their span (I30): any row of like round rods, and what rides on them, lies inside the parts that
 // bound the row and clears its neighbours. Rod-array prompts beyond the corpus: racks, ladders, stands, frames.
 const ROD_SWEEP = ["abacus 6 wide", "abacus 8 wide", "abacus 10 wide", "abacus 12 wide", "abacus", "abacus 24 wide", "cardboard abacus",
   "dowel drying rack 12 wide", "dowel drying rack 6 wide", "pvc drying rack", "1/4 inch dowel ladder", "1/4 inch dowel ladder 3 wide", "dowel ladder 4 wide", "pvc ladder",
