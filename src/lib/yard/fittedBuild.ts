@@ -9,6 +9,7 @@ import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
+import { asksDoors, doorsKept, drawerSection } from "./frontSections";
 import type { FittedProgram, FittedSpec, FittedUnit, Panel, PocketWalls, YardProject } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
@@ -2597,6 +2598,21 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   const hasKnee = (spec.program === "vanity" || spec.program === "desk") && (u.kneeW ?? 0) > 8;
+  // Front sections: an ask that names drawers and no doors gets no doors; doors and typed shelves share the carcase
+  // with a drawer section only below it.
+  const frontLower = prompt.toLowerCase();
+  const mediaWantsDoors =
+    spec.program === "media" &&
+    !!u.doors &&
+    !isNoDoorsPrompt(frontLower) &&
+    (/\bdoors?\b/.test(frontLower) || isStereoCabinet(frontLower));
+  const doorsOn = hasKnee ? !!u.doors : doorsKept(frontLower, !!u.doors);
+  const doorsBuilt = doorsOn && (spec.program !== "media" || mediaWantsDoors);
+  const hutchLowerDoors = isStorageHutch(frontLower) && !!u.upperStart;
+  const shelvesTyped = /\b(?:\d+|an?|one|two|three|four|five|six|seven|eight)\s+(?:adjustable\s+|fixed\s+|open\s+)?shel(?:f|ves)\b/.test(frontLower);
+  let drawerSectionY0: number | null = null;
+  let drawerBelowTop: number | null = null;
+  let drawersFillLower = false;
   const counterY = u.counterH ?? (spec.program === "desk" ? H : 34);
   // Desk/vanity worktop (two ¾" plies → 1½"): top face = typed overall/counter H.
   // Same honesty as kitchen island + tableFitted — never stack thickness above typed H
@@ -2687,23 +2703,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels.push(panel("mirror", "Mirror", kneeL, workTopFace + 2, 0.4, knee, mh, 0.2));
     }
   } else if (u.drawersPerBank) {
-    const n = u.drawersPerBank;
-    const dh = (H - 4) / n;
-    for (let i = 0; i < n; i++) {
-      const bankBox = drawerBoxFromOpening(W - P * 2, dh, D);
-      pushDrawerWithFront(
-        panels,
-        `Drawer ${i + 1}`,
-        n === 1 ? "Drawer front" : `Drawer front ${i + 1}`,
-        x0 + P + 0.5,
-        3.5 + i * dh,
-        0.15,
-        bankBox.boxW,
-        bankBox.boxH,
-        bankBox.boxD,
-        bankBox.frontW,
-      );
-    }
+    // Front sections: the drawers own their section. It fills the carcase unless doors or typed shelves share the
+    // front, then it sits on its own floor at the top and the doors or shelves get the opening below.
+    const upper = !!u.upperStart && u.upperStart < H - 4;
+    const lowerShared = (doorsBuilt && (!upper || hutchLowerDoors)) || (shelvesTyped && !upper);
+    const sec = drawerSection({ x0: x0 + P, innerW: W - P * 2, yBottom: bottomY + P, yTop: upper ? u.upperStart! : H - P, depth: D, count: u.drawersPerBank, width: W, shares: lowerShared });
+    panels.push(...sec.panels);
+    drawerSectionY0 = sec.y0;
+    drawerBelowTop = sec.belowTop;
+    drawersFillLower = sec.belowTop == null;
   }
 
   // Media shelf behind a desk: ABOVE/behind the top — never eats knee clear.
@@ -2745,7 +2753,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     ? Math.max(P * 2, (u.counterH ?? counterY) - 2)
     : u.upperStart
       ? H
-      : H - P;
+      : drawerBelowTop ?? H - P;
   if (u.upperStart && u.upperStart < H - 4) {
     panels.push(panel("bottom", "Upper bottom", x0 + P, u.upperStart, 0, W - P * 2, P, D));
     if (W >= 36) panels.push(panel("divider", "Upper divider", -P / 2, u.upperStart, 0, P, H - u.upperStart, D));
@@ -2754,7 +2762,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const hang = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
   const rodY = hang ? Math.min(H - 8, Math.max(60, H * 0.72)) : null;
   const shelvesAsked = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
-  let shelves = shelvesAsked;
+  // Shelves live only in a door or open section: drawers that fill the carcase leave no room for them.
+  let shelves = drawersFillLower && !u.upperStart ? 0 : shelvesAsked;
   // The stored item sizes the openings: a tall item keeps one clear bay at the bottom, a short one
   // sets the shelf pitch. A typed shelf count still wins.
   const forItem = purposeOf(prompt);
@@ -2869,18 +2878,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
 
   // Media defaults open-front (TV console), but stereo/cabinet prompts that ask for doors keep them.
   // Spoken door negation / open-front never densifies leaves (isNoDoorsPrompt → u.doors false).
-  const mediaPromptLower = prompt.toLowerCase();
-  const mediaWantsDoors =
-    spec.program === "media" &&
-    !!u.doors &&
-    !isNoDoorsPrompt(mediaPromptLower) &&
-    (/\bdoors?\b/.test(mediaPromptLower) || isStereoCabinet(mediaPromptLower));
-  if (u.doors && (spec.program !== "media" || mediaWantsDoors)) {
+  const mediaPromptLower = frontLower;
+  if (doorsBuilt) {
     // Storage-hutch class: lower cabinet doors + open upper shelves (china silhouette).
     // Vanity dual-zone keeps doors on the upper; hutch flips doors to the base.
-    const hutchLowerDoors = isStorageHutch(prompt.toLowerCase()) && !!u.upperStart;
     const doorY = hutchLowerDoors ? 0 : (u.upperStart ?? 0);
-    const doorH = hutchLowerDoors ? u.upperStart! : (H - doorY);
+    // A drawer section above the doors closes its own opening: the doors stop half a ply under its floor.
+    const doorTop = drawerSectionY0 != null && drawerBelowTop != null && doorY < drawerSectionY0 ? drawerSectionY0 - P / 2 : hutchLowerDoors ? u.upperStart! : H;
+    const doorH = doorTop - doorY;
     const typedDoors = typedDoorCount(prompt);
     // One layout for every count: typed, one per bay, a pair over a wide box, or a single door.
     const count = typedDoors ?? (bayN >= 2 ? bayN : W > 28 ? 2 : 1);

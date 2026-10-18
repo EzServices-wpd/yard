@@ -27,7 +27,7 @@ import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } fro
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
-import { slideInches } from "./stockLook";
+import { drawerSlideInches } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
@@ -857,7 +857,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   if (drawers.length) {
     const carcaseD =
       project.pocket?.unit.depth ?? project.fitted?.unit.depth ?? project.overall.depth;
-    const slide = slideInches(carcaseD);
+    const slide = drawerSlideInches(project.panels, carcaseD);
     bom.push({
       name: `${slide}" side-mount drawer slides`,
       quantity: drawers.length,

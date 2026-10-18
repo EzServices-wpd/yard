@@ -48,7 +48,7 @@ import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMoun
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
-import { slideInches } from "./stockLook";
+import { drawerSlideInches } from "./stockLook";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
@@ -519,7 +519,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const D = pocket?.unit.depth ?? u?.depth ?? opening?.depth ?? project.overall.depth;
   const alcove = opening?.kind === "alcove" || opening?.kind === "pocket" || project.assumptions.installMode === "alcove";
   const wallHang = project.assumptions.installMode === "wall";
-  const slide = drawers.length ? slideInches(D) : 0;
+  const slide = drawers.length ? drawerSlideInches(project.panels, D) : 0;
   const shelfHeightOpts = { wallMounted: wallHang };
   const shelfHeights = (list: Panel[]) => shelfInstallHeightsClause(list, shelfHeightOpts);
 
