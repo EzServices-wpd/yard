@@ -1,4 +1,5 @@
 import { inchFrac } from "./inchText";
+import { headerSize } from "./headerSize";
 import { learnedRecipeFailures } from "./learnedGate";
 /**
  * The Ideas library grows from the recipe store: every trusted or passing recipe is a card, drawn from
@@ -27,7 +28,7 @@ export function recipeIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
     const built = buildRecipe(r, prompt);
     if (r.trust !== "trusted" && validateRecipe(r, built, prompt).length) continue;
     // The card names the size the header does: the model's (a 31" water wheel, never the recipe's 30").
-    const s = built.project.overall ?? built.size;
+    const s = headerSize(built.project); // the header's own W × D × H (assumed axes: the drawn extent)
     out.push({ id: `recipe-${r.key}`, label: r.title, prompt, size: `${inch(s.width)} W × ${inch(s.depth)} D × ${inch(s.height)} H`, blurb: r.notes[0] ?? "", panels: built.project.panels, box: s });
   }
   return out;

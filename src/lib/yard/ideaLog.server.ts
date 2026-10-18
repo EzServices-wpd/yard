@@ -115,7 +115,9 @@ export class IdeaStore {
       const burst = K.burst(now);
       const out = await this.pipe([
         ["INCRBY", K.budget(month(now)), cmds],
-        ["HSETNX", K.meta, rec.key, meta],
+        // Latest wins: a row logged at an older size says the size built now. A test-source write never touches meta
+        // (a read in its slot keeps the command count and every reply's position).
+        source === "test" ? ["HEXISTS", K.meta, rec.key] : ["HSET", K.meta, rec.key, meta],
         ["ZINCRBY", K.top, n, rec.key],
         ["ZADD", K.status, "GT", STATUS_RANK[rec.status], rec.key], // R5: status only moves up
         ["ZADD", K.recent, now.getTime(), rec.key],
@@ -253,9 +255,10 @@ function toRow(key: string, meta: string | null, rank: number, count: number): S
 export async function recordFromPrompt(raw: string, clientFailed = false): Promise<LogRecord | null> {
   const prompt = safePrompt(raw);
   if (!prompt) return null;
-  const [{ generateFromPrompt }, { buildInfo }] = await Promise.all([import("./promptMain"), import("./buildInfo")]);
+  const [{ generateFromPrompt }, { buildInfo }, { headerSize }] = await Promise.all([import("./promptMain"), import("./buildInfo"), import("./headerSize")]);
   let status: LogStatus = "Failed";
   let size = "";
+  let keySize = "";
   let resultKey = "failed";
   let unknown = false;
   try {
@@ -264,13 +267,18 @@ export async function recordFromPrompt(raw: string, clientFailed = false): Promi
     // A noun nothing owns (generic body / stand-in) is Unverified here and still goes to the 002 queue client-side (R6).
     unknown = !!(p.unmatched || p.displayOnly || (p as { standIn?: boolean }).standIn);
     status = clientFailed ? "Failed" : unknown ? "Unverified" : info.trust;
+    // Logged to the nearest 1/16 (the card prints it with the shared formatter); the key keeps whole inches so
+    // a build's count carries on across this change.
+    const r16 = (n: number) => Math.round(n * 16) / 16;
     const r = (n: number) => Math.round(n);
-    size = `${r(p.overall.width)}×${r(p.overall.depth)}×${r(p.overall.height)}`;
+    const hs = headerSize(p); // the header's own W × D × H (a pocket build's unit, an assumed axis's real extent)
+    size = `${r16(hs.width)}×${r16(hs.depth)}×${r16(hs.height)}`;
+    keySize = `${r(p.overall.width)}×${r(p.overall.depth)}×${r(p.overall.height)}`;
     const base = p.name.replace(/[\d'"″′×x./\s]+$/g, "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     // F35: an unknown noun is checked first, so it never gets a builtin: key.
     resultKey = `${unknown || info.source === "Placeholder" ? "unknown" : info.source === "Built-in shape" ? "builtin" : "recipe"}:${base || "thing"}`;
   } catch { /* engine threw: Failed */ }
-  return { key: logKey(prompt, resultKey, size), prompt, size, resultKey, status };
+  return { key: logKey(prompt, resultKey, keySize), prompt, size, resultKey, status };
 }
 
 /** Vercel's waitUntil when present; otherwise the promise just runs (local, tests). */

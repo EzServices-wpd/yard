@@ -7,13 +7,14 @@ import type { jsPDF } from "jspdf";
 import { getCatalogItem } from "./catalog";
 import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
-import { outlineRingXZ, polygonRings } from "./iso";
+import { holeSegments, outlineRingXZ, polygonHoleRings, polygonRings } from "./iso";
 import { cutListName } from "./shopPlural";
 import type { CutLine, Panel, YardProject } from "./types";
 import { KIT, clean, frac, type RGB } from "./pdfKit";
 
 type V3 = { x: number; y: number; z: number };
-type Face = { pts: V3[]; n: V3 };
+/** A flat face; `holes` are inner rings (same plane) left open with an even-odd fill. */
+type Face = { pts: V3[]; n: V3; holes?: V3[][] };
 export type Tone = "hot" | "built" | "ghost";
 
 type Solid = {
@@ -81,14 +82,31 @@ export function isRoundPlate(project: YardProject, p: Panel): boolean {
   return project.fitted?.unit?.shape === "round" && /top|shelf/i.test(p.type);
 }
 
-function prism(ring0: V3[], ring1: V3[]): Face[] {
+/**
+ * Extruded outline: two caps and a side wall per outer edge. Each hole (a ring pair placed like the outline) is cut
+ * out of both caps and gets its own inner wall, facing the hole's axis, so a wheel's open centre shows what is behind.
+ */
+function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = []): Face[] {
   const u = sub(ring1[0], ring0[0]);
   const nr = newell(ring0);
   const sign = dot(nr, u) >= 0 ? 1 : -1;
   const faces: Face[] = [];
   const capDir = norm(u);
-  faces.push({ pts: ring0, n: scale3(capDir, -1) });
-  faces.push({ pts: ring1, n: capDir });
+  const h0 = holes.map((h) => h[0]), h1 = holes.map((h) => h[1]);
+  faces.push({ pts: ring0, n: scale3(capDir, -1), ...(holes.length ? { holes: h0 } : {}) });
+  faces.push({ pts: ring1, n: capDir, ...(holes.length ? { holes: h1 } : {}) });
+  for (const [a, b] of holes) {
+    const axis = centroid(a);
+    for (let i = 0; i < a.length; i++) {
+      const j = (i + 1) % a.length;
+      const e = sub(a[j], a[i]);
+      if (Math.hypot(e.x, e.y, e.z) < 1e-6) continue;
+      let n = norm(cross(e, u));
+      // The inner wall faces into the hole.
+      if (dot(n, sub(axis, scale3(add(a[i], a[j]), 0.5))) < 0) n = scale3(n, -1);
+      faces.push({ pts: [a[i], a[j], b[j], b[i]], n });
+    }
+  }
   for (let i = 0; i < ring0.length; i++) {
     const j = (i + 1) % ring0.length;
     const e = sub(ring0[j], ring0[i]);
@@ -177,7 +195,7 @@ function panelSolid(project: YardProject, p: Panel): Solid {
     faces = curvedFaces(p);
   } else if (p.polygon) {
     const [r0, r1] = polygonRings(p);
-    faces = prism(r0, r1);
+    faces = prism(r0, r1, polygonHoleRings(p));
   } else if (p.outline) {
     const ring = outlineRingXZ(p);
     const yb = p.position.y;
@@ -222,6 +240,35 @@ function instanceSolid(inst: YardProject["instances"][number]): Solid {
   return { id: inst.id, faces: [], ...bb, center: centroid([a, b]), stick: { a, b, w } };
 }
 
+/**
+ * The points a size is measured to (the true extent, not the drawn approximation): a part's rod is its part box; a
+ * loose rod is its surface (ends padded by its radius, exactly for a slanted rod); a round plate is its box (its "cut
+ * round" diameter, which the drawn polygon falls just short of). Everything else is its drawn corners.
+ */
+function truePts(project: YardProject, s: Solid): V3[] {
+  const p = project.panels.find((q) => q.id === s.id);
+  // A part's rod (a strut) is measured to its part box, the size the cut list and the engine give it.
+  if (s.stick && p?.strut) return panelWorldCorners(p).map((c) => ({ x: c.x, y: c.y, z: c.z }));
+  if (s.stick) {
+    const { a, b, w } = s.stick;
+    const u = norm(sub(b, a)), r = w / 2;
+    const pad = { x: r * Math.sqrt(Math.max(0, 1 - u.x * u.x)), y: r * Math.sqrt(Math.max(0, 1 - u.y * u.y)), z: r * Math.sqrt(Math.max(0, 1 - u.z * u.z)) };
+    return [a, b].flatMap((q) => [sub(q, pad), add(q, pad)]);
+  }
+  const pts = s.faces.flatMap((f) => f.pts);
+  if (!p?.polygon || !pts.length) return pts;
+  const corners = panelWorldCorners(p).map((c) => ({ x: c.x, y: c.y, z: c.z }));
+  const a = bounds(pts), b = bounds(corners);
+  const close = (["x", "y", "z"] as const).every((k) => Math.abs(a.min[k] - b.min[k]) <= 0.25 && Math.abs(a.max[k] - b.max[k]) <= 0.25);
+  return close ? corners : pts;
+}
+
+/** The extent the drawings label on a full view: every part measured to its true surface (measurePts). */
+export function drawnExtent(project: YardProject): { min: V3; max: V3 } | null {
+  const pts = projectSolids(project).flatMap((s) => truePts(project, s));
+  return pts.length ? bounds(pts) : null;
+}
+
 export function projectSolids(project: YardProject): Solid[] {
   return [...project.panels.map((p) => panelSolid(project, p)), ...project.instances.map((i) => instanceSolid(i))];
 }
@@ -239,7 +286,7 @@ function shift(s: Solid, d: V3): Solid {
   if (!d.x && !d.y && !d.z) return s;
   return {
     id: s.id,
-    faces: s.faces.map((f) => ({ n: f.n, pts: f.pts.map((p) => add(p, d)) })),
+    faces: s.faces.map((f) => ({ n: f.n, pts: f.pts.map((p) => add(p, d)), ...(f.holes ? { holes: f.holes.map((h) => h.map((p) => add(p, d))) } : {}) })),
     min: add(s.min, d),
     max: add(s.max, d),
     center: add(s.center, d),
@@ -515,6 +562,17 @@ function poly(doc: jsPDF, pts: { x: number; y: number }[], style: "F" | "S" | "F
   );
 }
 
+/** Outer ring plus hole rings as one path, filled even-odd (holes stay open) and stroked on every ring. */
+function polyHoles(doc: jsPDF, rings: { x: number; y: number }[][]) {
+  for (const r of rings) {
+    if (r.length < 2) continue;
+    doc.moveTo(r[0].x, r[0].y);
+    for (const p of r.slice(1)) doc.lineTo(p.x, p.y);
+    doc.close();
+  }
+  doc.fillStrokeEvenOdd();
+}
+
 /** Draw the project (or part of it) into a frame. Returns the screen anchor of each drawn solid. */
 export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, opts: RenderOpts) {
   const base = projectSolids(project);
@@ -600,7 +658,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       const pts = f.pts.map(map);
       screenPts.push(...pts);
       doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
-      poly(doc, pts, "FD");
+      if (f.holes?.length) polyHoles(doc, [pts, ...f.holes.map((h) => h.map(map))]);
+      else poly(doc, pts, "FD");
     }
     ink.set(sol.id, [...(ink.get(sol.id) ?? []), ...screenPts]);
   }
@@ -608,7 +667,9 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
     if (pts.length) anchors.set(id, { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
   }
 
-  if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes);
+  // Labels read the true extent of the same parts (a round plate's diameter, a rod's surface); lines stay on the drawing.
+  const measured = !ex && fitSolids.length ? bounds(fitSolids.flatMap((q) => truePts(project, q))) : bb;
+  if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes, measured);
   if (opts.measures?.length) drawMeasures(doc, opts.measures, map);
 
   if (opts.letters) {
@@ -688,11 +749,12 @@ function drawDims(
   map: (p: V3) => { x: number; y: number },
   s: number,
   assumed: Partial<Record<"width" | "height" | "depth", boolean>> = {},
+  measured: { min: V3; max: V3 } = bb,
 ) {
   const round = project.fitted?.unit?.shape === "round";
-  const W = bb.max.x - bb.min.x;
-  const H = bb.max.y - bb.min.y;
-  const D = bb.max.z - bb.min.z;
+  const W = measured.max.x - measured.min.x;
+  const H = measured.max.y - measured.min.y;
+  const D = measured.max.z - measured.min.z;
   // Only the overall size can be assumed; a label that measures something else stays plain.
   const tag = (axis: "width" | "height" | "depth", v: number, text: string) =>
     assumed[axis] && Math.abs(v - project.overall[axis]) < 0.5 ? `${text} assumed` : text;
@@ -838,7 +900,8 @@ export function partLetters(project: YardProject, cutList: CutLine[]): Map<strin
 
 // ───────────────────────── flat part shapes ─────────────────────────
 
-export type Shape2D = { pts: [number, number][]; circle?: number; w: number; h: number; angled: boolean };
+/** Flat part outline; `holes` are round cut-outs in the same (paper) frame as `pts`. */
+export type Shape2D = { pts: [number, number][]; circle?: number; w: number; h: number; angled: boolean; holes?: { x: number; y: number; r: number }[] };
 
 /** Face outline of a cut line, long side horizontal, in inches. */
 export function partShape(project: YardProject, line: CutLine, letters: Map<string, string>): Shape2D {
@@ -849,13 +912,21 @@ export function partShape(project: YardProject, line: CutLine, letters: Map<stri
   if (!panel) return rect;
   if (isRoundPlate(project, panel)) return { pts: [], circle: panel.size.width / 2, w: panel.size.width, h: panel.size.width, angled: true };
   let ring: [number, number][] | null = null;
+  let holes: { x: number; y: number; r: number }[] = [];
   if (panel.outline) {
     ring = outlineRingXZ(panel).map((q) => [q.x - panel.position.x, q.z - panel.position.z]);
   } else if (panel.polygon) {
     // The outline is the face only when it is extruded by the board's own thickness.
-    const thick = panel.polygon.plane === "xz" ? panel.size.height : panel.size.depth;
-    const faceIsPoly = Math.abs(thick - line.thicknessIn) < 0.07;
-    if (faceIsPoly) ring = panel.polygon.pts.map(([a, b]) => [a, b]);
+    const thick = panel.polygon.plane === "xz" ? panel.size.height : panel.polygon.plane === "zy" ? panel.size.width : panel.size.depth;
+    // A glue-up (a hub of 5 layers) cuts every layer to the outline: its footprint is the cut line's length × width.
+    const us = panel.polygon.pts.map((q) => q[0]), vs = panel.polygon.pts.map((q) => q[1]);
+    const fw = Math.max(...us) - Math.min(...us), fh = Math.max(...vs) - Math.min(...vs);
+    const footprint = Math.abs(Math.max(fw, fh) - L) < 0.13 && Math.abs(Math.min(fw, fh) - W) < 0.13 && thick > line.thicknessIn;
+    const faceIsPoly = Math.abs(thick - line.thicknessIn) < 0.07 || footprint;
+    if (faceIsPoly) {
+      ring = panel.polygon.pts.map(([a, b]) => [a, b]);
+      holes = (panel.polygon.holes ?? []).filter((q) => q.r > 0);
+    }
     else return { ...rect, angled: !!panel.cutNote };
   }
   if (!ring) return rect;
@@ -864,15 +935,18 @@ export function partShape(project: YardProject, line: CutLine, letters: Map<stri
   const x0 = Math.min(...xs);
   const y0 = Math.min(...ys);
   let pts = ring.map(([a, b]) => [a - x0, b - y0] as [number, number]);
+  let hs = holes.map((q) => ({ x: q.x - x0, y: q.y - y0, r: q.r }));
   let w = Math.max(...xs) - x0;
   let h = Math.max(...ys) - y0;
   if (h > w) {
     pts = pts.map(([a, b]) => [b, a] as [number, number]);
+    hs = hs.map((q) => ({ x: q.y, y: q.x, r: q.r }));
     [w, h] = [h, w];
   }
   // Paper y runs down; flip so "up" in the model is up on the page.
   pts = pts.map(([a, b]) => [a, h - b] as [number, number]);
-  return { pts, w, h, angled: true };
+  hs = hs.map((q) => ({ ...q, y: h - q.y }));
+  return { pts, w, h, angled: true, ...(hs.length ? { holes: hs } : {}) };
 }
 
 export function drawShape(doc: jsPDF, sh: Shape2D, x: number, y: number, s: number, fill: RGB, edge: RGB) {
@@ -883,11 +957,17 @@ export function drawShape(doc: jsPDF, sh: Shape2D, x: number, y: number, s: numb
     doc.circle(x + sh.circle * s, y + sh.circle * s, sh.circle * s, "FD");
     return;
   }
-  poly(
-    doc,
-    sh.pts.map(([a, b]) => ({ x: x + a * s, y: y + b * s })),
-    "FD",
-  );
+  const outer = sh.pts.map(([a, b]) => ({ x: x + a * s, y: y + b * s }));
+  if (sh.holes?.length) polyHoles(doc, [outer, ...sh.holes.map((q) => holeRing(x + q.x * s, y + q.y * s, q.r * s, holeSegments(q.r)))]);
+  else poly(doc, outer, "FD");
+}
+
+/** A hole as a closed ring (same segment count as the 3D drawings). */
+function holeRing(cx: number, cy: number, r: number, n: number): { x: number; y: number }[] {
+  return Array.from({ length: n }, (_, k) => {
+    const t = (k / n) * Math.PI * 2;
+    return { x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) };
+  });
 }
 
 export function drawShapeInRect(doc: jsPDF, sh: Shape2D, x: number, y: number, w: number, h: number, edge: RGB) {
@@ -917,6 +997,11 @@ export function drawShapeInRect(doc: jsPDF, sh: Shape2D, x: number, y: number, w
       (Math.abs(a.x - b.x) < 0.01 && (Math.abs(a.x - x) < 0.01 || Math.abs(a.x - x - w) < 0.01)) ||
       (Math.abs(a.y - b.y) < 0.01 && (Math.abs(a.y - y) < 0.01 || Math.abs(a.y - y - h) < 0.01));
     if (!onEdge) doc.line(a.x, a.y, b.x, b.y);
+  }
+  // Holes are cut too: mark each one on the nest.
+  for (const q of sh.holes ?? []) {
+    const c = tall ? { x: x + q.y * sx, y: y + q.x * sy } : { x: x + q.x * sx, y: y + q.y * sy };
+    doc.circle(c.x, c.y, q.r * Math.min(sx, sy), "S");
   }
   doc.setLineDashPattern([], 0);
 }
