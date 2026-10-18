@@ -9,10 +9,6 @@
    "class": "F21",
    "msg": "Floor is interior plywood on the ground outdoors"
   },
-  "I13|raised garden bed 48 wide 96 long": {
-   "class": "F21",
-   "msg": "Left side is interior plywood on the ground outdoors"
-  },
   "I13|sandbox": {
    "class": "F21",
    "msg": "Left side is interior plywood on the ground outdoors"
@@ -133,9 +129,9 @@
    "class": "F2",
    "msg": "typed 44 wide, model 82"
   },
-  "I8|raised garden bed 48 wide 96 long": {
-   "class": "F2",
-   "msg": "typed 48 wide, model 96"
+  "C15|knife block maple": {
+   "class": "C15",
+   "msg": "step \"Set the Back panel\" uses #8 × 1 1/4\" screws, not on Buy"
   },
   "I26|ferris wheel": {
    "class": "F30",
@@ -332,6 +328,8 @@
   "I28|wall mounted mail organizer": {
    "class": "F32",
    "msg": "Backboard is 0.49\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"
-  }
+  },
+  "I28|standing desk converter": "Base is 0.80\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
+  "I28|bird feeder": "Front pane is 2 layers of Clear acrylic sheet but no glue-up step says so"
  }
 }

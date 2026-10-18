@@ -173,6 +173,10 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   // A rotor's parts are fixed to each other; only the assembly turns on the pin.
   // A hinged lid swings on its hinges: it is hung, never screwed down.
   if (panel?.turns && !onPin && !/^dowel-/.test(panel.materialId) && isLid(panel) && project.panels.some((q) => /\bhinge/i.test(q.name))) return `Hang the ${part.name} on its hinges: screw each hinge's free leaf to the ${part.name} with the short hinge screws. The ${part.name} itself takes no screws: it rests on the walls and swings open.`;
+  // C13: a caster screws under the piece once it is built; a screw eye twists into a pilot hole.
+  if (panel?.materialId === "hardware" && /^Caster \d+$/.test(part.name)) return `Tip the piece on its side and screw the ${part.name} under ${onto} with four #10 × 3/4" pan-head screws through its plate, 1/2" in from the corner. Locking casters go at the front.`;
+  if (panel?.materialId === "hardware" && /^Screw eye \d+$/.test(part.name)) return `Drill a 1/8" pilot hole and twist the ${part.name} into ${onto} by hand until the eye sits flat.`;
+  if (panel?.materialId === "acrylic-sheet") return `Slide the ${part.name} into 1/8" grooves cut in ${onto}. No glue or screws: it lifts out for cleaning.`;
   if (panel?.materialId === "hardware" && /\bhinge/i.test(part.name)) return `Screw one leaf of the ${part.name} to ${onto.split(" and ")[0]} with its short hinge screws, knuckle at the top edge.`;
   if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
@@ -390,6 +394,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   out = rotorInOrder(project, out, supports, fix);
   out = rotorBeforeSecondSupport(project, out, supports);
   out = hingedLidLast(project, out);
+  out = castersLast(project, out);
   return renumber(out);
 }
 
@@ -773,6 +778,23 @@ function rotorBeforeSecondSupport(project: YardProject, steps: AssemblyStep[], s
     out = [...out.slice(0, si), ...out.slice(si + 1, lastR + 1).filter((_, j) => !waits(si + 1 + j)), moved, ...later, ...out.slice(lastR + 1)];
   }
   return out;
+}
+
+/** C13: casters screw under the finished piece, in one step after every other build step. */
+function castersLast(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const names = project.panels.filter((p) => p.materialId === "hardware" && /^Caster \d+$/.test(p.name)).map((p) => p.name);
+  if (!names.length) return steps;
+  const only = (st: AssemblyStep) => (st.partsUsed ?? []).length > 0 && (st.partsUsed ?? []).every((n) => names.includes(n));
+  const keep = steps.map((st) => (only(st) ? st : { ...st, partsUsed: st.partsUsed?.filter((n) => !names.includes(n)) }))
+    .filter((st) => !only(st));
+  const lastBuild = keep.reduce((m, st, i) => (isBuild(st) ? i : m), -1);
+  const step: AssemblyStep = {
+    step: 0,
+    title: `Screw on the ${names.length} casters`,
+    description: `Tip the piece on its side. Screw each caster under its corner with four #10 × 3/4" pan-head screws through its plate, 1/2" in from the edges; the two locking casters go at the front. Stand it up and lock them.`,
+    partsUsed: names,
+  };
+  return [...keep.slice(0, lastBuild + 1), step, ...keep.slice(lastBuild + 1)];
 }
 
 /** A hinged lid (and its hinges) goes on after every wall it rests on: last of the build steps. */

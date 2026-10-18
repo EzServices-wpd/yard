@@ -20,6 +20,7 @@ import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
+import { backerRowIds } from "@/lib/plan/backer";
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -243,7 +244,9 @@ function PlanBody({
   );
   const nestSheets = nest?.sheets ?? [];
   const backerSheets = plan.partsKind === "whole" ? [] : (plan.sheetNest?.backer?.sheets ?? []);
-  const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5 && !c.whole);
+  // Only real backer panels (thin sheet stock on the plan's backer sheets): never a dowel, stick, skewer or pane.
+  const backerIds = useMemo(() => backerRowIds(plan), [plan]);
+  const thinCuts = plan.cutList.filter((c) => backerIds.has(c.id));
   // Every sheet-goods build gets its sheet (it is what the cut list is cut from), not only house builds.
   const houseNest = nestSheets.length > 0;
   const [activeLetter, setActiveLetter] = useState<string | null>(null);
@@ -345,7 +348,7 @@ function PlanBody({
                   {plan.cutList.map((c) => {
                     const L = c.label ?? "";
                     const done = !!L && ticks.has(L);
-                    const thin = (c.thicknessIn ?? 0.75) < 0.5 && plan.partsKind !== "whole" && !c.whole;
+                    const thin = backerIds.has(c.id);
                     return (
                       <tr
                         key={c.id}

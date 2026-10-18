@@ -12,6 +12,7 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
+import { CONTACT } from "./materialForUse";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -23,7 +24,9 @@ export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
   const out: Partial<Size> = {};
   const axis = { wide: "width", long: "width", tall: "height", high: "height", deep: "depth" } as const;
   for (const m of lower.matchAll(/(\d+(?:\.\d+)?)\s*(ft|feet|foot|'|in|inch|inches|")?\s*(wide|long|tall|high|deep)\b/g)) {
-    out[axis[m[3] as keyof typeof axis]] = Number(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
+    // "48 wide 96 long": with a width typed too, "long" is the other plan side.
+    const k = m[3] === "long" && /\d\s*(?:ft|feet|foot|'|in|inch|inches|")?\s*wide\b/.test(lower) ? "depth" : axis[m[3] as keyof typeof axis];
+    out[k] = Number(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
   }
   const pair = lower.match(/\b(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)\b(?!\s*x)/);
   if (pair && !/^[124]$/.test(pair[1]) && out.width == null && out.depth == null) {
@@ -58,7 +61,12 @@ const STOCK_WORD = /\b\d+\s*x\s*\d+\b|plywood|\bply\b|cardboard|popsicle|craft\s
  * the recipe's own stock builds it and a note says why.
  */
 function stockFor(prompt: string, recipe: Recipe, override?: string) {
-  const typed = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  const said = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  // C15: a size that names a part's own section ("with 4x4 posts" on a bed whose posts are 4x4) is that part's stock,
+  // not the whole build's: the boards stay the recipe's (the raised bed's 2x6 courses, as its note says).
+  // A species with a footprint ("cedar raised garden bed 4x8") is the species alone: the 4x8 is the bed's size, not a 1x4.
+  const speciesOnly = !override && said?.id === "lumber-1x4-8" && !/\b1\s*x\s*4\b/i.test(prompt);
+  const typed = !override && said && (speciesOnly || recipe.parts.some((p) => p.stock === said.id)) ? undefined : said;
   let ok = typed && !isWireStock(typed) ? typed : null;
   const craft = !!ok && CRAFT.has(ok.category);
   const big = Math.max(recipe.size.width, recipe.size.height, recipe.size.depth) > 48;
@@ -735,14 +743,43 @@ function trestleLegs(recipe: Recipe, panels: Panel[], size: Size): void {
   }
 }
 
+/** True where two plain boxes share more than 1/16" of space on every axis. */
+const sharesSpace = (a: Panel, b: Panel) => (["x", "y", "z"] as const).every((k, n) => {
+  const s = (["width", "height", "depth"] as const)[n];
+  return Math.min(a.position[k] + a.size[s], b.position[k] + b.size[s]) - Math.max(a.position[k], b.position[k]) > 1 / 16;
+});
+
+/**
+ * Real joints where recipe parts meet inside each other: a butt hinge's leaf is mortised flush into the lid and the
+ * board it hangs on; a shelf that runs to the corner posts (a utility cart) is notched around each post.
+ */
+function seatHardwareAndNotches(panels: Panel[]): void {
+  for (const h of panels.filter((p) => /\bhinge \d+$/i.test(p.name))) {
+    for (const o of panels) if (o !== h && !/\bhinge \d+$/i.test(o.name) && sharesSpace(h, o)) h.joints = [...(h.joints ?? []), { with: o.id, kind: "mortise" }];
+  }
+  const posts = panels.filter((p) => /\bpost$/i.test(p.name));
+  for (const sh of panels.filter((p) => /\bshelf$/i.test(p.name))) {
+    const hit = posts.filter((q) => sharesSpace(sh, q));
+    if (!hit.length) continue;
+    sh.joints = [...(sh.joints ?? []), ...hit.map((q) => ({ with: q.id, kind: "notch" as const }))];
+    const q = hit[0];
+    sh.cutNote = `${sh.cutNote ? sh.cutNote + " " : ""}Notch ${hit.length === 4 ? "each corner" : `${hit.length} corners`} ${fmtIn(q.size.width)} × ${fmtIn(q.size.depth)} so it fits around the posts.`;
+  }
+}
+
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
   // Only a hinged lid is seated (a hinged gate or door swings sideways and is never a lid) and sloped; a loose lid (a churn's) stays where the recipe put it.
   const lids = new Set((recipe.moving ?? []).filter((m) => m.motion === "hinge" && !/\b(?:gates?|doors?)\b/i.test(m.part)).map((m) => m.part));
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
     lid.turns = true;
-    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
+    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && !/\bhinges?\b/i.test(w.name) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
       w.position.x < lid.position.x + lid.size.width && lid.position.x < w.position.x + w.size.width &&
       w.position.z < lid.position.z + lid.size.depth && lid.position.z < w.position.z + w.size.depth);
+    // C13: a part with another part on top of it (a lower course of a stacked wall, a floor cleat) carries that part, not the lid.
+    const covered = (w: Panel) => panels.some((q) => q !== w && q !== lid && q.position.y >= w.position.y + w.size.height - 0.1 && q.position.y <= w.position.y + w.size.height + 1 &&
+      q.position.x < w.position.x + w.size.width && w.position.x < q.position.x + q.size.width && q.position.z < w.position.z + w.size.depth && w.position.z < q.position.z + q.size.depth);
+    // An inside divider (a jewelry box's ring row) sits below the lid and never seats or slopes it.
+    under.splice(0, under.length, ...under.filter((w) => !covered(w) && !/\b(?:divider|partition)s?\b/i.test(w.name)));
     if (!under.length) continue;
     const top = (w: Panel) => w.position.y + w.size.height;
     const hi = under.reduce((m, w) => (top(w) > top(m) ? w : m)), lo = under.reduce((m, w) => (top(w) < top(m) ? w : m));
@@ -1126,6 +1163,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
+  seatHardwareAndNotches(panels);
   crossLegs(recipe, panels);
   steadyPedestal(panels, size);
   if (/\btrestle\b/i.test(`${recipe.title} ${prompt}`)) trestleLegs(recipe, panels, size);
@@ -1140,7 +1178,8 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     if (c?.category === "lumber" && p.materialId === stock.member && c.dims.width && c.dims.height && part?.kind === "member" && !stock.typed && thin > c.dims.height + 0.01 && mid > c.dims.width + 0.01) { p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8"; continue; }
     if (c?.formFactor !== "board" || !c.dims.width) continue;
     if (part?.kind !== "panel" || mid <= c.dims.width + 0.05) continue;
-    if (!stock.typed) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
+    // An outdoor part named for boards (a bench seat lid) stays edge-glued boards: interior-style plywood never sits out in the rain.
+    if (!stock.typed && !(recipe.outdoor && part.stock)) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
     else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
   }
   roundParts(recipe, panels);
@@ -1207,7 +1246,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? [CONTACT.test(`${prompt} ${recipe.title}`) ? `Outdoors: untreated cedar (it touches food, skin or a nest) and exterior screws.` : "Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
