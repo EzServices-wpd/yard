@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { Budget, IdeaStore, LEGACY_SINCE, RETAIN_DAYS, RETAIN_MS, SWEEP_BATCH, SWEEP_DROP_CMDS, SWEEP_MAX_CMDS, SWEEP_PAGE_CMDS, WRITE_CMDS, lastSeen, type Pipe } from "../src/lib/yard/ideaLog.server";
+import { Budget, FREE_TIER, IdeaStore, LEGACY_SINCE, RETAIN_DAYS, RETAIN_MS, SWEEP_BATCH, SWEEP_DROP_CMDS, SWEEP_MAX_CMDS, SWEEP_PAGE_CMDS, WRITE_CMDS, lastSeen, type Pipe } from "../src/lib/yard/ideaLog.server";
 import { logKey, type LogRecord } from "../src/lib/yard/ideaLog";
 import { ShopStore, FEEDBACK_DAYS } from "../src/lib/feedback/store.server";
 import { cleanFeedback } from "../src/lib/feedback/shop";
@@ -86,7 +86,14 @@ function ttlRedis(clock: { now: number }) {
     for (const k of [...str.keys()]) { gone(k); if (str.has(k)) out.push({ where: k, v: str.get(k)! }); }
     return out;
   };
-  return { pipe, sent, violations, hs, zs, ls, str, kexp, texts, exec };
+  /** Every live key name (expired ones dropped first) and every sorted-set member, for "nothing left" checks. */
+  const keys = () => {
+    for (const k of [...kexp.keys()]) gone(k);
+    for (const k of [...h.keys()]) if (!hs(k).size) h.delete(k); // like Redis: an empty hash, set or list is no key
+    return [...new Set([...h.keys(), ...[...z.keys()].filter((k) => z.get(k)!.size), ...[...l.keys()].filter((k) => l.get(k)!.length), ...str.keys()])];
+  };
+  const members = () => [...z.entries()].flatMap(([k, m]) => [...m.keys()].map((x) => ({ where: k, v: x })));
+  return { pipe, sent, violations, hs, zs, ls, str, kexp, texts, exec, keys, members };
 }
 
 
@@ -111,7 +118,7 @@ function orphans(r: ReturnType<typeof ttlRedis>): string[] {
   return bad;
 }
 
-test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − 87 d) in place of the rank trim; 9 commands, unchanged", async () => {
+test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − RETAIN_DAYS) in place of the rank trim; 9 commands, unchanged", async () => {
   const clock = { now: Date.UTC(2026, 9, 21, 12) };
   const r = ttlRedis(clock);
   const s = mk(r);
@@ -122,8 +129,8 @@ test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − 87 d)
     assert.equal(list.length, WRITE_CMDS);
     assert.ok(!list.some((c) => c[0] === "ZREMRANGEBYRANK"));
   }
-  assert.ok(Math.min(...r.zs("ideas:recent").values()) >= clock.now - RETAIN_MS, "nothing in recent is older than 87 days");
-  assert.equal(r.zs("ideas:recent").size, RETAIN_DAYS, "one a day, the one exactly 87 days old trimmed");
+  assert.ok(Math.min(...r.zs("ideas:recent").values()) >= clock.now - RETAIN_MS, "nothing in recent is older than RETAIN_DAYS");
+  assert.equal(r.zs("ideas:recent").size, RETAIN_DAYS, "one a day, the one exactly RETAIN_DAYS old trimmed");
   assert.equal(WRITE_CMDS, 9);
   assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSETNX", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYSCORE", "HSET", "HINCRBY", "EXPIRE"]);
 });
@@ -150,16 +157,16 @@ test("sweep: stale rows go from all six keys together; fresh rows, rows kept ali
   const kept = recOf("kept by stamp");
   await s.record(kept, new Date(clock.now + 50 * DAY));
   r.zs("ideas:recent").delete(kept.key);
-  clock.now += 80 * DAY;
+  clock.now += 78 * DAY; // before LEGACY_SINCE + RETAIN_DAYS too
   await s.record(fresh, new Date(clock.now));
   let res = await s.sweep(new Date(clock.now));
-  assert.equal(res.dropped, 0, "nothing past 87 days yet");
+  assert.equal(res.dropped, 0, "nothing past RETAIN_DAYS yet");
   clock.now = Date.UTC(2026, 9, 21, 12) + RETAIN_MS + DAY;
   res = await s.sweep(new Date(clock.now));
   assert.ok(res.done);
   assert.ok(!rows(r).has(old.key), "the stale row is gone from every key, review mark included");
   assert.ok(rows(r).has(fresh.key) && rows(r).has(kept.key));
-  assert.ok(!rows(r).has("11111111"), "legacy row: LEGACY_SINCE + 87 d has passed");
+  assert.ok(!rows(r).has("11111111"), "legacy row: LEGACY_SINCE + RETAIN_DAYS has passed");
   assert.ok(LEGACY_SINCE + RETAIN_MS < clock.now);
   // Before the legacy deadline it stays.
   const r2 = ttlRedis({ now: LEGACY_SINCE + RETAIN_MS - DAY });
@@ -240,7 +247,7 @@ test("cost cap: a run never sends more than maxCmds (budget counter agrees); a c
   const clock = { now: Date.UTC(2027, 2, 1, 8) };
   const r = ttlRedis(clock);
   for (let i = 0; i < 5000; i++) { const k = i.toString(16).padStart(8, "0"); r.exec(["HSETNX", "ideas:meta", k, "{}"]); r.exec(["ZINCRBY", "ideas:top", 1, k]); r.exec(["ZADD", "ideas:status", 1, k]); }
-  assert.equal(SWEEP_BATCH, 500); assert.equal(SWEEP_MAX_CMDS, 200);
+  assert.equal(SWEEP_BATCH, 2000); assert.equal(SWEEP_MAX_CMDS, 1500); assert.equal(RETAIN_DAYS, 85);
   const runs: { cmds: number; dropped: number; done: boolean }[] = [];
   const billed = () => Number(r.str.get("ideas:cmds:2027-03") ?? 0);
   for (let d = 0; d < 10; d++) {
@@ -254,18 +261,36 @@ test("cost cap: a run never sends more than maxCmds (budget counter agrees); a c
   assert.ok(runs.length > 1, "5,000 stale rows with a 40-command cap take more than one run");
   assert.ok(runs.at(-1)!.done && r.hs("ideas:meta").size === 0 && r.zs("ideas:top").size === 0, "resumed until done");
   assert.equal(runs.reduce((n, x) => n + x.dropped, 0), 5000);
-  // Defaults: a 5,000-row store that's all fresh costs GET cursor 2 + 10 pages × 5 + DEL cursor 2 = 54 commands.
+  // Defaults: a 5,000-row store that's all fresh costs GET cursor 2 + 3 pages × 5 + DEL cursor 2 = 19 commands.
   const r2 = ttlRedis({ now: Date.UTC(2026, 10, 1) });
   for (let i = 0; i < 5000; i++) { const k = i.toString(16).padStart(8, "0"); r2.exec(["ZINCRBY", "ideas:top", 1, k]); r2.exec(["ZADD", "ideas:recent", Date.UTC(2026, 9, 30), k]); }
   const fresh = await mk(r2).sweep(new Date(Date.UTC(2026, 10, 1)));
-  assert.ok(fresh.done && fresh.dropped === 0 && fresh.cmds <= 54, `${fresh.cmds}`);
-  // Defaults, every row stale: GET 2 + 15 pages × (5 + 8) + SET cursor 2 = 199 ≤ 200; 7,500 rows a run.
+  assert.ok(fresh.done && fresh.dropped === 0 && fresh.cmds === 19, `${fresh.cmds}`);
+  // The most rows the store can hold: writes stop at BUDGET and a new row costs ≥ WRITE_CMDS, so ≤ 50,000 new rows a
+  // month and ≤ 200,000 in any 88 days (4 calendar months) = 100 pages of SWEEP_BATCH. Every one stale, one run still
+  // finishes the pass: GET 2 + 100 × (5 + 8) + DEL cursor 2 = 1,304 ≤ 1,500. (Scaled here: 100 pages of 200 rows.)
+  const maxRows = 4 * Math.floor(450_000 / WRITE_CMDS);
+  assert.equal(maxRows, 200_000);
+  assert.equal(Math.ceil(maxRows / SWEEP_BATCH), 100);
   const r4 = ttlRedis({ now: Date.UTC(2027, 2, 1, 8) });
-  for (let i = 0; i < 10_000; i++) { const k = i.toString(16).padStart(8, "0"); r4.exec(["HSETNX", "ideas:meta", k, "{}"]); r4.exec(["ZINCRBY", "ideas:top", 1, k]); r4.exec(["HINCRBY", "ideas:ptest", k, 1]); }
-  const worst = await mk(r4).sweep(new Date(Date.UTC(2027, 2, 1, 8)));
+  const meta4 = r4.hs("ideas:meta"), ptest4 = r4.hs("ideas:ptest"), top4 = r4.zs("ideas:top");
+  for (let i = 0; i < 20_000; i++) { const k = i.toString(16).padStart(8, "0"); meta4.set(k, { v: "{}" }); ptest4.set(k, { v: "1" }); top4.set(k, 1); }
+  const worst = await new IdeaStore(r4.pipe, new Budget(FREE_TIER)).sweep(new Date(Date.UTC(2027, 2, 1, 8)), { batch: 200 });
   assert.equal(SWEEP_PAGE_CMDS + SWEEP_DROP_CMDS, 13);
-  assert.ok(worst.cmds <= SWEEP_MAX_CMDS && !worst.done, `${worst.cmds}`);
-  assert.equal(worst.cmds, 199); assert.equal(worst.dropped, 7500);
+  assert.ok(worst.done, "one run finishes the pass");
+  assert.equal(worst.cmds, 1304); assert.equal(worst.dropped, 20_000);
+  assert.ok(worst.cmds <= SWEEP_MAX_CMDS);
+  // All fresh at the maximum: 2 + 100 × 5 + 2 = 504 a run, twice a day ≈ 31K a month, inside the 50K between
+  // BUDGET and the free tier that the cron's own Budget(FREE_TIER) may use.
+  assert.ok(2 * (2 + 100 * SWEEP_PAGE_CMDS + 2) * 31 + 2 * 62 * 31 < FREE_TIER - 450_000);
+  // A month whose writes reached BUDGET still sweeps (the cron's Budget is the free tier, not BUDGET).
+  const r5 = ttlRedis({ now: Date.UTC(2027, 2, 1, 8) });
+  r5.str.set("ideas:cmds:2027-03", "450000");
+  r5.exec(["HSETNX", "ideas:meta", "bbbbbbbb", "{}"]); r5.exec(["ZINCRBY", "ideas:top", 1, "bbbbbbbb"]);
+  const writesStopped = new Budget(); writesStopped.allows(1, new Date(Date.UTC(2027, 2, 1, 8))); writesStopped.saw(450_000);
+  assert.equal((await new IdeaStore(r5.pipe, writesStopped).sweep(new Date(Date.UTC(2027, 2, 1, 8)))).dropped, 0, "BUDGET alone would stop it");
+  const reserve = new Budget(FREE_TIER); reserve.allows(1, new Date(Date.UTC(2027, 2, 1, 8))); reserve.saw(450_000);
+  assert.equal((await new IdeaStore(r5.pipe, reserve).sweep(new Date(Date.UTC(2027, 2, 1, 8)))).dropped, 1);
   // The shared monthly budget stops it too.
   const b = new Budget(10);
   const r3 = ttlRedis({ now: Date.UTC(2026, 10, 1) });
@@ -277,7 +302,7 @@ test("cost cap: a run never sends more than maxCmds (budget counter agrees); a c
 
 test("cron: daily in vercel.json; /api/cron/retention is 404 without the right Bearer CRON_SECRET", async () => {
   const v = JSON.parse(fs.readFileSync("vercel.json", "utf8"));
-  assert.deepEqual(v.crons, [{ path: "/api/cron/retention", schedule: "17 8 * * *" }], "once a day (free plan)");
+  assert.deepEqual(v.crons, [{ path: "/api/cron/retention", schedule: "17 8 * * *" }, { path: "/api/cron/retention", schedule: "17 20 * * *" }], "two daily jobs (each once a day: free plan)");
   const { Route } = await import("../src/routes/api/cron/retention");
   const h = (Route as unknown as { options: { server: { handlers: { GET: (a: { request: Request }) => Promise<Response> } } } }).options.server.handlers;
   const req = (auth?: string, extra: Record<string, string> = {}) => new Request("https://yard.test/api/cron/retention", { headers: { ...(auth ? { authorization: auth } : {}), ...extra } });
@@ -315,3 +340,86 @@ test("/api/critic-review: a missing or wrong secret is 404, never 401", async ()
   }
   assert.doesNotMatch(fs.readFileSync("src/routes/api/critic-review.ts", "utf8"), /,\s*401\s*\)|status:\s*401/);
 });
+
+test("day 90 − 1 s: every copy of a day-0 prompt and note is gone (row, indexes, stamp, ptest, review, feedback, rate-limit keys, snapshot, memo, CDN), with the cron's worst timing, a missed run, a cursor needing three runs and a store outage", async () => {
+  const H = 3_600_000;
+  const T0 = Date.UTC(2026, 10, 2, 8) + 1; // written 1 ms after a run at 08:00:00, so it turns stale just after one
+  const clock = { now: T0 };
+  const r = ttlRedis(clock);
+  let outage: [number, number] = [0, 0];
+  const pipe: Pipe = async (list) => { if (clock.now >= outage[0] && clock.now < outage[1]) throw new Error("store down"); return r.pipe(list); };
+  // 3,000 fresh rows ahead of ours in scan order, and a per-run cap of 27 commands: 3 pages a run, so a full pass
+  // takes 3 runs and the cursor carries across them (ideas:sweep:cursor).
+  // (Kept fresh by a far-future stamp, outside the snapshot's top 1,000 and newest 200 so our row stays visible.)
+  const top = r.zs("ideas:top"), stamps = r.hs("ideas:stamp");
+  for (let i = 0; i < 3000; i++) { const k = `0${i.toString(16).padStart(7, "0")}`; top.set(k, 0.5); stamps.set(k, { v: JSON.stringify({ at: "2030-01-01T00:00:00.000Z", source: "live" }) }); }
+  let prompt = "", rec!: LogRecord;
+  for (let i = 0; ; i++) { prompt = `bookcase for the hall ${i}`; rec = recOf(prompt); if (rec.key > "8") break; }
+  const note = "day0 note about the hall bookcase";
+  const web = new IdeaStore(pipe, undefined, () => {}, async () => {}); // a warm instance: its 10-minute memo
+  const shop = new ShopStore(pipe);
+  // Day 0: every key type.
+  assert.equal(await web.record(rec, new Date(T0)), "written"); // meta, top, status, recent, stamp, burst
+  r.exec(["HINCRBY", "ideas:ptest", rec.key, 1]); // #83's possible-test count
+  assert.equal(await shop.mark(rec.key, "B", new Date(T0)), "marked"); // Critic's review mark
+  assert.equal(await shop.addFeedback(cleanFeedback({ chips: ["other"], note, prompt }, "", new Date(T0))!, "a".repeat(16), new Date(T0)), "saved"); // list, day and client counters
+  await web.served(new Date(T0)); // ideas:snap + lock + memo
+  const has = (v: string) => v.includes(rec.key) || v.includes(prompt) || v.includes(note);
+  assert.ok(r.texts().some((x) => has(x.v)) && r.keys().some((k) => k.startsWith("feedback:cid:")) && r.keys().some((k) => k.startsWith("ideas:burst:")) && r.keys().includes("ideas:snap"), "day 0 wrote every key type");
+  assert.ok(r.hs("ideas:ptest").has(rec.key) && r.hs("ideas:review").has(rec.key), "ptest and review mark written");
+  assert.ok(has(JSON.stringify(await web.served(new Date(T0)))), "the row is in the served snapshot");
+  // The cron: two daily jobs, each anywhere in its hour; worst gaps alternate 12 h 59 m 59 s / 11 h 0 m 1 s.
+  const runs: number[] = [];
+  for (let d = 0; d <= 91; d++) runs.push(Date.UTC(2026, 10, 2 + d, 8), Date.UTC(2026, 10, 2 + d, 20, 59, 59));
+  const missed = Date.UTC(2026, 10, 2 + 85, 20, 59, 59); // the first run after it turns stale never happens
+  const deadline = T0 + 90 * DAY - 1000;
+  const fills: { at: number; body: string }[] = []; // every CDN fill of /api/ideas and /ideas (served from the memo)
+  let goneAt = 0, cursorSeen = false;
+  for (let t = T0; t <= deadline; ) {
+    const nextRun = runs.find((x) => x > t && x !== missed) ?? Infinity;
+    const nextReq = t + 15 * 60_000; // a page or API request every 15 minutes refreshes the memo, snapshot and CDN
+    t = Math.min(nextRun, nextReq, deadline);
+    clock.now = t;
+    if (t === nextRun) {
+      fills.push({ at: t, body: JSON.stringify(await web.served(new Date(t))) }); // a request lands just before the run: a fresh memo
+      await new IdeaStore(pipe, new Budget(FREE_TIER)).sweep(new Date(t), { maxCmds: 27, batch: 500 });
+      await new ShopStore(pipe, new Budget(FREE_TIER)).sweep(new Date(t));
+      cursorSeen ||= r.str.has("ideas:sweep:cursor");
+      if (!goneAt && !r.hs("ideas:meta").has(rec.key)) {
+        goneAt = t;
+        outage = [t + 1, deadline + 1]; // the store goes down right after, to the end: the warm memo must not outlive its hour
+      }
+    }
+    const snap = await web.served(new Date(t));
+    fills.push({ at: t, body: JSON.stringify(snap) });
+    if (t === deadline) break;
+  }
+  assert.ok(cursorSeen, "a pass took several runs (cursor saved between them)");
+  assert.ok(goneAt > 0, "the row was swept");
+  console.log(`# day-90 test: row swept at day ${((goneAt - T0) / DAY).toFixed(3)} after its last write`);
+  // Worst case, as in ideaLog.server.ts: stale at T0 + 85 d, then ≤ 6 more runs (1 missed + 2 passes of 3) of ≤ 13 h.
+  assert.ok(goneAt <= T0 + RETAIN_MS + 6 * 13 * H, `swept at day ${((goneAt - T0) / DAY).toFixed(2)}`);
+  // At day 90 − 1 s: nothing in Redis holds the row key, prompt or note; the rate-limit and burst keys have expired.
+  clock.now = deadline;
+  assert.deepEqual(r.texts().filter((x) => has(x.v) || x.where.includes(rec.key)), [], "no hash field, list entry or string");
+  assert.deepEqual(r.members().filter((x) => x.v === rec.key), [], "no index (top, status, recent)");
+  for (const k of ["ideas:meta", "ideas:stamp", "ideas:ptest", "ideas:review"]) assert.ok(!r.hs(k).has(rec.key), k);
+  assert.ok(!r.ls("feedback:list").some(has), "feedback note");
+  assert.deepEqual(r.keys().filter((k) => /^feedback:(cid|day):2026-11-02|^ideas:burst:/.test(k)), [], "day-0 counters expired");
+  const left = r.keys().filter((k) => !/^ideas:(top|status|recent|stamp|cmds:\d{4}-\d{2}|sweep:cursor|snap|snap:lock)$|^feedback:(list|day:.*|cid:.*)$/.test(k));
+  assert.deepEqual(left, [], "no other key exists");
+  // Caches: a CDN copy is served at most s-maxage 1 h + stale-while-revalidate 24 h after its fill (browser max-age
+  // 60 s + SWR 24 h is shorter), so every fill after deadline − 25 h must be clean, and so must the memo now.
+  const cdnLife = (3600 + 86_400) * 1000;
+  const live = fills.filter((f) => f.at > deadline - cdnLife);
+  assert.ok(live.length > 90, `${live.length} CDN fills in the last 25 h`);
+  assert.deepEqual(live.filter((f) => has(f.body)).map((f) => new Date(f.at).toISOString()), [], "no CDN copy still servable");
+  assert.ok(!has(JSON.stringify(await web.served(new Date(deadline)))), "the warm instance's memo");
+  // And the copies did exist until the sweep: the check above is not vacuous.
+  assert.ok(fills.some((f) => f.at < goneAt && has(f.body)), "the snapshot, memo and CDN did hold the row before");
+  // Worst case in days and hours with the production schedule (no missed run, one-run passes): 85 d + 12 h 59 m 59 s
+  // + 5 min run + 26 h 10 m of caches = 86 d 15 h 15 m.
+  const worst = RETAIN_MS + (12 * H + 59 * 60_000 + 59_000) + 5 * 60_000 + (H + 10 * 60_000 + cdnLife);
+  assert.ok(worst < 86 * DAY + 15 * H + 15 * 60_000 && 90 * DAY - worst > 3 * DAY + 8 * H, `worst ${worst}`);
+});
+

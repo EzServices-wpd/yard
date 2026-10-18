@@ -3,7 +3,7 @@
  * engine's REST pipe, Budget and monthly command counter (`ideas:cmds:<month>`) by import, and changes none of it.
  * Missing env → every call is a no-op. Never throws.
  */
-import { restPipe, Budget, type Pipe } from "@/lib/yard/ideaLog.server";
+import { restPipe, Budget, RETAIN_DAYS, type Pipe } from "@/lib/yard/ideaLog.server";
 import type { FeedbackRecord } from "./shop";
 
 export const K = {
@@ -17,8 +17,11 @@ export const K = {
   client: (d: string, cid: string) => `feedback:cid:${d}:${cid}`, // a counter only, gone after a day
 };
 export const FEEDBACK_KEEP = 2000;
-/** Feedback older than this is deleted on the next write (privacy page: 90-day retention). */
-export const FEEDBACK_DAYS = 90;
+/**
+ * Feedback older than this is deleted on the next write and by the twice-daily cron. The same RETAIN_DAYS (85) as the
+ * ideas log, so with the cron's worst gap (≤ 13 h) and run (≤ 5 min) a note is gone by 85 d 13 h 5 m (privacy page: 90).
+ */
+export const FEEDBACK_DAYS = RETAIN_DAYS;
 /** Tail entries read per pass when ageing out; passes per write are capped so one write stays bounded. */
 export const AGE_PAGE = 100;
 export const AGE_PASSES = Math.ceil(FEEDBACK_KEEP / AGE_PAGE); // a fully stale list clears in one write
@@ -72,7 +75,7 @@ export class ShopStore {
   }
 
   /**
-   * 90-day retention: trims tail entries older than FEEDBACK_DAYS. Normally the tail read rode along with the
+   * Retention: trims tail entries older than FEEDBACK_DAYS. Normally the tail read rode along with the
    * write and at most one LTRIM follows; after a long quiet spell it pages through (≤ AGE_PASSES), all budgeted.
    */
   private async ageOut(tail: string[] | null, now: Date): Promise<void> {

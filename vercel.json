@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/retention",
       "schedule": "17 8 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "17 20 * * *"
     }
   ],
   "headers": [

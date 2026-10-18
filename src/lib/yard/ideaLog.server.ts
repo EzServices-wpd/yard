@@ -35,21 +35,27 @@ const TIMEOUT_MS = 1500;
  *   last-seen is past RETAIN from all of ideas:meta, top, status, stamp, recent (and Critic's ideas:review mark and
  *   #83's ideas:ptest count, a no-op while that key doesn't exist)
  *   together, in one pipeline, so nothing is left orphaned.
- * - RETAIN_DAYS is 87, not 90: a row last seen at T goes at the first sweep after T + 87 d (≤ 1 d later), and a prompt
- *   can still sit in the stored snapshot (1 h) and the CDN copy of /api/ideas (s-maxage 1 h + stale-while-revalidate
- *   24 h) after that: T + 87 d + about 2 d stays inside 90.
+ * - RETAIN_DAYS is 85, not 90 (Critic 10-17: every copy gone by day 90, with margin). Worst case for a row last seen
+ *   at T: stale at T + 85 d; the cron runs twice a day, each within its hour (Hobby), so the next run starts ≤ 12 h 59 m
+ *   59 s later and one run finishes a full pass (≤ 5 min, see SWEEP_MAX_CMDS) → gone from Redis by T + 85 d 13 h 5 m.
+ *   Copies after that: the stored snapshot (≤ 1 h old when served) + the instance memo (10 min) + the CDN copy of
+ *   /api/ideas and /ideas (s-maxage 1 h + stale-while-revalidate 24 h) = 26 h 10 m → T + 86 d 15 h 15 m, 3 d 8 h 45 m
+ *   inside 90. Each missed, failed or short cron run adds ≤ 13 h: still inside 90 with 6 of them in a row.
+ *   Feedback notes use the same RETAIN_DAYS and have no cache: gone by T + 85 d 13 h 5 m.
  */
-export const RETAIN_DAYS = 87;
+export const RETAIN_DAYS = 85;
 export const RETAIN_MS = RETAIN_DAYS * 86_400_000;
 /** The ideas log first shipped in c78a268 (15 Oct 2026); the store was made that day. No row is older. */
 export const LEGACY_SINCE = Date.parse("2026-10-15T00:00:00Z");
-/** Sweep caps: rows read per page (ZSCAN COUNT) and Upstash commands per run (the run stops and resumes next day). */
-export const SWEEP_BATCH = 500;
-export const SWEEP_MAX_CMDS = 200;
 /**
- * Commands per sweep page: INCRBY + ZSCAN, INCRBY + ZMSCORE + HMGET; +8 (INCRBY + 7 deletes) when it drops rows.
- * Worst case at the defaults (every row stale): GET cursor 2 + 15 pages × 13 + SET cursor 2 = 199 ≤ 200, 7,500 rows.
+ * Sweep caps: rows read per page (ZSCAN COUNT) and Upstash commands per run (a capped run saves its cursor and the
+ * next run resumes). Sized so one run always finishes a full pass: writes stop at BUDGET and a new row costs ≥ 9
+ * commands, so ≤ 50,000 new rows a month and ≤ 200,000 in any 88 days (4 calendar months) = ≤ 100 pages. Every row
+ * stale: GET cursor 2 + 100 × 13 + DEL cursor 2 = 1,304 ≤ 1,500; all fresh: 504.
  */
+export const SWEEP_BATCH = 2000;
+export const SWEEP_MAX_CMDS = 1500;
+/** Commands per sweep page: INCRBY + ZSCAN, INCRBY + ZMSCORE + HMGET; +8 (INCRBY + 7 deletes) when it drops rows. */
 export const SWEEP_PAGE_CMDS = 5;
 export const SWEEP_DROP_CMDS = 8;
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
@@ -266,7 +272,10 @@ export class IdeaStore {
         } else snap = { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
       } else snap = stored;
     } catch {
-      snap = this.memo?.snap ?? { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
+      // A store error keeps the old memo only while its snapshot is under an hour old (the stored copy's own EX), so a
+      // long outage can't keep serving rows the sweep has since deleted.
+      const old = this.memo?.snap;
+      snap = old && t - Date.parse(old.at) < SNAPSHOT_MS * 6 ? old : { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
     }
     this.memo = { at: t, snap };
     return snap;
