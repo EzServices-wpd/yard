@@ -10,7 +10,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
 import {
-  CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, layoutFor, posesFor, poseAt, applyPose,
+  CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, layoutFor, posesFor, poseAt, applyPose, classify, setDrawerTag,
   type ExplodePart, type Layout, type Pose, type V3,
 } from "../src/components/workspace/explode-layout.ts";
 
@@ -122,6 +122,43 @@ for (const [build, prompt] of Object.entries(BUILDS)) {
     }
   });
 }
+
+test("hollow drawers (SWE, stacked on #92): one drawer id groups front, sides, back and bottom; its bottom is never the case bottom", () => {
+  const panels = generateFromPrompt("nightstand with 2 drawers").panels as any[];
+  // Split each solid drawer box into a hollow 5-part drawer with a shared id, the shape SWE is shipping.
+  const hollow: any[] = [];
+  let k = 0;
+  for (const p of panels) {
+    if (p.type !== "drawer") { hollow.push(p); continue; }
+    const id = `drw-${k++}`, { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+    const front = panels.find((f: any) => /drawer front/i.test(f.name) && Math.abs(f.position.y - y) < 0.5);
+    if (front) front.yardDrawer = id;
+    const part = (name: string, type: string, pos: number[], size: number[]) =>
+      hollow.push({ ...p, id: `${p.id}-${name}`, name: `${p.name} ${name}`, type, position: { x: pos[0], y: pos[1], z: pos[2] }, size: { width: size[0], height: size[1], depth: size[2] }, yardDrawer: id });
+    part("left side", "side", [x, y, z], [0.5, h, d]);
+    part("right side", "side", [x + w - 0.5, y, z], [0.5, h, d]);
+    part("back", "back", [x, y, z], [w, h, 0.5]);
+    part("bottom", "bottom", [x, y, z], [w, 0.25, d]);
+  }
+  setDrawerTag("yardDrawer");
+  try {
+    const parts = classify(hollow);
+    const caseBottom = parts.filter((p) => p.role === "bottom");
+    assert.equal(caseBottom.length, 1, caseBottom.map((p) => p.name).join(", "));
+    const units = new Map<string, string[]>();
+    for (const p of parts.filter((q) => q.unit.startsWith("D:"))) units.set(p.unit, [...(units.get(p.unit) ?? []), p.drawerPart ?? p.role]);
+    assert.equal(units.size, 2);
+    for (const list of units.values()) assert.deepEqual(list.sort(), ["back", "bottom", "front", "side", "side"]);
+    const L = layoutFor(hollow);
+    const poses = posesFor(L);
+    for (const list of [...new Set(L.parts.filter((p) => p.unit.startsWith("D:")).map((p) => p.unit))]) {
+      const ts = L.parts.filter((p) => p.unit === list).map((p) => JSON.stringify(poses.get(p.id)?.t));
+      assert.equal(new Set(ts).size, 1, `${list} moves as one`);
+    }
+  } finally {
+    setDrawerTag(null);
+  }
+});
 
 test("motion budget: open ≤ 1.2 s, close = 0.7 × open, reduced motion is a 150 ms fade", () => {
   assert.ok(EXPLODE_MS <= 1200);

@@ -26,6 +26,8 @@ export type ExplodePart = {
   unit: string;
   /** Stepper group (PLAN §2.6): case, [zone] [bank] drawers, doors, shelves, hardware. */
   group: string;
+  /** Tagged (hollow) drawers only: which piece of the drawer (drawerPartOf). */
+  drawerPart?: "front" | "bottom" | "side" | "back" | "box";
   /** Hardware rides on this part. */
   host?: string;
   /** Min corner and size (inches), the engine's box. */
@@ -56,6 +58,34 @@ export function boxOf(parts: readonly ExplodePart[]): Box3 {
   return b;
 }
 
+/**
+ * Drawer membership: the ONE place that decides which drawer a part belongs to.
+ *
+ * Coming (SWE, stacked on #92): hollow 5-part drawers (front, 2 sides, back, 1/4" ply bottom, open top),
+ * every part carrying a shared drawer id. Set DRAWER_TAG to that field's name when SWE sends it; nothing
+ * else changes. Until then (today's solid drawers) a part typed "drawer" is its own drawer and a "drawer
+ * front" joins the box it overlaps most (classify).
+ */
+let DRAWER_TAG: string | null = null;
+/** Tests (and the switch-over) only: name the panel field that carries the shared drawer id. */
+export function setDrawerTag(field: string | null) { DRAWER_TAG = field; }
+export function drawerIdOf(p: Panel): string | undefined {
+  if (!DRAWER_TAG) return undefined;
+  const v = (p as unknown as Record<string, unknown>)[DRAWER_TAG];
+  return typeof v === "string" && v ? v : typeof v === "number" ? String(v) : undefined;
+}
+/** Which part of a tagged drawer this is. A drawer's bottom is found by role or name "bottom" inside its
+ * group, never as the case bottom (the explode's anchor). */
+export function drawerPartOf(p: Panel): "front" | "bottom" | "side" | "back" | "box" {
+  const n = p.name.toLowerCase();
+  const t = String(p.type ?? "").toLowerCase();
+  if (t === "bottom" || /\bbottom\b/.test(n)) return "bottom";
+  if (/\bfront\b/.test(n) || t === "front") return "front";
+  if (t === "back" || /\bback\b/.test(n)) return "back";
+  if (t === "side" || /\bside\b/.test(n)) return "side";
+  return "box";
+}
+
 /** Roles, units, hardware hosts and stepper groups (PLAN §2.1, §2.6). */
 export function classify(panels: readonly Panel[]): ExplodePart[] {
   const parts: ExplodePart[] = panels.map((p) => ({
@@ -69,7 +99,13 @@ export function classify(panels: readonly Panel[]): ExplodePart[] {
   for (const p of parts) {
     const n = p.name.toLowerCase();
     const raw = src.get(p.id)!;
+    const tagged = drawerIdOf(raw);
     if (HW.test(n)) p.role = "hardware";
+    else if (tagged) {
+      // Hollow drawer: every part moves with its drawer; the front leads, the rest (sides, back, bottom) is the box.
+      p.drawerPart = drawerPartOf(raw);
+      p.role = p.drawerPart === "front" ? "drawerFront" : "drawerBox";
+    }
     else if (p.type === "drawer") p.role = "drawerBox";
     else if (/drawer front/.test(n)) p.role = "drawerFront";
     else if (p.type === "door") p.role = "door";
@@ -89,7 +125,7 @@ export function classify(panels: readonly Panel[]): ExplodePart[] {
   }
   // Drawer fronts (typed "rail" live) pair with the box whose X×Y overlap is largest.
   const boxes = parts.filter((p) => p.role === "drawerBox");
-  for (const f of parts.filter((p) => p.role === "drawerFront")) {
+  for (const f of parts.filter((p) => p.role === "drawerFront" && !drawerIdOf(src.get(p.id)!))) {
     let best: ExplodePart | null = null, bs = 0;
     for (const b of boxes) {
       const s = ov1(f.x, f.x + f.w, b.x, b.x + b.w) * ov1(f.y, f.y + f.h, b.y, b.y + b.h);
@@ -98,7 +134,9 @@ export function classify(panels: readonly Panel[]): ExplodePart[] {
     f.unit = best ? `D:${best.id}` : "case";
   }
   for (const p of parts) {
-    if (p.role === "drawerBox") p.unit = `D:${p.id}`;
+    const tag = drawerIdOf(src.get(p.id)!);
+    if (tag && (p.role === "drawerBox" || p.role === "drawerFront")) p.unit = `D:${tag}`;
+    else if (p.role === "drawerBox") p.unit = `D:${p.id}`;
     else if (p.role === "door") p.unit = `door:${p.id}`;
     else if (p.role === "lid") p.unit = `lid:${p.id}`;
     else if (p.role === "shelf") p.unit = `shelf:${p.id}`;
