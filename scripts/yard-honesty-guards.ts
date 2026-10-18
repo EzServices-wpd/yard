@@ -68,6 +68,8 @@ import {
 } from "../src/lib/yard/operateFaces";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount, isBuyMirrorPanel, isBoundingDrawerPanel } from "../src/lib/yard/shopPlural";
+import { drawerBoxes } from "../src/lib/yard/hollowDrawers";
+import { slideForDepth } from "../src/lib/yard/stockLook";
 import { findInterference } from "../src/lib/yard/interference";
 import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
 import { buildPlanPdf, planStepParts, typedAxesTalk } from "../src/lib/yard/pdf";
@@ -2715,7 +2717,7 @@ const nightSlides = nightPlan.bom.filter((b) => /slide/i.test(b.name));
 if (nightSlides.some((b) => b.quantity !== 1 && /pair/i.test(b.unit ?? ""))) {
   // one drawer → one pair; fronts must not double the slide count
 }
-const nightDrawerBoxes = night.panels.filter((p) => p.type === "drawer" && !/front/i.test(p.name));
+const nightDrawerBoxes = drawerBoxes(night.panels);
 const nightSlideQty = nightPlan.bom.find((b) => /slide/i.test(b.name))?.quantity;
 if (nightSlideQty != null && nightSlideQty !== nightDrawerBoxes.length) {
   failHonesty("nightstand slides doubled by drawer fronts", { nightSlideQty, boxes: nightDrawerBoxes.length });
@@ -5578,7 +5580,7 @@ console.log("SOFT-TRUST OK", {
     failHonesty("drawerCutlist nightstand cut step still lies Drawer side as Upright", cutBlob.slice(0, 500));
   }
   // Opening honesty: box W = clear bay − ~1″ slide; helper matches densify.
-  const box = ns.panels.find((p) => p.type === "drawer" && !/front/i.test(p.name));
+  const box = drawerBoxes(ns.panels)[0];
   if (!box) failHonesty("drawerCutlist nightstand missing drawer envelope panel", ns.panels.map((p) => p.name));
   else {
     const openingW = ns.overall.width - 1.5; // 2×¾″ uprights
@@ -5586,8 +5588,10 @@ console.log("SOFT-TRUST OK", {
     if (Math.abs(box.size.width - expect.boxW) > 0.2) {
       failHonesty("drawerCutlist nightstand box W ≠ opening-derived", { boxW: box.size.width, expect: expect.boxW, openingW });
     }
-    if (Math.abs(box.size.depth - expect.boxD) > 0.2) {
-      failHonesty("drawerCutlist nightstand box D ≠ opening-derived", { boxD: box.size.depth, expect: expect.boxD });
+    // Box depth is the longest standard slide that fits the inside depth (behind the ¼″ back).
+    const expectD = slideForDepth(ns.overall.depth - 0.25);
+    if (Math.abs(box.size.depth - expectD) > 0.2) {
+      failHonesty("drawerCutlist nightstand box D ≠ longest slide that fits", { boxD: box.size.depth, expect: expectD, opening: expect.boxD });
     }
   }
   // cutListName: drawer-side name wins over upright type (cut-step explode remap).
@@ -7373,7 +7377,7 @@ console.log("STRANGER PLAN OK", {
   ]) {
     const proj = generateFromPrompt(noPrompt);
     const plan = buildPlan(proj);
-    const drawers = (proj.panels || []).filter((p) => p.type === "drawer");
+    const drawers = drawerBoxes(proj.panels || []);
     if (drawers.length !== 0) {
       failHonesty("no-drawers must densify zero drawers", { prompt: noPrompt, drawers: drawers.map((d) => d.name) });
     }
@@ -7396,7 +7400,7 @@ console.log("STRANGER PLAN OK", {
   // Protect: bare desk still defaults drawer banks; typed drawer counts held.
   {
     const bare = generateFromPrompt("desk 60 wide 30 deep 29 tall");
-    const bareDrawers = (bare.panels || []).filter((p) => p.type === "drawer");
+    const bareDrawers = drawerBoxes(bare.panels || []);
     if (bareDrawers.length < 2) {
       failHonesty("bare desk must still densify drawer banks", bareDrawers.length);
     }
@@ -7407,13 +7411,13 @@ console.log("STRANGER PLAN OK", {
   }
   {
     const two = generateFromPrompt("desk 60 wide 30 deep 29 tall with two drawers");
-    const n = (two.panels || []).filter((p) => p.type === "drawer").length;
+    const n = drawerBoxes(two.panels || []).length;
     if (n !== 2) failHonesty("typed two drawers desk", n);
     console.log("PASS typed two drawers desk", n);
   }
   {
     const one = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-    const n = (one.panels || []).filter((p) => p.type === "drawer").length;
+    const n = drawerBoxes(one.panels || []).length;
     if (n !== 1) failHonesty("nightstand one drawer protect", n);
     if (operateFacesLabel(false, operateFaceKinds(one.panels || [])) !== "Open drawer") {
       failHonesty("nightstand Open drawer protect", operateFacesLabel(false, operateFaceKinds(one.panels || [])));
@@ -7549,7 +7553,7 @@ console.log("STRANGER PLAN OK", {
     const vk = operateFaceKinds(vanity.panels || []);
     if (vk.doors < 2) failHonesty("vanity doors protect after media open-front", vk);
     const noDr = generateFromPrompt("desk 60 wide 30 deep 29 tall with no drawers");
-    if ((noDr.panels || []).filter((p) => p.type === "drawer").length !== 0) {
+    if (drawerBoxes(noDr.panels || []).length !== 0) {
       failHonesty("no-drawers protect after media open-front", noDr.panels?.map((p) => p.name));
     }
     const multi = generateFromPrompt("hope chest with two hinged lids");
@@ -7576,7 +7580,7 @@ console.log("STRANGER PLAN OK", {
       failHonesty("round Dia×H protect after media open-front", round.overall);
     }
     const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-    if ((night.panels || []).filter((p) => p.type === "drawer").length !== 1) {
+    if (drawerBoxes(night.panels || []).length !== 1) {
       failHonesty("nightstand one drawer protect after media open-front", night.panels?.map((p) => p.name));
     }
     console.log("PASS media-open-front protect vanity/no-drawers/multi/lift/ledge/coat/round/nightstand");
@@ -7616,7 +7620,7 @@ console.log("STRANGER PLAN OK", {
     const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
     if (operateFaceKinds(vanity.panels || []).doors < 2) failHonesty("vanity doors protect after paper Dia×H");
     const noDr = generateFromPrompt("desk 60 wide 30 deep 29 tall with no drawers");
-    if ((noDr.panels || []).filter((x) => x.type === "drawer").length !== 0) failHonesty("no-drawers protect after paper Dia×H");
+    if (drawerBoxes(noDr.panels || []).length !== 0) failHonesty("no-drawers protect after paper Dia×H");
     const media = generateFromPrompt("media console 60 wide 18 deep 24 tall with two doors");
     if (operateFaceKinds(media.panels || []).doors < 2) failHonesty("media doors protect after paper Dia×H");
     if ((media.notes || []).some((n) => /Open front|No leftover doors/i.test(n))) {
@@ -7629,7 +7633,7 @@ console.log("STRANGER PLAN OK", {
     const ledge = generateFromPrompt("picture ledge 36 wide");
     if (!/36"\s*wide/i.test(ledge.name) || /30"|×\s*16/.test(ledge.name)) failHonesty("ledge protect after paper Dia×H", ledge.name);
     const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-    if ((night.panels || []).filter((x) => x.type === "drawer").length !== 1) failHonesty("nightstand one protect after paper Dia×H");
+    if (drawerBoxes(night.panels || []).length !== 1) failHonesty("nightstand one protect after paper Dia×H");
     console.log("PASS paper Dia×H bare-H height + protect vanity/no-drawers/media/multi/lift/ledge/night");
   }
 }
