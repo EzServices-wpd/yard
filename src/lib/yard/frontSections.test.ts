@@ -78,6 +78,17 @@ describe("F17 front sections (I31)", () => {
     for (const q of ["jewelry box with drawers", "jewelry box 12 wide 8 tall 8 deep with 3 drawers"]) assert.ok(drawerBoxes(generateFromPrompt(q).panels).length >= 1, q);
     assert.equal(drawerBoxes(generateFromPrompt("jewelry box 12 wide 8 tall 8 deep with 3 drawers").panels).length, 3);
   });
+  it("every builder path keeps doors and shelves off the drawers (generic carcase, desk banks, wardrobe rod)", () => {
+    const nouns = ["hall cabinet", "file cabinet", "filing cabinet", "storage cabinet", "desk", "vanity", "wardrobe", "credenza", "media console", "hutch"];
+    const tails = ["", " with 2 doors and 2 drawers", " with drawers", " 24 wide 34 tall 18 deep with 1 door and 2 drawers", " 30x36x12 with 2 doors and 2 drawers", " 48 wide with 2 doors and 4 drawers"];
+    for (const a of nouns) for (const t of tails) {
+      const q = a + t;
+      const p = generateFromPrompt(q);
+      const bad = i31(p, q, buildPlan(p)).filter((v) => /lies over|runs through/.test(v.msg));
+      assert.deepEqual(bad.map((v) => v.msg), [], q);
+      assert.ok(p.panels.every((x) => [x.position.x, x.position.y, x.position.z].every(Number.isFinite)), `${q}: every part placed`);
+    }
+  });
   it("linen has no drawers", () => {
     assert.equal(drawerBoxes(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep").panels).length, 0);
   });
