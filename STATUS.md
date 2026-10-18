@@ -13,6 +13,10 @@ Spec: /workspace/see-inside-walk/PLAN.md. Push once, then PR -> release/2026-10-
 - [x] guards at 8781905: all STEP_OK (tsc … build; see-inside-layout.test 41 ok), /tmp/si/guards.log
 - [x] e2e frameFresh wait (f630031): a late card refit raced the reduced-motion comparison (0.9–3 px, first build only)
 - [x] (c) camera (in 50a09c2: fitPoints over posed corners, 32° look-down, overlay refit glide, phone DPR) — committed with (b)
-- [ ] guards, Lighthouse, after-run, screenshots
+- [x] after-run (all 8 builds × desk/phone + reduced motion): 16 runs, every piece passes; expected-stepper only desk phone toekicks (2) and pocket-vanity toekicks (2). One rm one-off on the first build (0.90 px), e2e now re-measures and reports it.
+- [x] Lighthouse mobile (release 8131 vs this 8133, box under load): home median 88/88, Ideas 92.5/90 over 6 (identical Ideas JS, noise), workspace 29/29 (+8.3 KB gz). CLS 0.00015 on both (pre-existing).
+- [x] guards green; tsc, linen exact, weekend canaries 6/6, see-inside-layout 41/41 at HEAD
+- [x] servers/Chrome killed. Not pushed: waits for #39 and #83 in release/2026-10-21 (merge-tree with today's release: clean).
 
 ## Log
+- Artifacts: /workspace/see-inside-research/{before,after}/ (screenshots, logs, json), lighthouse.log, guards.log
