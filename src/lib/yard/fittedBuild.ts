@@ -10,6 +10,7 @@ import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
 import { asksDoors, doorsKept, drawerSection } from "./frontSections";
+import { slideForDepth } from "./stockLook";
 import type { FittedProgram, FittedSpec, FittedUnit, Panel, PocketWalls, YardProject } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
 import { buildTable } from "./tableFitted";
@@ -2134,14 +2135,35 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const boxH = Math.max(24, H - counterT);
     const innerW = W - P * 2;
     const midY = kickH + (boxH - kickH) / 2;
+    const islandLower = prompt.toLowerCase();
+    // Front sections: an island has a drawer row under the counter and doors below it on its front face, unless the
+    // ask takes them away (or asks for open shelving). Typed counts win; the doors and drawers close their own openings.
+    const openIsland = /\bopen\b/.test(islandLower) && !asksDoors(islandLower);
+    const nDrawers = isNoDrawersPrompt(islandLower) || openIsland ? 0 : spokenDrawerCount(islandLower) ?? Math.ceil(W / 36 - 1e-6);
+    const nDoors = isNoDoorsPrompt(islandLower) || openIsland || !doorsKept(islandLower, true) ? 0 : typedDoorCount(islandLower) ?? (W > 28 ? 2 : 1);
+    const closed = nDrawers > 0 || nDoors > 0;
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, boxH, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, boxH, D));
     panels.push(panel("bottom", "Bottom shelf", x0 + P, kickH, 0, innerW, P, D));
-    panels.push(panel("shelf", "Shelf", x0 + P, midY, 0, innerW, P, D));
+    if (closed) panels.push(panel("back", "Back", x0 + P, kickH, 0, innerW, boxH - kickH, 0.25));
+    let doorTop = boxH;
+    let shelfY = midY;
+    if (nDrawers > 0) {
+      const sec = drawerSection({ x0: x0 + P, innerW, yBottom: kickH + P, yTop: boxH, depth: D, count: nDrawers, width: W, shares: nDoors > 0 });
+      panels.push(...sec.panels);
+      doorTop = sec.y0 - P / 2;
+      shelfY = sec.belowTop != null ? kickH + P + (sec.belowTop - kickH - P - P) / 2 : -1;
+    }
+    if (shelfY > 0) panels.push(panel("shelf", "Shelf", x0 + P, shelfY, closed ? 0.25 : 0, innerW, P, closed ? D - 0.25 : D));
+    for (const leaf of nDoors > 0 ? doorLeaves({ x: x0, w: W, count: nDoors }) : []) {
+      const rise = doorRise(kickH, doorTop - kickH);
+      panels.push(panel("door", leaf.name, leaf.x, rise.y, D - P, leaf.w, rise.h, P));
+    }
     panels.push(panel("kick", "Front toekick", x0 + P, 0, D - kickH, innerW, kickH, P));
     panels.push(panel("kick", "Back toekick", x0 + P, 0, 0, innerW, kickH, P));
     panels.push(panel("counter", "Counter", x0, boxH, 0, W, counterT, D));
     const stackH = boxH + counterT;
+    const fronts = [nDrawers ? `${nDrawers} drawer${nDrawers === 1 ? "" : "s"} under the counter` : "", nDoors ? `${nDoors === 1 ? "a door" : `${nDoors} doors`} below${nDrawers ? " them" : ""}` : ""].filter(Boolean).join(" and ");
     return {
       id: createId("proj"),
       name: `Kitchen island ${W}" × ${stackH}" × ${D}"`,
@@ -2152,8 +2174,10 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`,
-        "Bottom shelf and one middle shelf are glued in.",
+        closed
+          ? `Kitchen island ${W}" × ${stackH}" × ${D}". ${fronts[0].toUpperCase()}${fronts.slice(1)} on the front face, a ¼" back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`
+          : `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`,
+        shelfY > 0 ? `Bottom shelf and one middle shelf are glued in.` : "The bottom shelf is glued in.",
         "Guidance only — level it on the floor. Confirm the real kitchen.",
       ],
       historic: false,
@@ -2161,7 +2185,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       fitted: {
         ...spec,
         name: `Kitchen island ${W}" × ${stackH}" × ${D}"`,
-        unit: { ...u, height: stackH, depth: D, doors: false, shelfCount: 1, drawersPerBank: undefined, counterH: stackH },
+        unit: { ...u, height: stackH, depth: D, doors: nDoors > 0, shelfCount: shelfY > 0 ? 1 : 0, drawersPerBank: nDrawers || undefined, counterH: stackH },
       },
       assumptions: {
         load: "heavy",
@@ -2513,18 +2537,27 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("shelf", "Shelf", x0 + P, shelfY, 0.1, W - P * 2, P, D - 0.2));
     // Honest box from clear bay opening (between uprights × drawerH × D).
     const nsBox = drawerBoxFromOpening(W - P * 2, drawerH, D);
+    // The box is as deep as the longest standard slide the inside depth takes.
+    const nsBoxD = slideForDepth(D - 0.25);
     pushDrawerWithFront(
       panels,
       "Drawer",
       "Drawer front",
       x0 + P + 0.5,
       drawerY,
-      0.15,
+      D - nsBoxD,
       nsBox.boxW,
       nsBox.boxH,
-      nsBox.boxD,
+      nsBoxD,
       nsBox.frontW,
     );
+    // Front sections: a typed door closes the open bay under the drawer, never the drawer's own opening.
+    const nsLower = prompt.toLowerCase();
+    const nsDoors = asksDoors(nsLower) ? typedDoorCount(nsLower) ?? (W > 28 ? 2 : 1) : 0;
+    for (const leaf of nsDoors ? doorLeaves({ x: x0, w: W, count: nsDoors }) : []) {
+      const rise = doorRise(0, shelfY + P / 2);
+      panels.push(panel("door", leaf.name, leaf.x, rise.y, D - P, leaf.w, rise.h, P));
+    }
     const name = `Nightstand ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
@@ -2536,7 +2569,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. One ${drawerH}" drawer over an open shelf. ¾" plywood, ¼" back. Not a mini dresser.`,
+        `${name}. One ${drawerH}" drawer over ${nsDoors ? `a bay behind ${nsDoors === 1 ? "a door" : `${nsDoors} doors`}` : "an open shelf"}. ¾" plywood, ¼" back. Not a mini dresser.`,
         `The drawer is 1" narrower than the bay so a pair of side-mount slides fit. The shelf is glued — it is the floor of the drawer bay.`,
         "Guidance only — level it on the floor. Confirm the bedside height.",
       ],
@@ -2545,7 +2578,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       fitted: {
         ...spec,
         name,
-        unit: { ...u, height: H, depth: D, doors: false, shelfCount: 1, drawersPerBank: 1 },
+        unit: { ...u, height: H, depth: D, doors: nsDoors > 0, shelfCount: 1, drawersPerBank: 1 },
       },
       assumptions: {
         load: "medium",

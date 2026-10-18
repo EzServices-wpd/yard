@@ -49,6 +49,7 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { drawerSlideInches } from "./stockLook";
+import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
@@ -2605,6 +2606,8 @@ function cutStockGroups(
       for (const part of explodeDrawerBoxCuts(p.size.width, p.size.height, p.size.depth)) {
         enqueue({
           ...p,
+          // The drawer bottom is cut from the stock its cut-list row names (the ¼" sheet), never the box's boards.
+          materialId: drawerPartStock(p.materialId, part),
           id: `${p.id}-${part.type}`,
           name: part.name,
           type: (part.type === "drawer-bottom" ? "bottom" : part.type === "drawer-back" ? "back" : "upright") as Panel["type"],

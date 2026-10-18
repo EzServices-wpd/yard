@@ -28,7 +28,7 @@ import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
 import { drawerSlideInches } from "./stockLook";
-import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, drawerPartStock, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
@@ -212,7 +212,7 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     if (isBoundingDrawerPanel(p.name, p.type)) {
       for (const part of explodeDrawerBoxCuts(w, h, d)) {
-        addCut(p.materialId, part.name, part.type, part.width, part.height, part.depth, materialName);
+        addCut(drawerPartStock(p.materialId, part), part.name, part.type, part.width, part.height, part.depth, materialName);
       }
       continue;
     }
