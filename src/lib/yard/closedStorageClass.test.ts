@@ -63,11 +63,25 @@ describe("the rule keeps the class boundaries", () => {
       assert.equal(p.panels.filter((x) => /^Caster \d+$/.test(x.name)).length, 4, q);
     }
   });
-  it("a door over drawer fronts is not an honest build of the ask, so the rule does not keep it", () => {
+  it("doors and drawers get their own sections, so the engine keeps a doors-and-drawers cabinet", () => {
+    for (const q of [
+      "tool cabinet 24 wide 36 tall 12 deep with 2 doors and 3 drawers",
+      "craft cabinet 30 wide 60 tall 16 deep with 2 doors and 2 drawers",
+      "utility cabinet 30 wide 72 tall 16 deep with 2 drawers 2 doors and 3 shelves",
+    ]) {
+      const p = generateFromPrompt(q);
+      assert.equal(doorOverDrawer(p), false, q);
+      assert.equal(closedCarcaseReadsAsk(q, p, () => ignoredTypedWords(p, q)), true, q);
+      assert.equal(routesToLearner(q, p, ignoredTypedWords(p, q).length > 0), false, q);
+    }
+  });
+  it("a door over drawer fronts is still not an honest build of the ask (the backstop stays)", () => {
     const q = "tool cabinet 24 wide 36 tall 12 deep with 2 doors and 3 drawers";
     const p = generateFromPrompt(q);
-    assert.equal(doorOverDrawer(p), true);
-    assert.equal(closedCarcaseReadsAsk(q, p, () => ignoredTypedWords(p, q)), false);
+    const front = p.panels.find((x) => /drawer front/i.test(x.name))!;
+    const moved = { ...p, panels: p.panels.map((x) => (x.type === "door" ? { ...x, position: { ...x.position, y: front.position.y } } : x)) };
+    assert.equal(doorOverDrawer(moved), true);
+    assert.equal(closedCarcaseReadsAsk(q, moved, () => ignoredTypedWords(moved, q)), false);
   });
   it("a missed typed count is not kept", () => {
     const q = "cleaning cabinet 24 wide 72 tall 16 deep with 4 shelves and 1 door";

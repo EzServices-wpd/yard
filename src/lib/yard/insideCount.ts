@@ -74,7 +74,8 @@ function retileShelves(panels: Panel[], count: number, overallH: number): Panel[
 
 function retileNamed(panels: Panel[], type: Panel["type"], count: number, label: string): Panel[] {
   const have = panels.filter((p) => p.type === type);
-  if (!have.length) return panels;
+  // Hollow drawers are rebuilt by their builder, never retiled part by part.
+  if (!have.length || have.some((p) => p.drawerId)) return panels;
   const n = Math.max(0, Math.round(count));
   const proto = have[0];
   const ys = have.map((p) => p.position.y).sort((a, b) => a - b);

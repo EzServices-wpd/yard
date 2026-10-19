@@ -232,4 +232,28 @@ export const SWEEPS = {
       "bookshelf 48x12x60", "wall shelf", "bookcase 30 wide", "linen closet 31.5 wide 78 tall 16 deep", "nightstand",
     ],
   },
+  f17: {
+    title: "front sections: doors, drawers and shelves never share one opening; asked drawers always build",
+    inv: "I31",
+    file: "f17-front-sections.md",
+    prompts: [
+      "filing cabinet 2 drawers", "filing cabinet 4 drawers 18 wide 52 tall 24 deep", "tool cabinet 24 wide 36 tall 12 deep with 2 doors and 3 drawers", "craft cabinet 30 wide 60 tall 16 deep with 2 doors and 2 drawers",
+      "hall cabinet 36 wide 34 tall 14 deep with 2 doors and 2 drawers", "file cabinet 20 wide 30 tall 24 deep with 1 door and 1 drawer", "walnut dresser 6 drawers 60 wide", "dresser 36 wide 34 tall 18 deep with 4 drawers",
+      "dresser 48 wide 40 tall 20 deep with 3 drawers and 2 doors", "nightstand 18 wide 24 tall 16 deep with 2 drawers", "nightstand with a drawer and a door", "kitchen island",
+      "kitchen island 60x36x36", "kitchen island 48 wide 36 tall 24 deep with 2 drawers and 2 doors", "jewelry box with drawers", "jewelry box 12 wide 8 tall 8 deep with 3 drawers",
+      "sideboard 60 wide 34 tall 18 deep with 2 doors and 3 drawers", "utility cabinet 30 wide 72 tall 16 deep with 2 drawers 2 doors and 3 shelves", "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors", "chest of drawers 30 wide 44 tall 18 deep with 5 drawers",
+    ],
+  },
+  f17h: {
+    title: "every drawer is a hollow 5-part box (front, two sides, back, 1/4\" ply bottom) with an open, visible interior",
+    inv: "I32",
+    file: "f17h-hollow-drawers.md",
+    prompts: [
+      "filing cabinet 2 drawers", "filing cabinet 4 drawers 18 wide 52 tall 24 deep", "tool cabinet 24 wide 36 tall 12 deep with 2 doors and 3 drawers", "craft cabinet 30 wide 60 tall 16 deep with 2 doors and 2 drawers",
+      "hall cabinet 36 wide 34 tall 14 deep with 2 doors and 2 drawers", "file cabinet 20 wide 30 tall 24 deep with 1 door and 1 drawer", "walnut dresser 6 drawers 60 wide", "dresser 36 wide 34 tall 18 deep with 4 drawers",
+      "dresser 48 wide 40 tall 20 deep with 3 drawers and 2 doors", "nightstand 18 wide 24 tall 16 deep with 2 drawers", "nightstand with a drawer and a door", "kitchen island",
+      "kitchen island 60x36x36", "kitchen island 48 wide 36 tall 24 deep with 2 drawers and 2 doors", "jewelry box with drawers", "jewelry box 12 wide 8 tall 8 deep with 3 drawers",
+      "sideboard 60 wide 34 tall 18 deep with 2 doors and 3 drawers", "utility cabinet 30 wide 72 tall 16 deep with 2 drawers 2 doors and 3 shelves", "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors", "chest of drawers 30 wide 44 tall 18 deep with 5 drawers",
+    ],
+  },
 } as const;

@@ -2,6 +2,7 @@
  * One Measure panel for every build. Tabs appear from the class of the model
  * (a hole, a fitted opening, shelves, drawers) — never from a noun list.
  */
+import { drawerBoxes } from "./hollowDrawers";
 import { inchFrac, parseInch } from "./inchText";
 import type { JoinMethod, YardProject } from "./types";
 
@@ -65,7 +66,7 @@ export function factsFromProject(project: YardProject): MeasureFacts {
   const fitted = project.fitted ?? project.recastFrom?.fitted;
   const unit = fitted?.unit;
   const shelves = project.panels.filter((p) => p.type === "shelf").length || unit?.shelfCount || 0;
-  const drawers = project.panels.filter((p) => p.type === "drawer").length || (unit?.drawersPerBank ? unit.drawersPerBank * 2 : 0);
+  const drawers = drawerBoxes(project.panels).length || (unit?.drawersPerBank ? unit.drawersPerBank * 2 : 0);
   const doors = project.panels.some((p) => p.type === "door") || Boolean(unit?.doors);
   return {
     kind: project.kind,
