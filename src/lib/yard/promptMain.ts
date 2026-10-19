@@ -1,6 +1,7 @@
 import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
 import { resolvePurpose } from "./purposeForms";
+import { canonicalMeasures } from "./measureText";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
@@ -411,7 +412,8 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   const said = args[0] ?? "";
   // C2: size phrases are parsed and stripped before any noun match, then said back as typed axes.
   // C1: a purpose ("something to hang my keys") resolves to the form built for it before any noun match.
-  const phrased = sizePhrases(boundPrompt(said).prompt).prompt;
+  // I35: every typed size is read one way first ("24 1/2", "24½", "2' 1/2\"", "2 ft 6 in" → decimal inches).
+  const phrased = sizePhrases(boundPrompt(canonicalMeasures(said)).prompt).prompt;
   args[0] = normalizeUserPrompt(resolvePurpose(phrased)?.prompt ?? phrased);
   const prompt = args[0];
   // F47: a unit item is built at its real size; the furniture passes below (lumber members, 1/16" snapping) never touch it.
