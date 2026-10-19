@@ -15,7 +15,7 @@ import type { YardProject } from "@/lib/yard/types";
 import { BENCH_FOV, type BenchView, type Rect } from "@/lib/yard/benchFrame";
 import { CLOSE_MS, EXPLODE_MS, EXPLODE_VIEW, REDUCED_FADE_MS, poseAt } from "@/components/workspace/explode-layout";
 import { explodeClock, startTween, stepTween, type ExplodeSolved } from "@/components/workspace/explode-state";
-import { solveSteps } from "@/components/workspace/explode-solver";
+import { SOLVE_FINISH_MS, driveSolve, plainExplode, solveSteps } from "@/components/workspace/explode-solver";
 import { revealState } from "@/components/workspace/reveal-clock";
 
 type Groups = { outer: THREE.Group | null; inner: THREE.Group | null };
@@ -87,7 +87,7 @@ export function explodeView(): BenchView {
   return st.orbited && st.userView ? st.userView : EXPLODE_VIEW;
 }
 
-type Job = { key: string; it: Generator<number, ExplodeSolved, void>; done: ExplodeSolved | null };
+type Job = { key: string; it: Generator<number, ExplodeSolved, void>; steps: number; done: ExplodeSolved | null };
 const cache = new Map<string, ExplodeSolved>();
 
 export function ExplodeDriver({ project, explode }: { project: YardProject; explode: boolean }) {
@@ -106,15 +106,23 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
     const view = explodeView();
     job.current = {
       key,
+      steps: 0,
       done: cache.get(key) ?? null,
       it: solveSteps({ gl, panels: project.panels, key, viewport: { w: size.width, h: size.height }, overlays: overlayRects(gl.domElement), view, fov: BENCH_FOV }),
     };
     return job.current;
   };
+  // A solver error or a slow solve never hangs the tab: it falls back to the plain explode and logs (row 105).
+  const fallback = () => plainExplode(project.panels, key);
+  const onError = (e: unknown) => console.warn("[yard] See inside: explode solver fell back to the plain explode", e);
+  const advance = (j: Job, budget: number, deadlineMs: number) => {
+    const r = driveSolve(j, fallback, { budget, deadlineMs, onError });
+    if (r) cache.set(j.key, r);
+    return r;
+  };
   const finish = (): ExplodeSolved => {
     const j = start();
-    while (!j.done) { const r = j.it.next(); if (r.done) { j.done = r.value; cache.set(j.key, r.value); } }
-    return j.done;
+    return advance(j, Infinity, SOLVE_FINISH_MS) ?? fallback();
   };
 
   // On idle, after the build has settled (its reveal done): one solver round per idle slice.
@@ -129,9 +137,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       if (cancelled) return;
       if (revealState().active || document.hidden) { h = window.setTimeout(tick, 400); return; }
       const j = start();
-      if (j.done) return;
-      const r = j.it.next();
-      if (r.done) { j.done = r.value; cache.set(j.key, r.value); return; }
+      if (j.done || advance(j, 1, SOLVE_FINISH_MS)) return;
       h = ric(tick);
     };
     h = window.setTimeout(tick, 1200);

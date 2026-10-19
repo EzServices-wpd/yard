@@ -112,7 +112,9 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
       const { cam } = explodeCamera(posedPoints(L, poses), inp.view, inp.viewport, inp.overlays, inp.fov);
       const ids = renderIds(inp.gl, scene, cam, meshes, vw, vh);
       const vis = new Array<number>(meshes.length + 1).fill(0);
-      for (let k = 0; k < ids.length; k++) if (ids[k]) vis[ids[k]]++;
+      // Only ids that name a part count: OTHER_ID (a drawer bottom's outer faces) and a cleared pixel are not parts.
+      const isPart = (o: number) => partIdAt(meshes, o) !== undefined;
+      for (let k = 0; k < ids.length; k++) if (isPart(ids[k])) vis[ids[k]]++;
       // (a) visible / footprint below N, or (c) one other part covering more than O of it. A part can only be
       // over O covered when under 1 − O visible, so only those get a solo pass for (c).
       type Fail = { i: number; cnt: Map<number, number> };
@@ -131,24 +133,25 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
         const solo = renderIds(inp.gl, scene, cam, [meshes[id - 1]], vw, vh);
         const cnt = new Map<number, number>();
         let foot = 0;
-        for (let k = 0; k < solo.length; k++) if (solo[k] === id) { foot++; if (ids[k] && ids[k] !== id) cnt.set(ids[k], (cnt.get(ids[k]) ?? 0) + 1); }
+        for (let k = 0; k < solo.length; k++) if (solo[k] === id) { foot++; if (isPart(ids[k]) && ids[k] !== id) cnt.set(ids[k], (cnt.get(ids[k]) ?? 0) + 1); }
         let top = 0;
         for (const n of cnt.values()) top = Math.max(top, n);
         if (inner) { if (foot > 0 && vis[id] / foot < SOLVE_N) fails.push({ i: id, cnt }); continue; }
         if (frac < SOLVE_N || (foot > 0 && top / foot > SOLVE_O)) fails.push({ i: id, cnt });
       }
-      failing = fails.map((f) => meshes[f.i - 1].part.id);
+      failing = fails.map((f) => partIdAt(meshes, f.i)).filter((x): x is string => x !== undefined);
       if (!fails.length) break;
       const pushed = new Set<string>();
       let spread = false;
       for (const { i, cnt } of fails) {
-        const P = meshes[i - 1].part;
+        const P = meshes[i - 1]?.part;
+        if (!P) continue;
         // The main occluder from ANOTHER unit (a drawer box always hides behind its own front; that part of
         // it is by design). Only a part hidden by nothing but its own unit is handed to stage B.
         const own = L.owner.get(P.id);
         let occ = 0, best = 0;
-        for (const [o, n] of cnt) if (n > best && L.owner.get(meshes[o - 1].part.id) !== own) { best = n; occ = o; }
-        let m = occ ? L.owner.get(meshes[occ - 1].part.id) : undefined;
+        for (const [o, n] of cnt) { const q = partIdAt(meshes, o); if (q !== undefined && n > best && L.owner.get(q) !== own) { best = n; occ = o; } }
+        let m = occ ? L.owner.get(partIdAt(meshes, occ)!) : undefined;
         if (!m && cnt.size && P.drawerPart === "bottom" && own?.front) {
           // A drawer's inside hidden by its own front: stand every front further off its box (one value).
           if (!pushed.has("front") && own.front.out < 1.2 * (P.d + 1)) { own.front.out += step; pushed.add("front"); }
@@ -186,7 +189,64 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
   return { key: inp.key, poses, roles, box, points, rounds, failing, groups };
 }
 
+/** The part id an ID-buffer value names, or undefined when it names none (0, OTHER_ID, out of range). */
+export function partIdAt(meshes: readonly { part: { id: string } }[], o: number): string | undefined {
+  return Number.isInteger(o) && o >= 1 && o <= meshes.length ? meshes[o - 1].part.id : undefined;
+}
+
+/**
+ * The plain explode: the layout's own poses with no solver rounds (no rendering). The fallback whenever the solver
+ * throws or runs out of time, so See inside always opens.
+ */
+export function plainExplode(panels: readonly Panel[], key: string, failing: string[] = []): ExplodeSolved {
+  const L: Layout = layoutFor(panels);
+  const poses = posesFor(L);
+  const byId = new Map(L.parts.map((p) => [p.id, p]));
+  const roles = new Map(L.parts.map((p) => [p.id, p.role === "hardware" && p.host ? byId.get(p.host)!.role : p.role]));
+  return {
+    key, poses, roles, box: unionBox(boxOf(L.parts), explodedBox(L, poses)), points: posedPoints(L, poses),
+    rounds: 0, failing, groups: [...new Set(L.parts.map((p) => p.group))],
+  };
+}
+
+/** Hard caps on one solve: never more steps than the solver's rounds allow, never longer than this on one call. */
+export const SOLVE_MAX_STEPS = SOLVE_ROUNDS + 2;
+export const SOLVE_FINISH_MS = 1500;
+
+/**
+ * Advances a solve job: `budget` steps (Infinity = to the end) within `deadlineMs`. Never loops forever:
+ * - a thrown step (a solver bug) ends the job with the fallback, and is reported through onError;
+ * - a job past SOLVE_MAX_STEPS or the deadline ends with the fallback too.
+ * Returns the result once the job is over, else null (more idle slices to go).
+ */
+export function driveSolve(
+  job: { it: Iterator<number, ExplodeSolved, void>; steps: number; done: ExplodeSolved | null },
+  fallback: () => ExplodeSolved,
+  opts: { budget?: number; deadlineMs?: number; now?: () => number; onError?: (e: unknown) => void } = {},
+): ExplodeSolved | null {
+  if (job.done) return job.done;
+  const now = opts.now ?? (() => (typeof performance !== "undefined" ? performance.now() : Date.now()));
+  const end = now() + (opts.deadlineMs ?? Infinity);
+  const budget = opts.budget ?? Infinity;
+  for (let k = 0; k < budget; k++) {
+    if (job.steps >= SOLVE_MAX_STEPS || now() > end) {
+      opts.onError?.(new Error(job.steps >= SOLVE_MAX_STEPS ? "explode solve: step cap" : "explode solve: time cap"));
+      return (job.done = fallback());
+    }
+    let r: IteratorResult<number, ExplodeSolved>;
+    try {
+      r = job.it.next();
+    } catch (e) {
+      opts.onError?.(e);
+      return (job.done = fallback());
+    }
+    job.steps++;
+    if (r.done) return (job.done = r.value ?? fallback());
+  }
+  return null;
+}
+
 export function solveNow(inp: SolveInput): ExplodeSolved {
-  const it = solveSteps(inp);
-  for (;;) { const r = it.next(); if (r.done) return r.value; }
+  const job = { it: solveSteps(inp), steps: 0, done: null as ExplodeSolved | null };
+  return driveSolve(job, () => plainExplode(inp.panels, inp.key))!;
 }
