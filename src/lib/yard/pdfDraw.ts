@@ -853,7 +853,7 @@ export function partShape(project: YardProject, line: CutLine, letters: Map<stri
     ring = outlineRingXZ(panel).map((q) => [q.x - panel.position.x, q.z - panel.position.z]);
   } else if (panel.polygon) {
     // The outline is the face only when it is extruded by the board's own thickness.
-    const thick = panel.polygon.plane === "xz" ? panel.size.height : panel.size.depth;
+    const thick = panel.polygon.plane === "xz" ? panel.size.height : panel.polygon.plane === "zy" ? panel.size.width : panel.size.depth;
     const faceIsPoly = Math.abs(thick - line.thicknessIn) < 0.07;
     if (faceIsPoly) ring = panel.polygon.pts.map(([a, b]) => [a, b]);
     else return { ...rect, angled: !!panel.cutNote };
