@@ -132,3 +132,15 @@ test("/ideas hero model: every holed plate carries its holes (the 3D hero cuts t
   }
   assert.ok(checked >= 1);
 });
+
+test("round-hole segments class: every drawn hole bows in <= 1/64\" and is never fewer than 24 sides (birdhouse entrance reads round)", async () => {
+  const { holeSegments, HOLE_SAG, HOLE_MIN_SIDES, HOLE_MAX_SIDES } = await import("../src/lib/yard/iso.ts");
+  for (const r of [0.125, 0.25, 0.5, 0.5625, 0.75, 1, 2, 4, 8.07125, 12, 40]) {
+    const n = holeSegments(r);
+    assert.ok(n >= HOLE_MIN_SIDES && n <= HOLE_MAX_SIDES, `r ${r}: ${n}`);
+    const sag = r * (1 - Math.cos(Math.PI / n));
+    if (n < HOLE_MAX_SIDES) assert.ok(sag <= HOLE_SAG + 1e-9, `r ${r}: ${n} sides bow ${sag}`);
+  }
+  assert.ok(holeSegments(0.75) >= 24, "1 1/2 in birdhouse entrance: was 8 sides");
+  assert.ok(holeSegments(8.07125) > holeSegments(0.75), "a big open centre gets more sides");
+});

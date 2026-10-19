@@ -201,3 +201,15 @@ test("one formatter: card inch() and the header both round to the nearest 1/16",
   assert.equal(inch(24.58), "24 9/16");
   assert.equal(inch(31.14), "31 1/8");
 });
+
+test("headerSize class: an assumed height is the unit's own, never a wall-hung mirror above it (vanity seed, Critic #93)", async () => {
+  const { headerSize, isWallAccessoryAbove } = await import("../src/lib/yard/headerSize.ts");
+  for (const q of ["30 inch vanity", "bathroom vanity", "vanity with mirror", "bathroom vanity 30 wide"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(p.panels.some((x) => isWallAccessoryAbove(x, p.overall.height)), `${q}: seed has a mirror over the top`);
+    assert.equal(headerSize(p).height, p.overall.height, `${q}: header height is the vanity's ${p.overall.height}, not the mirror's top`);
+  }
+  // The rule never trims the build itself: a mirror frame or a chair's back still counts.
+  assert.equal(headerSize(generateFromPrompt("mirror frame 24 wide")).height, generateFromPrompt("mirror frame 24 wide").overall.height);
+  assert.ok(headerSize(generateFromPrompt("rocking chair")).height > 30, "a chair's back is the chair");
+});

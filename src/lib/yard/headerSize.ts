@@ -20,9 +20,22 @@ function unitBox(project: YardProject) {
  * Per axis: typed → the typed size; assumed → the model's drawn extent (grown or shrunk). Height is from the floor, as the
  * engine sizes it (a floating desk's 30″ is its top's height). Depth keeps the proud-front rule.
  */
+/**
+ * Wall-hung accessories over the unit (a vanity's mirror hung above its top) are not the unit's size: an assumed
+ * axis reads the unit's own extent without them. Class rule, seeded by the vanity (Critic #93: a "30 inch vanity"
+ * headed 44" tall because its mirror tops out at 44"; the vanity is 34"). A mirror set in a door, or one that is the
+ * build itself (a mirror frame), stays.
+ */
+export function isWallAccessoryAbove(p: YardProject["panels"][number], unitHeight: number): boolean {
+  const mirror = p.type === "mirror" || /\bmirror\b/i.test(p.name);
+  return mirror && unitHeight > 0 && p.position.y >= unitHeight - 0.01;
+}
+
 function shownSize(project: YardProject, assumed: Partial<Record<Axis, boolean>>) {
   const o = unitBox(project);
-  const box = !project.instances.length && project.panels.length ? drawnExtent(project) : null;
+  const body = project.panels.filter((p) => !isWallAccessoryAbove(p, o.height));
+  const unit = body.length && body.length < project.panels.length ? { ...project, panels: body } : project;
+  const box = !project.instances.length && project.panels.length ? drawnExtent(unit) : null;
   const ext: Record<Axis, number> | null = box ? { width: box.max.x - box.min.x, height: box.max.y - Math.min(0, box.min.y), depth: box.max.z - box.min.z } : null;
   const at = (a: Axis) => (assumed[a] && ext && ext[a] > 0 ? ext[a] : o[a]);
   // C11: a whole bought item's depth is its real piece, so it reads the model's finished depth too.

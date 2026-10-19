@@ -184,7 +184,7 @@ export function PanelMesh({
         poly.pts.forEach(([px, pz], i) => (i ? shape.lineTo(px - w / 2, pz - d / 2) : shape.moveTo(px - w / 2, pz - d / 2)));
         shape.closePath();
         holes(w, d);
-        const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, curveSegments: 24 });
         geo.rotateX(Math.PI / 2);
         geo.translate(0, h / 2, 0);
         geo.computeVertexNormals();

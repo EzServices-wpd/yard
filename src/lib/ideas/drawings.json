@@ -50,17 +50,17 @@
   "model": "/ideas/models/ldesk.d7a8c642.json"
  },
  "pocket": {
-  "v": "b25426b2",
+  "v": "ce2e70f5",
   "w": 480,
   "h": 360,
-  "parts": 32,
-  "bytes": 9545,
+  "parts": 50,
+  "bytes": 13873,
   "dims": {
    "width": 38,
    "height": 102,
    "depth": 17.75
   },
-  "model": "/ideas/models/pocket.1ba04a0c.json"
+  "model": "/ideas/models/pocket.31da6987.json"
  },
  "linen": {
   "v": "42f80edf",
@@ -102,30 +102,30 @@
   "model": "/ideas/models/window.0f073d5e.json"
  },
  "desk": {
-  "v": "9f8cece9",
+  "v": "67d2ef32",
   "w": 480,
   "h": 360,
-  "parts": 22,
-  "bytes": 7124,
+  "parts": 40,
+  "bytes": 11297,
   "dims": {
    "width": 60,
    "height": 29,
    "depth": 30.75
   },
-  "model": "/ideas/models/desk.4757f2d5.json"
+  "model": "/ideas/models/desk.264dc27f.json"
  },
  "island": {
-  "v": "6891a8e0",
+  "v": "ea18c3b3",
   "w": 480,
   "h": 360,
-  "parts": 7,
-  "bytes": 3587,
+  "parts": 22,
+  "bytes": 7107,
   "dims": {
    "width": 60,
    "height": 36,
-   "depth": 36
+   "depth": 36.75
   },
-  "model": "/ideas/models/island.2f4faf47.json"
+  "model": "/ideas/models/island.4978e77f.json"
  },
  "radiator": {
   "v": "ea998341",
@@ -468,30 +468,30 @@
   "model": "/ideas/models/pantry.df37f6df.json"
  },
  "dresser": {
-  "v": "8b1f786f",
+  "v": "5eeb297c",
   "w": 480,
   "h": 360,
-  "parts": 11,
-  "bytes": 4498,
+  "parts": 23,
+  "bytes": 7326,
   "dims": {
    "width": 60,
    "height": 36,
    "depth": 18.75
   },
-  "model": "/ideas/models/dresser.63cd2257.json"
+  "model": "/ideas/models/dresser.228867e9.json"
  },
  "nightstand": {
-  "v": "54603de2",
+  "v": "af5346a2",
   "w": 480,
   "h": 360,
-  "parts": 8,
-  "bytes": 3831,
+  "parts": 11,
+  "bytes": 4499,
   "dims": {
    "width": 18,
    "height": 24,
    "depth": 16.75
   },
-  "model": "/ideas/models/nightstand.8726241e.json"
+  "model": "/ideas/models/nightstand.fd5a22dd.json"
  },
  "overtoilet": {
   "v": "5e614dca",
@@ -507,11 +507,11 @@
   "model": "/ideas/models/overtoilet.65f32fc6.json"
  },
  "crate": {
-  "v": "306469d9",
+  "v": "054ff509",
   "w": 480,
   "h": 360,
   "parts": 19,
-  "bytes": 20397,
+  "bytes": 38353,
   "dims": {
    "width": 36,
    "height": 25,
@@ -642,11 +642,11 @@
   "model": "/ideas/models/workbench.ae058f79.json"
  },
  "birdhouse": {
-  "v": "dff699af",
+  "v": "40cccc40",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 4547,
+  "bytes": 6167,
   "dims": {
    "width": 6.875,
    "height": 11.8125,
@@ -681,11 +681,11 @@
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.87ed9387.json"
  },
  "recipe-water-wheel": {
-  "v": "259bb4ac",
+  "v": "fba1e161",
   "w": 480,
   "h": 360,
   "parts": 24,
-  "bytes": 25102,
+  "bytes": 35541,
   "dims": {
    "width": 18,
    "height": 30.25,
@@ -694,11 +694,11 @@
   "model": "/ideas/models/recipe-water-wheel.353ff83b.json"
  },
  "recipe-abacus": {
-  "v": "db000855",
+  "v": "7bf02e6b",
   "w": 480,
   "h": 360,
   "parts": 58,
-  "bytes": 95219,
+  "bytes": 126243,
   "dims": {
    "width": 16,
    "height": 10.625,
