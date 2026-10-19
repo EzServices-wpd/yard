@@ -7,6 +7,7 @@ import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
+import { benchDrawerPull, benchPullDepth } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
@@ -65,9 +66,10 @@ export function PanelMesh({
 
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
-  // A hollow drawer's parts (its front too) share one id and slide out together, by the drawer's own depth.
-  const drawerDepth = useYard((s) => (panel.drawerId ? Math.max(0, ...s.project.panels.filter((q) => q.drawerId === panel.drawerId && q.drawerPart === "side").map((q) => q.size.depth)) : 0));
-  const slidesOut = isDrawer || panel.drawerPart === "front";
+  // Operate: a drawer slides as one group (shared drawer id, or its front plus the parts under it); a lone box keeps
+  // today's own-depth pull (drawerGroups).
+  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel));
+  const pullDepth = useYard((s) => (isDrawer ? benchPullDepth(s.project.panels, panel) : 0));
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
@@ -81,7 +83,7 @@ export function PanelMesh({
   // when you ask ("Open doors") or in the step that hangs them, so the hinge side reads.
   const faceStep = activeStep != null && /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle);
   const allowSwing = facesOpen ? activeStep == null || faceStep : faceStep && inStep;
-  const open = allowSwing && !panel.yaw && (isDoor || !!hostDoor || slidesOut || isLid || !!leaf) && (!hasStep || inStep);
+  const open = allowSwing && !panel.yaw && (isDoor || !!hostDoor || drawerPull != null || isLid || !!leaf) && (!hasStep || inStep);
   // One hinge side for the model, the steps and the pull (operateFaces.doorHingesLeft).
   const isLeft = isDoor || hostDoor ? doorHingesLeft(hostDoor ?? panel) :
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
@@ -110,9 +112,8 @@ export function PanelMesh({
     groupPos = [hingeX * explode, cy, hingeZ * explode];
     groupRot = [0, swing, 0];
     meshPos = [cx - hingeX, 0, cz - hingeZ];
-  } else if (slidesOut && open) {
-    const pull = Math.max(8, Math.min((drawerDepth || d) * 0.75, 16));
-    groupPos = [cx * explode, cy, (cz + pull) * explode];
+  } else if (drawerPull != null && open) {
+    groupPos = [cx * explode, cy, (cz + drawerPull) * explode];
   } else if (isLid && open) {
     // Piano hinge along the back edge — lid opens up and back (pitch about X).
     const hingeY = panel.position.y;
@@ -309,7 +310,7 @@ export function PanelMesh({
         {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
         )}
-        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={d} />}
+        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
         {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
