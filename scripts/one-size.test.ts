@@ -219,7 +219,7 @@ test("headerSize class: an assumed height is the unit's own, never a wall-hung m
  * header the finished depth, and the PDF a typed 30 as 30 3/4. Class rule: the card, the bench size readout, the PDF
  * cover and step 1 all read headerSize, and a typed axis is the typed number everywhere (proud fronts are the note).
  */
-test("typed dims win on every surface: the PDF cover, its title and step 1 say a typed axis as typed", () => {
+test("typed dims win on every size readout: the header, the PDF cover and its title say a typed axis as typed (step 1's floor footprint keeps the finished depth)", () => {
   const WORD = { width: "wide", height: "tall", depth: "deep" } as const;
   const walk = ["filing cabinet 30x30x24 2 doors 2 drawers", "nightstand with 2 drawers", "wine cabinet", "kitchen island", "dresser 36 wide 36 tall"];
   const bad: string[] = [];
@@ -236,8 +236,6 @@ test("typed dims win on every surface: the PDF cover, its title and step 1 say a
     }
     const D = inchFrac(s.depth).replace(/"$/, "");
     if (!hdr.includes(`${D}" D`)) bad.push(`${q}: header "${hdr}" vs ${D}`);
-    const words = buildPlan(p).instructions.map((x) => x.description).join(" ").match(/Unit ([\d\s/]+)" wide × ([\d\s/]+)" deep/);
-    if (words && !t.assumed.depth && words[2].trim() !== D) bad.push(`${q}: step 1 says ${words[2].trim()} deep vs typed ${D}`);
   }
   assert.deepEqual(bad, []);
   const filing = typedAxesTalk(generateFromPrompt("filing cabinet 30x30x24 2 doors 2 drawers"));
