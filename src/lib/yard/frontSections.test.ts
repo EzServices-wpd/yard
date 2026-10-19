@@ -89,6 +89,19 @@ describe("F17 front sections (I31)", () => {
       assert.ok(p.panels.every((x) => [x.position.x, x.position.y, x.position.z].every(Number.isFinite)), `${q}: every part placed`);
     }
   });
+  it("a hanging section keeps its doors; a tall carcase keeps a drawer bank at its foot, never 2 ft drawers", () => {
+    const wardrobe = generateFromPrompt("wardrobe with drawers");
+    assert.ok(doors(wardrobe) >= 1 && wardrobe.panels.some((x) => /hanging rod/i.test(x.name)), "wardrobe: rod behind its doors");
+    for (const q of ["closet with drawers", "bookcase with drawers", "tall cabinet 72 tall with drawers", "linen closet with 2 drawers", "wardrobe with drawers", ...SWEEP]) {
+      const p = generateFromPrompt(q);
+      const fronts = p.panels.filter((x) => /drawer front/i.test(x.name));
+      assert.ok(fronts.every((f) => f.size.height <= 15.01), `${q}: fronts ${fronts.map((f) => f.size.height).join(",")}`);
+      assert.deepEqual(i31(p, q, buildPlan(p)).map((v) => v.msg), [], q);
+    }
+    const bookcase = generateFromPrompt("bookcase with drawers");
+    const top = Math.max(...bookcase.panels.filter((x) => /drawer front/i.test(x.name)).map((f) => f.position.y + f.size.height));
+    assert.ok(shelves(bookcase) >= 1 && bookcase.panels.filter((x) => x.type === "shelf").every((s) => s.position.y > top), "bookcase: shelves above the drawer bank");
+  });
   it("linen has no drawers", () => {
     assert.equal(drawerBoxes(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep").panels).length, 0);
   });
