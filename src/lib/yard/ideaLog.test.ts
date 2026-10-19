@@ -25,6 +25,7 @@ function fakeRedis() {
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return String(zs(key).get(String(a[1])));
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
         case "ZREMRANGEBYRANK": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); const keep = asc.slice(-200); z.set(key, new Map(keep)); return 0; }
+        case "ZREMRANGEBYSCORE": { const hi = Number(a[1]); let n = 0; for (const [m, sc] of zs(key)) if (sc <= hi) { zs(key).delete(m); n++; } return n; }
         case "ZREVRANGE": { const r = rev(key).slice(Number(a[0]), Number(a[1]) + 1); return a[2] ? r.flatMap(([m, s]) => [m, String(s)]) : r.map(([m]) => m); }
         case "HMGET": return a.map((f) => hs(key).get(String(f)) ?? null);
         case "ZMSCORE": return a.map((m) => { const v = zs(key).get(String(m)); return v === undefined ? null : String(v); });

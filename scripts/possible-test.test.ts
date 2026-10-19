@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { BURST_FIX_CMDS, BURST_NEW_CMDS, BURST_STAMP_CMDS, PTEST_TTL_S, IdeaStore, RECENT_MAX, RUN_BURST, RUN_CMDS, SITE_BURST, TRIM_EVERY, WRITE_CMDS, burstRate, toStamp, type Pipe } from "../src/lib/yard/ideaLog.server";
+import { BURST_FIX_CMDS, BURST_NEW_CMDS, BURST_STAMP_CMDS, PTEST_TTL_S, IdeaStore, RECENT_MAX, RUN_BURST, RUN_CMDS, SITE_BURST, WRITE_CMDS, burstRate, toStamp, type Pipe } from "../src/lib/yard/ideaLog.server";
 import { handleIdeasLog } from "../src/lib/yard/ideaLogHandler";
 import type { LogRecord } from "../src/lib/yard/ideaLog";
 
@@ -28,6 +28,7 @@ function fakeRedis() {
         case "ZINCRBY": zs(key).set(String(a[1]), (zs(key).get(String(a[1])) ?? 0) + Number(a[0])); return String(zs(key).get(String(a[1])));
         case "ZADD": { const gt = a[0] === "GT"; const [s, m] = gt ? a.slice(1) : a; const cur = zs(key).get(String(m)); if (!gt || cur === undefined || Number(s) > cur) zs(key).set(String(m), Number(s)); return 1; }
         case "ZREMRANGEBYRANK": { const asc = [...zs(key)].sort((x, y) => x[1] - y[1]); const stop = Number(a[1]) < 0 ? asc.length + Number(a[1]) : Number(a[1]); const gone = stop < 0 ? [] : asc.slice(Number(a[0]), stop + 1); /* like Redis: a stop before the start removes nothing */ for (const [m] of gone) zs(key).delete(m); return gone.length; }
+        case "ZREMRANGEBYSCORE": { const hi = Number(a[1]); let n = 0; for (const [m, sc] of zs(key)) if (sc <= hi) { zs(key).delete(m); n++; } return n; }
         case "ZREVRANGE": { log.reads.push([key, ...a.map((x) => (typeof x === "number" ? x : String(x)))]); const r = [...zs(key)].sort((x, y) => y[1] - x[1]).slice(Number(a[0]), Number(a[1]) + 1); return r.flatMap(([m, s]) => [m, String(s)]); }
         case "HMGET": return a.map((f) => h.get(key)?.get(String(f)) ?? null); // a read never creates the key
         case "ZMSCORE": return a.map((m) => { const v = zs(key).get(String(m)); return v === undefined ? null : String(v); });
@@ -110,32 +111,31 @@ test("a bad run id is ignored (only 8-32 letters/digits count); it costs no extr
   assert.ok(r.log.perCall.every((n) => n <= WRITE_CMDS), `no run-id command: ${r.log.perCall}`);
 });
 
-test("Upstash commands per write: at most 10 (+1 with a run id); the trim and the TTL are deterministic per instance; in a burst +4 for a new row, +3 for a live row, +5 for a possible-test-only row; the budget bills exactly what is sent", async () => {
+test("Upstash commands per write (#39+#83 merged): at most 10 (+1 with a run id); the time trim goes on every write, the TTL once per minute per instance; in a burst +4 for a new row, +3 for a live row, +5 for a possible-test-only row; the budget bills exactly what is sent", async () => {
   assert.equal(WRITE_CMDS, 10);
   assert.equal(RUN_CMDS, 1);
-  assert.equal(TRIM_EVERY, 8);
   assert.equal(BURST_NEW_CMDS, 4); // + HEXPIRE on the ideas:ptest field
   assert.equal(BURST_FIX_CMDS, 3);
   assert.equal(BURST_STAMP_CMDS, 2);
   const r = fakeRedis();
   const s = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  await s.record(rec(1), new Date(T0), { run: RUN }); // 1st write: trims, sets the bucket TTL
+  await s.record(rec(1), new Date(T0), { run: RUN }); // 1st write: time trim + the bucket TTL
   assert.deepEqual(r.log.perCall, [11]);
-  await s.record(rec(2), new Date(T0 + 1), { run: RUN }); // same minute: no trim, no TTL
-  assert.deepEqual(r.log.perCall, [11, 9]);
-  assert.ok(!r.log.names[1].includes("ZREMRANGEBYRANK") && !r.log.names[1].includes("EXPIRE"));
-  await s.record(rec(3), new Date(T0 + 60_000), { run: RUN }); // a new minute: TTL again, still no trim
-  assert.deepEqual(r.log.perCall, [11, 9, 10]);
-  for (let i = 4; i <= 8; i++) await s.record(rec(i), new Date(T0 + 60_000 + i), { run: RUN });
-  await s.record(rec(9), new Date(T0 + 60_100), { run: RUN }); // the 9th write: trims
-  assert.ok(r.log.names.at(-1)!.includes("ZREMRANGEBYRANK"));
-  assert.equal(r.log.names.filter((n) => n.includes("ZREMRANGEBYRANK")).length, 2, "writes 1 and 9");
+  await s.record(rec(2), new Date(T0 + 1), { run: RUN }); // same minute: time trim, no TTL
+  assert.deepEqual(r.log.perCall, [11, 10]);
+  assert.ok(r.log.names[1].includes("ZREMRANGEBYSCORE") && !r.log.names[1].includes("EXPIRE"));
+  await s.record(rec(3), new Date(T0 + 60_000), { run: RUN }); // a new minute: TTL again
+  assert.deepEqual(r.log.perCall, [11, 10, 11]);
+  for (let i = 4; i <= 9; i++) await s.record(rec(i), new Date(T0 + 60_000 + i), { run: RUN });
+  assert.equal(r.log.names.filter((n) => n.includes("ZREMRANGEBYSCORE")).length, 9, "every write trims by time");
+  assert.equal(r.log.names.filter((n) => n.includes("ZREMRANGEBYRANK")).length, 0, "#83's every-8th rank trim is gone");
   assert.equal(r.log.billed, r.log.cmds, "INCRBY budget counts every command sent");
-  // Net per write with a run id, one write per minute per instance (the worst case): 11 − 7/8 = 10.125;
-  // with 2+ writes a minute on an instance it is ≤ 9.625. Without a run id, one less.
-  const net = (perMinute: number) => 9 + (1 / TRIM_EVERY) + 1 / perMinute;
-  assert.equal(net(1), 10.125);
-  assert.ok(net(2) <= 9.625 && net(8) <= 10);
+  // Net per write with a run id: 10 + 1 per minute per instance → 11 at one write a minute (the worst case),
+  // 10.5 at two. Without a run id, one less. The cheapest write (no TTL, no run id) is 9: the retention sizing's floor.
+  const net = (perMinute: number) => 10 + 1 / perMinute;
+  assert.equal(net(1), 11);
+  assert.ok(net(2) <= 10.5 && net(8) <= 10.125);
+  assert.equal(r.log.perCall[1] - RUN_CMDS, 9);
   // In a burst (all one minute): new row +4, live row +3, possible-test-only row +3+2.
   const b = fakeRedis();
   const sb = new IdeaStore(b.pipe, undefined, () => {}, async () => {});
@@ -148,20 +148,15 @@ test("Upstash commands per write: at most 10 (+1 with a run id); the trim and th
   assert.equal(b.log.billed, b.log.cmds);
 });
 
-test("recent log: trimmed on every 8th write per instance, it never holds more than 200 + 8; the snapshot reads only its newest 200", async () => {
+test("recent log (#39+#83 merged): trimmed by time, not size; the snapshot still reads only its newest RECENT_MAX (200)", async () => {
   const r = fakeRedis();
   const s = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
-  let most = 0;
-  for (let i = 0; i < 1000; i++) {
-    await s.record({ ...rec(i), source: undefined }, new Date(T0 + i * 5_000)); // 5 s apart: no burst, no coalescing
-    most = Math.max(most, r.zs("ideas:recent").size);
-  }
-  assert.ok(most < RECENT_MAX + TRIM_EVERY, `recent log peaked at ${most}`);
-  assert.ok(r.zs("ideas:recent").size >= RECENT_MAX, `the newest 200 are always kept: ${r.zs("ideas:recent").size}`);
+  for (let i = 0; i < 1000; i++) await s.record({ ...rec(i), source: undefined }, new Date(T0 + i * 5_000)); // 5 s apart: no burst, no coalescing
+  assert.equal(r.zs("ideas:recent").size, 1000, "all inside RETAIN_DAYS, so the time trim keeps every one");
+  assert.ok(!r.log.names.some((n) => n.includes("ZREMRANGEBYRANK")));
   const snap = await s.snapshot(new Date(T0 + 5_000_000));
   assert.deepEqual(r.log.reads.find((x) => x[0] === "ideas:recent")!.slice(1, 3), [0, RECENT_MAX - 1], "ZREVRANGE recent 0 199");
   const seen = snap.rows.filter((x) => x.lastSeen);
-  assert.ok(seen.length <= RECENT_MAX, `rows from the recent log: ${seen.length}`);
   assert.equal(seen.length, RECENT_MAX);
   assert.ok(snap.recent.length <= 20);
   // The newest 200 are the ones read: the oldest of them is write 800.

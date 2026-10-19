@@ -9,16 +9,14 @@ import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type I
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 10; // most a write sends: INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
+export const WRITE_CMDS = 10; // most a write sends: INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYSCORE recent (time trim, #39) + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
 /**
- * The two commands a write only sometimes sends (per instance, deterministic, so tests can pin them):
- * - ZREMRANGEBYRANK recent: on the instance's 1st write and every TRIM_EVERY-th after, so the recent log holds at
- *   most 200 + TRIM_EVERY − 1 from one instance (the snapshot still reads only its newest 200);
+ * #39 + #83 merged: ideas:recent is trimmed by time on every write (#39's ZREMRANGEBYSCORE); #83's every-8th
+ * ZREMRANGEBYRANK size trim (TRIM_EVERY) is dropped. The one command a write only sometimes sends:
  * - EXPIRE burst: on the instance's first write into each minute's bucket (TTL 120 s from then, which still covers
  *   the next minute's read of it as the previous bucket).
- * Typical write: WRITE_CMDS − 2 (+ RUN_CMDS).
+ * Typical write: WRITE_CMDS − 1 (+ RUN_CMDS). RECENT_MAX is how many of the newest recent rows the snapshot reads.
  */
-export const TRIM_EVERY = 8;
 export const RECENT_MAX = 200;
 /** One more when the client sent a run id (HINCRBY burst run:<id>). */
 export const RUN_CMDS = 1;
@@ -53,7 +51,37 @@ export const READ_CMDS = 6;
 const COALESCE_MS = 10_000;
 export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
-// ideas:stamp is covered by the coming 90-day retention sweep (/workspace/wt/retention-plan.md), the same as ideas:meta.
+/**
+ * Retention (privacy page: "We delete saved prompts and feedback notes after 90 days"; SWE's design).
+ * - ideas:recent (row key → last-seen ms) is trimmed by time on every write: ZREMRANGEBYSCORE −inf (now − RETAIN).
+ * - A row's last-seen is max(its recent score, its stamp's `at`); a row with neither (logged before stamps, 15–17 Oct)
+ *   counts as last seen at LEGACY_SINCE. The daily cron sweep (/api/cron/retention → sweep()) drops every row whose
+ *   last-seen is past RETAIN from all of ideas:meta, top, status, stamp, recent (and Critic's ideas:review mark and
+ *   #83's ideas:ptest count, a no-op while that key doesn't exist)
+ *   together, in one pipeline, so nothing is left orphaned.
+ * - RETAIN_DAYS is 85, not 90 (Critic 10-17: every copy gone by day 90, with margin). Worst case for a row last seen
+ *   at T: stale at T + 85 d; the cron runs twice a day, each within its hour (Hobby), so the next run starts ≤ 12 h 59 m
+ *   59 s later and one run finishes a full pass (≤ 5 min, see SWEEP_MAX_CMDS) → gone from Redis by T + 85 d 13 h 5 m.
+ *   Copies after that: the stored snapshot (≤ 1 h old when served) + the instance memo (10 min) + the CDN copy of
+ *   /api/ideas and /ideas (s-maxage 1 h + stale-while-revalidate 24 h) = 26 h 10 m → T + 86 d 15 h 15 m, 3 d 8 h 45 m
+ *   inside 90. Each missed, failed or short cron run adds ≤ 13 h: still inside 90 with 6 of them in a row.
+ *   Feedback notes use the same RETAIN_DAYS and have no cache: gone by T + 85 d 13 h 5 m.
+ */
+export const RETAIN_DAYS = 85;
+export const RETAIN_MS = RETAIN_DAYS * 86_400_000;
+/** The ideas log first shipped in c78a268 (15 Oct 2026); the store was made that day. No row is older. */
+export const LEGACY_SINCE = Date.parse("2026-10-15T00:00:00Z");
+/**
+ * Sweep caps: rows read per page (ZSCAN COUNT) and Upstash commands per run (a capped run saves its cursor and the
+ * next run resumes). Sized so one run always finishes a full pass: writes stop at BUDGET and a new row costs ≥ 9
+ * commands, so ≤ 50,000 new rows a month and ≤ 200,000 in any 88 days (4 calendar months) = ≤ 100 pages. Every row
+ * stale: GET cursor 2 + 100 × 13 + DEL cursor 2 = 1,304 ≤ 1,500; all fresh: 504.
+ */
+export const SWEEP_BATCH = 2000;
+export const SWEEP_MAX_CMDS = 1500;
+/** Commands per sweep page: INCRBY + ZSCAN, INCRBY + ZMSCORE + HMGET; +8 (INCRBY + 7 deletes) when it drops rows. */
+export const SWEEP_PAGE_CMDS = 5;
+export const SWEEP_DROP_CMDS = 8;
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
 /**
  * ideas:ptest counts a row's possible-test writes (row key → count, no text), for the sticky-live rule. Every count
@@ -65,11 +93,11 @@ const TIMEOUT_MS = 1500;
 export const PTEST_TTL_S = 85 * 86_400;
 const ptestCount = (key: string, n: number): Cmd[] => [["HINCRBY", K.ptest, key, n], ["HEXPIRE", K.ptest, PTEST_TTL_S, "FIELDS", 1, key]];
 const bucket = (now: Date) => Math.floor(now.getTime() / (BURST_WINDOW_S * 1000));
-const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", ptest: "ideas:ptest", burst: (now: Date, back = 0) => `ideas:burst:${bucket(now) - back}` };
+const K = { review: "ideas:review", cursor: "ideas:sweep:cursor", snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", ptest: "ideas:ptest", burst: (now: Date, back = 0) => `ideas:burst:${bucket(now) - back}` };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
-export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0, stayedLive: 0 };
+export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0, stayedLive: 0, swept: 0 };
 
 export function storeEnv(env: Record<string, string | undefined> = process.env): { url: string; token: string } | null {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
@@ -138,7 +166,7 @@ export class IdeaStore {
     private wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
   ) {}
   get live() { return !!this.pipe; }
-  /** Writes this instance has sent (drives the trim cadence) and the last burst bucket it set a TTL on. */
+  /** Writes this instance has sent and the last burst bucket it set a TTL on. */
   private writes = 0;
   private ttlBucket = -1;
 
@@ -160,9 +188,8 @@ export class IdeaStore {
     }
     const n = (p?.n ?? 0) + 1;
     const run = runIdOf(opts.run);
-    const trim = this.writes % TRIM_EVERY === 0; // the 1st, 9th, 17th… write on this instance
     const ttl = this.ttlBucket !== bucket(now);
-    const cmds = WRITE_CMDS - (trim ? 0 : 1) - (ttl ? 0 : 1) + (run ? RUN_CMDS : 0);
+    const cmds = WRITE_CMDS - (ttl ? 0 : 1) + (run ? RUN_CMDS : 0);
     if (!this.budget.allows(cmds, now)) { stats.overBudget++; return "over-budget"; }
     this.pending.set(rec.key, { rec, n: 0, last: now.getTime() });
     if (this.pending.size > 5000) this.pending.clear();
@@ -177,9 +204,9 @@ export class IdeaStore {
         ["ZINCRBY", K.top, n, rec.key],
         ["ZADD", K.status, "GT", STATUS_RANK[rec.status], rec.key], // R5: status only moves up
         ["ZADD", K.recent, now.getTime(), rec.key],
+        ["ZREMRANGEBYSCORE", K.recent, "-inf", now.getTime() - RETAIN_MS], // time trim: last-seen older than RETAIN
         ["HSET", K.stamp, rec.key, stamp(source)], // request time + gate source
       ];
-      if (trim) list.push(["ZREMRANGEBYRANK", K.recent, 0, -(RECENT_MAX + 1)]);
       const at = (c: Cmd) => list.push(c) - 1;
       const iSite = at(["HINCRBY", burst, "site", 1]);
       if (ttl) list.push(["EXPIRE", burst, BURST_WINDOW_S * 2]);
@@ -249,6 +276,62 @@ export class IdeaStore {
     } catch { stats.dropped++; }
   }
 
+  /**
+   * The daily retention sweep (cron). Walks ideas:top (every row is in it) with ZSCAN, SWEEP_BATCH at a time, reads
+   * each row's last-seen (recent score, stamp `at`) and drops the stale rows from all eight keys in one pipeline.
+   * Stops before `maxCmds` (budgeted like every write) and keeps its cursor in ideas:sweep:cursor (EX 2 d), so a
+   * capped run resumes where it stopped the next day. Never throws.
+   */
+  async sweep(now = new Date(), opts: { batch?: number; maxCmds?: number } = {}): Promise<{ scanned: number; dropped: number; cmds: number; done: boolean }> {
+    const batch = opts.batch ?? SWEEP_BATCH, maxCmds = opts.maxCmds ?? SWEEP_MAX_CMDS;
+    const res = { scanned: 0, dropped: 0, cmds: 0, done: false };
+    if (!this.pipe) return { ...res, done: true };
+    const b = K.budget(month(now));
+    const run = async (cmds: Cmd[]) => {
+      const n = cmds.length + 1;
+      if (res.cmds + n > maxCmds || !this.budget.allows(n, now)) return null;
+      res.cmds += n;
+      const out = await this.pipe!([["INCRBY", b, n], ...cmds]);
+      this.budget.saw(Number(out?.[0]));
+      return out ? out.slice(1) : null;
+    };
+    try {
+      const start = await run([["GET", K.cursor]]);
+      if (!start) return res;
+      let cursor = typeof start[0] === "string" && start[0] ? start[0] : "0";
+      const cutoff = now.getTime() - RETAIN_MS;
+      do {
+        // A page and its drop must both fit; otherwise stop here and resume tomorrow.
+        if (res.cmds + SWEEP_PAGE_CMDS + SWEEP_DROP_CMDS + 2 > maxCmds) break;
+        const page = await run([["ZSCAN", K.top, cursor, "COUNT", batch]]);
+        if (!page) break;
+        const [next, flat] = (page[0] as [string, string[]]) ?? ["0", []];
+        const keys = [...new Set((flat ?? []).filter((_, i) => i % 2 === 0))];
+        res.scanned += keys.length;
+        if (keys.length) {
+          const seen = await run([["ZMSCORE", K.recent, ...keys], ["HMGET", K.stamp, ...keys]]);
+          if (!seen) break;
+          const scores = (seen[0] as (string | null)[]) ?? [], stamps = (seen[1] as (string | null)[]) ?? [];
+          const stale = keys.filter((_, i) => lastSeen(scores[i], stamps[i]) < cutoff);
+          if (stale.length) {
+            const del = await run([["HDEL", K.meta, ...stale], ["ZREM", K.top, ...stale], ["ZREM", K.status, ...stale], ["HDEL", K.stamp, ...stale], ["ZREM", K.recent, ...stale], ["HDEL", K.review, ...stale], ["HDEL", K.ptest, ...stale]]);
+            if (!del) break;
+            res.dropped += stale.length;
+          }
+        }
+        cursor = String(next ?? "0");
+      } while (cursor !== "0");
+      res.done = cursor === "0";
+      // Remember where a capped run stopped (one SET; skipped if even that won't fit: the next run starts over).
+      await run(res.done ? [["DEL", K.cursor]] : [["SET", K.cursor, cursor, "EX", 172_800]]);
+      stats.swept += res.dropped;
+      return res;
+    } catch {
+      stats.dropped++;
+      return res;
+    }
+  }
+
   private memo: { at: number; snap: IdeasSnapshot } | null = null;
   rebuilds = 0;
 
@@ -275,7 +358,10 @@ export class IdeaStore {
         } else snap = { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
       } else snap = stored;
     } catch {
-      snap = this.memo?.snap ?? { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
+      // A store error keeps the old memo only while its snapshot is under an hour old (the stored copy's own EX), so a
+      // long outage can't keep serving rows the sweep has since deleted.
+      const old = this.memo?.snap;
+      snap = old && t - Date.parse(old.at) < SNAPSHOT_MS * 6 ? old : { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
     }
     this.memo = { at: t, snap };
     return snap;
@@ -288,7 +374,7 @@ export class IdeaStore {
       const head = await this.pipe([
         ["INCRBY", K.budget(month(now)), READ_CMDS],
         ["ZREVRANGE", K.top, 0, 999, "WITHSCORES"],
-        ["ZREVRANGE", K.recent, 0, RECENT_MAX - 1, "WITHSCORES"], // the newest 200 of the recent log (it holds up to 200 + TRIM_EVERY − 1 between trims): lastSeen per key
+        ["ZREVRANGE", K.recent, 0, RECENT_MAX - 1, "WITHSCORES"], // the newest 200 of the recent log (trimmed by time, not size): lastSeen per key
       ]);
       this.budget.saw(Number(head?.[0]));
       const flat = (head?.[1] as string[]) ?? [];
@@ -317,6 +403,15 @@ export class IdeaStore {
       return { ...EMPTY_SNAPSHOT, at: now.toISOString(), live: true };
     }
   }
+}
+
+/** A row's last-seen ms: its recent score or its stamp's time, whichever is later; LEGACY_SINCE when it has neither. */
+export function lastSeen(score: string | null | undefined, stamp: string | null | undefined): number {
+  const r = Number(score ?? NaN);
+  const at = toStamp(stamp).at;
+  const s = at ? Date.parse(at) : NaN;
+  const best = Math.max(Number.isFinite(r) ? r : -Infinity, Number.isFinite(s) ? s : -Infinity);
+  return Number.isFinite(best) ? best : LEGACY_SINCE;
 }
 
 /** The stored write stamp, passed through; a row written before stamps (or unreadable) is "unknown". */
