@@ -58,6 +58,8 @@ function sameMeasureBuild(a: YardProject, b: YardProject): boolean {
   if (a.prompt !== b.prompt || a.primaryMaterialId !== b.primaryMaterialId || a.shopJoin !== b.shopJoin) return false;
   if (a.panels.length !== b.panels.length || a.instances.length !== b.instances.length) return false;
   if (panelCutSig(a) !== panelCutSig(b)) return false;
+  // A refused switch rebuilds the same parts with a note saying why (I33): the note must reach the card.
+  if ((b.notes ?? []).some((n) => !(a.notes ?? []).includes(n))) return false;
   const o = a.overall;
   const p = b.overall;
   return Math.abs(o.width - p.width) < 0.02 && Math.abs(o.height - p.height) < 0.02 && Math.abs(o.depth - p.depth) < 0.02;

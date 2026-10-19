@@ -25,3 +25,12 @@ export function plySheetThickness(materialId: string | undefined): number | null
   if (!it || it.category !== "sheet_goods" || !/^plywood-/i.test(it.id)) return null;
   return it.dims.thickness ?? null;
 }
+
+/** Safety and structural parts a stock switch never thins below STRUCTURAL_MIN_IN: bed guards, ladders and their
+ * rungs, load rails (bed side, head, foot and centre rails, ledgers, aprons, stretchers, stringers). */
+export const STRUCTURAL_PART = /\b(?:guards?|ladders?|ladder[- ](?:stiles?|sides?)|rungs?|(?:side|head|foot|bed|centre|center|load)\s+rails?|aprons?|stretchers?|ledgers?|stringers?)\b/i;
+/** The thinnest stock a safety or structural part is ever cut from. */
+export const STRUCTURAL_MIN_IN = 0.75;
+
+/** The note a switch refused for parts no sheet of the picked thickness is sold long enough for starts with this. */
+export const keptLongNote = (pickName: string) => `Kept on 3/4" plywood, not ${pickName}:`;

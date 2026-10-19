@@ -45,11 +45,12 @@ import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 import { isBoughtHardwareName, isBuyMirrorPanel } from "./shopPlural";
+import { keptLongNote, STRUCTURAL_MIN_IN, STRUCTURAL_PART } from "./sheetThickness";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "I33" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "I33" | "I37" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", I33: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", I33: "F32", I37: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -463,14 +464,30 @@ export function i33(before: YardProject, after: YardProject, stockId: string, pl
   const T = (x: { size: { width: number; height: number; depth: number } }) => Math.min(x.size.width, x.size.height, x.size.depth);
   const layers = (thick: number, sheet: number) => Math.abs(thick - sheet) < 0.02 || (thick > sheet * 1.5 && Math.abs(thick / sheet - Math.round(thick / sheet)) < 0.03);
   const own = (thick: number) => thick <= 0.26;
-  if (after.primaryMaterialId !== stockId) out.push(`picked ${pick.name}, the build is on ${getCatalogItem(after.primaryMaterialId)?.name ?? after.primaryMaterialId}`);
   const sheets = FORGE_CATALOG.filter((it) => it.category === "sheet_goods");
   const sheetT = (id: string) => sheets.find((it) => it.id === id)?.dims.thickness;
   const cut = after.panels.filter((x) => x.materialId !== "hardware" && !isBuyMirrorPanel(x.name, x.type) && !isBoughtHardwareName(x.name));
+  // A switch refused because a part is longer than any sheet of the picked thickness sold: nothing is on the picked
+  // sheet, nothing is cut thinner than the sheet it comes off, and the note says so on the card.
+  const refused = (after.notes ?? []).some((n) => n.startsWith(keptLongNote(pick.name)));
+  if (refused) {
+    if (cut.some((x) => x.materialId === stockId)) out.push(`the switch to ${pick.name} was refused but parts are still on it`);
+    for (const c of plan.cutList) {
+      const sheet = sheets.find((it) => c.id.startsWith(`${it.id}|`)) ?? sheets.find((it) => it.name === c.material);
+      if (sheet?.dims.thickness && !own(c.thicknessIn) && !layers(c.thicknessIn, sheet.dims.thickness)) { out.push(`cut ${c.name} is ${inchFrac(c.thicknessIn)}" thick but cut from ${sheet.name}`); break; }
+    }
+    if (plan.bom.some((b) => b.catalogId === stockId)) out.push(`the switch was refused but the Buy list buys ${pick.name}`);
+  }
+  // The picked-sheet checks apply when the switch went through; the size and contact checks below hold either way.
+  if (!refused) {
+  // Safety and structural parts held at 3/4" (I37) are on the 3/4" sheet on purpose, and the notes say so.
+  const heldNote = (after.notes ?? []).some((n) => /a stock switch never makes a guard, ladder or load rail thinner/.test(n));
+  const held = (name: string) => heldNote && t < STRUCTURAL_MIN_IN - 0.01 && STRUCTURAL_PART.test(name);
+  if (after.primaryMaterialId !== stockId) out.push(`picked ${pick.name}, the build is on ${getCatalogItem(after.primaryMaterialId)?.name ?? after.primaryMaterialId}`);
   for (const x of cut) {
     if (x.materialId === stockId && !layers(T(x), t)) { out.push(`${x.name} is ${inchFrac(T(x))}" thick on the ${inchFrac(t)}" sheet`); break; }
   }
-  const stray = cut.find((x) => x.materialId !== stockId && sheetT(x.materialId) != null && !own(T(x)) && Math.abs((sheetT(x.materialId) ?? t) - t) > 0.02);
+  const stray = cut.find((x) => !held(x.name) && x.materialId !== stockId && sheetT(x.materialId) != null && !own(T(x)) && Math.abs((sheetT(x.materialId) ?? t) - t) > 0.02);
   if (stray) out.push(`${stray.name} stays on ${getCatalogItem(stray.materialId)?.name} after the switch to ${pick.name}`);
   // A cut row's stock is the catalogue id its key starts with; its label is that sheet's name or its Buy row's name.
   const rowSheet = (c: { id: string; material?: string }) => sheets.find((it) => c.id.startsWith(`${it.id}|`)) ?? sheets.find((it) => it.name === c.material);
@@ -480,17 +497,20 @@ export function i33(before: YardProject, after: YardProject, stockId: string, pl
     if (!layers(c.thicknessIn, sheet.dims.thickness)) { out.push(`cut ${c.name} is ${inchFrac(c.thicknessIn)}" thick but cut from ${sheet.name}`); break; }
     const label = sheets.find((it) => it.name === c.material);
     if (label && label.id !== sheet.id && Math.abs((label.dims.thickness ?? 0) - (sheet.dims.thickness ?? 0)) > 0.02) { out.push(`cut ${c.name} is on ${sheet.name} but labelled ${label.name}`); break; }
-    if (!own(c.thicknessIn) && Math.abs(sheet.dims.thickness - t) > 0.02) { out.push(`cut ${c.name} is cut from ${sheet.name}, not the picked ${pick.name}`); break; }
+    if (!own(c.thicknessIn) && !held(c.name) && Math.abs(sheet.dims.thickness - t) > 0.02) { out.push(`cut ${c.name} is cut from ${sheet.name}, not the picked ${pick.name}`); break; }
   }
   const buyRow = plan.bom.find((b) => b.catalogId === stockId || b.name === pick.name);
   if (!buyRow) out.push(`the Buy list has no ${pick.name}`);
-  const wrongBuy = plan.bom.find((b) => { const it = sheets.find((x) => x.id === b.catalogId || x.name === b.name); return it?.dims.thickness && it.dims.thickness > 0.26 && Math.abs(it.dims.thickness - t) > 0.02; });
+  // A sheet of another thickness is bought only for the parts cut from it on purpose (held structural parts).
+  const heldT = new Set(plan.cutList.filter((c) => held(c.name)).map((c) => Math.round(c.thicknessIn * 32)));
+  const wrongBuy = plan.bom.find((b) => { const it = sheets.find((x) => x.id === b.catalogId || x.name === b.name); return it?.dims.thickness && it.dims.thickness > 0.26 && Math.abs(it.dims.thickness - t) > 0.02 && !heldT.has(Math.round(it.dims.thickness * 32)); });
   if (wrongBuy) out.push(`the Buy list still buys ${wrongBuy.name}`);
   const text = plan.instructions.map((st) => `${st.title} ${st.description ?? ""}`).join("\n");
   const spoken = new RegExp(`${inchFrac(t).replace(/[/]/g, "\\/")}"? plywood`, "i");
   if (![pick.name, buyRow?.name].some((n) => n && text.includes(n)) && !spoken.test(text)) out.push(`no step names ${pick.name}`);
-  const wrongStep = sheets.find((it) => (it.dims.thickness ?? 0) > 0.26 && Math.abs((it.dims.thickness ?? 0) - t) > 0.02 && text.includes(it.name) && !after.panels.some((x) => x.materialId === it.id));
+  const wrongStep = sheets.find((it) => (it.dims.thickness ?? 0) > 0.26 && Math.abs((it.dims.thickness ?? 0) - t) > 0.02 && text.includes(it.name) && !after.panels.some((x) => x.materialId === it.id) && !plan.bom.some((b) => b.catalogId === it.id || b.name === it.name));
   if (wrongStep) out.push(`a step still cuts from ${wrongStep.name}`);
+  }
   const box = (q: YardProject) => {
     const ps = q.panels.filter((x) => !x.yaw);
     const ext = (a: "x" | "y" | "z", k: "width" | "height" | "depth") => Math.max(...ps.map((x) => x.position[a] + x.size[k])) - Math.min(...ps.map((x) => x.position[a]));
@@ -531,6 +551,46 @@ export function i33(before: YardProject, after: YardProject, stockId: string, pl
     if (lost) out.push(`${lost} met before the switch and no longer meet`);
   }
   return [...new Set(out)].slice(0, 4).map((m) => v("I33", m));
+}
+
+/**
+ * I37 (F32 structural minimum over a stock switch): a switch never thins a safety or structural part (bed and loft
+ * guards, ladders and rungs, load rails, aprons, ledgers) below its minimum: never thinner than it was before the
+ * switch, and never under 3/4" when it was at least 3/4". Lumber stays the board it is sold as (a part labelled 1×8 is
+ * 3/4" thick), and every cut row's label names the stock it is really cut from: a sheet row's thickness is that
+ * sheet's thickness (or a glue-up of it), and the Buy list buys that sheet.
+ */
+export function i37(before: YardProject, after: YardProject, plan: BuildPlan = buildPlan(after)): Violation[] {
+  const out: string[] = [];
+  const T = (x: { size: { width: number; height: number; depth: number } }) => Math.round(Math.min(x.size.width, x.size.height, x.size.depth) * 32) / 32;
+  const was = new Map(before.panels.map((p) => [p.name, p] as const));
+  for (const p of after.panels) {
+    if (p.materialId === "hardware" || !STRUCTURAL_PART.test(p.name)) continue;
+    const q = was.get(p.name);
+    if (!q) continue;
+    const floor = Math.min(T(q), STRUCTURAL_MIN_IN);
+    if (T(p) < floor - 0.02) out.push(`${p.name} is ${inchFrac(T(p))}" after the switch, ${inchFrac(T(q))}" before (never under ${inchFrac(floor)}")`);
+  }
+  for (const p of after.panels) {
+    const it = getCatalogItem(p.materialId ?? "");
+    if (it?.category !== "lumber" || !it.dims.thickness || !STRUCTURAL_PART.test(p.name)) continue;
+    const q = was.get(p.name);
+    if (Math.abs(T(p) - it.dims.thickness) > 0.03 && (!q || Math.abs(T(q) - T(p)) > 0.03)) out.push(`${p.name} is ${inchFrac(T(p))}" thick but labelled ${it.name} (${inchFrac(it.dims.thickness)}")`);
+  }
+  const sheets = FORGE_CATALOG.filter((it) => it.category === "sheet_goods");
+  const bought = new Set(plan.bom.map((b) => b.name));
+  for (const c of plan.cutList) {
+    const fr = (c.material ?? "").match(/^(\d+)\/(\d+)"/);
+    const sheet = sheets.find((it) => it.name === c.material);
+    if (!fr || !(sheet || /plywood/i.test(c.material ?? ""))) continue;
+    const st = Number(fr[1]) / Number(fr[2]);
+    // 23/32" and 15/32" are the 3/4" and 1/2" sheets as sold.
+    const nominal = Math.abs(st - 23 / 32) < 0.01 ? 0.75 : Math.abs(st - 15 / 32) < 0.01 ? 0.5 : st;
+    const ok = Math.abs(c.thicknessIn - nominal) < 0.03 || (c.thicknessIn <= 0.26 && nominal <= 0.26);
+    if (!ok) out.push(`cut ${c.name} is ${inchFrac(c.thicknessIn)}" thick but labelled ${c.material}`);
+    if (!c.whole && !bought.has(c.material ?? "")) out.push(`cut ${c.name} is cut from ${c.material}, which the Buy list does not buy`);
+  }
+  return [...new Set(out)].slice(0, 6).map((m) => v("I37", m));
 }
 
 /** I26 (F30 no hidden overlap): no two solid parts share space unless a joint the plan cuts makes room (solids.ts). */

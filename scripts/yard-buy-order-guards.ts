@@ -12,7 +12,10 @@ import { IDEAS } from "../src/lib/yard/ideas";
 import { planSheetNest } from "../src/lib/yard/nesting";
 import { buildPlanPdf } from "../src/lib/yard/pdf";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
-import { buildPlan } from "../src/lib/yard/report";
+import { buildPlan, nestSheetThickness } from "../src/lib/yard/report";
+import { getCatalogItem } from "../src/lib/yard/catalog";
+import { interiorSheet } from "../src/lib/yard/materialForUse";
+import { isOutdoorPrompt } from "../src/lib/yard/outdoor";
 import { LISTINGS, compareOffersByPrice, offersFor, sortOffersByPrice } from "../src/lib/yard/listings";
 import { storeOf } from "../src/lib/yard/outbound";
 import type { ShopOffer } from "../src/lib/yard/types";
@@ -174,7 +177,19 @@ console.log(`PASS buy-order: ${rows} Buy rows cheapest-first, Best = cheapest ($
     "shoe rack with 4 shelves",
     "toy chest",
     "workbench",
+    // Parts drawn at another thickness than their sheet (row 92): cost canaries below.
+    "barn birdhouse",
+    "mudroom locker",
+    "locker 15 wide 60 tall 15 deep with 1 door and 2 shelves",
+    "lemonade stand",
+    "knife block maple",
+    "record crate",
   ];
+  // Cost canaries (row 92): Buy following the cut never moves a sheet on these. Main 49aa20f prices.
+  for (const [q, usd] of [["barn birdhouse", 132.77], ["mudroom locker", 239.15]] as const) {
+    const got = buildPlan(generateFromPrompt(q)).totals.estCostUsd;
+    if (got !== usd) fail(`cost canary moved: ${q}`, { was: usd, now: got });
+  }
   let checked = 0;
   for (const p of sheetCanaries) {
     const proj = generateFromPrompt(p);
@@ -194,6 +209,34 @@ console.log(`PASS buy-order: ${rows} Buy rows cheapest-first, Best = cheapest ($
     if (buyStructural !== structural) fail(`Buy sheets ≠ layout sheets: ${p}`, { buy: buyStructural, layout: structural, rows: sheetRows.map((b) => `${b.name} ${b.quantity}`) });
     if (buyBacker !== backer) fail(`Buy backer sheets ≠ backer layout: ${p}`, { buy: buyBacker, layout: backer });
     if (layout.sheets?.unplaced.length) fail(`parts left off every sheet: ${p}`, layout.sheets.unplaced.map((x) => x.name));
+    // Thickness and grade, not just the count (I33/I37): the sheets the layout cuts at each thickness are the sheets
+    // Buy buys at that thickness, every sheet cut row is its sheet's thickness, and outdoors no interior sheet is bought.
+    const at32 = (t: number) => Math.round(t * 32) / 32;
+    const layoutByT = new Map<number, number>();
+    for (const sh of layout.sheets?.sheets ?? []) layoutByT.set(at32(nestSheetThickness(sh.material)), (layoutByT.get(at32(nestSheetThickness(sh.material))) ?? 0) + 1);
+    const buyByT = new Map<number, number>();
+    for (const b of sheetRows.filter((b) => !/^(?:plywood-1-4-|acrylic-sheet|frame-glass)/.test(b.catalogId ?? ""))) {
+      const t = at32(getCatalogItem(b.catalogId ?? "")?.dims.thickness ?? nestSheetThickness(b.name));
+      buyByT.set(t, (buyByT.get(t) ?? 0) + b.quantity);
+    }
+    // Framing builds nest a header board as a "sheet" and buy a spacer sheet off the cut list (pre-existing, not
+    // sheet goods): the thickness split only applies when every layout sheet is plywood.
+    const sheetGoods = (layout.sheets?.sheets ?? []).every((sh) => /plywood|\bply\b|\bBC\b|MDF|birch|panel/i.test(sh.material ?? ""));
+    if (sheetGoods) for (const t of new Set([...layoutByT.keys(), ...buyByT.keys()])) {
+      if ((layoutByT.get(t) ?? 0) !== (buyByT.get(t) ?? 0)) fail(`Buy sheets ≠ layout sheets at ${t}": ${p}`, { layout: [...layoutByT], buy: [...buyByT], rows: sheetRows.map((b) => `${b.name} ${b.quantity}`) });
+    }
+    for (const c of plan.cutList) {
+      const m = (c.material ?? "").match(/^(\d+)\/(\d+)"/);
+      if (!m || !/plywood/i.test(c.material ?? "")) continue;
+      const st = Number(m[1]) / Number(m[2]);
+      const nominal = Math.abs(st - 23 / 32) < 0.01 ? 0.75 : Math.abs(st - 15 / 32) < 0.01 ? 0.5 : st;
+      if (!(Math.abs(c.thicknessIn - nominal) < 0.03 || (c.thicknessIn <= 0.26 && nominal <= 0.26))) fail(`cut row thinner or thicker than its sheet: ${p}`, `${c.name} ${c.thicknessIn}" [${c.material}]`);
+      if (!c.whole && !plan.bom.some((b) => b.name === c.material)) fail(`cut row's sheet is not bought: ${p}`, `${c.name} [${c.material}]`);
+    }
+    if (isOutdoorPrompt(p.toLowerCase())) {
+      const inside = sheetRows.filter((b) => interiorSheet(b));
+      if (inside.length) fail(`outdoor build buys interior sheet goods: ${p}`, inside.map((b) => b.name));
+    }
     // Every placed part sits on its sheet and no two parts overlap.
     for (const sh of [...(layout.sheets?.sheets ?? []), ...(layout.backer?.sheets ?? [])]) {
       for (const [i, a] of sh.parts.entries()) {
@@ -213,6 +256,6 @@ console.log(`PASS buy-order: ${rows} Buy rows cheapest-first, Best = cheapest ($
     if (plyBoards.length) fail(`PDF draws sheet stock as boards: ${p}`, plyBoards);
     checked++;
   }
-  console.log(`PASS sheet-nest: Buy sheet qty = plan layout = PDF diagrams on ${checked} sheet-goods builds`);
+  console.log(`PASS sheet-nest: Buy sheet qty = plan layout = PDF diagrams on ${checked} sheet-goods builds, per thickness and grade; cost canaries birdhouse $132.77, mudroom locker $239.15`);
 }
 

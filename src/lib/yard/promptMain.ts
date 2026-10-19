@@ -1,6 +1,6 @@
 import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
-import { P as sheetP, plySheetThickness, withSheetThickness } from "./sheetThickness";
+import { P as sheetP, plySheetThickness, keptLongNote, STRUCTURAL_MIN_IN, STRUCTURAL_PART, withSheetThickness } from "./sheetThickness";
 import { resolvePurpose } from "./purposeForms";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -22,7 +22,7 @@ import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
-import { getCatalogItem } from "./catalog";
+import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
 import { isWholeStock, toPrimitive } from "./geometry";
@@ -48,6 +48,8 @@ import { landmarkTitle } from "./formLandmarks";
 import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primitivePrompt, isToyScaleBed, petSurfaceHeight, tidyNotes } from "./fallbackPrimitive";
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
+import { fitsOnSheet, splitFaceToSheet, SHEET_4X8, SHEET_4X10 } from "./nesting";
+import { hiddenOverlaps } from "./solids";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock, hasExplicitStock } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
@@ -400,7 +402,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const built = idDepth === 1 ? hollowDrawers(generateSeeded(...args)) : generateSeeded(...args);
+    const built = idDepth === 1 ? partsOnTheirSheet(hollowDrawers(generateSeeded(...args))) : generateSeeded(...args);
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } finally {
     idDepth--;
@@ -633,7 +635,98 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   const first = engineBuild(...args);
   const t = plySheetThickness(first.primaryMaterialId);
   if (t == null || Math.abs(t - sheetP) < 0.02 || !first.panels.some((p) => p.materialId === first.primaryMaterialId)) return first;
-  return withSheetThickness(t, () => engineBuild(...args));
+  const thin = withSheetThickness(t, () => engineBuild(...args));
+  const long = longerThanSheetSold(thin, t);
+  if (long.length) return refusedLongSwitch(args, thin, long, t);
+  return frameKeptOverSwitch(first, thin);
+}
+
+
+const r8 = (n: number) => Math.round(n * 8) / 8;
+const thinDim = (p: Panel) => Math.min(p.size.width, p.size.height, p.size.depth);
+
+/**
+ * I33 / I37: the parts of a switched build on the picked sheet's thickness whose face no sheet of that thickness holds
+ * (a 100" upright at 1/2", when 1/2" plywood is sold 4×8 at most). Glue-ups of the sheet count; 1/4" backers do not.
+ */
+function longerThanSheetSold(project: YardProject, t: number): Panel[] {
+  const sheets = FORGE_CATALOG.filter((it) => it.category === "sheet_goods" && /^plywood-/.test(it.id) && Math.abs((it.dims.thickness ?? 0) - t) < 0.03);
+  return project.panels.filter((p) => {
+    if (!/^plywood-/.test(p.materialId ?? "") || p.yaw || p.polygon) return false;
+    const th = r8(thinDim(p));
+    if (th <= 0.26 && t > 0.26) return false;
+    if (Math.abs(th - t) > 0.03 && !(th > t * 1.5 && Math.abs(th / t - Math.round(th / t)) < 0.05)) return false;
+    const [, mid, len] = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
+    // The cut list keeps a face whole on a 4×10 when it fits one and splices it otherwise (spliceCutListToSheet):
+    // every piece it cuts must come off a sheet of this thickness.
+    const pieces = fitsOnSheet(len, mid, SHEET_4X8) ? [] : fitsOnSheet(len, mid, SHEET_4X10) ? [{ lengthIn: len, widthIn: mid }] : splitFaceToSheet(len, mid, SHEET_4X10);
+    return pieces.some((c) => !sheets.some((it) => fitsOnSheet(c.lengthIn, c.widthIn, { width: it.dims.length ?? 96, height: it.dims.width ?? 48 })));
+  });
+}
+
+/** "Left upright", "Upright 2" → "upright". */
+const partKind = (name: string) => name.replace(/^(?:left|right|front|back|top|bottom|upper|lower)\s+/i, "").replace(/\s*\d+$/, "").toLowerCase();
+
+/**
+ * Parts over 96" on a switch to a sheet that is not sold that long are refused, never cut from a thicker sheet: the
+ * build stays on the 3/4" carcase sheet (4×10 for the long parts), and the note names the parts and why, in the same
+ * words as the stock pill.
+ */
+function refusedLongSwitch(args: Parameters<typeof generateRaw>, thin: YardProject, long: Panel[], t: number): YardProject {
+  const picked = getCatalogItem(thin.primaryMaterialId);
+  const kept = engineBuild(args[0], "plywood-3-4-4x8", args[2], args[3]);
+  const kinds = new Map<string, number>();
+  for (const p of long) kinds.set(partKind(p.name), (kinds.get(partKind(p.name)) ?? 0) + 1);
+  const named = [...kinds].map(([k, n]) => `${n === 1 ? "the" : `the ${n}`} ${k}${n === 1 || /s$/.test(k) ? "" : "s"}`).join(" and ");
+  const len = Math.max(...long.map((p) => Math.max(p.size.width, p.size.height, p.size.depth)));
+  const longest = FORGE_CATALOG.filter((it) => it.category === "sheet_goods" && /^plywood-/.test(it.id) && Math.abs((it.dims.thickness ?? 0) - t) < 0.03).reduce((m, it) => Math.max(m, it.dims.length ?? 0), 0);
+  const tall = FORGE_CATALOG.find((it) => it.id === "plywood-3-4-4x10")?.name ?? '3/4" Plywood 4×10';
+  const note =
+    `${keptLongNote(picked?.name ?? `${inchFrac(t)}" plywood`)} ${named} ${long.length === 1 ? "is" : "are"} ${inchFrac(r8(len))}" long, ` +
+    `and ${inchFrac(t)}" plywood is sold only up to ${Math.round(longest / 12)} ft, so ${long.length === 1 ? "it is" : "they are"} cut from ${tall}. ` +
+    `Make ${long.length === 1 ? "it" : "them"} ${longest}" or shorter to build it in ${inchFrac(t)}".`;
+  return { ...kept, notes: [...(kept.notes ?? []), note] };
+}
+
+/**
+ * I37 (structural minimum): a stock switch to a thinner sheet changes the sheet parts only. Frame and safety parts
+ * (bed guards, ladders, load rails, aprons, legs) keep the stock, thickness and place they had before the switch:
+ * a 1×8 guard stays a 3/4" 1×8, a 2×4 apron stays a 2×4. Their label always names the stock they are cut from.
+ */
+function frameKeptOverSwitch(first: YardProject, thin: YardProject): YardProject {
+  const sheet = (id: string | undefined) => getCatalogItem(id ?? "")?.category === "sheet_goods";
+  const was = new Map(first.panels.map((p) => [p.name, p] as const));
+  // Lumber is the board it is sold as: a part on a board the rebuild drew at the sheet thickness is put back.
+  let panels = thin.panels.map((p) => {
+    const q = was.get(p.name);
+    if (!q || sheet(q.materialId) || getCatalogItem(q.materialId ?? "")?.category !== "lumber") return p;
+    if (q.materialId === p.materialId && thinDim(p) >= thinDim(q) - 0.01) return p;
+    return { ...p, materialId: q.materialId, position: { ...q.position }, size: { ...q.size } };
+  });
+  // A safety or structural part on the thinner sheet is cut from the 3/4" carcase sheet instead, thickened toward the
+  // middle of the build (its outer face stays), when that runs into no other part.
+  const env = envelopeOf(panels);
+  const held: string[] = [];
+  for (let i = 0; i < panels.length; i++) {
+    const p = panels[i];
+    if (!STRUCTURAL_PART.test(p.name) || !sheet(p.materialId) || p.yaw || p.polygon || thinDim(p) >= STRUCTURAL_MIN_IN - 0.01) continue;
+    const k = (["width", "height", "depth"] as const).reduce((a, b) => (p.size[a] <= p.size[b] ? a : b));
+    const a = k === "width" ? "x" : k === "height" ? "y" : "z";
+    const grow = STRUCTURAL_MIN_IN - p.size[k];
+    const mid = (env[a][0] + env[a][1]) / 2;
+    const towardMid = p.position[a] + p.size[k] / 2 < mid ? 0 : -grow;
+    const q: Panel = { ...p, materialId: "plywood-3-4-4x8", size: { ...p.size, [k]: STRUCTURAL_MIN_IN }, position: { ...p.position, [a]: p.position[a] + towardMid } };
+    const next = panels.map((x, j) => (j === i ? q : x));
+    const before = new Set(hiddenOverlaps({ panels }));
+    if (!hiddenOverlaps({ panels: next }).every((m) => before.has(m))) continue;
+    panels = next;
+    held.push(partKind(p.name));
+  }
+  const kinds = [...new Set(held)];
+  const note = kinds.length
+    ? `The ${kinds.map((k) => (/s$/.test(k) ? k : `${k}s`)).join(" and ")} stay 3/4" (cut from 3/4" Plywood 4×8): a stock switch never makes a guard, ladder or load rail thinner than 3/4".`
+    : null;
+  return { ...thin, panels, notes: note ? [...(thin.notes ?? []), note] : thin.notes };
 }
 
 function engineBuild(...args: Parameters<typeof generateRaw>): YardProject {
@@ -729,6 +822,67 @@ function stampStockThickness(project: YardProject): YardProject {
     return keepOuterFace({ ...panel, size: { ...size, [thin]: thick } }, panel, outer);
   });
   return changed ? { ...project, panels: refitInside(project.panels, thinned) } : project;
+}
+
+/**
+ * Buy follows the cut (I33): every plywood part is the thickness of a sheet the build buys. A part drawn at another
+ * thickness than its sheet (a 1/2" back or a 5/8" side on the 3/4" carcase sheet):
+ * - moves to the sheet of its own thickness when the build already cuts from one (a stock switch's picked sheet);
+ * - else is cut at its own sheet's thickness, outer face kept and every part that met it still meeting it, when that
+ *   runs into no other part (no sheet is bought for one part, and the price stays what it was);
+ * - else is cut from a sheet of its thickness (an in-between 5/8" or 3/8" goes to the next thinner sheet sold), and
+ *   that sheet is bought.
+ * No part is ever cut thinner or thicker than the sheet it comes off.
+ */
+export function partsOnTheirSheet(project: YardProject): YardProject {
+  if (!project.panels.length) return project;
+  const plies = FORGE_CATALOG.filter((it) => it.category === "sheet_goods" && /^plywood-/.test(it.id));
+  const plyT = (id: string | undefined) => (id && /^plywood-/.test(id) ? (plies.find((it) => it.id === id)?.dims.thickness ?? null) : null);
+  const sold = [...new Set(plies.map((it) => it.dims.thickness ?? 0))].filter((t) => t > 0).sort((a, b) => a - b);
+  const thinOf = (p: Panel) => (["width", "height", "depth"] as const).reduce((a, b) => (p.size[a] <= p.size[b] ? a : b));
+  const r8 = (n: number) => Math.round(n * 8) / 8;
+  const used = new Map<number, string>();
+  for (const id of [project.primaryMaterialId, ...project.panels.map((p) => p.materialId)]) {
+    const t = plyT(id);
+    if (t != null && t > 0.26 && !used.has(Math.round(t * 32))) used.set(Math.round(t * 32), id!);
+  }
+  /** The sheet of thickness t that holds the face (4×10 when the face is longer than a 4×8). */
+  const sheetAt = (p: Panel, t: number) => {
+    const [, mid, long] = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
+    const at = plies.filter((it) => Math.abs((it.dims.thickness ?? 0) - t) < 0.03 && (it.dims.width ?? 0) >= 48).sort((a, b) => (a.dims.length ?? 0) - (b.dims.length ?? 0));
+    return (at.find((it) => fitsOnSheet(long, mid, { width: it.dims.length ?? 96, height: it.dims.width ?? 48 })) ?? at[0])?.id;
+  };
+  const outer = envelopeOf(project.panels);
+  let cur = project.panels;
+  const resize = (ps: Panel[], i: number, t: number) => {
+    const moved = ps.map((q, j) => (j === i ? keepOuterFace({ ...q, size: { ...q.size, [thinOf(q)]: t } }, q, outer) : q));
+    return refitInside(ps, moved);
+  };
+  for (let i = 0; i < cur.length; i++) {
+    const panel = cur[i];
+    const s = plyT(panel.materialId);
+    if (s == null || s <= 0.26 || panel.yaw || panel.polygon || panel.type === "drawer" || panel.blank) continue;
+    const t = r8(panel.size[thinOf(panel)]);
+    // Its own sheet, a 1/4" part (backer rules), a glue-up of its sheet: as drawn.
+    if (Math.abs(t - s) <= 0.03 || t <= 0.26 || t > s * 1.5) continue;
+    const own = used.get(Math.round(t * 32));
+    if (own) {
+      cur = cur.map((q, j) => (j === i ? { ...q, materialId: sheetAt(q, t) ?? own } : q));
+      continue;
+    }
+    const grown = resize(cur, i, s);
+    const was = new Set(hiddenOverlaps({ panels: cur }));
+    if (hiddenOverlaps({ panels: grown }).every((m) => was.has(m))) {
+      cur = grown;
+      continue;
+    }
+    const down = sold.find((x) => Math.abs(x - t) <= 0.03) ?? [...sold].reverse().find((x) => x < t) ?? sold[0];
+    const thinned = Math.abs(down - panel.size[thinOf(panel)]) > 0.01 ? resize(cur, i, down) : cur;
+    const to = sheetAt(panel, down);
+    cur = thinned.map((q, j) => (j === i ? { ...q, materialId: to ?? q.materialId } : q));
+    if (to && down > 0.26 && !used.has(Math.round(down * 32))) used.set(Math.round(down * 32), to);
+  }
+  return cur === project.panels ? project : { ...project, panels: cur };
 }
 
 /**

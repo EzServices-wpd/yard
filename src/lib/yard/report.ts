@@ -163,6 +163,18 @@ function closetCuts(project: YardProject): CutLine[] {
       id = "plywood-1-4-4x8";
       matName = getCatalogItem(id)?.name ?? '1/4" Plywood 4×8';
     }
+    // Buy follows the cut (I33): a plywood part is cut from, nested on and bought as a sheet of its own thickness.
+    // A 1/2" back on a 3/4" carcase is a 1/2" sheet, never a 3/4" sheet planed thin.
+    if (/^plywood-/.test(id ?? "") && dims.thicknessIn > 0.26) {
+      const own = plySheetThickness(id);
+      if (own != null && Math.abs(own - dims.thicknessIn) > 0.03) {
+        const at = plySheetOfThickness(dims.lengthIn, dims.widthIn, dims.thicknessIn) ?? plySheetOfThickness(Math.min(dims.lengthIn, 96), Math.min(dims.widthIn, 48), dims.thicknessIn);
+        if (at) {
+          id = at;
+          matName = getCatalogItem(at)?.name ?? matName;
+        }
+      }
+    }
     // A part longer than its board is bought as the longer board of the same size when the catalogue sells one.
     const sold = getCatalogItem(id ?? "");
     if (sold?.category === "lumber" && sold.dims.length && dims.lengthIn > sold.dims.length + 0.01) {
@@ -333,6 +345,32 @@ function craftSheetCuts(project: YardProject, cuts: CutLine[]) {
   return { mine, line };
 }
 
+/** A sheet's stock thickness, read off the stock its parts are nested as ("1/2\" Plywood 4x8" → 0.5). */
+export function nestSheetThickness(material: string | undefined): number {
+  const m = (material ?? "").match(/^(\d+)\/(\d+)\s*(?:"|in\b|″)/);
+  return m ? Number(m[1]) / Number(m[2]) : 0.75;
+}
+
+/** The plan nest's structural sheets by the thickness they are cut at: one Buy row per thickness and size (I33). */
+function nestSheetsByThickness(nest: PlanSheetNest): Map<number, { on8: number; on10: number }> {
+  const out = new Map<number, { on8: number; on10: number }>();
+  for (const sh of nest.sheets?.sheets ?? []) {
+    const t = Math.round(nestSheetThickness(sh.material) * 32) / 32;
+    const row = out.get(t) ?? { on8: 0, on10: 0 };
+    if (Math.max(sh.width, sh.height) > 96 + 1e-6) row.on10++;
+    else row.on8++;
+    out.set(t, row);
+  }
+  return out;
+}
+
+/** The catalogue plywood sheet of this thickness and length (96 or 120), if one is sold. */
+function plySheetAt(thicknessIn: number, lengthIn: number) {
+  return FORGE_CATALOG.find(
+    (it) => it.category === "sheet_goods" && /^plywood-/.test(it.id) && Math.abs((it.dims.thickness ?? 0) - thicknessIn) < 0.03 && it.dims.length === lengthIn && (it.dims.width ?? 0) >= 48,
+  );
+}
+
 function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest = planSheetNest(allCuts)): BuildPlan["bom"] {
   const craft = craftSheetCuts(project, allCuts);
   const cuts = craft ? allCuts.filter((c) => !craft.mine.includes(c)) : allCuts;
@@ -379,8 +417,11 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   // Sheet counts come from the plan's one sheet nest — the same sheets the layout and PDF draw.
   const counted = nestSheetCounts(nest.sheets);
   const sheets8 = counted.on8;
-  const sheets10 = counted.on10;
   const unplaced = counted.unplaced;
+  // Buy follows the cut (I33): each thickness the nest cuts at is bought as its own sheet row.
+  const byT = nestSheetsByThickness(nest);
+  const bought8 = new Set<number>();
+  const at32 = (t: number) => Math.round(t * 32) / 32;
 
   // A build made of one board stock (glue-ups and rips from that board). A frame of lumber under a
   // plywood deck is not: its plywood rides the sheet nest and its lumber goes through the linear packer.
@@ -529,7 +570,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       /ply|sheet/i.test(`${c.material ?? ""}`),
     );
     const solidNamed = isNamedLumberPrimary && !densifyNestsOnSheet;
-    const nestSheetQty = sheets8;
+    const nestSheetQty = byT.get(0.75)?.on8 ?? 0;
     const legQtyForNote = legCuts.reduce((s, c) => s + c.quantity, 0);
     if (solidNamed) {
       // Named solid stock drives every ¾" part: Buy the 8-ft boards the parts
@@ -568,7 +609,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : "") +
         (unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : "");
       const species = speciesStockHonestyTalk(project.prompt ?? "", plyName);
-      bom.push({
+      if (nestSheetQty > 0) bought8.add(0.75);
+      if (nestSheetQty > 0) bom.push({
         name: plyName,
         quantity: nestSheetQty,
         unit: nestSheetQty === 1 ? "sheet" : "sheets",
@@ -591,9 +633,6 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           `Cut the top/aprons from the plywood nest above; these boards are the named-species story (face/finish), not a silent 1×4 blank for a sheet-sized top.`,
       });
     } else {
-      const n = isNamedLumberPrimary
-        ? honestBuyWoodQty(structuralQty)
-        : nestSheetQty;
       // Named-species primary bind (board densify): Buy lead speaks densifyLabel.
       // The nest line buys the sheet the parts are nested on (a 2×2 frame's deck is plywood, not 2×2).
       const nestStock =
@@ -601,10 +640,13 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
         getCatalogItem((structural.find((c) => isSheetStockCut(c))?.id ?? "").split("|")[0]) ??
         getCatalogItem("plywood-3-4-4x8");
       const buySheet = isNamedLumberPrimary ? sheet : nestStock;
+      const buyT = at32(buySheet?.dims.thickness ?? 0.75);
+      const n = isNamedLumberPrimary ? honestBuyWoodQty(structuralQty) : (byT.get(buyT)?.on8 ?? 0);
+      if (!isNamedLumberPrimary) bought8.add(buyT);
       const sheetName = isNamedLumberPrimary
         ? namedStockDisplayName(project.prompt ?? "", sheet ?? namedLumber!)
         : (buySheet?.name ?? '3/4" plywood 4x8');
-      bom.push({
+      if (n > 0) bom.push({
         name: sheetName,
         quantity: n,
         unit: isNamedLumberPrimary
@@ -660,20 +702,31 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       });
     }
   }
-  if (!buyNamedBoard && !solidNamedBuy && !boardPrimary && sheets10 > 0) {
-    bom.push({
-      name: sheet10?.name ?? '3/4" plywood 4x10',
-      quantity: sheets10,
-      unit: sheets10 === 1 ? "sheet" : "sheets",
-      catalogId: sheet10?.id ?? "plywood-3-4-4x10",
-      searchQuery: sheet10?.searchQuery ?? '3/4" x 4x10 sanded plywood',
-      estimatedCost: (sheet10?.unitCostUsd ?? 72) * sheets10,
-      notes: (() => {
-        const base = `From nest · ${sheets10} sheet${sheets10 === 1 ? "" : "s"} · 1/8" kerf · full-height faces that do not fit a 4×8.`;
-        const species = speciesStockHonestyTalk(project.prompt ?? "", sheet10?.name ?? '3/4" plywood 4x10');
-        return species ? `${base} ${species}` : base;
-      })(),
-    });
+  // Every other thickness the nest cuts at is bought on its own row: a 1/2" back is a 1/2" sheet (4×8 and 4×10).
+  if (!buyNamedBoard && !solidNamedBuy && !boardPrimary) {
+    for (const [t, row] of [...byT].sort((a, b) => b[0] - a[0])) {
+      for (const [qty, len] of [[bought8.has(t) ? 0 : row.on8, 96], [row.on10, 120]] as const) {
+        if (!qty) continue;
+        const item = plySheetAt(t, len) ?? (len === 120 ? sheet10 : getCatalogItem("plywood-3-4-4x8"));
+        const size = len === 120 ? "4×10" : "4×8";
+        bom.push({
+          name: item?.name ?? `${inchFrac(t)}" Plywood ${size}`,
+          quantity: qty,
+          unit: qty === 1 ? "sheet" : "sheets",
+          catalogId: item?.id ?? (len === 120 ? "plywood-3-4-4x10" : "plywood-3-4-4x8"),
+          searchQuery: item?.searchQuery ?? `${inchFrac(t)}" x ${size.replace("×", "x")} sanded plywood`,
+          estimatedCost: (item?.unitCostUsd ?? sheet10?.unitCostUsd ?? 72) * qty,
+          notes: (() => {
+            const base =
+              len === 120
+                ? `From nest · ${qty} sheet${qty === 1 ? "" : "s"} · 1/8" kerf · full-height faces that do not fit a 4×8.`
+                : `From nest · ${qty} sheet${qty === 1 ? "" : "s"} · 1/8" kerf · the ${inchFrac(t)}" parts on the cut list.`;
+            const species = speciesStockHonestyTalk(project.prompt ?? "", item?.name ?? '3/4" plywood');
+            return species ? `${base} ${species}` : base;
+          })(),
+        });
+      }
+    }
   }
   if (namedLegQty && !legsMerged) {
     const legPlan = planSolidBoards(legStripParts);

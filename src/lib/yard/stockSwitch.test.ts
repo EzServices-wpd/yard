@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildPlan } from "./report.ts";
-import { i33 } from "./invariants.ts";
+import { i33, i37 } from "./invariants.ts";
+import { honestNestSheetStockName } from "./report.ts";
+import { generateFromPrompt } from "./promptMain.ts";
+import { interiorSheet } from "./materialForUse.ts";
+import { isOutdoorPrompt } from "./outdoor.ts";
+import { keptLongNote } from "./sheetThickness.ts";
 import { getCatalogItem } from "./catalog.ts";
 import { promptNamingStock, speakCatalogStock } from "./promptHelpers.ts";
 import type { YardProject } from "./types.ts";
@@ -54,6 +59,30 @@ const SWITCH_CORPUS = [
   "corner bookshelf 60 wide 84 tall",
   "coffee table 48 wide 18 tall 24 deep",
   "record shelf",
+  // Parts over 96": no 1/2" sheet is sold that long, so the switch is refused and said (row 93).
+  "bookshelf 30 wide 100 tall 12 deep",
+  "wardrobe 36 wide 98 tall 24 deep",
+];
+
+/** Frame and safety parts over a switch (I37, row 94): bed guards, ladders, load rails, aprons. */
+const STRUCTURAL_CORPUS = ["twin bunk bed", "loft bed", "bunk bed with stairs", "workbench", "twin bunk bed from 1/2 plywood"];
+
+/** Builds with no switch whose parts were drawn at another thickness than their sheet (row 92). */
+const NO_SWITCH_CORPUS = [
+  "barn birdhouse",
+  "birdhouse shaped like church",
+  "mudroom locker",
+  "locker 15 wide 60 tall 15 deep with 1 door and 2 shelves",
+  "lemonade stand",
+  "lemonade stand 60 wide 36 deep",
+  "knife block maple",
+  "record crate",
+  "laptop stand",
+  "toy train track riser",
+  "wall mounted mail organizer",
+  "planter box 2 by 4 feet",
+  "glider",
+  "rolling miter saw stand",
 ];
 
 describe("I33 stock switch rebuilds every cut from the picked stock", () => {
@@ -97,4 +126,58 @@ describe("I33 stock switch rebuilds every cut from the picked stock", () => {
       });
     }
   }
+
+  it("no switch: every cut row is its sheet's thickness, and that sheet (exterior outdoors) is bought", () => {
+    const bad: string[] = [];
+    for (const q of NO_SWITCH_CORPUS) {
+      const p = generateFromPrompt(q);
+      const plan = buildPlan(p);
+      for (const x of i37(p, p, plan)) bad.push(`${q}: ${x.msg}`);
+      if (isOutdoorPrompt(q.toLowerCase())) for (const b of plan.bom.filter((b) => /^sheets?$/.test(b.unit) && interiorSheet(b))) bad.push(`${q}: outdoors buys interior ${b.name}`);
+    }
+    assert.deepEqual(bad, []);
+  });
+
+  it("cost canaries: the barn birdhouse and the mudroom locker cost what they did before #99", () => {
+    // Main 49aa20f (live yard.wiki) prices, read off the live build: the fix moves no sheet.
+    assert.equal(buildPlan(generateFromPrompt("barn birdhouse")).totals.estCostUsd, 132.77);
+    assert.equal(buildPlan(generateFromPrompt("mudroom locker")).totals.estCostUsd, 239.15);
+  });
+
+  for (const via of ["measure", "stock panel"] as Via[]) {
+    it(`${via}: a part over 96" on 1/2" is refused and said, never cut 1/2" from a 3/4" 4×10`, async () => {
+      const { after } = await switchStock("bookshelf 30 wide 100 tall 12 deep", "plywood-1-2-4x8", via);
+      const plan = buildPlan(after);
+      const upright = plan.cutList.find((c) => c.name === "Upright")!;
+      // Hand-worked: 1/2" plywood is sold 4×8 at most, so a 100" upright stays 3/4" on a 4×10.
+      assert.deepEqual([upright.lengthIn, upright.thicknessIn, upright.material], [100, 0.75, '3/4" Plywood 4×10']);
+      assert.ok(!plan.cutList.some((c) => c.thicknessIn === 0.5), "no 1/2\" part");
+      assert.ok(!plan.bom.some((b) => b.catalogId === "plywood-1-2-4x8"), plan.bom.map((b) => b.name).join(", "));
+      const note = (after.notes ?? []).find((n) => n.startsWith(keptLongNote('1/2" Plywood 4×8')));
+      assert.ok(note, (after.notes ?? []).join(" | "));
+      assert.match(note!, /the 2 uprights are 100" long/);
+      // The pill and the note name the same stock.
+      const pill = honestNestSheetStockName(after, plan) ?? getCatalogItem(after.primaryMaterialId)!.name;
+      assert.equal(pill, '3/4" Plywood 4×10');
+      assert.ok(note!.includes(pill));
+    });
+  }
+
+  for (const stockId of ["plywood-1-2-4x8", "plywood-1-4-4x8"]) {
+    it(`I37 → ${stockId}: guards, ladders and load rails are never thinned, and labels name the real stock`, async () => {
+      const bad: string[] = [];
+      for (const q of STRUCTURAL_CORPUS) {
+        const { before, after } = await switchStock(q, stockId, "stock panel");
+        for (const x of i37(before, after)) bad.push(`${q}: ${x.msg}`);
+      }
+      assert.deepEqual(bad, []);
+    });
+  }
+
+  it("bunk bed → 1/2\": the 1×8 guards stay 3/4\" 1×8 boards", async () => {
+    const { after } = await switchStock("twin bunk bed", "plywood-1-2-4x8", "stock panel");
+    const guards = buildPlan(after).cutList.filter((c) => /guard/i.test(c.name));
+    assert.ok(guards.length >= 4);
+    for (const g of guards) assert.deepEqual([g.thicknessIn, g.material], [0.75, "1×8 Board (8 ft)"], g.name);
+  });
 });

@@ -479,13 +479,14 @@ export function envelopeOf(panels: Panel[]) {
   return { x: [Math.min(...b.map((q) => q.x0)), Math.max(...b.map((q) => q.x1))], y: [Math.min(...b.map((q) => q.y0)), Math.max(...b.map((q) => q.y1))], z: [Math.min(...b.map((q) => q.z0)), Math.max(...b.map((q) => q.z1))] } as Record<PosAxis, number[]>;
 }
 
-/** A face that thins keeps its outer face where it was: one on the far side of the envelope moves out. */
+/** A face that thins (or thickens to its sheet) keeps its outer face where it was: one on the far side of the envelope
+ * moves, so the build's outside size never changes. */
 export function keepOuterFace(p: Panel, was: Panel, env: Record<PosAxis, number[]>): Panel {
   if (p.yaw || p.polygon) return p;
   const pos = { ...p.position };
   for (const [a, k] of AXES) {
     const d = was.size[k] - p.size[k];
-    if (d > 0.01 && Math.abs(was.position[a] + was.size[k] - env[a][1]) < 0.02) pos[a] = was.position[a] + d;
+    if (Math.abs(d) > 0.01 && Math.abs(was.position[a] + was.size[k] - env[a][1]) < 0.02) pos[a] = was.position[a] + d;
   }
   return { ...p, position: pos };
 }
