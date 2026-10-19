@@ -80,5 +80,18 @@ export function closedCarcaseReadsAsk(prompt: string, p: YardProject, ignored: (
   // Last (it rebuilds the phrase): the head noun is read by the carcase; only a modifier ahead of it may be ignored.
   // The title carries the typed head noun (a "guitar case" built as a Shelf unit is another object).
   const head = typedHeadNoun(prompt);
-  return !!head && (p.name ?? "").toLowerCase().includes(head) && !ignored().some((w) => w.replace(/(?<!s)s$/, "") === head);
+  if (!head || !(p.name ?? "").toLowerCase().includes(head)) return false;
+  const skipped = ignored();
+  if (skipped.some((w) => w.replace(/(?<!s)s$/, "") === head)) return false;
+  // The family claims only on its own noun (Critic 10-19, #101): an ignored word ahead of the head noun may name what
+  // a closed body stores ("tool cabinet", "utility cupboard"), never another object or a mechanism the build does not
+  // have. A bare open noun ("kiln shelf", "folding shelf") read past its modifier is not the ask, unless the ask typed
+  // the size and interior counts the carcase holds.
+  if (skipped.some((w) => MECHANISM.test(w))) return false;
+  return !skipped.length || CLOSED_HEAD.test(head) || closedStorageAsk(prompt);
 }
+
+/** Head nouns of a closed body that stores things: a word ahead of one names its contents or its use. */
+const CLOSED_HEAD = /^(?:cabinets?|cupboards?|closets?|pantr(?:y|ies)|wardrobes?|armoires?|lockers?|chests?|credenzas?|sideboards?|hutch(?:es)?|dressers?|bureaus?|vanit(?:y|ies))$/;
+/** A modifier that names a mechanism or form the carcase does not build. */
+const MECHANISM = /^(?:folding|foldable|fold-?(?:out|down|up|away)|collapsible|telescoping|expandable|inflatable|murphy|convertible|swivel(?:ing)?|rotating|revolving)$/;

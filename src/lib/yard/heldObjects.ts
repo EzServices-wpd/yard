@@ -73,7 +73,7 @@ export function heldPhrase(lower: string): string | null {
 export function heldStandObject(lower: string): HeldObject | null {
   const named = lower.split(/\s+for\s+/)[0];
   const ahead = heldPhrase(stripPetUse(named));
-  return ahead && ahead !== named ? heldObjectFor(ahead) : null;
+  return ahead && ahead !== named ? heldObjectFor(ahead, lower) : null;
 }
 
 /**
@@ -129,11 +129,13 @@ export type HeldObject = {
   note: string;
   /** The product's own catalog piece (listing / usual-family shape and size), drawn on the deck. */
   item?: import("./types").CatalogItem;
+  /** Its size came from the prompt ("a 14\" pot"), not the class table: false when the class default was used. */
+  typed?: boolean;
 };
 
 type Row = {
   re: RegExp;
-  make: (q: string) => Omit<HeldObject, "note" | "count"> & { count?: number; sizeTalk?: string };
+  make: (q: string) => Omit<HeldObject, "note" | "count"> & { count?: number; sizeTalk?: string; typed?: boolean };
 };
 
 /** Glass aquarium by nominal gallons: footprint W×D, height H, filled weight (lb). */
@@ -218,24 +220,47 @@ const ROWS: Row[] = [
   {
     re: /\b(?:plants?|pots?|planters?|ferns?|succulents?|monstera)\b/,
     make: (q) => {
-      const m = q.match(/(\d{1,2})\s*(?:"|″|in(?:ch(?:es)?)?)\s*(?:pot|planter)/);
+      const m = q.match(/(\d{1,2})\s*(?:"|″|in(?:ch(?:es)?)?)\s*(?:-\s*)?(?:pot|planter)/);
       const pot = m ? parseFloat(m[1]) : 10;
-      return { label: `${pot}″ potted plant`, width: pot, depth: pot, height: Math.round(pot * 0.9), pounds: Math.round(pot * 2), water: true, standHeight: 24 };
+      return { label: `${pot}″ potted plant`, width: pot, depth: pot, height: Math.round(pot * 0.9), pounds: Math.round(pot * 2), water: true, standHeight: 24, typed: !!m };
     },
   },
 ];
 
-/** Class-default held object for this phrase, or null when nothing in the table matches. */
-export function heldObjectFor(phrase: string): HeldObject | null {
+const COUNT_WORD: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+const SAY_COUNT = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+
+/**
+ * Class-default held object for this phrase, or null when nothing in the table matches. The whole prompt, when given,
+ * is read too: a size typed with the object ("for a 14\" pot") is its size, and a typed count of it ("with 3 pots",
+ * "for 3 pots") is how many sit on the deck, side by side.
+ */
+export function heldObjectFor(phrase: string, context?: string): HeldObject | null {
   const q = phrase.toLowerCase();
+  const ctx = (context ?? "").toLowerCase();
   for (const row of ROWS) {
     if (!row.re.test(q)) continue;
-    const r = row.make(q);
-    const count = r.count ?? 1;
+    const r = row.make(ctx ? `${q} ${ctx}` : q);
+    let count = r.count ?? 1;
+    let { label, pounds } = r;
+    if (r.count == null && ctx) {
+      for (const m of ctx.matchAll(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+((?:[a-z]+\s+)?[a-z]+s)\b/g)) {
+        const n = COUNT_WORD[m[1]] ?? Number(m[1]);
+        if (n > 1 && n <= 10 && row.re.test(m[2])) {
+          count = n;
+          label = `${SAY_COUNT[n]} ${label}s`;
+          pounds *= n;
+          break;
+        }
+      }
+    }
+    const each = count > 1 ? " each" : "";
     const size = `${fmt(r.width)}″ wide × ${fmt(r.depth)}″ deep × ${fmt(r.height)}″ tall`;
-    const load = r.water ? `about ${r.pounds} lb filled` : `about ${r.pounds} lb`;
-    const note = `Assumed ${r.label}: ${size}, ${load} (usual size for that class). Type its real size to lock it.`;
-    return { label: r.label, width: r.width, depth: r.depth, height: r.height, pounds: r.pounds, water: r.water, count, standHeight: r.standHeight, note };
+    const load = r.water ? `about ${r.pounds} lb filled${each}` : `about ${r.pounds} lb${each}`;
+    const note = r.typed
+      ? `${label.charAt(0).toUpperCase()}${label.slice(1)}: ${size}${each}, ${load}, sized from the typed size.`
+      : `Assumed ${label}: ${size}${each}, ${load} (usual size for that class). Type its real size to lock it.`;
+    return { label, width: r.width, depth: r.depth, height: r.height, pounds, water: r.water, count, standHeight: r.standHeight, note, ...(r.typed != null ? { typed: r.typed } : {}) };
   }
   return null;
 }

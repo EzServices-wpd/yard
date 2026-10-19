@@ -86,7 +86,19 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(lp) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|long|length|tall|high|height|deep|depth))/.test(lp);
     if (!noDigits && !sized) {
       const named: Record<Axis, RegExp> = { width: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:wide|width|long|length)\b|\b(?:width|length)\s*(?:of\s*)?\d/, height: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b|\bheight\s*(?:of\s*)?\d/, depth: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:deep|depth)\b|\bdepth\s*(?:of\s*)?\d/ };
-      for (const a of ["width", "height", "depth"] as Axis[]) if (!named[a].test(lp)) assumed[a] = true;
+      // A typed number lands on the axis the build put it on: a bed's "44 wide" is its depth when the long side is W.
+      // The header never marks a typed axis assumed (Critic 10-19, #101; I38).
+      const said = [...lp.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(wide|width|long|length|tall|high|height|deep|depth)\b/g)].map((m) => ({
+        v: Number(m[1]),
+        a: (/wide|width|long|length/.test(m[2]) ? "width" : /tall|high|height/.test(m[2]) ? "height" : "depth") as Axis,
+      }));
+      const landed = (a: Axis) => said.some((t) => t.a !== a && Math.abs(t.v - o[a]) < 0.5 && Math.abs(t.v - o[t.a]) >= 0.5);
+      // And an axis word whose numbers all landed on another axis typed that other axis, not its own.
+      const movedOff = (a: Axis) => {
+        const own = said.filter((t) => t.a === a);
+        return own.length > 0 && own.every((t) => Math.abs(t.v - o[a]) >= 0.5 && (["width", "height", "depth"] as Axis[]).some((b) => b !== a && Math.abs(t.v - o[b]) < 0.5));
+      };
+      for (const a of ["width", "height", "depth"] as Axis[]) if ((!named[a].test(lp) || movedOff(a)) && !landed(a)) assumed[a] = true;
     }
   }
   const axes: Axis[] = ["width", "height", "depth"];

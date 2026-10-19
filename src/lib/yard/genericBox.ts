@@ -2,10 +2,11 @@ import type { YardProject } from "./types";
 import { isCasterPart, withoutMobility } from "./casterParts";
 
 /**
- * Words that never name the object: a size, a place, a style, a stock, a count. "over"/"under" set a bunk's layout
+ * Words that never name the object: a size, a place, a style, a stock, a count. Furniture style words ("farm table",
+ * "cottage dresser", "mission bookcase") name how it looks, never another object (Critic 10-19, #101). "over"/"under" set a bunk's layout
  * (twin over full), never the object. (Moved from promptMain so the routing gate reads the same list.)
  */
-export const FORM_NEUTRAL = /^(?:over|under|small|big|large|tall|short|wide|deep|long|mini|tiny|giant|toy|toys|model|miniature|scale|simple|basic|easy|modern|rustic|farmhouse|shaker|classic|plain|kids?|child|children|toddler|baby|twin|full|queen|king|double|single|wall|corner|floating|pocket|outdoor|indoor|garden|backyard|patio|porch|kitchen|bathroom|bedroom|garage|office|living|entry|entryway|hall|hallway|mudroom|laundry|room|cedar|pine|oak|maple|walnut|plywood|lumber|wood|wooden|scrap|pallet|popsicle|sticks?|dowels?|straws?|toothpicks?|cardboard|pvc|pipe|balsa|skewers?|inch|inches|feet|foot|high|top|open|fronts?|doors?|drawers?|shelves|shelf|one|two|three|four|five|six|white|black|red|blue|green|the|and)$/;
+export const FORM_NEUTRAL = /^(?:over|under|small|big|large|tall|short|wide|deep|long|mini|tiny|giant|toy|toys|model|miniature|scale|simple|basic|easy|modern|rustic|farmhouse|farm|ranch|cottage|country|cabin|lodge|harvest|industrial|vintage|antique|mission|craftsman|colonial|coastal|traditional|contemporary|minimalist|shaker|classic|plain|kids?|child|children|toddler|baby|twin|full|queen|king|double|single|wall|corner|floating|pocket|outdoor|indoor|garden|backyard|patio|porch|kitchen|bathroom|bedroom|garage|office|living|entry|entryway|hall|hallway|mudroom|laundry|room|cedar|pine|oak|maple|walnut|plywood|lumber|wood|wooden|scrap|pallet|popsicle|sticks?|dowels?|straws?|toothpicks?|cardboard|pvc|pipe|balsa|skewers?|inch|inches|feet|foot|high|top|open|fronts?|doors?|drawers?|shelves|shelf|one|two|three|four|five|six|white|black|red|blue|green|the|and)$/;
 
 /** The fitted storage fallback's bare carcase parts: uprights or sides, a back, a top or a front, a bottom. */
 const GENERIC_BOX_PART = /^(?:(?:left|right)\s+(?:upright|side)|back|top|front|bottom)$/i;

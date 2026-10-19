@@ -5,25 +5,26 @@
  */
 import { createId } from "@/lib/utils";
 import { rememberCatalogItem } from "./foundStock";
-import { inchFrac } from "./inchText";
+import { INCH_NUM, inchFrac, parseInchNum } from "./inchText";
 import type { HeldObject } from "./heldObjects";
 import type { CatalogItem, Panel, YardProject } from "./types";
 
 const r16 = (n: number) => Math.round(n * 16) / 16;
 
-/** Typed "N in/inches/ft tall|high" → inches. */
-function typedTall(lower: string): number | null {
-  const m = lower.match(/(\d+(?:\.\d+)?)\s*(?:-|\s)?\s*(in|inch|inches|"|″|ft|feet|foot)?\s*(?:tall|high)\b/);
+/**
+ * A typed "N tall|high" / "N wide|long" / "N deep" → inches. The unit is optional ("plant stand 14 wide" is 14"), the
+ * same read the header's typed axes use, and fractions read whole ("14 1/2 wide" is 14 1/2", never 2").
+ */
+function typedAlong(lower: string, axis: string): number | null {
+  const m = lower.match(new RegExp(String.raw`(?<![\w/.])(${INCH_NUM})\s*(?:-|\s)?\s*(in|inch|inches|"|″|ft|feet|foot)?\s*(?:${axis})\b`));
   if (!m) return null;
-  const n = parseFloat(m[1]);
+  const n = parseInchNum(m[1]);
+  if (!Number.isFinite(n)) return null;
   return /ft|feet|foot/.test(m[2] ?? "") ? n * 12 : n;
 }
+const typedTall = (lower: string) => typedAlong(lower, "tall|high");
 function typedAxis(lower: string, axis: "wide|long" | "deep"): number | null {
-  const re = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:-|\\s)?\\s*(in|inch|inches|"|″|ft|feet|foot)\\s*(?:${axis})\\b`);
-  const m = lower.match(re);
-  if (!m) return null;
-  const n = parseFloat(m[1]);
-  return /ft|feet|foot/.test(m[2]) ? n * 12 : n;
+  return typedAlong(lower, axis);
 }
 
 export type StandFrame = {
@@ -81,7 +82,7 @@ function proxyItem(held: HeldObject): CatalogItem {
  * Stand under a held object. "stand"/"cart"/"table" → the class stand height; "shelf"/"riser" → a
  * countertop riser that keeps a usable clear space (≥ 7″) underneath.
  */
-export function buildHeldStand(prompt: string, held: HeldObject, title: string): YardProject {
+export function buildHeldStand(prompt: string, held: HeldObject, title: string, opts: { sheet?: CatalogItem } = {}): YardProject {
   const lower = prompt.toLowerCase();
   const n = Math.max(1, held.count);
   const gap = n > 1 ? 3 : 0;
@@ -97,12 +98,14 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   const D = r16(typedD ?? wantD);
   const standWord = /\b(stands?|carts?|tables?|bases?)\b/.test(lower);
   const tall = typedTall(lower);
-  const deckT = 0.75;
+  // A typed sheet stock is the deck and shelf; legs and aprons stay lumber (a sheet strip is not a leg).
+  const deckT = opts.sheet?.dims.thickness ?? 0.75;
   const frame = frameForLoad(held.pounds, held.water, W);
   // A riser keeps a usable clear space (≥ 7″) under its aprons.
   const riserH = Math.max(7 + frame.apronH + deckT, Math.min(14, Math.round(held.height * 0.6)));
   const deckTop = r16(tall ?? (standWord ? held.standHeight : riserH));
-  const ply = "plywood-3-4-4x8";
+  const ply = opts.sheet?.id ?? "plywood-3-4-4x8";
+  const deckName = opts.sheet?.name ?? '3/4" plywood';
   const legH = r16(deckTop - deckT);
   const panels: Panel[] = [];
   const mk = (p: Omit<Panel, "id">) => panels.push({ id: createId("panel"), ...p });
@@ -142,7 +145,7 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
     mk({ type: "rail", name: "Back stretcher", position: { x: 0, y: sy, z: r16(D - frame.legD - frame.apronT) }, size: { width: W, height: frame.apronH, depth: frame.apronT }, materialId: frame.apronId, cutNote: "Bottom frame, matches the front stretcher." });
     mk({ type: "shelf", name: "Lower shelf", position: { x: 0, y: r16(sy + frame.apronH), z: frame.legD }, size: { width: W, height: deckT, depth: innerD }, materialId: ply, cutNote: "Sits on the stretchers between the legs; notch the corners around the legs." });
   }
-  mk({ type: "top", name: "Deck", position: { x: 0, y: legH, z: 0 }, size: { width: W, height: deckT, depth: D }, materialId: ply, cutNote: `Solid 3/4" plywood deck; the ${held.label} sits on it.` });
+  mk({ type: "top", name: "Deck", position: { x: 0, y: legH, z: 0 }, size: { width: W, height: deckT, depth: D }, materialId: ply, cutNote: `Solid ${deckName} deck; the ${held.label} sits on it.` });
 
   // A gas cylinder stands in a cradle: a 2×4 collar on the deck round its foot ring so it cannot tip or slide.
   if (cradle) {
@@ -164,7 +167,15 @@ export function buildHeldStand(prompt: string, held: HeldObject, title: string):
   const notes: string[] = [held.note];
   const sits = n > 1 ? "sit" : "sits";
   const is = n > 1 ? "are" : "is";
-  notes.push(`The ${held.label} ${sits} on a solid 3/4" plywood deck, ${inchFrac(W)}" × ${inchFrac(D)}", sized to its footprint with ${inchFrac(margin)}" to spare on each side. Legs and aprons stand under the deck.`);
+  notes.push(`The ${held.label} ${sits} on a solid ${deckName} deck, ${inchFrac(W)}" × ${inchFrac(D)}", sized to its footprint with ${inchFrac(margin)}" to spare on each side${n > 1 ? ` and ${inchFrac(gap)}" between them` : ""}. Legs and aprons stand under the deck.`);
+  if (opts.sheet) notes.push(`Deck${lower3 ? " and lower shelf" : ""} cut from ${opts.sheet.name}, as typed; the legs and aprons are ${frame.legId === "lumber-2x4-8" ? "2×4" : "2×2"} lumber, because a strip of ${inchFrac(deckT)}" sheet is not a leg.`);
+  // Axes the prompt did not size are said assumed (the header marks them): the class stand height, and a deck sized
+  // from a class-default object.
+  if (held.typed != null) {
+    if (tall == null) notes.push(`Assumed ${inchFrac(r16(cradle ? deckTop + 3.5 : deckTop))}" tall (usual ${standWord ? "stand" : "riser"} height for it).`);
+    if (!held.typed && typedW == null) notes.push(`Assumed ${inchFrac(W)}" wide (the ${held.label} it holds).`);
+    if (!held.typed && typedD == null) notes.push(`Assumed ${inchFrac(D)}" deep (the ${held.label} it holds).`);
+  }
   if (typedW != null && typedW < objW) notes.push(`The typed ${inchFrac(typedW)}" width wins; the ${held.label} ${is} ${inchFrac(objW - typedW)}" wider than the deck, so it overhangs.`);
   if (cradle) notes.push(`A low cradle base: the deck sits ${inchFrac(deckTop)}" off the ground and a 2×4 collar round its edge holds the ${held.label}'s foot ring upright.`);
   if (!standWord && !tall) notes.push(`Riser: the deck sits at ${inchFrac(deckTop)}", leaving ${inchFrac(legH - frame.apronH)}" of clear space underneath for storage.`);

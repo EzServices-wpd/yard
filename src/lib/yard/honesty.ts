@@ -240,11 +240,14 @@ export function typedExtents(prompt: string): TypedExtents | null {
           out.height = trip.b;
           out.depth = trip.c;
         }
-      } else if (furniture) {
+      } else if (furniture && !(/\b(?:cabinet|cupboard|locker|armoire|hutch)(?:e?s)?\b/.test(lower) && !isPlatformBed(lower) && !isBunkBed(lower) && !isLoftBed(lower) && trip.b > 48 && trip.c <= 36)) {
         out.width = trip.a;
         out.depth = trip.b;
         out.height = trip.c;
       } else {
+        // Opening order (W × H × D): closets and fitted openings, and a storage triple whose middle number is no
+        // depth any freestanding cabinet has (over 48") while the last one is (30x72x16 is 72" tall and 16" deep, the
+        // way a cabinet is sold), the same depth sanity the bare pair read uses.
         out.width = trip.a;
         out.height = trip.b;
         out.depth = trip.c;
