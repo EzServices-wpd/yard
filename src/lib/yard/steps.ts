@@ -2169,33 +2169,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         description: `${shelves.map(cutLine).join("; ") || "Shelf."} ${shelfHeights(shelves)} This shelf is the floor of the drawer bay and the top of the open cubby. Glue and screw through the uprights into the shelf at the marked height. Square it. No pins — it is fixed.`,
         partsUsed: names([...uprights, ...shelves]),
       },
-      {
-        step: 5,
-        title: "Build drawer sides, front, back, and bottom",
-        description: `From the cut list: two Drawer sides, one Drawer back, and one Drawer bottom — glue and nail the box square. The front goes on after the box is hung, so its gaps line up.`,
-        tips: "Dry-fit the box in the bay (assemble without glue) before the glue goes on.",
-        partsUsed: names(drawers),
-      },
-      {
-        step: 6,
-        title: `Hang the drawer on ${slide}" slides`,
-        description: `One pair of ${slide}" side-mount slides (metal tracks that screw to the sides of the box and the cabinet). Hang the slides on the uprights first, then set the box. Confirm the slide against the ${round(D)}" main box before you buy.`,
-        tips: `A 16" box does not take an 18" slide. 1 pair of ${slide}" slides.`,
-        partsUsed: names(drawers),
-      },
-      {
-        step: 7,
-        title: "Fit the drawer front (false front)",
-        description: "The Drawer front is a false front — the show face screwed onto the front of the box. With the box hung, set the Drawer front in place and screw it on from inside the box. Edge-band the plywood edge people see (thin veneer strip over the raw edge). One cup pull centered on the front.",
-        tips: "Even gaps all round before you drive the screws — double-sided tape holds it while you check.",
-        partsUsed: names(drawers),
-      },
+      // The drawer is built, hung and fronted by the one drawer step set every carcase uses (F17).
+      ...drawerBoxSteps(drawers, panels, slide, false, D).map((st, k) => ({ ...st, step: 5 + k })),
       {
         step: 8,
         title: "Level it",
         description: "This nightstand sits on the floor. The back is already on it so the box stays square. Shim the feet if the floor is out — do not twist the main box.",
         tips: "Guidance only — confirm the bedside height before you cut. Not stamped engineering.",
-        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...drawers]),
+        partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...panels.filter((p) => p.type === "drawer" || !!p.drawerId)]),
       },
     ];
   }
