@@ -1207,7 +1207,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (held) {
     const stand = buildHeldStand(prompt, held, titleFor(held.label), heldTakesStick && sheet ? { sheet } : {});
     // A typed inch size that names no axis and no held object ("pot stand 14 inch") is not guessed at: the note says
-    // it was not read and how to type it (I38: every typed size is used or refused with a note).
+    // it was not read and how to type it (I40: every typed size is used or refused with a note).
     const loose = [...lower.matchAll(new RegExp(String.raw`(?<![\w/.])(${INCH_NUM})\s*(?:in|inch|inches|"|″)(?![\w-])(?:\s*-?\s*([a-z]+))?`, "g"))]
       .filter((m) => !(m[2] && (/^(?:wide|width|long|length|deep|depth|tall|high|height|diameter|across|thick|square|round|plywood|ply|mdf|board|boards|lumber|sheet|dowels?|pine|oak|maple|cedar|birch|walnut|poplar|x|by)$/.test(m[2]) || heldObjectFor(m[2]))))
       .map((m) => `${inchFrac(parseInchNum(m[1]))}"`);

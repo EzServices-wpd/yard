@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 // Static imports load before the window stub below (the PDF module reads the real globals).
 import { buildPlan } from "./report";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
-import { i34, i38 } from "./invariants";
+import { i34, i40 } from "./invariants";
 import { headerTitle } from "./pdf";
 
 (globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
@@ -84,7 +84,7 @@ describe("I34: known families build before the learner", () => {
     const p = generateFromPrompt("plant stand 14 wide");
     assert.equal(p.overall.width, 14);
     assert.match(headerTitle(p), /14" W .*\(D, H assumed\)/);
-    assert.deepEqual(i38(p, "plant stand 14 wide").map((x) => x.msg), []);
+    assert.deepEqual(i40(p, "plant stand 14 wide").map((x) => x.msg), []);
   });
   it("plant stand 18 wide 30 tall: both typed axes are the stand's", () => {
     const p = generateFromPrompt("plant stand 18 wide 30 tall");
@@ -98,7 +98,7 @@ describe("I34: known families build before the learner", () => {
     assert.equal(p.overall.width, 15);
     assert.equal(p.overall.depth, 15);
     assert.ok(!p.instances.some((i) => /10/.test(i.catalogId)), p.instances.map((i) => i.catalogId).join());
-    assert.deepEqual(i38(p, 'plant stand for a 14" pot').map((x) => x.msg), []);
+    assert.deepEqual(i40(p, 'plant stand for a 14" pot').map((x) => x.msg), []);
   });
   for (const q of ["plant stand with 3 pots", "plant stand for 3 pots"]) {
     it(`${q}: three pots on one deck (3 × 10" + 2 × 3" + 1", 37" wide)`, () => {
@@ -106,14 +106,14 @@ describe("I34: known families build before the learner", () => {
       assert.equal(p.instances.filter((i) => i.role === "held").length, 3);
       assert.equal(p.overall.width, 37);
       assert.match(p.name, /three 10″ potted plants/);
-      assert.deepEqual(i38(p, q).map((x) => x.msg), []);
+      assert.deepEqual(i40(p, q).map((x) => x.msg), []);
     });
   }
   it("rolling plant stand: the stand rolls (casters), and says so", () => {
     const p = generateFromPrompt("rolling plant stand");
     const plan = buildPlan(p);
     assert.ok(plan.bom.some((b) => /caster/i.test(b.name)), plan.bom.map((b) => b.name).join(", "));
-    assert.deepEqual(i38(p, "rolling plant stand").map((x) => x.msg), []);
+    assert.deepEqual(i40(p, "rolling plant stand").map((x) => x.msg), []);
   });
   it("plant stand in 1/2 plywood: the stand, its deck and shelf cut from 1/2\" plywood; never a closed cube", () => {
     const p = generateFromPrompt("plant stand in 1/2 plywood");
@@ -139,13 +139,13 @@ describe("I34: known families build before the learner", () => {
     assert.equal(p.overall.height, 72);
     assert.match(headerTitle(p), /^Utility cabinet · 30" W × 16" D × 72" H\b/);
     assert.ok((p.notes ?? []).some((n) => /Read 30x72x16 as width × height × depth/.test(n)));
-    assert.deepEqual(i38(p, q).map((x) => x.msg), []);
+    assert.deepEqual(i40(p, q).map((x) => x.msg), []);
   });
   it("bunk bed 82 long 44 wide: the typed 44\" lands on D, so the header marks only H assumed", () => {
     const q = "bunk bed 82 long 44 wide";
     const p = generateFromPrompt(q);
     assert.match(headerTitle(p), /82" W × 44" D × 65" H \(H assumed\)/);
-    assert.deepEqual(i38(p, q).map((x) => x.msg), []);
+    assert.deepEqual(i40(p, q).map((x) => x.msg), []);
   });
   it("bunk bed 40 wide: the typed 40\" is D, so W (the 82\" long side nobody typed) and H are the assumed axes", () => {
     assert.match(headerTitle(generateFromPrompt("bunk bed 40 wide")), /82" W × 40" D × 65" H \(W, H assumed\)/);

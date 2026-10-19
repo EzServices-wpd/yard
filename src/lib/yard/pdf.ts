@@ -87,7 +87,7 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     if (!noDigits && !sized) {
       const named: Record<Axis, RegExp> = { width: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:wide|width|long|length)\b|\b(?:width|length)\s*(?:of\s*)?\d/, height: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b|\bheight\s*(?:of\s*)?\d/, depth: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:deep|depth)\b|\bdepth\s*(?:of\s*)?\d/ };
       // A typed number lands on the axis the build put it on: a bed's "44 wide" is its depth when the long side is W.
-      // The header never marks a typed axis assumed (Critic 10-19, #101; I38).
+      // The header never marks a typed axis assumed (Critic 10-19, #101; I40).
       const said = [...lp.matchAll(/(\d+(?:\.\d+)?)\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(wide|width|long|length|tall|high|height|deep|depth)\b/g)].map((m) => ({
         v: Number(m[1]),
         a: (/wide|width|long|length/.test(m[2]) ? "width" : /tall|high|height/.test(m[2]) ? "height" : "depth") as Axis,
