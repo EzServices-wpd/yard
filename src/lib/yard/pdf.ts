@@ -1145,7 +1145,7 @@ export { planStepParts, stepKindOf };
  * The header everywhere a size shows: the name without its bare size, then the finished size with every
  * axis labelled in one order, W × D × H, and the axes nobody typed marked assumed.
  */
-export function headerTitle(project: YardProject): string {
+export function headerTitle(project: YardProject, opts: { features?: boolean } = {}): string {
   const { assumed } = typedAxesTalk(project);
   // One size (headerSize): a typed axis is the size said back (the linen closet's 16″, doors standing proud are
   // a note); an assumed axis is the model's own extent, the number the drawings label.
@@ -1156,7 +1156,7 @@ export function headerTitle(project: YardProject): string {
   // C3: a purchased item's size is the unit table's real piece, never an assumption.
   if (isUnitItem(project)) guess.length = 0;
   const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";
-  return [`${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`, ...headerFeatures(project)].join(" · ");
+  return [`${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
 }
 
 const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };

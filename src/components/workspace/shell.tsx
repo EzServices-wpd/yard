@@ -40,7 +40,8 @@ import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
 import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { modelFinishedDepth, modelProudNote } from "@/lib/yard/modelSize";
+import { modelProudNote } from "@/lib/yard/modelSize";
+import { headerSize } from "@/lib/yard/headerSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
@@ -617,7 +618,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   <p className="min-w-0 truncate font-display text-[15px] text-fg">
                     {titlePending ? (
                       <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
-                    ) : project.name || headerTitle(project)}
+                    ) : headerTitle(project, { features: false })}
                   </p>
                   <DecisionLine />
                 </div>
@@ -763,12 +764,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
                     const inch = inchFrac;
                     const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
-                    const finished = pocketUnit
-                      ? pocketUnit.depth
-                      : modelFinishedDepth(project.panels, project.overall.depth);
+                    // One size: the header's own W × D × H (typed axes as typed, assumed axes the model's extent).
+                    const one = headerSize(project);
                     const envelope = pocketUnit
                       ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
-                      : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, finished, {
+                      : fmtUnitEnvelopeInches(one.width, one.height, one.depth, {
                           shape: project.fitted?.unit?.shape,
                           prompt: project.prompt,
                           name: project.name,

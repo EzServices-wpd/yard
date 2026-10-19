@@ -106,8 +106,10 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     extra.length = 0;
   }
   const finished = modelFinishedDepth(project.panels, o.depth);
-  // The cover reads the finished depth for a typed depth (proud fronts, with the note); an assumed axis is the model's extent.
-  const shown = { ...shownSize(project, assumed), ...(assumed.depth ? {} : { depth: finished }) };
+  // One size (headerSize): a typed axis is the typed number said back on every surface, the cover too (Chief walk
+  // 21 Oct: filing typed 30 deep, header 30, PDF 30 3/4). Doors or fronts standing proud are the note, not the size.
+  // An assumed axis is the model's extent.
+  const shown = shownSize(project, assumed);
   const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
   const guessed = axes.filter((a) => assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
   const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
@@ -127,7 +129,7 @@ export function typedAxesTalk(project: YardProject, craft = false) {
   const title = stampFinishedDepth(
     stock && /\d/.test(name) ? name.replace(/\s*\d.*$/, "").trim() || name : name,
     o.depth,
-    finished,
+    shown.depth,
   );
   const assumedShort = assumedList.length ? (craft && stock ? "design size" : `${list(assumedList)} assumed`) : "";
   return { title, subtitle: clean(subtitle), assumed, assumedTalk, assumedShort };

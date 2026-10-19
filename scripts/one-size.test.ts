@@ -213,3 +213,45 @@ test("headerSize class: an assumed height is the unit's own, never a wall-hung m
   assert.equal(headerSize(generateFromPrompt("mirror frame 24 wide")).height, generateFromPrompt("mirror frame 24 wide").overall.height);
   assert.ok(headerSize(generateFromPrompt("rocking chair")).height > 30, "a chair's back is the chair");
 });
+
+/**
+ * Chief walk 21 Oct, "one screen, three sizes": the result card said the engine's name (box depth, W × H × D), the
+ * header the finished depth, and the PDF a typed 30 as 30 3/4. Class rule: the card, the bench size readout, the PDF
+ * cover and step 1 all read headerSize, and a typed axis is the typed number everywhere (proud fronts are the note).
+ */
+test("typed dims win on every surface: the PDF cover, its title and step 1 say a typed axis as typed", () => {
+  const WORD = { width: "wide", height: "tall", depth: "deep" } as const;
+  const walk = ["filing cabinet 30x30x24 2 doors 2 drawers", "nightstand with 2 drawers", "wine cabinet", "kitchen island", "dresser 36 wide 36 tall"];
+  const bad: string[] = [];
+  for (const q of [...walk, ...corpus.keys()]) {
+    const p = generateFromPrompt(q);
+    if (!p.panels.length || p.pocket) continue;
+    const t = typedAxesTalk(p);
+    const s = headerSize(p);
+    const hdr = headerTitle(p);
+    for (const a of ["width", "depth", "height"] as const) {
+      if (t.assumed[a]) continue;
+      if (Math.abs(s[a] - p.overall[a]) > 1 / 32) bad.push(`${q}: header ${a} ${inchFrac(s[a])} vs typed ${inchFrac(p.overall[a])}`);
+      if (!t.subtitle.includes(`${inchFrac(s[a])}" ${WORD[a]}`)) bad.push(`${q}: cover "${t.subtitle}" lacks ${inchFrac(s[a])} ${WORD[a]}`);
+    }
+    const D = inchFrac(s.depth).replace(/"$/, "");
+    if (!hdr.includes(`${D}" D`)) bad.push(`${q}: header "${hdr}" vs ${D}`);
+    const words = buildPlan(p).instructions.map((x) => x.description).join(" ").match(/Unit ([\d\s/]+)" wide × ([\d\s/]+)" deep/);
+    if (words && !t.assumed.depth && words[2].trim() !== D) bad.push(`${q}: step 1 says ${words[2].trim()} deep vs typed ${D}`);
+  }
+  assert.deepEqual(bad, []);
+  const filing = typedAxesTalk(generateFromPrompt("filing cabinet 30x30x24 2 doors 2 drawers"));
+  assert.doesNotMatch(`${filing.title} ${filing.subtitle}`, /30 3\/4/, "filing typed 30 deep: never 30 3/4");
+});
+
+test("the result card and the bench size readout read the header's one size (no engine name, no second depth)", () => {
+  const src = fs.readFileSync("src/components/workspace/shell.tsx", "utf8");
+  const card = src.slice(src.indexOf('data-yard-result-card="1"'), src.indexOf("<DecisionLine />"));
+  assert.match(card, /headerTitle\(project, \{ features: false \}\)/);
+  assert.doesNotMatch(card, /project\.name\s*\|\|/, "the card never says the engine's own name/size");
+  assert.doesNotMatch(src, /modelFinishedDepth\(/, "the bench readout reads headerSize, not a second finished depth");
+  const nightstand = generateFromPrompt("nightstand with 2 drawers");
+  const cardText = headerTitle(nightstand, { features: false });
+  assert.ok(headerTitle(nightstand).startsWith(cardText), "card = the header's own name and size");
+  assert.match(cardText, /16 3\/4" D/);
+});

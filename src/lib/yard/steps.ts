@@ -2347,7 +2347,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     // One size: an assumed axis says the header's number (the model's extent); a typed one says the typed size.
     const { assumed: guessed } = typedAxesTalk(project);
     const shown = headerSize(project);
-    const said = { width: guessed.width ? shown.width : W, depth: guessed.depth ? shown.depth : modelFinishedDepth(project.panels, D), height: guessed.height ? shown.height : H };
+    const said = { width: guessed.width ? shown.width : W, depth: shown.depth, height: guessed.height ? shown.height : H }; // typed depth: the typed number (proud fronts are the note)
     steps.push({
       step: n++,
       title: alcove
@@ -2357,7 +2357,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           : objectBuild
             ? "Confirm the size — do not cut yet"
             : "Confirm the footprint — do not cut yet",
-      description: `${stampFinishedDepth(project.name, D, modelFinishedDepth(project.panels, D))}. Unit ${round(said.width)}" wide × ${round(said.depth)}" deep × ${round(said.height)}" high. ${
+      description: `${stampFinishedDepth(project.name, D, said.depth)}. Unit ${round(said.width)}" wide × ${round(said.depth)}" deep × ${round(said.height)}" high. ${
         modelProudNote(project.panels, D) ? `${modelProudNote(project.panels, D)[0].toUpperCase()}${modelProudNote(project.panels, D).slice(1)}. ` : ""
       }${
         alcove
