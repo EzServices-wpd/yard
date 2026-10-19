@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
-import { gradeCanary, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { gradeCanary, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
@@ -45,7 +45,24 @@ test("corpus: sorted, deduped, no test traffic, every file has a source", () => 
   const qs = c.map((e) => e.prompt);
   assert.deepEqual(qs, [...qs].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
   assert.equal(new Set(qs).size, qs.length);
-  assert.ok(!qs.some((q) => /critic[\s_-]*probe|\btest\b/i.test(q)));
+});
+test("test traffic is decided by the logged record (test=1, x-yard-test), never the prompt text", () => {
+  const rec = (q: string, extra = "", headers?: Record<string, string>) => ({ url: `https://yard.wiki/workspace?q=${encodeURIComponent(q)}&offline=1${extra}`, headers });
+  assert.equal(isTestTraffic(rec("test tube rack")), false);
+  assert.equal(isTestTraffic(null), false);
+  assert.equal(isTestTraffic(rec("bookcase", "&test=1")), true);
+  assert.equal(isTestTraffic({ u: "https://yard.wiki/api/run-prompt?test=1" }), true);
+  assert.equal(isTestTraffic(rec("bookcase", "", { "X-Yard-Test": "1" })), true);
+  assert.equal(isTestTraffic(rec("bookcase", "&test=0", { "x-yard-test": "0" })), false);
+  const kept = keepCorpusRows([
+    { id: "a", prompt: "test tube rack", rec: rec("test tube rack") },
+    { id: "b", prompt: "test tube rack for 12 tubes" },
+    { id: "c", prompt: "bookcase 30 wide", rec: rec("bookcase 30 wide", "&test=1") },
+    { id: "d", prompt: "shoe rack", rec: rec("shoe rack", "", { "x-yard-test": "1" }) },
+    { id: "e", prompt: "Test Tube Rack", rec: rec("Test Tube Rack") },
+  ]);
+  assert.deepEqual(kept.map((r) => r.id), ["a", "b"]);
+  assert.ok(kept.every((r) => !("rec" in r)));
 });
 test("canaries hold (hard fail, separate from the totals)", async () => {
   const E = await loadEngine();

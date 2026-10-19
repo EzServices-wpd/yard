@@ -1,6 +1,6 @@
 {
  "source": "nightly-sweep",
- "note": "Fresh requests from the nightly live sweeps (2026-10-16 n01–n20, 2026-10-17 f01–f20 + r rechecks; walkGrade = that night's strict grade) and every prompt in the evals/sweeps/*.md tables. Test traffic (critic probes, test/QA strings) excluded: 229 rows dropped as test traffic or duplicates. Live Ideas user rows are deliberately NOT copied into this public repo.",
+ "note": "Fresh requests from the nightly live sweeps (2026-10-16 n01–n20, 2026-10-17 f01–f20 + r rechecks; walkGrade = that night's strict grade) and every prompt in the evals/sweeps/*.md tables. Test traffic (logged test=1 flag or x-yard-test header; never the prompt text) excluded: 0 rows dropped as logged test traffic, 229 as duplicates. Live Ideas user rows are deliberately NOT copied into this public repo.",
  "prompts": [
   {
    "id": "10-16:n01",

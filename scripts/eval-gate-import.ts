@@ -8,7 +8,7 @@
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { stable } from "./eval-gate-lib.ts";
+import { isTestTraffic, keepCorpusRows, stable, type LoggedRecord } from "./eval-gate-lib.ts";
 
 const argv = process.argv.slice(2);
 const arg = (k: string, d: string) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
@@ -18,8 +18,6 @@ const RANKED = arg("--ranked", "/workspace/yard-errors-ranked.md");
 const NIGHTLY = arg("--nightly", "/workspace/nightly-2026-10-16,/workspace/nightly-2026-10-17").split(",");
 const OUT = new URL("../evals/corpus/", import.meta.url).pathname;
 const SWEEPS = new URL("../evals/sweeps/", import.meta.url).pathname;
-/** Test traffic never enters the corpus: Critic probes, QA strings, smoke tests. */
-export const isTestTraffic = (q: string) => /critic[\s_-]*probe|\bprobe\b|\btest(?:ing)?\b|\bqa\b|lorem|asdf|qwer|^x+$/i.test(q);
 const clean = (s: string) => s.replace(/\\\|/g, "|").replace(/`/g, "").replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
 const cells = (line: string) => line.trim().replace(/^\||\|$/g, "").split(/(?<!\\)\|/).map((c) => c.trim());
 
@@ -61,7 +59,14 @@ const seen = new Set<string>();
 writeFileSync(join(OUT, "live-walk.json"), stable({ source: "live-walk", note: "Live walk 2026-10-21 release (prod 49aa20f): live-walk-1021/RESULTS.md prompt table (walkGrade = Critic's live grade), quoted prompts in yard-errors-ranked.md rows 76–84, and Critic's 10-19 regrade/backlog prompts.", prompts: walk.filter((w) => !seen.has(w.prompt.toLowerCase()) && seen.add(w.prompt.toLowerCase())) }));
 
 // nightly-sweep: fresh real requests from the nightly live sweeps + the engine sweep tables in evals/sweeps (test traffic excluded).
-const nightly: { id: string; prompt: string; walkGrade?: string; note?: string }[] = [];
+const nightly: { id: string; prompt: string; walkGrade?: string; note?: string; rec?: LoggedRecord | null }[] = [];
+/** The logged record for a nightly row (<dir>/<id>/<id>.json: the walked URL and any request headers), when it was kept. */
+const recordOf = (dir: string, id: string): LoggedRecord | null => {
+  const f = join(dir, id, `${id}.json`);
+  if (!existsSync(f)) return null;
+  const r = JSON.parse(readFileSync(f, "utf8"));
+  return { url: r.url, headers: r.headers };
+};
 for (const dir of NIGHTLY) {
   const f = join(dir, "RESULTS.md");
   if (!existsSync(f)) continue;
@@ -69,7 +74,7 @@ for (const dir of NIGHTLY) {
     const m = line.match(/^\|\s*([nfr]\d{2})\s*\|/);
     if (!m) continue;
     const c = cells(line);
-    nightly.push({ id: `${dir.split("-").slice(-2).join("-")}:${m[1]}`, prompt: clean(c[1]), walkGrade: clean(c[2]).toLowerCase().split(" ")[0] });
+    nightly.push({ id: `${dir.split("-").slice(-2).join("-")}:${m[1]}`, prompt: clean(c[1]), walkGrade: clean(c[2]).toLowerCase().split(" ")[0], rec: recordOf(dir, m[1]) });
   }
 }
 for (const f of readdirSync(SWEEPS).filter((x) => x.endsWith(".md")).sort()) {
@@ -84,7 +89,7 @@ for (const f of readdirSync(SWEEPS).filter((x) => x.endsWith(".md")).sort()) {
 }
 const f17 = join(SWEEPS, "f17-prompts.json");
 if (existsSync(f17)) for (const q of JSON.parse(readFileSync(f17, "utf8"))) nightly.push({ id: "sweep:f17-prompts", prompt: clean(q) });
-const seenN = new Set<string>();
-const kept = nightly.filter((w) => w.prompt && !isTestTraffic(w.prompt) && !seenN.has(w.prompt.toLowerCase()) && seenN.add(w.prompt.toLowerCase()));
-writeFileSync(join(OUT, "nightly-sweep.json"), stable({ source: "nightly-sweep", note: `Fresh requests from the nightly live sweeps (2026-10-16 n01–n20, 2026-10-17 f01–f20 + r rechecks; walkGrade = that night's strict grade) and every prompt in the evals/sweeps/*.md tables. Test traffic (critic probes, test/QA strings) excluded: ${nightly.length - kept.length} rows dropped as test traffic or duplicates. Live Ideas user rows are deliberately NOT copied into this public repo.`, prompts: kept }));
+const kept = keepCorpusRows(nightly);
+const nTest = nightly.filter((w) => isTestTraffic(w.rec)).length;
+writeFileSync(join(OUT, "nightly-sweep.json"), stable({ source: "nightly-sweep", note: `Fresh requests from the nightly live sweeps (2026-10-16 n01–n20, 2026-10-17 f01–f20 + r rechecks; walkGrade = that night's strict grade) and every prompt in the evals/sweeps/*.md tables. Test traffic (logged test=1 flag or x-yard-test header; never the prompt text) excluded: ${nTest} rows dropped as logged test traffic, ${nightly.length - kept.length - nTest} as duplicates. Live Ideas user rows are deliberately NOT copied into this public repo.`, prompts: kept }));
 console.log(`grok100 ${ab((id) => /^g\d+$/.test(id)).length} · review18 ${ab((id) => /^P\d/.test(id)).length} · live-walk ${seen.size} · nightly-sweep ${kept.length}`);

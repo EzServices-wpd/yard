@@ -263,3 +263,23 @@ export function bySource(rows: PromptResult[]): Record<string, Totals> {
 }
 /** Stable JSON: keys in insertion order (built deterministically), prompts sorted, 1-space indent like evals/score.json. */
 export const stable = (x: unknown) => JSON.stringify(x, null, 1) + "\n";
+
+/**
+ * Test traffic never enters the corpus. It is decided by the real signals in the logged record — the `test=1` query
+ * flag on the logged URL and the `x-yard-test: 1` request header (src/lib/ideas/testSession.ts) — never by the prompt
+ * text, so a real "test tube rack" is kept. A row with no logged record is not test traffic.
+ */
+export type LoggedRecord = { url?: string; u?: string; headers?: Record<string, string | string[] | undefined> };
+export function isTestTraffic(rec: LoggedRecord | null | undefined): boolean {
+  if (!rec) return false;
+  const url = rec.url ?? rec.u ?? "";
+  const q = url.includes("?") ? url.slice(url.indexOf("?") + 1).split("#")[0] : "";
+  if (new URLSearchParams(q).getAll("test").includes("1")) return true;
+  for (const [k, v] of Object.entries(rec.headers ?? {})) if (k.toLowerCase() === "x-yard-test" && [v].flat().some((x) => String(x).trim() === "1")) return true;
+  return false;
+}
+/** Drop logged test traffic and case-insensitive duplicates (first wins); strips the record so it never lands in the corpus. */
+export function keepCorpusRows<T extends { prompt: string; rec?: LoggedRecord | null }>(rows: T[]): Omit<T, "rec">[] {
+  const seen = new Set<string>();
+  return rows.filter((w) => w.prompt && !isTestTraffic(w.rec) && !seen.has(w.prompt.toLowerCase()) && seen.add(w.prompt.toLowerCase())).map(({ rec: _rec, ...w }) => w);
+}
