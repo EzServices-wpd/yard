@@ -13,7 +13,7 @@ import { CLOSE_MS, ONCE_MS, OPEN_MS, closeCurve, openCurve } from "./showcase-do
 
 const C30 = Math.cos(Math.PI / 6);
 
-type Part = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number; strut?: unknown; form?: unknown; outline?: unknown; polygon?: unknown };
+type Part = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number; strut?: unknown; form?: unknown; outline?: unknown; polygon?: unknown; drawerId?: string };
 /** The overview's iso projection (pdfDraw): P(v) = ((x − z)·cos30, −y + (x + z)/2), then one scale and offset. */
 const iso = (x: number, y: number, z: number): [number, number] => [(x - z) * C30, -y + (x + z) / 2];
 /**
@@ -77,7 +77,8 @@ export function drawerSpecs(panels: Part[]): DrawerSpec[] {
   const groups = new Map<string, Part[]>();
   for (const p of panels) {
     if (p.yaw) continue;
-    const k = drawerKey(p.name);
+    // The engine tags every part of a hollow drawer (front included) with its drawerId; untagged parts group by name.
+    const k = p.drawerId ? `drawer-id:${p.drawerId}` : drawerKey(p.name);
     if (k) groups.set(k, [...(groups.get(k) ?? []), p]);
   }
   const out: DrawerSpec[] = [];

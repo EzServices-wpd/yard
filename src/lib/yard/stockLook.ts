@@ -138,6 +138,20 @@ export function stockLook(item?: CatalogItem | null, fallbackRough = 0.68, fallb
   };
 }
 
+/** Side-mount slide lengths the Buy list carries. */
+export const SLIDE_LENGTHS_IN = [10, 12, 14, 16, 18, 22] as const;
+
+/** The longest standard slide that fits a drawer box or inside depth this deep (a box is as deep as its slide). */
+export function slideForDepth(insideDepth: number): number {
+  return [...SLIDE_LENGTHS_IN].reverse().find((s) => s <= insideDepth + 1e-6) ?? SLIDE_LENGTHS_IN[0];
+}
+
+/** The slide the drawers in this model ride on: the longest standard slide their deepest box takes. */
+export function drawerSlideInches(panels: { type: string; name: string; size: { depth: number } }[], carcaseDepth: number): number {
+  const boxes = panels.filter((p) => p.type === "drawer" && !/drawer\s*(?:front|back|bottom)/i.test(p.name));
+  return boxes.length ? slideForDepth(Math.max(...boxes.map((b) => b.size.depth))) : slideInches(carcaseDepth);
+}
+
 export function slideInches(carcaseDepth: number) {
   if (carcaseDepth >= 28) return 22;
   if (carcaseDepth >= 22) return 18;
