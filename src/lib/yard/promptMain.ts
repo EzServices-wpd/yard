@@ -1,5 +1,6 @@
 import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
+import { P as sheetP, plySheetThickness, withSheetThickness } from "./sheetThickness";
 import { resolvePurpose } from "./purposeForms";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -36,7 +37,7 @@ import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, det
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
+import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, envelopeOf, keepOuterFace, refitInside, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, engineOwnsForm, isLockedForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
@@ -623,7 +624,19 @@ export function builtInShape(prompt: string, p: YardProject, noun: string): bool
   return !p.standIn && !p.unmatched && (!!p.fitted || isLockedForm(p.kind)) && engineOwnsForm(prompt, p) && p.name.toLowerCase().replace(/-/g, " ").startsWith(noun);
 }
 
+/**
+ * A build on a sheet other than 3/4" is built again at that sheet's thickness: every upright, top, shelf, divider,
+ * front and drawer box is laid out from the picked stock, so the fit-between widths, openings and fronts are derived
+ * from it and the outer size stays the typed size. Thinning a 3/4" layout in place left the cut list stale.
+ */
 function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
+  const first = engineBuild(...args);
+  const t = plySheetThickness(first.primaryMaterialId);
+  if (t == null || Math.abs(t - sheetP) < 0.02 || !first.panels.some((p) => p.materialId === first.primaryMaterialId)) return first;
+  return withSheetThickness(t, () => engineBuild(...args));
+}
+
+function engineBuild(...args: Parameters<typeof generateRaw>): YardProject {
   const built = (a: Parameters<typeof generateRaw>) => {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;
@@ -695,19 +708,27 @@ function settleOnFloor(project: YardProject): YardProject {
   };
 }
 
-/** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
+/**
+ * Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock.
+ * Builders that lay out from the sheet thickness (sheetThickness.ts) are already at it; any 3/4" face a builder still
+ * drew is thinned with its outer face kept where it was (the outside size stays the typed size), and every part that
+ * met a face that moved grows to meet it again (a top between uprights still runs upright to upright).
+ */
 function stampStockThickness(project: YardProject): YardProject {
   const item = getCatalogItem(project.primaryMaterialId);
   const thick = item?.dims.thickness;
   if (!thick || Math.abs(thick - 0.75) < 0.02 || !project.panels.length) return project;
-  const panels = project.panels.map((panel) => {
+  const outer = envelopeOf(project.panels);
+  let changed = false;
+  const thinned = project.panels.map((panel) => {
     if (panel.materialId !== project.primaryMaterialId) return panel;
     const size = panel.size;
     const thin = (["width", "height", "depth"] as const).reduce((a, b) => (size[a] <= size[b] ? a : b));
     if (Math.abs(size[thin] - 0.75) > 0.05) return panel;
-    return { ...panel, size: { ...size, [thin]: thick } };
+    changed = true;
+    return keepOuterFace({ ...panel, size: { ...size, [thin]: thick } }, panel, outer);
   });
-  return { ...project, panels };
+  return changed ? { ...project, panels: refitInside(project.panels, thinned) } : project;
 }
 
 /**

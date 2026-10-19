@@ -1,5 +1,6 @@
 import { withSaidHardware } from "./hardwareSaid";
-import { drawerBoxes } from "./hollowDrawers";
+import { drawerBoxes, drawerSideT } from "./hollowDrawers";
+import { plySheetThickness } from "./sheetThickness";
 import { withTypedFinish } from "./typedFinish";
 import { storeTermsFromBuy } from "./listings";
 import { checkedRow, HARDWARE } from "./checkedStock";
@@ -142,13 +143,14 @@ function closetCuts(project: YardProject): CutLine[] {
     } else if (
       // Class pack: sheet goods thicker than stock are laminated plies (island/desk
       // 1½" counters), not a magic thick board the lumber aisle does not sell.
-      (((isPly || isSolidBoard) && dims.thicknessIn > STOCK_T + 0.05 && !/^leg$/i.test(family)) ||
+      (((isPly || isSolidBoard) && dims.thicknessIn > (plySheetThickness(id) ?? STOCK_T) + 0.05 && !/^leg$/i.test(family)) ||
         // A lumber part thicker than its board (a 3 5/8" post from 2x4) is boards glued face to face too.
         (!isSolidBoard && /^lumber-/.test(id ?? "") && dims.thicknessIn > lumberT(id) + 0.05))
       // Any part thicker than its stock is a real glue-up, even under 1.5x of it.
     ) {
       // Any sheet part thicker than its sheet is a glue-up of plies (a 3 5/8" hub is 5 layers), never one thick board.
-      const T = isPly || isSolidBoard ? STOCK_T : lumberT(id);
+      // Plies come off the part's own sheet: a 1 1/2" top on the 1/2" sheet is three 1/2" layers.
+      const T = isPly || isSolidBoard ? plySheetThickness(id) ?? STOCK_T : lumberT(id);
       const plies = Math.max(2, Math.round(dims.thicknessIn / T));
       // The row counts layers, so the note always says how many make each part: the part count reads off the model.
       note = `${note ? `${note} ` : ""}Glue up ${plies} layers face to face for each ${inchFrac(dims.thicknessIn)}" ${family.toLowerCase()}.`;
@@ -215,7 +217,7 @@ function closetCuts(project: YardProject): CutLine[] {
       continue;
     }
     if (isBoundingDrawerPanel(p.name, p.type)) {
-      for (const part of explodeDrawerBoxCuts(w, h, d)) {
+      for (const part of explodeDrawerBoxCuts(w, h, d, drawerSideT(p.materialId))) {
         addCut(drawerPartStock(p.materialId, part), part.name, part.type, part.width, part.height, part.depth, materialName);
       }
       continue;
@@ -248,12 +250,24 @@ function cornerCutNote(c: CutLine): CutLine {
   return c;
 }
 
+/** The catalogue plywood sheet cut at this thickness that holds the face (the shortest that fits), if any. A 1/2" part is
+ * cut from the 1/2" sheet: the label never names a sheet thicker or thinner than the part. */
+function plySheetOfThickness(lengthIn: number, widthIn: number, thicknessIn: number): string | null {
+  const fit = FORGE_CATALOG.filter(
+    (it) =>
+      it.category === "sheet_goods" && /^plywood-/.test(it.id) && Math.abs((it.dims.thickness ?? 0) - thicknessIn) < 0.03 &&
+      fitsOnSheet(lengthIn, widthIn, { width: it.dims.length ?? 96, height: it.dims.width ?? 48 }),
+  ).sort((a, b) => (a.dims.length ?? 0) * (a.dims.width ?? 0) - (b.dims.length ?? 0) * (b.dims.width ?? 0));
+  // Only a full-width sheet stands in for the 4×8 a shop sells; a 2×4 project panel is never the default row.
+  return fit.find((it) => (it.dims.width ?? 0) >= 48)?.id ?? null;
+}
+
 /** After splice: name the sheet that actually fits the face. 102" stays whole on 4×10. */
 function stampPlySheetSize(cuts: CutLine[]): CutLine[] {
   return cuts.map((c) => {
     if (!/ply/i.test(`${c.material ?? ""} ${c.name ?? ""}`)) return c;
     if (Math.min(c.lengthIn, c.widthIn) <= 2) return c;
-    const id = plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75);
+    const id = plySheetOfThickness(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75) ?? plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75);
     const name = getCatalogItem(id)?.name;
     if (!name || name === c.material) return c;
     return { ...c, material: name };

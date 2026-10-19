@@ -30,7 +30,7 @@ import { spanFindings, stampSpanOffer } from "./spanCheck";
 import { placementIndex } from "./placeEveryPart";
 import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
-import { getCatalogItem } from "./catalog";
+import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { unitSizeById } from "./unitSizes";
 import { footTalk, hungBuild, isOutdoorPrompt } from "./outdoor";
 import { partLetters } from "./pdfDraw";
@@ -44,11 +44,12 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
+import { isBoughtHardwareName, isBuyMirrorPanel } from "./shopPlural";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "I33" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", I33: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -444,6 +445,92 @@ export function i31(p: YardProject, prompt: string, plan: BuildPlan): Violation[
   const boardBottoms = plan.instructions.find((st) => /\bDrawer bottom \(\d+ boards/.test(st.description ?? ""));
   if (bottomRow && /plywood/i.test(bottomRow.material ?? "") && boardBottoms) out.push(`step ${boardBottoms.step} glues the drawer bottoms from boards, the cut list cuts them from ${bottomRow.material}`);
   return out.map((m) => v("I31", m));
+}
+
+/**
+ * I33 (F32 stock switch rebuilds the build): after a stock switch (Measure's stock or thickness pick, the Stock panel)
+ * the build is rebuilt from the picked stock, never a 3/4" layout thinned in place. Every part on the picked sheet is
+ * that sheet's thickness (drawer sides and backs included); no part, cut row, Buy row or step silently stays on another
+ * sheet (1/4" backers and drawer bottoms keep their own); the model's outside size is the size before the switch, and
+ * the typed size exactly; every part that met another before the switch still meets it (a top between uprights still
+ * runs upright to upright).
+ */
+export function i33(before: YardProject, after: YardProject, stockId: string, plan: BuildPlan = buildPlan(after)): Violation[] {
+  const out: string[] = [];
+  const pick = getCatalogItem(stockId);
+  const t = pick?.dims.thickness;
+  if (!pick || pick.category !== "sheet_goods" || !t) return [];
+  const T = (x: { size: { width: number; height: number; depth: number } }) => Math.min(x.size.width, x.size.height, x.size.depth);
+  const layers = (thick: number, sheet: number) => Math.abs(thick - sheet) < 0.02 || (thick > sheet * 1.5 && Math.abs(thick / sheet - Math.round(thick / sheet)) < 0.03);
+  const own = (thick: number) => thick <= 0.26;
+  if (after.primaryMaterialId !== stockId) out.push(`picked ${pick.name}, the build is on ${getCatalogItem(after.primaryMaterialId)?.name ?? after.primaryMaterialId}`);
+  const sheets = FORGE_CATALOG.filter((it) => it.category === "sheet_goods");
+  const sheetT = (id: string) => sheets.find((it) => it.id === id)?.dims.thickness;
+  const cut = after.panels.filter((x) => x.materialId !== "hardware" && !isBuyMirrorPanel(x.name, x.type) && !isBoughtHardwareName(x.name));
+  for (const x of cut) {
+    if (x.materialId === stockId && !layers(T(x), t)) { out.push(`${x.name} is ${inchFrac(T(x))}" thick on the ${inchFrac(t)}" sheet`); break; }
+  }
+  const stray = cut.find((x) => x.materialId !== stockId && sheetT(x.materialId) != null && !own(T(x)) && Math.abs((sheetT(x.materialId) ?? t) - t) > 0.02);
+  if (stray) out.push(`${stray.name} stays on ${getCatalogItem(stray.materialId)?.name} after the switch to ${pick.name}`);
+  // A cut row's stock is the catalogue id its key starts with; its label is that sheet's name or its Buy row's name.
+  const rowSheet = (c: { id: string; material?: string }) => sheets.find((it) => c.id.startsWith(`${it.id}|`)) ?? sheets.find((it) => it.name === c.material);
+  for (const c of plan.cutList) {
+    const sheet = rowSheet(c);
+    if (!sheet?.dims.thickness) continue;
+    if (!layers(c.thicknessIn, sheet.dims.thickness)) { out.push(`cut ${c.name} is ${inchFrac(c.thicknessIn)}" thick but cut from ${sheet.name}`); break; }
+    const label = sheets.find((it) => it.name === c.material);
+    if (label && label.id !== sheet.id && Math.abs((label.dims.thickness ?? 0) - (sheet.dims.thickness ?? 0)) > 0.02) { out.push(`cut ${c.name} is on ${sheet.name} but labelled ${label.name}`); break; }
+    if (!own(c.thicknessIn) && Math.abs(sheet.dims.thickness - t) > 0.02) { out.push(`cut ${c.name} is cut from ${sheet.name}, not the picked ${pick.name}`); break; }
+  }
+  const buyRow = plan.bom.find((b) => b.catalogId === stockId || b.name === pick.name);
+  if (!buyRow) out.push(`the Buy list has no ${pick.name}`);
+  const wrongBuy = plan.bom.find((b) => { const it = sheets.find((x) => x.id === b.catalogId || x.name === b.name); return it?.dims.thickness && it.dims.thickness > 0.26 && Math.abs(it.dims.thickness - t) > 0.02; });
+  if (wrongBuy) out.push(`the Buy list still buys ${wrongBuy.name}`);
+  const text = plan.instructions.map((st) => `${st.title} ${st.description ?? ""}`).join("\n");
+  const spoken = new RegExp(`${inchFrac(t).replace(/[/]/g, "\\/")}"? plywood`, "i");
+  if (![pick.name, buyRow?.name].some((n) => n && text.includes(n)) && !spoken.test(text)) out.push(`no step names ${pick.name}`);
+  const wrongStep = sheets.find((it) => (it.dims.thickness ?? 0) > 0.26 && Math.abs((it.dims.thickness ?? 0) - t) > 0.02 && text.includes(it.name) && !after.panels.some((x) => x.materialId === it.id));
+  if (wrongStep) out.push(`a step still cuts from ${wrongStep.name}`);
+  const box = (q: YardProject) => {
+    const ps = q.panels.filter((x) => !x.yaw);
+    const ext = (a: "x" | "y" | "z", k: "width" | "height" | "depth") => Math.max(...ps.map((x) => x.position[a] + x.size[k])) - Math.min(...ps.map((x) => x.position[a]));
+    return { width: ext("x", "width"), height: ext("y", "height"), depth: ext("z", "depth") };
+  };
+  const was = box(before), now = box(after);
+  // A typed axis is the typed size exactly, before and after; an axis Yard picked may follow the stock (record rows
+  // of 12 1/2" clear plus thinner shelves) but the header always says what the model is.
+  const typedAxes = after.fitted?.typedAxes ?? before.fitted?.typedAxes;
+  const word = { width: "wide", height: "tall", depth: "deep" } as const;
+  for (const k of ["width", "height", "depth"] as const) {
+    const typedK = typedAxes ? !!typedAxes[k] : k !== "depth";
+    if (typedK && Math.abs(after.overall[k] - before.overall[k]) > 1 / 32) out.push(`typed ${inchFrac(before.overall[k])}" ${word[k]}, ${inchFrac(after.overall[k])}" after the switch`);
+    if (typedK && k !== "depth" && Math.abs(was[k] - now[k]) > 1 / 32) out.push(`the model is ${inchFrac(now[k])}" ${word[k]} after the switch, ${inchFrac(was[k])}" before`);
+    if (k !== "depth" && Math.abs(now[k] - after.overall[k]) > 1 / 32 && Math.abs(was[k] - before.overall[k]) <= 1 / 32) out.push(`the model is ${inchFrac(now[k])}" ${word[k]}, the header says ${inchFrac(after.overall[k])}"`);
+  }
+  // Two parts meet when their boxes touch face to face (one axis at contact, the other two overlapping).
+  const meets = (q: YardProject) => {
+    // Doors and drawer fronts hang on hinges and slides; what they happen to rest against is not a joint.
+    const ps = q.panels.filter((x) => !x.yaw && !x.polygon && x.materialId !== "hardware" && x.type !== "door" && !/\b(?:drawer|false) front\b/i.test(x.name));
+    const lo = (x: (typeof ps)[number]) => [x.position.x, x.position.y, x.position.z];
+    const hi = (x: (typeof ps)[number]) => [x.position.x + x.size.width, x.position.y + x.size.height, x.position.z + x.size.depth];
+    const out = new Set<string>();
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+      const A = ps[i], B = ps[j];
+      const gap = [0, 1, 2].map((k) => Math.max(lo(A)[k], lo(B)[k]) - Math.min(hi(A)[k], hi(B)[k]));
+      const touch = gap.filter((g) => Math.abs(g) < 0.02).length === 1 && gap.filter((g) => g < -0.1).length === 2;
+      if (touch) out.add([A.name, B.name].sort().join(" + "));
+    }
+    return out;
+  };
+  // Same parts, same contacts: a top that ran upright to upright still does. (A stock whose span rule re-lays the bays
+  // builds different parts; their contacts are checked by I1 and I26 like any build.)
+  const names = (q: YardProject) => q.panels.map((x) => x.name).sort().join("|");
+  if (names(before) === names(after)) {
+    const nowMeets = meets(after);
+    const lost = [...meets(before)].find((k) => !nowMeets.has(k));
+    if (lost) out.push(`${lost} met before the switch and no longer meet`);
+  }
+  return [...new Set(out)].slice(0, 4).map((m) => v("I33", m));
 }
 
 /** I26 (F30 no hidden overlap): no two solid parts share space unless a joint the plan cuts makes room (solids.ts). */

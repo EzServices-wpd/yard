@@ -1,0 +1,27 @@
+import { getCatalogItem } from "./catalog";
+
+/**
+ * The carcase sheet thickness every sheet builder cuts at (uprights, tops, shelves, dividers, fronts, drawer boxes).
+ * 3/4" unless the build runs inside `withSheetThickness`. A stock switch to another sheet rebuilds the whole model at
+ * that sheet's thickness, so every fit-between width, opening and front is derived from the picked stock, never
+ * thinned in place after a 3/4" layout.
+ */
+export let P = 0.75;
+
+/** Run one build with every sheet part cut from a sheet `t` thick. */
+export function withSheetThickness<T>(t: number, build: () => T): T {
+  const was = P;
+  P = t;
+  try {
+    return build();
+  } finally {
+    P = was;
+  }
+}
+
+/** The thickness of a plywood sheet in the catalogue, or null for any other stock. */
+export function plySheetThickness(materialId: string | undefined): number | null {
+  const it = materialId ? getCatalogItem(materialId) : undefined;
+  if (!it || it.category !== "sheet_goods" || !/^plywood-/i.test(it.id)) return null;
+  return it.dims.thickness ?? null;
+}
