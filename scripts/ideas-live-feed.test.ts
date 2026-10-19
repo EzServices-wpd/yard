@@ -126,3 +126,17 @@ test("home 'Making now' drops chained 'Then:' prompts (same isChained as the fee
   const fs = await import("fs");
   assert.match(fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8"), /!isChained\(r\.prompt\)/);
 });
+
+test("quick win (e): cut-off box keys read as boxes, generic fallbacks never become cards, no blank cards", () => {
+  assert.equal(typeKey("builtin:pine-toolbo"), "pine-toolbox");
+  assert.equal(typeKey("recipe:planter-bo"), "planter-box");
+  assert.equal(typeKey("recipe:gumbo"), "gumbo");
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("storage", "builtin:storage-unit", 50, after(3)), row("pine toolbox", "builtin:pine-toolbo", 4, after(3))] };
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const all = f.sections.flatMap((s) => s.cards);
+  assert.ok(!all.some((c) => c.buildType === "storage-unit"), "no Storage unit card");
+  assert.ok(all.some((c) => c.title === "Pine toolbox"), "Pine toolbox, not Pine toolbo");
+  assert.deepEqual(feedViolations(f), []);
+  const src = fs.readFileSync("src/components/ideas/IdeaDrawing.tsx", "utf8");
+  assert.match(src, /data-idea-no-drawing/);
+});

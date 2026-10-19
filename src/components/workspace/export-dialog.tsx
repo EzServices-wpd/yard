@@ -1,5 +1,6 @@
 "use client";
 
+import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
 import { cutListIntro } from "@/lib/yard/wholeItems";
 import { useEffect, useState } from "react";
@@ -312,8 +313,8 @@ export function ExportDialog({
                     <p className="font-medium">
                       <span className="font-mono text-ink-muted">{String(s.step).padStart(2, "0")}</span> {s.title}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.description}</p>
-                    {s.tips && <p className="mt-1 text-xs text-ink-muted">{s.tips}</p>}
+                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{userText(s.description)}</p>
+                    {userText(s.tips) && <p className="mt-1 text-xs text-ink-muted">{userText(s.tips)}</p>}
                   </div>
                 </li>
               ))}

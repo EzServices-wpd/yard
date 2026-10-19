@@ -20,6 +20,9 @@ export const TEST_PROMPTS = new Set([
   "linen closet 31.5 wide 78 tall 16 deep", "bookshelf 36x12x72",
 ]);
 
+/** Build types that are the engine's generic fallback, not a thing anyone asked for by name. */
+export const GENERIC_TYPES = new Set(["storage-unit", "storage", "thing", "box", "unit", "rough-block", "block"]);
+
 /** Chained follow-ups ("birdhouse. Then: 3/8 dowel") are a test or a session, never an idea to build. */
 export const isChained = (prompt: string) => /\bthen\s*:/i.test(prompt);
 
@@ -36,6 +39,8 @@ const ALIAS: Record<string, string> = { bookshelf: "bookcase", "raised-bed": "ra
 export function typeKey(resultKey: string): string {
   let k = resultKey.replace(/^[a-z]+:/, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
   k = ALIAS[k] ?? k;
+  // Quick win (e): the log's 40-char result keys cut "box" to "bo" ("Pine toolbo"): any key ending "bo" is a box.
+  if (/bo$/.test(k) && !/(?:^|-)(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/.test(k)) k = `${k}x`;
   return k || "thing";
 }
 
@@ -104,7 +109,8 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   if (!snap.live || !groups.length) return { ...base, live: false };
   const curated = new Map<string, IdeaCard>();
   for (const s of base.sections) for (const c of s.cards) if (!curated.has(c.buildType)) curated.set(c.buildType, c);
-  const cards = groups.map((g) => cardFor(g, curated));
+  // Quick win (e): a generic fallback ("Storage unit") is never an idea; it stays off the page (the row is kept in the log).
+  const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type)).map((g) => cardFor(g, curated));
   const since = new Date(now.getTime() - HERO_DAYS * DAY).toISOString();
   const used = new Set<string>();
   const take = (id: string, title: string, list: IdeaCard[]): IdeaSection => {
@@ -143,6 +149,8 @@ export function feedViolations(feed: IdeasFeed): string[] {
       if ((c.count > 0 && TEST_PROMPTS.has(p)) || /\b(?:critic|probe|canary)\b/.test(p)) out.push(`${c.slug}: test prompt "${c.examplePrompt}"`);
       if (!c.title.trim() || c.title.trim() === c.examplePrompt.trim() || /^[a-z]/.test(c.title)) out.push(`${c.slug}: title "${c.title}" is not a display title`);
       if (c.status !== "checked" && c.status !== "new") out.push(`${c.slug}: status ${c.status}`);
+      if (GENERIC_TYPES.has(c.buildType)) out.push(`${c.slug}: generic fallback card`);
+      if (/bo$/.test(c.title) && !/(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/i.test(c.title)) out.push(`${c.slug}: cut-off title "${c.title}"`);
       if (c.drawing && !/^\/ideas\/drawings\/[\w-]+\.[0-9a-f]+(?:\.\w+)?\.svg$/.test(c.drawing.src)) out.push(`${c.slug}: drawing ${c.drawing.src}`);
       for (const k of Object.keys(c)) if (/href|store|offer|affiliate|price|shop/i.test(k)) out.push(`${c.slug}: store field ${k}`);
     }

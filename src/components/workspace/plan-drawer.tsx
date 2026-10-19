@@ -1,5 +1,6 @@
 "use client";
 
+import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
 import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
@@ -466,7 +467,7 @@ function PlanBody({
                 <p className="font-medium text-fg">Assumed size</p>
                 {assumedDensifyNotes(project.notes).map((n) => (
                   <p key={n} className="mt-1">
-                    {n}
+                    {userText(n)}
                   </p>
                 ))}
               </div>
@@ -499,8 +500,8 @@ function PlanBody({
                         <span className="block font-medium text-fg">
                           <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
                         </span>
-                        <span className="mt-1 block text-muted">{s.description}</span>
-                        {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                        <span className="mt-1 block text-muted">{userText(s.description)}</span>
+                        {userText(s.tips) && <span className="mt-1 block text-xs text-faint">{userText(s.tips)}</span>}
                         <span className="mt-2 block text-xs text-faint print:hidden">
                           {on ? "On the bench now — click again to leave" : "View this step on the bench"}
                         </span>
