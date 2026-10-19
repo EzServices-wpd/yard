@@ -16,9 +16,10 @@ function rng(seed: number) {
  * (live 10-19: "shelf 24 1/2\" wide" built 2" wide).
  */
 const FORMS: Record<"w" | "d" | "h", string[]> = {
-  w: ["24 1/2", "24½", "24-1/2", "24.5", `2' 1/2"`, "2 ft 6 in", `2'6"`],
-  d: ["12 1/2", "12½", "12-1/2", "12.5", `1' 1/2"`, "1 ft 2 in", `1'2"`],
-  h: ["30 1/2", "30½", "30-1/2", "30.5", `2' 6 1/2"`, "2 ft 6 in", `2'6"`],
+  // Compact feet-inches (Critic #103 F1: "5ft6in" read as 6"): no space, no inch mark, and a lone inch mark.
+  w: ["24 1/2", "24½", "24-1/2", "24.5", `2' 1/2"`, "2 ft 6 in", `2'6"`, "2ft6in", "2ft6", "30in"],
+  d: ["12 1/2", "12½", "12-1/2", "12.5", `1' 1/2"`, "1 ft 2 in", `1'2"`, "1ft2in", "1ft2", "14in"],
+  h: ["30 1/2", "30½", "30-1/2", "30.5", `2' 6 1/2"`, "2 ft 6 in", `2'6"`, "2ft6in", "2ft6", "30in"],
 };
 export function typedForms(nouns = ["shelf", "bookcase", "cabinet"]): string[] {
   const out: string[] = [];
@@ -29,6 +30,8 @@ export function typedForms(nouns = ["shelf", "bookcase", "cabinet"]): string[] {
   }
   // Key prompts that read as 2, 2, 2, 2 and 8 on main 49aa20f (answer keys 10-19).
   out.push("nightstand 22 1/2 wide", "nightstand 22-1/2 wide", `nightstand 22 1/2" wide`, "bookshelf 75 1/2 tall", "table 92 5/8 long");
+  // Critic #103 F1 shots pr-07 / pr-08: these built 6", 6" and 3".
+  out.push("bookcase 5ft6in tall", "bookcase 5ft6 tall", "cabinet 2ft3in wide");
   return out;
 }
 const SIZED: [string, [number, number], [number, number], [number, number]][] = [

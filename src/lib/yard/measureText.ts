@@ -16,10 +16,11 @@ const VULGAR_RE = new RegExp(`(?:(\\d)\\s*)?([${Object.keys(VULGAR).join("")}])`
 
 /** A typed number: "24 1/2", "24-1/2", "1/2", "24.5", "24". */
 const NUM = String.raw`\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+`;
-const FT = String.raw`(?:'|ft\b\.?|feet\b|foot\b)`;
-const IN = String.raw`(?:"|in\b\.?|inch(?:es)?\b)`;
+// A unit word ends at any non-letter, a digit included: "5ft6in" is 5 ft 6 in ("ft\b" would miss it and read 6").
+const FT = String.raw`(?:'|ft(?![a-z])\.?|feet(?![a-z])|foot(?![a-z]))`;
+const IN = String.raw`(?:"|in(?![a-z])\.?|inch(?:es)?(?![a-z]))`;
 /** What makes a number a size: an axis word after it, or the x / by of a W x D x H string. */
-const AXIS_AFTER = String.raw`(?=\s*(?:"|in\b\.?|inch(?:es)?\b|ft\b\.?|feet\b|foot\b|')?\s*(?:wide|w|deep|d|tall|t|high|h|long|l|square|round|across|diameter|dia|x|×|by)\b|\s*(?:"|')?\s*[x×](?=\s*\d))`;
+const AXIS_AFTER = String.raw`(?=\s*(?:${IN}|${FT})?\s*(?:wide|w|deep|d|tall|t|high|h|long|l|square|round|across|diameter|dia|x|×|by)\b|\s*(?:"|')?\s*[x×](?=\s*\d))`;
 const AXIS_BEFORE = String.raw`(?<=(?:\d\s*(?:"|')?\s*(?:[x×]|\bby)\s*))`;
 
 /** One typed number as inches ("24 1/2" → 24.5, "24-1/2" → 24.5, "3/4" → 0.75). NaN when it is not a number. */
@@ -44,11 +45,21 @@ export function canonicalMeasures(prompt: string): string {
     if (!Number.isFinite(f) || !Number.isFinite(i) || i >= 12) return all;
     return `${dec(f * 12 + i)}"`;
   });
+  // Compact feet-inches, nothing between the foot mark and the inches ("2ft6 x 12 x 30", "5ft6", "2'6 x 12 x 30"): the
+  // inches need no mark or axis word. A lone "x N" after it is a stock ("6ft2x4" stays a 6 ft 2x4).
+  s = s.replace(new RegExp(String.raw`\b(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet|foot)(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)(?![\d./])`, "gi"), (all, ft: string, inch: string, at: number, whole: string) => {
+    const f = Number(ft), i = readNumber(inch);
+    if (!Number.isFinite(f) || !Number.isFinite(i) || i >= 12) return all;
+    // Inside a W x D x H string ("24 x 1ft2 x 30") it is a size whatever follows.
+    const stock = /^\s*[x×]\s*\d+(?:\.\d+)?(?!\s*[x×\d./])/.test(whole.slice(at + all.length)) && !/[x×]\s*$/.test(whole.slice(0, at));
+    if (stock) return all;
+    return `${dec(f * 12 + i)}"`;
+  });
   // A mixed or bare fraction that sizes an axis: "24 1/2 wide", "24-1/2\" x 14", "36 x 14 x 24 1/2".
   const sized = new RegExp(String.raw`(?<![\d./])(\d+(?:\.\d+)?(?:\s+|-)\d+\/\d+)(?![\d/])(?:${AXIS_AFTER})`, "gi");
   s = s.replace(sized, (all, n: string) => (Number.isFinite(readNumber(n)) ? dec(readNumber(n)) : all));
   // A bare fraction sizes an axis only before a size word ("3/4 deep"); "3/4 x 4 x 8" is a sheet's name.
-  const bare = new RegExp(String.raw`(?<![\d./-])(?<!\d\s)(\d+\/\d+)(?![\d/])(?=\s*(?:"|in\b\.?|inch(?:es)?\b)?\s*(?:wide|deep|tall|high|long)\b)`, "gi");
+  const bare = new RegExp(String.raw`(?<![\d./-])(?<!\d\s)(\d+\/\d+)(?![\d/])(?=\s*(?:${IN})?\s*(?:wide|deep|tall|high|long)\b)`, "gi");
   s = s.replace(bare, (all, n: string) => (Number.isFinite(readNumber(n)) ? dec(readNumber(n)) : all));
   const trailing = new RegExp(String.raw`${AXIS_BEFORE}(\d+(?:\.\d+)?(?:\s+|-)\d+\/\d+)(?![\d/])`, "gi");
   s = s.replace(trailing, (all, n: string) => (Number.isFinite(readNumber(n)) ? dec(readNumber(n)) : all));
@@ -67,11 +78,11 @@ export function typedMeasures(prompt: string): TypedMeasures {
   const s = canonicalMeasures(prompt).toLowerCase();
   const out: TypedMeasures = {};
   const AX = { wide: "width", deep: "depth", tall: "height", high: "height" } as const;
-  for (const m of s.matchAll(/(?<![\d.x×])(\d+(?:\.\d+)?)\s*(ft\b\.?|feet\b|foot\b|'|"|in\b\.?|inch(?:es)?\b)?\s*(wide|deep|tall|high)\b/g)) {
+  for (const m of s.matchAll(/(?<![\d.x×])(\d+(?:\.\d+)?)\s*(ft(?![a-z])\.?|feet(?![a-z])|foot(?![a-z])|'|"|in(?![a-z])\.?|inch(?:es)?(?![a-z]))?\s*(wide|deep|tall|high)\b/g)) {
     const k = AX[m[3] as keyof typeof AX];
     out[k] ??= Number(m[1]) * (m[2] && /^(?:f|')/.test(m[2]) ? 12 : 1);
   }
-  const t = s.match(/(?<![\d.])(\d+(?:\.\d+)?)\s*(?:"|in\b)?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:"|in\b)?\s*[x×]\s*(\d+(?:\.\d+)?)(?![\d.])\s*(?:"|in\b|inch(?:es)?\b)?(?!\s*(?:ft|feet|foot|'))/);
+  const t = s.match(/(?<![\d.])(\d+(?:\.\d+)?)\s*(?:"|in(?![a-z]))?\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:"|in(?![a-z]))?\s*[x×]\s*(\d+(?:\.\d+)?)(?![\d.])\s*(?:"|in(?![a-z])|inch(?:es)?(?![a-z]))?(?!\s*(?:ft|feet|foot|'))/);
   if (t) out.tuple = [Number(t[1]), Number(t[2]), Number(t[3])];
   return out;
 }
