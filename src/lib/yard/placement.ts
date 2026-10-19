@@ -7,6 +7,7 @@
  * side, and hardware spots (hinges, pulls, slides, brackets). The same records feed the step
  * text, the PDF step pages, the dimension arrows on the step pictures, and the guards.
  */
+import { rotorChain } from "./solids";
 import { doorHingeCount } from "./hingedLeaf";
 import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
@@ -830,6 +831,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const sp = planStepParts(project, steps, letters);
   const placed = new Set<string>();
   const byId = new Map(panels.map((p) => [p.id, p]));
+  const chain = rotorChain(panels);
   return steps.map((s, i) => {
     const out: StepPlacement = { sentences: [], measures: [], arrows: [], positioned: [], hardware: [] };
     const st = sp[i];
@@ -837,7 +839,8 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     if (st.kind !== "build") return out;
     const fresh = st.fresh.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const roles = new Map(fresh.map((p) => [p.id, placeRole(p)]));
-    const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!));
+    // A rotor part is located by the axle and the parts it threads against, never by a height off the floor.
+    const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!) && !chain.has(p.id));
     out.positioned = pos.map((p) => p.id);
     // Group horizontals and rails by letter (same size family) so repeats read as one sentence.
     const groups = (role: PlaceRole) => {

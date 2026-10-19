@@ -7,6 +7,7 @@
  * Doors hang on the box sides, drawer fronts on their drawer boxes, drawer boxes on the box sides.
  * Stick members rest on the members that share their lower end.
  */
+import { rotorChain } from "./solids";
 import { panelWorldCorners } from "./geometry";
 import type { Panel, YardInstance, YardProject } from "./types";
 import { doorHingesLeft } from "./operateFaces";
@@ -358,6 +359,15 @@ export function supportsOf(project: YardProject): Map<string, SupportInfo> {
     if (!on.length || !info) continue;
     out.set(p.id, { ...info, how: "rests", on });
     for (const k of on) { const pin = out.get(k); if (pin) out.set(k, { ...pin, on: pin.on.filter((x) => x !== p.id) }); }
+  }
+  // A built-up rotor (hub, spokes, rims, paddles) goes together on its axle in order from the glued end,
+  // each part on the parts it really touches; its collars on the axle at each end.
+  for (const [id, link] of rotorChain(project.panels)) {
+    const info = out.get(id);
+    if (!info) continue;
+    out.set(id, { ...info, how: link.how, on: link.on });
+    const pin = out.get(link.pin);
+    if (pin) out.set(link.pin, { ...pin, on: pin.on.filter((x) => x !== id) });
   }
   return out;
 }

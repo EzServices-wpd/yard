@@ -4192,7 +4192,7 @@
    "synonyms": [
     "waterwheel"
    ],
-   "version": 1,
+   "version": 2,
    "trust": "trusted",
    "title": "Water Wheel",
    "size": {
@@ -4270,6 +4270,23 @@
      ]
     },
     {
+     "role": "rail",
+     "name": "cross rail",
+     "box": [
+      0.102,
+      0.06,
+      0.47,
+      0.796,
+      0.12,
+      0.06
+     ],
+     "kind": "member",
+     "on": [
+      "left post",
+      "right post"
+     ]
+    },
+    {
      "role": "axle",
      "name": "axle",
      "box": [
@@ -4288,9 +4305,9 @@
     },
     {
      "role": "wheel",
-     "name": "wheel",
+     "name": "Rim 1",
      "box": [
-      0.45,
+      0.3,
       0.07,
       0.04,
       0.04,
@@ -4306,6 +4323,24 @@
     },
     {
      "role": "wheel",
+     "name": "Rim 2",
+     "box": [
+      0.66,
+      0.07,
+      0.04,
+      0.04,
+      0.92,
+      0.92
+     ],
+     "kind": "panel",
+     "shape": "ring",
+     "bore": 3,
+     "on": [
+      "axle"
+     ]
+    },
+    {
+     "role": "hub",
      "name": "hub",
      "box": [
       0.4,
@@ -4335,13 +4370,18 @@
      ],
      "kind": "member",
      "on": [
-      "wheel"
+      "Rim 1",
+      "Rim 2"
      ]
     }
    ],
    "moving": [
     {
-     "part": "wheel",
+     "part": "Rim 1",
+     "motion": "spin"
+    },
+    {
+     "part": "Rim 2",
      "motion": "spin"
     },
     {
@@ -4354,10 +4394,10 @@
     }
    ],
    "notes": [
-    "Rim cut from exterior plywood, joined to the hub by crossed spokes",
-    "Four paddles stand on the rim",
-    "The hardwood dowel axle turns in holes drilled through the posts",
-    "Each post stands on its own base"
+    "Two exterior plywood rims, each with a hub in its open centre between two crossed spokes, one on each face of the rim",
+    "Paddles run between the two rims and stand out past the rim edge to catch the water",
+    "The hardwood dowel axle is glued in holes drilled through the posts; the wheel turns on it, held centred by a collar glued to the axle on each side",
+    "Each post stands on its own base, and a cross rail under the wheel ties the two posts together"
    ],
    "learned": true
   },
@@ -5656,7 +5696,7 @@
       0,
       0.08,
       0.06,
-      0.85,
+      0.8,
       0.06
      ],
      "kind": "member"
@@ -5669,7 +5709,7 @@
       0,
       0.86,
       0.06,
-      0.85,
+      0.8,
       0.06
      ],
      "kind": "member"
@@ -5682,7 +5722,7 @@
       0,
       0.08,
       0.06,
-      0.85,
+      0.8,
       0.06
      ],
      "kind": "member"
@@ -5695,7 +5735,7 @@
       0,
       0.86,
       0.06,
-      0.85,
+      0.8,
       0.06
      ],
      "kind": "member"
@@ -5738,10 +5778,10 @@
      "role": "rail",
      "name": "Front base",
      "box": [
-      0.04,
+      0.107,
       0.02,
       0.08,
-      0.92,
+      0.786,
       0.05,
       0.06
      ],
@@ -5755,10 +5795,10 @@
      "role": "rail",
      "name": "Rear base",
      "box": [
-      0.04,
+      0.107,
       0.02,
       0.86,
-      0.92,
+      0.786,
       0.05,
       0.06
      ],
@@ -5773,7 +5813,7 @@
      "name": "Axle",
      "box": [
       0.04,
-      0.82,
+      0.88,
       0.42,
       0.92,
       0.05,
@@ -5789,7 +5829,7 @@
    ],
    "moving": [],
    "notes": [
-    "Axle spans and rests directly on Left top rail and Right top rail",
+    "Axle spans and rests directly on top of the Left top rail and Right top rail",
     "Supports a spinning compost drum above ground clearance",
     "Outdoor garden frame of wood or steel"
    ],
