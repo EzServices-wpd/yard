@@ -270,8 +270,8 @@ export const isSplit = (dr: Drawer) => splits.has(dr);
 const movers = (dr: Drawer) => [...dr.els, ...(splits.get(dr)?.copies ?? [])];
 
 /**
- * How far open (0 shut … 1 open) at time t of a curve. The doors' close curve bumps 1.5% past shut, which on a door
- * is a slam but on a drawer pushes its front about 3/8 in into the case, past the divider. A drawer stops at shut:
+ * How far open (0 shut … 1 open) at time t of a curve. The shared close curve bumps 1.5% past shut, which on a
+ * drawer pushes its front about 3/8 in into the case, past the divider (the doors clamp it too: swingAt). A drawer stops at shut:
  * clamped at 0, so no frame ever slides behind shut (the open overshoot is out of the case and stays).
  */
 export const slideAt = (f: (t: number) => number, t: number) => Math.max(0, f(t));
