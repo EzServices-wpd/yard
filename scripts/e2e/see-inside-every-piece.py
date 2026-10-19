@@ -32,7 +32,7 @@ ap.add_argument("--views", default="desk,phone")
 ap.add_argument("--no-rm", action="store_true")
 ap.add_argument("--json", default="")
 ap.add_argument("--sim-hollow", action="store_true", help="simulated hollow 5-part drawers (test only)")
-ap.add_argument("--strict", action="store_true", help="expected-stepper parts fail too")
+ap.add_argument("--strict", action="store_true", help="kept for old command lines; a no-op now that no part is exempt")
 A = ap.parse_args()
 BASE = A.base.rstrip("/")
 
