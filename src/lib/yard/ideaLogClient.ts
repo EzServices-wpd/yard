@@ -1,4 +1,5 @@
 import { isTestPage } from "./ideaLogGate";
+import { runId, sessionTest } from "../ideas/testSession";
 import { EMPTY_SNAPSHOT, safePrompt, type IdeasSnapshot } from "./ideaLog";
 
 /** Fire-and-forget log of a build (R7): at idle, via sendBeacon; the server decides status. No xAI, no identity. */
@@ -9,7 +10,9 @@ export function logIdea(prompt: string, failed = false): void {
   if (!clean) return;
   const send = () => {
     try {
-      const body = JSON.stringify({ prompt: clean, failed });
+      const body = JSON.stringify({ prompt: clean, failed, run: runId() });
+      // A test session (?test=1 anywhere in the tab) sends with x-yard-test; a beacon can't carry a header.
+      if (sessionTest()) { void fetch("/api/ideas-log", { method: "POST", body, keepalive: true, headers: { "Content-Type": "application/json", "x-yard-test": "1" } }).catch(() => {}); return; }
       if (!navigator.sendBeacon?.("/api/ideas-log", new Blob([body], { type: "application/json" })))
         void fetch("/api/ideas-log", { method: "POST", body, keepalive: true, headers: { "Content-Type": "application/json" } }).catch(() => {});
     } catch { /* never surfaces */ }

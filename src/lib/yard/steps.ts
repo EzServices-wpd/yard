@@ -55,7 +55,7 @@ import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
 import { backReachesTwoStuds, HINGE_ARM_CLEAR_IN, STUD_CENTER_IN } from "./fitted";
-import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
+import { casterRise, modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 
 /** A part's cut size: its rectangular blank when the box is not the blank (a splayed leg), else the box. */
 function dim(p: Panel) {
@@ -513,7 +513,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   const opening = project.opening;
   const program = project.fitted?.program ?? (pocket ? "vanity" : "closet");
   const W = u?.width ?? pocket?.unit.width ?? opening?.width ?? project.overall.width;
-  const H = u?.height ?? pocket?.unit.height ?? opening?.height ?? project.overall.height;
+  // The finished height: the box plus what the casters put under it (the model's own casters), the header's height.
+  const rise = casterRise(project.panels);
+  const H = (u?.height ?? pocket?.unit.height ?? opening?.height ?? project.overall.height - rise) + rise;
   const D = pocket?.unit.depth ?? u?.depth ?? opening?.depth ?? project.overall.depth;
   const alcove = opening?.kind === "alcove" || opening?.kind === "pocket" || project.assumptions.installMode === "alcove";
   const wallHang = project.assumptions.installMode === "wall";
@@ -2727,7 +2729,7 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
     // A shaped part (leaning rail, sloped board) is cut from its rectangular blank, not its bounding box.
     if (p.blank && p.polygon) {
       const b = p.blank;
-      push(p.name, p.type, Math.round(b.lengthIn * 8) / 8, Math.round(b.widthIn * 8) / 8, Math.round(b.thicknessIn * 8) / 8);
+      push(p.name.replace(/ \d+$/, ""), p.type, Math.round(b.lengthIn * 8) / 8, Math.round(b.widthIn * 8) / 8, Math.round(b.thicknessIn * 8) / 8);
       continue;
     }
     const w = Math.round(p.size.width * 8) / 8;
