@@ -20,7 +20,9 @@ export function violations(prompts: string[]): Map<string, string> {
 }
 /** Score = (prompt, invariant) pairs that pass, over the frozen eval prompts. */
 export function evalScore(prompts: string[]): { score: number; max: number; failing: string[] } {
-  const v = violations(prompts);
+  // Only the scored invariants count; I26/I27 ratchet in the baseline until they join PER_BUILD.
+  const scored = new Set<string>(PER_BUILD);
+  const v = new Map([...violations(prompts)].filter(([k]) => scored.has(k.split("|")[0])));
   const max = prompts.length * PER_BUILD.length;
   return { score: max - v.size, max, failing: [...v.keys()].sort() };
 }
