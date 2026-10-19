@@ -119,8 +119,9 @@ test("home sample cards: sizes from the engine drawing, in the pattern", () => {
   const got = Object.fromEntries(Object.entries(prompts).map(([k, p]) => { const s = showcaseFor(p); return [k, drawingSize(s.svg, s.overall).text]; }));
   for (const v of Object.values(got)) assert.match(v, SIZE_PATTERN);
   assert.equal(got.linen, "31 1/2 × 16 × 78 in");
-  // The engine draws the pocket unit with its fronts: 17 deep + 3/4 fronts (reported to SWE, not patched here).
-  assert.equal(got.pocket, "38 × 17 3/4 × 102 in");
+  // One size source (#93 round 2): the drawing labels the header's typed 17 deep (its line spans the body; the 3/4
+  // fronts stand proud of it), the same as the linen's 16. Before, it labelled the proud 17 3/4.
+  assert.equal(got.pocket, "38 × 17 × 102 in");
   const home = fs.readFileSync("src/routes/index.tsx", "utf8");
   assert.ok(!/size:\s*"\d/.test(home), "home pieces must not type a size");
 });
