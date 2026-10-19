@@ -13,8 +13,12 @@ const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
 
-/** Google Fonts load after first paint with display=optional: text paints in the metric-matched fallback and never swaps late (a late swap was the occasional 0.11 CLS). */
-const FONTS_CSS = "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=optional";
+/**
+ * The fonts (Figtree, Newsreader) load after first paint with display=optional: text paints in the metric-matched
+ * fallback and never swaps late (a late swap was the occasional 0.11 CLS). Self-hosted under /fonts (row 113), so
+ * no page makes a third-party request; the CSP allows none.
+ */
+const FONTS_CSS = "/fonts/fonts.css";
 function LateFonts() {
   useEffect(() => {
     if (document.querySelector(`link[rel="stylesheet"][href="${FONTS_CSS}"]`)) return;
@@ -88,8 +92,6 @@ export const Route = createRootRoute({
       { property: "x:game:image:height", content: "264" },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "preload", as: "style", href: FONTS_CSS },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
