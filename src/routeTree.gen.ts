@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiIdeasRouteImport } from './routes/api/ideas'
 import { Route as ApiIdeasLogRouteImport } from './routes/api/ideas-log'
 import { Route as ApiIdeasSnapshotRouteImport } from './routes/api/ideas-snapshot'
@@ -57,6 +58,11 @@ const TermsRoute = TermsRouteImport.update({
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
+  id: '/api/feedback',
+  path: '/api/feedback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIdeasRoute = ApiIdeasRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
   '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
   '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
   '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
     | '/api/ideas-snapshot'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
     | '/api/ideas-snapshot'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
     | '/api/ideas-snapshot'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiIdeasRoute: typeof ApiIdeasRoute
   ApiIdeasLogRoute: typeof ApiIdeasLogRoute
   ApiIdeasSnapshotRoute: typeof ApiIdeasSnapshotRoute
@@ -261,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/feedback': {
+      id: '/api/feedback'
+      path: '/api/feedback'
+      fullPath: '/api/feedback'
+      preLoaderRoute: typeof ApiFeedbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ideas': {
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
+  ApiFeedbackRoute: ApiFeedbackRoute,
   ApiIdeasRoute: ApiIdeasRoute,
   ApiIdeasLogRoute: ApiIdeasLogRoute,
   ApiIdeasSnapshotRoute: ApiIdeasSnapshotRoute,
@@ -336,10 +357,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

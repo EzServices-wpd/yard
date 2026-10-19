@@ -117,10 +117,6 @@
    "class": "F1",
    "msg": "Triangle shelf 2 spans 59\" (limit 33\")"
   },
-  "I7|dresser 60 wide": {
-   "class": "F1",
-   "msg": "Top spans 59\" (limit 33\")"
-  },
   "I7|kitchen island 60x36x36": {
    "class": "F1",
    "msg": "Bottom shelf spans 59\" (limit 33\")"

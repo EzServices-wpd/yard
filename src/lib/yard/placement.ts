@@ -860,9 +860,11 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
     const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const pick = (role: PlaceRole, word: RegExp) => {
+      // A hollow drawer's five parts are placed as the one drawer they make.
+      const one = (list: Panel[]) => (role === "drawer" ? list.filter((q, k) => !q.drawerId || (q.drawerPart === "side" && list.findIndex((r) => r.drawerId === q.drawerId && r.drawerPart === "side") === k)) : list);
       const a = inStep.filter((p) => placeRole(p) === role);
-      if (a.length) return a;
-      return word.test(text) ? panels.filter((p) => placeRole(p) === role) : [];
+      if (a.length) return one(a);
+      return word.test(text) ? one(panels.filter((p) => placeRole(p) === role)) : [];
     };
     if (/\bhinges?\b/.test(text)) {
       const doors = pick("door", /\bdoors?\b/);

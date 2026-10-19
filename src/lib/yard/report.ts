@@ -1,4 +1,5 @@
 import { withSaidHardware } from "./hardwareSaid";
+import { drawerBoxes } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
 import { storeTermsFromBuy } from "./listings";
 import { checkedRow, HARDWARE } from "./checkedStock";
@@ -27,8 +28,8 @@ import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } fro
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
 import { loadIssues, panelBomLines } from "./function";
-import { slideInches } from "./stockLook";
-import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
+import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
+import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, drawerPartStock, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
@@ -101,7 +102,10 @@ function closetCuts(project: YardProject): CutLine[] {
   ) => {
     // Numbered copies ("rod 1", "Paddle 3") are one part: identical copies share one line and letter.
     let family = partFamily(name, type).replace(/\s+\d+$/, "");
-    const side = name.match(/^(Left|Right)\s+(.+)$/i);
+    // A hollow drawer's parts are one row per part kind ("Left drawer side 2 (right)" is a Drawer side).
+    const drawerPart = /\bdrawer (?:side|back|bottom)\b/i.test(name);
+    if (drawerPart) family = cutListName(name, type);
+    const side = drawerPart ? null : name.match(/^(Left|Right)\s+(.+)$/i);
     if (side) {
       const twin = side[1].toLowerCase() === "left" ? "Right" : "Left";
       const other = project.panels.find((panel) => panel.name.toLowerCase() === `${twin} ${side[2]}`.toLowerCase());
@@ -213,7 +217,7 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     if (isBoundingDrawerPanel(p.name, p.type)) {
       for (const part of explodeDrawerBoxCuts(w, h, d)) {
-        addCut(p.materialId, part.name, part.type, part.width, part.height, part.depth, materialName);
+        addCut(drawerPartStock(p.materialId, part), part.name, part.type, part.width, part.height, part.depth, materialName);
       }
       continue;
     }
@@ -852,14 +856,14 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     });
   }
   // Drawer fronts are typed as rail with "Drawer front" names — slides count boxes only.
-  const drawers = project.panels.filter(
-    (panel) => panel.type === "drawer" && !/drawer front/i.test(panel.name),
-  );
+  const drawers = drawerBoxes(project.panels);
   if (drawers.length) {
+    // A box shallower than the shortest slide runs on wood runners: it buys no slides.
+    const onSlides = Math.max(...drawers.map((d) => d.size.depth)) >= SLIDE_LENGTHS_IN[0] - 1e-6;
     const carcaseD =
       project.pocket?.unit.depth ?? project.fitted?.unit.depth ?? project.overall.depth;
-    const slide = slideInches(carcaseD);
-    bom.push({
+    const slide = drawerSlideInches(project.panels, carcaseD);
+    if (onSlides) bom.push({
       name: `${slide}" side-mount drawer slides`,
       quantity: drawers.length,
       unit: drawers.length === 1 ? "pair" : "pairs",

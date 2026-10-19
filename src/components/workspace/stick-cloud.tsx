@@ -65,6 +65,9 @@ export function PanelMesh({
 
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
+  // A hollow drawer's parts (its front too) share one id and slide out together, by the drawer's own depth.
+  const drawerDepth = useYard((s) => (panel.drawerId ? Math.max(0, ...s.project.panels.filter((q) => q.drawerId === panel.drawerId && q.drawerPart === "side").map((q) => q.size.depth)) : 0));
+  const slidesOut = isDrawer || panel.drawerPart === "front";
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
@@ -78,7 +81,7 @@ export function PanelMesh({
   // when you ask ("Open doors") or in the step that hangs them, so the hinge side reads.
   const faceStep = activeStep != null && /hang|door|drawer|front|pull|lid|piano|stay|hinge/i.test(stepTitle);
   const allowSwing = facesOpen ? activeStep == null || faceStep : faceStep && inStep;
-  const open = allowSwing && !panel.yaw && (isDoor || !!hostDoor || isDrawer || isLid || !!leaf) && (!hasStep || inStep);
+  const open = allowSwing && !panel.yaw && (isDoor || !!hostDoor || slidesOut || isLid || !!leaf) && (!hasStep || inStep);
   // One hinge side for the model, the steps and the pull (operateFaces.doorHingesLeft).
   const isLeft = isDoor || hostDoor ? doorHingesLeft(hostDoor ?? panel) :
     /left/i.test(panel.name) || (!/right/i.test(panel.name) && panel.position.x + w / 2 < 0);
@@ -107,8 +110,8 @@ export function PanelMesh({
     groupPos = [hingeX * explode, cy, hingeZ * explode];
     groupRot = [0, swing, 0];
     meshPos = [cx - hingeX, 0, cz - hingeZ];
-  } else if (isDrawer && open) {
-    const pull = Math.max(8, Math.min(d * 0.75, 16));
+  } else if (slidesOut && open) {
+    const pull = Math.max(8, Math.min((drawerDepth || d) * 0.75, 16));
     groupPos = [cx * explode, cy, (cz + pull) * explode];
   } else if (isLid && open) {
     // Piano hinge along the back edge — lid opens up and back (pitch about X).
