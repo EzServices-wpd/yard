@@ -507,11 +507,11 @@
   "model": "/ideas/models/overtoilet.65f32fc6.json"
  },
  "crate": {
-  "v": "054ff509",
+  "v": "76caaa9b",
   "w": 480,
   "h": 360,
   "parts": 19,
-  "bytes": 38353,
+  "bytes": 35495,
   "dims": {
    "width": 36,
    "height": 25,
@@ -642,11 +642,11 @@
   "model": "/ideas/models/workbench.ae058f79.json"
  },
  "birdhouse": {
-  "v": "40cccc40",
+  "v": "63a9c326",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 6167,
+  "bytes": 5405,
   "dims": {
    "width": 6.875,
    "height": 11.8125,
@@ -681,11 +681,11 @@
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.87ed9387.json"
  },
  "recipe-water-wheel": {
-  "v": "fba1e161",
+  "v": "65d241cc",
   "w": 480,
   "h": 360,
   "parts": 24,
-  "bytes": 35541,
+  "bytes": 30363,
   "dims": {
    "width": 18,
    "height": 30.25,
@@ -694,11 +694,11 @@
   "model": "/ideas/models/recipe-water-wheel.353ff83b.json"
  },
  "recipe-abacus": {
-  "v": "7bf02e6b",
+  "v": "174f7d82",
   "w": 480,
   "h": 360,
   "parts": 58,
-  "bytes": 126243,
+  "bytes": 100050,
   "dims": {
    "width": 16,
    "height": 10.625,

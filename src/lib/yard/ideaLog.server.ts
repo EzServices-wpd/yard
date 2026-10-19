@@ -9,7 +9,7 @@ import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type I
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 10; // most a write sends: INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYSCORE recent (time trim, #39) + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
+export const WRITE_CMDS = 10; // most a write sends: INCRBY budget + HSET meta (#93: latest live size wins; a test write sends a read-only HEXISTS) + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYSCORE recent (time trim, #39) + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
 /**
  * #39 + #83 merged: ideas:recent is trimmed by time on every write (#39's ZREMRANGEBYSCORE); #83's every-8th
  * ZREMRANGEBYRANK size trim (TRIM_EVERY) is dropped. The one command a write only sometimes sends:

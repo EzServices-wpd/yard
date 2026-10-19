@@ -432,15 +432,15 @@ export function polygonRings(panel: import("./types").Panel): { x: number; y: nu
 /** Segments per drawn hole circle (one class rule for every renderer). */
 export function holeSegments(r: number): number {
   // One rule for every round hole (iso, PDF, parts plate, nest): enough sides that the flat between two corners
-  // bows in no more than HOLE_SAG (1/64"), never fewer than 24 so a 1 1/2" birdhouse entrance reads round
-  // (Critic #93: it drew as a ~9-gon), never more than 96 for a big open centre.
+  // bows in no more than HOLE_SAG (1/64"), so a 1 1/2" birdhouse entrance reads round (16 sides)
+  // (Critic #93: it drew as a ~9-gon). 12..64 sides: every side is a depth-sorted face in the PDF, so a dowel hole stays light.
   if (!(r > 0)) return HOLE_MIN_SIDES;
   const n = Math.ceil(Math.PI / Math.acos(Math.max(-1, 1 - HOLE_SAG / r)));
   return Math.max(HOLE_MIN_SIDES, Math.min(HOLE_MAX_SIDES, n));
 }
 export const HOLE_SAG = 1 / 64;
-export const HOLE_MIN_SIDES = 24;
-export const HOLE_MAX_SIDES = 96;
+export const HOLE_MIN_SIDES = 12;
+export const HOLE_MAX_SIDES = 64;
 
 /**
  * Each hole of a polygon plate as its own pair of world rings (back/bottom, front/top), placed exactly like the
