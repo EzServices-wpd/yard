@@ -2729,7 +2729,7 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
     // A shaped part (leaning rail, sloped board) is cut from its rectangular blank, not its bounding box.
     if (p.blank && p.polygon) {
       const b = p.blank;
-      push(p.name, p.type, Math.round(b.lengthIn * 8) / 8, Math.round(b.widthIn * 8) / 8, Math.round(b.thicknessIn * 8) / 8);
+      push(p.name.replace(/ \d+$/, ""), p.type, Math.round(b.lengthIn * 8) / 8, Math.round(b.widthIn * 8) / 8, Math.round(b.thicknessIn * 8) / 8);
       continue;
     }
     const w = Math.round(p.size.width * 8) / 8;

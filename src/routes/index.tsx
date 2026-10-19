@@ -3,6 +3,7 @@ import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/tes
 import { MakingNow } from "@/components/ideas/MakingNow";
 import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
+import { drawerSpecs, drawersIn, setOpen, slide, type DrawerSpec } from "@/components/home/showcase-drawers";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
@@ -74,15 +75,16 @@ const PIECES = [
 ] as const;
 
 /** A sample card's model plus its size, formatted from the engine's solved dims: the drawing's own labels, else the model's box. */
-type HomeShow = Showcase & { size: string; sizeAria: string };
+type HomeShow = Showcase & { size: string; sizeAria: string; drawers: DrawerSpec[] };
 let showsMemo: Promise<Record<string, HomeShow>> | undefined;
 function homeShows(): Promise<Record<string, HomeShow>> {
-  showsMemo ??= import("@/lib/yard/homeShowcase").then(({ showcaseFor }) =>
+  // Drawers: the same model's drawer groups (part ids match the drawing's <g data-part>), so the card can slide them.
+  showsMemo ??= Promise.all([import("@/lib/yard/homeShowcase"), import("@/lib/yard/prompt")]).then(([{ showcaseFor }, { generateFromPrompt }]) =>
     Object.fromEntries(
       PIECES.map((piece) => {
         const show = showcaseFor(piece.prompt);
         const f = drawingSize(show.svg, show.overall);
-        return [piece.id, { ...show, size: f.text, sizeAria: f.aria }];
+        return [piece.id, { ...show, size: f.text, sizeAria: f.aria, drawers: drawerSpecs(generateFromPrompt(piece.prompt).panels) }];
       }),
     ),
   );
@@ -358,7 +360,12 @@ function LandingPage() {
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                   {shows[h.id] ? (
-                    <ShowcaseArt id={h.id} label={`Yard drawing of the ${h.label}, ${shows[h.id]!.sizeAria}`} svg={shows[h.id]!.svg} />
+                    <ShowcaseArt
+                      id={h.id}
+                      label={`Yard drawing of the ${h.label}, ${shows[h.id]!.sizeAria}`}
+                      svg={shows[h.id]!.svg}
+                      drawers={shows[h.id]!.drawers.length ? JSON.stringify(shows[h.id]!.drawers) : undefined}
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-sm text-ink">Drawing the model…</div>
                   )}
@@ -412,11 +419,16 @@ function LandingPage() {
  * A card's engine drawing, memoized: a parent re-render (the idle stock-merge load ~1 s after hydration) must not
  * re-set its innerHTML, which swaps the SVG nodes the door swings animate and cancels a swing mid-way.
  */
-const ShowcaseArt = memo(function ShowcaseArt({ id, label, svg }: { id: string; label: string; svg: string }) {
-  return <div role="img" aria-label={label} data-yard-showcase={id} className="yard-alive h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
+const ShowcaseArt = memo(function ShowcaseArt({ id, label, svg, drawers }: { id: string; label: string; svg: string; drawers?: string }) {
+  return <div role="img" aria-label={label} data-yard-showcase={id} data-yard-drawers={drawers} className="yard-alive h-full w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
 });
 
 /** Home sample models turn in once when the grid first comes on screen (held paused until then). */
+/** The drawer groups the loader put on a card (empty when it has none or the attribute is unreadable). */
+function cardDrawers(card: HTMLElement): DrawerSpec[] {
+  try { return JSON.parse(card.dataset.yardDrawers ?? "[]") as DrawerSpec[]; } catch { return []; }
+}
+
 function ShowcaseGrid({ children }: { children: ReactNode }) {
   const [ref, off] = useOffscreen<HTMLDivElement>("-10% 0px", true);
   // Doors and lids: open once after the turn-in (first time on screen), ease open on hover.
@@ -425,7 +437,21 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
   const played = useRef(false);
   useEffect(() => {
     const root = ref.current;
-    if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!root) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // Reduced motion: doors stay shut; drawers open and shut at once on hover (no slide). Wired on first view,
+      // like the motion path (the cards are settled by then).
+      if (off || played.current) return;
+      played.current = true;
+      root.querySelectorAll<HTMLElement>("[data-yard-showcase]").forEach((card) => {
+        const drawers = drawersIn(card, cardDrawers(card));
+        const btn = card.closest("button");
+        if (!btn || !drawers.length) return;
+        btn.addEventListener("pointerenter", (ev) => ev.pointerType === "mouse" && setOpen(drawers, true));
+        btn.addEventListener("pointerleave", (ev) => ev.pointerType === "mouse" && setOpen(drawers, false));
+      });
+      return;
+    }
     if (off) {
       anims.current.forEach((a) => a.playState === "running" && a.pause());
       return;
@@ -437,8 +463,10 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
     cards.forEach((card, i) => {
       const btn = card.closest("button");
       const leaves = leavesIn(card);
-      // Doors swing once after the entrance settles, card by card.
+      const drawers = drawersIn(card, cardDrawers(card));
+      // Doors swing and drawers slide once after the entrance settles, card by card.
       if (leaves.length) anims.current.push(...swing(leaves, "once", 1250 + i * 260));
+      if (drawers.length) anims.current.push(...slide(drawers, "once", 1250 + i * 260));
       if (!btn) return;
       let hovering: Animation[] = [];
       let raf = 0;
@@ -455,7 +483,7 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
       btn.addEventListener("pointerenter", (ev) => {
         if (ev.pointerType !== "mouse") return;
         btn.setAttribute("data-hover", "");
-        if (leaves.length) hovering = swing(leaves, "open");
+        hovering = [...(leaves.length ? swing(leaves, "open") : []), ...(drawers.length ? slide(drawers, "open") : [])];
         anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...hovering];
       });
       btn.addEventListener("pointerleave", (ev) => {
@@ -464,10 +492,10 @@ function ShowcaseGrid({ children }: { children: ReactNode }) {
         btn.removeAttribute("data-hover");
         btn.style.removeProperty("--tx");
         btn.style.removeProperty("--ty");
-        if (!leaves.length) return;
-        // Mid-swing: run the same swing back from where it is; fully open: the closing swing.
+        if (!leaves.length && !drawers.length) return;
+        // Mid-swing: run the same swing back from where it is; fully open: the closing swing (and slide).
         if (hovering.some((a) => a.playState === "running")) hovering.forEach((a) => a.reverse());
-        else anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...swing(leaves, "close")];
+        else anims.current = [...anims.current.filter((a) => a.playState !== "finished"), ...(leaves.length ? swing(leaves, "close") : []), ...(drawers.length ? slide(drawers, "close") : [])];
         hovering = [];
       });
     });
