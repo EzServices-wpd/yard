@@ -41,6 +41,10 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      # Warm the npx cache once: four parallel `npx -y tsx` cold installs race on the same cache dir (ENOTEMPTY).
+      - name: Warm tsx
+        run: npx -y tsx --version
+
       - name: Check out the merge-base with main
         id: base
         env:
@@ -56,6 +60,7 @@ jobs:
       - name: Grade head and base (gate + properties, in parallel)
         id: grade
         run: |
+          set +e
           start=$(date +%s)
           npx -y tsx scripts/eval-gate.ts --jobs 2 --out "$RUNNER_TEMP/gate-head.json" > "$RUNNER_TEMP/gate-head.log" 2>&1 & h=$!
           (cd .base && npx -y tsx ../scripts/eval-gate.ts --root . --jobs 2 --out "$RUNNER_TEMP/gate-base.json") > "$RUNNER_TEMP/gate-base.log" 2>&1 & b=$!
@@ -64,13 +69,14 @@ jobs:
           wait $h; echo "head gate exit $?"; wait $b; echo "base gate exit $?"; wait $ph; echo "head props exit $?"; wait $pb; echo "base props exit $?"
           echo "secs=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
           for f in gate-head gate-base props-head props-base; do echo "::group::$f"; tail -25 "$RUNNER_TEMP/$f.log"; echo "::endgroup::"; done
-          test -s "$RUNNER_TEMP/gate-head.json" && test -s "$RUNNER_TEMP/gate-base.json"
+          test -s "$RUNNER_TEMP/gate-head.json" && test -s "$RUNNER_TEMP/gate-base.json" && test -s "$RUNNER_TEMP/props-head.json"
 
       - name: Diff head vs main
         id: diff
         run: |
           set +e
-          npx -y tsx scripts/eval-gate-diff.ts --base "$RUNNER_TEMP/gate-base.json" --head "$RUNNER_TEMP/gate-head.json" \
+          git diff --name-only "${{ steps.base.outputs.sha }}" HEAD > "$RUNNER_TEMP/changed.txt"
+          npx -y tsx scripts/eval-gate-diff.ts --changed "$RUNNER_TEMP/changed.txt" --base "$RUNNER_TEMP/gate-base.json" --head "$RUNNER_TEMP/gate-head.json" \
             --base-props "$RUNNER_TEMP/props-base.json" --head-props "$RUNNER_TEMP/props-head.json" \
             --runtime "grading ${{ steps.grade.outputs.secs }} s" --run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --out "$RUNNER_TEMP/comment.md"

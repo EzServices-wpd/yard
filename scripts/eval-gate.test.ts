@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
 import { gradeCanary, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
-import { diffGates } from "./eval-gate-diff.ts";
+import { diffGates, renderComment } from "./eval-gate-diff.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
 test("typed lengths: every way a woodworker writes 24 1/2 is 24.5", () => {
@@ -60,4 +60,8 @@ test("diff: a newly failing prompt fails the gate unless allowed with a reason; 
   assert.equal(diffGates(base, worse, { newlyFailing: [{ prompt: "a", reason: "owned by #90" }] }).ok, true);
   assert.equal(diffGates(base, worse, { newlyFailing: [{ prompt: "a", reason: "" }] }).ok, false);
   assert.equal(diffGates(base, g([row("a", "partial"), row("b", "partial")]), { newlyFailing: [{ prompt: "a", reason: "x" }] }).ok, false);
+  // A PR that edits the gate's own files is called out in the comment (head's grader grades both sides).
+  const md = renderComment(diffGates(base, base, {}), { gateFiles: ["evals/gate-allow.json", "src/lib/yard/fitted.ts"] });
+  assert.match(md, /changes the gate itself.*evals\/gate-allow\.json/);
+  assert.doesNotMatch(md, /fitted\.ts/);
 });

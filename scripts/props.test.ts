@@ -122,14 +122,15 @@ type Row = { name: string; status: "pass" | "fail" | "expected-fail" | "stale-ex
 const rows: Row[] = [];
 for (const P of PROPS) {
   test(P.name, () => {
-    const r = fc.check(fc.property(P.arb, (x) => P.check(x)), { seed: SEED, numRuns: RUNS, interruptAfterTimeLimit: 60_000, markInterruptAsFailure: false });
+    // An interrupted run (slow box) counts as a failure, never as a silent pass on fewer cases.
+    const r = fc.check(fc.property(P.arb, (x) => P.check(x)), { seed: SEED, numRuns: RUNS, interruptAfterTimeLimit: 120_000, markInterruptAsFailure: true });
     const allow = allowed.find((a) => a.name === P.name && a.reason?.trim());
     const ce = r.failed && r.counterexample ? (r.counterexample[0] as { prompt: string }).prompt : undefined;
     const status: Row["status"] = r.failed ? (allow ? "expected-fail" : "fail") : allow ? "stale-expected-fail" : "pass";
     rows.push({ name: P.name, status, runs: r.numRuns, ...(ce ? { counterexample: ce } : {}), ...(allow ? { reason: allow.reason } : {}) });
     if (status === "expected-fail") console.log(`# expected-fail: ${P.name} — e.g. "${ce}" (${allow!.reason})`);
     if (status === "stale-expected-fail") console.log(`# STALE expected-fail: ${P.name} now passes — remove it from evals/props-allow.json`);
-    if (status === "fail") assert.fail(`${P.name}: counterexample "${ce}" (seed ${SEED}; shrunk after ${r.numShrinks} steps)`);
+    if (status === "fail") assert.fail(r.interrupted ? `${P.name}: interrupted after ${r.numRuns}/${RUNS} runs (time limit)` : `${P.name}: counterexample "${ce}" (seed ${SEED}; shrunk after ${r.numShrinks} steps)`);
   });
 }
 test.after(() => {

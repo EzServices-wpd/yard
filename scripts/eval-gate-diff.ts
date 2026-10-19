@@ -51,9 +51,13 @@ type Diff = ReturnType<typeof diffGates>;
 const sgn = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const pct = (n: number) => `${Math.round(n * 10) / 10}`;
 export const MARKER = "<!-- yard-eval-gate -->";
-export function renderComment(d: Diff, o: { headLabel?: string; baseLabel?: string; runtime?: string; run?: string } = {}): string {
+/** Files that define the gate itself. The head's grader grades both sides, so a PR that edits these can move the bar: Critic reviews them by hand. */
+export const GATE_FILES = /^(?:evals\/(?:gate-allow|props-allow|invariants-baseline)\.json|evals\/corpus\/(?:canaries|answer-keys)\.json|scripts\/(?:eval-gate[\w-]*|props\.test)\.ts|\.github\/workflows\/eval-gate\.yml)$/;
+export function renderComment(d: Diff, o: { headLabel?: string; baseLabel?: string; runtime?: string; run?: string; gateFiles?: string[] } = {}): string {
   const L: string[] = [MARKER, `## Eval gate ${d.ok ? "✅ pass" : "❌ fail"}`, ""];
   if (!d.ok) L.push(`**Why:** ${d.why.join("; ")}`, "");
+  const touched = [...new Set(o.gateFiles ?? [])].filter((f) => GATE_FILES.test(f)).sort();
+  if (touched.length) L.push(`⚠️ **This PR changes the gate itself** (graded with the head's grader and allow files on both sides; review by hand): ${touched.map((f) => `\`${f}\``).join(", ")}`, "");
   const h = d.head, b = d.base;
   L.push(`| | pass | partial | fail | points | honor |`, `|---|---|---|---|---|---|`);
   L.push(`| ${o.baseLabel ?? "main (merge-base)"} | ${b.pass} | ${b.partial} | ${b.fail} | ${b.points}/${b.maxPoints} | ${b.honored}/${b.checkable} (${b.honorPct}%) |`);
@@ -103,7 +107,8 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
   if (arg("--base") && arg("--head")) {
     const allow = rd(arg("--allow") ?? new URL("../evals/gate-allow.json", import.meta.url).pathname);
     const d = diffGates(rd(arg("--base")), rd(arg("--head")), allow, { base: rd(arg("--base-props")), head: rd(arg("--head-props")) });
-    const md = renderComment(d, { runtime: arg("--runtime"), run: arg("--run") });
+    const changed = arg("--changed") ? readFileSync(resolve(arg("--changed")!), "utf8").split("\n").filter(Boolean) : [];
+    const md = renderComment(d, { runtime: arg("--runtime"), run: arg("--run"), gateFiles: changed });
     if (arg("--out")) writeFileSync(resolve(arg("--out")!), md);
     console.log(md);
     if (!d.ok) process.exitCode = 1;
