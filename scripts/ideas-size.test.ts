@@ -24,6 +24,11 @@ test("formatSize: W × D × H in with shop fractions; round tops print dia; aria
   assert.equal(inch(7.5), "7 1/2");
   assert.equal(inch(0.375), "3/8");
   assert.equal(inchWords(0.25), "a quarter");
+  assert.equal(inch(6.3125), "6 5/16");
+  assert.equal(inch(3.4375), "3 7/16");
+  assert.equal(inch(0.0625), "1/16");
+  assert.equal(inch(11.97), "12");
+  assert.equal(inchWords(14.1875), "14 and three sixteenths");
 });
 
 test("SIZE_PATTERN accepts only the one format", () => {
@@ -41,7 +46,7 @@ test("every Ideas card (and every search card with a drawing) prints the pattern
   }
 });
 
-test("manifest dims are the drawing's own labels (else the engine's box), with the round flag for dia labels", () => {
+test("manifest dims are exactly the drawing's own labels (else the engine's box), with the round flag for dia labels", () => {
   const m = DRAWINGS as Record<string, { v: string; dims: Box & { round?: boolean } }>;
   for (const c of cards) {
     const svg = fs.readFileSync(`public/ideas/drawings/${c.slug}.${m[c.slug].v}.svg`, "utf8");
@@ -49,10 +54,37 @@ test("manifest dims are the drawing's own labels (else the engine's box), with t
     const want = labels ?? generateFromPrompt(c.examplePrompt).overall;
     const d = m[c.slug].dims;
     const sorted = (x: Box) => [x.width, x.height, x.depth].sort((a, b) => a - b);
-    sorted(want).forEach((v, i) => assert.ok(Math.abs(v - sorted(d)[i]) < 0.02, `${c.slug}: dims ${JSON.stringify(d)} vs drawn ${JSON.stringify(want)}`));
+    // Exact (row 57): labelled drawings print 1/16ths, so the manifest keeps them to 1e-4, not 2 decimals.
+    if (labels) for (const k of ["width", "depth", "height"] as const) assert.ok(Math.abs(d[k] - labels[k]) < 1e-9, `${c.slug}: ${k} ${d[k]} vs drawn ${labels[k]}`);
+    else sorted(want).forEach((v, i) => assert.ok(Math.abs(v - sorted(d)[i]) <= 5e-5, `${c.slug}: dims ${JSON.stringify(d)} vs engine ${JSON.stringify(want)}`));
     assert.equal(!!d.round, !!labels?.round, `${c.slug}: round flag`);
   }
   assert.equal(cards.find((c) => c.slug === "round")?.size, "40 dia × 30 in");
+});
+
+test("a card with a labelled drawing prints exactly the drawing's labels (no 1/16″ rounding)", () => {
+  const m = DRAWINGS as Record<string, { v: string }>;
+  let labelled = 0;
+  for (const c of [...cards, ...searchPool(feed)]) {
+    if (!c.drawing || !m[c.slug]) continue;
+    const svg = fs.readFileSync(`public/ideas/drawings/${c.slug}.${m[c.slug].v}.svg`, "utf8");
+    const d = drawnDims(svg);
+    if (!d) continue;
+    labelled++;
+    const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((x) => x[1].replace(/&quot;/g, '"')).filter((t) => /\d[^"]*"/.test(t)).map((t) => t.match(/(\d+(?: \d+\/\d+)?|\d+\/\d+)\s*"/)![1]);
+    const want = d.round ? `${texts[0]} dia × ${texts[1]} in` : `${texts[0]} × ${texts[1]} × ${texts[2]} in`;
+    assert.equal(c.size, want, `${c.slug}: card "${c.size}" vs drawing "${want}"`);
+  }
+  assert.ok(labelled >= 7, `only ${labelled} labelled drawings checked`);
+  // The seven row-57 cards that printed 1/16″ off their drawings.
+  const by = Object.fromEntries([...cards, ...searchPool(feed)].map((c) => [c.slug, c.size]));
+  assert.equal(by["birdhouse"], "6 7/8 × 7 1/2 × 11 13/16 in");
+  assert.equal(by["recipe-wall-mounted-mail-organizer"], "12 × 3 3/4 × 14 3/16 in");
+  assert.equal(by["recipe-water-wheel"], "24 9/16 × 18 × 31 1/8 in");
+  assert.equal(by["recipe-laptop-stand"], "11 3/8 × 8 7/8 × 6 5/16 in");
+  assert.equal(by["recipe-jewelry-box"], "10 × 5 1/2 × 3 7/16 in");
+  assert.equal(by["recipe-bird-feeder"], "10 × 7 11/16 × 10 5/8 in");
+  assert.equal(by["recipe-outdoor-storage-bench"], "48 × 20 × 19 3/16 in");
 });
 
 test("window card: framing title, size of the drawn framing, the unit it is for as a note", () => {
