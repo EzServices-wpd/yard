@@ -140,3 +140,16 @@ test("quick win (e): cut-off box keys read as boxes, generic fallbacks never bec
   const src = fs.readFileSync("src/components/ideas/IdeaDrawing.tsx", "utf8");
   assert.match(src, /data-idea-no-drawing/);
 });
+
+test("held recipes never render on Ideas: HELD_TYPES is recipes.json's held set, and the feed drops them everywhere", async () => {
+  const { HELD_TYPES, isHeldType } = await import("../src/lib/ideas/held");
+  const ALL = (await import("../src/lib/yard/recipes.json")).default as unknown as { recipes: { key: string; synonyms?: string[]; held?: string }[] };
+  const slug = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const want = new Set(ALL.recipes.filter((r) => r.held).flatMap((r) => [r.key, ...(r.synonyms ?? [])].map(slug)));
+  assert.deepEqual([...HELD_TYPES].sort(), [...want].sort(), "src/lib/ideas/held.ts is stale");
+  assert.ok(isHeldType("ferris-wheel") && isHeldType("colosseum"));
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("ferris wheel", "recipe:ferris-wheel", 80, after(3), "Trusted"), row("colosseum", "recipe:colosseum", 60, after(4), "Unverified")] };
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  for (const s of f.sections) for (const c of s.cards) assert.ok(!isHeldType(c.buildType) && !isHeldType(c.recipeKey), `${c.slug} in ${s.id}`);
+  assert.deepEqual(feedViolations(f), []);
+});

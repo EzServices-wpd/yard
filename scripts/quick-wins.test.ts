@@ -57,3 +57,40 @@ test("(d) Buy says '1 item goes'; the build card never shows an Unverified badge
   assert.doesNotMatch(info, />\{info\.trust\}</, "the trust word is not printed");
   assert.match(shell, /replace\(\/\^Unverified:\\s\*\/, ""\)/);
 });
+
+test("(walk 3) a control's label names what it opens: 'Material: …' opens the stock picker, Options opens the menu", () => {
+  const src = fs.readFileSync("src/components/workspace/bench-options.tsx", "utf8");
+  const chip = src.slice(src.indexOf("data-yard-material-chip") - 400, src.indexOf("data-yard-material-chip"));
+  assert.match(chip, /onClick=\{onStock\}/, "the Material chip opens the stock picker");
+  const opts = src.slice(src.indexOf("data-yard-options-toggle") - 400, src.indexOf("data-yard-options-toggle"));
+  assert.match(opts, /onClick=\{onToggle\}/);
+  assert.doesNotMatch(src.slice(src.indexOf("data-yard-options-toggle") - 400, src.indexOf("data-yard-options-toggle") + 600), /Material:/, "the menu toggle is not labelled Material");
+  const bar = fs.readFileSync("src/components/workspace/prompt-bar.tsx", "utf8");
+  assert.match(bar, /onStock=\{\(\) => \{\s*setOptionsOpen\(false\);\s*onStock\(\);/);
+});
+
+test("(walk 5) no runtime third-party CDN assets: the bench HDRI is self-hosted and no drei preset fetches one", () => {
+  assert.ok(fs.existsSync("public/hdri/empty_warehouse_01_1k.hdr"));
+  assert.equal(fs.readFileSync("public/hdri/empty_warehouse_01_1k.hdr").subarray(0, 10).toString(), "#?RADIANCE");
+  const CDN = /https?:\/\/(?:raw\.githack\.com|[\w.-]*githack\.com|cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|raw\.githubusercontent\.com|[\w.-]*\.cloudfront\.net)/i;
+  // Known, deliberate off-host loads (reported, not assets fetched by our runtime code): Google Fonts CSS.
+  const ALLOW = /fonts\.googleapis\.com|fonts\.gstatic\.com/;
+  const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : /\.(tsx?|mjs|css|html)$/.test(e.name) && !/\.test\./.test(e.name) ? [`${d}/${e.name}`] : []));
+  const bad: string[] = [];
+  for (const f of walk("src")) {
+    const t = fs.readFileSync(f, "utf8");
+    for (const m of t.matchAll(/https?:\/\/[^\s"'`)]+/g)) if (CDN.test(m[0]) && !ALLOW.test(m[0])) bad.push(`${f}: ${m[0]}`);
+    // drei presets (Environment preset=, useEnvironment({ preset })) load from raw.githack.com at runtime.
+    if (/<(?:Environment|Stage)\b[^>]*\bpreset=/.test(t) || /useEnvironment\(\{[^}]*preset/.test(t)) bad.push(`${f}: drei preset (fetches from githack)`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test("(walk 6) the privacy page is never dated in the future, and not before its wording's commit", async () => {
+  const src = fs.readFileSync("src/routes/privacy.tsx", "utf8");
+  const day = src.match(/export const PRIVACY_UPDATED = "(\d{4}-\d{2}-\d{2})"/)![1];
+  assert.ok(day >= "2026-10-17", "on or after the wording's commit (ca8cf29, 17 Oct)");
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  assert.ok(day <= today, `${day} is after today (${today})`);
+  assert.doesNotMatch(src, /Last updated \d+ \w+ \d{4}\./, "the date is rendered from PRIVACY_UPDATED, not typed twice");
+});
