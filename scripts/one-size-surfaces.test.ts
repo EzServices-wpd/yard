@@ -1,8 +1,8 @@
 /**
  * One size source, every surface (Critic #93 rows 108/109). For a set of cabinet builds, every place the build's size
  * prints reads the header's own W × D × H: the header, the bench readout, the PDF cover title and every running head,
- * the cover drawing's dimension lines, the Check it drawing, the plan overview and the cover subline (in W, D, H
- * order). Before, the 34″ vanity's height line said 44″ (its mirror), the filing cabinet's typed 30 deep and the
+ * the cover drawing's dimension lines, the Check it drawing and the plan overview. The cover subline is words
+ * ("wide · tall · deep"), pinned by the honesty guards. Before, the 34″ vanity's height line said 44″ (its mirror), the filing cabinet's typed 30 deep and the
  * linen's 16 deep said the proud-front 30 3/4 and 16 3/4 on the drawings, and the bench readout and PDF title were
  * W × H × D. Step 1's footprint keeps the finished depth (Chief: the linen baseline locks it), so it is not a surface here.
  */
@@ -90,7 +90,7 @@ test("each dimension line is as long as the number it prints (the body, inside p
   }
 });
 
-test("PDF: the cover title, every running head and the Check it labels say the header's size; the subline is W, D, H", () => {
+test("PDF: the cover title, every running head and the Check it labels say the header's size", () => {
   for (const r of rows) {
     const t = pdfText(buildPlanPdf(r.p, r.plan));
     const flat = t.join(" ").replace(/\s+/g, " ");
@@ -104,9 +104,5 @@ test("PDF: the cover title, every running head and the Check it labels say the h
     const step1 = flat.indexOf("Confirm the footprint");
     const outside = step1 < 0 ? flat : flat.slice(0, step1) + flat.slice(flat.indexOf(".", flat.indexOf("Unit ", step1)) + 1);
     if (r.size.height !== r.size.depth) assert.ok(!outside.slice(0, 600).includes(whd), `${r.key}: W × H × D "${whd}" on the cover`);
-    const sub = typedAxesTalk(r.p).subtitle;
-    const at = (w: string) => sub.search(new RegExp(`\\b${w}\\b`));
-    const order = ["wide", "deep", "tall"].map(at).filter((i) => i >= 0);
-    assert.deepEqual(order, [...order].sort((a, b) => a - b), `${r.key}: subline not in W, D, H order: ${sub}`);
   }
 });
