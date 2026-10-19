@@ -12,6 +12,7 @@
   "daybed 75 wide 22 high 39 deep": 3,
   "deck stairs": 1,
   "ferris wheel": 1,
+  "garden water wheel 24 wide": 2,
   "glider": 1,
   "knife block": 16,
   "laptop stand": 2,
@@ -25,6 +26,8 @@
   "sawbuck": 12,
   "toy airplane with propeller": 4,
   "wall mounted mail organizer": 6,
-  "water wheel": 2
+  "water wheel": 2,
+  "water wheel 24 wide": 2,
+  "water wheel 30 wide": 2
  }
 }
