@@ -506,6 +506,11 @@
 }
 @keyframes yard-morph-bar { from { transform: translateX(-100%) scaleX(0.6); } to { transform: translateX(170%) scaleX(0.6); } }
 
+/* "Tell the shop" sheet: opacity/transform only; still under reduced motion. */
+.yard-shop-sheet[open] { animation: yard-shop-in 160ms cubic-bezier(.2,.7,.2,1); }
+@keyframes yard-shop-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .yard-shop-sheet[open] { animation: none; } }
+
 /* Reveal ruler: 1/16″-style ticks, every fourth one taller (pure background, no layout). */
 .yard-ruler {
   background-image: repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.35) 0 1px, transparent 1px 10px),
