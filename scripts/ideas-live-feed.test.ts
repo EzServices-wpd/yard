@@ -153,3 +153,22 @@ test("held recipes never render on Ideas: HELD_TYPES is recipes.json's held set,
   for (const s of f.sections) for (const c of s.cards) assert.ok(!isHeldType(c.buildType) && !isHeldType(c.recipeKey), `${c.slug} in ${s.id}`);
   assert.deepEqual(feedViolations(f), []);
 });
+
+test("only rendered cards are used: a Trusted build past Popular's SECTION_MAX still shows in a later section (row 111)", () => {
+  // SECTION_MAX + 6 busy Trusted types fill Popular; the mail organizer and under-stairs shelves are Trusted but low-count.
+  const word = (i: number) => String.fromCharCode(97 + Math.floor(i / 26)) + String.fromCharCode(97 + (i % 26)) + "x";
+  const busy = Array.from({ length: SECTION_MAX + 6 }, (_, i) => row(`${word(i)} rack`, `builtin:${word(i)}-rack`, 500 - i, after(1)));
+  const snap: IdeasSnapshot = {
+    ...SNAP,
+    rows: [...busy, row("mail organizer", "builtin:mail-organizer", 2, after(30)), row("under stairs shelves", "builtin:under-stairs", 2, after(31))],
+  };
+  const feed = liveFeed(snap, curatedFeed(), NOW);
+  assert.deepEqual(feedViolations(feed), []);
+  const pop = feed.sections.find((s) => s.id === "popular")!;
+  assert.equal(pop.cards.length, SECTION_MAX);
+  const where = (t: string) => feed.sections.find((s) => s.cards.some((c) => c.buildType === t))?.id ?? null;
+  assert.equal(where("mail-organizer"), "recent", "mail organizer is in no section");
+  assert.equal(where("under-stairs"), "recent", "under-stairs shelves are in no section");
+  // Every Trusted type shows exactly once somewhere (busy types past both caps would stay hidden).
+  for (const s of feed.sections) for (const c of s.cards) assert.equal(feed.sections.filter((x) => x.cards.some((y) => y.buildType === c.buildType)).length, 1);
+});

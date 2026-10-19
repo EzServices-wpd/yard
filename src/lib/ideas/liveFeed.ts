@@ -115,10 +115,13 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type) && !isHeldType(g.type)).map((g) => cardFor(g, curated));
   const since = new Date(now.getTime() - HERO_DAYS * DAY).toISOString();
   const used = new Set<string>();
+  // Only a card a section actually renders is used (Critic row 111: Popular marked every Trusted card used, not just
+  // the SECTION_MAX it shows, so low-count builds like the mail organizer and under-stairs shelves showed nowhere).
   const take = (id: string, title: string, list: IdeaCard[]): IdeaSection => {
     const all = sortCards(list).filter((c) => !used.has(c.slug) && !used.has(c.buildType));
-    all.forEach((c) => { used.add(c.slug); used.add(c.buildType); });
-    return { id, title, order: 0, total: all.length, cards: all.slice(0, SECTION_MAX).map((c) => ({ ...c, section: title })) };
+    const shown = all.slice(0, SECTION_MAX);
+    shown.forEach((c) => { used.add(c.slug); used.add(c.buildType); });
+    return { id, title, order: 0, total: all.length, cards: shown.map((c) => ({ ...c, section: title })) };
   };
   const sections = [
     take("popular", "Popular", cards.filter((c) => c.status === "checked")),
