@@ -519,6 +519,66 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "drawer-slides-10",
+    retailer: "amazon",
+    title: "10\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=10+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 12.99,
+    lengthIn: 10,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-10",
+    retailer: "homedepot",
+    title: "10\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/10%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 10,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-12",
+    retailer: "amazon",
+    title: "12\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=12+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 12.99,
+    lengthIn: 12,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-12",
+    retailer: "homedepot",
+    title: "12\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/12%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 12,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-14",
+    retailer: "amazon",
+    title: "14\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=14+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 12.99,
+    lengthIn: 14,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-14",
+    retailer: "homedepot",
+    title: "14\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/14%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 14,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "drawer-slides-16",
     retailer: "amazon",
     title: "16\" side-mount drawer slides, pair",
@@ -1213,6 +1273,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/slide/.test(hay)) {
     if (/\b22\b/.test(hay)) return "drawer-slides-22";
     if (/\b18\b/.test(hay)) return "drawer-slides-18";
+    for (const n of [14, 12, 10]) if (new RegExp(`\\b${n}\\b`).test(hay)) return `drawer-slides-${n}`;
     return "drawer-slides-16";
   }
   // Hardware class match — piano / lid-stay / utility before soft-close concealed.
