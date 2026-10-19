@@ -12,7 +12,7 @@ import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
 import { typedHeadNoun } from "./headNoun";
 import { namedFormOwnsHead } from "./formOwnership";
-import { sizePhrases } from "./sizePhrases";
+import { FIT_MEASURE, fitClause, sizePhrases, typedSizeTuple, typedWidth } from "./sizePhrases";
 import { isUnitItem, unitItemAsk } from "./unitItems";
 /**
  * Critic's invariants (critic-kb/invariants.md I1–I14) as code: one checker per invariant, run on a
@@ -268,7 +268,44 @@ function i21(p: YardProject, prompt: string): Violation[] {
   const o = p.overall;
   return (Object.entries(axes) as [keyof typeof axes, number][])
     .filter(([a, want]) => Math.abs(o[a] - want) > 0.5)
-    .map(([a, want]) => v("I21", `"${phrases.join(", ")}" means ${want}" ${a}, model ${o[a]}`));
+    .map(([a, want]) => v("I21", `"${phrases.join(", ")}" means ${want}" ${a}, model ${o[a]}`))
+    .concat(i21Fit(p, prompt));
+}
+
+/**
+ * I21 fit clause: only the measure of a space the build fills can set its width. A typed width or typed size wins
+ * over the fit clause and keeps its order (width is the first number); a measure that belongs to a height, a person
+ * or an object never becomes the width; a typed ceiling caps the height.
+ */
+function i21Fit(p: YardProject, prompt: string): Violation[] {
+  const fc = fitClause(` ${prompt} `);
+  if (!fc) return [];
+  const o = p.overall;
+  const out: Violation[] = [];
+  const tuple = typedSizeTuple(prompt);
+  const said = prompt.match(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|width|w)\b/i);
+  const typedW = said ? Number(said[1]) : tuple ? tuple[0] : null;
+  if (typedW != null && Math.abs(o.width - typedW) > 0.5) out.push(v("I21", `typed ${typedW}" wide loses to "${fc.text.trim()}": model ${o.width}" wide`));
+  if (tuple?.length === 3) {
+    // A typed W × D × H keeps its other two axes too (each builder names its own depth/height, so as a pair).
+    const want = [tuple[1], tuple[2]].sort((a, b) => a - b);
+    const got = [o.depth, o.height].sort((a, b) => a - b);
+    if (want.some((w, i) => Math.abs(w - got[i]) > 0.5)) out.push(v("I21", `typed ${tuple.join(" x ")} lost its order to "${fc.text.trim()}": model ${o.width} × ${o.depth} × ${o.height}`));
+  }
+  if (fc.space && typedW == null && !typedWidth(prompt) && Math.abs(o.width - fc.inches) > 0.5)
+    out.push(v("I21", `"${fc.text.trim()}" names a ${fc.inches}" space: model ${o.width}" wide`));
+  if (!fc.space && typedW == null && !typedWidth(prompt)) {
+    // The measure of a height, a person or an object never sets the footprint: across and front to back, the model is
+    // the build the same words make without that measure (a default that happens to equal the measure is fine).
+    let twin: YardProject | null = null;
+    for (const a of ["width", "depth"] as const) {
+      if (Math.abs(o[a] - fc.inches) > 0.5) continue;
+      twin ??= generateFromPrompt(prompt.replace(fc.text.trim(), fc.text.trim().replace(FIT_MEASURE, " ")).replace(/\s+/g, " ").trim());
+      if (Math.abs(twin.overall[a] - o[a]) > 0.5) out.push(v("I21", `"${fc.text.trim()}" measures a ${fc.noun}, not a space: model is ${o[a]}" ${a === "width" ? "wide" : "deep"}`));
+    }
+  }
+  if (fc.ceiling && o.height > fc.inches + 0.5) out.push(v("I21", `"${fc.text.trim()}": model ${o.height}" tall stands over the ceiling`));
+  return out;
 }
 
 /**
