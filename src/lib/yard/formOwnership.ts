@@ -25,6 +25,8 @@ export function genericFormMark(p: YardProject): string | null {
 import { STOP, typedHeadNoun } from "./headNoun";
 import { builderNameCarries, withoutReadModifiers } from "./builderName";
 import { genericBoxOverAsk } from "./genericBox";
+import { closedCarcaseReadsAsk } from "./closedStorage";
+import { ignoredTypedWords } from "./promptMain";
 export { typedHeadNoun };
 function titleCarriesTypedWords(prompt: string, p: YardProject): boolean {
   const title = (p.name ?? "").toLowerCase();
@@ -67,6 +69,8 @@ export function routesToLearner(prompt: string, p: YardProject, half: boolean): 
   if ((p.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE))) return false;
   // Critic 10-17: a build wins over the learner only when it is the asked-for form, never the generic fallback box.
   if (genericBoxOverAsk(prompt, p)) return true;
+  // Refiner :20: a closed storage carcase that holds the typed size and interior counts read the whole ask.
+  if (closedCarcaseReadsAsk(prompt, p, () => (half ? ignoredTypedWords(p, prompt) : []))) return false;
   // A real half-read ("lap desk" → Desk) still learns; "Dutch Windmill" / a purpose ask read every word.
   if (half && !readAll(prompt, p)) return true;
   if (engineKeepsPrompt(prompt, p, half)) return false;

@@ -7,6 +7,7 @@ import { storeTermDrift } from "./listings";
 import { cutStockOffBuy, duplicateHingeSteps, floorTalkOnSmall, noteStockOffBuy, stepHardwareOffBuy, stepStockNameDrift, unlinkedBuy } from "./buyComplete";
 import { contactBuild, interiorSheet } from "./materialForUse";
 import { genericFormMark, routesToLearner } from "./formOwnership";
+import { closedCarcaseReadsAsk } from "./closedStorage";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
@@ -290,9 +291,13 @@ function i24(p: YardProject, prompt: string): Violation[] {
 
 export { genericFormMark } from "./formOwnership";
 
-/** I23 (L1 live path): a prompt the engine builds from its own library or purpose table never reaches the learner. */
+/**
+ * I23 (L1 live path): a prompt the engine builds from its own library or purpose table never reaches the learner, nor
+ * does a closed storage ask its own sheet carcase holds (typed size and interior counts, refiner :20).
+ */
 function i23(p: YardProject, prompt: string): Violation[] {
-  if (genericFormMark(p) || !(resolvePurpose(prompt) || namedFormOf(prompt))) return [];
+  const owned = !genericFormMark(p) && !!(resolvePurpose(prompt) || namedFormOf(prompt));
+  if (!owned && !closedCarcaseReadsAsk(prompt, p, () => ignoredTypedWords(p, prompt))) return [];
   return routesToLearner(prompt, p, ignoredTypedWords(p, prompt).length > 0) ? [v("I23", "the engine builds this form, but the live path sends it to the learner")] : [];
 }
 
