@@ -109,7 +109,7 @@ export function columnSpan(arr: RodArray, i: number): [number, number] {
 }
 
 /**
- * The thinnest legal rider on a rod (I30, I33): a whole dowel that takes the rod's running bore with a 1/16" wall
+ * The thinnest legal rider on a rod (I30, I36): a whole dowel that takes the rod's running bore with a 1/16" wall
  * each side. A bead under this splits on its bore; Yard never cuts one smaller.
  */
 export function riderFloor(rodDia: number): number {

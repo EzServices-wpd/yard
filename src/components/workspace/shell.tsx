@@ -1,5 +1,6 @@
 "use client";
 import { headerTitle } from "@/lib/yard/pdf";
+import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -753,7 +754,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     ? paperCraft
                       ? `${pieceCount} whole sticks`
                       : `${pieceCount} ${pieceCount === 1 ? "piece" : "pieces"}`
-                    : wire
+                    : project.refused && !project.panels.length
+                      ? NOTHING_BUILT_STOCK
+                      : wire
                       ? "Pick a real stock"
                       : nestSheetLabel
                         ? nestSheetLabel

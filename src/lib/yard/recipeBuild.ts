@@ -123,7 +123,7 @@ function pinDowel(memberId: string, section = 9): string {
  * so an arm reads as one member, not an edge-glued cluster. Parts resting on (or hanging from) a member
  * then settle onto its new face, so every load path still touches.
  */
-function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string): Panel[] {
+function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string, typed: Partial<Size> = {}): Panel[] {
   const byName = new Map(recipe.parts.map((p) => [p.name, p]));
   const base = (n: string) => byName.get(n) ?? byName.get(n.replace(/ \d+$/, ""));
   const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
@@ -147,7 +147,10 @@ function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string): Panel[
     for (const i of group) {
       const p = out[i];
       // Every lumber member snaps to its own board (the recipe's member stock or a part's named 2x6), never a scaled section.
-      const best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock)[0];
+      let best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock)[0];
+      // A member never grows past a typed size: one that would is laid across instead (its short run kept).
+      const past = (to?: Panel["size"]) => !!to && (["width", "height", "depth"] as const).some((k) => typed[k] != null && to[k] > p.size[k] + 0.01 && to[k] > typed[k]! + 0.01);
+      if (past(best?.to)) best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock, true).find((o) => !past(o.to)) ?? best;
       const to = best?.to ?? p.size;
       if (best) next[i].materialId = best.id;
       const top0 = p.position.y + p.size.height;
@@ -204,14 +207,14 @@ function realBoards(recipe: Recipe, panels: Panel[]) {
  * Real boards a lumber member could be cut as, closest first: its own board, or (unless the recipe names
  * the board) another board of the same length as one board thick (a 1.4×0.96 rail is a 1×2, never a 3 1/2" 2×4 face; a 1×4 is never a glued post).
  */
-export function closestBoards(materialId: string, size: Panel["size"], named = false): { id: string; to: Panel["size"] }[] {
+export function closestBoards(materialId: string, size: Panel["size"], named = false, across = false): { id: string; to: Panel["size"] }[] {
   // A named board binds when the part is about its face (a 3.6" post is a 4×4); a 5" deck board named "2×4" is re-picked.
   const face = getCatalogItem(materialId)?.dims.width ?? 0;
   if (named && [size.width, size.height, size.depth].sort((a, b) => a - b)[1] > face * 1.1 + 0.05) named = false;
   const len = getCatalogItem(materialId)?.dims.length ?? 96;
   const one = (id: string, to: Panel["size"]) => Math.min(to.width, to.height, to.depth) <= (getCatalogItem(id)?.dims.height ?? 0) + 0.01;
   return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height && c.dims.length === len)
-    .map((b) => ({ id: b.id, to: boardSection(b.id, size) }))
+    .map((b) => ({ id: b.id, to: boardSection(b.id, size, across) }))
     // A board the recipe names for the part (rafters from 2×6) is kept; only the default member stock is re-picked.
     .filter((o): o is { id: string; to: Panel["size"] } => !!o.to && (o.id === materialId || (!named && one(o.id, o.to))))
     .map((o) => ({ ...o, cost: (["width", "height", "depth"] as const).reduce((n, k) => n + Math.abs(o.to[k] - size[k]), 0), face: getCatalogItem(o.id)!.dims.width! }))
@@ -223,13 +226,16 @@ export function closestBoards(materialId: string, size: Panel["size"], named = f
  * 2+ boards), the board's full face. A big block (more than ~2 boards) is not a member.
  * Returns null when the part is not dimensional lumber or is already a real section.
  */
-export function boardSection(materialId: string, size: Panel["size"]): Panel["size"] | null {
+export function boardSection(materialId: string, size: Panel["size"], across = false): Panel["size"] | null {
   const it = getCatalogItem(materialId);
   const th = it?.dims.height;
   const fw = it?.dims.width;
   if (!it || it.category !== "lumber" || it.formFactor !== "board" || !th || !fw) return null;
   const axes = (["width", "height", "depth"] as const).map((k) => ({ k, v: size[k] })).sort((m, n) => m.v - n.v);
-  const [thin, wide] = axes;
+  const [thin] = axes;
+  // Laid across (only asked for when the usual way would run past a typed size: a rail on a 2 1/4" narrow frame
+  // whose other side is already the 3 1/2" face): the short run is its cut length, never grown to the face.
+  const wide = across && axes[1].v < fw - 0.01 && Math.abs(axes[2].v - fw) < 0.01 ? axes[2] : axes[1];
   // A part already cut to the board's section whichever way it runs (a 3" rail across a 3 1/2" deep 2×4 laid flat)
   // is real: its short side is its length, never grown to the face.
   if (Math.abs(thin.v - th) < 0.01 && axes.slice(1).some((m) => Math.abs(m.v - fw) < 0.01)) return null;
@@ -1134,6 +1140,57 @@ const up16 = (n: number) => Math.ceil(n * 16 - 1e-6) / 16;
  * - an untyped count may shrink to what fits, and the card says so, naming the size the full count needs;
  * - when not even one fits, nothing is built and the refusal names the smallest size that takes one.
  */
+type RowWords = { one: string; title: string; word: string; each: string; need: (k: number) => number };
+const rodsOf = (w: RowWords, k: number) => `${k} ${k === 1 ? w.one : `${w.one}s`}`;
+/** A typed count that doesn't fit its typed side: nothing is built, and the card names the size it needs. */
+const refuseTyped = (w: RowWords, want: number, fits: number, at: number) =>
+  `${rodsOf(w, want)} ${want === 1 ? "doesn't" : "don't"} fit in ${inchFrac(at)}" ${w.word} (${w.each}). A ${want}-${w.one} ${w.title} needs ${inchFrac(w.need(want))}" ${w.word}. Nothing is built: make it ${inchFrac(w.need(want))}" ${w.word}${fits ? `, or ask for ${rodsOf(w, fits)}` : ""}.`;
+/** Not even one fits: nothing is built, and the card names the smallest size that takes one. */
+const refuseNone = (w: RowWords, full: number, at: number) =>
+  `${/^[aeiou]/i.test(w.title) ? "An" : "A"} ${w.title} needs at least ${inchFrac(w.need(1))}" ${w.word} for 1 ${w.one} (${w.each}). A full ${full}-${w.one} ${w.title} needs ${inchFrac(w.need(full))}". Nothing is built at ${inchFrac(at)}".`;
+const eachWords = (floor: number, thinnest: number, rider?: string) => `each needs ${inchFrac(floor)}"${rider ? ` for ${inchFrac(thinnest)}" ${rider}s` : ""}`;
+
+/** What a counted row needs along its run, measured once on the recipe at its own size (I36). */
+export type RowNeed = { axis: "width" | "height" | "depth"; frame: number; floor: number; thinnest: number; one: string; rider?: string; full: number };
+const rowNeedCache = new Map<string, RowNeed | null>();
+/**
+ * The least a counted row takes along its run: the thinnest board that keeps each bounding part's face, plus one
+ * floor pitch per column. It comes from the recipe built at its own size, never from the build at hand, so a typed
+ * size too small for the builder to even lay the row out (a 1 1/2" abacus whose posts meet) is checked the same way.
+ */
+export function rowNeed(recipe: Recipe, materialOverride?: string): RowNeed | null {
+  if (!recipe.count) return null;
+  // Keyed on the parts themselves: a learned recipe can share a key (and a part count) with another.
+  const key = `${recipe.key}|${materialOverride ?? ""}|${JSON.stringify(recipe.parts)}`;
+  if (rowNeedCache.has(key)) return rowNeedCache.get(key)!;
+  rowNeedCache.set(key, null);
+  const ref = buildRecipeBody(recipe, recipe.title, materialOverride);
+  const panels = ref.project.panels;
+  const boards = FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height);
+  let out: RowNeed | null = null;
+  for (const arr of rodArrays(panels)) {
+    if (arr.L == null || arr.R == null || arr.rods.length !== ref.count) continue;
+    const { row, third } = arr;
+    const riders = arr.strung.flat();
+    const rodDia = Math.min(arr.rods[0].size[row[1]], arr.rods[0].size[third[1]]);
+    const thinnest = riders.length ? riderFloor(rodDia) : rodDia;
+    const mid = (arr.L + arr.R) / 2;
+    const bounds = panels.filter((p) => !arr.rods.includes(p) && !riders.includes(p) && (Math.abs(p.position[row[0]] + p.size[row[1]] - arr.L!) < 1e-6 || Math.abs(p.position[row[0]] - arr.R!) < 1e-6));
+    const thin = (p: Panel) => {
+      const c = getCatalogItem(p.materialId), face = p.size[third[1]], now = p.size[row[1]];
+      const b = c?.category === "lumber" ? boards.filter((x) => Math.abs(x.dims.width! - face) < 0.05 && x.dims.height! < now - 1e-6 && x.dims.length === c.dims.length).sort((x, y) => x.dims.height! - y.dims.height!)[0] : undefined;
+      return b?.dims.height ?? now;
+    };
+    const side = (s: "L" | "R") => Math.min(...bounds.filter((p) => (p.position[row[0]] + p.size[row[1]] / 2 < mid) === (s === "L")).map(thin));
+    const frame = side("L") + side("R");
+    if (!Number.isFinite(frame)) continue;
+    out = { axis: row[1], frame, floor: thinnest + ROW_CLEAR, thinnest, one: arr.family.toLowerCase(), rider: riders.length ? riders[0].name.replace(/ \d+$/, "").toLowerCase() : undefined, full: ref.count };
+    break;
+  }
+  rowNeedCache.set(key, out);
+  return out;
+}
+
 function fitRodArrays(panels: Panel[], count: number, notes: string[], ask: RowAsk): RowFit {
   const fam = (p: Panel) => p.name.replace(/ \d+$/, "");
   const boards = FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height);
@@ -1190,17 +1247,14 @@ function fitRodArrays(panels: Panel[], count: number, notes: string[], ask: RowA
       const outer = bounds.length ? Math.max(...bounds.map((p) => p.position[row[0]] + p.size[row[1]])) - Math.min(...bounds.map((p) => p.position[row[0]])) : span;
       const frame = outer - span;
       const need = (k: number) => up16(frame + k * floor);
-      const one = arr.family.toLowerCase(), many = `${one}s`, rods = (k: number) => `${k} ${k === 1 ? one : many}`;
-      const title = ask.title.toLowerCase();
-      const each = `each needs ${inchFrac(floor)}"${riders.length ? ` for ${inchFrac(thinnest)}" ${fam(riders[0]).toLowerCase()}s` : ""}`;
-      const at = `${inchFrac(outer)}"`;
+      const w: RowWords = { one: arr.family.toLowerCase(), title: ask.title.toLowerCase(), word, each: eachWords(floor, thinnest, riders.length ? fam(riders[0]).toLowerCase() : undefined), need };
       const typedHere = ask.typedSize[axis];
       const keep = ask.typed && counted;
       // A typed count, or an untyped side: the row grows to hold the full count when the one widen rule allows it.
       if ((keep || typedHere == null) && mayWiden(need(want), typedHere, ask.strict)) return { count, widen: { axis, to: need(want) } };
-      if (keep) return { count: 0, refuse: `${rods(want)} ${want === 1 ? "doesn't" : "don't"} fit in ${at} ${word} (${each}). A ${want}-${one} ${title} needs ${inchFrac(need(want))}" ${word}. Nothing is built: make it ${inchFrac(need(want))}" ${word}${fits ? `, or ask for ${rods(fits)}` : ""}.` };
-      if (!fits) return { count: 0, refuse: `${/^[aeiou]/i.test(title) ? "An" : "A"} ${title} needs at least ${inchFrac(need(1))}" ${word} for 1 ${one} (${each}). A full ${want}-${one} ${title} needs ${inchFrac(need(want))}". Nothing is built at ${at}.` };
-      card = `Only ${rods(fits)} fit${fits === 1 ? "s" : ""} in ${at} ${word} (${each}). A full ${want}-${one} ${title} needs ${inchFrac(need(want))}".`;
+      if (keep) return { count: 0, refuse: refuseTyped(w, want, fits, outer) };
+      if (!fits) return { count: 0, refuse: refuseNone(w, want, outer) };
+      card = `Only ${rodsOf(w, fits)} fit${fits === 1 ? "s" : ""} in ${inchFrac(outer)}" ${word} (${w.each}). A full ${want}-${w.one} ${w.title} needs ${inchFrac(need(want))}".`;
       notes.push(card);
     }
     const n = fits;
@@ -1322,6 +1376,20 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
   if (recipe.count && countWasTyped(prompt, recipe) && count > MAX_TYPED_COUNT) {
     return refusedBuild(recipe, prompt, size, `${count} ${recipe.count.word} is more than Yard builds in one ${recipe.title.toLowerCase()} (up to ${MAX_TYPED_COUNT}). Nothing is built: ask for ${MAX_TYPED_COUNT} or fewer.`);
   }
+  // One fit check for every typed size on a counted row's run, fractions included (I36): it is measured against the
+  // row's real minimum before any part is placed, so the build is refused below it and never rounded up past it.
+  if (recipe.count && !widened) {
+    const rn = rowNeed(recipe0, materialOverride);
+    const at = rn ? { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }[rn.axis] : undefined;
+    if (rn && at != null) {
+      const need = (k: number) => up16(rn.frame + k * rn.floor);
+      const fits = Math.max(0, Math.floor((at - rn.frame + 1e-6) / rn.floor));
+      const w: RowWords = { one: rn.one, title: recipe.title.toLowerCase(), word: AXIS_WORD[rn.axis], each: eachWords(rn.floor, rn.thinnest, rn.rider), need };
+      const typed = countWasTyped(prompt, recipe);
+      if (typed && fits < count && !mayWiden(need(count), at, STRICT_SIZE.test(prompt))) return refusedBuild(recipe, prompt, size, refuseTyped(w, count, Math.min(fits, count), at));
+      if (!typed && fits < 1) return refusedBuild(recipe, prompt, size, refuseNone(w, rn.full, at));
+    }
+  }
   const panels: Panel[] = [];
   const seen = new Map<string, number>();
   // Repeats fill the clear span between the side members (posts, sides at the width's edges), not the full width.
@@ -1400,7 +1468,7 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
     }
   }
   definingShapes(recipe, panels);
-  const fitted = buttBetween(recipe, keepStatedFaces(recipe, snapMembers(recipe, panels, stock.member), size, { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }));
+  const fitted = buttBetween(recipe, keepStatedFaces(recipe, snapMembers(recipe, panels, stock.member, { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }), size, { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }));
   // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);

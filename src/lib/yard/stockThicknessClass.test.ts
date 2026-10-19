@@ -87,7 +87,7 @@ const ABACUS: { q: string; w: number; asked: number; base: number; baseBead: num
   { q: "abacus 4 wide", w: 4, asked: 9, base: 25.8, baseBead: 0.8 },
   { q: "abacus 6 wide", w: 6, asked: 9, base: 27.6, baseBead: 1.6 },
   { q: "abacus 8 wide", w: 8, asked: 9, base: 27.8, baseBead: 1.8 },
-  // A typed 12 rods never drops (I33): 8" refuses, the 8 1/4" its refusal names builds all 12.
+  // A typed 12 rods never drops (I36): 8" refuses, the 8 1/4" its refusal names builds all 12.
   { q: "abacus 8 1/4 wide 12 rods", w: 8.25, asked: 12, base: 28.8, baseBead: 1.6 },
   { q: "abacus 10 wide", w: 10, asked: 9, base: 30.96, baseBead: 4.96 },
   { q: "abacus 12 wide", w: 12, asked: 9, base: 27, baseBead: 5 },
@@ -122,7 +122,7 @@ it("abacus at 3, 4, 6, 8, 8 1/4 with 12 rods, 10, 12 and default: riders on ever
 
 // A row its bounds can't hold never grows the build (I30): when the posts can't bound the row as set (they met
 // over it, or reach past its middle), the row is still fitted between them: an untyped count drops rods and the
-// card says so, or, when not even one fits, nothing is built and the refusal names the width that takes one (I33).
+// card says so, or, when not even one fits, nothing is built and the refusal names the width that takes one (I36).
 // Swept at every narrow width over the rod-array builds: racks, ladders, stands, frames.
 const NARROW = ["abacus", "dowel drying rack", "dowel ladder", "1/4 inch dowel ladder", "dowel shoe rack", "towel rack", "blanket ladder", "spool rack", "dowel wine rack", "pvc drying rack"];
 it("narrow rod arrays: never wider than typed, every row fits its bounds, fewer rods say so", () =>
