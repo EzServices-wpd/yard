@@ -23,7 +23,7 @@ export function BuildInfoPanel() {
     )}
     <details data-yard-build-info={info.trust} className="border-t border-border/60 px-3 py-2 text-xs">
       <summary className="flex min-h-11 cursor-pointer items-center text-muted hover:text-fg">
-        How this was built · <span className="text-fg">{info.source}</span> · <span className={info.trust === "Trusted" ? "text-fg" : "text-muted"}>{info.trust}</span>
+        How this was built · <span className="text-fg">{info.source}</span>{info.trust === "Trusted" && <> · <span className="text-fg">Checked</span></>}
       </summary>
       <ul className="mt-1 space-y-0.5 text-muted">
         {info.passed.map((c) => <li key={c}>✓ {c}</li>)}
