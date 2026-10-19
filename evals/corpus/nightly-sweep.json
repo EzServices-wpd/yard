@@ -1,0 +1,1354 @@
+{
+ "source": "nightly-sweep",
+ "note": "Fresh requests from the nightly live sweeps (2026-10-16 n01–n20, 2026-10-17 f01–f20 + r rechecks; walkGrade = that night's strict grade) and every prompt in the evals/sweeps/*.md tables. Test traffic (critic probes, test/QA strings) excluded: 229 rows dropped as test traffic or duplicates. Live Ideas user rows are deliberately NOT copied into this public repo.",
+ "prompts": [
+  {
+   "id": "10-16:n01",
+   "prompt": "shoe rack 3 tiers 30 wide",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n02",
+   "prompt": "adirondack chair",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n03",
+   "prompt": "cedar planter box 36 long 12 wide 12 tall",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n04",
+   "prompt": "kids toy chest with lid",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n05",
+   "prompt": "statue of liberty",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n06",
+   "prompt": "sydney opera house",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n07",
+   "prompt": "workbench 6 foot with lower shelf",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n08",
+   "prompt": "porch swing",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n09",
+   "prompt": "dog house for a large dog",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n10",
+   "prompt": "plywood desk 48 wide 24 deep",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n11",
+   "prompt": "something to store my bikes",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n12",
+   "prompt": "wall mounted plate rack",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n13",
+   "prompt": "garden trellis 6 foot tall",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n14",
+   "prompt": "chicken coop for 4 hens",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n15",
+   "prompt": "rolling kitchen cart",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n16",
+   "prompt": "popsicle stick bridge",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n17",
+   "prompt": "cardboard castle",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-16:n18",
+   "prompt": "headboard for a queen bed",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n19",
+   "prompt": "step ladder 3 steps",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-16:n20",
+   "prompt": "bathroom vanity 30 inch",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f01",
+   "prompt": "bunk bed twin over twin",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f02",
+   "prompt": "floating wall shelf 36 inch",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f03",
+   "prompt": "potting bench",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f04",
+   "prompt": "kids play kitchen",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f05",
+   "prompt": "popsicle stick birdhouse",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f06",
+   "prompt": "cardboard rocket ship",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f07",
+   "prompt": "golden gate bridge",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f08",
+   "prompt": "leaning tower of pisa",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f09",
+   "prompt": "windmill",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f10",
+   "prompt": "wooden toy truck",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f11",
+   "prompt": "something to hold my firewood",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f12",
+   "prompt": "something to hang my tools on the wall",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f13",
+   "prompt": "nightstand 20 wide 24 tall 16 deep",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "10-17:f14",
+   "prompt": "bookshelf 36 wide 72 tall out of 1x10 pine",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f15",
+   "prompt": "coffee table made from 2x4s",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f16",
+   "prompt": "tv stand 60 wide 20 tall",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "10-17:f17",
+   "prompt": "sandbox with a lid",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f18",
+   "prompt": "bird feeder",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f19",
+   "prompt": "dining table 72 by 36",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "10-17:f20",
+   "prompt": "garden bench 48 inch",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "zip tie"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "marbles"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "pipe cleaner"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "pony bead"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "cotton ball"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "bottle cap"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "button"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "washer"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "wine cork"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "3/8 dowel"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "paper clip"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "paper clip chain 12 inches long"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "pony bead bracelet"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "washer tower"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "toothpick"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "cotton swab"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "jumbo craft stick"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "straw"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "clothes pin"
+  },
+  {
+   "id": "sweep:b8-bought-path",
+   "prompt": "rubber band"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "Tower Bridge"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "lighthouse"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "Dutch windmill"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "covered bridge"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "pirate ship"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "galleon 30 inches long"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "doll house"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "Golden Gate Bridge 36 inches long"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "Brooklyn Bridge 36 inches"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "Big Ben"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "Eiffel Tower"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "trebuchet"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "something to hang my keys"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "a place for my dog to sleep"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "organize my tools"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "plants by the window"
+  },
+  {
+   "id": "sweep:c1-named-forms",
+   "prompt": "a holder for 6 fishing rods"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "linen closet 31.5 wide 78 tall 16 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "linen closet"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "bookcase 36 wide 72 tall 12 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "bookshelf"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "4 foot bookshelf"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "media console 60 wide 24 tall 18 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "tv stand"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "pantry cabinet 24 wide 84 tall 16 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "wall cabinet 30 wide 30 tall 12 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "nightstand"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "dresser 36 wide 34 tall 18 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "shoe rack"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "desk 48 wide 30 tall 24 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "workbench"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "coat bench"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "toy box"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "garage shelving 48 wide 72 tall 18 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "closet 72 wide 96 tall 24 deep"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "floating shelf 36 wide"
+  },
+  {
+   "id": "sweep:c10-price-consistency",
+   "prompt": "storage cubby 3x3"
+  },
+  {
+   "id": "sweep:c11-whole-items-uncut",
+   "prompt": "marble"
+  },
+  {
+   "id": "sweep:c11-whole-items-uncut",
+   "prompt": "craft stick"
+  },
+  {
+   "id": "sweep:c11-whole-items-uncut",
+   "prompt": "binder clip"
+  },
+  {
+   "id": "sweep:c11-whole-items-uncut",
+   "prompt": "golf tee"
+  },
+  {
+   "id": "sweep:c11-whole-items-uncut",
+   "prompt": "16d nail"
+  },
+  {
+   "id": "sweep:c12-store-terms",
+   "prompt": "cedar raised garden bed 4x8"
+  },
+  {
+   "id": "sweep:c12-store-terms",
+   "prompt": "picnic table"
+  },
+  {
+   "id": "sweep:c12-store-terms",
+   "prompt": "birdhouse"
+  },
+  {
+   "id": "sweep:c12-store-terms",
+   "prompt": "window 36x48"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "standing desk converter"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "sit stand desk converter"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "desk converter 32 inches wide"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "guitar hanger"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "guitar wall hanger"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "guitar wall mount"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "outdoor storage bench"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "outdoor storage bench 60 inches wide"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "raised garden bed"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "raised garden bed 48 wide 96 long"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "raised vegetable bed"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "rolling bookshelf"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "rolling cart"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "kitchen island on casters"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "rolling storage cart"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "mobile workbench"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "rolling toy chest"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "dresser on casters"
+  },
+  {
+   "id": "sweep:c13-typed-modifier",
+   "prompt": "rolling shoe rack"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "wooden bird feeder"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "hopper bird feeder"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "bird feeder 12 inches wide"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "cedar bird feeder"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "hanging bird feeder"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "jewelry box"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "jewellery box"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "wooden jewelry box"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "jewelry box 12 inches wide"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "small jewelry box"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "walnut jewelry box"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "jewelry chest"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "hanging birdhouse"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "wall mounted birdhouse"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "wall-mounted birdhouse"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "hanging birdhouse for wrens"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "cedar hanging birdhouse"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "wall mount birdhouse"
+  },
+  {
+   "id": "sweep:c14-small-forms",
+   "prompt": "jewelry box with dividers"
+  },
+  {
+   "id": "sweep:c15-buy-complete",
+   "prompt": "rolling utility cart"
+  },
+  {
+   "id": "sweep:c15-buy-complete",
+   "prompt": "raised garden bed 4x8 open bottom with 4x4 posts"
+  },
+  {
+   "id": "sweep:c15-buy-complete",
+   "prompt": "raised garden bed with 4x4 posts"
+  },
+  {
+   "id": "sweep:c15-buy-complete",
+   "prompt": "water wheel"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "barn birdhouse"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "birdhouse shaped like church"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "beehive box"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "sandbox with seat"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "adirondack footrest"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "porch planter 16x16x30"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "outdoor planter box"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "patio planter 24 wide"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "garden planter box"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "outdoor toy box"
+  },
+  {
+   "id": "sweep:c16-material-for-use",
+   "prompt": "outdoor cabinet"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "treasure chest"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "abacus"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "cribbage board"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "laptop stand"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "napkin holder"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "toy airplane"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "submarine"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "glider"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "keepsake box"
+  },
+  {
+   "id": "sweep:c17-step-place-text",
+   "prompt": "recipe box"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "black bookshelf 36x12x72"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "white bookshelf"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "black bookcase"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "white toy box"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "painted toy box"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "stained nightstand"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "black nightstand"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "white nightstand"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "gray bookshelf"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "red toy box"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "navy blue bookcase"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "green bench"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "black coffee table"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "white tv stand"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "stained coffee table"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "black floating shelf"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "white shoe rack"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "painted bench"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "dark stained bookshelf"
+  },
+  {
+   "id": "sweep:c18-typed-finish",
+   "prompt": "black walnut bookshelf"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "bookshelf 36x12x72"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "bookshelf 38x12x72"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "bookcase"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "bookshelf 30x10x60"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "tv console 60 inch"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "shoe bench"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "coffee table"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "garden bench"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "raised garden bed 4x8"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "deck box"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "bookshelf 48x12x60"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "wall shelf"
+  },
+  {
+   "id": "sweep:c19-derived-counts",
+   "prompt": "bookcase 30 wide"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "about knee high bench"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "about waist high console"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "as wide as a twin bed bench"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "half a sheet of plywood shelf"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "a full sheet of plywood table"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "shelf that fits under a 30 inch window"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "small 6 foot shelf"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "stand for a 65 inch TV"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "counter height stool"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "bar height stool"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "bar height table"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "waist high workbench"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "as wide as a queen bed bench"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "as wide as a king bed headboard"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "5 foot cabinet"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "chest high cabinet"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "knee high coffee table"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "media console for a 75 inch TV"
+  },
+  {
+   "id": "sweep:c2-size-phrases",
+   "prompt": "half sheet of plywood desk"
+  },
+  {
+   "id": "sweep:c2b-bought-items",
+   "prompt": "clothespin"
+  },
+  {
+   "id": "sweep:c2b-bought-items",
+   "prompt": "shoelace"
+  },
+  {
+   "id": "sweep:c2b-bought-items",
+   "prompt": "cable tie"
+  },
+  {
+   "id": "sweep:c2b-bought-items",
+   "prompt": "nail"
+  },
+  {
+   "id": "sweep:c2b-bought-items",
+   "prompt": "cork"
+  },
+  {
+   "id": "sweep:c2b-bought-items",
+   "prompt": "drinking straw"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "paperclip chain"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "paper clip chain 6 inches"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "paper clip necklace"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "paper clip bracelet"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "20 paper clip chain"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "pony bead necklace"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "12 washer stack"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "1/4 dowel"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "3/4 dowel"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "popsicle stick"
+  },
+  {
+   "id": "sweep:c3-purchased",
+   "prompt": "washer tower 4 inches tall"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "ship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "galleon"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "tall ship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "viking ship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "longship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "schooner"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "frigate"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "clipper ship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "model ship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "viking longship"
+  },
+  {
+   "id": "sweep:c3t-typed-title",
+   "prompt": "sailing ship"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "3 foot Eiffel Tower from popsicle sticks"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "brooklyn bridge"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "model lighthouse"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "4 foot lattice tower from jumbo craft sticks"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "bunk bed"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "loft bed"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "corner shelf"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "wine rack 12 bottles"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "toothpick tower"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "catapult from popsicle sticks"
+  },
+  {
+   "id": "sweep:d1-deterministic-steps",
+   "prompt": "ferris wheel"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "filing cabinet 2 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "filing cabinet 4 drawers 18 wide 52 tall 24 deep"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "tool cabinet 24 wide 36 tall 12 deep with 2 doors and 3 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "craft cabinet 30 wide 60 tall 16 deep with 2 doors and 2 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "hall cabinet 36 wide 34 tall 14 deep with 2 doors and 2 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "file cabinet 20 wide 30 tall 24 deep with 1 door and 1 drawer"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "walnut dresser 6 drawers 60 wide"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "dresser 36 wide 34 tall 18 deep with 4 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "dresser 48 wide 40 tall 20 deep with 3 drawers and 2 doors"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "nightstand 18 wide 24 tall 16 deep with 2 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "nightstand with a drawer and a door"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "kitchen island"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "kitchen island 60x36x36"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "kitchen island 48 wide 36 tall 24 deep with 2 drawers and 2 doors"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "jewelry box with drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "jewelry box 12 wide 8 tall 8 deep with 3 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "sideboard 60 wide 34 tall 18 deep with 2 doors and 3 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "utility cabinet 30 wide 72 tall 16 deep with 2 drawers 2 doors and 3 shelves"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "chest of drawers 30 wide 44 tall 18 deep with 5 drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "hall cabinet 30x36x12"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "file cabinet"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "filing cabinet"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "walnut dresser"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "dresser"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "pocket vanity"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "60\" desk"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "wardrobe with drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "closet with drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "bookcase with drawers"
+  },
+  {
+   "id": "sweep:f17-before-after",
+   "prompt": "linen closet with 2 drawers"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "outdoor wall planter box"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "outdoor hanging shelf"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "hanging planter"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "bunk bed 80 long 42 wide 66 tall"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "outdoor bench"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "garden bed"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "wall mounted outdoor planter"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "outdoor plant stand"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "floating shelf 24 wide"
+  },
+  {
+   "id": "sweep:g1-hung-glides-stud-tie",
+   "prompt": "coat rack"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "spice rack"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "dog bed frame"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "floating shelves 36 wide 10 deep"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "wine rack 24 wide 36 high 12 deep"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "wall shelf for jars 24 wide"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "30 inch range hood"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "over the toilet cabinet 27 wide 68 high 9 deep"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "L-shaped corner desk 60 by 48 30 tall"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "window box"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "wall mounted mail organizer"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "wall clock frame"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side"
+  },
+  {
+   "id": "sweep:h1-hardware-on-buy",
+   "prompt": "nightstand with drawer"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "garage storage shelves"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "window seat 60 wide"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "rolling kitchen island"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "bathroom medicine cabinet 16 wide 24 high 4 deep"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "wall mounted ironing board cabinet 48 high 16 wide 6 deep"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "mudroom bench 48 wide 18 high 16 deep"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "bench 31 wide 17.5 tall 14 deep"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "6 foot ladder from 2x4"
+  },
+  {
+   "id": "sweep:j1-jargon",
+   "prompt": "floating desk"
+  },
+  {
+   "id": "sweep:l1-live-path",
+   "prompt": "a ship"
+  },
+  {
+   "id": "sweep:l1-live-path",
+   "prompt": "catapult"
+  },
+  {
+   "id": "sweep:l1-live-path",
+   "prompt": "Taj Mahal"
+  },
+  {
+   "id": "sweep:l1-live-path",
+   "prompt": "Space Needle"
+  }
+ ]
+}

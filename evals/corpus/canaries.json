@@ -1,0 +1,12 @@
+{
+ "note": "Freeze canaries for the eval gate. Each is a HARD fail, separate from the totals: header, part count and price are frozen at main 49aa20f (2026-10-19), plus a structural check. Changing one is a deliberate edit to this file in the PR, with the reason in the PR body.",
+ "canaries": [
+  { "id": "linen", "prompt": "linen closet 31.5 wide 78 tall 16 deep", "header": "Linen · 31 1/2\" W × 16\" D × 78\" H", "pieces": 11, "usd": 183.70, "overall": [31.5, 16, 78], "why": "Ezra's linen closet: 31 1/2 × 16 × 78, 11 parts, $183.70 (scripts/baselines/linen-closet.txt, linen-check.ts)" },
+  { "id": "pocket-vanity", "prompt": "bathroom pocket vanity (original trapezoid, POCKET_DREAM)", "dream": "POCKET_DREAM", "header": "Towel bathroom pocket vanity · 38\" W × 17\" D × 102\" H · trapezoid", "pieces": 50, "usd": 636.23, "checks": ["pocket"], "why": "The original trapezoid pocket vanity (walk-canary.ts, honesty smoke)" },
+  { "id": "andersen", "prompt": "Andersen 100 Series 36 by 48 double hung window, frame the rough opening", "header": "Andersen 100 Series 36x48 double hung · 46\" W × 7 1/2\" D × 98\" H", "pieces": 14, "usd": 439.26, "checks": ["opening"], "why": "Andersen 36×48 hung window + rough opening" },
+  { "id": "desk-knee", "prompt": "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space", "header": "Desk · 60\" W × 30\" D × 29\" H", "pieces": 41, "usd": 381.97, "overall": [60, 30, 29], "checks": ["knee"], "why": "Desk 60 × 30 × 29 with a 24\" knee bay" },
+  { "id": "eiffel-3ft", "prompt": "3 foot Eiffel Tower from popsicle sticks", "header": "Eiffel Tower · 15 3/16\" W × 15 3/16\" D × 37 3/8\" H", "pieces": 784, "usd": 19.96, "checks": ["eiffel-sticks"], "why": "3-ft popsicle Eiffel: craft still works, never a generic lattice template or a road" },
+  { "id": "cat-tree", "prompt": "cat tree", "header": "Cat tree · 20\" W × 20\" D × 48\" H (size assumed)", "pieces": 20, "usd": 128.08, "checks": ["platform-tower"], "why": "Cat tree is a tower of platforms (weekend structure family)" },
+  { "id": "step-stool", "prompt": "step stool", "header": "Step stool with 2 steps · 16\" W × 22\" D × 18\" H (W assumed)", "pieces": 18, "usd": 60.87, "checks": ["tread"], "why": "Step stool with a real tread (climb model, ≥10\" deep treads)" }
+ ]
+}

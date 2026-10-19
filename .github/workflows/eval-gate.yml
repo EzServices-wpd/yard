@@ -1,0 +1,104 @@
+# Eval gate — runs on every pull request. Free: GitHub-hosted runner, engine-direct (no browser), no xAI, no secrets.
+#
+# Grades the PR head and its merge-base main with the SAME corpus and grader (the head's scripts/eval-gate*.ts and
+# evals/corpus), then posts ONE sticky comment (marker <!-- yard-eval-gate -->): pass/partial/fail, honor %, the delta,
+# newly failing / newly passing prompts, failure classes that moved, canary status, properties, and the answer-key
+# report. The job fails if a canary fails, a prompt is newly failing and not in evals/gate-allow.json with a reason,
+# the total points drop, or a property fails that is not expected-fail in evals/props-allow.json.
+# Answer keys are REPORT ONLY. evals/score.json and the guards workflow are unchanged.
+#
+# Per-class work (one cloud agent per failure class): `npm run eval:gate -- --class <id>` is the local target;
+# this job is the merge check.
+name: eval-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: eval-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Check out the merge-base with main
+        id: base
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || 'main' }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          MB=$(git merge-base "origin/$BASE_REF" HEAD)
+          echo "sha=$MB" >> "$GITHUB_OUTPUT"
+          git worktree add --detach .base "$MB"
+          ln -s ../node_modules .base/node_modules
+          echo "head $(git rev-parse --short HEAD) · merge-base $(git rev-parse --short "$MB")"
+
+      - name: Grade head and base (gate + properties, in parallel)
+        id: grade
+        run: |
+          start=$(date +%s)
+          npx -y tsx scripts/eval-gate.ts --jobs 2 --out "$RUNNER_TEMP/gate-head.json" > "$RUNNER_TEMP/gate-head.log" 2>&1 & h=$!
+          (cd .base && npx -y tsx ../scripts/eval-gate.ts --root . --jobs 2 --out "$RUNNER_TEMP/gate-base.json") > "$RUNNER_TEMP/gate-base.log" 2>&1 & b=$!
+          PROPS_OUT="$RUNNER_TEMP/props-head.json" npx -y tsx --test scripts/props.test.ts > "$RUNNER_TEMP/props-head.log" 2>&1 & ph=$!
+          (cd .base && YARD_ROOT="$PWD" PROPS_OUT="$RUNNER_TEMP/props-base.json" npx -y tsx --test ../scripts/props.test.ts) > "$RUNNER_TEMP/props-base.log" 2>&1 & pb=$!
+          wait $h; echo "head gate exit $?"; wait $b; echo "base gate exit $?"; wait $ph; echo "head props exit $?"; wait $pb; echo "base props exit $?"
+          echo "secs=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          for f in gate-head gate-base props-head props-base; do echo "::group::$f"; tail -25 "$RUNNER_TEMP/$f.log"; echo "::endgroup::"; done
+          test -s "$RUNNER_TEMP/gate-head.json" && test -s "$RUNNER_TEMP/gate-base.json"
+
+      - name: Diff head vs main
+        id: diff
+        run: |
+          set +e
+          npx -y tsx scripts/eval-gate-diff.ts --base "$RUNNER_TEMP/gate-base.json" --head "$RUNNER_TEMP/gate-head.json" \
+            --base-props "$RUNNER_TEMP/props-base.json" --head-props "$RUNNER_TEMP/props-head.json" \
+            --runtime "grading ${{ steps.grade.outputs.secs }} s" --run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --out "$RUNNER_TEMP/comment.md"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post or update the sticky comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq '.[] | select(.body | contains("<!-- yard-eval-gate -->")) | .id' | head -1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@"$RUNNER_TEMP/comment.md" > /dev/null; echo "updated comment $id";
+          else gh api "repos/$REPO/issues/$PR/comments" -F body=@"$RUNNER_TEMP/comment.md" > /dev/null; echo "posted comment"; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-gate-${{ github.event.pull_request.number || github.run_id }}
+          path: |
+            ${{ runner.temp }}/gate-*.json
+            ${{ runner.temp }}/props-*.json
+            ${{ runner.temp }}/*.log
+            ${{ runner.temp }}/comment.md
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Gate verdict
+        run: test "${{ steps.diff.outputs.code }}" = "0"
