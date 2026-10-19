@@ -404,7 +404,8 @@ function addDrawerFronts(panels: Panel[]) {
 function snapSizes(panels: Panel[]) {
   for (const p of panels) {
     if (shaped(p) || p.blank) continue;
-    const r = (v: number) => (Math.abs(v * 8 - Math.round(v * 8)) < 1e-6 ? v : Math.round(v * 8) / 8);
+    // Never snap a real part to nothing: a stock thinner than the grid (0.06" chipboard) keeps its own size.
+    const r = (v: number) => (Math.abs(v * 8 - Math.round(v * 8)) < 1e-6 || Math.round(v * 8) <= 0 ? v : Math.round(v * 8) / 8);
     const size = { width: r(p.size.width), height: r(p.size.height), depth: r(p.size.depth) };
     if (p.yaw) {
       const c = { x: p.position.x + p.size.width / 2, z: p.position.z + p.size.depth / 2 };

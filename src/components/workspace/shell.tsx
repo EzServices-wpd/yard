@@ -1,5 +1,6 @@
 "use client";
 import { headerTitle } from "@/lib/yard/pdf";
+import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -293,8 +294,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
             <Logo />
           </Link>
           <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
-            {/* With a build, the title is the plan's header itself (same as the PDF); "Workbench" only on an empty bench. */}
-            {pieceCount > 0 ? headerTitle(project) : "Workbench"}
+            {/* With a build, the title is the plan's header itself (same as the PDF); a refused build names what was asked
+                for and says nothing was built; "Workbench" only on an empty bench. */}
+            {pieceCount > 0 || project.refused ? headerTitle(project) : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -493,7 +495,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 : `Yard couldn't learn the ${project.name.toLowerCase()} yet. The grey block is a placeholder: no parts, price or stock.`}
             </p>
           )}
-          {ready && pieceCount === 0 && !project.displayOnly && !side && !pending && (
+          {ready && pieceCount === 0 && project.refused && !pending && (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">
+              <div data-yard-refused="1" role="status" className="max-w-md text-center">
+                <p className="font-display text-2xl text-fg">Nothing built</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{project.refused}</p>
+              </div>
+            </div>
+          )}
+          {ready && pieceCount === 0 && !project.refused && !project.displayOnly && !side && !pending && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">
               <div className="max-w-sm text-center">
                 <p className="font-display text-2xl text-fg">Empty bench</p>
@@ -622,6 +632,12 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   <DecisionLine />
                 </div>
               )}
+              {/* I32: what the build changed from the ask, in plain words, on the card itself (not only in the plan). */}
+              {workMode !== "walk" && !titlePending && project.cardNote && (
+                <p data-yard-card-note="1" className="px-3.5 pt-1 text-[12px] leading-snug text-muted">
+                  {project.cardNote}
+                </p>
+              )}
               {workMode !== "walk" && (
                 project.displayOnly ? null : (
                   <RefineBox
@@ -739,7 +755,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     ? paperCraft
                       ? `${pieceCount} whole sticks`
                       : `${pieceCount} ${pieceCount === 1 ? "piece" : "pieces"}`
-                    : wire
+                    : project.refused && !project.panels.length
+                      ? NOTHING_BUILT_STOCK
+                      : wire
                       ? "Pick a real stock"
                       : nestSheetLabel
                         ? nestSheetLabel

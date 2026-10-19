@@ -1,4 +1,4 @@
-// Hotfix: the workbench title is exactly the plan header when there is a build ("Workbench" only when empty).
+// Hotfix: the workbench title is exactly the plan header when there is a build or a refusal ("Workbench" only on an empty bench).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -12,11 +12,11 @@ test("the linen header the workbench title must read", () => {
   assert.equal(headerTitle(generateFromPrompt(LINEN_PROMPT)), LINEN_HEADER);
 });
 
-test("shell renders headerTitle() alone with a build, 'Workbench' only without one", () => {
+test("shell renders headerTitle() alone with a build or a refusal, 'Workbench' only on an empty bench", () => {
   const src = readFileSync(new URL("../src/components/workspace/shell.tsx", import.meta.url), "utf8");
   const at = src.indexOf("data-yard-workbench-title");
   assert.ok(at > 0, "title element present");
   const el = src.slice(at, src.indexOf("</span>", at));
-  assert.match(el, /pieceCount > 0 \? headerTitle\(project\) : "Workbench"/);
+  assert.match(el, /pieceCount > 0 \|\| project\.refused \? headerTitle\(project\) : "Workbench"/);
   assert.doesNotMatch(el, /Workbench ·/);
 });
