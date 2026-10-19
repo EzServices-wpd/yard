@@ -36,6 +36,12 @@ describe("I35: one reader for a typed size", () => {
     assert.equal(readNumber("24½"), 24.5);
   });
 
+  it("keeps the space before a lone unicode fraction and never reads a stock after a length as inches", () => {
+    assert.equal(canonicalMeasures("shelf ½ deep"), "shelf 0.5 deep");
+    for (const q of ["workbench 6 ft 2 x 4 frame", "bench 8 ft 2 x 4 legs"]) assert.equal(canonicalMeasures(q), q);
+    assert.equal(typedMeasures("shelf 2 ft 6 wide").width, 30);
+  });
+
   it("leaves stock names alone: a sheet's fraction and a fastener's size are not sizes", () => {
     for (const q of ["1/2 plywood shelf 30 wide", `3/4" ply box`, "3/4 x 4 x 8 plywood box", "1 1/2 inch dowel rack", "2x4 bench 4 ft long"]) assert.equal(canonicalMeasures(q), q);
   });
@@ -77,6 +83,8 @@ describe("I35: one reader for a typed size", () => {
     const p = useYard.getState().project;
     assert.ok(!calls.includes("lookup"), calls.join());
     assert.equal(p.overall.width, 24.5);
+    // The bar keeps the words typed (fractions only); the engine reads them as 24.5.
+    assert.equal(p.typedPrompt, 'shelf 24 1/2" wide');
     assert.match(headerTitle(p), /24 1\/2" W/);
     const plan = buildPlan(p);
     assert.ok(plan.cutList.some((c) => Math.abs(Math.max(c.lengthIn, c.widthIn) - 24.5) < 1 / 16 || Math.abs(Math.max(c.lengthIn, c.widthIn) - 23) < 1 / 16), plan.cutList.map((c) => `${c.name} ${c.lengthIn}`).join(", "));

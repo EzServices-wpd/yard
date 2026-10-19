@@ -1,7 +1,7 @@
 import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
 import { resolvePurpose } from "./purposeForms";
-import { canonicalMeasures } from "./measureText";
+import { canonicalMeasures, rewritesMeasures } from "./measureText";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
@@ -400,7 +400,10 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const built = idDepth === 1 ? hollowDrawers(generateSeeded(...args)) : generateSeeded(...args);
+    const built0 = idDepth === 1 ? hollowDrawers(generateSeeded(...args)) : generateSeeded(...args);
+    // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
+    const typed = args[0] ?? "";
+    const built = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } finally {
     idDepth--;
