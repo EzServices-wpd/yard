@@ -397,17 +397,29 @@ export function outlineRingXZ(panel: import("./types").Panel): { x: number; z: n
   ];
 }
 
-/** Odd-shape polygon plate as two world rings (bottom/back face and top/front face). */
+/**
+ * Odd-shape polygon plate as two world rings (bottom/back face and top/front face), in the same local frames as the
+ * 3D bench (stick-cloud): "xz" = plan outline (x, z) extruded up by height; "xy" = face outline (x, y) extruded back
+ * by depth; "zy" = face outline (z, y) extruded across x by width (a wheel on an x axle). Before, "zy" fell through
+ * to "xy" and a flat wheel was drawn as a drum as deep as it is round.
+ */
 export function polygonRings(panel: import("./types").Panel): { x: number; y: number; z: number }[][] {
   const poly = panel.polygon!;
   const { x, y, z } = panel.position;
   const { width: w, height: h, depth: d } = panel.size;
+  let r0: { x: number; y: number; z: number }[];
+  let r1: { x: number; y: number; z: number }[];
   if (poly.plane === "xz") {
-    const r0 = poly.pts.map(([px, pz]) => ({ x: x + px, y, z: z + pz }));
-    return [r0, r0.map((p) => ({ ...p, y: y + h }))];
+    r0 = poly.pts.map(([px, pz]) => ({ x: x + px, y, z: z + pz }));
+    r1 = r0.map((p) => ({ ...p, y: y + h }));
+  } else if (poly.plane === "zy") {
+    r0 = poly.pts.map(([pz, py]) => ({ x, y: y + py, z: z + pz }));
+    r1 = r0.map((p) => ({ ...p, x: x + w }));
+  } else {
+    r0 = poly.pts.map(([px, py]) => ({ x: x + px, y: y + py, z }));
+    r1 = r0.map((p) => ({ ...p, z: z + d }));
   }
-  const r0 = poly.pts.map(([px, py]) => ({ x: x + px, y: y + py, z }));
-  const r1 = r0.map((p) => ({ ...p, z: z + d }));
+  // A turned part turns its outline too, whatever the plane (the 3D bench turns the whole mesh).
   const yaw = panel.yaw ?? 0;
   if (!yaw) return [r0, r1];
   // Turned part (a leaning rail lies along the depth): same R_y about the box centre as panelWorldCorners.
