@@ -37,7 +37,7 @@ export type ExplodePart = {
 /** A rigid explode pose: rotate by `ang` about `axis` through `pivot` (world), then translate by `t`.
  * `lat` is the share of `t` that moves second (a drawer slides out, then its column steps sideways, so it
  * never passes through an upright or the top). `stage` is the role whose tween window it follows (hardware: its host's). */
-export type Pose = { t: V3; rot?: { axis: V3; ang: number; pivot: V3 }; lat?: V3; stage?: Role };
+export type Pose = { t: V3; rot?: { axis: V3; ang: number; pivot: V3 }; lat?: V3; stage?: Role; rotLate?: boolean };
 
 export type Box3 = { minX: number; minY: number; minZ: number; maxX: number; maxY: number; maxZ: number };
 
@@ -192,6 +192,10 @@ export type Mover = {
   /** Movers that keep one distance (both sides, both doors, matching drawers), so gaps stay even. */
   link?: string;
   k?: number; n?: number; hh?: number;
+  /** A drawer's box depth and its box's bottom centre (the tilt pivot). */
+  dd?: number; pivot?: V3;
+  /** Small flat parts (toekicks): how far (0..1) their broad face turns square to the camera (solver-grown). */
+  face?: number;
 };
 
 export type Layout = {
@@ -202,7 +206,47 @@ export type Layout = {
   g: number; W: number; H: number; D: number; midX: number; minY: number;
   /** Doors that hang on the left (operateFaces.doorHingesLeft: one hinge rule for model, steps and pull). */
   hingeLeft: Map<string, boolean>;
+  /**
+   * Hollow drawers tip their open top toward the camera by `ang` (one value for every drawer, so the staircase
+   * stays even) about a level axis square to the camera's heading (tiltAxis). The solver grows it when a drawer's
+   * inside is hidden by its own side or back (Critic #98 row 107: the vanity's left column showed side-on troughs).
+   */
+  tilt: { ang: number; axis: V3 };
+  /** Unit vector from the model toward the explode camera (EXPLODE_VIEW, or the user's own angle). */
+  camDir: V3;
 };
+
+/** Unit vector toward a camera at this azimuth / elevation (the bench's frame: azimuth from +z toward +x). */
+export function camDirOf(view: { azimuthDeg: number; elevationDeg: number }): V3 {
+  const a = (view.azimuthDeg * Math.PI) / 180, e = (view.elevationDeg * Math.PI) / 180;
+  return norm([Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e)]);
+}
+
+/**
+ * The turn that lays a flat part's broad face square to the camera, scaled by `share` (0..1): axis = n × c, angle =
+ * share × the angle between them, about the part's centre. A thin strip seen at a slant (a toekick) reads full size.
+ */
+export function faceTurn(p: Pick<ExplodePart, "x" | "y" | "z" | "w" | "h" | "d">, cam: V3, share: number): Pose["rot"] | undefined {
+  const dims = [p.w, p.h, p.d];
+  const k = dims.indexOf(Math.min(...dims));
+  const n: V3 = [0, 0, 0];
+  n[k] = cam[k] >= 0 ? 1 : -1;
+  const dot = n[0] * cam[0] + n[1] * cam[1] + n[2] * cam[2];
+  const ang = Math.acos(Math.max(-1, Math.min(1, dot))) * Math.max(0, Math.min(1, share));
+  const ax: V3 = [n[1] * cam[2] - n[2] * cam[1], n[2] * cam[0] - n[0] * cam[2], n[0] * cam[1] - n[1] * cam[0]];
+  if (ang < 1e-4 || Math.hypot(...ax) < 1e-6) return undefined;
+  return { axis: norm(ax), ang, pivot: [cxOf(p as ExplodePart), cyOf(p as ExplodePart), czOf(p as ExplodePart)] };
+}
+
+/** Most a drawer tips toward the camera, and the solver's step. */
+export const TILT_MAX = (40 * Math.PI) / 180;
+export const TILT_STEP = (5 * Math.PI) / 180;
+
+/** The level axis that tips a box's up face toward a camera at this azimuth (up × heading). */
+export function tiltAxis(azimuthDeg: number): V3 {
+  const a = (azimuthDeg * Math.PI) / 180;
+  return norm([Math.cos(a), 0, -Math.sin(a)]);
+}
 
 /** Movers, axes and starting distances (PLAN §2.2). */
 export function layoutFor(panels: readonly Panel[]): Layout {
@@ -280,12 +324,13 @@ export function layoutFor(panels: readonly Panel[]): Layout {
       e.m.dist = Math.max(dd * (0.85 + 0.45 * k), A.maxZ - e.b.minZ + 0.1 * g + 0.45 * k * dd);
       e.m.lat = lat; e.m.dir = dir;
       e.m.link = `drawer:${k}`;
-      e.m.bank = bank; e.m.k = k; e.m.n = n; e.m.hh = hh;
+      e.m.bank = bank; e.m.k = k; e.m.n = n; e.m.hh = hh; e.m.dd = dd;
+      e.m.pivot = [(e.b.minX + e.b.maxX) / 2, e.b.minY, (e.b.minZ + e.b.maxZ) / 2];
     });
   }
   const owner = new Map<string, Mover>();
   for (const m of movers.values()) for (const p of m.parts) owner.set(p.id, m);
-  return { parts, movers, owner, g, W, H, D, midX, minY: A.minY, hingeLeft };
+  return { parts, movers, owner, g, W, H, D, midX, minY: A.minY, hingeLeft, tilt: { ang: 0, axis: tiltAxis(EXPLODE_VIEW.azimuthDeg) }, camDir: camDirOf(EXPLODE_VIEW) };
 }
 
 /** The pose of every part for the layout's current distances (PLAN §2.2, §2.5). */
@@ -305,13 +350,17 @@ export function posesFor(L: Layout): Map<string, Pose> {
   }
   // A drawer that spreads upward must first slide out past anything that ends up in front of it at its lifted
   // height (a jewelry box's tray front wall stepping forward above the drawers): one extra shift per column side.
-  const liftOf = (m: Mover) => (m.bank ? ((m.n ?? 1) - 1 - (m.k ?? 0)) * (m.hh ?? 0) * m.bank.spread : 0);
+  // A tipped drawer stands taller by its depth × sin(tilt): the bank spreads by that too, so tipped drawers never meet.
+  const tipped = (m: Mover) => (m.front && L.tilt.ang > 0 ? L.tilt.ang : 0);
+  const liftOf = (m: Mover) => (m.bank ? ((m.n ?? 1) - 1 - (m.k ?? 0)) * ((m.hh ?? 0) * m.bank.spread + (m.dd ?? 0) * Math.sin(tipped(m))) : 0);
   for (const m of L.movers.values()) {
     const lift = liftOf(m);
-    if (!m.lat || lift <= 0) continue;
+    const tip = tipped(m);
+    if (!m.lat || (lift <= 0 && !tip)) continue;
     const mine = m.parts.filter((q) => q.role !== "hardware");
     const b = boxOf(mine);
-    const y0 = b.minY + lift, y1 = b.maxY + lift;
+    // A tipped drawer's back rises by its depth × sin(tilt): it must clear what sits above it too.
+    const y0 = b.minY + lift, y1 = b.maxY + lift + (m.dd ?? 0) * Math.sin(tip);
     let need = -Infinity;
     for (const o of L.movers.values()) {
       if (o.key.startsWith("D:") || o === m) continue;
@@ -340,6 +389,15 @@ export function posesFor(L: Layout): Map<string, Pose> {
         // Swing 105° on the real hinge side, then move outward: the open door never lands in front of its case.
         const left = L.hingeLeft.get(p.id) ?? cxOf(p) < L.midX;
         pose.rot = { axis: [0, 1, 0], ang: ((left ? -1 : 1) * 105 * Math.PI) / 180, pivot: [left ? p.x : p.x + p.w, cyOf(p), p.z + p.d / 2] };
+      } else if (tipped(m) && m.pivot) {
+        // A hollow drawer tips its open top toward the camera, about its own box's bottom centre (front and all).
+        // It tips only once it is out of the carcase (the lat window), never inside it.
+        pose.rot = { axis: L.tilt.axis, ang: tipped(m), pivot: m.pivot };
+        pose.rotLate = true;
+      } else if (m.face && p.role === "kick") {
+        // Turns once the drawers are out (the lat window), so it never sweeps through one sliding past.
+        pose.rot = faceTurn(p, L.camDir, m.face);
+        if (pose.rot) pose.rotLate = true;
       } else if (p.role === "lid") {
         // Tip back 75° on the hinge line (back edge, bottom face).
         pose.rot = { axis: [1, 0, 0], ang: (-75 * Math.PI) / 180, pivot: [cxOf(p), p.y, p.z] };
@@ -470,8 +528,69 @@ export function poseAt(pose: Pose, role: Role, u: number): Pose {
   const L = pose.lat ?? [0, 0, 0];
   const t: V3 = [(pose.t[0] - L[0]) * m + L[0] * l, (pose.t[1] - L[1]) * m + L[1] * l, (pose.t[2] - L[2]) * m + L[2] * l];
   if (!pose.rot) return { t };
-  return { t, rot: { ...pose.rot, ang: pose.rot.ang * windowed(u, w.swing) } };
+  return { t, rot: { ...pose.rot, ang: pose.rot.ang * windowed(u, pose.rotLate ? LAT_WINDOW : w.swing) } };
 }
 
 /** Strong ease-out for parts (no ease-in on UI). */
 export const easeParts = (u: number) => 1 - (1 - u) ** 3;
+
+
+/** An oriented box (centre, unit axes, half extents) for the 3D clearance rule. */
+export type OBB = { c: V3; ax: V3[]; e: number[] };
+const vsub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const vdot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const vcross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+/** A part's box under a pose, shrunk by `shrink` inches so parts that only touch don't count. */
+export function obbOf(p: Pick<ExplodePart, "x" | "y" | "z" | "w" | "h" | "d">, pose: Pose | undefined, shrink: number): OBB {
+  const o = applyPose([0, 0, 0], pose);
+  const axis = (v: V3) => vsub(applyPose(v, pose), o);
+  const c = applyPose([p.x + p.w / 2, p.y + p.h / 2, p.z + p.d / 2], pose);
+  return { c, ax: [axis([1, 0, 0]), axis([0, 1, 0]), axis([0, 0, 1])], e: [p.w, p.h, p.d].map((s) => Math.max(0, s / 2 - shrink)) };
+}
+
+/** Separating-axis test for two oriented boxes. */
+export function obbOverlap(a: OBB, b: OBB): boolean {
+  if (a.e.some((x) => x <= 0) || b.e.some((x) => x <= 0)) return false;
+  const axes = [...a.ax, ...b.ax];
+  for (const u of a.ax) for (const v of b.ax) { const x = vcross(u, v); if (Math.hypot(...x) > 1e-6) axes.push(x); }
+  const d = vsub(b.c, a.c);
+  for (const L of axes) {
+    const ra = a.e.reduce((s, e, i) => s + e * Math.abs(vdot(a.ax[i], L)), 0);
+    const rb = b.e.reduce((s, e, i) => s + e * Math.abs(vdot(b.ax[i], L)), 0);
+    if (Math.abs(vdot(d, L)) > ra + rb) return false;
+  }
+  return true;
+}
+
+/**
+ * The 3D clearance rule over the whole tween: does any moving part pass through a part of another unit at any of
+ * `frames` frames? Parts that start inside one another (inset panels) only have to leave. Every solver step that
+ * tips or spreads drawers is checked with this and taken back if it fails (growIfClear).
+ */
+export function tweenCollides(L: Layout, poses: Map<string, Pose>, frames = 16): boolean {
+  const live = L.parts.filter((p) => p.role !== "hardware");
+  const rest = new Map(live.map((p) => [p.id, obbOf(p, undefined, 0.05)]));
+  const pairs: [ExplodePart, ExplodePart][] = [];
+  for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+    const a = live[i], b = live[j];
+    if (a.unit === b.unit) continue;
+    if (a.unit === "case" && b.unit === "case") continue;
+    if (obbOverlap(rest.get(a.id)!, rest.get(b.id)!)) continue;
+    pairs.push([a, b]);
+  }
+  for (let f = 1; f <= frames; f++) {
+    const u = f / frames;
+    const at = (p: ExplodePart) => { const q = poses.get(p.id); return obbOf(p, q && poseAt(q, p.role, u), 0.05); };
+    for (const [a, b] of pairs) if (obbOverlap(at(a), at(b))) return true;
+  }
+  return false;
+}
+
+/** Apply a solver step only if the tween stays clear; otherwise take it back. Returns whether it stuck. */
+export function growIfClear(L: Layout, apply: () => void, revert: () => void): boolean {
+  apply();
+  if (!tweenCollides(L, posesFor(L))) return true;
+  revert();
+  return false;
+}

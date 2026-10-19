@@ -9,14 +9,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
+import { SPREAD_MAX } from "../src/components/workspace/explode-solver.ts";
 import { simulateHollowDrawers, SIM_DRAWER_TAG } from "../src/components/workspace/explode-sim.ts";
 import {
-  CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, layoutFor, posesFor, poseAt, applyPose, classify, setDrawerTag,
+  CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, TILT_MAX, TILT_STEP, camDirOf, growIfClear, tweenCollides, faceTurn, tiltAxis, layoutFor, posesFor, poseAt, applyPose, classify, setDrawerTag,
   type ExplodePart, type Layout, type Pose, type V3,
 } from "../src/components/workspace/explode-layout.ts";
 
 const BUILDS: Record<string, string> = {
   dresser: "3 drawer dresser",
+  dresser6: "6 drawer dresser",
   nightstand: "nightstand with 2 drawers",
   desk: '60" desk with drawers',
   filing: "filing cabinet 2 drawers",
@@ -100,7 +102,9 @@ for (const [build, prompt] of Object.entries(BUILDS)) {
 
   test(`${build} (simulated hollow 5-part drawers): no part passes through another unit at any frame`, () => {
     const panels = generateFromPrompt(prompt).panels;
-    if (!panels.some((p) => p.type === "drawer")) return;
+    // The 6-drawer dresser was added for row 105; its drawers are #94-tagged hollow boxes already, and the real-parts
+    // tests above cover it. The simulation is for the builds this test has always pinned.
+    if (!panels.some((p) => p.type === "drawer") || build === "dresser6") return;
     setDrawerTag(SIM_DRAWER_TAG);
     try {
       for (const steps of [0, 3]) {
@@ -180,4 +184,53 @@ test("motion budget: open ≤ 1.2 s, close = 0.7 × open, reduced motion is a 15
   assert.ok(EXPLODE_MS <= 1200);
   assert.equal(CLOSE_MS, Math.round(EXPLODE_MS * 0.7));
   assert.equal(REDUCED_FADE_MS, 150);
+});
+
+
+/**
+ * Critic #98 row 107: a drawer column whose open top faced away showed side-on troughs (the vanity's left column).
+ * The solver tips every hollow drawer's open top toward the camera (one value) and turns a thin strip's broad face
+ * to it. Pinned here at the caps: tipped drawers and turned kicks still pass through nothing, at any frame.
+ */
+for (const [build, prompt] of Object.entries(BUILDS)) {
+  test(`${build}: tipping drawers, spreading banks and turning kicks as far as the solver can never makes units pass through each other`, () => {
+    const L = layoutFor(generateFromPrompt(prompt).panels);
+    for (const m of L.movers.values()) if (m.key.startsWith("kick:")) m.face = 1;
+    for (let i = 0; i < 12; i++) { const w = L.tilt.ang; growIfClear(L, () => { L.tilt.ang = Math.min(TILT_MAX, w + TILT_STEP); }, () => { L.tilt.ang = w; }); }
+    const bank = [...L.movers.values()].find((m) => m.bank)?.bank;
+    for (let i = 0; bank && i < 25; i++) { const w = bank.spread; if (w >= SPREAD_MAX) break; growIfClear(L, () => { bank.spread = w + 0.1; }, () => { bank.spread = w; }); }
+    const poses = posesFor(L);
+    // The library rule and this file's own 60-frame check agree.
+    assert.equal(tweenCollides(L, poses, 40), false);
+    const hits = new Set<string>();
+    for (let f = 0; f <= 60; f++) {
+      const u = f / 60;
+      const box = new Map(L.parts.map((p) => { const pose = poses.get(p.id); return [p.id, obb(p, pose && poseAt(pose, p.role, u), 0.05)]; }));
+      for (const a of L.parts.filter(moving)) for (const b of L.parts) {
+        if (a.id === b.id || a.unit === b.unit || b.role === "hardware") continue;
+        if (overlap(obb(a, undefined, 0.05), obb(b, undefined, 0.05))) continue;
+        if (overlap(box.get(a.id)!, box.get(b.id)!)) hits.add(`${a.name} × ${b.name} @${Math.round(u * EXPLODE_MS)}ms`);
+      }
+    }
+    assert.deepEqual([...hits].slice(0, 8), []);
+    if (build === "pocket-vanity" || build === "dresser") assert.ok(L.tilt.ang > 0, `${build}: drawers can tip`);
+  });
+}
+
+test("a tipped drawer's open top faces the camera more than a level one, from either side (left and right columns)", () => {
+  const rot = (v: V3, r: NonNullable<Pose["rot"]>) => sub(applyPose(v, { t: [0, 0, 0], rot: { ...r, pivot: [0, 0, 0] } }), [0, 0, 0]);
+  for (const az of [32, -32, 60, 0]) {
+    const cam = camDirOf({ azimuthDeg: az, elevationDeg: 32 });
+    const up = rot([0, 1, 0], { axis: tiltAxis(az), ang: TILT_MAX, pivot: [0, 0, 0] });
+    assert.ok(up[0] * cam[0] + up[1] * cam[1] + up[2] * cam[2] > cam[1] + 0.05, `az ${az}`);
+  }
+});
+
+test("a toekick turned fully faces the camera square on", () => {
+  const kick = { x: 0, y: 0, z: 0, w: 24, h: 4, d: 0.75 };
+  const cam = camDirOf({ azimuthDeg: 32, elevationDeg: 32 });
+  const r = faceTurn(kick, cam, 1)!;
+  const n = applyPose([0, 0, 1], { t: [0, 0, 0], rot: { ...r, pivot: [0, 0, 0] } });
+  assert.ok(n[0] * cam[0] + n[1] * cam[1] + n[2] * cam[2] > 0.999);
+  assert.equal(faceTurn(kick, cam, 0), undefined);
 });

@@ -14,7 +14,7 @@ import type { BenchView, Rect } from "@/lib/yard/benchFrame";
 import { fitPoints } from "@/components/workspace/explode-frame";
 import type { Panel } from "@/lib/yard/types";
 import {
-  boxOf, cornersOf, explodedBox, layoutFor, posedPoints, posesFor,
+  TILT_MAX, TILT_STEP, boxOf, camDirOf, growIfClear, cornersOf, explodedBox, layoutFor, posedPoints, posesFor, tiltAxis,
   type Box3, type Layout, type Pose, type V3,
 } from "@/components/workspace/explode-layout";
 import type { ExplodeSolved } from "@/components/workspace/explode-state";
@@ -24,7 +24,13 @@ const OTHER_ID = 0xfffffe;
 
 export const SOLVE_N = 0.3;
 export const SOLVE_O = 0.6;
+/** The solver aims past the e2e's lines by this margin: it measures at 1/4 resolution, the e2e at full. */
+export const SOLVE_MARGIN = 0.05;
+/** Most a drawer bank spreads upward, in drawer heights per gap (1.6 left a 6-drawer dresser's backs hidden). */
+export const SPREAD_MAX = 2.5;
 export const SOLVE_ROUNDS = 40;
+/** (b) of every-piece-visible: at least this many CSS px² of a part show (the e2e's M). */
+export const SOLVE_M = 200;
 
 /** Union of two boxes. */
 export function unionBox(a: Box3, b: Box3): Box3 {
@@ -88,6 +94,9 @@ export type SolveInput = {
  */
 export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, void> {
   const L: Layout = layoutFor(inp.panels);
+  // Drawers tip toward the camera the user will see the explode from.
+  L.tilt.axis = tiltAxis(inp.view.azimuthDeg);
+  L.camDir = camDirOf(inp.view);
   const assembled = boxOf(L.parts);
   const groups = [...new Set(L.parts.map((p) => p.group))];
   const scale = 0.25;
@@ -103,6 +112,8 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
   });
   const step = 0.2 * L.g;
   const selfOcc = new Set<string>();
+  // Tip and spread steps that would make units pass through each other are taken back, and not tried again.
+  let tiltBlocked = false, spreadBlocked = false;
   let rounds = 0, failing: string[] = [];
   let poses = posesFor(L);
   try {
@@ -117,7 +128,9 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
       for (let k = 0; k < ids.length; k++) if (isPart(ids[k])) vis[ids[k]]++;
       // (a) visible / footprint below N, or (c) one other part covering more than O of it. A part can only be
       // over O covered when under 1 − O visible, so only those get a solo pass for (c).
-      type Fail = { i: number; cnt: Map<number, number> };
+      type Fail = { i: number; cnt: Map<number, number>; small?: boolean; onlySmall?: boolean };
+      // Solver pixels are 1/scale CSS px on each side: (b) holds when vis / scale² >= SOLVE_M.
+      const minPx = SOLVE_M * (vw / inp.viewport.w) * (vh / inp.viewport.h);
       const fails: Fail[] = [];
       for (const { part, id } of meshes) {
         if (part.role === "hardware" || selfOcc.has(part.id)) continue;
@@ -129,38 +142,71 @@ export function* solveSteps(inp: SolveInput): Generator<number, ExplodeSolved, v
         const area = hullArea(pts);
         if (!(area > 0)) continue;
         const frac = vis[id] / area;
-        if (!inner && frac >= Math.max(SOLVE_N, 1 - SOLVE_O)) continue;
+        const small = vis[id] < minPx;
+        if (!inner && !small && frac >= Math.max(SOLVE_N, 1 - SOLVE_O) + SOLVE_MARGIN) continue;
         const solo = renderIds(inp.gl, scene, cam, [meshes[id - 1]], vw, vh);
         const cnt = new Map<number, number>();
         let foot = 0;
         for (let k = 0; k < solo.length; k++) if (solo[k] === id) { foot++; if (isPart(ids[k]) && ids[k] !== id) cnt.set(ids[k], (cnt.get(ids[k]) ?? 0) + 1); }
         let top = 0;
         for (const n of cnt.values()) top = Math.max(top, n);
-        if (inner) { if (foot > 0 && vis[id] / foot < SOLVE_N) fails.push({ i: id, cnt }); continue; }
-        if (frac < SOLVE_N || (foot > 0 && top / foot > SOLVE_O)) fails.push({ i: id, cnt });
+        if (inner) {
+          const low = foot > 0 && vis[id] / foot < SOLVE_N + SOLVE_MARGIN;
+          if (low || small) fails.push({ i: id, cnt, small, onlySmall: !low });
+          continue;
+        }
+        const hid = frac < SOLVE_N + SOLVE_MARGIN || (foot > 0 && top / foot > SOLVE_O - SOLVE_MARGIN);
+        if (hid || small) fails.push({ i: id, cnt, small, onlySmall: !hid });
       }
       failing = fails.map((f) => partIdAt(meshes, f.i)).filter((x): x is string => x !== undefined);
       if (!fails.length) break;
       const pushed = new Set<string>();
       let spread = false;
-      for (const { i, cnt } of fails) {
+      for (const { i, cnt, small, onlySmall } of fails) {
         const P = meshes[i - 1]?.part;
         if (!P) continue;
+        const own0 = L.owner.get(P.id);
+        // (b) too few pixels: a flat strip turns its broad face to the camera (tipping drawers would only grow the frame).
+        if (small && P.role === "kick" && own0 && (own0.face ?? 0) < 1) {
+          if (!pushed.has(`face:${own0.key}`)) { own0.face = Math.min(1, (own0.face ?? 0) + 0.25); pushed.add(`face:${own0.key}`); }
+          continue;
+        }
+        // Too small but in plain view: pushing parts apart only shrinks the frame, so nothing else moves for it.
+        if (onlySmall) continue;
         // The main occluder from ANOTHER unit (a drawer box always hides behind its own front; that part of
         // it is by design). Only a part hidden by nothing but its own unit is handed to stage B.
         const own = L.owner.get(P.id);
         let occ = 0, best = 0;
         for (const [o, n] of cnt) { const q = partIdAt(meshes, o); if (q !== undefined && n > best && L.owner.get(q) !== own) { best = n; occ = o; } }
         let m = occ ? L.owner.get(partIdAt(meshes, occ)!) : undefined;
-        if (!m && cnt.size && P.drawerPart === "bottom" && own?.front) {
+        // A hollow drawer's inside (bottom or back) hidden mostly by its OWN side or back is seen side-on: tip every
+        // drawer's open top toward the camera (one value), never just push it further away.
+        let topO = 0, topN = 0;
+        for (const [o, n] of cnt) if (n > topN && partIdAt(meshes, o) !== undefined) { topN = n; topO = o; }
+        const topPart = topO ? meshes[topO - 1].part : undefined;
+        if (own?.front && (P.drawerPart === "bottom" || P.drawerPart === "back") && topPart && L.owner.get(topPart.id) === own && topPart.drawerPart !== "front") {
+          if (!pushed.has("tilt") && !tiltBlocked && L.tilt.ang < TILT_MAX) {
+            const was = L.tilt.ang;
+            if (growIfClear(L, () => { L.tilt.ang = Math.min(TILT_MAX, was + TILT_STEP); }, () => { L.tilt.ang = was; })) pushed.add("tilt");
+            else tiltBlocked = true;
+          }
+          continue;
+        }
+        if (!m && cnt.size && (P.drawerPart === "bottom" || P.drawerPart === "back") && own?.front) {
           // A drawer's inside hidden by its own front: stand every front further off its box (one value).
           if (!pushed.has("front") && own.front.out < 1.2 * (P.d + 1)) { own.front.out += step; pushed.add("front"); }
           continue;
         }
-        if (!m && cnt.size) { selfOcc.add(P.id); continue; }
+        // Hidden by nothing but its own unit (stage B). A hollow drawer's pieces are never parked there: the layout
+        // keeps moving, and the next drawer's front can come to cover them later (dresser6, jewelry box).
+        if (!m && cnt.size) { if (!P.drawerPart) selfOcc.add(P.id); continue; }
         if (m && own && m.bank && m.bank === own.bank) {
-          // A drawer hidden by a drawer: spread the banks upward (even gaps).
-          if (!spread && m.bank.spread < 1.6) { m.bank.spread += 0.1; spread = true; pushed.add("bank"); }
+          // A drawer hidden by a drawer: spread the banks upward (even gaps), up to SPREAD_MAX drawer heights.
+          if (!spread && !spreadBlocked && m.bank.spread < SPREAD_MAX) {
+            const bank = m.bank, was = bank.spread;
+            if (growIfClear(L, () => { bank.spread = was + 0.1; }, () => { bank.spread = was; })) { spread = true; pushed.add("bank"); }
+            else spreadBlocked = true;
+          }
           continue;
         }
         if (m?.lat && !own?.lat) {

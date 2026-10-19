@@ -18,8 +18,8 @@ the drawer group) must be >= 30% visible: ID pass with that face split out (face
 scene / the same face rendered alone). A drawer with no bottom part (today's solid drawers) is PENDING and
 counted, never passing. --sim-hollow swaps the solid drawers for simulated hollow 5-part drawers (explode-sim.ts,
 the shape SWE is shipping) before See inside, to prove the rule on that geometry.
-Expected-stepper parts (PLAN §4: pass per stepper group, PR 2) are reported as STEP, not as failures.
-Exits 1 on any failure that is not expected-stepper.
+No exemptions: every part of every build must pass (the old expected-stepper allow-list is gone).
+Exits 1 on any failure.
 """
 import argparse, json, os, re, sys, time
 from playwright.sync_api import sync_playwright
@@ -39,6 +39,8 @@ BASE = A.base.rstrip("/")
 LINEN_Q = "linen closet 31.5 wide 78 tall 16 deep"
 BUILDS = [
     ("dresser", "3 drawer dresser"),
+    # Row 105: these two froze the tab (solver threw, driver spun). They must open, measure and pass.
+    ("dresser6", "6 drawer dresser"),
     ("nightstand", "nightstand with 2 drawers"),
     ("desk", '60" desk with drawers'),
     ("filing", "filing cabinet 2 drawers"),
@@ -48,15 +50,9 @@ BUILDS = [
     ("jewelry", "jewelry box with drawers"),
 ]
 VIEWS = {"desk": (1280, 800, False), "phone": (390, 844, True)}
-# PLAN §4 "Builds that need the stepper": these parts may fail in the whole-model frame; they must pass per
-# stepper group (PR 2). Pocket vanity: too many small parts for one frame at 104" tall. Jewelry box: the
-# hinges are tiny. Desk: the toekicks. Filing cabinet: Shelf 1 runs through Drawer 1 in the engine (§5).
-EXPECTED_STEPPER = {
-    "pocket-vanity": r".",
-    "jewelry": r"hinge",
-    "desk": r"toekick",
-    "filing": r"^shelf 1$",
-}
+# No exemptions (Critic #98 row 107): every build, pocket vanity included, has to pass every check in the one frame.
+# The old EXPECTED_STEPPER allow-list hid failing parts; anything the frame cannot show now fails here.
+EXPECTED_STEPPER: dict = {}
 N, M, O = 0.30, 200, 0.60
 DRAWER_INNER = 0.30
 DRAWERS = r"""

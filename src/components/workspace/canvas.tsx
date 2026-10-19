@@ -501,21 +501,38 @@ function CameraRig({
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
   }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey]);
-  // While See inside is on, the free stage follows the cards: opening or closing the tray (More) refits
-  // the exploded model with a short glide, so it never sits under a card or shrinks into a corner.
+  // While See inside or Operate is on, the free stage follows the cards and the window: opening or closing the
+  // tray (More), a card resizing or the window resizing refits the model with a short glide, so it never sits
+  // under a card or shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).
+  const followsStage = (staged && explode) || facesOpen;
   useEffect(() => {
-    if (!staged || !explode || locked) return;
+    if (!followsStage || locked) return;
     const host = gl.domElement.closest("[data-bench-host]");
     if (!host) return;
     let t = 0;
     const kick = () => { window.clearTimeout(t); t = window.setTimeout(() => fitRef.current?.(450), 80); };
-    const ro = new ResizeObserver(kick);
+    // Only a real size change refits: the first report of each observed box (ResizeObserver fires on observe) is
+    // its starting size, and refitting then would glide the camera mid-explode (reduced motion would land elsewhere).
+    const seen = new WeakMap<Element, string>();
+    const ro = new ResizeObserver((entries) => {
+      let changed = false;
+      for (const e of entries) {
+        const k = `${Math.round(e.contentRect.width)}x${Math.round(e.contentRect.height)}`;
+        const was = seen.get(e.target);
+        seen.set(e.target, k);
+        if (was !== undefined && was !== k) changed = true;
+      }
+      if (changed) kick();
+    });
+    // The cards are watched for size; the stage itself follows the window (its own box also changes while the
+    // phone dock settles, and a refit then lands the glide on a mid-explode pose).
     const watch = () => host.querySelectorAll<HTMLElement>("[data-bench-overlay]").forEach((el) => ro.observe(el));
     watch();
+    window.addEventListener("resize", kick);
     const mo = new MutationObserver(() => { watch(); kick(); });
     mo.observe(host, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
-    return () => { window.clearTimeout(t); ro.disconnect(); mo.disconnect(); };
-  }, [staged, explode, locked, gl]);
+    return () => { window.clearTimeout(t); ro.disconnect(); mo.disconnect(); window.removeEventListener("resize", kick); };
+  }, [followsStage, locked, gl]);
   return null;
 }
 
