@@ -81,12 +81,15 @@ export function leavesIn(root: Element): Leaf[] {
 // Angle curves sampled into keyframes (matrices only interpolate well between close angles).
 // Open: ease-out swing that overshoots ~6% and settles. Close: ease-in-out with a tiny bump shut.
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-const openCurve = (t: number) => (t < 0.72 ? 1.06 * easeOut(t / 0.72) : 1.06 - 0.06 * easeOut((t - 0.72) / 0.28));
-const closeCurve = (t: number) => (t < 0.85 ? 1 - (t / 0.85) ** 2 * (3 - 2 * (t / 0.85)) * 1.015 : -0.015 * (1 - (t - 0.85) / 0.15));
+export const openCurve = (t: number) => (t < 0.72 ? 1.06 * easeOut(t / 0.72) : 1.06 - 0.06 * easeOut((t - 0.72) / 0.28));
+export const closeCurve = (t: number) => (t < 0.85 ? 1 - (t / 0.85) ** 2 * (3 - 2 * (t / 0.85)) * 1.015 : -0.015 * (1 - (t - 0.85) / 0.15));
 
 function frames(l: Leaf, f: (t: number) => number, from = 0, to = 1, n = 20) {
   return Array.from({ length: n + 1 }, (_, i) => ({ transform: l.at(l.max * (from + (to - from) * f(i / n))), offset: i / n }));
 }
+
+/** One timing for doors, lids and drawers (showcase-drawers). */
+export const ONCE_MS = 3000, OPEN_MS = 900, CLOSE_MS = 700;
 
 /** "once": swing open, hold, swing shut. "open"/"close" are the hover pair (open holds). */
 export function swing(leaves: Leaf[], kind: "once" | "open" | "close", delay = 0): Animation[] {
@@ -101,7 +104,7 @@ export function swing(leaves: Leaf[], kind: "once" | "open" | "close", delay = 0
           : [...frames(l, openCurve).map((k) => ({ ...k, offset: k.offset * 0.4 })), ...frames(l, closeCurve).map((k) => ({ ...k, offset: 0.6 + k.offset * 0.4 }))];
     for (const g of l.els) {
       g.getAnimations().forEach((a) => a.cancel());
-      all.push(g.animate(kf, { duration: kind === "once" ? 3000 : kind === "open" ? 900 : 700, delay: delay + stagger, easing: "linear", fill: kind === "open" ? "forwards" : "none" }));
+      all.push(g.animate(kf, { duration: kind === "once" ? ONCE_MS : kind === "open" ? OPEN_MS : CLOSE_MS, delay: delay + stagger, easing: "linear", fill: kind === "open" ? "forwards" : "none" }));
     }
   });
   return all;
