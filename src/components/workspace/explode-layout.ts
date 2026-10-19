@@ -61,12 +61,11 @@ export function boxOf(parts: readonly ExplodePart[]): Box3 {
 /**
  * Drawer membership: the ONE place that decides which drawer a part belongs to.
  *
- * Coming (SWE, stacked on #92): hollow 5-part drawers (front, 2 sides, back, 1/4" ply bottom, open top),
- * every part carrying a shared drawer id. Set DRAWER_TAG to that field's name when SWE sends it; nothing
- * else changes. Until then (today's solid drawers) a part typed "drawer" is its own drawer and a "drawer
- * front" joins the box it overlaps most (classify).
+ * Hollow 5-part drawers (#94: front, 2 sides, back, 1/4" ply bottom, open top) carry a shared `drawerId`
+ * and a `drawerPart`. A solid (untagged) drawer is its own drawer and a "drawer front" joins the box it
+ * overlaps most (classify).
  */
-let DRAWER_TAG: string | null = null;
+let DRAWER_TAG: string | null = "drawerId";
 /** Tests (and the switch-over) only: name the panel field that carries the shared drawer id. */
 export function setDrawerTag(field: string | null) { DRAWER_TAG = field; }
 export function drawerIdOf(p: Panel): string | undefined {
@@ -77,6 +76,8 @@ export function drawerIdOf(p: Panel): string | undefined {
 /** Which part of a tagged drawer this is. A drawer's bottom is found by role or name "bottom" inside its
  * group, never as the case bottom (the explode's anchor). */
 export function drawerPartOf(p: Panel): "front" | "bottom" | "side" | "back" | "box" {
+  const tagged = (p as { drawerPart?: unknown }).drawerPart;
+  if (tagged === "front" || tagged === "bottom" || tagged === "side" || tagged === "back") return tagged;
   const n = p.name.toLowerCase();
   const t = String(p.type ?? "").toLowerCase();
   if (t === "bottom" || /\bbottom\b/.test(n)) return "bottom";
@@ -302,8 +303,31 @@ export function posesFor(L: Layout): Map<string, Pose> {
     const minZ = Math.min(...m.parts.filter((q) => q.role !== "drawerFront").map((q) => q.z));
     shiftZ.set(m.dir!, Math.max(shiftZ.get(m.dir!) ?? 0, z - (minZ + m.dist)));
   }
+  // A drawer that spreads upward must first slide out past anything that ends up in front of it at its lifted
+  // height (a jewelry box's tray front wall stepping forward above the drawers): one extra shift per column side.
+  const liftOf = (m: Mover) => (m.bank ? ((m.n ?? 1) - 1 - (m.k ?? 0)) * (m.hh ?? 0) * m.bank.spread : 0);
   for (const m of L.movers.values()) {
-    const lift = m.bank ? ((m.n ?? 1) - 1 - (m.k ?? 0)) * (m.hh ?? 0) * m.bank.spread : 0;
+    const lift = liftOf(m);
+    if (!m.lat || lift <= 0) continue;
+    const mine = m.parts.filter((q) => q.role !== "hardware");
+    const b = boxOf(mine);
+    const y0 = b.minY + lift, y1 = b.maxY + lift;
+    let need = -Infinity;
+    for (const o of L.movers.values()) {
+      if (o.key.startsWith("D:") || o === m) continue;
+      const t: V3 = [o.axis[0] * o.dist, o.axis[1] * o.dist, o.axis[2] * o.dist];
+      for (const q of o.parts) {
+        if (q.role === "hardware" || q.role === "door" || q.role === "lid") continue;
+        if (ov1(q.y + t[1], q.y + q.h + t[1], y0, y1) <= 0.01 || ov1(q.x + t[0], q.x + q.w + t[0], b.minX, b.maxX) <= 0.01) continue;
+        need = Math.max(need, q.z + q.d + t[2] + 0.1 * L.g);
+      }
+    }
+    if (need === -Infinity) continue;
+    const minZ = Math.min(...mine.filter((q) => q.role !== "drawerFront").map((q) => q.z));
+    shiftZ.set(m.dir!, Math.max(shiftZ.get(m.dir!) ?? 0, need - (minZ + m.dist)));
+  }
+  for (const m of L.movers.values()) {
+    const lift = liftOf(m);
     for (const p of m.parts) {
       const side = m.lat ? Math.max(m.lat.side, clear.get(m.dir ?? 0) ?? 0) * (m.dir ?? 0) : 0;
       const dz = m.lat ? Math.max(0, shiftZ.get(m.dir ?? 0) ?? 0) : 0;

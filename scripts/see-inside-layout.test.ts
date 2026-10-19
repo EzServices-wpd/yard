@@ -120,7 +120,7 @@ for (const [build, prompt] of Object.entries(BUILDS)) {
         assert.deepEqual([...hits].slice(0, 8), []);
       }
     } finally {
-      setDrawerTag(null);
+      setDrawerTag("drawerId");
     }
   });
 
@@ -150,46 +150,29 @@ for (const [build, prompt] of Object.entries(BUILDS)) {
   });
 }
 
-test("hollow drawers (SWE, stacked on #92): one drawer id groups front, sides, back and bottom; its bottom is never the case bottom", () => {
-  const panels = generateFromPrompt("nightstand with 2 drawers").panels as any[];
-  // Split each solid drawer box into a hollow 5-part drawer with a shared id, the shape SWE is shipping.
-  const hollow: any[] = [];
-  let k = 0;
-  for (const p of panels) {
-    if (p.type !== "drawer") { hollow.push(p); continue; }
-    const id = `drw-${k++}`, { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
-    const front = panels.find((f: any) => /drawer front/i.test(f.name) && Math.abs(f.position.y - y) < 0.5);
-    if (front) front.yardDrawer = id;
-    const part = (name: string, type: string, pos: number[], size: number[]) =>
-      hollow.push({ ...p, id: `${p.id}-${name}`, name: `${p.name} ${name}`, type, position: { x: pos[0], y: pos[1], z: pos[2] }, size: { width: size[0], height: size[1], depth: size[2] }, yardDrawer: id });
-    part("left side", "side", [x, y, z], [0.5, h, d]);
-    part("right side", "side", [x + w - 0.5, y, z], [0.5, h, d]);
-    part("back", "back", [x, y, z], [w, h, 0.5]);
-    part("bottom", "bottom", [x, y, z], [w, 0.25, d]);
-  }
-  setDrawerTag("yardDrawer");
-  try {
-    const parts = classify(hollow);
-    const caseBottom = parts.filter((p) => p.role === "bottom");
-    assert.equal(caseBottom.length, 1, caseBottom.map((p) => p.name).join(", "));
-    const units = new Map<string, string[]>();
-    for (const p of parts.filter((q) => q.unit.startsWith("D:"))) units.set(p.unit, [...(units.get(p.unit) ?? []), p.drawerPart ?? p.role]);
-    assert.equal(units.size, 2);
-    for (const list of units.values()) assert.deepEqual(list.sort(), ["back", "bottom", "front", "side", "side"]);
-    const L = layoutFor(hollow);
-    const poses = posesFor(L);
-    for (const list of [...new Set(L.parts.filter((p) => p.unit.startsWith("D:")).map((p) => p.unit))]) {
-      // The box (sides, back, bottom) moves as one; the front stands off it straight forward by front.out.
-      const mine = L.parts.filter((p) => p.unit === list);
-      const box = mine.filter((p) => p.role !== "drawerFront").map((p) => poses.get(p.id)!.t);
-      assert.equal(new Set(box.map((t) => JSON.stringify(t))).size, 1, `${list} box moves as one`);
-      const f = poses.get(mine.find((p) => p.role === "drawerFront")!.id)!.t;
-      const out = L.owner.get(mine[0].id)!.front!.out;
-      assert.ok(out > 0);
-      assert.deepEqual(f.map((v) => +v.toFixed(6)), [box[0][0], box[0][1], box[0][2] + out].map((v) => +v.toFixed(6)), `${list} front stands off by ${out}`);
-    }
-  } finally {
-    setDrawerTag(null);
+test("hollow drawers (#94 drawerId/drawerPart): one drawer id groups front, sides, back and bottom; its bottom is never the case bottom", () => {
+  // The engine ships hollow 5-part drawers (front, 2 sides, back, 1/4" ply bottom) tagged drawerId + drawerPart.
+  const panels = generateFromPrompt("nightstand with 2 drawers").panels;
+  assert.ok(panels.some((p) => p.drawerId), "engine drawers are tagged");
+  const parts = classify(panels);
+  const caseBottom = parts.filter((p) => p.role === "bottom");
+  assert.equal(caseBottom.length, 1, caseBottom.map((p) => p.name).join(", "));
+  const units = new Map<string, string[]>();
+  for (const p of parts.filter((q) => q.unit.startsWith("D:") && q.role !== "hardware")) units.set(p.unit, [...(units.get(p.unit) ?? []), p.drawerPart ?? p.role]);
+  assert.equal(units.size, 2);
+  for (const list of units.values()) assert.deepEqual(list.sort(), ["back", "bottom", "front", "side", "side"]);
+  const L = layoutFor(panels);
+  const poses = posesFor(L);
+  for (const unit of [...units.keys()]) {
+    // The box (sides, back, bottom) moves as one; the front stands off it straight forward by front.out, so
+    // the hollow box reads as separate from its front and from the case (Critic #94 UI).
+    const mine = L.parts.filter((p) => p.unit === unit && p.role !== "hardware");
+    const box = mine.filter((p) => p.role !== "drawerFront").map((p) => poses.get(p.id)!.t);
+    assert.equal(new Set(box.map((t) => JSON.stringify(t))).size, 1, `${unit} box moves as one`);
+    const f = poses.get(mine.find((p) => p.role === "drawerFront")!.id)!.t;
+    const out = L.owner.get(mine[0].id)!.front!.out;
+    assert.ok(out > 0);
+    assert.deepEqual(f.map((v) => +v.toFixed(6)), [box[0][0], box[0][1], box[0][2] + out].map((v) => +v.toFixed(6)), `${unit} front stands off by ${out}`);
   }
 });
 

@@ -22,6 +22,7 @@ import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-
 import { explodeClock } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
+import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 
 const HULL = "#8a8478";
 const BENCH_BG = "#1a1612";
@@ -332,6 +333,11 @@ function CameraRig({
   const staged = project.panels.length > 0;
   const lastExplode = useRef(explode);
   const glide = useRef<Glide | null>(null);
+  // Operate on a build with drawers: the cavity camera looks down into the open drawers (Critic #84).
+  const facesOpen = useYard((s) => s.facesOpen);
+  const soloDrawer = useYard((s) => (s.facesOpen ? drawerGroupOf(s.project.panels, s.selectedId)?.ids[0] ?? null : null));
+  const cavityKey = `${facesOpen ? 1 : 0}|${soloDrawer ?? ""}`;
+  const lastCavity = useRef(cavityKey);
   const fitRef = useRef<((glideMs?: number) => void) | null>(null);
   const endGlide = () => { glide.current = null; explodeClock.cameraBusy = false; };
   // Turning, zooming or panning by hand: remember the angle so a rebuild keeps it.
@@ -394,11 +400,15 @@ function CameraRig({
       // One framing path for every build: the solved model's box, the free canvas, a 3/4 view.
       // Exploded: the exploded box (every part's final pose, with the built box), so condition (d) of
       // every-piece-visible holds by construction: all corners inside the free rect, none under the cards.
-      const built = benchModelBox(projectRef.current);
+      const shut = benchModelBox(projectRef.current);
+      // Operate with drawers open: frame the pulled-out drawers too and look down into them from >= 40°.
+      const pulled = useYard.getState().facesOpen && !(staged && explode) ? maxOpenPull(projectRef.current.panels, soloDrawer) : 0;
+      const cavity = pulled > 0 && drawerGroups(projectRef.current.panels).length > 0;
+      const built = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
       const solved = explodeClock.solved;
       const exploded = staged && explode && !!solved && solved.key.split("|")[0] === projectRef.current.id;
       const box = built;
-      const base = benchView(projectRef.current, built);
+      const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
       const view = kept
@@ -409,7 +419,7 @@ function CameraRig({
             ? { azimuthDeg: faceX ? 0.01 : 90, elevationDeg: 8 }
             : preset === "top"
               ? { azimuthDeg: 0.01, elevationDeg: 89 }
-              : exploded ? explodeView() : base;
+              : exploded ? explodeView() : cavity ? { ...base, elevationDeg: Math.max(base.elevationDeg, 40) } : base;
       const overlays = overlayRects(gl.domElement);
       // Exploded: fit every part's posed corners (and stick members, if any), not one big box: it fills the frame.
       const points = exploded ? [...solved!.points, ...(projectRef.current.instances.length ? boxCorners(built) : [])] : null;
@@ -468,6 +478,12 @@ function CameraRig({
       invalidate();
     };
     fitRef.current = fit;
+    const cavityChanged = lastCavity.current !== cavityKey;
+    lastCavity.current = cavityKey;
+    if (cavityChanged && !kept && preset === "iso") {
+      fit(reduced ? 0 : 450);
+      return () => { cancelled = true; };
+    }
     // Fit now, so a remounted Canvas (every rebuild) has a framed camera before its first frame and the
     // reveal glide never starts from the Canvas default; then again once the overlay cards have laid
     // out. On a loaded device those timers land seconds late (setTimeout queues behind the mount).
@@ -480,7 +496,7 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey]);
   // While See inside is on, the free stage follows the cards: opening or closing the tray (More) refits
   // the exploded model with a short glide, so it never sits under a card or shrinks into a corner.
   useEffect(() => {
