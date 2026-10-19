@@ -83,6 +83,7 @@ it("rod arrays fit their span on every rod-array build in the corpus and the rod
 // for a stated reason: it is the recipe's own 3/4" bead where that fits, or the floor bead (the thinnest whole dowel
 // that takes a 3/8" running bore on the 1/4" rod, 1/2") where the base used a 3/16"-3/8" bead that could not.
 const ABACUS: { q: string; w: number; asked: number; base: number; baseBead: number }[] = [
+  { q: "abacus 3 wide", w: 3, asked: 9, base: 25.6, baseBead: 0.6 },
   { q: "abacus 4 wide", w: 4, asked: 9, base: 25.8, baseBead: 0.8 },
   { q: "abacus 6 wide", w: 6, asked: 9, base: 27.6, baseBead: 1.6 },
   { q: "abacus 8 wide", w: 8, asked: 9, base: 27.8, baseBead: 1.8 },
@@ -92,7 +93,7 @@ const ABACUS: { q: string; w: number; asked: number; base: number; baseBead: num
   { q: "abacus", w: 16, asked: 9, base: 30, baseBead: 8 },
 ];
 
-it("abacus at 4, 6, 8, 8 with 12 rods, 10, 12 and default: riders on every rod, no overlap, stated width, Assumed when the count drops, frame never dearer", () =>
+it("abacus at 3, 4, 6, 8, 8 with 12 rods, 10, 12 and default: riders on every rod, no overlap, stated width, Assumed when the count drops, frame never dearer", () =>
   offline(() => {
     for (const { q, w, asked, base, baseBead } of ABACUS) {
       const p = generateFromPrompt(q);
@@ -116,4 +117,29 @@ it("abacus at 4, 6, 8, 8 with 12 rods, 10, 12 and default: riders on every rod, 
       assert.ok(plan.totals.estCostUsd - beadCost <= base - baseBead + 0.005, `${q}: frame $${(plan.totals.estCostUsd - beadCost).toFixed(2)} > base frame $${(base - baseBead).toFixed(2)}`);
       assert.ok(["dowel-3-4-36", "dowel-1-2-36"].includes(beads[0].materialId), `${q}: bead stock ${beads[0].materialId}`);
     }
+  }));
+
+// A row its bounds can't hold never grows the build (I30): when the posts can't bound the row as set (they met
+// over it, or reach past its middle), the row is still fitted between them: riders shrink, rods drop with an
+// Assumed note, or, when not even one fits, the frame is built at the typed width alone and says what width takes
+// one. Swept at every narrow width over the rod-array builds: racks, ladders, stands, frames.
+const NARROW = ["abacus", "dowel drying rack", "dowel ladder", "1/4 inch dowel ladder", "dowel shoe rack", "towel rack", "blanket ladder", "spool rack", "dowel wine rack", "pvc drying rack"];
+it("narrow rod arrays: never wider than typed, every row fits its bounds, fewer rods say so", () =>
+  offline(() => {
+    const bad: string[] = [];
+    for (const n of NARROW) for (const w of [2, 2.5, 3, 3.5, 4, 5, 6]) {
+      const q = `${n} ${w} wide`;
+      const p = generateFromPrompt(q);
+      const xs = p.panels.flatMap((x) => [x.position.x, x.position.x + x.size.width]);
+      if (xs.length && Math.max(...xs) - Math.min(...xs) > p.overall.width + 1 / 32) bad.push(`${q}: ${(Math.max(...xs) - Math.min(...xs)).toFixed(2)} wide under ${p.overall.width}`);
+      bad.push(...rodArrayFailures(p).map((m) => `${q}: ${m}`), ...hiddenOverlaps(p).slice(0, 1).map((m) => `${q}: overlap ${JSON.stringify(m).slice(0, 80)}`));
+    }
+    assert.deepEqual(bad, []);
+    // Not even one rod fits: the frame alone, at the typed width, and the width that takes one.
+    const p = generateFromPrompt("abacus 2 wide");
+    assert.equal(p.panels.filter((x) => /^(?:rod|bead) \d+$/.test(x.name)).length, 0);
+    assert.ok((p.notes ?? []).some((t) => /^Assumed the frame only: 9 rods don't fit in 2"; built 2" without them\. 2 1\/16" wide takes 1 rod\.$/.test(t)), JSON.stringify(p.notes));
+    const one = generateFromPrompt("abacus 2.0625 wide");
+    assert.equal(one.panels.filter((x) => /^rod \d+$/.test(x.name)).length, 1);
+    assert.ok((one.notes ?? []).some((t) => t === `Assumed 1 rod: 9 rods don't fit in 2 1/16"; built 2 1/16" with 1.`), JSON.stringify(one.notes));
   }));

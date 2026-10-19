@@ -65,10 +65,18 @@ export function rodArrays(panels: Panel[]): RodArray[] {
     // meets at a joint (a foot, a socket, a crossing arm or rail) is not a bound, even when it holds the rod.
     const alongside = (q: Panel) => Math.min(hi(q, long), l1) - Math.max(lo(q, long), l0) >= 0.5 * (l1 - l0);
     const beside = panels.filter((q) => !members.includes(q) && alongside(q) && lo(q, third) < t1 - 0.01 && hi(q, third) > t0 + 0.01);
-    const left = beside.filter((q) => hi(q, row) <= centre + 1e-6), right = beside.filter((q) => lo(q, row) >= centre - 1e-6);
-    // A row every rod of which lies inside those parts (a sleeve, a doubled member) is part of them, not bounded by them.
-    const inside = (r: Panel) => [...left, ...right].some((q) => [row, third].every((ax) => lo(q, ax) < mid(r, ax) && hi(q, ax) > mid(r, ax)));
-    const bounded = left.length && right.length && !rods.every(inside);
+    // A part that reaches past the centre (a narrow build whose posts were set wider than its span) still bounds
+    // the side its middle is on, as long as it stops short of the row's far end rod.
+    const first = mid(rods[0], row), last = mid(rods[rods.length - 1], row);
+    const left = beside.filter((q) => hi(q, row) <= centre + 1e-6 || (mid(q, row) < centre && hi(q, row) < last - 1e-6));
+    const right = beside.filter((q) => !left.includes(q) && (lo(q, row) >= centre - 1e-6 || (mid(q, row) > centre && lo(q, row) > first + 1e-6)));
+    // A row every rod of which lies inside those parts, one rod to a part (a sleeve, a doubled member), is part of
+    // them, not bounded by them. A part holding two or more of the row's rods is a row crowded into its bounds
+    // (a narrow build whose posts met over it): it still bounds the row, so the row is fitted between them.
+    const holds = (q: Panel, r: Panel) => [row, third].every((ax) => lo(q, ax) < mid(r, ax) && hi(q, ax) > mid(r, ax));
+    const sides = [...left, ...right];
+    const sleeved = rods.every((r) => sides.some((q) => holds(q, r))) && sides.every((q) => rods.filter((r) => holds(q, r)).length <= 1);
+    const bounded = left.length && right.length && !sleeved;
     out.push({ family, rods, long, row, third, strung,
       ...(bounded ? { L: Math.max(...left.map((q) => hi(q, row))), R: Math.min(...right.map((q) => lo(q, row))) } : {}) });
   }

@@ -14,6 +14,7 @@ import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
 import { rodArrayFailures, rodArrays, ROW_CLEAR } from "./rodArrays";
 import { CONTACT } from "./materialForUse";
+import { inchFrac } from "./inchText";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -221,6 +222,9 @@ export function boardSection(materialId: string, size: Panel["size"]): Panel["si
   if (!it || it.category !== "lumber" || it.formFactor !== "board" || !th || !fw) return null;
   const axes = (["width", "height", "depth"] as const).map((k) => ({ k, v: size[k] })).sort((m, n) => m.v - n.v);
   const [thin, wide] = axes;
+  // A part already cut to the board's section whichever way it runs (a 3" rail across a 3 1/2" deep 2×4 laid flat)
+  // is real: its short side is its length, never grown to the face.
+  if (Math.abs(thin.v - th) < 0.01 && axes.slice(1).some((m) => Math.abs(m.v - fw) < 0.01)) return null;
   if (thin.v > Math.max(th * 2.2, fw * 1.1) + 0.01 || wide.v > fw * 2.2 + 0.01) return null;
   const out = { ...size };
   // A square stick (4x4 post, 2x2) is the same board both ways.
@@ -1069,7 +1073,16 @@ function keepStatedFaces(recipe: Recipe, panels: Panel[], size: Size, stated: Pa
     const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
     if (!part) continue;
     for (const [a, k, o, w] of AX) {
-      if (stated[k] == null || p.size[k] > size[k] + 1e-6) continue;
+      if (stated[k] == null) continue;
+      // A part the recipe runs the full stated width (a rail) that its board snap made longer is cut to that width:
+      // the run is its length, and the board's own section (thickness and face, its other two sides) is kept.
+      if (p.size[k] > size[k] + 1e-6) {
+        const c = getCatalogItem(p.materialId);
+        const rest = (["width", "height", "depth"] as const).filter((x) => x !== k).map((x) => p.size[x]).sort((u, v) => u - v);
+        const section = c?.category === "lumber" && !!c.dims.width && !!c.dims.height && Math.abs(rest[0] - c.dims.height) < 0.01 && Math.abs(rest[1] - c.dims.width) < 0.01;
+        if (section && part.box[o] <= 1e-6 && part.box[o] + part.box[w] >= 1 - 1e-6) { p.position = { ...p.position, [a]: 0 }; p.size = { ...p.size, [k]: size[k] }; }
+        continue;
+      }
       if (part.box[o] <= 1e-6 && p.position[a] < -1e-6) p.position = { ...p.position, [a]: 0 };
       else if (part.box[o] + part.box[w] >= 1 - 1e-6 && p.position[a] + p.size[k] > size[k] + 1e-6) p.position = { ...p.position, [a]: size[k] - p.size[k] };
     }
@@ -1124,8 +1137,7 @@ function fitRodArrays(panels: Panel[], count: number, notes: string[]): number {
       if (rs.length) R = Math.min(...rs.map((p) => p.position[row[0]]));
     }
     const span = R - L;
-    if (span < floor) continue;
-    const n = Math.min(want, Math.max(1, Math.floor((span + 1e-6) / floor)));
+    const n = Math.min(want, Math.floor((span + 1e-6) / floor));
     const pitch = span / n, room = pitch - ROW_CLEAR;
     // A rider that doesn't fit shrinks to the floor: the thinnest whole dowel that still takes the rod's running bore.
     const d = !riders.length || d0 <= room + 1e-6 ? d0 : thinnest;
@@ -1162,7 +1174,10 @@ function fitRodArrays(panels: Panel[], count: number, notes: string[]): number {
     if (n < want) {
       const word = `${arr.family.toLowerCase()}s`;
       const outer = bounds.length ? Math.max(...bounds.map((p) => p.position[row[0]] + p.size[row[1]])) - Math.min(...bounds.map((p) => p.position[row[0]])) : R - L;
-      notes.push(`Assumed ${n} ${word}: ${want} ${word} don't fit in ${fmtIn(outer)}; built ${fmtIn(outer)} with ${n}.`);
+      // Not even one fits: the frame is built at the stated size and says plainly what size takes the first one.
+      const one = arr.family.toLowerCase(), at = `${inchFrac(outer)}"`;
+      notes.push(n ? `Assumed ${n} ${n === 1 ? one : word}: ${want} ${word} don't fit in ${at}; built ${at} with ${n}.`
+        : `Assumed the frame only: ${want} ${word} don't fit in ${at}; built ${at} without them. ${inchFrac(Math.ceil((outer - span + floor) * 16 - 1e-6) / 16)}" wide takes 1 ${one}.`);
     }
     if (arr.rods.length === count) count = n;
   }
