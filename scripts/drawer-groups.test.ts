@@ -65,7 +65,9 @@ test("path 2: no drawer id yet: a drawer front plus the parts under it (today's 
     assert.equal(gs.length, fronts.length, q);
     for (const x of gs) {
       const members = ps.filter((p) => x.ids.includes(p.id));
-      assert.equal(members.filter((p) => p.type === "drawer").length, 1, `${q}: one box per front`);
+      // Since #94 every drawer is a hollow 5-part box sharing one drawer id; count fronts, not box parts.
+      assert.equal(members.filter((p) => /drawer front/i.test(p.name)).length, 1, `${q}: one front per drawer`);
+      assert.ok(members.some((p) => p.type === "drawer"), `${q}: the front moves with its box`);
       assert.ok(x.pull > 0 && x.pull <= x.depth - 1, `${q}: ${x.pull} of ${x.depth}`);
     }
   }
