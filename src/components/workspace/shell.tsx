@@ -294,8 +294,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
             <Logo />
           </Link>
           <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
-            {/* With a build, the title is the plan's header itself (same as the PDF); "Workbench" only on an empty bench. */}
-            {pieceCount > 0 ? headerTitle(project) : "Workbench"}
+            {/* With a build, the title is the plan's header itself (same as the PDF); a refused build names what was asked
+                for and says nothing was built; "Workbench" only on an empty bench. */}
+            {pieceCount > 0 || project.refused ? headerTitle(project) : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">

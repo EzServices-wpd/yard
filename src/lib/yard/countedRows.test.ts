@@ -21,6 +21,7 @@ import { AUTO_WIDEN, MAX_TYPED_COUNT, mayWiden, STRICT_SIZE } from "./recipeBuil
 import { riderFloor } from "./rodArrays.ts";
 import { NOTHING_BUILT_STOCK, stockPillLabel } from "./stockPill.ts";
 import { getCatalogItem } from "./catalog.ts";
+import { headerTitle, NOTHING_BUILT_HEADER } from "./pdf.ts";
 import { offline } from "../../../scripts/eval-lib.ts";
 import type { YardProject } from "./types.ts";
 
@@ -244,4 +245,39 @@ it("I36 catches a row built under its minimum or past a typed width, and a note 
     assert.ok(msgs.some((m) => /9 rods built at 1 1\/2", under the/.test(m)), msgs.join("; "));
     const q = generateFromPrompt("abacus 2 1/2 wide");
     assert.ok(i36(q, "abacus 2 1/4 wide").some((v) => /the card says "2 1\/2"" but 2 1\/4" was typed/.test(v.msg)));
+  }));
+
+it("a refused build's header names what was asked for and says nothing was built, never a fallback family or a size", () =>
+  offline(() => {
+    // Every refusal path #90 adds: no rod fits, a typed count that doesn't fit (plain and fit/max), a count past the cap.
+    const asked: [string, string][] = [
+      ["abacus 2 wide", "Abacus"], ["abacus 1 1/2 wide", "Abacus"], ["abacus 1 wide 1 rod", "Abacus"], ["abacus 1 1/4 wide 2 rods", "Abacus"],
+      ["abacus 8 wide 12 rods", "Abacus"], ["abacus to fit 8 wide 12 rods", "Abacus"], ["abacus 8 wide max 12 rods", "Abacus"],
+      [`abacus ${MAX_TYPED_COUNT + 12} rods`, "Abacus"], ["kids abacus 2 wide", "Abacus"], ["abacus 2 wide in oak", "Oak Abacus"],
+    ];
+    for (const [q, name] of asked) {
+      const p = generateFromPrompt(q);
+      assert.ok(p.refused && !p.panels.length, `${q}: refused`);
+      const h = headerTitle(p);
+      assert.equal(h, `${name} · ${NOTHING_BUILT_HEADER}`, q);
+      assert.doesNotMatch(h, /workbench|"|\d/i, `${q}: no fallback family, no size`);
+    }
+    // The fit step's own refusals (behind the early check) go through the same header.
+    const built = generateFromPrompt("abacus 3 wide");
+    assert.equal(headerTitle({ ...built, panels: [], refused: "3 rods don't fit in 3\" wide." }), `Abacus · ${NOTHING_BUILT_HEADER}`);
+    // A build that is not refused keeps its sized header.
+    assert.match(headerTitle(built), /^Abacus · 3" W/);
+  }));
+
+it("2 1/16 wide: the full-width rails keep the typed width (a 2x4 laid across, never a centred 2x2), posts take the thinnest 1x4", () =>
+  offline(() => {
+    for (const w of ["2 1/16", "2 1/8", "2 1/4", "2 5/8"]) {
+      const q = `abacus ${w} wide`;
+      const p = generateFromPrompt(q);
+      for (const r of p.panels.filter((x) => /rail$/.test(x.name))) {
+        assert.ok(Math.abs(r.size.width - shopIn(w)) < 1 / 64, `${q}: ${r.name} spans ${r.size.width}", typed ${w}"`);
+        assert.ok(Math.abs(r.position.x) < 1e-6, `${q}: ${r.name} flush with the frame`);
+      }
+      for (const post of p.panels.filter((x) => /post$/.test(x.name))) assert.equal(post.materialId, "lumber-1x4-8", `${q}: ${post.name}`);
+    }
   }));

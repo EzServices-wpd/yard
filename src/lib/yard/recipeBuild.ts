@@ -148,8 +148,9 @@ function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string, typed: 
       const p = out[i];
       // Every lumber member snaps to its own board (the recipe's member stock or a part's named 2x6), never a scaled section.
       let best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock)[0];
-      // A member never grows past a typed size: one that would is laid across instead (its short run kept).
-      const past = (to?: Panel["size"]) => !!to && (["width", "height", "depth"] as const).some((k) => typed[k] != null && to[k] > p.size[k] + 0.01 && to[k] > typed[k]! + 0.01);
+      // A member never grows past a typed size, and one spanning a whole typed size (a full-width rail) keeps that
+      // span: either way it is laid across instead, its run kept as its cut length.
+      const past = (to?: Panel["size"]) => !!to && (["width", "height", "depth"] as const).some((k) => typed[k] != null && ((to[k] > p.size[k] + 0.01 && to[k] > typed[k]! + 0.01) || (Math.abs(p.size[k] - typed[k]!) < 0.01 && Math.abs(to[k] - p.size[k]) > 0.01)));
       if (past(best?.to)) best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock, true).find((o) => !past(o.to)) ?? best;
       const to = best?.to ?? p.size;
       if (best) next[i].materialId = best.id;
