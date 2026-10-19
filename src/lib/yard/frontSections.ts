@@ -13,6 +13,14 @@ import { SLIDE_LENGTHS_IN, slideForDepth } from "./stockLook";
 
 /** A drawer wider than this sags and racks on its slides; a wider carcase splits its drawers into columns. */
 export const DRAWER_COLUMN_MAX_IN = 36;
+/** A drawer front taller than this is no drawer anyone builds: a taller carcase keeps a drawer bank and opens the rest. */
+export const DRAWER_ROW_MAX_IN = 15;
+/** A drawer row in a drawer bank at the foot of a tall carcase (a sweater or linen drawer). */
+export const BANK_DRAWER_ROW_IN = 10;
+/** The drawers would each stand taller than a real drawer if they filled this span alone. */
+export function drawersTooTallToFill(count: number, width: number, clear: number): boolean {
+  return clear / Math.max(...drawerColumns(count, width)) > DRAWER_ROW_MAX_IN + 1e-6;
+}
 /** A drawer opening that shares the carcase with doors or shelves: a sensible utensil/tool drawer. */
 export const SHARED_DRAWER_ROW_IN = 7;
 const BACK_T = 0.25;
@@ -58,6 +66,8 @@ export type DrawerSection = {
   y0: number;
   /** Top of the space left for doors or open shelves below it (the underside of the drawer floor), or null when the drawers fill the carcase. */
   belowTop: number | null;
+  /** Bottom of the open space left above a drawer bank at the foot of the carcase (the top face of its cap), or null. */
+  aboveBottom: number | null;
   columns: number[];
 };
 
@@ -66,14 +76,17 @@ export type DrawerSection = {
  * (the bottom's top face). It fills the carcase when nothing else shares the front; otherwise it takes a sensible
  * height at the top and sits on its own floor, so the doors or shelves below have their own opening.
  */
-export function drawerSection(o: { x0: number; innerW: number; yBottom: number; yTop: number; depth: number; count: number; width: number; shares: boolean; rowIn?: number }): DrawerSection {
+export function drawerSection(o: { x0: number; innerW: number; yBottom: number; yTop: number; depth: number; count: number; width: number; shares: boolean; rowIn?: number; atFoot?: boolean }): DrawerSection {
   const columns = drawerColumns(o.count, o.width);
   const rows = Math.max(...columns);
   const clear = o.yTop - o.yBottom;
   const secH = o.shares ? Math.round(Math.min(clear / 2, rows * (o.rowIn ?? SHARED_DRAWER_ROW_IN)) * 8) / 8 : clear;
-  const y0 = o.yTop - secH;
+  // A shared section sits at the top on its own floor, or (atFoot) on the carcase bottom under its own cap.
+  const foot = o.shares && !!o.atFoot;
+  const y0 = foot ? o.yBottom : o.yTop - secH;
   const panels: Panel[] = [];
-  if (o.shares) panels.push(panel("bottom", "Drawer bay bottom", o.x0, y0 - P, BACK_T, o.innerW, P, o.depth - BACK_T));
+  if (o.shares && !foot) panels.push(panel("bottom", "Drawer bay bottom", o.x0, y0 - P, BACK_T, o.innerW, P, o.depth - BACK_T));
+  if (foot) panels.push(panel("bottom", "Drawer bay top", o.x0, y0 + secH, BACK_T, o.innerW, P, o.depth - BACK_T));
   const cols = columns.length;
   const colW = (o.innerW - (cols - 1) * P) / cols;
   for (let k = 1; k < cols; k++) panels.push(panel("divider", cols === 2 ? "Drawer bay divider" : `Drawer bay divider ${k}`, o.x0 + k * colW + (k - 1) * P, y0, BACK_T, P, secH, o.depth - BACK_T));
@@ -99,5 +112,5 @@ export function drawerSection(o: { x0: number; innerW: number; yBottom: number; 
       panels.push(panel("rail", frontName, cx + (colW - box.frontW) / 2, y, o.depth - P, box.frontW, box.boxH, P));
     }
   });
-  return { panels, y0, belowTop: o.shares ? y0 - P : null, columns };
+  return { panels, y0, belowTop: o.shares && !foot ? y0 - P : null, aboveBottom: foot ? y0 + secH + P : null, columns };
 }

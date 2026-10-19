@@ -9,7 +9,7 @@ import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
-import { asksDoors, doorsKept, drawerSection } from "./frontSections";
+import { asksDoors, BANK_DRAWER_ROW_IN, doorsKept, drawerSection, drawersTooTallToFill } from "./frontSections";
 import { slideForDepth } from "./stockLook";
 import type { FittedProgram, FittedSpec, FittedUnit, Panel, PocketWalls, YardProject } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
@@ -2639,13 +2639,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     !!u.doors &&
     !isNoDoorsPrompt(frontLower) &&
     (/\bdoors?\b/.test(frontLower) || isStereoCabinet(frontLower));
-  const doorsOn = hasKnee ? !!u.doors : doorsKept(frontLower, !!u.doors);
+  // A hanging section (a wardrobe or closet rod) is its own section with its own doors: naming drawers adds a drawer
+  // section over it and never takes those doors away.
+  const hangSection = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
+  const doorsOn = hasKnee || hangSection ? !!u.doors : doorsKept(frontLower, !!u.doors);
   const doorsBuilt = doorsOn && (spec.program !== "media" || mediaWantsDoors);
   const hutchLowerDoors = isStorageHutch(frontLower) && !!u.upperStart;
   const shelvesTyped = /\b(?:\d+|an?|one|two|three|four|five|six|seven|eight)\s+(?:adjustable\s+|fixed\s+|open\s+)?shel(?:f|ves)\b/.test(frontLower);
   let drawerSectionY0: number | null = null;
   let drawerBelowTop: number | null = null;
   let drawersFillLower = false;
+  let drawerAboveBottom: number | null = null;
   let kneeDoorsDone = false;
   let bankFloor: number | null = null;
   const counterY = u.counterH ?? (spec.program === "desk" ? H : 34);
@@ -2771,12 +2775,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     // Front sections: the drawers own their section. It fills the carcase unless doors or typed shelves share the
     // front, then it sits on its own floor at the top and the doors or shelves get the opening below.
     const upper = !!u.upperStart && u.upperStart < H - 4;
-    const lowerShared = (doorsBuilt && (!upper || hutchLowerDoors)) || (shelvesTyped && !upper);
-    const sec = drawerSection({ x0: x0 + P, innerW: W - P * 2, yBottom: bottomY + P, yTop: upper ? u.upperStart! : H - P, depth: D, count: u.drawersPerBank, width: W, shares: lowerShared });
+    const lowerShared = (doorsBuilt && (!upper || hutchLowerDoors)) || (shelvesTyped && !upper) || (hangSection && !upper);
+    const yTop = upper ? u.upperStart! : H - P;
+    // A carcase too tall for its drawers alone keeps a drawer bank at its foot and the rest stays an open section.
+    const bank = !lowerShared && !upper && drawersTooTallToFill(u.drawersPerBank, W, yTop - (bottomY + P));
+    const sec = drawerSection({ x0: x0 + P, innerW: W - P * 2, yBottom: bottomY + P, yTop, depth: D, count: u.drawersPerBank, width: W, shares: lowerShared || bank, atFoot: bank, rowIn: bank ? BANK_DRAWER_ROW_IN : undefined });
     panels.push(...sec.panels);
     drawerSectionY0 = sec.y0;
     drawerBelowTop = sec.belowTop;
-    drawersFillLower = sec.belowTop == null;
+    drawerAboveBottom = sec.aboveBottom;
+    drawersFillLower = sec.belowTop == null && sec.aboveBottom == null;
   }
 
   // Media shelf behind a desk: ABOVE/behind the top — never eats knee clear.
@@ -2813,7 +2821,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     ? P
     : hasKnee
       ? (u.upperStart ?? counterY + 2)
-      : bottomY + P;
+      : drawerAboveBottom ?? bottomY + P;
   const shelfZone1 = wbLowerShelf
     ? Math.max(P * 2, (u.counterH ?? counterY) - 2)
     : u.upperStart

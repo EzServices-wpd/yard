@@ -394,7 +394,9 @@ export function i31(p: YardProject, prompt: string, plan: BuildPlan): Violation[
   const typed = /\b(?:\d+|an?|one|single|two|three|four|five|six|seven|eight|nine|ten)\s+(?:[a-z]+\s+)?drawers?\b/.test(lower);
   const want = askedDrawerCount(lower);
   if (want && (typed ? boxes.length !== want : boxes.length === 0)) out.push(`asks for ${typed ? want : "some"} drawer${want === 1 ? "" : "s"}, the model has ${boxes.length}`);
-  if (asksDrawers(lower) && !asksDoors(lower) && doors.length) out.push(`names drawers and no doors, the model has ${doors.length} door${doors.length === 1 ? "" : "s"}`);
+  // A hanging section (rod) keeps its own doors; the drawers get their own section.
+  const hangs = p.panels.some((x) => /\bhanging rod\b|\bclothes rod\b/i.test(x.name));
+  if (asksDrawers(lower) && !asksDoors(lower) && doors.length && !hangs) out.push(`names drawers and no doors, the model has ${doors.length} door${doors.length === 1 ? "" : "s"}`);
   const wide = boxes.find((b) => b.size.width > DRAWER_COLUMN_MAX_IN + 1e-6);
   if (wide) out.push(`${wide.name} is ${inchFrac(wide.size.width)}" wide, more than one ${DRAWER_COLUMN_MAX_IN}" drawer column`);
   const slideRow = plan.bom.find((b) => /side-mount drawer slides/i.test(b.name));
