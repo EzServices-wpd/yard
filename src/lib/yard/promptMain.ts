@@ -646,7 +646,7 @@ const r8 = (n: number) => Math.round(n * 8) / 8;
 const thinDim = (p: Panel) => Math.min(p.size.width, p.size.height, p.size.depth);
 
 /**
- * I33 / I37: the parts of a switched build on the picked sheet's thickness whose face no sheet of that thickness holds
+ * I33 / I39: the parts of a switched build on the picked sheet's thickness whose face no sheet of that thickness holds
  * (a 100" upright at 1/2", when 1/2" plywood is sold 4×8 at most). Glue-ups of the sheet count; 1/4" backers do not.
  */
 function longerThanSheetSold(project: YardProject, t: number): Panel[] {
@@ -689,7 +689,7 @@ function refusedLongSwitch(args: Parameters<typeof generateRaw>, thin: YardProje
 }
 
 /**
- * I37 (structural minimum): a stock switch to a thinner sheet changes the sheet parts only. Frame and safety parts
+ * I39 (structural minimum): a stock switch to a thinner sheet changes the sheet parts only. Frame and safety parts
  * (bed guards, ladders, load rails, aprons, legs) keep the stock, thickness and place they had before the switch:
  * a 1×8 guard stays a 3/4" 1×8, a 2×4 apron stays a 2×4. Their label always names the stock they are cut from.
  */

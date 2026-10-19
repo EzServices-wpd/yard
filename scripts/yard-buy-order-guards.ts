@@ -209,7 +209,7 @@ console.log(`PASS buy-order: ${rows} Buy rows cheapest-first, Best = cheapest ($
     if (buyStructural !== structural) fail(`Buy sheets ≠ layout sheets: ${p}`, { buy: buyStructural, layout: structural, rows: sheetRows.map((b) => `${b.name} ${b.quantity}`) });
     if (buyBacker !== backer) fail(`Buy backer sheets ≠ backer layout: ${p}`, { buy: buyBacker, layout: backer });
     if (layout.sheets?.unplaced.length) fail(`parts left off every sheet: ${p}`, layout.sheets.unplaced.map((x) => x.name));
-    // Thickness and grade, not just the count (I33/I37): the sheets the layout cuts at each thickness are the sheets
+    // Thickness and grade, not just the count (I33/I39): the sheets the layout cuts at each thickness are the sheets
     // Buy buys at that thickness, every sheet cut row is its sheet's thickness, and outdoors no interior sheet is bought.
     const at32 = (t: number) => Math.round(t * 32) / 32;
     const layoutByT = new Map<number, number>();

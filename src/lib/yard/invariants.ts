@@ -47,10 +47,10 @@ import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 import { isBoughtHardwareName, isBuyMirrorPanel } from "./shopPlural";
 import { keptLongNote, STRUCTURAL_MIN_IN, STRUCTURAL_PART } from "./sheetThickness";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "I33" | "I37" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "I33" | "I39" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", I33: "F32", I37: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", I33: "F32", I39: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -480,7 +480,7 @@ export function i33(before: YardProject, after: YardProject, stockId: string, pl
   }
   // The picked-sheet checks apply when the switch went through; the size and contact checks below hold either way.
   if (!refused) {
-  // Safety and structural parts held at 3/4" (I37) are on the 3/4" sheet on purpose, and the notes say so.
+  // Safety and structural parts held at 3/4" (I39) are on the 3/4" sheet on purpose, and the notes say so.
   const heldNote = (after.notes ?? []).some((n) => /a stock switch never makes a guard, ladder or load rail thinner/.test(n));
   const held = (name: string) => heldNote && t < STRUCTURAL_MIN_IN - 0.01 && STRUCTURAL_PART.test(name);
   if (after.primaryMaterialId !== stockId) out.push(`picked ${pick.name}, the build is on ${getCatalogItem(after.primaryMaterialId)?.name ?? after.primaryMaterialId}`);
@@ -554,13 +554,13 @@ export function i33(before: YardProject, after: YardProject, stockId: string, pl
 }
 
 /**
- * I37 (F32 structural minimum over a stock switch): a switch never thins a safety or structural part (bed and loft
+ * I39 (F32 structural minimum over a stock switch): a switch never thins a safety or structural part (bed and loft
  * guards, ladders and rungs, load rails, aprons, ledgers) below its minimum: never thinner than it was before the
  * switch, and never under 3/4" when it was at least 3/4". Lumber stays the board it is sold as (a part labelled 1×8 is
  * 3/4" thick), and every cut row's label names the stock it is really cut from: a sheet row's thickness is that
  * sheet's thickness (or a glue-up of it), and the Buy list buys that sheet.
  */
-export function i37(before: YardProject, after: YardProject, plan: BuildPlan = buildPlan(after)): Violation[] {
+export function i39(before: YardProject, after: YardProject, plan: BuildPlan = buildPlan(after)): Violation[] {
   const out: string[] = [];
   const T = (x: { size: { width: number; height: number; depth: number } }) => Math.round(Math.min(x.size.width, x.size.height, x.size.depth) * 32) / 32;
   const was = new Map(before.panels.map((p) => [p.name, p] as const));
@@ -590,7 +590,7 @@ export function i37(before: YardProject, after: YardProject, plan: BuildPlan = b
     if (!ok) out.push(`cut ${c.name} is ${inchFrac(c.thicknessIn)}" thick but labelled ${c.material}`);
     if (!c.whole && !bought.has(c.material ?? "")) out.push(`cut ${c.name} is cut from ${c.material}, which the Buy list does not buy`);
   }
-  return [...new Set(out)].slice(0, 6).map((m) => v("I37", m));
+  return [...new Set(out)].slice(0, 6).map((m) => v("I39", m));
 }
 
 /** I26 (F30 no hidden overlap): no two solid parts share space unless a joint the plan cuts makes room (solids.ts). */

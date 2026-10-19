@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildPlan } from "./report.ts";
-import { i33, i37 } from "./invariants.ts";
+import { i33, i39 } from "./invariants.ts";
 import { honestNestSheetStockName } from "./report.ts";
 import { generateFromPrompt } from "./promptMain.ts";
 import { interiorSheet } from "./materialForUse.ts";
@@ -64,7 +64,7 @@ const SWITCH_CORPUS = [
   "wardrobe 36 wide 98 tall 24 deep",
 ];
 
-/** Frame and safety parts over a switch (I37, row 94): bed guards, ladders, load rails, aprons. */
+/** Frame and safety parts over a switch (I39, row 94): bed guards, ladders, load rails, aprons. */
 const STRUCTURAL_CORPUS = ["twin bunk bed", "loft bed", "bunk bed with stairs", "workbench", "twin bunk bed from 1/2 plywood"];
 
 /** Builds with no switch whose parts were drawn at another thickness than their sheet (row 92). */
@@ -132,7 +132,7 @@ describe("I33 stock switch rebuilds every cut from the picked stock", () => {
     for (const q of NO_SWITCH_CORPUS) {
       const p = generateFromPrompt(q);
       const plan = buildPlan(p);
-      for (const x of i37(p, p, plan)) bad.push(`${q}: ${x.msg}`);
+      for (const x of i39(p, p, plan)) bad.push(`${q}: ${x.msg}`);
       if (isOutdoorPrompt(q.toLowerCase())) for (const b of plan.bom.filter((b) => /^sheets?$/.test(b.unit) && interiorSheet(b))) bad.push(`${q}: outdoors buys interior ${b.name}`);
     }
     assert.deepEqual(bad, []);
@@ -164,11 +164,11 @@ describe("I33 stock switch rebuilds every cut from the picked stock", () => {
   }
 
   for (const stockId of ["plywood-1-2-4x8", "plywood-1-4-4x8"]) {
-    it(`I37 → ${stockId}: guards, ladders and load rails are never thinned, and labels name the real stock`, async () => {
+    it(`I39 → ${stockId}: guards, ladders and load rails are never thinned, and labels name the real stock`, async () => {
       const bad: string[] = [];
       for (const q of STRUCTURAL_CORPUS) {
         const { before, after } = await switchStock(q, stockId, "stock panel");
-        for (const x of i37(before, after)) bad.push(`${q}: ${x.msg}`);
+        for (const x of i39(before, after)) bad.push(`${q}: ${x.msg}`);
       }
       assert.deepEqual(bad, []);
     });
