@@ -10,7 +10,7 @@ import fs from "node:fs";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
 import { isoFaces, isoSvgString, polygonHoleRings } from "../src/lib/yard/iso";
-import { drawShape, partLetters, partShape, projectSolids } from "../src/lib/yard/pdfDraw";
+import { drawShape, partLetters, partShape, projectSolids, renderProject } from "../src/lib/yard/pdfDraw";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import { buildPlanPdf } from "../src/lib/yard/pdf";
 import { SvgDoc } from "../src/lib/yard/svgDoc";
@@ -37,7 +37,10 @@ test("the corpus has builds with holes (water wheel, abacus, birdhouse door, clo
   assert.ok(holed.some((h) => h.prompt === "water wheel"));
 });
 
-test("3D solids: a holed plate's caps carry every hole, and each hole has inner walls facing its axis", () => {
+test("3D solids: a holed plate's caps carry every hole as an exact circle (rim) on both faces, one wall per hole", () => {
+  // Critic #93 row 110: a 1 1/2" birdhouse door was a 16-gon of stroked wall facets at 400 dpi. Each cap now carries
+  // the hole's true circle (centre, two radius vectors, the far face's centre) and paints the wall from the two rims,
+  // so no per-side wall facet joins the depth sort and the PDF draws Bézier arcs at any print size.
   for (const { prompt, project } of holed) {
     const solids = projectSolids(project);
     project.panels.forEach((p, i) => {
@@ -48,17 +51,41 @@ test("3D solids: a holed plate's caps carry every hole, and each hole has inner 
       assert.equal(caps.length, 2, `${prompt}: ${p.name} has ${caps.length} holed caps`);
       for (const c of caps) assert.equal(c.holes!.length, n, `${prompt}: ${p.name} cap holes`);
       const rings = polygonHoleRings(p);
-      const walls = rings.reduce((a, [r]) => a + r.length, 0);
-      // Every wall's normal points toward its hole's axis (inward), so the far wall shows through the hole.
-      const inner = s.faces.filter((f) => !f.holes && rings.some(([r0]) => f.pts.some((q) => r0.some((h) => Math.hypot(h.x - q.x, h.y - q.y, h.z - q.z) < 1e-9))));
-      assert.equal(inner.length, walls, `${prompt}: ${p.name} has ${inner.length} hole walls, want ${walls}`);
-      for (const f of inner) {
-        const ring = rings.find(([r0]) => f.pts.some((q) => r0.some((h) => Math.hypot(h.x - q.x, h.y - q.y, h.z - q.z) < 1e-9)))!;
-        const c = ring[0].reduce((acc, q) => ({ x: acc.x + q.x / ring[0].length, y: acc.y + q.y / ring[0].length, z: acc.z + q.z / ring[0].length }), { x: 0, y: 0, z: 0 });
-        const m = { x: (f.pts[0].x + f.pts[1].x) / 2, y: (f.pts[0].y + f.pts[1].y) / 2, z: (f.pts[0].z + f.pts[1].z) / 2 };
-        assert.ok(f.n.x * (c.x - m.x) + f.n.y * (c.y - m.y) + f.n.z * (c.z - m.z) > 0, `${prompt}: ${p.name} hole wall faces away from its axis`);
+      const want = (p.polygon!.holes ?? []).filter((h) => h.r > 0);
+      for (const c of caps) {
+        assert.equal(c.rims?.length, n, `${prompt}: ${p.name} cap has ${c.rims?.length ?? 0} exact rims, want ${n}`);
+        c.rims!.forEach((r, k) => {
+          const len = (v: { x: number; y: number; z: number }) => Math.hypot(v.x, v.y, v.z);
+          assert.ok(Math.abs(len(r.u) - want[k].r) < 1e-9 && Math.abs(len(r.v) - want[k].r) < 1e-9, `${prompt}: ${p.name} rim radius`);
+          assert.ok(Math.abs(r.u.x * r.v.x + r.u.y * r.v.y + r.u.z * r.v.z) < 1e-9, `${prompt}: ${p.name} rim is not a circle`);
+          // Every ring corner lies on the rim's circle, on this cap or the far one (the rim is the polygon's own circle).
+          const [r0, r1] = rings[k];
+          const onRim = (q: { x: number; y: number; z: number }, ctr: { x: number; y: number; z: number }) => Math.abs(len({ x: q.x - ctr.x, y: q.y - ctr.y, z: q.z - ctr.z }) - want[k].r) < 1e-9;
+          assert.ok((r0.every((q) => onRim(q, r.c)) && r1.every((q) => onRim(q, r.back))) || (r1.every((q) => onRim(q, r.c)) && r0.every((q) => onRim(q, r.back))), `${prompt}: ${p.name} rim off its ring`);
+        });
       }
+      // No faceted hole wall is left (the caps paint it).
+      const facets = s.faces.filter((f) => !f.holes && rings.some(([r0]) => f.pts.some((q) => r0.some((h) => Math.hypot(h.x - q.x, h.y - q.y, h.z - q.z) < 1e-9))));
+      assert.equal(facets.length, 0, `${prompt}: ${p.name} still has ${facets.length} faceted hole walls`);
     });
+  }
+});
+
+test("PDF holes and round walls are true curves: rims are Bézier arcs, a hub's wall draws only its silhouette", () => {
+  const ww = holed.find((h) => h.prompt === "water wheel")!.project;
+  const doc = new SvgDoc(800, 800);
+  renderProject(doc as unknown as jsPDF, ww, { x: 0, y: 0, w: 800, h: 800 }, { tones: new Map(ww.panels.map((p) => [p.id, "built" as const])) });
+  const svg = doc.toSvg();
+  const arcs = (svg.match(/ C /g) ?? []).length;
+  // Each visible rim is four cubic quarters; every holed part shows at least one cap.
+  assert.ok(arcs >= 4 * ww.panels.filter(holes).length, `water wheel: only ${arcs} Bézier segments`);
+  // The hub and collar walls (round outlines) are soft facets: two silhouette edges per wall, no seam per side.
+  for (const name of ["hub 1", "Collar 1"]) {
+    const i = ww.panels.findIndex((p) => p.name === name);
+    const walls = projectSolids(ww)[i].faces.filter((f) => !f.holes && f.pts.length === 4 && f.soft);
+    assert.ok(walls.length >= 12, `${name}: ${walls.length} soft wall facets`);
+    const sil = walls.filter((f) => f.n.x + f.n.y + f.n.z > 0).reduce((a, f) => a + (f.sil?.length ?? 0), 0);
+    assert.equal(sil, 2, `${name}: ${sil} silhouette edges (want the two tangents)`);
   }
 });
 

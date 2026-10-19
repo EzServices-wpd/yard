@@ -157,7 +157,7 @@ export class SvgDoc {
   }
 
   private pathD = "";
-  /** jsPDF path ops: moveTo / lineTo / close, then fillEvenOdd or fillStrokeEvenOdd paints them as one path. */
+  /** jsPDF path ops: moveTo / lineTo / curveTo / close, then fillEvenOdd or fillStrokeEvenOdd paints them as one path. */
   moveTo(x: number, y: number) {
     this.touch(x, y);
     this.pathD += `${this.pathD ? " " : ""}M ${x} ${y}`;
@@ -166,6 +166,13 @@ export class SvgDoc {
   lineTo(x: number, y: number) {
     this.touch(x, y);
     this.pathD += ` L ${x} ${y}`;
+    return this;
+  }
+  curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
+    this.touch(x1, y1);
+    this.touch(x2, y2);
+    this.touch(x3, y3);
+    this.pathD += ` C ${x1} ${y1} ${x2} ${y2} ${x3} ${y3}`;
     return this;
   }
   close() {

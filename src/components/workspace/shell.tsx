@@ -1,5 +1,5 @@
 "use client";
-import { headerTitle } from "@/lib/yard/pdf";
+import { headerAxes, headerTitle } from "@/lib/yard/pdf";
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -762,12 +762,12 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 >
                   {(() => {
                     const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
-                    const inch = inchFrac;
                     const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
                     // One size: the header's own W × D × H (typed axes as typed, assumed axes the model's extent).
                     const one = headerSize(project);
-                    const envelope = pocketUnit
-                      ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
+                    // Same words and order as the header (W × D × H); a round piece keeps its "dia × H" talk.
+                    const envelope = project.fitted?.unit?.shape !== "round"
+                      ? headerAxes(project)
                       : fmtUnitEnvelopeInches(one.width, one.height, one.depth, {
                           shape: project.fitted?.unit?.shape,
                           prompt: project.prompt,

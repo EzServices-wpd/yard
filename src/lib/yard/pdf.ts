@@ -65,7 +65,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const BOTTOM = pageH - GRID.bottom;
   const craft0 = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
   const sizing = typedAxesTalk(project, craft0);
-  const title = sizing.title;
+  // The header's own words and W × D × H order on the cover title and every running head (Critic #93: the PDF
+  // title said "File cabinet 30" x 24" x 30"" in W × H × D under a W × D × H header).
+  const title = clean(headerTitle(project, { features: false }));
   const craft = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
   const letters = partLetters(project, plan.cutList);
   const aff = affiliateConfig();
@@ -241,15 +243,22 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   // ═════════════════════════ BEFORE YOU START
   newPage("Before you start");
   sectionTitle("Before you start");
-  const checkLead = clean(plan.feasibility.summary);
+  // The plan's own words name the build as the engine stamped it ("File cabinet 30" x 24" x 30"", W × H × D): on
+  // the page that name is the header's, in its order (one size source, Critic #93).
+  const named = (t: string) => {
+    const raw = clean(project.name);
+    return raw && raw !== headerName(project) ? t.split(raw).join(title) : t;
+  };
+  const checkLead = named(clean(plan.feasibility.summary));
   if (checkLead) y += textBlock(checkLead, L, y, W, 10.5) + 6;
   for (const issue of plan.feasibility.issues) {
     const tag = issue.severity === "critical" ? "Stop and fix: " : issue.severity === "warning" ? "Note: " : "";
-    const h1 = wrap(`${tag}${issue.message}`, W - 14, 10).length * 13.5 + (issue.suggestion ? wrap(issue.suggestion, W - 14, 9).length * 12.5 : 0) + 8;
+    const message = named(clean(issue.message));
+    const h1 = wrap(`${tag}${message}`, W - 14, 10).length * 13.5 + (issue.suggestion ? wrap(issue.suggestion, W - 14, 9).length * 12.5 : 0) + 8;
     if (h1 > room()) newPage("Before you start");
     doc.setFillColor(...(issue.severity === "critical" ? KIT.accent : KIT.rule));
     doc.rect(L, y + 2, 3, h1 - 8, "F");
-    y += textBlock(`${tag}${issue.message}`, L + 12, y, W - 14, 10);
+    y += textBlock(`${tag}${message}`, L + 12, y, W - 14, 10);
     if (issue.suggestion) y += textBlock(issue.suggestion, L + 12, y, W - 14, 9, "italic", KIT.muted);
     y += 8;
   }
@@ -821,8 +830,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const room0 = W - doc.getTextWidth(sec) - 24;
     font(8, "bold", KIT.muted);
     // Running header: honest title, plus the assumed axes so no page reads them as typed.
-    let head = (sizing.assumedShort ? `${title} · ${sizing.assumedShort}` : title).toUpperCase();
-    if (doc.getTextWidth(head) > room0) head = title.toUpperCase();
+    // The title already marks the assumed axes ("(W, D assumed)"), so no page reads them as typed.
+    let head = title.toUpperCase();
+    if (doc.getTextWidth(head) > room0) head = title.replace(/ · .*$/, "").toUpperCase();
     while (head.length > 8 && doc.getTextWidth(head) > room0) head = `${head.slice(0, -4).trimEnd()}...`;
     doc.text(head, L, 40);
     font(8, "normal", KIT.muted);
@@ -1146,17 +1156,26 @@ export { planStepParts, stepKindOf };
  * axis labelled in one order, W × D × H, and the axes nobody typed marked assumed.
  */
 export function headerTitle(project: YardProject, opts: { features?: boolean } = {}): string {
+  return [`${headerName(project)} · ${headerAxes(project)}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
+}
+
+/** The build's name without its bare typed size ("File cabinet 30" x 24" x 30"" → "File cabinet"). */
+export function headerName(project: YardProject): string {
+  return clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
+}
+
+/** The one size in one order: `31 1/2" W × 16" D × 78" H`, axes nobody typed marked assumed. Header, bench, PDF. */
+export function headerAxes(project: YardProject): string {
   const { assumed } = typedAxesTalk(project);
   // One size (headerSize): a typed axis is the size said back (the linen closet's 16″, doors standing proud are
   // a note); an assumed axis is the model's own extent, the number the drawings label.
   const { width: W, depth: d, height: H } = headerSize(project);
-  const base = clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
   const axes = [["W", W, "width"], ["D", d, "depth"], ["H", H, "height"]] as const;
   const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
   // C3: a purchased item's size is the unit table's real piece, never an assumption.
   if (isUnitItem(project)) guess.length = 0;
   const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";
-  return [`${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
+  return `${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`;
 }
 
 const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };

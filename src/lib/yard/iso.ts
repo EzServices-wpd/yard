@@ -456,6 +456,23 @@ export function polygonHoleRings(panel: import("./types").Panel): { x: number; y
     })));
 }
 
+/**
+ * Each hole as a true circle on both faces: centre c0 (back/bottom) and c1 (front/top) plus the two radius vectors
+ * u, v (the circle is c + u·cos t + v·sin t). The placement is affine, so a renderer that projects these (an iso
+ * view is affine too) can draw the rim as exact Bézier arcs instead of a polygon (Critic #93: 16-gon at 400 dpi).
+ */
+export type HoleCircle = { c0: { x: number; y: number; z: number }; c1: { x: number; y: number; z: number }; u: { x: number; y: number; z: number }; v: { x: number; y: number; z: number } };
+export function polygonHoleCircles(panel: import("./types").Panel): HoleCircle[] {
+  const holes = panel.polygon?.holes ?? [];
+  return holes
+    .filter((h) => h.r > 0)
+    .map((h) => {
+      const [r0, r1] = placeRings(panel, [[h.x, h.y], [h.x + h.r, h.y], [h.x, h.y + h.r]]);
+      const d = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+      return { c0: r0[0], c1: r1[0], u: d(r0[1], r0[0]), v: d(r0[2], r0[0]) };
+    });
+}
+
 function placeRings(panel: import("./types").Panel, pts: [number, number][]): { x: number; y: number; z: number }[][] {
   const poly = panel.polygon!;
   const { x, y, z } = panel.position;

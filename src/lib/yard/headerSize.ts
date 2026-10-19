@@ -96,7 +96,8 @@ export function typedAxesTalk(project: YardProject, craft = false) {
       for (const a of ["width", "height", "depth"] as Axis[]) if (!named[a].test(lp)) assumed[a] = true;
     }
   }
-  const axes: Axis[] = ["width", "height", "depth"];
+  // The header's order, W × D × H, on the subline too.
+  const axes: Axis[] = ["width", "depth", "height"];
   // Nothing typed is still stock size when the build's own Assumed notes cover every axis.
   const stock = noDigits && !extra.length && (!Object.keys(assumed).length || axes.every((a) => assumed[a]));
   if (stock) axes.forEach((a) => (assumed[a] = true));

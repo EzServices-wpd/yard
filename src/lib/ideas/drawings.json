@@ -50,15 +50,15 @@
   "model": "/ideas/models/ldesk.d7a8c642.json"
  },
  "pocket": {
-  "v": "ce2e70f5",
+  "v": "d65987b4",
   "w": 480,
   "h": 360,
   "parts": 50,
-  "bytes": 13873,
+  "bytes": 13867,
   "dims": {
    "width": 38,
    "height": 102,
-   "depth": 17.75
+   "depth": 17
   },
   "model": "/ideas/models/pocket.31da6987.json"
  },
@@ -102,28 +102,28 @@
   "model": "/ideas/models/window.0f073d5e.json"
  },
  "desk": {
-  "v": "67d2ef32",
+  "v": "612aad8e",
   "w": 480,
   "h": 360,
   "parts": 40,
-  "bytes": 11297,
+  "bytes": 11293,
   "dims": {
    "width": 60,
    "height": 29,
-   "depth": 30.75
+   "depth": 30
   },
   "model": "/ideas/models/desk.264dc27f.json"
  },
  "island": {
-  "v": "ea18c3b3",
+  "v": "400060b5",
   "w": 480,
   "h": 360,
   "parts": 22,
-  "bytes": 7107,
+  "bytes": 7099,
   "dims": {
    "width": 60,
    "height": 36,
-   "depth": 36.75
+   "depth": 36
   },
   "model": "/ideas/models/island.4978e77f.json"
  },
@@ -245,11 +245,11 @@
   "model": "/ideas/models/daybed.04a1bc7b.json"
  },
  "round": {
-  "v": "4a99df2a",
+  "v": "01795bb2",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 7093,
+  "bytes": 7449,
   "dims": {
    "width": 40,
    "height": 30,
@@ -259,11 +259,11 @@
   "model": "/ideas/models/round.f87fd212.json"
  },
  "coffee": {
-  "v": "ae7d9e17",
+  "v": "762a7d0a",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 7111,
+  "bytes": 7467,
   "dims": {
    "width": 48,
    "height": 18,
@@ -325,15 +325,15 @@
   "model": "/ideas/models/uppercab.d3d08fb7.json"
  },
  "coat": {
-  "v": "04001119",
+  "v": "a84cb919",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3837,
+  "bytes": 3833,
   "dims": {
    "width": 36,
    "height": 12,
-   "depth": 4.25
+   "depth": 4
   },
   "model": "/ideas/models/coat.68a0a38d.json"
  },
@@ -377,15 +377,15 @@
   "model": "/ideas/models/medicine.a560622e.json"
  },
  "ironing": {
-  "v": "d1b269db",
+  "v": "85d15d46",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3828,
+  "bytes": 3824,
   "dims": {
    "width": 16,
    "height": 48,
-   "depth": 6.75
+   "depth": 6
   },
   "model": "/ideas/models/ironing.1ee66cb3.json"
  },
@@ -455,7 +455,7 @@
   "model": "/ideas/models/shoerack.ac5433df.json"
  },
  "pantry": {
-  "v": "df02c576",
+  "v": "e5518ecf",
   "w": 480,
   "h": 360,
   "parts": 10,
@@ -463,7 +463,7 @@
   "dims": {
    "width": 24,
    "height": 84,
-   "depth": 16.75
+   "depth": 16
   },
   "model": "/ideas/models/pantry.df37f6df.json"
  },
@@ -507,11 +507,11 @@
   "model": "/ideas/models/overtoilet.65f32fc6.json"
  },
  "crate": {
-  "v": "76caaa9b",
+  "v": "1815031c",
   "w": 480,
   "h": 360,
   "parts": 19,
-  "bytes": 35495,
+  "bytes": 19287,
   "dims": {
    "width": 36,
    "height": 25,
@@ -642,11 +642,11 @@
   "model": "/ideas/models/workbench.ae058f79.json"
  },
  "birdhouse": {
-  "v": "63a9c326",
+  "v": "4d3fd234",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 5405,
+  "bytes": 4216,
   "dims": {
    "width": 6.875,
    "height": 11.8125,
@@ -681,11 +681,11 @@
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.87ed9387.json"
  },
  "recipe-water-wheel": {
-  "v": "65d241cc",
+  "v": "6dc11bbc",
   "w": 480,
   "h": 360,
   "parts": 24,
-  "bytes": 30363,
+  "bytes": 25026,
   "dims": {
    "width": 18,
    "height": 30.25,
@@ -694,11 +694,11 @@
   "model": "/ideas/models/recipe-water-wheel.353ff83b.json"
  },
  "recipe-abacus": {
-  "v": "174f7d82",
+  "v": "502a709e",
   "w": 480,
   "h": 360,
   "parts": 58,
-  "bytes": 100050,
+  "bytes": 103482,
   "dims": {
    "width": 16,
    "height": 10.625,
@@ -798,11 +798,11 @@
   "model": "/ideas/models/recipe-outdoor-storage-bench.ca8bbbbb.json"
  },
  "recipe-guitar-hanger": {
-  "v": "41dfec46",
+  "v": "6efc26f3",
   "w": 480,
   "h": 360,
   "parts": 4,
-  "bytes": 7163,
+  "bytes": 7753,
   "dims": {
    "width": 5.5,
    "height": 10,

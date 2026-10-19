@@ -7,14 +7,21 @@ import type { jsPDF } from "jspdf";
 import { getCatalogItem } from "./catalog";
 import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
-import { holeSegments, outlineRingXZ, polygonHoleRings, polygonRings } from "./iso";
+import { headerSize } from "./headerSize";
+import { outlineRingXZ, polygonHoleCircles, polygonHoleRings, polygonRings, type HoleCircle } from "./iso";
 import { cutListName } from "./shopPlural";
 import type { CutLine, Panel, YardProject } from "./types";
 import { KIT, clean, frac, type RGB } from "./pdfKit";
 
 type V3 = { x: number; y: number; z: number };
 /** A flat face; `holes` are inner rings (same plane) left open with an even-odd fill. */
-type Face = { pts: V3[]; n: V3; holes?: V3[][] };
+/** A round hole's rim on this face (c + u·cos t + v·sin t) and its centre on the far face, for exact arcs. */
+type Rim = { c: V3; u: V3; v: V3; back: V3 };
+/**
+ * soft: one facet of a round wall (a hub, a collar, a wheel's rim). It is filled without its own edge lines, and
+ * `sil` lists the only edges that are drawn: where the wall turns away from the viewer (its silhouette).
+ */
+type Face = { pts: V3[]; n: V3; holes?: V3[][]; rims?: Rim[]; soft?: boolean; sil?: [V3, V3][] };
 export type Tone = "hot" | "built" | "ghost";
 
 type Solid = {
@@ -86,16 +93,21 @@ export function isRoundPlate(project: YardProject, p: Panel): boolean {
  * Extruded outline: two caps and a side wall per outer edge. Each hole (a ring pair placed like the outline) is cut
  * out of both caps and gets its own inner wall, facing the hole's axis, so a wheel's open centre shows what is behind.
  */
-function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = []): Face[] {
+function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = [], circles: HoleCircle[] = []): Face[] {
   const u = sub(ring1[0], ring0[0]);
   const nr = newell(ring0);
   const sign = dot(nr, u) >= 0 ? 1 : -1;
   const faces: Face[] = [];
   const capDir = norm(u);
   const h0 = holes.map((h) => h[0]), h1 = holes.map((h) => h[1]);
-  faces.push({ pts: ring0, n: scale3(capDir, -1), ...(holes.length ? { holes: h0 } : {}) });
-  faces.push({ pts: ring1, n: capDir, ...(holes.length ? { holes: h1 } : {}) });
-  for (const [a, b] of holes) {
+  // Round holes (one circle per ring pair): each cap carries exact rims and draws its own hole wall, so the PDF
+  // paints true arcs at any print size and no per-side wall facet joins the depth sort (Critic #93 row 110).
+  const round = circles.length === holes.length && holes.length > 0;
+  const rims0: Rim[] = round ? circles.map((k) => ({ c: k.c0, u: k.u, v: k.v, back: k.c1 })) : [];
+  const rims1: Rim[] = round ? circles.map((k) => ({ c: k.c1, u: k.u, v: k.v, back: k.c0 })) : [];
+  faces.push({ pts: ring0, n: scale3(capDir, -1), ...(holes.length ? { holes: h0 } : {}), ...(round ? { rims: rims0 } : {}) });
+  faces.push({ pts: ring1, n: capDir, ...(holes.length ? { holes: h1 } : {}), ...(round ? { rims: rims1 } : {}) });
+  for (const [a, b] of round ? [] : holes) {
     const axis = centroid(a);
     for (let i = 0; i < a.length; i++) {
       const j = (i + 1) % a.length;
@@ -107,14 +119,40 @@ function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = []): Face[] {
       faces.push({ pts: [a[i], a[j], b[j], b[i]], n });
     }
   }
-  for (let i = 0; i < ring0.length; i++) {
+  // A round outline's wall is one curved surface: its facets draw no seams, only the silhouette edges, so a hub
+  // or a wheel's rim reads round at 400 dpi instead of gear-like (Critic #93 row 110).
+  const soft = isRoundRing(ring0);
+  const sideN = ring0.map((_, i) => {
     const j = (i + 1) % ring0.length;
     const e = sub(ring0[j], ring0[i]);
-    if (Math.hypot(e.x, e.y, e.z) < 1e-6) continue;
-    const n = norm(scale3(cross(e, u), sign));
-    faces.push({ pts: [ring0[i], ring0[j], ring1[j], ring1[i]], n });
+    return Math.hypot(e.x, e.y, e.z) < 1e-6 ? null : norm(scale3(cross(e, u), sign));
+  });
+  const seen = (n: V3 | null) => !!n && dot(n, VIEW) > 1e-4;
+  for (let i = 0; i < ring0.length; i++) {
+    const j = (i + 1) % ring0.length;
+    const n = sideN[i];
+    if (!n) continue;
+    const face: Face = { pts: [ring0[i], ring0[j], ring1[j], ring1[i]], n };
+    if (soft) {
+      const prev = sideN[(i - 1 + ring0.length) % ring0.length], next = sideN[j];
+      face.soft = true;
+      face.sil = [
+        ...(seen(prev) !== seen(n) ? [[ring0[i], ring1[i]] as [V3, V3]] : []),
+        ...(seen(next) !== seen(n) ? [[ring0[j], ring1[j]] as [V3, V3]] : []),
+      ];
+    }
+    faces.push(face);
   }
   return faces;
+}
+
+/** 12 or more corners, all the same distance from the middle (within 2%): a circle, drawn as a smooth wall. */
+export function isRoundRing(ring: V3[]): boolean {
+  if (ring.length < 12) return false;
+  const c = centroid(ring);
+  const r = ring.map((p) => Math.hypot(p.x - c.x, p.y - c.y, p.z - c.z));
+  const mean = r.reduce((a, b) => a + b, 0) / r.length;
+  return mean > 0 && r.every((x) => Math.abs(x - mean) <= 0.02 * mean);
 }
 
 function boxFaces(c: V3[]): Face[] {
@@ -195,7 +233,7 @@ function panelSolid(project: YardProject, p: Panel): Solid {
     faces = curvedFaces(p);
   } else if (p.polygon) {
     const [r0, r1] = polygonRings(p);
-    faces = prism(r0, r1, polygonHoleRings(p));
+    faces = prism(r0, r1, polygonHoleRings(p), polygonHoleCircles(p));
   } else if (p.outline) {
     const ring = outlineRingXZ(p);
     const yb = p.position.y;
@@ -286,7 +324,13 @@ function shift(s: Solid, d: V3): Solid {
   if (!d.x && !d.y && !d.z) return s;
   return {
     id: s.id,
-    faces: s.faces.map((f) => ({ n: f.n, pts: f.pts.map((p) => add(p, d)), ...(f.holes ? { holes: f.holes.map((h) => h.map((p) => add(p, d))) } : {}) })),
+    faces: s.faces.map((f) => ({
+      n: f.n,
+      pts: f.pts.map((p) => add(p, d)),
+      ...(f.holes ? { holes: f.holes.map((h) => h.map((p) => add(p, d))) } : {}),
+      ...(f.rims ? { rims: f.rims.map((r) => ({ ...r, c: add(r.c, d), back: add(r.back, d) })) } : {}),
+      ...(f.soft ? { soft: true, sil: (f.sil ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]) } : {}),
+    })),
     min: add(s.min, d),
     max: add(s.max, d),
     center: add(s.center, d),
@@ -563,6 +607,32 @@ function poly(doc: jsPDF, pts: { x: number; y: number }[], style: "F" | "S" | "F
 }
 
 /** Outer ring plus hole rings as one path, filled even-odd (holes stay open) and stroked on every ring. */
+function ringPath(doc: jsPDF, r: { x: number; y: number }[]) {
+  if (r.length < 2) return;
+  doc.moveTo(r[0].x, r[0].y);
+  for (const p of r.slice(1)) doc.lineTo(p.x, p.y);
+  doc.close();
+}
+
+/** Bézier arc constant: four cubic quarters trace a circle within 0.03% of its radius. */
+export const ARC_K = (4 / 3) * Math.tan(Math.PI / 8);
+
+/**
+ * A circle c + u·cos t + v·sin t as four cubic Bézier quarters, projected by an affine `map` (iso and the page
+ * transform are both affine, so projecting the control points gives the exact projected ellipse).
+ */
+export function rimPath(doc: jsPDF, c: V3, u: V3, v: V3, map: (p: V3) => { x: number; y: number }) {
+  const dirs = [u, v, scale3(u, -1), scale3(v, -1)];
+  const P0 = map(add(c, u));
+  doc.moveTo(P0.x, P0.y);
+  for (let q = 0; q < 4; q++) {
+    const a = dirs[q], b = dirs[(q + 1) % 4];
+    const c1 = map(add(add(c, a), scale3(b, ARC_K))), c2 = map(add(add(c, b), scale3(a, ARC_K))), e = map(add(c, b));
+    doc.curveTo(c1.x, c1.y, c2.x, c2.y, e.x, e.y);
+  }
+  doc.close();
+}
+
 function polyHoles(doc: jsPDF, rings: { x: number; y: number }[][]) {
   for (const r of rings) {
     if (r.length < 2) continue;
@@ -662,7 +732,34 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       screenPts.push(...pts);
       doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
       const rings = [pts, ...(f.holes ?? []).map((h) => h.map(map))];
-      if (f.holes?.length) polyHoles(doc, rings);
+      if (f.rims?.length) {
+        // The hole wall first (the far wall shows between this rim and the far rim), then the face over it.
+        for (const r of f.rims) {
+          const ax = norm(sub(r.back, r.c));
+          const perp = sub(VIEW, scale3(ax, dot(VIEW, ax)));
+          if (Math.hypot(perp.x, perp.y, perp.z) < 1e-4) continue;
+          doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, norm(perp))));
+          rimPath(doc, r.c, r.u, r.v, map);
+          rimPath(doc, r.back, r.u, r.v, map);
+          doc.fillStrokeEvenOdd();
+        }
+        doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
+        ringPath(doc, pts);
+        for (const r of f.rims) rimPath(doc, r.c, r.u, r.v, map);
+        doc.fillStrokeEvenOdd();
+      } else if (f.soft) {
+        // A facet of a round wall: no seam lines (stroke in its own colour closes hairline gaps), silhouette only.
+        const fill = tone === "ghost" ? c.fill : shade(c.fill, f.n);
+        doc.setDrawColor(...fill);
+        doc.setLineWidth(0.35);
+        poly(doc, pts, "FD");
+        doc.setDrawColor(...c.edge);
+        doc.setLineWidth(c.lw);
+        for (const [a, b] of f.sil ?? []) {
+          const A = map(a), B = map(b);
+          doc.line(A.x, A.y, B.x, B.y);
+        }
+      } else if (f.holes?.length) polyHoles(doc, rings);
       else poly(doc, pts, "FD");
       painted.push(paintOf(sol.id, rings));
     }
@@ -824,12 +921,17 @@ function drawDims(
   measured: { min: V3; max: V3 } = bb,
 ) {
   const round = project.fitted?.unit?.shape === "round";
-  const W = measured.max.x - measured.min.x;
-  const H = measured.max.y - measured.min.y;
-  const D = measured.max.z - measured.min.z;
+  const span = lineSpans(project, measured);
+  // One size source (Critic #93 rows 108/109): a full view labels the header's own W × D × H, so a typed 34″ vanity
+  // under its mirror says 34 and a typed 16″ linen with proud doors says 16, never the accessory or proud extent.
+  const W = span.width;
+  const H = span.height;
+  const D = span.depth;
   // Only the overall size can be assumed; a label that measures something else stays plain.
+  // Only the overall size can be assumed (the header's number, or the overall box off a full view); a label that
+  // measures something else stays plain.
   const tag = (axis: "width" | "height" | "depth", v: number, text: string) =>
-    assumed[axis] && Math.abs(v - project.overall[axis]) < 0.5 ? `${text} assumed` : text;
+    assumed[axis] && (span.header[axis] || Math.abs(v - project.overall[axis]) < 0.5) ? `${text} assumed` : text;
   const line = (a: V3, b: V3, label: string, side: V3) => {
     const A = map(a);
     const B = map(b);
@@ -860,10 +962,37 @@ function drawDims(
     const zc = (bb.min.z + bb.max.z) / 2;
     line({ x: bb.min.x, y: bb.max.y + 0.05, z: zc }, { x: bb.max.x, y: bb.max.y + 0.05, z: zc }, tag("width", W, `${frac(W)} dia`), { x: 0, y: 0, z: 1 });
   } else {
-    line({ x: bb.min.x, y: bb.min.y, z: zf }, { x: bb.max.x, y: bb.min.y, z: zf }, tag("width", W, frac(W)), { x: 0, y: 0, z: 1 });
-    line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y, z: bb.max.z }, tag("depth", D, frac(D)), { x: 1, y: 0, z: 0 });
+    // A line shortened to the header's size spans the body from its back / bottom / left (proud fronts and a mirror
+    // above stay outside it), so the arrow measures the number it prints.
+    line({ x: bb.min.x, y: bb.min.y, z: zf }, { x: bb.min.x + span.lineW(bb), y: bb.min.y, z: zf }, tag("width", W, frac(W)), { x: 0, y: 0, z: 1 });
+    line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y, z: bb.min.z + span.lineD(bb) }, tag("depth", D, frac(D)), { x: 1, y: 0, z: 0 });
   }
-  line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.max.y, z: bb.min.z }, tag("height", H, frac(H)), { x: 1, y: 0, z: 0 });
+  line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y + span.lineH(bb), z: bb.min.z }, tag("height", H, frac(H)), { x: 1, y: 0, z: 0 });
+}
+
+/**
+ * What a drawing's three dimension lines print, and how long each line is. A full view (the drawing measures the
+ * whole build) prints headerSize on every axis where the header is a part of the drawn extent (a typed body under
+ * a mirror, inside proud fronts); the line then spans just that part. Anything else (a sub-assembly, a floating
+ * desk whose header height is from the floor) prints what it measures, full length.
+ */
+export function lineSpans(project: YardProject, measured: { min: V3; max: V3 }) {
+  const m = { width: measured.max.x - measured.min.x, height: measured.max.y - measured.min.y, depth: measured.max.z - measured.min.z };
+  const all = drawnExtent(project);
+  const full = !!all && (["x", "y", "z"] as const).every((k) => Math.abs(all.min[k] - measured.min[k]) <= 0.05 && Math.abs(all.max[k] - measured.max[k]) <= 0.05);
+  const head = full && !project.instances.length ? headerSize(project) : null;
+  const pick = (a: "width" | "height" | "depth") => (head && head[a] > 0 && head[a] <= m[a] + 1 / 32 ? head[a] : m[a]);
+  const out = { width: pick("width"), height: pick("height"), depth: pick("depth") };
+  const header = { width: !!head && out.width === head.width, height: !!head && out.height === head.height, depth: !!head && out.depth === head.depth };
+  // Line length on the drawing box (the drawn bounds may differ slightly from the true surfaces): scale by the share.
+  const share = (a: "width" | "height" | "depth") => (m[a] > 0 ? Math.min(1, out[a] / m[a]) : 1);
+  return {
+    ...out,
+    header,
+    lineW: (bb: { min: V3; max: V3 }) => (bb.max.x - bb.min.x) * share("width"),
+    lineH: (bb: { min: V3; max: V3 }) => (bb.max.y - bb.min.y) * share("height"),
+    lineD: (bb: { min: V3; max: V3 }) => (bb.max.z - bb.min.z) * share("depth"),
+  };
 }
 
 export function drawBubble(doc: jsPDF, x: number, y: number, letter: string, r = 8.5, muted = false) {
@@ -1030,16 +1159,15 @@ export function drawShape(doc: jsPDF, sh: Shape2D, x: number, y: number, s: numb
     return;
   }
   const outer = sh.pts.map(([a, b]) => ({ x: x + a * s, y: y + b * s }));
-  if (sh.holes?.length) polyHoles(doc, [outer, ...sh.holes.map((q) => holeRing(x + q.x * s, y + q.y * s, q.r * s, holeSegments(q.r)))]);
-  else poly(doc, outer, "FD");
-}
-
-/** A hole as a closed ring (same segment count as the 3D drawings). */
-function holeRing(cx: number, cy: number, r: number, n: number): { x: number; y: number }[] {
-  return Array.from({ length: n }, (_, k) => {
-    const t = (k / n) * Math.PI * 2;
-    return { x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) };
-  });
+  if (sh.holes?.length) {
+    // Exact arcs, not a polygon: round at any zoom (same rule as the iso drawings).
+    ringPath(doc, outer);
+    for (const q of sh.holes) {
+      const c = { x: x + q.x * s, y: y + q.y * s, z: 0 }, r = q.r * s;
+      rimPath(doc, c, { x: r, y: 0, z: 0 }, { x: 0, y: r, z: 0 }, (p) => ({ x: p.x, y: p.y }));
+    }
+    doc.fillStrokeEvenOdd();
+  } else poly(doc, outer, "FD");
 }
 
 export function drawShapeInRect(doc: jsPDF, sh: Shape2D, x: number, y: number, w: number, h: number, edge: RGB) {
