@@ -9,18 +9,44 @@ import { EMPTY_SNAPSHOT, STATUS_RANK, logKey, safePrompt, trustedPopular, type I
 
 export const FREE_TIER = 500_000;
 export const BUDGET = 450_000;
-export const WRITE_CMDS = 9; // INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst
+export const WRITE_CMDS = 10; // most a write sends: INCRBY budget + HSETNX meta + ZINCRBY top + ZADD GT status + ZADD recent + ZREMRANGEBYRANK + HSET stamp + HINCRBY burst site + EXPIRE burst + HMGET previous burst bucket
+/**
+ * The two commands a write only sometimes sends (per instance, deterministic, so tests can pin them):
+ * - ZREMRANGEBYRANK recent: on the instance's 1st write and every TRIM_EVERY-th after, so the recent log holds at
+ *   most 200 + TRIM_EVERY − 1 from one instance (the snapshot still reads only its newest 200);
+ * - EXPIRE burst: on the instance's first write into each minute's bucket (TTL 120 s from then, which still covers
+ *   the next minute's read of it as the previous bucket).
+ * Typical write: WRITE_CMDS − 2 (+ RUN_CMDS).
+ */
+export const TRIM_EVERY = 8;
+export const RECENT_MAX = 200;
 /** One more when the client sent a run id (HINCRBY burst run:<id>). */
 export const RUN_CMDS = 1;
-/** A write inside a burst re-stamps its row "possible-test": INCRBY budget + HSET stamp, in a second pipeline. */
-export const BURST_FIX_CMDS = 2;
 /**
- * Burst rate, counted on the server only: written builds per fixed 60 s bucket, site-wide and per run id, in one
- * short-lived hash (EXPIRE 120 s). The counter is never stored with a row; only the stamp's source changes.
+ * A write inside a burst, in a second pipeline:
+ * - a row's first write: INCRBY budget + HINCRBY ideas:ptest + HEXPIRE + HSET stamp "possible-test" (BURST_NEW_CMDS);
+ * - a row written before: INCRBY budget + HINCRBY ideas:ptest + HEXPIRE (BURST_FIX_CMDS). If every earlier write was a
+ *   possible-test write too, a third pipeline re-stamps it (BURST_STAMP_CMDS). A row that has had a live write stays
+ *   live: a later possible-test write only bumps its ideas:ptest count, never its source.
+ */
+export const BURST_FIX_CMDS = 3;
+export const BURST_NEW_CMDS = 4;
+export const BURST_STAMP_CMDS = 2;
+/**
+ * Burst rate, counted on the server only: written builds per 60 s bucket, site-wide and per run id, in one
+ * short-lived hash (EXPIRE 120 s). The window slides: the previous bucket is weighted in by how much of it still
+ * falls inside the last 60 s (burstRate), so a burst spread across a minute boundary is still seen. The counter is
+ * never stored with a row; only the stamp's source changes.
  */
 export const BURST_WINDOW_S = 60;
 export const SITE_BURST = 60; // more than 60 written builds site-wide in one minute
 export const RUN_BURST = 10; // more than 10 written builds from one run id in one minute
+/** Sliding 60 s rate: the previous bucket × the part of it still inside the window + the current bucket. */
+export function burstRate(prev: number, cur: number, now: Date): number {
+  const w = BURST_WINDOW_S * 1000;
+  const elapsed = (now.getTime() % w) / w;
+  return (Number.isFinite(cur) ? cur : 0) + (Number.isFinite(prev) ? prev : 0) * (1 - elapsed);
+}
 const RUN_ID = /^[a-z0-9]{8,32}$/i;
 export const runIdOf = (v: unknown): string | null => (typeof v === "string" && RUN_ID.test(v) ? v : null);
 export const READ_CMDS = 6;
@@ -29,11 +55,21 @@ export const SNAPSHOT_MS = 600_000;
 const TIMEOUT_MS = 1500;
 // ideas:stamp is covered by the coming 90-day retention sweep (/workspace/wt/retention-plan.md), the same as ideas:meta.
 // ideas:burst:<minute> lives 120 s and holds counts only (field "site" and "run:<id>"), never a prompt or row key.
-const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", burst: (now: Date) => `ideas:burst:${Math.floor(now.getTime() / (BURST_WINDOW_S * 1000))}` };
+/**
+ * ideas:ptest counts a row's possible-test writes (row key → count, no text), for the sticky-live rule. Every count
+ * write carries its expiry: HEXPIRE on that one field, PTEST_TTL_S (85 days, #39's RETAIN_DAYS), refreshed by each
+ * possible-test write (Upstash hashes take a TTL per field). A field only lapses after 85 days with no possible-test
+ * write; the row's ideas:top count then outweighs it, so the row reads as having had live writes and a later burst
+ * only counts, never re-stamps (the safe side: a lapse can't turn a live row into test traffic).
+ */
+export const PTEST_TTL_S = 85 * 86_400;
+const ptestCount = (key: string, n: number): Cmd[] => [["HINCRBY", K.ptest, key, n], ["HEXPIRE", K.ptest, PTEST_TTL_S, "FIELDS", 1, key]];
+const bucket = (now: Date) => Math.floor(now.getTime() / (BURST_WINDOW_S * 1000));
+const K = { snap: "ideas:snap", lock: "ideas:snap:lock", budget: (m: string) => `ideas:cmds:${m}`, meta: "ideas:meta", top: "ideas:top", status: "ideas:status", recent: "ideas:recent", stamp: "ideas:stamp", ptest: "ideas:ptest", burst: (now: Date, back = 0) => `ideas:burst:${bucket(now) - back}` };
 
 type Cmd = (string | number)[];
 export type Pipe = (cmds: Cmd[]) => Promise<unknown[] | null>;
-export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0 };
+export const stats = { dropped: 0, overBudget: 0, written: 0, coalesced: 0, possibleTest: 0, stayedLive: 0 };
 
 export function storeEnv(env: Record<string, string | undefined> = process.env): { url: string; token: string } | null {
   const url = env.UPSTASH_REDIS_REST_URL || env.KV_REST_API_URL;
@@ -53,9 +89,26 @@ export function restPipe(env = storeEnv()): Pipe | null {
     });
     if (!res.ok) throw new Error(`store ${res.status}`);
     const out = (await res.json()) as { result?: unknown; error?: string }[];
-    return out.map((r) => (r.error ? null : r.result));
+    return out.map((r, i) => {
+      if (!r.error) return r.result;
+      warnRejected(cmds[i]);
+      return null;
+    });
   };
 }
+
+/**
+ * A rejected command in a pipeline (e.g. HEXPIRE if the store didn't support it) is otherwise silent: Upstash
+ * pipelines aren't transactions, so the rest still applies and the entry reads as null. Log one line per rejected
+ * command with only its name and key prefix ("HEXPIRE ideas:ptest"); never the error text, values, fields, prompt
+ * text, tokens or the URL. Anything that isn't a plain lowercase key prefix logs as "?".
+ */
+export function rejectedLine(cmd: Cmd | undefined): string {
+  const name = typeof cmd?.[0] === "string" && /^[A-Z]{1,20}$/i.test(cmd[0]) ? cmd[0].toUpperCase() : "?";
+  const prefix = typeof cmd?.[1] === "string" ? (/^[a-z][a-z0-9_-]{0,30}(:[a-z][a-z0-9_-]{0,30})?(?=:|$)/.exec(cmd[1])?.[0] ?? "?") : "?";
+  return `[ideas] store rejected ${name} ${prefix}`;
+}
+const warnRejected = (cmd: Cmd | undefined) => console.warn(rejectedLine(cmd));
 
 const month = (now: Date) => now.toISOString().slice(0, 7);
 
@@ -73,7 +126,7 @@ export class Budget {
 }
 
 export class IdeaStore {
-  private pending = new Map<string, { rec: LogRecord; n: number; last: number; timer?: boolean }>();
+  private pending = new Map<string, { rec: LogRecord; n: number; last: number; timer?: boolean; ptest?: boolean }>();
   /**
    * F34: `hold` keeps the function alive until a held burst is written (Vercel waitUntil in prod);
    * `wait` is the timer (injectable for tests).
@@ -85,6 +138,9 @@ export class IdeaStore {
     private wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
   ) {}
   get live() { return !!this.pipe; }
+  /** Writes this instance has sent (drives the trim cadence) and the last burst bucket it set a TTL on. */
+  private writes = 0;
+  private ttlBucket = -1;
 
   /** R4/R7: one pipelined write; repeats of a key within 10 s on this instance fold into one increment. Never throws. */
   async record(rec: LogRecord, now = new Date(), opts: { run?: string | null } = {}): Promise<"written" | "coalesced" | "off" | "over-budget" | "dropped"> {
@@ -104,7 +160,9 @@ export class IdeaStore {
     }
     const n = (p?.n ?? 0) + 1;
     const run = runIdOf(opts.run);
-    const cmds = WRITE_CMDS + (run ? RUN_CMDS : 0);
+    const trim = this.writes % TRIM_EVERY === 0; // the 1st, 9th, 17th… write on this instance
+    const ttl = this.ttlBucket !== bucket(now);
+    const cmds = WRITE_CMDS - (trim ? 0 : 1) - (ttl ? 0 : 1) + (run ? RUN_CMDS : 0);
     if (!this.budget.allows(cmds, now)) { stats.overBudget++; return "over-budget"; }
     this.pending.set(rec.key, { rec, n: 0, last: now.getTime() });
     if (this.pending.size > 5000) this.pending.clear();
@@ -113,34 +171,64 @@ export class IdeaStore {
       const source = rec.source ?? "unknown";
       const stamp = (s: string) => JSON.stringify({ at: now.toISOString(), source: s });
       const burst = K.burst(now);
-      const out = await this.pipe([
+      const list: Cmd[] = [
         ["INCRBY", K.budget(month(now)), cmds],
         ["HSETNX", K.meta, rec.key, meta],
         ["ZINCRBY", K.top, n, rec.key],
         ["ZADD", K.status, "GT", STATUS_RANK[rec.status], rec.key], // R5: status only moves up
         ["ZADD", K.recent, now.getTime(), rec.key],
-        ["ZREMRANGEBYRANK", K.recent, 0, -201],
         ["HSET", K.stamp, rec.key, stamp(source)], // request time + gate source
-        ["HINCRBY", burst, "site", 1],
-        ["EXPIRE", burst, BURST_WINDOW_S * 2],
-        ...(run ? [["HINCRBY", burst, `run:${run}`, 1] as Cmd] : []),
-      ]);
+      ];
+      if (trim) list.push(["ZREMRANGEBYRANK", K.recent, 0, -(RECENT_MAX + 1)]);
+      const at = (c: Cmd) => list.push(c) - 1;
+      const iSite = at(["HINCRBY", burst, "site", 1]);
+      if (ttl) list.push(["EXPIRE", burst, BURST_WINDOW_S * 2]);
+      const iRun = run ? at(["HINCRBY", burst, `run:${run}`, 1]) : -1;
+      const iPrev = at(["HMGET", K.burst(now, 1), "site", ...(run ? [`run:${run}`] : [])]); // the previous minute, for the sliding window
+      const out = await this.pipe(list);
+      this.writes++;
+      if (ttl) this.ttlBucket = bucket(now);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
-      // Burst: this write's own count says so (no lag), so its stamp is corrected in the same request. Rare: +2 commands.
-      const site = Number(out?.[7]), perRun = run ? Number(out?.[9]) : 0;
-      if (source === "live" && (site > SITE_BURST || perRun > RUN_BURST) && this.budget.allows(BURST_FIX_CMDS, now)) {
-        stats.possibleTest++;
-        try {
-          const fix = await this.pipe([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ["HSET", K.stamp, rec.key, stamp("possible-test")]]);
-          this.budget.saw(Number(fix?.[0]));
-        } catch { stats.dropped++; }
-      }
+      // Burst: this write's own count says so (no lag), so its stamp is settled in the same request.
+      const prev = (out?.[iPrev] as (string | null)[] | null) ?? [];
+      const site = burstRate(Number(prev[0] ?? 0), Number(out?.[iSite]), now);
+      const perRun = run ? burstRate(Number(prev[1] ?? 0), Number(out?.[iRun]), now) : 0;
+      if (source === "live" && (site > SITE_BURST || perRun > RUN_BURST)) await this.possibleTest(rec.key, n, Number(out?.[2]), stamp("possible-test"), now);
       return "written";
     } catch {
       stats.dropped++;
       return "dropped";
     }
+  }
+
+  /**
+   * A live-gated write inside a burst. Sticky live: a row that has had a live write keeps its source, and the write
+   * only adds to the row's possible-test count. `total` is the row's count after this write (ZINCRBY's reply);
+   * total − possible-test count > 0 means some earlier write was live. Never throws.
+   */
+  private async possibleTest(key: string, n: number, total: number, stamp: string, now: Date): Promise<void> {
+    const p = this.pending.get(key);
+    if (p) p.ptest = true; // its held repeats count as possible-test too
+    try {
+      if (Number.isFinite(total) && total <= n) { // the row's first write: count and stamp in one pipeline
+        if (!this.budget.allows(BURST_NEW_CMDS, now)) { stats.overBudget++; return; }
+        stats.possibleTest++;
+        const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_NEW_CMDS], ...ptestCount(key, n), ["HSET", K.stamp, key, stamp]]);
+        this.budget.saw(Number(fix?.[0]));
+        return;
+      }
+      if (!this.budget.allows(BURST_FIX_CMDS, now)) { stats.overBudget++; return; }
+      const fix = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_FIX_CMDS], ...ptestCount(key, n)]);
+      this.budget.saw(Number(fix?.[0]));
+      const ptest = Number(fix?.[1]);
+      // An unreadable count keeps the row as it is (never flips on doubt).
+      if (!Number.isFinite(total) || !Number.isFinite(ptest) || total - ptest > 0) { stats.stayedLive++; return; }
+      if (!this.budget.allows(BURST_STAMP_CMDS, now)) { stats.overBudget++; return; }
+      stats.possibleTest++;
+      const st = await this.pipe!([["INCRBY", K.budget(month(now)), BURST_STAMP_CMDS], ["HSET", K.stamp, key, stamp]]);
+      this.budget.saw(Number(st?.[0]));
+    } catch { stats.dropped++; }
   }
 
   /** F34: write a key's held repeats (if any) as one increment. Never throws. */
@@ -150,11 +238,12 @@ export class IdeaStore {
     p.timer = false;
     const n = p.n;
     if (!n) return;
-    if (!this.budget.allows(3, now)) { stats.overBudget++; return; }
+    const cmds = p.ptest ? 5 : 3; // held repeats of a possible-test write add to its possible-test count (+ its TTL)
+    if (!this.budget.allows(cmds, now)) { stats.overBudget++; return; }
     p.n = 0;
     p.last = now.getTime();
     try {
-      const out = await this.pipe([["INCRBY", K.budget(month(now)), 3], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key]]);
+      const out = await this.pipe([["INCRBY", K.budget(month(now)), cmds], ["ZINCRBY", K.top, n, key], ["ZADD", K.status, "GT", STATUS_RANK[p.rec.status], key], ...(p.ptest ? ptestCount(key, n) : [])]);
       this.budget.saw(Number(out?.[0]));
       stats.written++;
     } catch { stats.dropped++; }
@@ -199,7 +288,7 @@ export class IdeaStore {
       const head = await this.pipe([
         ["INCRBY", K.budget(month(now)), READ_CMDS],
         ["ZREVRANGE", K.top, 0, 999, "WITHSCORES"],
-        ["ZREVRANGE", K.recent, 0, 199, "WITHSCORES"], // the whole recent log (it holds 200): lastSeen per key
+        ["ZREVRANGE", K.recent, 0, RECENT_MAX - 1, "WITHSCORES"], // the newest 200 of the recent log (it holds up to 200 + TRIM_EVERY − 1 between trims): lastSeen per key
       ]);
       this.budget.saw(Number(head?.[0]));
       const flat = (head?.[1] as string[]) ?? [];
