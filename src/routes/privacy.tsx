@@ -3,6 +3,17 @@ import { SiteChrome } from "@/components/site/chrome";
 
 const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
 
+/**
+ * The day the current privacy wording went live (main 49aa20f, #95, 19 Oct 2026). Never a future date: a guard
+ * (scripts/quick-wins.test.ts) fails if it is after today or before the wording's own commit (ca8cf29, 17 Oct).
+ * Change both lines with the wording.
+ */
+export const PRIVACY_UPDATED = "2026-10-19";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const [py, pm, pd] = PRIVACY_UPDATED.split("-").map(Number);
+/** Same text on the server and in the browser (no locale formatting): "19 Oct 2026". */
+const PRIVACY_UPDATED_TEXT = `${pd} ${MONTHS[pm - 1]} ${py}`;
+
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
@@ -28,7 +39,7 @@ function PrivacyPage() {
         <h1 className="mt-3 font-display text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">
           Privacy Policy
         </h1>
-        <p className="mt-4 text-sm text-ink-muted">Last updated 20 Oct 2026.</p>
+        <p className="mt-4 text-sm text-ink-muted">Last updated {PRIVACY_UPDATED_TEXT}.</p>
 
         <div className="mt-8 space-y-8 text-base leading-relaxed text-ink-muted">
           <section>
