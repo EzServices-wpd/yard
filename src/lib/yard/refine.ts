@@ -3,6 +3,7 @@ import { getCatalogItem } from "./catalog";
 import { generateFromPrompt } from "./promptMain";
 import { findInterference } from "./interference";
 import type { Panel, YardProject } from "./types";
+import { drawerBoxes } from "./hollowDrawers";
 
 /**
  * Spec 003: the free Refine box. Merges a short phrase ("make it 6 inches taller", "add a drawer",
@@ -78,7 +79,8 @@ export function refinePrompt(prompt: string, phrase: string, project: Pick<YardP
 
 const AXES = [["width", "Width"], ["height", "Height"], ["depth", "Depth"]] as const;
 const COUNTED = [["shelf", "Shelves"], ["drawer", "Drawers"], ["door", "Doors"], ["divider", "Center supports"]] as const;
-const n = (p: Pick<YardProject, "panels">, t: string) => p.panels.filter((x) => x.type === t).length;
+// A hollow drawer (front, two sides, back, bottom) counts once, as the drawer it is.
+const n = (p: Pick<YardProject, "panels">, t: string) => (t === "drawer" ? drawerBoxes(p.panels).length : p.panels.filter((x) => x.type === t).length);
 
 /** What differs between two builds, in shop words ("Height 60" → 66""). */
 export function describeChange(a: YardProject, b: YardProject): string[] {
@@ -93,7 +95,14 @@ export type RefineResult = { project: YardProject | null; applied: string[]; not
 
 const TARGET: Record<string, string[]> = { shelves: ["shelf"], drawers: ["drawer", "rail"], doors: ["door"], cubbies: ["divider", "cubby"], hooks: ["hook"] };
 const stem = (name: string) => name.toLowerCase().replace(/\d.*$/, "").trim();
-const types = (p: Pick<YardProject, "panels">) => p.panels.reduce<Record<string, number>>((m, x) => ((m[x.type] = (m[x.type] ?? 0) + 1), m), {});
+const types = (p: Pick<YardProject, "panels">) => {
+  const m = p.panels.filter((x) => x.type !== "drawer").reduce<Record<string, number>>((m, x) => ((m[x.type] = (m[x.type] ?? 0) + 1), m), {});
+  const boxes = drawerBoxes(p.panels).length;
+  if (boxes) m.drawer = boxes;
+  return m;
+};
+/** Drawer rows (distinct box heights from the floor): a size step may split a row into columns, never add or drop a row. */
+const drawerRows = (p: Pick<YardProject, "panels">) => new Set(drawerBoxes(p.panels).map((d) => Math.round(d.position.y * 8))).size;
 
 /** Part types whose count follows from the size (spans, spacing), so a size step may change them (C19). */
 export const DERIVED_TYPES: readonly string[] = ["shelf", "divider", "rail", "deck", "bay"];
@@ -114,12 +123,14 @@ function formBreak(before: YardProject, after: YardProject, kind: string, noun?:
   // C19: a size step re-derives the counts that follow from size (center supports, shelves, rails, slats, deck boards; never cleats, which carry casters and hangers).
   const free = new Set(kind === "count" && noun ? TARGET[noun] ?? [] : kind === "size" ? DERIVED_TYPES : []);
   const a = types(before), b = types(after);
+  // A size step past one 36" drawer column splits each drawer row into columns: same rows, more drawers.
+  if (kind === "size" && a.drawer && b.drawer && drawerRows(before) === drawerRows(after)) free.add("drawer");
   for (const t of new Set([...Object.keys(a), ...Object.keys(b)])) if (!free.has(t) && (a[t] ?? 0) !== (b[t] ?? 0)) return `it would change the ${partCountLabel(t, before, after)} (${a[t] ?? 0} → ${b[t] ?? 0})`;
   if (noun && want != null && n(after, TARGET[noun]![0]) !== want) return `the form can't hold ${want} ${noun}`;
   if (findInterference(after).length > findInterference(before).length) return "the new parts would collide with the build";
   const doors = after.panels.filter((x) => x.type === "door");
   const over = (p: Panel, q: Panel) => p.position.x < q.position.x + q.size.width && q.position.x < p.position.x + p.size.width && p.position.y < q.position.y + q.size.height && q.position.y < p.position.y + p.size.height;
-  if (noun === "drawers" && after.panels.some((d) => d.type === "drawer" && doors.some((x) => over(d, x)))) return "the drawers would sit behind the doors";
+  if (noun === "drawers" && drawerBoxes(after.panels).some((d) => doors.some((x) => over(d, x)))) return "the drawers would sit behind the doors";
   return null;
 }
 

@@ -9,6 +9,8 @@ import type { Panel, YardProject } from "./types";
 export type StructureIssue = { code: "floating" | "hanging-support" | "flat-beam" | "slender-post"; part: string; detail: string };
 
 const TOUCH = 1 / 16;
+/** Side-mount slide clearance each side of a drawer box. */
+const SLIDE_GAP_IN = 0.5;
 const BEAM = /\b(?:bearers?|joists?|beams?|side rail|centre rail|center rail|aprons?|stringers?)\b/i;
 const SUPPORT = /\b(?:bearers?|joists?|beams?|aprons?|stretchers?|cleats?|ledgers?|supports?|battens?|rails?|slats?)\b/i;
 
@@ -49,8 +51,19 @@ export function structureIssues(project: YardProject): StructureIssue[] {
   const ab = boxes.map(aabb);
   const axisAligned = (i: number) => isPanel(i) && !(panelOf(i).yaw ?? 0);
   // Real contact: two square boxes share a face (a sliver of edge is not a joint); anything else within a hair.
+  // A hollow drawer's side rides its slide on the carcase side or bay divider beside it (the ½" slide gap).
+  const slideHung = (i: number, j: number): boolean => {
+    if (!isPanel(i) || !isPanel(j)) return false;
+    const P = panelOf(i), Q = panelOf(j);
+    const [d, c] = P.drawerPart === "side" ? [i, j] : Q.drawerPart === "side" ? [j, i] : [-1, -1];
+    if (d < 0 || panelOf(c).type === "drawer" || panelOf(c).drawerId) return false;
+    const D = ab[d], C = ab[c];
+    const tall = C.max[1] - C.min[1] > C.max[0] - C.min[0];
+    return tall && Math.max(D.min[0] - C.max[0], C.min[0] - D.max[0]) <= SLIDE_GAP_IN + TOUCH && ov(D, C, 1) > TOUCH && ov(D, C, 2) > TOUCH;
+  };
   const contact = (i: number, j: number): number => {
     const A = ab[i], B = ab[j];
+    if (axisAligned(i) && axisAligned(j) && slideHung(i, j)) return 0;
     if (axisAligned(i) && axisAligned(j)) {
       const o = [0, 1, 2].map((k) => ov(A, B, k));
       if (o.every((v) => v > TOUCH)) return 3; // let into each other (a joint)

@@ -1,4 +1,5 @@
 import { getCatalogItem } from "./catalog";
+import { drawerBoxes } from "./hollowDrawers";
 import { isHingedLidChest } from "./family";
 import { isBoundingDrawerPanel } from "./shopPlural";
 import type { AssemblyStep, Panel, YardProject } from "./types";
@@ -200,7 +201,7 @@ export function pieceControls(project: YardProject): {
     (panels.some((p) => p.type === "drawer") ||
       /nightstand|bedside|dresser|file\s*cabinet|filing\s*cabinet|\bdesk\b|\bvanity\b|of\s+drawers/.test(text));
   if (drawerPiece && !/bedside\s+shelf|filing\s+shelf/.test(text)) {
-    if (panels.length) drawers = panels.filter((p) => p.type === "drawer").length;
+    if (panels.length) drawers = drawerBoxes(panels as Panel[]).length;
     else {
       const spoken = spokenDrawerCount(project.prompt ?? "");
       if (spoken != null) drawers = spoken;

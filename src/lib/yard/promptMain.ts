@@ -1,4 +1,5 @@
 import { seedIds } from "../stableId";
+import { hollowDrawers } from "./hollowDrawers";
 import { resolvePurpose } from "./purposeForms";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -397,7 +398,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   if (idDepth === 0) seedIds(args);
   idDepth++;
   try {
-    const built = generateSeeded(...args);
+    // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
+    const built = idDepth === 1 ? hollowDrawers(generateSeeded(...args)) : generateSeeded(...args);
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } finally {
     idDepth--;

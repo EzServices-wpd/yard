@@ -188,6 +188,13 @@ export type Panel = {
   };
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;
+  /**
+   * The drawer this part belongs to (hollowDrawers): every part of one drawer (front, two sides, back, bottom) carries
+   * the same id, so the bench slides them out together and a See-inside view can group them.
+   */
+  drawerId?: string;
+  /** Which of the drawer's five parts this is. */
+  drawerPart?: "front" | "side" | "back" | "bottom";
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */
   blank?: { lengthIn: number; widthIn: number; thicknessIn: number };
   /**

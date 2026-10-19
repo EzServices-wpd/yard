@@ -12,6 +12,7 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
+import { askedDrawerCount, drawerSection, SHARED_DRAWER_ROW_IN } from "./frontSections";
 import { CONTACT } from "./materialForUse";
 
 type Size = { width: number; height: number; depth: number };
@@ -1051,7 +1052,46 @@ function noteStock(recipe: Recipe): Recipe {
   }) };
 }
 
+/**
+ * Front sections on a recipe build (class F17 doors-drawers): a requested drawer count always builds. A recipe with no
+ * drawer of its own stands on a drawer case that holds every drawer asked for, inside the build's own footprint and
+ * stock; a typed height is the whole build's, so the body above takes what the case leaves.
+ */
 export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
+  const lower = prompt.toLowerCase();
+  const count = recipe0.parts.some((q) => /\bdrawer/i.test(`${q.role} ${q.name}`)) ? 0 : askedDrawerCount(lower);
+  if (!count) return buildRecipeBody(recipe0, prompt, materialOverride, sizeOverride);
+  const typedH = sizeOverride?.height ?? typedSize(prompt, recipe0).height;
+  const r8 = (n: number) => Math.round(n * 8) / 8;
+  const rowIn = Math.max(1.5, Math.min(SHARED_DRAWER_ROW_IN, recipe0.size.height * 0.5));
+  const secH = r8(typedH != null ? Math.min(count * rowIn, typedH * 0.6) : count * rowIn);
+  const built = buildRecipeBody(recipe0, prompt, materialOverride, typedH != null ? ({ ...(sizeOverride ?? {}), height: typedH - secH } as Size) : sizeOverride);
+  const p = built.project;
+  const body = p.panels;
+  const minX = Math.min(...body.map((q) => q.position.x)), maxX = Math.max(...body.map((q) => q.position.x + q.size.width));
+  const minZ = Math.min(...body.map((q) => q.position.z)), maxZ = Math.max(...body.map((q) => q.position.z + q.size.depth));
+  const W = maxX - minX, D = maxZ - minZ;
+  const mat = p.primaryMaterialId ?? "plywood-3-4-4x8";
+  // The case is cut from the body's own stock at the body's own thickness.
+  const thick = body.filter((q) => q.materialId === mat).map((q) => Math.min(q.size.width, q.size.height, q.size.depth)).sort((a, b) => a - b);
+  const T = r8(thick[Math.floor(thick.length / 2)] ?? 0.75);
+  for (const q of body) q.position = { ...q.position, y: q.position.y + secH };
+  const part = (type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, m = mat): Panel => ({ id: `recipe-${recipe0.key}-case-${name.toLowerCase().replace(/\W+/g, "-")}`, type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId: m });
+  const sec = drawerSection({ x0: minX + T, innerW: W - 2 * T, yBottom: T, yTop: secH, depth: D, count, width: W, shares: false });
+  const kase = [
+    part("upright", "Left case side", minX, 0, minZ, T, secH, D),
+    part("upright", "Right case side", maxX - T, 0, minZ, T, secH, D),
+    part("bottom", "Case bottom", minX + T, 0, minZ + 0.25, W - 2 * T, T, D - 0.25),
+    part("back", "Case back", minX + T, 0, minZ, W - 2 * T, secH, 0.25, "plywood-1-4-4x8"),
+    ...sec.panels.map((q) => ({ ...q, position: { ...q.position, z: q.position.z + minZ }, materialId: mat })),
+  ];
+  p.panels = [...kase, ...body];
+  p.overall = { ...p.overall, height: typedH ?? r8(p.overall.height + secH) };
+  p.notes = [...(p.notes ?? []), `${count === 1 ? "One drawer" : `${count} drawers`} in a case under the ${p.name.toLowerCase()}, inside its ${fmtIn(W)}" × ${fmtIn(D)}" footprint. Each drawer is a front, a back, two sides and a 1/4" bottom.`];
+  return built;
+}
+
+function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
   const recipe = noteStock(hollowVessels(recipe0));
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;

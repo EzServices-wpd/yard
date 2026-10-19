@@ -33,6 +33,7 @@ describe("inside counts change the plan", () => {
 });
 
 import { applyInsideCount } from "./insideCount";
+import { drawerBoxes } from "./hollowDrawers.ts";
 
 function planText(p: ReturnType<typeof generateFromPrompt>) {
   const plan = buildPlan(p);
@@ -67,9 +68,9 @@ describe("shelf-family counts drive the cut list", () => {
 
   it("a drawer count changes the cut list and the steps", () => {
     const a = generateFromPrompt("drawer unit 24 wide");
-    assert.equal(a.panels.filter((p) => p.type === "drawer").length, 3);
+    assert.equal(drawerBoxes(a.panels).length, 3);
     const b = applyInsideCount(a, { drawers: 1 });
-    assert.equal(b.panels.filter((p) => p.type === "drawer").length, 1);
+    assert.equal(drawerBoxes(b.panels).length, 1);
     const text = planText(b);
     assert.notEqual(planText(a), text);
     assert.match(text, /Drawer front×1/);
