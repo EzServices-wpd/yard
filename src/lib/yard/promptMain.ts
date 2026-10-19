@@ -59,7 +59,7 @@ import { blockKit, buildBlocks, defaultBlockStock, detectBlockSubject, pieceBoun
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
 import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct } from "./productModel";
-import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
+import { heldCollection, heldObjectFor, heldPhrase, heldStandObject, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildRealObject, realObjectKind } from "./realObjects";
@@ -1171,7 +1171,13 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves)|risers?|carts?)\b/.test(lower)) return null;
   // One precedence rule. A known build class wins (cat tree, any animal, robot, frame, and the house
   // furniture identities: shoe rack, bookcase, ladder / floating / utility shelving, printer stand…).
-  if (namedBuildClass(prompt)) return null;
+  // The weekend stick family of a stand for a real held object ("plant stand": a 10" potted plant) is its model, built
+  // only when craft stock is asked for: with no stock typed it would be thrown out for a stand-in and sent to the
+  // learner, so the held-object stand (real lumber, sized to what it holds) builds the family instead.
+  const cls = namedBuildClass(prompt);
+  // The held stand takes the stick model's place only: any other class read past it (an odd-shape plate) still wins.
+  const heldTakesStick = !!cls?.startsWith("weekend:") && !hasExplicitStock(prompt) && !!heldStandObject(lower) && !namedBuildClass(prompt, { pastWeekend: true });
+  if (cls && !heldTakesStick) return null;
   // A shelf / tier count is a property of shelving furniture, never of a stand around one object.
   if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:shel(?:f|ves)|tiers?|levels?)\b/.test(lower)) return null;
   // "shelf for my X collection" is a display shelf: X is what it shows.
@@ -1180,7 +1186,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (purposeOf(prompt) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
   const phrase = heldPhrase(stripPetUse(lower));
   if (!phrase) return null;
-  const held = heldObjectFor(phrase);
+  const held = heldObjectFor(phrase) ?? heldStandObject(lower);
   if (!held) {
     // Many of X (a count or a plural: "12 bottles", "jars", "my shoes") is storage furniture for X.
     if (holdsMany(phrase)) return null;
@@ -1353,15 +1359,15 @@ function generateRaw(
   if (cut) return cut;
   const placed = buildClass ? null : placeNamedProduct(prompt);
   if (placed && !formOverride) return placed;
-  const held = placeHeldProduct(prompt);
-  if (held && !formOverride) return held;
-  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser.
+  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser (or a one-pot stand).
   // A craft stock pick (popsicle, dowel…) stays craft.
   if (!formOverride && !opts.fittedOverride) {
     const tiers = plantStandTiers(lower);
     const ask = tiers ? requestedStock(prompt, materialOverride) : null;
     if (tiers && (!ask || carcaseKind(ask) || /^lumber-/.test(ask.id))) return buildTieredPlantStand(prompt, tiers);
   }
+  const held = placeHeldProduct(prompt);
+  if (held && !formOverride) return held;
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
   const scale = opts.scale ?? "full";

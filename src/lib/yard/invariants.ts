@@ -44,11 +44,15 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
+import { detectHouseFamily } from "./family";
+import { detectWeekendFamily } from "./weekendFamily";
+import { heldStandObject } from "./heldObjects";
+import { hasExplicitStock } from "./promptHelpers";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "I34" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", I34: "F47", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -342,6 +346,28 @@ function i23(p: YardProject, prompt: string): Violation[] {
   return routesToLearner(prompt, p, ignoredTypedWords(p, prompt).length > 0) ? [v("I23", "the engine builds this form, but the live path sends it to the learner")] : [];
 }
 
+/**
+ * I34 (L1 family before learner, live walk 10-21 row 76): a prompt the existing family matching resolves (a house
+ * family, a weekend family) builds that family before the learner gets a turn. The storage family whose own closed
+ * carcase read the ask ("tool cabinet with drawers": "tool" names what it stores) and the stand family for an object
+ * Yard knows ("plant stand for a bay window": the plant is what it holds, the window is where it goes) are never a
+ * stand-in, a grey block or a learner row. A typed craft stock keeps the stick model and is not this check.
+ */
+export function i34(p: YardProject, prompt: string): Violation[] {
+  if (!prompt) return [];
+  const lower = prompt.toLowerCase();
+  const family = detectHouseFamily(prompt) ? "storage" : detectWeekendFamily(prompt)?.name;
+  if (!family) return [];
+  const ignored = () => ignoredTypedWords(p, prompt);
+  const storage = closedCarcaseReadsAsk(prompt, p, ignored);
+  const stand = !!detectWeekendFamily(prompt) && !hasExplicitStock(prompt) && !!heldStandObject(lower);
+  if (!storage && !stand) return [];
+  const out: string[] = [];
+  if (p.standIn || p.displayOnly || genericFormMark(p)) out.push(`the ${family} family resolved, but the build is ${p.displayOnly ? "a grey block" : "a stand-in"} (${p.name})`);
+  if (routesToLearner(prompt, p, ignored().length > 0)) out.push(`the ${family} family resolved, but the live path sends it to the learner`);
+  return out.map((m) => v("I34", m));
+}
+
 /** I22 (C1 named forms): a request that names a known form or purpose never falls back to a generic stand-in. */
 function i22(p: YardProject, prompt: string): Violation[] {
   const named = resolvePurpose(prompt)?.form ?? namedFormOf(prompt);
@@ -377,7 +403,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...i29(plan), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
-    ...i26(project), ...i27(project, prompt), ...i31(project, prompt, plan), ...i32(project, plan),
+    ...i26(project), ...i27(project, prompt), ...i31(project, prompt, plan), ...i32(project, plan), ...i34(project, prompt),
   ];
 }
 

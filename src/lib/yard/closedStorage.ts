@@ -64,13 +64,15 @@ export function closedStorageAsk(prompt: string): boolean {
 }
 
 /**
- * The engine's sheet carcase read the whole closed-storage ask: a storage-program carcase, closed, holding every typed
- * axis within 1/2" and every typed interior count, with no door over a drawer, titled with the typed head noun and not
- * ignoring it.
+ * The engine's sheet carcase read the whole closed-storage ask: a storage-program carcase (the family the head noun
+ * resolved to: cabinet, cupboard, closet…), closed, holding every typed axis within 1/2" and every typed interior
+ * count, with no door over a drawer, titled with the typed head noun and not ignoring it. Nothing has to be typed
+ * beyond the head noun: "tool cabinet with drawers" is the cabinet family with drawers, and "tool" names what it
+ * stores, so the family builds before the learner gets a turn (live walk 10-21 row 76).
  */
 export function closedCarcaseReadsAsk(prompt: string, p: YardProject, ignored: () => string[] = () => []): boolean {
   if (p.displayOnly || p.standIn || p.unmatched || !p.fitted || p.fitted.program !== "storage" && !/^(?:closet|pantry|wardrobe|linen)$/.test(p.fitted.program ?? "")) return false;
-  if (genericFallbackBox(p) || !closedCarcase(p) || !closedStorageAsk(prompt) || doorOverDrawer(p)) return false;
+  if (genericFallbackBox(p) || !closedCarcase(p) || doorOverDrawer(p)) return false;
   const want = typedAxes(prompt);
   if ((Object.entries(want) as [keyof typeof want, number][]).some(([a, v]) => Math.abs(p.overall[a] - v) > 0.5)) return false;
   const have = modelInteriorCounts(p);

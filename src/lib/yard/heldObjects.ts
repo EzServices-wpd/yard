@@ -66,10 +66,21 @@ export function heldPhrase(lower: string): string | null {
 }
 
 /**
+ * The real object a stand / holder / riser is named for by the word ahead of it ("plant stand", "pot riser"), when
+ * the phrase after "for" names a place rather than a held object ("plant stand for a bay window": the window is where
+ * it goes, the plant is what it holds).
+ */
+export function heldStandObject(lower: string): HeldObject | null {
+  const named = lower.split(/\s+for\s+/)[0];
+  const ahead = heldPhrase(stripPetUse(named));
+  return ahead && ahead !== named ? heldObjectFor(ahead) : null;
+}
+
+/**
  * A known build class matched: the build wins over any product-stand or owned-board routing.
  * Returns a short label for the class, or null.
  */
-export function namedBuildClass(prompt: string): string | null {
+export function namedBuildClass(prompt: string, opts: { pastWeekend?: boolean } = {}): string | null {
   const lower = prompt.toLowerCase();
   // A purpose phrase ("for my robot collection") names what is held, not the build.
   const coll = heldCollection(lower);
@@ -88,7 +99,7 @@ export function namedBuildClass(prompt: string): string | null {
   if (tmpl) return `template:${tmpl}`;
   const climb = climbIdentityLabel(pet);
   if (climb) return `climb:${climb}`;
-  const wk = detectWeekendFamily(pet);
+  const wk = opts.pastWeekend ? null : detectWeekendFamily(pet);
   if (wk) return `weekend:${wk.family}:${wk.name}`;
   // Named house furniture (printer stand, TV console, media ledge, bedside shelf, odd-shape plates).
   const stem = identityTitleStem(pet);
