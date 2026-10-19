@@ -300,8 +300,10 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
       const named = entries.find((e) => e.name.toLowerCase() === phrase.toLowerCase());
       const found = named ?? findPlate(entries, words[words.length - 1]);
       if (!found) return full;
-      const dim = parseFloat(whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)/)?.[1] ?? "");
-      const plate = named ?? sizedPlate(entries, found, dim);
+      // Several cut lines share this exact name (center supports of two heights): its own size picks the letter.
+      const dims = whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?(?:\s*[×x]\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?)?/);
+      const num = (w?: string, a?: string, b?: string) => (w ? parseFloat(w) + (a && b ? Number(a) / Number(b) : 0) : NaN);
+      const plate = sizedPlate(entries, found, num(dims?.[1], dims?.[2], dims?.[3]), num(dims?.[4], dims?.[5], dims?.[6]));
       return `${lead}${plate.label} ${phrase}${qty ?? ""}${dash}`;
     },
   );

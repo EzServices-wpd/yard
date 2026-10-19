@@ -287,7 +287,7 @@ function overlayFaces(panels: Panel[]) {
 function seatDrawerBoxes(panels: Panel[]) {
   for (const f of panels.filter((p) => /drawer\s*front/i.test(p.name) && !p.yaw)) {
     const fb = worldBox(f);
-    for (const d of panels.filter((p) => p.type === "drawer" && !p.yaw)) {
+    for (const d of panels.filter((p) => p.type === "drawer" && !p.drawerId && !p.yaw)) {
       const b = worldBox(d);
       const gap = fb.z0 - b.z1;
       if (gap > 1e-6 && gap <= 1 && b.x1 > fb.x0 + 0.5 && b.x0 < fb.x1 - 0.5 && b.y1 > fb.y0 + 0.5 && b.y0 < fb.y1 - 0.5) d.position = { ...d.position, z: d.position.z + gap };
