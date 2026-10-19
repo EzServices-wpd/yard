@@ -12,6 +12,7 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
+import { CONTACT } from "./materialForUse";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -23,7 +24,9 @@ export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
   const out: Partial<Size> = {};
   const axis = { wide: "width", long: "width", tall: "height", high: "height", deep: "depth" } as const;
   for (const m of lower.matchAll(/(\d+(?:\.\d+)?)\s*(ft|feet|foot|'|in|inch|inches|")?\s*(wide|long|tall|high|deep)\b/g)) {
-    out[axis[m[3] as keyof typeof axis]] = Number(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
+    // "48 wide 96 long": with a width typed too, "long" is the other plan side.
+    const k = m[3] === "long" && /\d\s*(?:ft|feet|foot|'|in|inch|inches|")?\s*wide\b/.test(lower) ? "depth" : axis[m[3] as keyof typeof axis];
+    out[k] = Number(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
   }
   const pair = lower.match(/\b(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)\b(?!\s*x)/);
   if (pair && !/^[124]$/.test(pair[1]) && out.width == null && out.depth == null) {
@@ -58,7 +61,12 @@ const STOCK_WORD = /\b\d+\s*x\s*\d+\b|plywood|\bply\b|cardboard|popsicle|craft\s
  * the recipe's own stock builds it and a note says why.
  */
 function stockFor(prompt: string, recipe: Recipe, override?: string) {
-  const typed = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  const said = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  // C15: a size that names a part's own section ("with 4x4 posts" on a bed whose posts are 4x4) is that part's stock,
+  // not the whole build's: the boards stay the recipe's (the raised bed's 2x6 courses, as its note says).
+  // A species with a footprint ("cedar raised garden bed 4x8") is the species alone: the 4x8 is the bed's size, not a 1x4.
+  const speciesOnly = !override && said?.id === "lumber-1x4-8" && !/\b1\s*x\s*4\b/i.test(prompt);
+  const typed = !override && said && (speciesOnly || recipe.parts.some((p) => p.stock === said.id)) ? undefined : said;
   let ok = typed && !isWireStock(typed) ? typed : null;
   const craft = !!ok && CRAFT.has(ok.category);
   const big = Math.max(recipe.size.width, recipe.size.height, recipe.size.depth) > 48;
@@ -735,14 +743,43 @@ function trestleLegs(recipe: Recipe, panels: Panel[], size: Size): void {
   }
 }
 
+/** True where two plain boxes share more than 1/16" of space on every axis. */
+const sharesSpace = (a: Panel, b: Panel) => (["x", "y", "z"] as const).every((k, n) => {
+  const s = (["width", "height", "depth"] as const)[n];
+  return Math.min(a.position[k] + a.size[s], b.position[k] + b.size[s]) - Math.max(a.position[k], b.position[k]) > 1 / 16;
+});
+
+/**
+ * Real joints where recipe parts meet inside each other: a butt hinge's leaf is mortised flush into the lid and the
+ * board it hangs on; a shelf that runs to the corner posts (a utility cart) is notched around each post.
+ */
+function seatHardwareAndNotches(panels: Panel[]): void {
+  for (const h of panels.filter((p) => /\bhinge \d+$/i.test(p.name))) {
+    for (const o of panels) if (o !== h && !/\bhinge \d+$/i.test(o.name) && sharesSpace(h, o)) h.joints = [...(h.joints ?? []), { with: o.id, kind: "mortise" }];
+  }
+  const posts = panels.filter((p) => /\bpost$/i.test(p.name));
+  for (const sh of panels.filter((p) => /\bshelf$/i.test(p.name))) {
+    const hit = posts.filter((q) => sharesSpace(sh, q));
+    if (!hit.length) continue;
+    sh.joints = [...(sh.joints ?? []), ...hit.map((q) => ({ with: q.id, kind: "notch" as const }))];
+    const q = hit[0];
+    sh.cutNote = `${sh.cutNote ? sh.cutNote + " " : ""}Notch ${hit.length === 4 ? "each corner" : `${hit.length} corners`} ${fmtIn(q.size.width)} × ${fmtIn(q.size.depth)} so it fits around the posts.`;
+  }
+}
+
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
   // Only a hinged lid is seated (a hinged gate or door swings sideways and is never a lid) and sloped; a loose lid (a churn's) stays where the recipe put it.
   const lids = new Set((recipe.moving ?? []).filter((m) => m.motion === "hinge" && !/\b(?:gates?|doors?)\b/i.test(m.part)).map((m) => m.part));
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
     lid.turns = true;
-    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
+    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && !/\bhinges?\b/i.test(w.name) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
       w.position.x < lid.position.x + lid.size.width && lid.position.x < w.position.x + w.size.width &&
       w.position.z < lid.position.z + lid.size.depth && lid.position.z < w.position.z + w.size.depth);
+    // C13: a part with another part on top of it (a lower course of a stacked wall, a floor cleat) carries that part, not the lid.
+    const covered = (w: Panel) => panels.some((q) => q !== w && q !== lid && q.position.y >= w.position.y + w.size.height - 0.1 && q.position.y <= w.position.y + w.size.height + 1 &&
+      q.position.x < w.position.x + w.size.width && w.position.x < q.position.x + q.size.width && q.position.z < w.position.z + w.size.depth && w.position.z < q.position.z + q.size.depth);
+    // An inside divider (a jewelry box's ring row) sits below the lid and never seats or slopes it.
+    under.splice(0, under.length, ...under.filter((w) => !covered(w) && !/\b(?:divider|partition)s?\b/i.test(w.name)));
     if (!under.length) continue;
     const top = (w: Panel) => w.position.y + w.size.height;
     const hi = under.reduce((m, w) => (top(w) > top(m) ? w : m)), lo = under.reduce((m, w) => (top(w) < top(m) ? w : m));
@@ -784,9 +821,16 @@ const SZ = { x: "width", y: "height", z: "depth" } as const;
 const meets3 = (p: Panel, q: Panel) => (["x", "y", "z"] as const).every((a) => p.position[a] <= q.position[a] + q.size[SZ[a]] + 0.05 && q.position[a] <= p.position[a] + p.size[SZ[a]] + 0.05);
 
 /**
- * A spinning wheel is a rotor: its round parts sit centred on the axle, a rim (ring) is joined to the hub by
- * crossed spokes, paddles stand on the rim at the quarter points, and every fixed part the axle passes is
- * drilled for it.
+ * A spinning wheel is a rotor, built the way a real one is (a garden water wheel, a mill wheel):
+ * - every fixed part the axle passes is drilled for it; the axle is glued in those snug bores and the rotor
+ *   turns on it, each of its bores 1/16" over the axle;
+ * - each rim (a ring) has a hub disc in its open centre, sandwiched between two crossed spokes, one on each
+ *   face of the rim, so every spoke lies on the rim's face (never in its plane) and meets the hub face to face;
+ * - paddles run between the two rims (or stand on a lone rim's face), butted to the rims' inner faces across
+ *   the band and standing out past the rim edge, spaced round the wheel clear of the spokes;
+ * - the rotor sits centred between the parts that carry the axle, held there by collars glued to the axle
+ *   a card's thickness (1/32") off its faces, so it turns but can't slide along the axle.
+ * Every joint is a real contact (the step text and the support graph read the same geometry).
  */
 function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
   // Every dowel sits in drilled holes: each fixed part it meets is drilled for it.
@@ -794,6 +838,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     const L = (["x", "y", "z"] as const).reduce((m, a) => (pin.size[SZ[a]] > pin.size[SZ[m]] ? a : m), "x" as Ax);
     const dia = Math.min(...(["x", "y", "z"] as const).filter((x) => x !== L).map((x) => pin.size[SZ[x]]));
     const name = pin.name.replace(/ \d+$/, "").toLowerCase();
+    // One axle is "the axle"; a family of rods is "each rod".
+    const many = pins.filter((q) => q.name.replace(/ \d+$/, "").toLowerCase() === name).length > 1;
     for (const q of panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && meets3(p, pin))) {
       const deep = Math.round(Math.min(0.75, q.size[SZ[L]] * 0.6) * 16) / 16;
       const through = pin.position[L] < q.position[L] - 0.05 && pin.position[L] + pin.size[SZ[L]] > q.position[L] + q.size[SZ[L]] + 0.05;
@@ -804,7 +850,7 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
         q.size = { ...q.size, [SZ[x]]: hi0 - lo0 };
       }
       // A fixed bore is named: the axle a rotor spins on is glued snug here, only the rotor's bores clear it.
-      const n = `Drill a ${fmtIn(dia)} hole for each ${name}${through ? " right through" : `, ${fmtIn(deep)} deep`}.${pin.turns && panels.some((r) => r.turns && r.polygon && r !== pin && meets3(r, pin)) ? ` A snug fixed bore: glue the ${name} here.` : ""}`;
+      const n = `Drill a ${fmtIn(dia)} hole for ${many ? `each ${name}` : `the ${name}`}${through ? ", right through" : `, ${fmtIn(deep)} deep`}.${pin.turns && panels.some((r) => r.turns && r.polygon && r !== pin && meets3(r, pin)) ? ` A snug fixed bore: glue the ${name} here.` : ""}`;
       // The dowel runs into its hole: it reaches into a part at either end by the hole depth.
       const lo = pin.position[L], hi = lo + pin.size[SZ[L]];
       if (!(q.cutNote ?? "").includes(n)) q.cutNote = `${q.cutNote ? `${q.cutNote} ` : ""}${n}`;
@@ -819,51 +865,167 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     const ca = pin.position[a] + pin.size[SZ[a]] / 2, cb = pin.position[b] + pin.size[SZ[b]] / 2;
     const riders = panels.filter((p) => p.turns && p !== pin && p.polygon && meets3(p, pin));
     const d = pin.size[SZ[a]];
+    const bore = d / 2 + 1 / 32;
     // Only the glued-up rotor turns: each part bored for the axle clears it by 1/16".
     for (const p of riders) {
       p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 };
       const h = p.polygon?.holes?.[0];
-      if (h && h.r < d) h.r = Math.max(h.r, d / 2 + 1 / 32);
+      if (h && h.r < d) h.r = Math.max(h.r, bore);
       if (h) p.cutNote = (p.cutNote ?? "").replace(/(bored) [\d./]+"?/, `$1 ${fmtIn(h.r * 2)} (running clearance on the ${fmtIn(d)} ${pin.name.replace(/ \d+$/, "").toLowerCase()})`);
     }
-    for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
-      const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
-      const t = rim.size[SZ[long]];
-      for (const [i, along] of [a, b].entries()) {
-        const across = along === a ? b : a;
+    const isRim = (p: Panel) => recipe.parts.some((q) => q.shape === "ring" && (q.name === p.name || q.name === p.name.replace(/ \d+$/, "")));
+    const rims = riders.filter(isRim).sort((p, q) => p.position[long] - q.position[long]);
+    if (!rims.length) continue;
+    const axleWord = pin.name.replace(/ \d+$/, "").toLowerCase();
+    const plane = rims[0].polygon!.plane;
+    // The rim's face plane: (u, v) are its outline coordinates, the axle runs along `long`.
+    const [ua, va] = plane === "xz" ? (["x", "z"] as const) : plane === "xy" ? (["x", "y"] as const) : (["z", "y"] as const);
+    const cu = ua === a ? ca : cb, cv = va === a ? ca : cb;
+    // The wheel turns clear of the fixed parts under it (a cross rail between the posts): its paddles sweep
+    // 1 1/2" past the rim, so a rim too big for the room under the axle is cut smaller.
+    if (a === "y" || b === "y") {
+      const cy = a === "y" ? ca : cb;
+      const span0 = [Math.min(...rims.map((p) => p.position[long])), Math.max(...rims.map((p) => p.position[long] + p.size[SZ[long]]))];
+      const under = panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && !meets3(p, pin) && p.position.y + p.size.height < cy && p.position[long] < span0[1] && p.position[long] + p.size[SZ[long]] > span0[0]);
+      const room = cy - Math.max(0, ...under.map((p) => p.position.y + p.size.height)) - 0.5 - 1.5;
+      const r0 = rims[0].size[SZ[a]] / 2;
+      if (room > 2 && r0 > room) {
+        const k = room / r0;
+        for (const rim of rims) {
+          const pl = rim.polygon!, [pu, pv] = pl.plane === "xz" ? (["x", "z"] as const) : pl.plane === "xy" ? (["x", "y"] as const) : (["z", "y"] as const);
+          const su = rim.size[SZ[pu]], sv = rim.size[SZ[pv]];
+          rim.polygon = { ...pl, pts: pl.pts.map(([u, v]) => [su / 2 + (u - su / 2) * k, sv / 2 + (v - sv / 2) * k] as [number, number]), holes: pl.holes?.map((h) => ({ x: su / 2 + (h.x - su / 2) * k, y: sv / 2 + (h.y - sv / 2) * k, r: h.r * k })).map((h) => ({ ...h, x: h.x - (su - su * k) / 2, y: h.y - (sv - sv * k) / 2 })) };
+          rim.polygon = { ...rim.polygon, pts: rim.polygon.pts.map(([u, v]) => [u - (su - su * k) / 2, v - (sv - sv * k) / 2] as [number, number]) };
+          rim.position = { ...rim.position, [pu]: rim.position[pu] + (su - su * k) / 2, [pv]: rim.position[pv] + (sv - sv * k) / 2 };
+          rim.size = { ...rim.size, [SZ[pu]]: su * k, [SZ[pv]]: sv * k };
+          rim.cutNote = (rim.cutNote ?? "").replace(/^Cut round, [^.]*(?:\.\d+[^.]*)*\./, `Cut round, ${fmtIn(su * k)} diameter, open centre ${fmtIn(2 * (rim.polygon!.holes?.[0]?.r ?? 0))}.`);
+        }
+      }
+    }
+    const r = rims[0].size[SZ[a]] / 2, inner = rims[0].polygon?.holes?.[0]?.r ?? r * 0.8;
+    const t = rims[0].size[SZ[long]];
+    const band = Math.min(Math.max(r - inner, 1.5), 3.5);
+    const sheet = rims[0].materialId;
+    const ply = getCatalogItem(sheet)?.dims.thickness ?? t;
+    const clear = 1 / 16;
+    // The parts that carry the axle (posts, frame sides), nearest the rotor on each side.
+    const mid0 = (rims[0].position[long] + rims[rims.length - 1].position[long] + t) / 2;
+    const carriers = panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && meets3(p, pin));
+    const stopLo = carriers.filter((p) => p.position[long] + p.size[SZ[long]] <= mid0).sort((p, q) => q.position[long] + q.size[SZ[long]] - (p.position[long] + p.size[SZ[long]]))[0];
+    const stopHi = carriers.filter((p) => p.position[long] >= mid0).sort((p, q) => p.position[long] - q.position[long])[0];
+    const faceLo = stopLo ? stopLo.position[long] + stopLo.size[SZ[long]] : undefined, faceHi = stopHi?.position[long];
+    const mid = faceLo != null && faceHi != null ? (faceLo + faceHi) / 2 : mid0;
+    const paddle = recipe.parts.find((q) => q.role === "paddle");
+    const tmpl = paddle && panels.find((p) => p.name === paddle.name || p.name.replace(/ \d+$/, "") === paddle.name);
+    // Rotor width along the axle: spoke, rim, paddles, rim, spoke. With carriers both sides it fills the span
+    // less a one-ply collar and 1/16" running clearance at each end.
+    const two = rims.length >= 2;
+    const span = faceLo != null && faceHi != null ? faceHi - faceLo : undefined;
+    const fixedPaddle = tmpl ? Math.max(tmpl.size[SZ[long]], t * 4) : 0;
+    const between = two ? Math.max(3, span != null ? span - 2 * (ply + clear) - 2 * (2 * t) : Math.max(fixedPaddle, rims[rims.length - 1].position[long] - rims[0].position[long] - t)) : 0;
+    const width = two ? 2 * (2 * t) + between : 3 * t;
+    const lo = mid - width / 2;
+    // Rims: the first and last bound the paddles; any between are spaced evenly.
+    const rimLo = rims.map((_, i) => (rims.length === 1 ? lo + t : lo + t + (i * (width - 3 * t)) / (rims.length - 1)));
+    rims.forEach((rim, i) => { rim.position = { ...rim.position, [long]: rimLo[i] }; });
+    // Hubs: the recipe's hub, one per rim, in the rim's open centre and as thick as the rim.
+    const hubs0 = riders.filter((p) => !isRim(p) && p.size[SZ[a]] < r);
+    const hubDia = Math.min(Math.max(hubs0[0]?.size[SZ[a]] ?? 4 * d, 3 * d, band + 0.5), 2 * inner - 1);
+    const hubName = (hubs0[0]?.name ?? "Hub").replace(/ \d+$/, "");
+    const keep0 = new Set(hubs0);
+    panels.splice(0, panels.length, ...panels.filter((p) => !keep0.has(p) || p === hubs0[0]));
+    const disc = (dia: number, hole: number): Panel["polygon"] => {
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 32; i++) pts.push([dia / 2 + (dia / 2) * Math.cos((i / 32) * 2 * Math.PI), dia / 2 + (dia / 2) * Math.sin((i / 32) * 2 * Math.PI)]);
+      return { plane, pts, holes: [{ x: dia / 2, y: dia / 2, r: hole }] };
+    };
+    const box = (alongLong: [number, number], u: [number, number], v: [number, number]) => {
+      const pos = { x: 0, y: 0, z: 0 }, size = { width: 0, height: 0, depth: 0 };
+      pos[long] = alongLong[0]; size[SZ[long]] = alongLong[1];
+      pos[ua] = u[0]; size[SZ[ua]] = u[1];
+      pos[va] = v[0]; size[SZ[va]] = v[1];
+      return { position: pos, size };
+    };
+    const hubBits = rims.map((rim, i) => {
+      const h: Panel = {
+        ...(i === 0 && hubs0[0] ? hubs0[0] : {}), id: i === 0 && hubs0[0] ? hubs0[0].id : `${rim.id}-hub-${i}`, type: "rail", name: rims.length > 1 ? `${hubName} ${i + 1}` : hubName,
+        materialId: sheet, turns: true, polygon: disc(hubDia, bore),
+        ...box([rim.position[long], t], [cu - hubDia / 2, hubDia], [cv - hubDia / 2, hubDia]),
+        cutNote: `Cut round, ${fmtIn(hubDia)} diameter, bored ${fmtIn(bore * 2)} (running clearance on the ${fmtIn(d)} ${axleWord}). It sits in the rim's open centre, as thick as the rim, between the two spokes.`,
+      };
+      return h;
+    });
+    const hubIds = new Set(hubBits.map((h) => h.id));
+    panels.splice(0, panels.length, ...panels.filter((p) => !hubIds.has(p.id)), ...hubBits);
+    // Spokes: two crossed spokes per rim, one on each face, the hub between them. They stop 1/4" inside the rim's edge.
+    const sl = 2 * r - 0.5;
+    let k = 0;
+    rims.forEach((rim, i) => {
+      const outerLo = rims.length === 1 || i === 0;
+      const faces: [number, "u" | "v"][] = [[rim.position[long] - t, outerLo ? "v" : "u"], [rim.position[long] + t, outerLo ? "u" : "v"]];
+      for (const [at, along] of faces) {
+        k += 1;
+        const u: [number, number] = along === "u" ? [cu - sl / 2, sl] : [cu - band / 2, band];
+        const v: [number, number] = along === "v" ? [cv - sl / 2, sl] : [cv - band / 2, band];
         panels.push({
-          id: `${rim.id}-spoke-${i}`, type: "rail", name: `Spoke ${i + 1}`, materialId: rim.materialId, turns: true,
-          position: { ...rim.position, [along]: (along === a ? ca : cb) - r + band / 2, [across]: (across === a ? ca : cb) - band / 2 } as Panel["position"],
-          size: { ...rim.size, [SZ[along]]: 2 * r - band, [SZ[across]]: band, [SZ[long]]: t } as Panel["size"],
-          cutNote: `Half-lap the two spokes where they cross and bore ${fmtIn(d + 1 / 16)} there for the axle.`,
+          id: `${rim.id}-spoke-${k}`, type: "rail", name: `Spoke ${k}`, materialId: sheet, turns: true, ...box([at, t], u, v),
+          // The board with its axle bore modelled, so the axle runs through a real hole.
+          polygon: { plane, pts: [[0, 0], [u[1], 0], [u[1], v[1]], [0, v[1]]], holes: [{ x: cu - u[0], y: cv - v[0], r: bore }] },
+          cutNote: `Bore ${fmtIn(bore * 2)} at the centre for the ${axleWord} (running clearance). It lies on the rim's face: glue and screw it to the rim at both ends and to the ${hubName.toLowerCase()} at the centre.`,
         });
       }
-      for (const hub of riders.filter((p) => p !== rim && p.size[SZ[a]] < r)) {
-        // The spokes lie in the rim's plane; the hub's face sits flush with it so they seat in its face slot.
-        hub.position = { ...hub.position, [long]: rim.position[long] };
-        const n = `Cut a ${fmtIn(band)} wide, ${fmtIn(Math.min(t, hub.size[SZ[long]]))} deep slot across the hub face for each spoke.`;
-        if (!(hub.cutNote ?? "").includes(n)) hub.cutNote = `${hub.cutNote ? `${hub.cutNote} ` : ""}${n}`;
-      }
-      const paddle = recipe.parts.find((q) => q.role === "paddle");
-      const tmpl = paddle && panels.find((p) => p.name === paddle.name || p.name.replace(/ \d+$/, "") === paddle.name);
-      if (tmpl) {
-        const pl = Math.max(tmpl.size[SZ[long]], t * 4), ph = Math.max(Math.min(tmpl.size[SZ[a]], tmpl.size[SZ[b]], r / 3), 2), pt = 0.75;
-        const keep = panels.filter((p) => p.name.replace(/ \d+$/, "") !== paddle.name);
-        panels.splice(0, panels.length, ...keep);
-        const mid = rim.position[long] + t / 2;
-        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([u, v], i) => {
-          // A paddle straddles the rim's outer edge so half of it stands out past the rim to catch water.
-          const pa = ca + u * r, pb = cb + v * r;
-          const sa = u ? ph : pt, sb = v ? ph : pt;
-          panels.push({
-            id: `${rim.id}-paddle-${i}`, type: "rail", name: `${paddle.name} ${i + 1}`, materialId: tmpl.materialId, turns: true,
-            position: { [a]: pa - sa / 2, [b]: pb - sb / 2, [long]: mid - pl / 2 } as Panel["position"],
-            size: { [SZ[a]]: sa, [SZ[b]]: sb, [SZ[long]]: pl } as Panel["size"],
-            cutNote: "Glue and screw to the rim, square to it.",
-          });
+    });
+    // Paddles: real boards between the rims (or on a lone rim's face), butted to the rim faces across the band and
+    // standing out past the rim edge to catch the water. Spaced evenly, half a step off the spokes.
+    if (tmpl) {
+      const D = 2 * r;
+      const n = Math.max(8, 2 * Math.round((Math.PI * D) / 18));
+      const boardId = getCatalogItem("lumber-1x4-8") ? "lumber-1x4-8" : tmpl.materialId;
+      const bd = getCatalogItem(boardId)?.dims;
+      const pt = bd?.height ?? 0.75;
+      const out = Math.min(1.5, (bd?.width ?? 3.5) / 2);
+      const rho1 = r + out, rho0 = Math.max(inner + 0.25, rho1 - (bd?.width ?? 3.5));
+      const ph = rho1 - rho0;
+      const pl = two ? between : fixedPaddle;
+      const at = two ? rims[0].position[long] + t : rims[0].position[long] + t;
+      const keep = panels.filter((p) => p.name.replace(/ \d+$/, "") !== paddle!.name);
+      panels.splice(0, panels.length, ...keep);
+      for (let i = 0; i < n; i++) {
+        const th = Math.PI / n + (i * 2 * Math.PI) / n;
+        const rad = [Math.cos(th), Math.sin(th)], tan = [-Math.sin(th), Math.cos(th)];
+        const corners = [[rho0, -pt / 2], [rho1, -pt / 2], [rho1, pt / 2], [rho0, pt / 2]].map(([p, q]) => [cu + rad[0] * p + tan[0] * q, cv + rad[1] * p + tan[1] * q]);
+        const u0 = Math.min(...corners.map((c) => c[0])), v0 = Math.min(...corners.map((c) => c[1]));
+        const u1 = Math.max(...corners.map((c) => c[0])), v1 = Math.max(...corners.map((c) => c[1]));
+        panels.push({
+          id: `${rims[0].id}-paddle-${i}`, type: "rail", name: `${paddle!.name} ${i + 1}`, materialId: boardId, turns: true,
+          ...box([at, pl], [u0, u1 - u0], [v0, v1 - v0]),
+          polygon: { plane, pts: corners.map(([u, v]) => [u - u0, v - v0] as [number, number]) },
+          blank: { lengthIn: Math.round(pl * 8) / 8, widthIn: Math.round(ph * 8) / 8, thicknessIn: pt },
+          cutNote: two ? `Screw through each rim into its ends, ${fmtIn(rho1 - r)} standing out past the rim.` : `Screw through the rim into its end, ${fmtIn(rho1 - r)} standing out past the rim.`,
         });
       }
     }
+    // Collars: glued to the axle a card's thickness (1/32") off the rotor's end faces, filling to the carrier
+    // (or capping the axle's end). 1/16" of end play in all: it turns free but can't wander.
+    const gap = 1 / 32;
+    const pierced = (p: Panel) => (["x", "y", "z"] as const).filter((x) => x !== long).every((x) => {
+      const c = x === a ? ca : cb;
+      return p.position[x] < c && c < p.position[x] + p.size[SZ[x]];
+    });
+    const ends = panels.filter((p) => p.turns && p !== pin && pierced(p));
+    const rLo = Math.min(...ends.map((p) => p.position[long])), rHi = Math.max(...ends.map((p) => p.position[long] + p.size[SZ[long]]));
+    const cd = Math.min(Math.max(2.5 * d, d + 1.5), hubDia);
+    const collar = (from: number, to: number, i: number, end: boolean): Panel => ({
+      id: `${pin.id}-collar-${i}`, type: "rail", name: `Collar ${i}`, materialId: sheet, polygon: disc(cd, d / 2),
+      ...box([from, to - from], [cu - cd / 2, cd], [cv - cd / 2, cd]),
+      cutNote: `Cut round, ${fmtIn(cd)} diameter, bored ${fmtIn(d)} snug on the ${axleWord}. Glue it to the ${axleWord} ${end ? "at its end" : "against the carrier"}, a card's thickness (1/32") off the wheel, so the wheel turns but can't slide.`,
+    });
+    const lowFace = faceLo ?? rLo - gap - ply, highFace = faceHi ?? rHi + gap + ply;
+    if (rLo - gap - lowFace > 0.1) panels.push(collar(lowFace, rLo - gap, 1, faceLo == null));
+    if (highFace - (rHi + gap) > 0.1) panels.push(collar(rHi + gap, highFace, 2, faceHi == null));
+    // A capped end: the axle stops at the cap's outer face.
+    if (faceLo == null) { const end = pin.position[long] + pin.size[SZ[long]]; pin.position = { ...pin.position, [long]: lowFace }; pin.size = { ...pin.size, [SZ[long]]: end - lowFace }; }
+    if (faceHi == null) pin.size = { ...pin.size, [SZ[long]]: highFace - pin.position[long] };
   }
 }
 
@@ -951,6 +1113,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
+  seatHardwareAndNotches(panels);
   crossLegs(recipe, panels);
   steadyPedestal(panels, size);
   if (/\btrestle\b/i.test(`${recipe.title} ${prompt}`)) trestleLegs(recipe, panels, size);
@@ -965,7 +1128,8 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     if (c?.category === "lumber" && p.materialId === stock.member && c.dims.width && c.dims.height && part?.kind === "member" && !stock.typed && thin > c.dims.height + 0.01 && mid > c.dims.width + 0.01) { p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8"; continue; }
     if (c?.formFactor !== "board" || !c.dims.width) continue;
     if (part?.kind !== "panel" || mid <= c.dims.width + 0.05) continue;
-    if (!stock.typed) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
+    // An outdoor part named for boards (a bench seat lid) stays edge-glued boards: interior-style plywood never sits out in the rain.
+    if (!stock.typed && !(recipe.outdoor && part.stock)) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
     else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
   }
   roundParts(recipe, panels);
@@ -1032,7 +1196,7 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? [CONTACT.test(`${prompt} ${recipe.title}`) ? `Outdoors: untreated cedar (it touches food, skin or a nest) and exterior screws.` : "Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };

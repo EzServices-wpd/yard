@@ -1447,3 +1447,18 @@ export function storeTermDrift(plan: Pick<BuildPlan, "bom">): string[] {
   }
   return out;
 }
+
+/** C15/C16: one checked store listing (checkedStock.ts) as a Buy row's offer, its href through outboundHref like every Buy link. */
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** One Home Depot offer for `count` items from a checked listing (packs rounded up), and its line total. */
+export function checkedOffer(c: { title: string; href: string; packQty: number; packPrice: number }, count: number): { offers: ShopOffer[]; lineTotal: number; packs: number } {
+  const packs = Math.max(1, Math.ceil(count / c.packQty));
+  const lineTotal = r2(packs * c.packPrice);
+  return {
+    packs,
+    lineTotal,
+    offers: [{ retailer: "homedepot", label: "Home Depot", title: c.title, href: outboundHref(c.href), packQty: c.packQty, packPrice: c.packPrice, unitPrice: r2(c.packPrice / c.packQty), packsNeeded: packs, lineTotal, best: true, checkedAt: "2026-10-16" }],
+  };
+}
+

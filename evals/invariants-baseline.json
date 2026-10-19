@@ -9,10 +9,6 @@
    "class": "F21",
    "msg": "Floor is interior plywood on the ground outdoors"
   },
-  "I13|raised garden bed 48 wide 96 long": {
-   "class": "F21",
-   "msg": "Left side is interior plywood on the ground outdoors"
-  },
   "I13|sandbox": {
    "class": "F21",
    "msg": "Left side is interior plywood on the ground outdoors"
@@ -60,10 +56,6 @@
   "I1|toy train track riser": {
    "class": "F1",
    "msg": "Base reaches neither the floor nor a wall"
-  },
-  "I1|water wheel": {
-   "class": "F1",
-   "msg": "Paddle 2 reaches neither the floor nor a wall"
   },
   "I3|Andersen 100 Series 36 by 48 double hung window, frame the rough opening": {
    "class": "F3",
@@ -137,9 +129,125 @@
    "class": "F2",
    "msg": "typed 44 wide, model 82"
   },
-  "I8|raised garden bed 48 wide 96 long": {
-   "class": "F2",
-   "msg": "typed 48 wide, model 96"
+  "C15|knife block maple": {
+   "class": "C15",
+   "msg": "step \"Set the Back panel\" uses #8 × 1 1/4\" screws, not on Buy"
+  },
+  "I26|ferris wheel": {
+   "class": "F30",
+   "msg": "Base runs into Gondola 4 with no joint cut for it"
+  },
+  "I27|ferris wheel": {
+   "class": "F31",
+   "msg": "Front rim turns but rides on no axle"
+  },
+  "I26|colosseum": {
+   "class": "F30",
+   "msg": "Arena floor runs into Pier 2 with no joint cut for it"
+  },
+  "I26|murphy bed": {
+   "class": "F30",
+   "msg": "Left side runs into Top with no joint cut for it"
+  },
+  "I26|deck stairs": {
+   "class": "F30",
+   "msg": "Left stringer runs into Riser 1 with no joint cut for it"
+  },
+  "I26|sawbuck": {
+   "class": "F30",
+   "msg": "Left leg A runs into Left cross rail with no joint cut for it"
+  },
+  "I26|laptop stand": {
+   "class": "F30",
+   "msg": "Left front leg runs into Front rail with no joint cut for it"
+  },
+  "I26|coat rack with bench 48 wide": {
+   "class": "F30",
+   "msg": "Front apron runs into Cubby divider 1 with no joint cut for it"
+  },
+  "I26|daybed 75 wide 22 high 39 deep": {
+   "class": "F30",
+   "msg": "Front apron runs into Center support 1 with no joint cut for it"
+  },
+  "I26|laundry fold-down 48 wide 36 high 6 deep": {
+   "class": "F30",
+   "msg": "Fold-down board runs into Center support 1 with no joint cut for it"
+  },
+  "I26|glider": {
+   "class": "F30",
+   "msg": "Fuselage runs into Nose weight with no joint cut for it"
+  },
+  "I26|toy airplane with propeller": {
+   "class": "F30",
+   "msg": "Fuselage runs into Wing with no joint cut for it"
+  },
+  "I27|toy airplane with propeller": {
+   "class": "F31",
+   "msg": "Left wheel turns but rides on no axle"
+  },
+  "I26|reindeer": {
+   "class": "F30",
+   "msg": "Body top runs into Tail with no joint cut for it"
+  },
+  "I26|compost bin": {
+   "class": "F30",
+   "msg": "Back post 1 runs into Back slats 1 with no joint cut for it"
+  },
+  "I26|mudroom locker": {
+   "class": "F30",
+   "msg": "Side 1 runs into Back with no joint cut for it"
+  },
+  "I26|sandbox with seat": {
+   "class": "F30",
+   "msg": "Back wall runs into Corner seat 1 with no joint cut for it"
+  },
+  "I26|raised dog feeder stand": {
+   "class": "F30",
+   "msg": "Leg fl runs into Top with no joint cut for it"
+  },
+  "I26|birdhouse shaped like church": {
+   "class": "F30",
+   "msg": "Front runs into Left with no joint cut for it"
+  },
+  "I26|beehive box": {
+   "class": "F30",
+   "msg": "Front end runs into Front frame rest with no joint cut for it"
+  },
+  "I26|router table": {
+   "class": "F30",
+   "msg": "Front left leg runs into Front apron with no joint cut for it"
+  },
+  "I26|wall clock frame": {
+   "class": "F30",
+   "msg": "Rim runs into Dial with no joint cut for it"
+  },
+  "I26|toy train track riser": {
+   "class": "F30",
+   "msg": "Front left leg runs into Front brace with no joint cut for it"
+  },
+  "I26|barn birdhouse": {
+   "class": "F30",
+   "msg": "Front runs into Left with no joint cut for it"
+  },
+  "I26|knife block": {
+   "class": "F30",
+   "msg": "Back runs into Divider 1 with no joint cut for it"
+  },
+  "I26|adirondack footrest": {
+   "class": "F30",
+   "msg": "Front left leg runs into Left side rail with no joint cut for it"
+  },
+  "I26|wall mounted mail organizer": {
+   "class": "F30",
+   "msg": "Backboard runs into Left side with no joint cut for it"
+  },
+  "I26|bench 71.5 wide 18.5 tall 17 deep": {
+   "class": "F30",
+   "msg": "Front apron runs into Center support 1 with no joint cut for it"
+  },
+  "I26|bench 31 wide 17.5 tall 14 deep": {
+   "class": "F30",
+   "msg": "Front apron runs into Center support 1 with no joint cut for it"
   }
  }
 }

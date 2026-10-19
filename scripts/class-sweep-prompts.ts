@@ -155,4 +155,81 @@ export const SWEEPS = {
       "model ship", "viking longship", "sailing ship", "Golden Gate Bridge 36 inches long", "Big Ben",
     ],
   },
+  c13: {
+    title: "typed modifier or purpose survives (no generic form)",
+    inv: "C13",
+    file: "c13-typed-modifier.md",
+    prompts: [
+      "standing desk converter", "sit stand desk converter", "desk converter 32 inches wide", "guitar hanger", "guitar wall hanger",
+      "guitar wall mount", "outdoor storage bench", "outdoor storage bench 60 inches wide", "raised garden bed", "cedar raised garden bed 4x8",
+      "raised garden bed 48 wide 96 long", "raised vegetable bed", "rolling bookshelf", "rolling cart", "kitchen island on casters",
+      "rolling storage cart", "mobile workbench", "rolling toy chest", "dresser on casters", "rolling shoe rack",
+    ],
+  },
+  c14: {
+    title: "named small objects are their real forms, engine-owned",
+    inv: "C14",
+    file: "c14-small-forms.md",
+    prompts: [
+      "bird feeder", "wooden bird feeder", "hopper bird feeder", "bird feeder 12 inches wide", "cedar bird feeder",
+      "hanging bird feeder", "jewelry box", "jewellery box", "wooden jewelry box", "jewelry box 12 inches wide",
+      "small jewelry box", "walnut jewelry box", "jewelry chest", "hanging birdhouse", "wall mounted birdhouse",
+      "wall-mounted birdhouse", "hanging birdhouse for wrens", "cedar hanging birdhouse", "wall mount birdhouse", "jewelry box with dividers",
+    ],
+  },
+  c15: {
+    title: "every hardware item and cut stock is on Buy with a store link; notes name the stock Buy sells",
+    inv: "C15",
+    file: "c15-buy-complete.md",
+    prompts: [
+      "bird feeder", "hopper bird feeder", "hanging bird feeder", "rolling utility cart", "rolling cart",
+      "rolling bookshelf", "kitchen island on casters", "mobile workbench", "rolling toy chest", "dresser on casters",
+      "hanging birdhouse", "cedar hanging birdhouse", "hanging birdhouse for wrens", "raised garden bed 4x8 open bottom with 4x4 posts", "raised garden bed with 4x4 posts",
+      "cedar raised garden bed 4x8", "outdoor storage bench", "jewelry box", "water wheel", "rolling shoe rack",
+    ],
+  },
+  c16: {
+    title: "material for use: no pressure-treated wood on food, skin or nest contact; no interior sheets outdoors",
+    inv: "C16",
+    file: "c16-material-for-use.md",
+    prompts: [
+      "bird feeder", "wooden bird feeder", "hopper bird feeder", "bird feeder 12 inches wide", "hanging bird feeder",
+      "hanging birdhouse", "wall mounted birdhouse", "barn birdhouse", "birdhouse shaped like church", "beehive box",
+      "sandbox with seat", "picnic table", "adirondack footrest", "porch planter 16x16x30", "outdoor planter box",
+      "patio planter 24 wide", "garden planter box", "outdoor toy box", "outdoor cabinet", "porch swing",
+    ],
+  },
+  c17: {
+    title: "one step per hinge; tabletop and small hung builds never sit on the floor",
+    inv: "C17",
+    file: "c17-step-place-text.md",
+    prompts: [
+      "jewelry box", "jewellery box", "small jewelry box", "walnut jewelry box", "jewelry chest",
+      "jewelry box with dividers", "treasure chest", "bird feeder", "hanging bird feeder", "abacus",
+      "cribbage board", "laptop stand", "napkin holder", "toy airplane", "submarine",
+      "pirate ship", "glider", "hanging birdhouse", "keepsake box", "recipe box",
+    ],
+  },
+  c18: {
+    title: "a typed finish or colour renders in the model and is on Buy as a real paint or stain sized by area",
+    inv: "C18",
+    file: "c18-typed-finish.md",
+    prompts: [
+      "black bookshelf 36x12x72", "white bookshelf", "black bookcase", "white toy box", "painted toy box",
+      "stained nightstand", "black nightstand", "white nightstand", "gray bookshelf", "red toy box",
+      "navy blue bookcase", "green bench", "black coffee table", "white tv stand", "stained coffee table",
+      "black floating shelf", "white shoe rack", "painted bench", "dark stained bookshelf", "black walnut bookshelf",
+    ],
+  },
+  c19: {
+    title: "derived counts re-derive on size steps: Wider, Taller and Deeper are never refused for a count",
+    inv: "C19",
+    file: "c19-derived-counts.md",
+    prompts: [
+      "black bookshelf 36x12x72", "bookshelf 36x12x72", "bookshelf 38x12x72", "bookcase", "bookshelf 30x10x60",
+      "tv stand", "tv console 60 inch", "shoe rack", "shoe bench", "coffee table",
+      "workbench", "picnic table", "garden bench", "raised garden bed 4x8", "deck box",
+      "bookshelf 48x12x60", "wall shelf", "bookcase 30 wide", "linen closet 31.5 wide 78 tall 16 deep", "nightstand",
+    ],
+  },
 } as const;
