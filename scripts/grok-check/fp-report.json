@@ -1,0 +1,287 @@
+{
+ "note": "Arm B false positives on recorded outputs only (no calls). Labels: grok-intake-ab RESULTS.md §5 hand read (R real, F false positive, U unclear). fp_rate_of_decided = F/(R+F).",
+ "builds": 118,
+ "before": {
+  "flagged": 83,
+  "real": 39,
+  "false_positive": 31,
+  "unclear": 13,
+  "fp_rate_of_flagged": 0.3735,
+  "fp_rate_of_decided": 0.4429,
+  "precision_of_decided": 0.5571,
+  "builds_flagged": 44,
+  "builds_with_a_real_flag": 28
+ },
+ "after": {
+  "flagged": 59,
+  "real": 39,
+  "false_positive": 8,
+  "unclear": 12,
+  "fp_rate_of_flagged": 0.1356,
+  "fp_rate_of_decided": 0.1702,
+  "precision_of_decided": 0.8298,
+  "builds_flagged": 40,
+  "builds_with_a_real_flag": 28
+ },
+ "dropped_by_rule": {
+  "kind-noun": {
+   "R": 0,
+   "F": 10,
+   "U": 0
+  },
+  "present": {
+   "R": 0,
+   "F": 10,
+   "U": 1
+  },
+  "drawer-parts": {
+   "R": 0,
+   "F": 3,
+   "U": 0
+  }
+ },
+ "dropped": [
+  {
+   "id": "g1",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "queen platform bed",
+   "why": "title \"Platform bed 87\" long x 67\" wide x 80\" tall\" names \"queen platform bed\""
+  },
+  {
+   "id": "g4",
+   "label": "F",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "rolling",
+   "why": "\"rolling\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g4",
+   "label": "F",
+   "rule": "present",
+   "kind": "material_off",
+   "quote": "painted black",
+   "why": "\"painted black\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g8",
+   "label": "F",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "Door",
+   "why": "\"Door\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g10",
+   "label": "F",
+   "rule": "drawer-parts",
+   "kind": "wrong_count",
+   "quote": "2 drawers",
+   "why": "2 drawer fronts = 2 typed; B counted drawer parts"
+  },
+  {
+   "id": "g10",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "missing_feature",
+   "quote": "nightstand",
+   "why": "title \"Walnut Nightstand\" names \"nightstand\""
+  },
+  {
+   "id": "g12",
+   "label": "F",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "doors",
+   "why": "\"doors\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g12",
+   "label": "F",
+   "rule": "present",
+   "kind": "material_off",
+   "quote": "painted white",
+   "why": "\"painted white\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g15",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "platform bed",
+   "why": "title \"Platform bed 82\" long x 82\" wide x\" names \"platform bed\""
+  },
+  {
+   "id": "g16",
+   "label": "F",
+   "rule": "present",
+   "kind": "material_off",
+   "quote": "walnut",
+   "why": "\"walnut\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g25",
+   "label": "U",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "wall mounted",
+   "why": "\"wall mounted\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g27",
+   "label": "F",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "with doors",
+   "why": "\"with doors\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g27",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "bookcase",
+   "why": "title \"Bookcase\" names \"bookcase\""
+  },
+  {
+   "id": "g49",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "playhouse",
+   "why": "title \"Kids Playhouse For Year Old\" names \"playhouse\""
+  },
+  {
+   "id": "g50",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "pencil box",
+   "why": "title \"Pencil Box\" names \"pencil box\""
+  },
+  {
+   "id": "g52",
+   "label": "F",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "wall mounted",
+   "why": "\"wall mounted\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "g56",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "napkin holder",
+   "why": "title \"Napkin Holder\" names \"napkin holder\""
+  },
+  {
+   "id": "g75",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "storage ottoman",
+   "why": "title \"Ottoman\" names \"storage ottoman\""
+  },
+  {
+   "id": "g78",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "bar stools",
+   "why": "title \"Stool\" names \"bar stools\""
+  },
+  {
+   "id": "g80",
+   "label": "F",
+   "rule": "kind-noun",
+   "kind": "wrong_noun",
+   "quote": "wall plate rack",
+   "why": "title \"Plate rack\" names \"wall plate rack\""
+  },
+  {
+   "id": "P2.1",
+   "label": "F",
+   "rule": "drawer-parts",
+   "kind": "wrong_count",
+   "quote": "6 drawers",
+   "why": "6 drawer fronts = 6 typed; B counted drawer parts"
+  },
+  {
+   "id": "P2.1",
+   "label": "F",
+   "rule": "present",
+   "kind": "material_off",
+   "quote": "walnut",
+   "why": "\"walnut\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "P3.2",
+   "label": "F",
+   "rule": "present",
+   "kind": "missing_feature",
+   "quote": "PVC pipe",
+   "why": "\"PVC pipe\" is in the parts/Buy/notes"
+  },
+  {
+   "id": "P4.3",
+   "label": "F",
+   "rule": "drawer-parts",
+   "kind": "wrong_count",
+   "quote": "2 drawers",
+   "why": "2 drawer fronts = 2 typed; B counted drawer parts"
+  }
+ ],
+ "remaining_false_positives": [
+  {
+   "id": "g26",
+   "kind": "size_off",
+   "quote": "6 foot",
+   "shows": "72\" W × 16\" D × 30\" H"
+  },
+  {
+   "id": "g26",
+   "kind": "material_off",
+   "quote": "",
+   "shows": "plywood-3-4-4x8 (no solid wood or butcher block material)"
+  },
+  {
+   "id": "g30",
+   "kind": "size_off",
+   "quote": "48 long",
+   "shows": "48\" W × 36\" D × 30\" H"
+  },
+  {
+   "id": "g42",
+   "kind": "size_off",
+   "quote": "5 ft",
+   "shows": "30"
+  },
+  {
+   "id": "g84",
+   "kind": "size_off",
+   "quote": "42 wide",
+   "shows": "42 W × 12 × 84 H"
+  },
+  {
+   "id": "g98",
+   "kind": "size_off",
+   "quote": "36",
+   "shows": "W 3 × D 3 × H 36"
+  },
+  {
+   "id": "P2.2",
+   "kind": "material_off",
+   "quote": "",
+   "shows": "plywood-3-4-4x8 (no solid wood)"
+  },
+  {
+   "id": "P4.3",
+   "kind": "missing_feature",
+   "quote": "2 drawers",
+   "shows": "1 adjustable shelf (plus 1 fixed bottom)"
+  }
+ ]
+}
