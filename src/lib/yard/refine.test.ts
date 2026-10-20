@@ -149,13 +149,15 @@ describe("refine chips are offered only when the engine supports the change", ()
   });
 });
 
-it("refine keeps the form: remove doors keeps the carcase, add drawer on a bench is refused plainly, outdoor drops nothing", () => {
+it("refine keeps the form: remove doors keeps the carcase, add drawer on a bench builds it in a bay, outdoor drops nothing", () => {
   const bc = generateFromPrompt("bookcase 36 wide 72 tall with two doors");
   const r1 = refineProject(bc, "remove doors");
   assert.equal(r1.project?.panels.filter((p) => p.type === "upright").length, bc.panels.filter((p) => p.type === "upright").length);
   const r2 = refineProject(generateFromPrompt("entry bench 48 wide"), "add a drawer");
-  assert.equal(r2.project, null);
-  assert.match(r2.refused[0], /can't take drawers/);
+  // C41: a bench takes typed drawers in the bays under its seat (it used to refuse them).
+  assert.deepEqual(r2.refused, []);
+  assert.match(r2.project!.name, /bench/i);
+  assert.equal(r2.project!.panels.filter((p) => p.drawerPart === "front").length, 1);
   for (const q of ["entry bench 48 wide", "bookcase 36 wide 72 tall"]) {
     const before = generateFromPrompt(q);
     const r3 = refineProject(before, "outdoor");

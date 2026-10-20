@@ -256,4 +256,16 @@ export const SWEEPS = {
       "sideboard 60 wide 34 tall 18 deep with 2 doors and 3 drawers", "utility cabinet 30 wide 72 tall 16 deep with 2 drawers 2 doors and 3 shelves", "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors", "chest of drawers 30 wide 44 tall 18 deep with 5 drawers",
     ],
   },
+  f41: {
+    title: "a feature word (doors, drawers, a lid, casters or wheels, shelves) never picks the build: the head noun does, and each feature is built on it or named in a note",
+    inv: "I41",
+    file: "f41-feature-words.md",
+    prompts: [
+      "kitchen cart with doors on casters", "kitchen cart with 2 doors on casters", "kitchen cart with doors and wheels", "small kitchen cart 20 by 20 counter height with doors on casters",
+      "bench with drawers", "bench with 3 drawers", "storage bench with drawers", "entryway bench with doors",
+      "chest with a lid", "chest with doors", "toy box with a lid", "toy box with drawers",
+      "workbench with drawers", "potting bench with doors", "island with doors on casters", "cabinet with a lid",
+      "desk with shelves", "trunk with doors", "nightstand on wheels", "bookcase with doors",
+    ],
+  },
 } as const;
