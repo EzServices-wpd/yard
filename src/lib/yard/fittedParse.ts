@@ -41,6 +41,7 @@ import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
+import { isMakeupVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
   P, PLY, pick, cabinetStem, tableClassHeight, isIroningCabinet, isMedicineCabinet, isSpiceRack,
@@ -981,8 +982,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? height
         : undefined;
   // Bare workbench / potting bench is a standing shop top — never invent desk knee clearance.
-  // Door-carcase vanity: typed doors → no invent knee (pocket early-return already set knee).
-  // Drawers+doors vanity also skips knee unless knee/sit/chair/open is typed.
+  // A makeup / dressing / knee-space vanity keeps the knee-hole desk. Every other vanity is a sink base.
+  const makeupVanity = program === "vanity" && isMakeupVanityPrompt(lower);
   const vanityDoorsSaid =
     program === "vanity" && /door/.test(lower) && !isDoorPortal(lower);
   // A typed feature bay ("pocket for the trash can") sizes the open bay to the object it holds.
@@ -1001,9 +1002,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
           /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
           pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
         )
-      : bayObject && (program === "vanity" || program === "desk")
+      : bayObject && (program === "desk" || makeupVanity)
         ? Math.max(bayObject.width + 2, 8.5)
-        : program === "desk" || (program === "vanity" && !vanityDoorsSaid)
+        : program === "desk" || (makeupVanity && !vanityDoorsSaid)
           ? Math.round(Math.min(24, Math.max(18, width * 0.4)) * 16) / 16
           : undefined;
   // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
@@ -1117,7 +1118,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Spoken no/zero/without/drawerless drawers — never silent-collapse to banks (desk/nightstand/dresser/vanity).
   // What the named thing normally has (a dresser has drawers), before any typed "no drawers".
   const drawersByNoun =
-      (program === "vanity" && !vanityDoorsSaid) ||
+      (makeupVanity && !vanityDoorsSaid) ||
       (program === "desk" && !isStandingShopTop(lower)) ||
       (isStandingShopTop(lower) && /drawer/.test(lower)) ||
       (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
@@ -1134,6 +1135,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54) ||
+    (program === "vanity" && !makeupVanity && !(/\bdrawers?\b/.test(lower) && !/\bdoors?\b/.test(lower))) ||
     isStorageHutch(lower);
   const doors = doorsByName || !!house?.affordances.includes("door") || (/door/.test(lower) && !isDoorPortal(lower));
   const doorsFinal =
@@ -1155,7 +1157,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Door-carcase vanity: never invent a mirror when doors were typed (pocket early-return sets mirror).
   const mirror =
     /mirror/.test(lower) ||
-    (program === "vanity" && !vanityDoorsSaid) ||
+    (makeupVanity && !vanityDoorsSaid) ||
     isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)

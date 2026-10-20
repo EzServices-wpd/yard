@@ -181,6 +181,8 @@ export function spokenDrawerCount(text: string): number | null {
   // "a pencil drawer" / bare pencil drawer → one front
   if (/\bpencil\s+drawers?\b/.test(lower)) return 1;
   if (/\bwith\s+a\s+drawers?\b/.test(lower)) return 1;
+  // "a door and a drawer" — the article is the count, same as a typed "1".
+  if (/\b(?:a|an)\s+drawer\b/.test(lower)) return 1;
   return null;
 }
 
