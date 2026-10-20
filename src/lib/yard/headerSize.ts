@@ -7,7 +7,7 @@ import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelS
 import { clean, frac } from "./pdfKit";
 import { drawnExtent } from "./pdfDraw";
 import { isUnitItem } from "./unitItems";
-import { specOf } from "./spec";
+import { specOf, type YardSpec } from "./spec";
 import { isBedLongWide, typedOffBy } from "./typedAxesRead";
 import type { YardProject } from "./types";
 
@@ -122,10 +122,10 @@ export function coverAxesTalk(project: YardProject, craft = false) {
   const spec = specOf(project);
   const assumed: Partial<Record<Axis, boolean>> = {};
   for (const a of ["width", "height", "depth"] as Axis[]) if (spec.size[a].assumed) assumed[a] = true;
-  return axesTalk(project, craft, { assumed, extra: [...spec.parts], stock: spec.stock }, true);
+  return axesTalk(project, craft, { assumed, extra: [...spec.parts], stock: spec.stock }, true, spec);
 }
 
-function axesTalk(project: YardProject, craft: boolean, read: ReturnType<typeof notesAxes>, sayTyped: boolean) {
+function axesTalk(project: YardProject, craft: boolean, read: ReturnType<typeof notesAxes>, sayTyped: boolean, spec?: YardSpec) {
   const o = unitBox(project);
   const name = clean(project.name) || "Yard plan";
   const { assumed, extra, stock } = read;
@@ -133,12 +133,14 @@ function axesTalk(project: YardProject, craft: boolean, read: ReturnType<typeof 
   const finished = modelFinishedDepth(project.panels, o.depth);
   // One size (headerSize): a typed axis is the typed number said back on every surface, the cover too (Chief walk
   // 21 Oct: filing typed 30 deep, header 30, PDF 30 3/4). Doors or fronts standing proud are the note, not the size.
-  // An assumed axis is the model's extent.
-  const shown = shownSize(project, assumed);
+  // An assumed axis is the model's extent. The cover prints the title's and tags' own numbers (headerSize), so proud
+  // fronts are said once, in the note, never also folded into a depth (Critic #109 B1: vanity 17 3/4 beside 17).
+  const shown = shownSize(project, sayTyped ? notesAxes(project).assumed : assumed);
   // A typed size built at another size says both, plainly: "48" wide (you typed 36")".
   const bed = isBedLongWide(project.notes);
   const saidBack = (a: Axis) => {
-    const t = !sayTyped || bed || isUnitItem(project) ? null : typedOffBy(project.typedPrompt ?? project.prompt ?? "", a, [o[a], shown[a], finished]);
+    // An edited axis is the person's own bench value, never "you typed" the old one.
+    const t = !sayTyped || spec?.size[a].edited || bed || isUnitItem(project) ? null : typedOffBy(project.typedPrompt ?? project.prompt ?? "", a, [o[a], shown[a], finished]);
     return `${frac(shown[a])} ${AXIS_WORD[a]}${t != null ? ` (you typed ${frac(t)})` : ""}`;
   };
   const typed = axes.filter((a) => !assumed[a]).map(saidBack);
