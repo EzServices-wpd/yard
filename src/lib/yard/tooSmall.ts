@@ -67,7 +67,8 @@ export function withAxis(prompt: string, axis: Axis, to: number): string {
 }
 
 function refused(p: YardProject, why: string): YardProject {
-  return { ...p, name: askedNoun(p), panels: [], instances: [], refused: why, cardNote: why };
+  // Nothing is built, so no note about the parts it would have had ("Bead is 0\" across", I37 zero) rides along.
+  return { ...p, name: askedNoun(p), panels: [], instances: [], notes: [], refused: why, cardNote: why };
 }
 
 

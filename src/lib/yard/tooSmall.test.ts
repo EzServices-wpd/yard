@@ -106,3 +106,9 @@ it("the refusal note's a/an comes from the shared article.ts: 'A utility cabinet
     assert.ok(p.cardNote!.startsWith(opens), `${prompt}: ${p.cardNote}`);
   }
 });
+
+it("a refusal carries no note about parts it never built ('abacus 1/2 tall' kept 'Bead is 0\" across')", () => {
+  const p = generateFromPrompt("abacus 1/2 tall");
+  assert.ok(p.refused);
+  assert.deepEqual(p.notes ?? [], []);
+});
