@@ -1,3 +1,4 @@
+import { inchFrac } from "./inchText";
 import { getCatalogItem } from "./catalog";
 import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
@@ -128,6 +129,16 @@ export function isoMarks(project: YardProject, highlightIds: string[]) {
         const b = iso(ring1[i].x, ring1[i].y, ring1[i].z);
         marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on0 });
       }
+      // Holes: both rims of every hole, so an open centre reads as open.
+      for (const rings of polygonHoleRings(panel)) {
+        for (const r of rings) {
+          for (let i = 0; i < r.length; i++) {
+            const a = iso(r[i].x, r[i].y, r[i].z);
+            const b = iso(r[(i + 1) % r.length].x, r[(i + 1) % r.length].y, r[(i + 1) % r.length].z);
+            marks.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, hot: on0 });
+          }
+        }
+      }
       continue;
     }
     if (panel.outline) {
@@ -181,10 +192,9 @@ function escXml(s: string) {
   return s.split("&").join("&").split("<").join("<");
 }
 
+/** The one shop-inch format (nearest 1/16, as every other drawing labels it): never "31.125"". */
 function inchLabel(n: number) {
-  const r = Math.round(n * 8) / 8;
-  if (Number.isInteger(r)) return `${r}"`;
-  return `${String(r.toFixed(3).replace(/0+$/, "").replace(/\.$/, ""))}"`;
+  return `${inchFrac(n)}"`;
 }
 
 function hotBounds(project: YardProject, ids: string[]) {
@@ -295,19 +305,29 @@ export function isoCaption(project: YardProject, highlightIds: string[], step?: 
   return step?.title ?? "";
 }
 
+/** A filled face; `holes` are inner rings cut out with an even-odd fill. */
+export type IsoFace = { points: string; hot: boolean; holes?: string[] };
+
+/** SVG path data for a face and its holes; paint with fill-rule="evenodd" so each hole stays open. */
+export function isoFacePath(f: IsoFace): string {
+  return [f.points, ...(f.holes ?? [])].map((r) => `M ${r.split(" ").join(" L ")} Z`).join(" ");
+}
+
 export function isoFaces(project: YardProject, highlightIds: string[]) {
   const hot = new Set(highlightIds);
-  const faces: { points: string; hot: boolean }[] = [];
+  const faces: IsoFace[] = [];
   for (const panel of project.panels) {
     const on = !hot.size || hot.has(panel.id);
     if (highlightIds.length && !on) continue;
     if (panel.polygon) {
       const [, top] = polygonRings(panel);
-      const pts = (panel.polygon.plane === "xz" ? top : polygonRings(panel)[1]).map((c) => {
+      const fmt = (ring: { x: number; y: number; z: number }[]) => ring.map((c) => {
         const p = iso(c.x, c.y, c.z);
         return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
       });
-      faces.push({ points: pts.join(" "), hot: on });
+      const pts = fmt(top);
+      const holes = polygonHoleRings(panel).map(([, front]) => fmt(front).join(" "));
+      faces.push({ points: pts.join(" "), hot: on, ...(holes.length ? { holes } : {}) });
       continue;
     }
     if (panel.outline) {
@@ -352,7 +372,9 @@ export function isoSvgString(project: YardProject, step?: AssemblyStep, w = 280,
   const faceSvg = faces
     .map(
       (f) =>
-        `<polygon points="${f.points}" fill="${f.hot ? "#d9cbb0" : "#ece6da"}" fill-opacity="${f.hot ? 0.85 : 0.35}" stroke="none"/>`,
+        f.holes
+          ? `<path d="${isoFacePath(f)}" fill-rule="evenodd" fill="${f.hot ? "#d9cbb0" : "#ece6da"}" fill-opacity="${f.hot ? 0.85 : 0.35}" stroke="none"/>`
+          : `<polygon points="${f.points}" fill="${f.hot ? "#d9cbb0" : "#ece6da"}" fill-opacity="${f.hot ? 0.85 : 0.35}" stroke="none"/>`,
     )
     .join("");
   const lines = marks
@@ -404,19 +426,67 @@ export function outlineRingXZ(panel: import("./types").Panel): { x: number; z: n
  * to "xy" and a flat wheel was drawn as a drum as deep as it is round.
  */
 export function polygonRings(panel: import("./types").Panel): { x: number; y: number; z: number }[][] {
+  return placeRings(panel, panel.polygon!.pts);
+}
+
+/** Segments per drawn hole circle (one class rule for every renderer). */
+export function holeSegments(r: number): number {
+  // One rule for every round hole (iso, PDF, parts plate, nest): enough sides that the flat between two corners
+  // bows in no more than HOLE_SAG (1/64"), so a 1 1/2" birdhouse entrance reads round (16 sides)
+  // (Critic #93: it drew as a ~9-gon). 12..64 sides: every side is a depth-sorted face in the PDF, so a dowel hole stays light.
+  if (!(r > 0)) return HOLE_MIN_SIDES;
+  const n = Math.ceil(Math.PI / Math.acos(Math.max(-1, 1 - HOLE_SAG / r)));
+  return Math.max(HOLE_MIN_SIDES, Math.min(HOLE_MAX_SIDES, n));
+}
+export const HOLE_SAG = 1 / 64;
+export const HOLE_MIN_SIDES = 12;
+export const HOLE_MAX_SIDES = 64;
+
+/**
+ * Each hole of a polygon plate as its own pair of world rings (back/bottom, front/top), placed exactly like the
+ * outline. Before, every renderer drew the outer edge only, so a wheel's open centre was a solid disc.
+ */
+export function polygonHoleRings(panel: import("./types").Panel): { x: number; y: number; z: number }[][][] {
+  const holes = panel.polygon?.holes ?? [];
+  return holes
+    .filter((h) => h.r > 0)
+    .map((h) => placeRings(panel, Array.from({ length: holeSegments(h.r) }, (_, k) => {
+      const t = (k / holeSegments(h.r)) * Math.PI * 2;
+      return [h.x + h.r * Math.cos(t), h.y + h.r * Math.sin(t)] as [number, number];
+    })));
+}
+
+/**
+ * Each hole as a true circle on both faces: centre c0 (back/bottom) and c1 (front/top) plus the two radius vectors
+ * u, v (the circle is c + u·cos t + v·sin t). The placement is affine, so a renderer that projects these (an iso
+ * view is affine too) can draw the rim as exact Bézier arcs instead of a polygon (Critic #93: 16-gon at 400 dpi).
+ */
+export type HoleCircle = { c0: { x: number; y: number; z: number }; c1: { x: number; y: number; z: number }; u: { x: number; y: number; z: number }; v: { x: number; y: number; z: number } };
+export function polygonHoleCircles(panel: import("./types").Panel): HoleCircle[] {
+  const holes = panel.polygon?.holes ?? [];
+  return holes
+    .filter((h) => h.r > 0)
+    .map((h) => {
+      const [r0, r1] = placeRings(panel, [[h.x, h.y], [h.x + h.r, h.y], [h.x, h.y + h.r]]);
+      const d = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+      return { c0: r0[0], c1: r1[0], u: d(r0[1], r0[0]), v: d(r0[2], r0[0]) };
+    });
+}
+
+function placeRings(panel: import("./types").Panel, pts: [number, number][]): { x: number; y: number; z: number }[][] {
   const poly = panel.polygon!;
   const { x, y, z } = panel.position;
   const { width: w, height: h, depth: d } = panel.size;
   let r0: { x: number; y: number; z: number }[];
   let r1: { x: number; y: number; z: number }[];
   if (poly.plane === "xz") {
-    r0 = poly.pts.map(([px, pz]) => ({ x: x + px, y, z: z + pz }));
+    r0 = pts.map(([px, pz]) => ({ x: x + px, y, z: z + pz }));
     r1 = r0.map((p) => ({ ...p, y: y + h }));
   } else if (poly.plane === "zy") {
-    r0 = poly.pts.map(([pz, py]) => ({ x, y: y + py, z: z + pz }));
+    r0 = pts.map(([pz, py]) => ({ x, y: y + py, z: z + pz }));
     r1 = r0.map((p) => ({ ...p, x: x + w }));
   } else {
-    r0 = poly.pts.map(([px, py]) => ({ x: x + px, y: y + py, z }));
+    r0 = pts.map(([px, py]) => ({ x: x + px, y: y + py, z }));
     r1 = r0.map((p) => ({ ...p, z: z + d }));
   }
   // A turned part turns its outline too, whatever the plane (the 3D bench turns the whole mesh).

@@ -54,6 +54,7 @@ import {
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
   SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes,
 } from "./fittedShared";
+import { lippedShelfYs } from "./shelfLips";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
   WINE_OPEN_MIN, WINE_OPEN_MAX, WINE_PLINTH_SETBACK, wineCradle, wineCradleOutline, wantsBottleFill,
@@ -528,8 +529,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const shelfN = u.shelfCount && u.shelfCount > 0 ? u.shelfCount : 3;
     panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
     panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+    const ys = lippedShelfYs(H, shelfN, P, 1.25);
     for (let i = 0; i < shelfN; i++) {
-      const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
+      const y = ys[i];
       panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
       panels.push(panel("rail", `Jar lip ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.25, P));
     }

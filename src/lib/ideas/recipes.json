@@ -4,24 +4,24 @@
    "id": "recipe-wall-mounted-mail-organizer",
    "label": "Wall-Mounted Mail Organizer",
    "prompt": "wall mounted mail organizer",
-   "size": "12″ W × 3 3/4″ D × 14 1/4″ H",
+   "size": "12″ W × 3 3/4″ D × 14 3/16″ H",
    "blurb": "Open-front horizontal slots hold letters and flat mail",
    "box": {
     "width": 12,
-    "height": 14.25,
-    "depth": 3.75
+    "height": 14.2,
+    "depth": 3.745
    }
   },
   {
    "id": "recipe-water-wheel",
    "label": "Water Wheel",
    "prompt": "water wheel",
-   "size": "18″ W × 24 5/8″ D × 31 1/4″ H",
-   "blurb": "Rim cut from exterior plywood, joined to the hub by crossed spokes",
+   "size": "18″ W × 23 7/16″ D × 30 1/4″ H",
+   "blurb": "Two exterior plywood rims, each with a hub in its open centre between two crossed spokes, one on each face of the rim",
    "box": {
     "width": 18,
-    "height": 31.25,
-    "depth": 24.625
+    "height": 30.228955624828444,
+    "depth": 23.457911249656892
    }
   },
   {
@@ -32,7 +32,7 @@
    "blurb": "Frame cut from 2x4 lumber",
    "box": {
     "width": 16,
-    "height": 10.625,
+    "height": 10.600000000000001,
     "depth": 3.5
    }
   },
@@ -54,12 +54,12 @@
    "id": "recipe-laptop-stand",
    "label": "Laptop Stand",
    "prompt": "laptop stand",
-   "size": "11 1/2″ W × 8 7/8″ D × 6 3/8″ H",
+   "size": "11 3/8″ W × 8 7/8″ D × 6 5/16″ H",
    "blurb": "Elevates laptop for ergonomics and underside airflow",
    "box": {
-    "width": 11.5,
-    "height": 6.375,
-    "depth": 8.875
+    "width": 11.4,
+    "height": 6.300000000000001,
+    "depth": 8.850000000000001
    }
   },
   {
@@ -78,11 +78,11 @@
    "id": "recipe-jewelry-box",
    "label": "Jewelry box",
    "prompt": "jewelry box",
-   "size": "10″ W × 5 1/2″ D × 3 1/2″ H",
+   "size": "10″ W × 5 1/2″ D × 3 7/16″ H",
    "blurb": "A small hinged box: a ring row along the front and two compartments behind it; line the floor with felt.",
    "box": {
     "width": 10,
-    "height": 3.5,
+    "height": 3.41,
     "depth": 5.5
    }
   },
@@ -90,12 +90,12 @@
    "id": "recipe-bird-feeder",
    "label": "Bird feeder",
    "prompt": "bird feeder",
-   "size": "10″ W × 7 3/4″ D × 10 5/8″ H",
+   "size": "10″ W × 7 11/16″ D × 10 5/8″ H",
    "blurb": "A hopper feeder: seed sits in the hopper between two clear panes and spills out of a 1/2\" gap at the bottom onto the tray.",
    "box": {
     "width": 10,
-    "height": 10.625,
-    "depth": 7.75
+    "height": 10.6,
+    "depth": 7.700000000000001
    }
   },
   {
@@ -114,24 +114,24 @@
    "id": "recipe-outdoor-storage-bench",
    "label": "Outdoor storage bench",
    "prompt": "outdoor storage bench",
-   "size": "48″ W × 20 1/8″ D × 19 1/4″ H",
+   "size": "48″ W × 20″ D × 19 3/16″ H",
    "blurb": "A seat you can sit on outside with a dry box under it: the lid lifts on two hinges and a lid stay holds it open.",
    "box": {
     "width": 48,
-    "height": 19.25,
-    "depth": 20.125
+    "height": 19.2,
+    "depth": 20.03
    }
   },
   {
    "id": "recipe-guitar-hanger",
    "label": "Guitar hanger",
    "prompt": "guitar hanger",
-   "size": "5 1/2″ W × 5″ D × 10″ H",
+   "size": "5 1/2″ W × 4 7/8″ D × 10″ H",
    "blurb": "The guitar hangs by its headstock: the neck drops between the two yoke prongs and the headstock rests on them.",
    "box": {
     "width": 5.5,
     "height": 10,
-    "depth": 5
+    "depth": 4.885
    }
   },
   {

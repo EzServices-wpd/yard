@@ -10,7 +10,7 @@ import { Edges } from "@react-three/drei";
 
 export type HeroModel = {
   overall?: { width: number; height: number; depth: number };
-  panels: { p: [number, number, number]; s: [number, number, number]; yaw?: number; poly?: { plane: "xz" | "xy" | "zy"; pts: [number, number][] }; glass?: 1 }[];
+  panels: { p: [number, number, number]; s: [number, number, number]; yaw?: number; poly?: { plane: "xz" | "xy" | "zy"; pts: [number, number][]; holes?: [number, number, number][] }; glass?: 1 }[];
 };
 
 const WOOD = new THREE.MeshStandardMaterial({ color: "#d9c5a1", roughness: 0.85, metalness: 0 });
@@ -21,6 +21,13 @@ function plateGeometry(m: HeroModel["panels"][number]) {
   const poly = m.poly;
   if (!poly || poly.pts.length < 3) return new THREE.BoxGeometry(w, h, d);
   const shape = new THREE.Shape();
+  // Holes (x, y, r in the outline's own frame) are cut through, offset like the outline: a wheel's open centre stays open.
+  const [ou, ov] = poly.plane === "zy" ? [d / 2, h / 2] : poly.plane === "xz" ? [w / 2, d / 2] : [w / 2, h / 2];
+  for (const [hx, hy, r] of poly.holes ?? []) {
+    const hole = new THREE.Path();
+    hole.absarc(hx - ou, hy - ov, r, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+  }
   // Same local frames as the workspace bench (stick-cloud PanelMesh).
   if (poly.plane === "zy") {
     poly.pts.forEach(([pz, py], i) => (i ? shape.lineTo(pz - d / 2, py - h / 2) : shape.moveTo(pz - d / 2, py - h / 2)));
