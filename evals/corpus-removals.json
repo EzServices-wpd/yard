@@ -1,0 +1,4 @@
+{
+ "note": "Prompts allowed to leave the eval corpus. The eval gate compares main's corpus (evals/corpus/*.json and evals/prompts.json at the merge-base) with the PR's and fails on any prompt that is gone, unless it is listed here with a non-empty reason (why it goes, who approved it). An entry with no reason does not count. Editing this file is a gate change: Critic reviews it by hand.",
+ "removals": []
+}
