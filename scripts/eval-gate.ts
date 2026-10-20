@@ -6,7 +6,8 @@
  *
  *   npm run eval:gate                         full corpus → prints totals (exit 1 only if a canary fails)
  *   npm run eval:gate -- --write              …and records evals/gate.json (the reference snapshot)
- *   npm run eval:gate -- --check              …and diffs against evals/gate.json with the CI rules (scripts/eval-gate-diff.ts)
+ *   npm run eval:gate -- --check              …and diffs against evals/gate.json with the CI rules (scripts/eval-gate-diff.ts),
+ *                                             including corpus removals (a prompt in evals/gate.json no longer in the corpus)
  *   npm run eval:gate -- --class F1           only prompts that trip F1 in evals/gate.json (+ canaries): a per-class target
  *   npm run eval:gate -- --shard my.json      only these prompts (a corpus file or a JSON array of strings)
  *   options: --out <file> --root <checkout> --ref <gate.json> --jobs <n> --no-answer-keys
@@ -22,7 +23,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
-import { HEAD_ROOT, byClass, bySource, gradeCanary, gradeOne, loadCanaries, loadCorpus, loadEngine, norm, stable, totalsOf, type CanaryResult, type Entry, type PromptResult } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, byClass, bySource, corpusRemovals, gradeCanary, gradeOne, loadCanaries, loadCorpus, loadEngine, norm, stable, totalsOf, type CanaryResult, type Entry, type PromptResult } from "./eval-gate-lib.ts";
 import { typedDemands } from "./eval-gate-typed.ts";
 import { scoreAnswerKeys, type KeyReport } from "./eval-gate-keys.ts";
 
@@ -127,7 +128,10 @@ async function main() {
   }
   if (flag("--check")) {
     const ref: GateFile = JSON.parse(readFileSync(refFile, "utf8"));
-    const d = diffGates(ref, gate, JSON.parse(readFileSync(join(HEAD_ROOT, "evals/gate-allow.json"), "utf8")));
+    // A prompt recorded in the reference that this tree's corpus no longer has is a removal (full corpus only).
+    const rf = join(HEAD_ROOT, "evals/corpus-removals.json");
+    const removals = cls || shard ? [] : corpusRemovals(new Map(ref.prompts.map((r) => [r.prompt, ["evals/gate.json"]])), new Set(entries.map((e) => e.prompt)), existsSync(rf) ? JSON.parse(readFileSync(rf, "utf8")) : {});
+    const d = diffGates(ref, gate, JSON.parse(readFileSync(join(HEAD_ROOT, "evals/gate-allow.json"), "utf8")), undefined, removals);
     console.log(renderComment(d, { headLabel: "this tree", baseLabel: "evals/gate.json" }));
     if (!d.ok) bad = true;
   }

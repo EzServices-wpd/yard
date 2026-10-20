@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
-import { gradeCanary, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, corpusPrompts, corpusRemovals, gradeCanary, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
@@ -97,4 +100,40 @@ test("diff: a newly failing prompt fails the gate unless allowed with a reason; 
   const md = renderComment(diffGates(base, base, {}), { gateFiles: ["evals/gate-allow.json", "src/lib/yard/fitted.ts"] });
   assert.match(md, /changes the gate itself.*evals\/gate-allow\.json/);
   assert.doesNotMatch(md, /fitted\.ts/);
+});
+test("corpus deletion fails the gate: a prompt in main's corpus missing from the PR's corpus needs evals/corpus-removals.json with a reason", () => {
+  // The PR side: a copy of this checkout's corpus with one grok100 prompt deleted (the way a PR would hide a regression).
+  const pr = mkdtempSync(join(tmpdir(), "eval-gate-drop-"));
+  try {
+    cpSync(join(HEAD_ROOT, "evals/corpus"), join(pr, "evals/corpus"), { recursive: true });
+    cpSync(join(HEAD_ROOT, "evals/prompts.json"), join(pr, "evals/prompts.json"));
+    const g100 = JSON.parse(readFileSync(join(pr, "evals/corpus/grok100.json"), "utf8"));
+    const main = corpusPrompts(HEAD_ROOT);
+    // Pick a grok100 prompt that no other corpus file also holds, so deleting it really removes it.
+    const i = g100.prompts.findIndex((p: { prompt: string }) => (main.get(p.prompt.replace(/\s+/g, " ").trim()) ?? []).length === 1);
+    const [gone] = g100.prompts.splice(i, 1);
+    writeFileSync(join(pr, "evals/corpus/grok100.json"), JSON.stringify(g100, null, 1));
+    const q = gone.prompt.replace(/\s+/g, " ").trim();
+    const rm = corpusRemovals(main, corpusPrompts(pr));
+    assert.deepEqual(rm.map((r) => [r.prompt, r.files, r.allowed]), [[q, ["evals/corpus/grok100.json"], null]]);
+    assert.deepEqual(corpusRemovals(main, corpusPrompts(HEAD_ROOT)), []);
+    // Both sides graded on the PR's corpus look identical: only the removal rule can catch it.
+    const row = { prompt: "x", sources: ["t"], ids: [], grade: "pass" as const, classes: [], header: null, overall: null, pieces: null, usd: null, honor: { honored: 1, checkable: 1, demandsFrom: "typed-rules", items: [] }, invariants: [] };
+    const gate = { totals: totalsOf([row]), canaries: { ok: true, results: [] }, prompts: [row] };
+    assert.equal(diffGates(gate, gate, {}).ok, true);
+    const d = diffGates(gate, gate, {}, undefined, rm);
+    assert.equal(d.ok, false);
+    assert.match(d.why.join("; "), /1 prompt\(s\) in main's corpus missing/);
+    assert.match(renderComment(d), /Removed from main's corpus \(1\)/);
+    assert.equal(diffGates(gate, gate, {}, undefined, corpusRemovals(main, corpusPrompts(pr), { removals: [{ prompt: q, reason: "   " }] })).ok, false);
+    assert.equal(diffGates(gate, gate, {}, undefined, corpusRemovals(main, corpusPrompts(pr), { removals: [{ prompt: q, reason: "duplicate of review18 #4, Critic OK" }] })).ok, true);
+    // The CI step itself (scripts/eval-gate-diff.ts, whose exit code is the job verdict): main = this checkout, PR = the copy.
+    const gf = join(pr, "gate.json");
+    writeFileSync(gf, JSON.stringify(gate));
+    const cli = (headRoot: string) => spawnSync(process.execPath, [...process.execArgv, join(HEAD_ROOT, "scripts/eval-gate-diff.ts"), "--base", gf, "--head", gf, "--base-root", HEAD_ROOT, "--head-root", headRoot], { encoding: "utf8" });
+    const bad = cli(pr);
+    assert.equal(bad.status, 1, bad.stderr);
+    assert.match(bad.stdout, /Eval gate ❌ fail/);
+    assert.equal(cli(HEAD_ROOT).status, 0);
+  } finally { rmSync(pr, { recursive: true, force: true }); }
 });

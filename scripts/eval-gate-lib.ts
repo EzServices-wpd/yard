@@ -73,6 +73,32 @@ export function loadCorpus(dir = join(HEAD_ROOT, "evals/corpus")): Entry[] {
   return [...byPrompt.values()].sort((a, b) => (a.prompt < b.prompt ? -1 : a.prompt > b.prompt ? 1 : 0));
 }
 
+// ---------------------------------------------------------------- corpus removals (a PR may not drop a prompt to pass)
+/**
+ * Every prompt a checkout's corpus grades, by normalized text → the files that hold it: each evals/corpus/*.json
+ * (prompt files, canaries and answer keys alike) plus evals/prompts.json. Read from that checkout's own files, so CI
+ * can compare main's corpus (the merge-base) with the PR's, independent of which corpus the grader ran on.
+ */
+export function corpusPrompts(root = HEAD_ROOT): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  const add = (q: unknown, file: string) => { if (typeof q !== "string" || !norm(q)) return; const k = norm(q); const f = out.get(k) ?? []; if (!f.includes(file)) f.push(file); out.set(k, f); };
+  const dir = join(root, "evals/corpus");
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".json")).sort().map((f) => `evals/corpus/${f}`) : [];
+  if (existsSync(join(root, "evals/prompts.json"))) files.push("evals/prompts.json");
+  for (const file of files) {
+    const j = JSON.parse(readFileSync(join(root, file), "utf8"));
+    for (const it of [...(j.prompts ?? []), ...(j.canaries ?? []), ...(j.keys ?? [])]) add(typeof it === "string" ? it : it?.prompt, file);
+  }
+  return out;
+}
+export type RemovalAllow = { removals?: { prompt: string; reason: string }[] };
+export type Removal = { prompt: string; files: string[]; allowed: string | null };
+/** Prompts in the base corpus that the head corpus no longer has; each is allowed only with a non-empty reason. */
+export function corpusRemovals(base: Map<string, string[]>, head: Map<string, string[]> | Set<string>, allow: RemovalAllow = {}): Removal[] {
+  const reasons = new Map((allow.removals ?? []).filter((a) => typeof a?.reason === "string" && a.reason.trim() && typeof a.prompt === "string").map((a) => [norm(a.prompt), a.reason.trim()]));
+  return [...base].filter(([q]) => !head.has(q)).map(([q, files]) => ({ prompt: q, files, allowed: reasons.get(q) ?? null })).sort((a, b) => (a.prompt < b.prompt ? -1 : 1));
+}
+
 // ---------------------------------------------------------------- honor (ported from grok-intake-ab/engine.ts honor)
 const lc = (s: string) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 const r2 = (n: number) => Math.round(n * 100) / 100;

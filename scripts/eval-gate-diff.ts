@@ -4,12 +4,15 @@
  * Fails when a canary fails, a prompt is newly failing (grade went down) and is not in evals/gate-allow.json
  * with a reason, the total points drop, or a property fails that is not expected-fail in evals/props-allow.json.
  *
- *   npx tsx scripts/eval-gate-diff.ts --base base.json --head head.json [--base-props bp.json --head-props hp.json] [--out comment.md] [--runtime "3m 10s"]
+ * Also fails when a prompt in main's corpus (evals/corpus/*.json + evals/prompts.json at --base-root) is missing from the
+ * PR's corpus (--head-root, default this checkout) and is not in evals/corpus-removals.json with a non-empty reason.
+ *
+ *   npx tsx scripts/eval-gate-diff.ts --base base.json --head head.json --base-root .base [--base-props bp.json --head-props hp.json] [--out comment.md] [--runtime "3m 10s"]
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { KeyReport } from "./eval-gate-keys.ts";
-import type { CanaryResult, PromptResult, Totals } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, corpusPrompts, corpusRemovals, type CanaryResult, type PromptResult, type Removal, type Totals } from "./eval-gate-lib.ts";
 
 type Gate = { totals: Totals; canaries: { ok: boolean; results: CanaryResult[] }; prompts: PromptResult[]; answerKeys?: KeyReport | null };
 export type Allow = { newlyFailing?: { prompt: string; reason: string }[] };
@@ -17,7 +20,7 @@ export type PropRow = { name: string; status: "pass" | "fail" | "expected-fail" 
 export type Props = { seed: number; properties: PropRow[] };
 const rank = { pass: 2, partial: 1, fail: 0 } as const;
 
-export function diffGates(base: Gate, head: Gate, allow: Allow, props?: { base?: Props; head?: Props }) {
+export function diffGates(base: Gate, head: Gate, allow: Allow, props?: { base?: Props; head?: Props }, removals: Removal[] = []) {
   const B = new Map(base.prompts.map((r) => [r.prompt, r]));
   const H = new Map(head.prompts.map((r) => [r.prompt, r]));
   const common = [...H.keys()].filter((q) => B.has(q)).sort();
@@ -38,11 +41,13 @@ export function diffGates(base: Gate, head: Gate, allow: Allow, props?: { base?:
   if (unallowed.length) why.push(`${unallowed.length} newly failing prompt(s) not in evals/gate-allow.json`);
   if (headPoints < basePoints) why.push(`total dropped ${basePoints} → ${headPoints}`);
   if (propsBad.length) why.push(`${propsBad.length} property(ies) failing and not expected-fail`);
+  const removedBad = removals.filter((r) => !r.allowed);
+  if (removedBad.length) why.push(`${removedBad.length} prompt(s) in main's corpus missing from this PR's corpus and not in evals/corpus-removals.json with a reason`);
   return {
     ok: !why.length, why, common: common.length, base: base.totals, head: head.totals, basePoints, headPoints,
     baseHonor: hon(B), headHonor: hon(H), newlyFailing, newlyPassing, classMoves,
     added: [...H.keys()].filter((q) => !B.has(q)).length, removed: [...B.keys()].filter((q) => !H.has(q)).length,
-    canaries: head.canaries.results, baseCanaries: base.canaries.results, props, propsBad, propsNew,
+    canaries: head.canaries.results, baseCanaries: base.canaries.results, props, propsBad, propsNew, corpusRemoved: removals,
     // Report only: answer keys never enter `ok`.
     keys: { head: head.answerKeys ?? null, base: base.answerKeys ?? null },
   };
@@ -52,7 +57,7 @@ const sgn = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const pct = (n: number) => `${Math.round(n * 10) / 10}`;
 export const MARKER = "<!-- yard-eval-gate -->";
 /** Files that define the gate itself. The head's grader grades both sides, so a PR that edits these can move the bar: Critic reviews them by hand. */
-export const GATE_FILES = /^(?:evals\/(?:gate-allow|props-allow|invariants-baseline)\.json|evals\/corpus\/(?:canaries|answer-keys)\.json|scripts\/baselines\/linen-closet\.txt|scripts\/(?:eval-gate[\w-]*|props\.test)\.ts|\.github\/workflows\/eval-gate\.yml)$/;
+export const GATE_FILES = /^(?:evals\/(?:gate-allow|props-allow|invariants-baseline|corpus-removals|prompts)\.json|evals\/corpus\/[\w-]+\.json|scripts\/baselines\/linen-closet\.txt|scripts\/(?:eval-gate[\w-]*|props\.test)\.ts|\.github\/workflows\/eval-gate\.yml)$/;
 export function renderComment(d: Diff, o: { headLabel?: string; baseLabel?: string; runtime?: string; run?: string; gateFiles?: string[] } = {}): string {
   const L: string[] = [MARKER, `## Eval gate ${d.ok ? "✅ pass" : "❌ fail"}`, ""];
   if (!d.ok) L.push(`**Why:** ${d.why.join("; ")}`, "");
@@ -64,6 +69,12 @@ export function renderComment(d: Diff, o: { headLabel?: string; baseLabel?: stri
   L.push(`| ${o.headLabel ?? "PR head"} | ${h.pass} | ${h.partial} | ${h.fail} | ${h.points}/${h.maxPoints} | ${h.honored}/${h.checkable} (${h.honorPct}%) |`);
   L.push(`| **Δ** | ${sgn(h.pass - b.pass)} | ${sgn(h.partial - b.partial)} | ${sgn(h.fail - b.fail)} | ${sgn(d.headPoints - d.basePoints)} (on ${d.common} shared prompts) | ${sgn(d.headHonor - d.baseHonor)} (${sgn(Math.round((h.honorPct - b.honorPct) * 10) / 10)} pts) |`, "");
   if (d.added || d.removed) L.push(`Corpus: ${d.added} prompt(s) only on head, ${d.removed} only on base (not scored in Δ).`, "");
+  if (d.corpusRemoved.length) {
+    L.push(`**Removed from main's corpus (${d.corpusRemoved.length}):**`);
+    for (const r of d.corpusRemoved.slice(0, 40)) L.push(`- ${r.allowed ? "⚠️ allowed" : "❌"} \`${r.prompt}\` (${r.files.join(", ")})${r.allowed ? ` — ${r.allowed}` : " — not in evals/corpus-removals.json with a reason"}`);
+    if (d.corpusRemoved.length > 40) L.push(`- … ${d.corpusRemoved.length - 40} more`);
+    L.push("");
+  }
   const cf = d.canaries.filter((c) => !c.ok);
   L.push(`**Canaries:** ${cf.length ? `❌ ${cf.length} failing` : `✅ ${d.canaries.length}/${d.canaries.length}`} — ${d.canaries.map((c) => `${c.ok ? "✅" : "❌"} ${c.id}`).join(" · ")}`);
   for (const c of cf) L.push(`- ❌ **${c.id}** (${c.prompt.slice(0, 60)}): ${c.failures.join("; ")}`);
@@ -106,7 +117,11 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
   const rd = (f?: string) => (f ? JSON.parse(readFileSync(resolve(f), "utf8")) : undefined);
   if (arg("--base") && arg("--head")) {
     const allow = rd(arg("--allow") ?? new URL("../evals/gate-allow.json", import.meta.url).pathname);
-    const d = diffGates(rd(arg("--base")), rd(arg("--head")), allow, { base: rd(arg("--base-props")), head: rd(arg("--head-props")) });
+    // Corpus removals: main's own corpus files (the merge-base checkout) vs the PR's, so deleting a prompt cannot hide a regression.
+    const headRoot = resolve(arg("--head-root") ?? HEAD_ROOT);
+    const removalsFile = resolve(arg("--removals-allow") ?? resolve(headRoot, "evals/corpus-removals.json"));
+    const removals = arg("--base-root") ? corpusRemovals(corpusPrompts(resolve(arg("--base-root")!)), corpusPrompts(headRoot), existsSync(removalsFile) ? rd(removalsFile) : {}) : [];
+    const d = diffGates(rd(arg("--base")), rd(arg("--head")), allow, { base: rd(arg("--base-props")), head: rd(arg("--head-props")) }, removals);
     const changed = arg("--changed") ? readFileSync(resolve(arg("--changed")!), "utf8").split("\n").filter(Boolean) : [];
     const md = renderComment(d, { runtime: arg("--runtime"), run: arg("--run"), gateFiles: changed });
     if (arg("--out")) writeFileSync(resolve(arg("--out")!), md);

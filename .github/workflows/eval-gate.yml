@@ -4,7 +4,9 @@
 # evals/corpus), then posts ONE sticky comment (marker <!-- yard-eval-gate -->): pass/partial/fail, honor %, the delta,
 # newly failing / newly passing prompts, failure classes that moved, canary status, properties, and the answer-key
 # report. The job fails if a canary fails, a prompt is newly failing and not in evals/gate-allow.json with a reason,
-# the total points drop, or a property fails that is not expected-fail in evals/props-allow.json.
+# the total points drop, a property fails that is not expected-fail in evals/props-allow.json, or a prompt in main's
+# corpus (the merge-base's own evals/corpus/*.json and evals/prompts.json) is missing from the PR's corpus and is not
+# in evals/corpus-removals.json with a reason (both sides are graded on the head's corpus, so a deletion would hide).
 # Answer keys are REPORT ONLY. evals/score.json and the guards workflow are unchanged.
 #
 # Per-class work (one cloud agent per failure class): `npm run eval:gate -- --class <id>` is the local target;
@@ -76,7 +78,7 @@ jobs:
         run: |
           set +e
           git diff --name-only "${{ steps.base.outputs.sha }}" HEAD > "$RUNNER_TEMP/changed.txt"
-          npx -y tsx scripts/eval-gate-diff.ts --changed "$RUNNER_TEMP/changed.txt" --base "$RUNNER_TEMP/gate-base.json" --head "$RUNNER_TEMP/gate-head.json" \
+          npx -y tsx scripts/eval-gate-diff.ts --changed "$RUNNER_TEMP/changed.txt" --base "$RUNNER_TEMP/gate-base.json" --head "$RUNNER_TEMP/gate-head.json" --base-root .base \
             --base-props "$RUNNER_TEMP/props-base.json" --head-props "$RUNNER_TEMP/props-head.json" \
             --runtime "grading ${{ steps.grade.outputs.secs }} s" --run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --out "$RUNNER_TEMP/comment.md"
