@@ -459,6 +459,8 @@ export function i37(p: YardProject, plan: BuildPlan): Violation[] {
  * is built on the head noun's build or named in a note.
  */
 export function i41(p: YardProject, prompt: string): Violation[] {
+  // A refused build (tooSmall.ts) builds nothing and says why: a typed feature is not dropped on it.
+  if (p.refused) return [];
   const q = prompt || p.prompt || "";
   const head = typedHeadNoun(q);
   const feats = typedFeatures(q);

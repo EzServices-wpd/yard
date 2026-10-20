@@ -63,3 +63,12 @@ test("C41 sweep: every feature word on 12 head nouns is built or noted, and neve
   }
   assert.deepEqual(bad, []);
 });
+
+test("C41 after #103: a refused build (too small to hold its parts) drops no typed feature: it builds nothing and says why", () => {
+  for (const q of ["bookcase 1/2 wide with doors", "cabinet 1/2 wide with 2 drawers"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(p.refused, `${q} is refused`);
+    assert.equal(p.panels.length, 0);
+    assert.deepEqual(i41(p, q), [], q);
+  }
+});
