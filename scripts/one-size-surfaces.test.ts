@@ -4,11 +4,13 @@
  * the cover drawing's dimension lines, the Check it drawing and the plan overview. The cover subline is words
  * ("wide · tall · deep"), pinned by the honesty guards. Before, the 34″ vanity's height line said 44″ (its mirror), the filing cabinet's typed 30 deep and the
  * linen's 16 deep said the proud-front 30 3/4 and 16 3/4 on the drawings, and the bench readout and PDF title were
- * W × H × D. Step 1's footprint keeps the finished depth (Chief: the linen baseline locks it), so it is not a surface here.
+ * W × H × D. Step 1's footprint keeps the finished depth (Chief: the linen baseline locks it); since row 132 its headline
+ * names the build without the name's bare W × H × D triple, and its "Unit … wide × … deep × … high" line is W × D × H.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { jsPDF } from "jspdf";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { buildPlan } from "../src/lib/yard/report";
@@ -19,6 +21,7 @@ import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import { SvgDoc } from "../src/lib/yard/svgDoc";
 import { drawnDims } from "../src/lib/ideas/size";
 import { inchFrac } from "../src/lib/yard/inchText";
+import { MeasureReadout } from "../src/components/workspace/measure-readout";
 
 const BUILDS: Record<string, string> = {
   vanity: "vanity with drawers",
@@ -61,9 +64,12 @@ test("header, bench readout and the header's axes are one string (W × D × H)",
     const nums = [...r.axes.matchAll(/(\d+(?: \d+\/\d+)?|\d+\/\d+)" ([WDH])\b/g)].map((m) => `${m[2]}${m[1]}`).join(" ");
     assert.equal(nums, `W${inchFrac(r.size.width)} D${inchFrac(r.size.depth)} H${inchFrac(r.size.height)}`, r.key);
   }
-  // The bench readout prints headerAxes for every non-round build (source guard: no second formatter in W × H × D).
-  const shell = fs.readFileSync("src/components/workspace/shell.tsx", "utf8");
-  assert.match(shell, /project\.fitted\?\.unit\?\.shape !== "round"\s*\?\s*headerAxes\(project\)/);
+  // The bench readout as rendered (row 134: the rendered text, not a source regex): it opens with the header's axes,
+  // in look, build and walk mode, so no second formatter in W × H × D can stand in for it.
+  for (const r of rows) for (const workMode of ["look", "build", "walk"]) {
+    const text = renderToStaticMarkup(createElement(MeasureReadout, { project: r.p, wire: false, workMode })).replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+    assert.ok(text.startsWith(r.axes), `${r.key} ${workMode}: bench readout ${JSON.stringify(text)} vs header axes ${r.axes}`);
+  }
 });
 
 test("cover drawing, Check it drawing and the plan overview label the header's W × D × H", () => {
@@ -105,4 +111,19 @@ test("PDF: the cover title, every running head and the Check it labels say the h
     const outside = step1 < 0 ? flat : flat.slice(0, step1) + flat.slice(flat.indexOf(".", flat.indexOf("Unit ", step1)) + 1);
     if (r.size.height !== r.size.depth) assert.ok(!outside.slice(0, 600).includes(whd), `${r.key}: W × H × D "${whd}" on the cover`);
   }
+});
+
+test("step 1 says the size once, labelled W × D × H, never the name's bare W × H × D triple (row 132)", () => {
+  // The typed-size prompts carry their triple in the name ("Linen 31 1/2" × 78" × 16""), so they are the ones that bite.
+  const typed = [...rows, ...["bookcase 36 x 72 x 12", "dresser 40 wide 34 tall 18 deep"].map((prompt) => { const p = generateFromPrompt(prompt); return { key: prompt, prompt, p, plan: buildPlan(p), size: headerSize(p), axes: headerAxes(p) }; })];
+  let named = 0;
+  for (const r of typed) {
+    const s1 = r.plan.instructions.find((s) => /^Confirm the/.test(s.title));
+    if (!s1) continue;
+    if (/\d["″]\s*[×x]\s*\d/.test(r.p.name)) named++;
+    assert.ok(!/\d["″]?\s*[×x]\s*[\d\s/]+["″]?\s*[×x]\s*\d/.test(s1.description), `${r.key}: step 1 has an unlabelled triple: ${s1.description.slice(0, 120)}`);
+    const unit = s1.description.match(/Unit ([\d\s/]+)" wide × ([\d\s/]+)" deep × ([\d\s/]+)" high/);
+    if (unit) assert.equal(inchFrac(r.size.width), unit[1].trim(), `${r.key}: step 1 width`);
+  }
+  assert.ok(named >= 2, `only ${named} builds carry a size in their name: the test has nothing to bite on`);
 });
