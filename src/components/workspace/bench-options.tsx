@@ -12,6 +12,16 @@ import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
 import type { WorkMode } from "@/lib/yard/types";
 
+/** A refusal's material chip: it names that nothing was built and opens nothing (there is no stock to choose). */
+function NothingBuiltChip({ label }: { label: string }) {
+  return (
+    <span data-yard-material-none className="inline-flex h-11 max-w-full shrink items-center rounded-full border border-border px-3.5 text-sm sm:max-w-[16rem]">
+      <span className="text-muted">Material:&nbsp;</span>
+      <span className="text-fg" data-yard-stock-label>{label}</span>
+    </span>
+  );
+}
+
 /**
  * The bar's two controls. Live walk 10-19: "Material: ¾″ plywood ▾" opened a View/Camera/Drawers menu. Rule: a
  * control's label names what it opens. "Material: …" opens the stock picker (onStock); the options menu (size,
@@ -33,12 +43,7 @@ export function BenchOptionsToggle({
   const { label, wire, offersStock } = useStockLabel();
   return (
     <div className="flex max-w-full shrink-0 items-center gap-1.5">
-      {!offersStock ? (
-        <span data-yard-material-chip="none" className="inline-flex h-11 max-w-full shrink items-center rounded-full border border-border px-3.5 text-sm sm:max-w-[16rem]">
-          <span className="text-muted">Material:&nbsp;</span>
-          <span className="text-fg" data-yard-stock-label>{label}</span>
-        </span>
-      ) : (
+      {offersStock ? (
       <button
         type="button"
         onClick={onStock}
@@ -54,6 +59,8 @@ export function BenchOptionsToggle({
         </span>
         <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
       </button>
+      ) : (
+        <NothingBuiltChip label={label} />
       )}
       <button
         ref={buttonRef}
