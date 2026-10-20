@@ -48,7 +48,9 @@ export function typedAssumedFailures(p: YardProject, prompt: string): string[] {
   }
   // Row 202: the cover says one size on every axis: its subtitle, its title (headerTitle) and its drawing's tags.
   const title = headerTitle(p, { features: false }).match(new RegExp(String.raw`${NUM}" W × ${NUM}" D × ${NUM}" H`));
-  const tags = d ? lineSpans(p, d) : null;
+  // A window's drawing is its framing, and a floating build's tags measure the part (its header height is from the
+  // floor): their tags measure what they draw, by design (lineSpans), so only a grounded build's tags are compared.
+  const tags = d && !p.windowPkg && d.min.y <= 0.05 ? lineSpans(p, d) : null;
   for (const m of head.matchAll(new RegExp(String.raw`(?:^| x |, | and | · )${NUM}" (wide|tall|deep)\b`, "g"))) {
     const a = WORD[m[2]];
     const t = title ? inches(title[{ width: 1, depth: 2, height: 3 }[a]]) : null;
