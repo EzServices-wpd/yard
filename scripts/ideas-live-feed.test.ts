@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import { curatedFeed, type IdeasFeed } from "../src/lib/ideas/feed";
-import { SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, groupRows, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
+import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
@@ -171,4 +171,33 @@ test("only rendered cards are used: a Trusted build past Popular's SECTION_MAX s
   assert.equal(where("under-stairs"), "recent", "under-stairs shelves are in no section");
   // Every Trusted type shows exactly once somewhere (busy types past both caps would stay hidden).
   for (const s of feed.sections) for (const c of s.cards) assert.equal(feed.sections.filter((x) => x.cards.some((y) => y.buildType === c.buildType)).length, 1);
+});
+
+test("junk titles never render: the shared card-quality rule drops digit-only or stub titles in every section (row 111)", () => {
+  // The live junk "3" card was "3/4 PVC soccer goal" + "3/4 PVC trellis": the stock size was read as the build type.
+  assert.equal(typeKey("builtin:3-4-soccer-goal"), "soccer-goal");
+  assert.equal(typeKey("builtin:3-4-trellis"), "trellis");
+  assert.equal(typeKey("builtin:3-8-hardwood-dowel"), "hardwood-dowel");
+  assert.equal(typeKey("builtin:2x4-ladder"), "2x4-ladder");
+  for (const t of ["3", "3/4", "12", "X", "Tv", " 3 4 ", ""]) assert.ok(isJunkTitle(t), `"${t}" is junk`);
+  for (const t of ["Bed", "Soccer goal", "2×4 ladder", "8 flat washer"]) assert.ok(!isJunkTitle(t), `"${t}" is a title`);
+  assert.equal(MIN_TITLE_LETTERS, 3);
+  // Rows that still fold to a stub type ("3-4" → "3", "x" → "X") are dropped, even when Trusted and the busiest.
+  const snap: IdeasSnapshot = {
+    ...SNAP,
+    rows: [
+      ...SNAP.rows,
+      row("3/4", "builtin:3-4", 900, after(7)),
+      row("x", "builtin:x", 800, after(7)),
+      row("3/4 PVC soccer goal 48 wide 36 tall", "builtin:3-4-soccer-goal", 3, after(8), "Trusted", "48×12×36"),
+    ],
+  };
+  const feed = liveFeed(snap, curatedFeed(), NOW);
+  assert.deepEqual(feedViolations(feed), []);
+  const cards = feed.sections.flatMap((s) => s.cards);
+  assert.deepEqual(cards.filter((c) => isJunkTitle(c.title)).map((c) => c.title), []);
+  assert.ok(cards.some((c) => c.buildType === "soccer-goal" && c.title === "Soccer goal"), "the soccer goal shows under its own name");
+  // And the invariant names one if it ever gets through.
+  const bad: IdeasFeed = { ...feed, sections: [{ ...feed.sections[0], cards: [{ ...feed.sections[0].cards[0], title: "3" }, ...feed.sections[0].cards.slice(1)] }] };
+  assert.ok(feedViolations(bad).some((v) => /junk title "3"/.test(v)));
 });

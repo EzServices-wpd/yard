@@ -38,12 +38,21 @@ const ALIAS: Record<string, string> = { bookshelf: "bookcase", "raised-bed": "ra
 
 /** One build type per result key: "builtin:bookcase-36" / "recipe:bookshelf" → "bookcase". */
 export function typeKey(resultKey: string): string {
-  let k = resultKey.replace(/^[a-z]+:/, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
+  // A leading stock size is not the object: "builtin:3-4-soccer-goal" (3/4 PVC) is a soccer goal, not type "3" (row 111).
+  let k = resultKey.replace(/^[a-z]+:/, "").replace(/^(?:\d+-)+(?=[a-z])/, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
   k = ALIAS[k] ?? k;
   // Quick win (e): the log's 40-char result keys cut "box" to "bo" ("Pine toolbo"): any key ending "bo" is a box.
   if (/bo$/.test(k) && !/(?:^|-)(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/.test(k)) k = `${k}x`;
   return k || "thing";
 }
+
+/**
+ * The shared card-quality rule (row 111): a card title needs at least MIN_TITLE_LETTERS letters, so a title that is
+ * only digits, a fraction or a stub ("3", "3/4", "X") never renders in any section. liveFeed drops such cards and
+ * feedViolations reports one if it ever gets through.
+ */
+export const MIN_TITLE_LETTERS = 3;
+export const isJunkTitle = (title: string) => (title.match(/[a-z]/gi)?.length ?? 0) < MIN_TITLE_LETTERS;
 
 const titleOf = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 
@@ -118,7 +127,7 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   // Only a card a section actually renders is used (Critic row 111: Popular marked every Trusted card used, not just
   // the SECTION_MAX it shows, so low-count builds like the mail organizer and under-stairs shelves showed nowhere).
   const take = (id: string, title: string, list: IdeaCard[]): IdeaSection => {
-    const all = sortCards(list).filter((c) => !used.has(c.slug) && !used.has(c.buildType));
+    const all = sortCards(list).filter((c) => !isJunkTitle(c.title) && !used.has(c.slug) && !used.has(c.buildType));
     const shown = all.slice(0, SECTION_MAX);
     shown.forEach((c) => { used.add(c.slug); used.add(c.buildType); });
     return { id, title, order: 0, total: all.length, cards: shown.map((c) => ({ ...c, section: title })) };
@@ -153,6 +162,7 @@ export function feedViolations(feed: IdeasFeed): string[] {
       // A counted card from the log never shows a test prompt (a curated card may share a canary's words, uncounted).
       if ((c.count > 0 && TEST_PROMPTS.has(p)) || /\b(?:critic|probe|canary)\b/.test(p)) out.push(`${c.slug}: test prompt "${c.examplePrompt}"`);
       if (!c.title.trim() || c.title.trim() === c.examplePrompt.trim() || /^[a-z]/.test(c.title)) out.push(`${c.slug}: title "${c.title}" is not a display title`);
+      if (isJunkTitle(c.title)) out.push(`${c.slug}: junk title "${c.title}" (fewer than ${MIN_TITLE_LETTERS} letters)`);
       if (c.status !== "checked" && c.status !== "new") out.push(`${c.slug}: status ${c.status}`);
       if (GENERIC_TYPES.has(c.buildType)) out.push(`${c.slug}: generic fallback card`);
       if (isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`${c.slug}: held recipe on Ideas (${s.id})`);
