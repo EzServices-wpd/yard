@@ -8,6 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import crypto from "node:crypto";
 
 const csp = (() => {
   const cfg = JSON.parse(fs.readFileSync("vercel.json", "utf8")) as { headers: { source: string; headers: { key: string; value: string }[] }[] };
@@ -24,8 +25,16 @@ test("the CSP lets no fetch directive name another origin (no https:, no host, n
   assert.deepEqual(csp["default-src"], ["'self'"]);
 });
 
-test("fonts are self-hosted: /fonts/fonts.css names only /fonts/*.woff2 that exist, and the root loads it", () => {
-  const css = fs.readFileSync("public/fonts/fonts.css", "utf8");
+const FONT_DIR = "public/fonts";
+const sha10 = (f: string) => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex").slice(0, 10);
+const fontsCss = (() => {
+  const css = fs.readdirSync(FONT_DIR).filter((f) => f.endsWith(".css"));
+  assert.equal(css.length, 1, `one fonts stylesheet in ${FONT_DIR}: ${css.join(", ")}`);
+  return css[0];
+})();
+
+test("fonts are self-hosted: the /fonts stylesheet names only /fonts/*.woff2 that exist, and the root loads it", () => {
+  const css = fs.readFileSync(`${FONT_DIR}/${fontsCss}`, "utf8");
   const urls = [...css.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]);
   assert.ok(urls.length >= 8, `${urls.length} font files`);
   for (const u of urls) {
@@ -37,6 +46,22 @@ test("fonts are self-hosted: /fonts/fonts.css names only /fonts/*.woff2 that exi
   for (const fam of ["Figtree", "Newsreader"]) assert.match(css, new RegExp(`font-family: '${fam}'`));
   assert.match(css, /font-display: optional/, "display=optional kept (no late swap, no CLS)");
   const root = fs.readFileSync("src/routes/__root.tsx", "utf8");
-  assert.match(root, /const FONTS_CSS = "\/fonts\/fonts\.css";/);
+  assert.ok(root.includes(`const FONTS_CSS = "/fonts/${fontsCss}";`), `root loads /fonts/${fontsCss}`);
   assert.doesNotMatch(root, /fonts\.(?:googleapis|gstatic)\.com/);
+});
+
+test("/fonts is cached immutable, so every file under it is named by its content hash", () => {
+  const cfg = JSON.parse(fs.readFileSync("vercel.json", "utf8")) as { headers: { source: string; headers: { key: string; value: string }[] }[] };
+  const rule = cfg.headers.find((h) => h.source === "/fonts/(.*)");
+  assert.ok(rule, "vercel.json has a /fonts/(.*) headers rule");
+  const cc = rule.headers.find((x) => x.key.toLowerCase() === "cache-control")?.value;
+  assert.equal(cc, "public, max-age=31536000, immutable");
+  // An immutable file must never change under the same name: the name carries sha256(content)[0:10].
+  const files = fs.readdirSync(FONT_DIR);
+  assert.ok(files.length >= 9, `${files.length} files`);
+  for (const f of files) {
+    const m = f.match(/^[a-z]+-([0-9a-f]{10})\.(?:woff2|css)$/);
+    assert.ok(m, `${f} is not named <family>-<hash10>.<ext>`);
+    assert.equal(m[1], sha10(`${FONT_DIR}/${f}`), `${f}: name hash != sha256(content); rename it (content changed)`);
+  }
 });

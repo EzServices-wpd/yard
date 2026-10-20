@@ -18,7 +18,7 @@ const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host
  * fallback and never swaps late (a late swap was the occasional 0.11 CLS). Self-hosted under /fonts (row 113), so
  * no page makes a third-party request; the CSP allows none.
  */
-const FONTS_CSS = "/fonts/fonts.css";
+const FONTS_CSS = "/fonts/fonts-07382ae63a.css";
 function LateFonts() {
   useEffect(() => {
     if (document.querySelector(`link[rel="stylesheet"][href="${FONTS_CSS}"]`)) return;
