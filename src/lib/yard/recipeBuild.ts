@@ -1075,10 +1075,6 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
 export function seatOnCarriers(recipe: Recipe, panels: Panel[]): void {
   const part = (p: Panel) => recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
   const byName = (n: string) => panels.filter((p) => p.name === n || p.name.replace(/ \d+$/, "") === n);
-  const below = (p: Panel, seen = new Set<Panel>()): Panel[] => {
-    for (const c of (part(p)?.on ?? []).flatMap(byName)) if (!seen.has(c)) { seen.add(c); below(c, seen); }
-    return [...seen];
-  };
   const over = (a: Panel, b: Panel) => (["x", "z"] as const).every((x) => { const k = x === "x" ? "width" : "depth"; return Math.min(a.position[x] + a.size[k], b.position[x] + b.size[k]) - Math.max(a.position[x], b.position[x]) > 0.01; });
   for (const p of [...panels].sort((a, b) => a.position.y - b.position.y)) {
     if (p.turns || part(p)?.kind === "hardware") continue;
@@ -1087,7 +1083,8 @@ export function seatOnCarriers(recipe: Recipe, panels: Panel[]): void {
     const b = part(p)?.box;
     if (!b || b[4] * recipe.size.height < Math.max(b[3] * recipe.size.width, b[5] * recipe.size.depth)) continue;
     const top = p.position.y + p.size.height;
-    const into = below(p).filter((c) => c !== p && c.position.y < p.position.y - 0.01 && c.position.y + c.size.height > p.position.y + 0.01 && over(p, c));
+    // Its own carriers only: a fin on a tailplane sunk into the fuselage seats on the tailplane, still touching it.
+    const into = (part(p)?.on ?? []).flatMap(byName).filter((c) => c !== p && c.position.y < p.position.y - 0.01 && c.position.y + c.size.height > p.position.y + 0.01 && over(p, c));
     if (!into.length) continue;
     const seat = Math.max(...into.map((c) => c.position.y + c.size.height));
     if (top - seat < 0.25) continue;
