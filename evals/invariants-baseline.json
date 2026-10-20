@@ -125,10 +125,6 @@
    "class": "F2",
    "msg": "typed 44 wide, model 82"
   },
-  "C15|knife block maple": {
-   "class": "C15",
-   "msg": "step \"Set the Back panel\" uses #8 × 1 1/4\" screws, not on Buy"
-  },
   "I26|ferris wheel": {
    "class": "F30",
    "msg": "Base runs into Gondola 4 with no joint cut for it"

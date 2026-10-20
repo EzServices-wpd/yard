@@ -2,6 +2,7 @@ import type { Panel } from "./types";
 import { frontCue } from "./cueRules";
 import { createId } from "@/lib/utils";
 import { SLIDE_LENGTHS_IN, slideForDepth } from "./stockLook";
+import { P } from "./sheetThickness";
 
 /**
  * Front sections (class F17 doors-drawers, 10-17). A carcase's front is split into sections, and each section owns its
@@ -24,7 +25,6 @@ export function drawersTooTallToFill(count: number, width: number, clear: number
 /** A drawer opening that shares the carcase with doors or shelves: a sensible utensil/tool drawer. */
 export const SHARED_DRAWER_ROW_IN = 7;
 const BACK_T = 0.25;
-const P = 0.75;
 const isNoDrawersPrompt = (lower: string) => frontCue(lower, "drawers").none;
 const isNoDoorsPrompt = (lower: string) => frontCue(lower, "doors").none;
 /** A part of a front section (materialId: the carcase stock; 3/4" plywood unless the caller sets one). */
