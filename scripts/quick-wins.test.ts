@@ -72,14 +72,13 @@ test("(walk 3) a control's label names what it opens: 'Material: …' opens the 
 test("(walk 5) no runtime third-party CDN assets: the bench HDRI is self-hosted and no drei preset fetches one", () => {
   assert.ok(fs.existsSync("public/hdri/empty_warehouse_01_1k.hdr"));
   assert.equal(fs.readFileSync("public/hdri/empty_warehouse_01_1k.hdr").subarray(0, 10).toString(), "#?RADIANCE");
-  const CDN = /https?:\/\/(?:raw\.githack\.com|[\w.-]*githack\.com|cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|raw\.githubusercontent\.com|[\w.-]*\.cloudfront\.net)/i;
-  // Known, deliberate off-host loads (reported, not assets fetched by our runtime code): Google Fonts CSS.
-  const ALLOW = /fonts\.googleapis\.com|fonts\.gstatic\.com/;
+  const CDN = /https?:\/\/(?:fonts\.googleapis\.com|fonts\.gstatic\.com|raw\.githack\.com|[\w.-]*githack\.com|cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|raw\.githubusercontent\.com|[\w.-]*\.cloudfront\.net)/i;
+  // No allow-list: the fonts are self-hosted too (row 113), so a Google Fonts URL in src fails like any CDN.
   const walk = (d: string): string[] => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : /\.(tsx?|mjs|css|html)$/.test(e.name) && !/\.test\./.test(e.name) ? [`${d}/${e.name}`] : []));
   const bad: string[] = [];
   for (const f of walk("src")) {
     const t = fs.readFileSync(f, "utf8");
-    for (const m of t.matchAll(/https?:\/\/[^\s"'`)]+/g)) if (CDN.test(m[0]) && !ALLOW.test(m[0])) bad.push(`${f}: ${m[0]}`);
+    for (const m of t.matchAll(/https?:\/\/[^\s"'`)]+/g)) if (CDN.test(m[0])) bad.push(`${f}: ${m[0]}`);
     // drei presets (Environment preset=, useEnvironment({ preset })) load from raw.githack.com at runtime.
     if (/<(?:Environment|Stage)\b[^>]*\bpreset=/.test(t) || /useEnvironment\(\{[^}]*preset/.test(t)) bad.push(`${f}: drei preset (fetches from githack)`);
   }

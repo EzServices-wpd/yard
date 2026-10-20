@@ -1,0 +1,216 @@
+{
+ "source": "live-walk",
+ "note": "Live walk 2026-10-21 release (prod 49aa20f): live-walk-1021/RESULTS.md prompt table (walkGrade = Critic's live grade), quoted prompts in yard-errors-ranked.md rows 76–84, and Critic's 10-19 regrade/backlog prompts.",
+ "prompts": [
+  {
+   "id": "lw01",
+   "prompt": "linen closet 31.5 wide 78 tall 16 deep",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw02",
+   "prompt": "big ben",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw03",
+   "prompt": "brooklyn bridge",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw04",
+   "prompt": "eiffel tower",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw05",
+   "prompt": "submarine",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw06",
+   "prompt": "trebuchet",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw07",
+   "prompt": "water wheel",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw08",
+   "prompt": "filing cabinet 30x30x24 2 doors 2 drawers",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw09",
+   "prompt": "3 drawer dresser",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw10",
+   "prompt": "vanity with drawers",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw11",
+   "prompt": "kitchen island",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw12",
+   "prompt": "tool cabinet with drawers",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw13",
+   "prompt": "nightstand with 2 drawers",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw14",
+   "prompt": "abacus 3 wide",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw15",
+   "prompt": "abacus 4 wide",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw16",
+   "prompt": "abacus 8 wide",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw17",
+   "prompt": "abacus 8 wide 12 rods",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw18",
+   "prompt": "broom closet cabinet to fit a 22 inch gap 80 tall 14 deep",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw19",
+   "prompt": "bookshelf to fit a 30 inch nook",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw20",
+   "prompt": "wardrobe for a 7 ft ceiling",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw21",
+   "prompt": "shelf for a 12 inch record",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw22",
+   "prompt": "barn birdhouse",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "lw23",
+   "prompt": "statue of liberty",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw24",
+   "prompt": "utility cabinet 30 wide 72 tall 16 deep with 4 shelves and 2 doors",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw25",
+   "prompt": "wine cabinet",
+   "walkGrade": "partial"
+  },
+  {
+   "id": "lw26",
+   "prompt": "water wheel 12 inches wide",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw27",
+   "prompt": "water wheel 36 inches wide",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw28",
+   "prompt": "cat tree with three platforms",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw29",
+   "prompt": "floating shelf for vinyl records",
+   "walkGrade": "pass"
+  },
+  {
+   "id": "lw30",
+   "prompt": "plant stand for a bay window",
+   "walkGrade": "fail"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "abacus 2 wide",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "abacus 3 wide 3 rods",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "abacus 10 wide 15 rods",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "water wheel 24 inches wide",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "water wheel 30 inches wide",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "peg rack",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "dowel drying rack",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "drying rack 6 wide",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "coat peg rail",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "towel bar set",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "3 drawer dresser from 1/2 plywood",
+   "note": "Critic regrade / backlog 2026-10-19"
+  },
+  {
+   "id": "critic-1019",
+   "prompt": "shelf 24 1/2\" wide",
+   "note": "Critic regrade / backlog 2026-10-19"
+  }
+ ]
+}
