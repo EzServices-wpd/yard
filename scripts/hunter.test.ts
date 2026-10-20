@@ -21,5 +21,10 @@ test("every known hunter hit names a sub-check and a reason", () => {
   for (const [k, why] of Object.entries(base)) {
     assert.ok(HUNTER_CHECKS.some((c) => k.startsWith(`${c}: `)), k);
     assert.ok(why.length > 20, `${k} has no reason`);
+    // Each hit carries its own true reason (rows 179/183): a wrong build points at the backlog row that owns it, a right
+    // build says why it is right, and the reason names its own prompt so boilerplate can't stand in for it.
+    const prompt = k.slice(k.indexOf("|") + 1);
+    assert.match(why, /^(?:WRONG (?:BUILD|TEXT) \(row \d+\)|COSMETIC \(build right\)|DEFENSIBLE \([^)]*\)):/, `${k}: reason opens with its verdict`);
+    assert.ok(why.includes(`'${prompt}'`), `${k}: reason names its own prompt`);
   }
 });
