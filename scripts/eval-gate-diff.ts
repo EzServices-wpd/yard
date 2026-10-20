@@ -57,7 +57,7 @@ const sgn = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const pct = (n: number) => `${Math.round(n * 10) / 10}`;
 export const MARKER = "<!-- yard-eval-gate -->";
 /** Files that define the gate itself. The head's grader grades both sides, so a PR that edits these can move the bar: Critic reviews them by hand. */
-export const GATE_FILES = /^(?:evals\/(?:gate-allow|props-allow|invariants-baseline|corpus-removals|prompts)\.json|evals\/corpus\/[\w-]+\.json|scripts\/baselines\/linen-closet\.txt|scripts\/(?:eval-gate[\w-]*|props\.test)\.ts|\.github\/workflows\/eval-gate\.yml)$/;
+export const GATE_FILES = /^(?:evals\/(?:gate-allow|props-allow|invariants-baseline|corpus-removals|prompts|expected-refusals)\.json|evals\/corpus\/[\w-]+\.json|scripts\/baselines\/linen-closet\.txt|scripts\/(?:eval-gate[\w-]*|props\.test)\.ts|\.github\/workflows\/eval-gate\.yml)$/;
 export function renderComment(d: Diff, o: { headLabel?: string; baseLabel?: string; runtime?: string; run?: string; gateFiles?: string[] } = {}): string {
   const L: string[] = [MARKER, `## Eval gate ${d.ok ? "✅ pass" : "❌ fail"}`, ""];
   if (!d.ok) L.push(`**Why:** ${d.why.join("; ")}`, "");
