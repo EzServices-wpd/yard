@@ -12,7 +12,8 @@ import { isBedLongWide, typedAxesOf, type Axis } from "./typedAxesRead";
 import { isUnitItem } from "./unitItems";
 import type { YardProject } from "./types";
 
-export type SpecAxis = { inches: number; typed: boolean; assumed: boolean };
+/** `edited`: set on the bench (Measure, a size override): the person's own value, typed, never "you typed" another. */
+export type SpecAxis = { inches: number; typed: boolean; assumed: boolean; edited?: boolean };
 export type YardSpec = {
   noun: string;
   size: Record<Axis, SpecAxis>;
@@ -80,7 +81,7 @@ export function buildSpec(project: YardProject, typedWords?: string, opts: { ove
   if (opts.override) AXES.forEach((a) => typedSet.add(a));
   for (const a of typedSet) assumed[a] = false;
   const unit = isUnitItem(project);
-  const size = Object.fromEntries(AXES.map((a) => [a, { inches: a === "depth" ? finished : box[a], typed: typedSet.has(a), assumed: !unit && !!assumed[a] }])) as Record<Axis, SpecAxis>;
+  const size = Object.fromEntries(AXES.map((a) => [a, { inches: a === "depth" ? finished : box[a], typed: typedSet.has(a), assumed: !unit && !!assumed[a], ...(opts.override ? { edited: true } : {}) }])) as Record<Axis, SpecAxis>;
   const counts: Record<string, number> = {};
   for (const m of words.matchAll(COUNTED)) counts[m[2].toLowerCase()] = NUMBER[m[1].toLowerCase()] ?? Number(m[1]);
   return {
@@ -96,13 +97,47 @@ export function buildSpec(project: YardProject, typedWords?: string, opts: { ove
   };
 }
 
+/** Inches per axis as the spec records them (depth is the finished depth). */
+function specInches(project: YardProject): Record<Axis, number> {
+  const box = specBox(project);
+  return { ...box, depth: modelFinishedDepth(project.panels, box.depth) };
+}
+
 /**
- * The project's spec: the one set at intake, or (an older saved build, or one edited in place since intake so its
- * size no longer matches) read the same way now.
+ * The spec after an edit in place (Measure, a refit, a restock), rebuilt from the spec before it, never from the
+ * prompt: an axis whose size changed is the person's own value (typed, edited); every other axis keeps its mark.
+ */
+export function editedSpec(prev: YardSpec, built: YardProject): YardSpec {
+  const now = specInches(built);
+  const size = Object.fromEntries(AXES.map((a) => {
+    const was = prev.size[a];
+    const moved = Math.abs(now[a] - was.inches) >= 1 / 32;
+    return [a, moved ? { inches: now[a], typed: true, assumed: false, edited: true } : { ...was, inches: now[a] }];
+  })) as Record<Axis, SpecAxis>;
+  const moved = AXES.some((a) => size[a].edited && !prev.size[a].edited);
+  const sameStock = built.primaryMaterialId === prev.stockId;
+  return {
+    ...prev,
+    size,
+    stock: prev.stock && !moved,
+    stockId: built.primaryMaterialId,
+    species: sameStock ? prev.species : (namedLumberFromPrompt(built.prompt ?? "")?.display ?? null),
+    refusal: built.refused ?? null,
+  };
+}
+
+/** A build rebuilt on the bench from `prev` carries `prev`'s spec, edited (store: Measure, refit, restock). */
+export function withEditedSpec(prev: YardProject, built: YardProject): YardProject {
+  return built.refused ? built : { ...built, spec: editedSpec(specOf(prev), built) };
+}
+
+/**
+ * The project's spec: the one set at intake, or an older saved build's read now. One edited in place since (its size
+ * no longer the spec's) reads the spec it had, edited, never the prompt again.
  */
 export function specOf(project: YardProject): YardSpec {
   const s = project.spec;
-  const box = specBox(project);
-  const same = s && AXES.every((a) => Math.abs((a === "depth" ? modelFinishedDepth(project.panels, box.depth) : box[a]) - s.size[a].inches) < 1 / 64);
-  return same ? s : buildSpec(project);
+  if (!s) return buildSpec(project);
+  const now = specInches(project);
+  return AXES.every((a) => Math.abs(now[a] - s.size[a].inches) < 1 / 64) ? s : editedSpec(s, project);
 }
