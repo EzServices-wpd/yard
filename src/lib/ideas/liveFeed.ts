@@ -61,6 +61,18 @@ export function dimsOf(size: string): IdeaCard["dims"] {
   return m ? { width: +m[1], depth: +m[2], height: +m[3] } : null; // recordFromPrompt stores W×D×H
 }
 
+/**
+ * Critic-graded build types (row 169): the base feed's checked cards, i.e. the curated ideas and the trusted recipes
+ * Critic walked. A built-in shape is Trusted by default (buildInfo), so "Trusted" alone let ungraded builds reach
+ * Popular: the cardboard dollhouse (a sealed box) and "shoe rack by the door" (a prehung door). A log build counts as
+ * checked only when its type is graded; Popular and the hero take checked cards only.
+ */
+export function gradedTypes(base: IdeasFeed): Set<string> {
+  const out = new Set<string>();
+  for (const s of base.sections) for (const c of s.cards) if (c.status === "checked") out.add(c.buildType);
+  return out;
+}
+
 type Group = { type: string; count: number; lastSeen: string; trusted: boolean; rows: SnapshotRow[] };
 
 /** Log rows that are real visitor builds, folded by build type. */
@@ -84,14 +96,16 @@ export function sortCards(cards: IdeaCard[]): IdeaCard[] {
   return cards.map((c, i) => ({ c, i })).sort((a, b) => b.c.count - a.c.count || (b.c.lastSeen ?? "").localeCompare(a.c.lastSeen ?? "") || a.i - b.i).map((x) => x.c);
 }
 
-function cardFor(g: Group, curated: Map<string, IdeaCard>): IdeaCard {
+function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>): IdeaCard {
   const top = [...g.rows].sort((a, b) => b.count - a.count)[0];
   const sizes = new Map<string, number>();
   for (const r of g.rows) sizes.set(r.size, (sizes.get(r.size) ?? 0) + r.count);
   const size = [...sizes].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-  const status: IdeaCard["status"] = g.trusted ? "checked" : "new";
+  // Checked = graded by Critic (row 169): a curated card keeps its own status, and a log-only type is checked only when
+  // Critic graded it too. The engine's own Trusted never makes a card checked.
+  const status: IdeaCard["status"] = g.trusted && graded.has(g.type) ? "checked" : "new";
   const c = curated.get(g.type);
-  if (c) return { ...c, count: g.count, lastSeen: g.lastSeen, status: c.status === "checked" || g.trusted ? "checked" : "new", dims: c.dims ?? dimsOf(size) };
+  if (c) return { ...c, count: g.count, lastSeen: g.lastSeen, status: c.status === "checked" ? "checked" : "new", dims: c.dims ?? dimsOf(size) };
   const recipe = top.resultKey.startsWith("recipe:");
   const drawing = drawingFor(g.type);
   const logged = dimsOf(size);
@@ -121,7 +135,9 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   for (const s of base.sections) for (const c of s.cards) if (!curated.has(c.buildType)) curated.set(c.buildType, c);
   // Quick win (e): a generic fallback ("Storage unit") is never an idea; it stays off the page (the row is kept in the log).
   // A held recipe (held.ts, the shared flag) never renders on Ideas, in Popular, Popular recently or a curated section.
-  const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type) && !isHeldType(g.type)).map((g) => cardFor(g, curated));
+  const graded = gradedTypes(base);
+  const trusted = new Set(groups.filter((g) => g.trusted).map((g) => g.type));
+  const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type) && !isHeldType(g.type)).map((g) => cardFor(g, curated, graded));
   const since = new Date(now.getTime() - HERO_DAYS * DAY).toISOString();
   const used = new Set<string>();
   // Only a card a section actually renders is used (Critic row 111: Popular marked every Trusted card used, not just
@@ -133,7 +149,8 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
     return { id, title, order: 0, total: all.length, cards: shown.map((c) => ({ ...c, section: title })) };
   };
   const sections = [
-    take("popular", "Popular", cards.filter((c) => c.status === "checked")),
+    // Popular: Trusted builds Critic graded (row 169), never a type the engine called Trusted on its own.
+    take("popular", "Popular", cards.filter((c) => c.status === "checked" && graded.has(c.buildType) && trusted.has(c.buildType))),
     take("recent", "Popular recently", cards.filter((c) => (c.lastSeen ?? "") >= since)),
     ...base.sections.map((s) => {
       const counted = s.cards.filter((c) => !isHeldType(c.buildType) && !isHeldType(c.recipeKey)).map((c) => cards.find((x) => x.slug === c.slug) ?? c);
@@ -143,8 +160,11 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   return { at: snap.at || now.toISOString(), live: true, countsLive: true, hero: pickHero(cards, now), sections };
 }
 
-/** The invariant (REVIEW.md (e)): every way the feed can go wrong, as messages. Empty = good. */
-export function feedViolations(feed: IdeasFeed): string[] {
+/**
+ * The invariant (REVIEW.md (e)): every way the feed can go wrong, as messages. Empty = good. With `graded` (the live
+ * feed's gradedTypes(base)), a counted checked card or any Popular card whose type Critic never graded fails (row 169).
+ */
+export function feedViolations(feed: IdeasFeed, graded?: Set<string>): string[] {
   const out: string[] = [];
   const seenSlug = new Map<string, string>(), seenType = new Map<string, string>();
   for (const s of feed.sections) {
@@ -164,6 +184,8 @@ export function feedViolations(feed: IdeasFeed): string[] {
       if (!c.title.trim() || c.title.trim() === c.examplePrompt.trim() || /^[a-z]/.test(c.title)) out.push(`${c.slug}: title "${c.title}" is not a display title`);
       if (isJunkTitle(c.title)) out.push(`${c.slug}: junk title "${c.title}" (fewer than ${MIN_TITLE_LETTERS} letters)`);
       if (c.status !== "checked" && c.status !== "new") out.push(`${c.slug}: status ${c.status}`);
+      if (graded && ((c.count > 0 && c.status === "checked") || s.id === "popular") && !graded.has(c.buildType)) out.push(`${c.slug}: not graded by Critic, in ${s.id} as ${c.status}`);
+      if (s.id === "popular" && c.status !== "checked") out.push(`${c.slug}: Popular shows only checked cards (${c.status})`);
       if (GENERIC_TYPES.has(c.buildType)) out.push(`${c.slug}: generic fallback card`);
       if (isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`${c.slug}: held recipe on Ideas (${s.id})`);
       if (/bo$/.test(c.title) && !/(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/i.test(c.title)) out.push(`${c.slug}: cut-off title "${c.title}"`);

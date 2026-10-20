@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import { curatedFeed, type IdeasFeed } from "../src/lib/ideas/feed";
-import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
+import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
@@ -162,8 +162,13 @@ test("only rendered cards are used: a Trusted build past Popular's SECTION_MAX s
     ...SNAP,
     rows: [...busy, row("mail organizer", "builtin:mail-organizer", 2, after(30)), row("under stairs shelves", "builtin:under-stairs", 2, after(31))],
   };
-  const feed = liveFeed(snap, curatedFeed(), NOW);
-  assert.deepEqual(feedViolations(feed), []);
+  // Since row 169 Popular takes only types Critic graded, so the busy racks are graded here (checked cards in the base).
+  const cur = curatedFeed();
+  const proto = cur.sections[0].cards[0];
+  const gradedBusy = busy.map((r) => ({ ...proto, slug: typeKey(r.resultKey), buildType: typeKey(r.resultKey), title: `${r.prompt[0].toUpperCase()}${r.prompt.slice(1)}`, examplePrompt: r.prompt, drawing: null, status: "checked" as const }));
+  const base: IdeasFeed = { ...cur, sections: [...cur.sections, { id: "graded-racks", title: "Racks", order: cur.sections.length, total: gradedBusy.length, cards: gradedBusy }] };
+  const feed = liveFeed(snap, base, NOW);
+  assert.deepEqual(feedViolations(feed, gradedTypes(base)), []);
   const pop = feed.sections.find((s) => s.id === "popular")!;
   assert.equal(pop.cards.length, SECTION_MAX);
   const where = (t: string) => feed.sections.find((s) => s.cards.some((c) => c.buildType === t))?.id ?? null;
@@ -200,4 +205,40 @@ test("junk titles never render: the shared card-quality rule drops digit-only or
   // And the invariant names one if it ever gets through.
   const bad: IdeasFeed = { ...feed, sections: [{ ...feed.sections[0], cards: [{ ...feed.sections[0].cards[0], title: "3" }, ...feed.sections[0].cards.slice(1)] }] };
   assert.ok(feedViolations(bad).some((v) => /junk title "3"/.test(v)));
+});
+
+test("Popular lists only Trusted builds Critic graded (row 169): an engine-Trusted type nobody graded is never checked, on Popular or the hero", () => {
+  // Live 10-20: the cardboard dollhouse builds a sealed box and "shoe rack by the door" a prehung door, both logged
+  // Trusted (a built-in shape is Trusted by default). Both were on Popular; neither type is a graded (checked) card.
+  const snap: IdeasSnapshot = {
+    ...SNAP,
+    rows: [
+      ...SNAP.rows,
+      row("cardboard dollhouse 12 wide 16 tall", "builtin:dollhouse", 400, after(40), "Trusted", "12×16×16"),
+      row("shoe rack by the door 36 inches wide", "builtin:shoe-prehung-interior-36-80-door", 300, after(41), "Trusted", "48×8×98"),
+      row("shoe rack with cubbies", "builtin:shoe-rack", 2, after(42)),
+    ],
+  };
+  const base = curatedFeed(RECIPES);
+  const graded = gradedTypes(base);
+  assert.ok(!graded.has("dollhouse") && !graded.has("shoe-prehung-interior") && graded.has("shoe-rack") && graded.has("linen"));
+  const f = liveFeed(snap, base, NOW);
+  assert.deepEqual(feedViolations(f, graded), []);
+  const pop = f.sections.find((s) => s.id === "popular")!;
+  const popTypes = pop.cards.map((c) => c.buildType);
+  for (const t of ["dollhouse", "shoe-prehung-interior"]) assert.ok(!popTypes.includes(t), `${t} on Popular`);
+  assert.ok(popTypes.includes("shoe-rack") && popTypes.includes("linen"), "graded Trusted types stay on Popular");
+  for (const c of pop.cards) assert.ok(graded.has(c.buildType), `${c.slug} on Popular is not graded`);
+  // They still show as what they are: new builds in Popular recently, never checked; never the hero.
+  const all = f.sections.flatMap((s) => s.cards);
+  assert.equal(all.find((c) => c.buildType === "dollhouse")?.status, "new");
+  assert.ok(f.hero && graded.has(f.sections.flatMap((s) => s.cards).find((c) => c.slug === f.hero!.slug)!.buildType));
+  // A graded type whose builds are all Unverified in the log is not Popular either (Trusted AND graded).
+  const unv = liveFeed({ ...snap, rows: snap.rows.map((r) => (r.resultKey === "builtin:shoe-rack" ? { ...r, status: "Unverified" as const } : r)) }, base, NOW);
+  assert.ok(!unv.sections.find((s) => s.id === "popular")!.cards.some((c) => c.buildType === "shoe-rack"));
+  // The guard names an ungraded card on Popular or a counted checked card nobody graded.
+  const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
+  const bp = bad.sections.find((s) => s.id === "popular")!;
+  bp.cards.push({ ...bp.cards[0], slug: "dollhouse", buildType: "dollhouse", title: "Dollhouse", examplePrompt: "cardboard dollhouse 12 wide 16 tall", count: 0 });
+  assert.ok(feedViolations(bad, graded).some((v) => /dollhouse: not graded by Critic, in popular/.test(v)));
 });
