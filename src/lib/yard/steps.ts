@@ -134,13 +134,32 @@ function withFrontSteps(project: YardProject, steps: AssemblyStep[]): AssemblySt
   // The drawer and door parts belong to their own steps now; a carcase step that listed them (a drawer front set with
   // the apron) gives them up. The cut step and whole-project steps keep every part.
   const owned = new Set(add.flatMap((st) => st.partsUsed ?? []));
-  const body = steps.map((st) =>
-    /^cut\b/i.test(st.title ?? "") || !st.partsUsed || st.partsUsed.includes("*") ? st : { ...st, partsUsed: st.partsUsed.filter((n) => !owned.has(n)) },
-  );
+  const body = steps.map((st) => {
+    if (/^cut\b/i.test(st.title ?? "") || !st.partsUsed || st.partsUsed.includes("*")) return st;
+    const dropped = st.partsUsed.filter((n) => owned.has(n));
+    if (!dropped.length) return st;
+    // The text drops what the part list drops: a step never tells the person to set a part another step now owns.
+    return { ...st, partsUsed: st.partsUsed.filter((n) => !owned.has(n)), description: dropPartText(st.description ?? "", dropped) };
+  });
   const last = body[body.length - 1];
   const closes = !!last && /\b(?:level|sit-test|shim|hang it|finish)\b/i.test(last.title ?? "");
   const out = closes ? [...body.slice(0, -1), ...add, last] : [...body, ...add];
   return out.map((st, k) => ({ ...st, step: k + 1 }));
+}
+
+/**
+ * A step's text without the named parts: their cut lines ("Drawer front 1 — 3/4 x 6 x 14\"") leave the list they sat in,
+ * and any sentence that still names one goes, so the words match the step's part list.
+ */
+export function dropPartText(text: string, names: string[]): string {
+  const esc = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let t = text;
+  for (const n of [...names].sort((a, b) => b.length - a.length)) {
+    t = t.replace(new RegExp(`(?:;\\s*)?${esc(n)}(?![\\d\\w]) — [^;.]*?"(?: glued up)?(?=;|\\.|$)`, "g"), "");
+  }
+  t = t.replace(/^\s*;\s*/, "").replace(/(^|\.\s+);\s*/g, "$1");
+  const named = (sentence: string) => names.some((n) => new RegExp(`\\b${esc(n)}(?![\\d\\w])`, "i").test(sentence));
+  return t.split(/(?<=\.)\s+/).map((x) => x.replace(/^[\s.;]+/, "")).filter((x) => x && !named(x)).join(" ").trim();
 }
 
 function round(n: number) {

@@ -92,6 +92,13 @@ test("C41 / row 176: every drawer and door the build carries has its steps, and 
       if (slides.length && !titles.some((t) => /^Hang\b.*\bdrawers?\b.*slides/i.test(t))) bad.push(`${q}: slides on Buy never hung`);
     }
     if (p.panels.some((x) => x.type === "door") && !titles.some((t) => /\bdoors?\b/i.test(t))) bad.push(`${q}: no hang-doors step`);
+    // The text drops what the part list drops: no other step's words set a part the drawer or door steps own.
+    for (const st of plan.instructions) {
+      if (/^(?:Cut|Fit|Build|Hang|Slide)\b/i.test(st.title) || (st.partsUsed ?? []).includes("*")) continue;
+      const owned = p.panels.filter((x) => (!!x.drawerId || x.type === "door") && !(st.partsUsed ?? []).includes(x.name)).map((x) => x.name);
+      const said = owned.find((n) => new RegExp(`\\b${n.replace(/[()]/g, "\\$&")}(?![\\d\\w])`).test(st.description ?? ""));
+      if (said) bad.push(`${q}: step "${st.title}" still names ${said}`);
+    }
   }
   assert.deepEqual(bad, []);
 });
