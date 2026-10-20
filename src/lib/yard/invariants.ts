@@ -46,12 +46,14 @@ import { cutListIntro, pdfCutListIntro } from "./wholeItems";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
+import { typedMeasures } from "./measureText";
+import { boundPrompt } from "./promptLimits";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I36" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I35" | "I36" | "I38" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I36: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I35: "F21", I36: "F32", I38: "F2", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -132,13 +134,8 @@ function i7(p: YardProject): Violation[] {
 /** I8: a typed W/H/D lands on the model (±1/8"). */
 function i8(p: YardProject, prompt: string): Violation[] {
   const out: Violation[] = [];
-  // A shop size may carry a fraction ("8 1/4 wide", "8-1/4\" wide"), read whole.
-  const N = String.raw`(\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+)`;
-  const num = (t: string) => { const f = t.match(/^(?:(\d+(?:\.\d+)?)(?:\s+|-))?(\d+)\/(\d+)$/); return f ? Number(f[1] ?? 0) + Number(f[2]) / Number(f[3]) : Number(t); };
-  const typed = (axis: string) => { const m = prompt.match(new RegExp(String.raw`${N}\s*(?:in(?:ch(?:es)?)?\s*|"\s*)?${axis}\b`, "i")); return m ? num(m[1]) : null; };
-  const W = typed("wide");
-  const H = typed("(?:tall|high)");
-  const D = typed("deep");
+  // One reader for a typed size (I35): "24 1/2 wide" is 24 1/2, never the 2 of its fraction.
+  const { width: W, height: H, depth: D } = typedMeasures(prompt);
   const o = p.overall;
   if (!o || !p.panels.length) return out;
   if (W && W <= 1200 && Math.abs(o.width - W) > 0.125) out.push(v("I8", `typed ${W} wide, model ${o.width}`));
@@ -383,7 +380,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...i29(plan), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
-    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i36(project, prompt),
+    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i35(project, prompt), ...i36(project, prompt), ...i38(project, plan),
   ];
 }
 
@@ -442,6 +439,48 @@ export function i36(p: YardProject, prompt: string): Violation[] {
 /** I28 (F32 stock thickness never scales): a part is its stock's thickness, or whole layers of it glued up and said so (stockThickness.ts). */
 function i28(p: YardProject, plan: BuildPlan): Violation[] {
   return thicknessFailures(p, plan).map((m) => v("I28", m));
+}
+
+/**
+ * I38 (F2 real parts, Critic #103 F2: 'bookcase 1/2 wide' built a Back, Top and Shelves -1" wide): no part dimension is
+ * ever zero or negative, on any builder: every modelled part's three sizes, every instance's cut length and every
+ * cut-list line's length, width and thickness. A size too small to hold its parts is refused instead.
+ */
+export function i38(p: YardProject, plan: BuildPlan): Violation[] {
+  const out: string[] = [];
+  const bad = (n: number | undefined) => n != null && !(n > 0);
+  for (const q of p.panels) {
+    const k = (["width", "height", "depth"] as const).find((a) => bad(q.size[a]));
+    if (k) out.push(`${q.name} is ${Math.round(q.size[k] * 1000) / 1000}" ${k === "width" ? "wide" : k === "height" ? "tall" : "deep"}`);
+  }
+  for (const q of p.instances) if (bad(q.cutLength)) out.push(`${q.id} is cut ${q.cutLength}" long`);
+  for (const c of plan.cutList) {
+    const k = (["lengthIn", "widthIn", "thicknessIn"] as const).find((a) => bad(c[a]));
+    if (k) out.push(`cut list: ${c.name} ${k.replace("In", "")} is ${Math.round(c[k] * 1000) / 1000}"`);
+  }
+  return out.map((m) => v("I38", m));
+}
+
+/**
+ * I35 (F21 typed size, live 10-19 "shelf 24 1/2\" wide" built 2" wide): every number typed is the dimension built, to
+ * 1/16", whichever way it is written (24 1/2, 24½, 24-1/2, 24.5, 2' 1/2", 2 ft 6 in, 2'6"), on an axis word or inside a
+ * W x D x H string. A bought unit item keeps its own size, and a size over the input cap is said back (I10).
+ */
+export function i35(p: YardProject, prompt: string): Violation[] {
+  if (!prompt || !p.panels.length || p.displayOnly || isUnitItem(p) || boundPrompt(prompt).note) return [];
+  const typed = typedMeasures(prompt);
+  const o = p.overall;
+  const TOL = 1 / 16 + 1e-6;
+  const out: string[] = [];
+  for (const a of ["width", "depth", "height"] as const) {
+    const want = typed[a];
+    if (want != null && Math.abs(o[a] - want) > TOL) out.push(`typed ${inchFrac(want)}" ${a}, built ${inchFrac(o[a])}"`);
+  }
+  if (typed.tuple) {
+    const want = [...typed.tuple].sort((x, y) => x - y), got = [o.width, o.depth, o.height].sort((x, y) => x - y);
+    if (want.some((w, i) => Math.abs(w - got[i]) > TOL)) out.push(`typed ${typed.tuple.map((x) => `${inchFrac(x)}"`).join(" x ")}, built ${[o.width, o.depth, o.height].map((x) => `${inchFrac(x)}"`).join(" x ")}`);
+  }
+  return out.map((m) => v("I35", m));
 }
 
 /**

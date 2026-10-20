@@ -2,6 +2,7 @@
 
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
+import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
 
@@ -951,7 +952,7 @@ export function deskWidthFromPrompt(prompt: string): number {
  * "3 foot catapult" stays a weekend prompt.
  */
 export function normalizeUserPrompt(prompt: string): string {
-  let s = prompt.replace(/[″”]/g, '"').replace(/[‘’]/g, "'");
+  let s = canonicalMeasures(prompt).replace(/[″”]/g, '"').replace(/[‘’]/g, "'");
   s = s.replace(/(\d+(?:\.\d+)?)\s*''/g, '$1"');
   s = s.replace(/(\d+(?:\.\d+)?)in\./gi, "$1 in");
   s = s.replace(/(\d+(?:\.\d+)?)\s+in\./gi, "$1 in");
