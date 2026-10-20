@@ -32,7 +32,7 @@ function isThin(p: Panel) {
 
 /** A back part (never a drawer's back): "Back", "Upper back", "Back panel 2". */
 export const BACK_PART = /^(?:upper |lower )?back(?: panel)?(?: \d+)?$/i;
-const FASTEN = /\b(?:attach|fasten|screw|nail|brad|staple|glue|tack|pin)/i;
+const FASTEN = /\b(?:attach(?:es|ed|ing)?|fasten(?:s|ed|ing)?|screw(?:s|ed|ing)?|nail(?:s|ed|ing)?|brad(?:s|ded)?|staple[sd]?|glue[sd]?|gluing|tack(?:s|ed)?|pin(?:s|ned)?)\b/i;
 
 /**
  * True when this step fastens the back named `name`: the back-of-the-box step, or a step that uses the back and
