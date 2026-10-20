@@ -11,6 +11,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { typedDemands, validateSpec, type Demands } from "./eval-gate-typed.ts";
+import { judgeRefusal, loadExpectedRefusals, type ExpectedRefusals, type Refusal } from "./eval-gate-refusal.ts";
 import { isTestTraffic, type LoggedRecord } from "../src/lib/ideas/testTraffic.ts";
 
 export const HEAD_ROOT = resolve(new URL("..", import.meta.url).pathname);
@@ -36,13 +37,15 @@ export type Engine = {
   baseline: Record<string, { class: string; msg: string }>;
   /** Whether a checkBuild ID grades: everything but REPORT_ONLY_IDS (asserted to cover the root's PER_BUILD in eval-gate.test.ts). */
   graded: (id: string) => boolean;
+  /** evals/expected-refusals.json from the head (like the canary baselines): the same expectations grade head and base. */
+  refusals: ExpectedRefusals;
 };
 export async function loadEngine(root = HEAD_ROOT): Promise<Engine> {
   const y = (f: string) => pathToFileURL(join(root, "src/lib/yard", f)).href;
   const [pm, inv, rep, pdf, pocket] = await Promise.all([import(y("promptMain.ts")), import(y("invariants.ts")), import(y("report.ts")), import(y("pdf.ts")), import(y("pocket.ts"))]);
   const bf = join(root, "evals/invariants-baseline.json");
   const baseline = existsSync(bf) ? JSON.parse(readFileSync(bf, "utf8")).known : {};
-  return { root, generateFromPrompt: pm.generateFromPrompt, ignoredTypedWords: pm.ignoredTypedWords ?? (() => []), checkBuild: inv.checkBuild, buildPlan: rep.buildPlan, headerTitle: pdf.headerTitle, POCKET_DREAM: pocket.POCKET_DREAM, baseline, graded: (id: string) => !REPORT_ONLY_IDS.has(id) };
+  return { root, generateFromPrompt: pm.generateFromPrompt, ignoredTypedWords: pm.ignoredTypedWords ?? (() => []), checkBuild: inv.checkBuild, buildPlan: rep.buildPlan, headerTitle: pdf.headerTitle, POCKET_DREAM: pocket.POCKET_DREAM, baseline, graded: (id: string) => !REPORT_ONLY_IDS.has(id), refusals: loadExpectedRefusals(HEAD_ROOT) };
 }
 /** Same rule as scripts/eval-lib.ts: evals never touch the network (no xAI, no stores). */
 export function offline<T>(f: () => T): T {
@@ -213,6 +216,8 @@ export type PromptResult = {
   honor: { honored: number; checkable: number; demandsFrom: string; items: HonorItem[] };
   /** Every checkBuild hit. scored = graded (not in REPORT_ONLY_IDS); a geometry report-only hit is listed but never grades. */
   invariants: { id: string; cls: string; msg: string; known: boolean; scored: boolean }[];
+  /** Set when the build refused or was expected to: honest = graded pass, otherwise X-refusal (eval-gate-refusal.ts). */
+  refusal?: Refusal;
   error?: string;
 };
 export function gradeOne(E: Engine, e: Entry): PromptResult {
@@ -238,11 +243,15 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
     if (h.empty) classes.add("X-build");
     for (const v of scored) classes.add(v.cls);
     for (const i of h.items) if (i.ok !== true) classes.add(`T-${i.kind}`);
-    const grade = gradeOf({ empty: h.empty, nounOk: h.nounOk, scoredIds: scored.map((v) => v.id), honored, checkable });
+    let grade = gradeOf({ empty: h.empty, nounOk: h.nounOk, scoredIds: scored.map((v) => v.id), honored, checkable });
+    // An honest, expected refusal is the right answer (pass, no failure class); a wrong or unexpected one fails.
+    const refusal = judgeRefusal(E, e.prompt, e.demands, p, plan, E.refusals) ?? undefined;
+    if (refusal?.honest && !scored.length) { grade = "pass"; classes.clear(); }
+    else if (refusal && !refusal.honest) { grade = "fail"; classes.add("X-refusal"); }
     let header: string | null = null;
     try { header = E.headerTitle(p); } catch { /* no header */ }
     const o = p.overall;
-    return { ...base, grade, classes: [...classes].sort(), header, overall: o ? `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` : null, pieces: plan.totals.pieces, usd: r2(plan.totals.estCostUsd), honor: { honored, checkable, demandsFrom: e.demandsFrom, items: h.items }, invariants };
+    return { ...base, grade, classes: [...classes].sort(), header, overall: o ? `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` : null, pieces: plan.totals.pieces, usd: r2(plan.totals.estCostUsd), honor: { honored, checkable, demandsFrom: e.demandsFrom, items: h.items }, invariants, ...(refusal ? { refusal } : {}) };
   });
 }
 
