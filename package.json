@@ -16,7 +16,9 @@
     "test": "node --test 'scripts/**/*.test.mjs'",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "rank-errors": "tsx scripts/rank-errors.ts"
+    "rank-errors": "tsx scripts/rank-errors.ts",
+    "eval:gate": "npx -y tsx scripts/eval-gate.ts",
+    "eval:props": "npx -y tsx --test scripts/props.test.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
@@ -89,6 +91,7 @@
     "eslint-plugin-prettier": "^5.2.6",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "fast-check": "^4.10.2",
     "globals": "^15.15.0",
     "lightningcss": "^1.28.0",
     "nitro": "3.0.260610-beta",
