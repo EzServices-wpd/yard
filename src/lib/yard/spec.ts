@@ -93,7 +93,13 @@ export function buildSpec(project: YardProject, typedWords?: string, opts: { ove
   };
 }
 
-/** The project's spec: the one set at intake, or (an older saved build) read the same way now. */
+/**
+ * The project's spec: the one set at intake, or (an older saved build, or one edited in place since intake so its
+ * size no longer matches) read the same way now.
+ */
 export function specOf(project: YardProject): YardSpec {
-  return project.spec ?? buildSpec(project);
+  const s = project.spec;
+  const box = specBox(project);
+  const same = s && AXES.every((a) => Math.abs((a === "depth" ? modelFinishedDepth(project.panels, box.depth) : box[a]) - s.size[a].inches) < 1 / 64);
+  return same ? s : buildSpec(project);
 }
