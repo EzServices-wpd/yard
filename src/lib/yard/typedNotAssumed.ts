@@ -2,12 +2,13 @@
  * I42 (F2 typed is never assumed), first slice: the project carries its one spec (spec.ts) and the PDF cover reads it.
  * A typed axis is built or refused; the spec never marks it assumed and the cover never labels it assumed, sets a
  * different "default size … assumed" beside it, or shows an overall size the model does not have (the built box, or on
- * depth the finished depth with proud fronts). A typed size built differently is said on the cover, naming both sizes.
+ * depth the finished depth with proud fronts, or the drawn extent). A typed size built differently is said on the cover, naming both sizes.
  * Header/pill, card, Measure readout, steps and Buy move to the spec in their own follow-ups.
  */
 import { modelFinishedDepth } from "./modelSize";
 import { typedAxesTalk } from "./headerSize";
 import { inchFrac } from "./inchText";
+import { drawnExtent } from "./pdfDraw";
 import { specBox } from "./spec";
 import { isBedLongWide, typedAxesOf, typedOffBy, type Axis } from "./typedAxesRead";
 import { isUnitItem } from "./unitItems";
@@ -24,7 +25,10 @@ export function typedAssumedFailures(p: YardProject, prompt: string): string[] {
   const out: string[] = [];
   const box = specBox(p);
   const finished = modelFinishedDepth(p.panels, box.depth);
-  const fits = (a: Axis, n: number) => near(n, box[a]) || (a === "depth" && near(n, finished));
+  // The model's drawn extent counts too (proud pegs on a cribbage board, headerSize's assumed-axis rule).
+  const d = p.instances.length ? null : drawnExtent(p);
+  const drawn: Record<Axis, number> | null = d ? { width: d.max.x - d.min.x, height: d.max.y - Math.min(0, d.min.y), depth: d.max.z - d.min.z } : null;
+  const fits = (a: Axis, n: number) => near(n, box[a]) || (a === "depth" && near(n, finished)) || (!!drawn && near(n, drawn[a]));
   const bed = isBedLongWide(p.notes);
   const typed = typedAxesOf(p.typedPrompt ?? prompt, bed, { ...box, depth: finished }, box);
   const talk = typedAxesTalk(p);
