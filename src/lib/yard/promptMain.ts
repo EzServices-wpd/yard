@@ -2,6 +2,8 @@ import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
+import { canonicalMeasures, rewritesMeasures } from "./measureText";
+import { tooSmallRefusal } from "./tooSmall";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
@@ -400,7 +402,13 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const built = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    const raw = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
+    const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", (q) => generateFromPrompt(q, ...(args.slice(1) as []))) : null;
+    const built0 = small ?? raw;
+    // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
+    const typed = args[0] ?? "";
+    const built = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } finally {
     idDepth--;
@@ -412,7 +420,8 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   const said = args[0] ?? "";
   // C2: size phrases are parsed and stripped before any noun match, then said back as typed axes.
   // C1: a purpose ("something to hang my keys") resolves to the form built for it before any noun match.
-  const phrased = sizePhrases(boundPrompt(said).prompt).prompt;
+  // I35: every typed size is read one way first ("24 1/2", "24½", "2' 1/2\"", "2 ft 6 in" → decimal inches).
+  const phrased = sizePhrases(boundPrompt(canonicalMeasures(said)).prompt).prompt;
   args[0] = normalizeUserPrompt(resolvePurpose(phrased)?.prompt ?? phrased);
   const prompt = args[0];
   // F47: a unit item is built at its real size; the furniture passes below (lumber members, 1/16" snapping) never touch it.

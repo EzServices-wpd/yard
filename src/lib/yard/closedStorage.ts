@@ -3,6 +3,7 @@ import { isCasterPart } from "./casterParts";
 import { genericFallbackBox } from "./genericBox";
 import { typedHeadNoun } from "./headNoun";
 import { typedSize } from "./recipeBuild";
+import { canonicalMeasures } from "./measureText";
 import type { Recipe } from "./recipes";
 
 /**
@@ -56,7 +57,7 @@ export function doorOverDrawer(p: YardProject): boolean {
 }
 
 /** The sizes typed with an axis word ("30 wide", "6 ft tall"). */
-const typedAxes = (prompt: string) => typedSize(prompt, { feet: false } as unknown as Recipe);
+const typedAxes = (prompt: string) => typedSize(canonicalMeasures(prompt), { feet: false } as unknown as Recipe);
 
 /** The prompt types a size and at least one interior count. */
 export function closedStorageAsk(prompt: string): boolean {
