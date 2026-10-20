@@ -2438,12 +2438,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         partsUsed: names(cubby),
       });
     }
-    if (rest.length) {
+    // A span divider stands on a shelf, so it is set after the shelves, not in this earlier step.
+    const span = rest.filter((p) => /^Center divider\b/.test(p.name));
+    const other = rest.filter((p) => !span.includes(p));
+    if (other.length) {
       steps.push({
         step: n++,
         title: "Set remaining dividers",
-        description: `${rest.map(cutLine).join("; ")}. Plumb each one. ${stockThrough(project, "the back and the nearest shelf or top")}`,
-        partsUsed: names(rest),
+        description: `${other.map(cutLine).join("; ")}. Plumb each one. ${stockThrough(project, "the back and the nearest shelf or top")}`,
+        partsUsed: names(other),
       });
     }
   }
@@ -2514,6 +2517,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
           },
     );
+  }
+
+  const spanDividers = dividers.filter((p) => /^Center divider\b/.test(p.name));
+  if (spanDividers.length) {
+    steps.push({
+      step: n++,
+      title: spanDividers.length === 1 ? "Set the center divider" : "Set the center dividers",
+      description: `${spanDividers.map(cutLine).join("; ")}. Plumb each one on the shelf or bottom under it. ${stockThrough(project, "the shelf or bottom it stands on")}`,
+      partsUsed: names(spanDividers),
+    });
   }
 
   const hangingRods = rails.filter((p) => /hanging rod/i.test(p.name));

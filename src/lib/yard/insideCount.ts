@@ -1,4 +1,5 @@
 import { generateFromPrompt } from "./promptMain";
+import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
 import { stampCount } from "./measureTabs";
 import type { Panel, YardProject } from "./types";
 
@@ -46,7 +47,10 @@ function retileInside(project: YardProject, patch: InsidePatch): YardProject {
   if (patch.drawers != null) panels = retileNamed(panels, "drawer", patch.drawers, "Drawer");
   if (patch.cubbies != null) panels = retileCubbies(panels, patch.cubbies);
   if (panels === project.panels) return project;
-  return { ...project, panels };
+  // Shelf heights moved, so a previous span divider would cut through them. Place it again from the new gaps.
+  const bare = panels.filter((p) => !/^Center divider\b/.test(p.name));
+  const notes = (project.notes ?? []).filter((n) => !n.startsWith("Center divider under the shelves:"));
+  return separateSpanSupports(withShelfSpanSupports({ ...project, panels: bare, notes }, project.prompt));
 }
 
 function retileShelves(panels: Panel[], count: number, overallH: number): Panel[] {
