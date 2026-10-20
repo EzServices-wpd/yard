@@ -61,6 +61,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
+import { PULL_OUT_MIN_IN, ROD_DIA, rodCenters, rodSeatZ, sideHangFits } from "./hangingClearance";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
 import { PET_ANIMAL } from "./fallbackPrimitive";
@@ -2835,10 +2836,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   }
 
   const hang = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
+  // Side-to-side only when a hanger fits. A shallow typed depth gets a front-to-back pull-out instead.
+  const sideOk = hang && sideHangFits(D - backT);
+  const pullOut = hang && !sideOk && D + 1e-6 >= PULL_OUT_MIN_IN;
+  const doubleHang = sideOk && /\bdouble\s*(?:hang|rod)s?\b|\btwo\s+rods\b/i.test(prompt);
+  const centers = hang ? rodCenters(H, doubleHang) : [];
+  const rodWant = centers.length ? centers[centers.length - 1] : null;
   // The rod hangs in the door or open section only: under a drawer section, with hanging room below it, else none.
-  const rodWant = hang ? Math.min(H - 8, Math.max(60, H * 0.72)) : null;
   const rodRoom = drawersFillLower && !u.upperStart ? null : drawerBelowTop != null && !u.upperStart ? drawerBelowTop - 3.25 : H;
-  const rodY = rodWant == null || rodRoom == null ? null : rodWant <= rodRoom ? rodWant : rodRoom - (bottomY + P) >= 24 ? rodRoom : null;
+  const rodY = !hang || rodWant == null || rodRoom == null ? null : rodWant <= rodRoom ? rodWant : rodRoom - (bottomY + P) >= 24 ? rodRoom : null;
+  const lowY = rodY != null && centers.length > 1 && centers[0] <= rodY - 30 ? centers[0] : null;
+  const rodYs = [lowY, rodY].filter((y): y is number => y != null && (sideOk || pullOut));
   const shelvesAsked = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
   // Shelves live only in a door or open section: drawers that fill the carcase leave no room for them.
   let shelves = drawersFillLower && !u.upperStart ? 0 : shelvesAsked;
@@ -2847,6 +2855,14 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const forItem = purposeOf(prompt);
   const need = forItem && !forItem.item.outdoor && !/\b(?:\d+|one|two|three|four|five|six)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt) ? forItem.item.clear : null;
   const zoneY0 = rodY != null ? rodY + 2 : (u.upperStart ?? shelfZone0);
+  // A long-hang rod sits near the top. Only as many shelves fit above it as leave a 1" gap,
+  // which is the gap a center support stands in. A typed count that fits is unchanged.
+  if (rodY != null) {
+    const minPitch = P + 1;
+    const zone = shelfZone1 - zoneY0;
+    const fit = zone < minPitch * 2 ? 0 : Math.floor(zone / minPitch) - 1;
+    shelves = Math.min(shelves, Math.max(0, fit));
+  }
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
     const y1 = shelfZone1;
@@ -2932,17 +2948,29 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("rail", "Step nosing", x0 + P, midY + P, treadD - P - 0.2, treadW, 1.25, P));
   }
 
-  if (rodY != null) {
+  if (rodYs.length) {
     // One rod per bay. A single span through full-height dividers cannot be seated.
-    if (bayN >= 2) {
-      for (let b = 0; b < bayN; b++) {
-        const x = x0 + P + b * (bayClearExact + P);
-        panels.push(panel("rail", `Bay ${b + 1} hanging rod`, x, rodY, D * 0.45, bayClearExact, 1.25, 1.25));
+    const zSeat = rodSeatZ(D, backT);
+    const len = Math.max(ROD_DIA, D - backT - 1);
+    for (const y of rodYs) {
+      if (pullOut) {
+        const place = (name: string, x: number) => {
+          panels.push(panel("rail", name, x, y, backT + 0.25, ROD_DIA, ROD_DIA, len));
+          panels[panels.length - 1].materialId = "closet-rod";
+        };
+        if (bayN >= 2) {
+          for (let b = 0; b < bayN; b++) place(`Bay ${b + 1} pull-out hanging rod`, x0 + P + b * (bayClearExact + P) + bayClearExact / 2 - ROD_DIA / 2);
+        } else place("Pull-out hanging rod", x0 + (W - ROD_DIA) / 2);
+      } else if (bayN >= 2) {
+        for (let b = 0; b < bayN; b++) {
+          const x = x0 + P + b * (bayClearExact + P);
+          panels.push(panel("rail", `Bay ${b + 1} hanging rod`, x, y, zSeat, bayClearExact, ROD_DIA, ROD_DIA));
+          panels[panels.length - 1].materialId = "closet-rod";
+        }
+      } else {
+        panels.push(panel("rail", "Hanging rod", x0 + P, y, zSeat, W - P * 2, ROD_DIA, ROD_DIA));
         panels[panels.length - 1].materialId = "closet-rod";
       }
-    } else {
-      panels.push(panel("rail", "Hanging rod", x0 + P, rodY, D * 0.45, W - P * 2, 1.25, 1.25));
-      panels[panels.length - 1].materialId = "closet-rod";
     }
   }
 
@@ -3034,7 +3062,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           : shelves
             ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",
-    ...(rodY != null ? [`A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it, so coats and shirts hang full length.`] : []),
+    ...(rodYs.length
+      ? [
+          pullOut
+            ? `This depth is too shallow for hangers on a side-to-side rod (they need about 20" inside). A pull-out rod runs front to back ${Math.round(rodYs[rodYs.length - 1])}" up and slides out so clothes hang in the room.`
+            : rodYs.length > 1
+              ? `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[rodYs.length - 1])}" up, with a second rod at ${Math.round(rodYs[0])}" for double hang, and shelves above.`
+              : `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[0])}" up, with the shelves above it, so coats and shirts hang full length.`,
+        ]
+      : []),
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
       : "Level it. Add a back (already on the bench) so it cannot rack.",

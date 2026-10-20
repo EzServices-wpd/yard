@@ -40,6 +40,7 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
+import { clothesRodDefaultDepth, HANGER_DEPTH_IN, ROD_BAY_MAX_IN } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
 import { purposeOf } from "./purpose";
 import {
@@ -889,7 +890,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                           ? 12
                         : /shelf|rack/.test(lower)
                           ? 12
-                          : 16);
+                          : (clothesRodDefaultDepth(lower, program) ?? 16));
     if (trip.d == null) {
       const board = detectMaterial(prompt);
       const face = snapToBoardFace(depth, board);
@@ -1020,6 +1021,12 @@ export function parseBrief(prompt: string): FittedSpec | null {
     /rod|hang|rail/.test(lower) ||
     program === "wardrobe" ||
     (program === "closet" && isSystem && !linen);
+  // A closet rod sags past ROD_BAY_MAX. Wide hanging bays get a divider each span.
+  // A box deeper than a closet (the axis-order misread) is not a hanging bay to split.
+  if (rod && (program === "wardrobe" || program === "closet") && !linen && depth <= HANGER_DEPTH_IN + 12) {
+    const clearW = width - P * 2;
+    if (clearW > ROD_BAY_MAX_IN) bays = Math.max(bays ?? 1, Math.min(6, Math.ceil(clearW / ROD_BAY_MAX_IN)));
+  }
   const spokenShelves = spokenShelfCount(t);
   const shelfCount = spokenShelves != null
     ? Math.max(1, Math.min(12, spokenShelves))
