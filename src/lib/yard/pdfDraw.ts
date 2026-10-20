@@ -336,7 +336,7 @@ function shift(s: Solid, d: V3): Solid {
       pts: f.pts.map((p) => add(p, d)),
       ...(f.holes ? { holes: f.holes.map((h) => h.map((p) => add(p, d))) } : {}),
       ...(f.rims ? { rims: f.rims.map((r) => ({ ...r, c: add(r.c, d), back: add(r.back, d) })) } : {}),
-      ...(f.soft ? { soft: true, sil: (f.sil ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]) } : {}),
+      ...(f.soft ? { soft: true, sil: (f.sil ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]), rim: (f.rim ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]) } : {}),
     })),
     min: add(s.min, d),
     max: add(s.max, d),

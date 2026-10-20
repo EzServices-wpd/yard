@@ -111,6 +111,14 @@ test("a round wall reads as one surface: one tone for every facet, and its far r
     const rim = faces.reduce((a, f) => a + (f.rim?.length ?? 0), 0);
     assert.ok(rim >= faces.length, `${name}: ${rim} far-rim edges for ${faces.length} visible wall facets`);
   }
+  // Exploded drawings shift every solid: the far rim moves with it (it is not dropped), so the outline count holds.
+  const edges = (explode: number) => {
+    const d = new SvgDoc(800, 800);
+    renderProject(d as unknown as jsPDF, ww, { x: 0, y: 0, w: 800, h: 800 }, { tones: new Map(ww.panels.map((p) => [p.id, "built" as const])), partGroup: (id) => ({ "data-part": id }), explode });
+    const id = ww.panels.find((p) => p.name === "Collar 1")!.id;
+    return [...d.toSvg().matchAll(new RegExp(`<g data-part="${id}">([\\s\\S]*?)</g>`, "g"))].map((m) => m[1]).join("").split("<line").length - 1;
+  };
+  assert.ok(edges(0) > 0 && edges(0.35) === edges(0), `collar outline edges: ${edges(0)} assembled, ${edges(0.35)} exploded`);
 });
 
 test("iso plate: each holed part's face is an even-odd path with one ring per hole", () => {
