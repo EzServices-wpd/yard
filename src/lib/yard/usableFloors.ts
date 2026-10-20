@@ -11,6 +11,7 @@
 import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
 import { benchModelBox } from "./benchFrame";
+import { isBoughtHardwareName } from "./boughtHardware";
 import { ungroundedParts } from "./grounded";
 import { drawerBoxes } from "./hollowDrawers";
 import { hiddenOverlaps } from "./solids";
@@ -27,6 +28,12 @@ export type FamilyFloor = { family: Exclude<FloorFamily, "measured">; label: str
 export const HAND_ROLLED_IN = 3.75;
 /** A bare hand, flat, slides into an opening 2" by 4" (MIL-STD-1472G, one-hand access, flat hand 55 × 100 mm). */
 export const HAND_FLAT_IN = { height: 2, width: 4 } as const;
+/**
+ * A pulled drawer is open on top: the flat hand goes in from above, so it needs the hand's 4" across between the sides,
+ * not its thickness in height. Its depth only has to hold something: 1", a jewelry box's ring-tray drawer, the
+ * shallowest drawer commonly made (common practice, no formal standard).
+ */
+export const DRAWER_LEAST_DEPTH_IN = 1;
 
 const MIL = "MIL-STD-1472G (DoD human engineering), one-hand access opening, bare hand to the wrist";
 const EN1729 = "EN 1729-1:2015 (chairs and tables for educational institutions), size mark 0, the smallest standard size";
@@ -141,9 +148,12 @@ export function leastDrawer(p: YardProject): { height: number; width: number } {
   return { height, width };
 }
 
-/** How far the parts reach on each axis (the bench's model box: panels and sticks). */
+/**
+ * How far the made parts reach on each axis (the bench's model box: panels and sticks). Bought hardware drawn on the
+ * model (a coat hook standing proud of its rail) reaches past the wood by design and is not part of the size.
+ */
 export function reach(p: YardProject): Record<Axis, number> {
-  const b = benchModelBox(p);
+  const b = benchModelBox({ ...p, panels: p.panels.filter((x) => !isBoughtHardwareName(x.name)) });
   return { width: b.maxX - b.minX, height: b.maxY - b.minY, depth: b.maxZ - b.minZ };
 }
 
@@ -174,25 +184,30 @@ export const UNUSABLE = {
   none: "for anything to build",
   real: "for every part to be real",
   bay: `for a hand's room (${inchFrac(HAND_ROLLED_IN)}") in every shelf bay`,
-  drawer: `for a flat hand's room (${HAND_FLAT_IN.height}" by ${HAND_FLAT_IN.width}") in every drawer`,
+  drawer: `for a flat hand's room (${HAND_FLAT_IN.width}" across) and ${DRAWER_LEAST_DEPTH_IN}" of depth in every drawer`,
   overlap: "for its parts to fit without running into each other",
   outgrows: "for its parts to fit inside it",
   loose: "for every part to rest on the floor, a wall or another part",
 } as const;
 
 /**
- * Usable and clean: real parts (`realParts` is I38's check), every bay a rolled hand fits into and every drawer a
+ * Usable and clean: real parts (`realParts` is I38's check), when `hands` is asked every bay a rolled hand fits into and every drawer a
  * flat hand fits into, and, when `fit` is asked, no overlap or loose part. A build that falls short of the absolute
  * rule is held to the same ask at its default size instead (`base`, read only then), so a default never refuses
  * itself. Returns the first reason it isn't usable, or null.
  */
-export function unusable(p: YardProject, base: () => Cleanness, realParts: (p: YardProject) => boolean, fit = true): string | null {
+export function unusable(p: YardProject, base: () => Cleanness, realParts: (p: YardProject) => boolean, fit = true, hands = true): string | null {
   if (p.refused || !p.panels.length) return UNUSABLE.none;
   if (!realParts(p)) return UNUSABLE.real;
+  if (!hands) return fit ? unclean(p, base) : null;
   const bay = leastBay(p), drawer = leastDrawer(p);
   if (bay < HAND_ROLLED_IN - 1e-6 && bay < base().bay - 1e-6) return UNUSABLE.bay;
-  if ((drawer.height < HAND_FLAT_IN.height - 1e-6 && drawer.height < base().drawer.height - 1e-6) || (drawer.width < HAND_FLAT_IN.width - 1e-6 && drawer.width < base().drawer.width - 1e-6)) return UNUSABLE.drawer;
-  if (!fit) return null;
+  if ((drawer.height < DRAWER_LEAST_DEPTH_IN - 1e-6 && drawer.height < base().drawer.height - 1e-6) || (drawer.width < HAND_FLAT_IN.width - 1e-6 && drawer.width < base().drawer.width - 1e-6)) return UNUSABLE.drawer;
+  return fit ? unclean(p, base) : null;
+}
+
+/** More overlaps or loose parts than the same ask at its default size. */
+function unclean(p: YardProject, base: () => Cleanness): string | null {
   const overlaps = hiddenOverlaps(p).length;
   if (overlaps && overlaps > base().overlaps) return UNUSABLE.overlap;
   const loose = ungroundedParts(p).length;
