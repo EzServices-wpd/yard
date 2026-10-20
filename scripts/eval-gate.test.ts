@@ -5,11 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
-import { HEAD_ROOT, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, REPORT_ONLY_IDS, TYPED_RULE_IDS, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
 import { INVARIANT_CLASS, PER_BUILD } from "../src/lib/yard/invariants.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
 import { namedMinimum } from "./eval-gate-refusal.ts";
-import { typedDemands as demandsOf } from "./eval-gate-typed.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
 test("typed lengths: every way a woodworker writes 24 1/2 is 24.5", () => {
@@ -154,16 +153,14 @@ test("recipe-bot auto-merge waits for the eval gate too, on the exact commit", (
   assert.match(readFileSync(join(HEAD_ROOT, ".github/workflows/eval-gate.yml"), "utf8"), /^name: eval-gate$/m);
 });
 
-test("a report-only invariant ID never moves a prompt from pass to partial: gradeOne grades PER_BUILD only, the set eval-score counts (row 181)", async () => {
-  const scored = new Set<string>(PER_BUILD);
-  // Every checkBuild ID outside PER_BUILD (ratchet/baseline only), plus I37, the report-only hunter ID that dropped 36 prompts.
-  const reportOnly = [...new Set([...Object.keys(INVARIANT_CLASS).filter((id) => !scored.has(id)), "I37"])];
-  assert.ok(reportOnly.includes("I28") && reportOnly.length > 5, "I26-I32 and friends are report-only");
+test("a geometry report-only invariant ID never moves a prompt from pass to partial; PER_BUILD and typed-word rules still grade (row 181, #110 B1)", async () => {
+  // Exactly the geometry report-only IDs Critic allowed (#110 B1); nothing else is dropped.
+  const reportOnly = [...REPORT_ONLY_IDS].sort();
+  assert.deepEqual(reportOnly, ["I26", "I27", "I28", "I30", "I32", "I37"]);
   const E = await loadEngine();
-  assert.deepEqual([...E.perBuild].sort(), [...scored].sort(), "the gate reads PER_BUILD from invariants.ts, not a copy");
-  // One source for the set: eval-lib (eval-score) and the gate both import PER_BUILD from invariants.ts.
+  // Every PER_BUILD ID (the set eval-score counts, imported from invariants.ts) and every typed-word rule grades.
+  for (const id of [...PER_BUILD, ...TYPED_RULE_IDS, "I25", "I29"]) assert.ok(E.graded(id), `${id} grades`);
   assert.match(readFileSync("scripts/eval-lib.ts", "utf8"), /PER_BUILD[^\n]*from "\.\.\/src\/lib\/yard\/invariants\.ts"/);
-  assert.match(readFileSync("scripts/eval-gate-lib.ts", "utf8"), /perBuild: new Set<string>\(inv\.PER_BUILD\)/);
   const entry = loadCorpus().find((e) => gradeOne(E, e).grade === "pass");
   assert.ok(entry, "the corpus has a passing prompt");
   const base = gradeOne(E, entry!);
@@ -174,6 +171,12 @@ test("a report-only invariant ID never moves a prompt from pass to partial: grad
     assert.ok(r.invariants.some((v) => v.id === id && !v.scored), `${id} is still listed, marked not scored`);
     assert.deepEqual(r.classes, base.classes, `${id} adds no class`);
   }
+  // General case (B1): a new typed-word rule hit (I31, I35, I36, I38) still moves a prompt off pass.
+  for (const id of TYPED_RULE_IDS) {
+    const r = gradeOne(withHit(id), entry!);
+    assert.notEqual(r.grade, "pass", `${id} (typed-word rule) left "${entry!.prompt}" at pass`);
+    assert.ok(r.classes.includes(INVARIANT_CLASS[id]), `${id} tags ${INVARIANT_CLASS[id]}`);
+  }
   // A scored ID still grades: I4 → partial, I1 → fail.
   assert.equal(gradeOne(withHit("I4"), entry!).grade, "partial");
   assert.equal(gradeOne(withHit("I1"), entry!).grade, "fail");
@@ -183,7 +186,7 @@ test("a report-only invariant ID never moves a prompt from pass to partial: grad
 
 test("honest refusals: the 4 abacus refusals pass (listed, minimum named, minimum builds clean); wrong or unexpected refusals fail", async () => {
   const E = await loadEngine();
-  const entry = (prompt: string) => ({ prompt, sources: ["test"], ids: [], demands: demandsOf(prompt), demandsFrom: "typed-rules" });
+  const entry = (prompt: string) => ({ prompt, sources: ["test"], ids: [], demands: typedDemands(prompt), demandsFrom: "typed-rules" });
   // Hand-worked minimums (1 1/2" of ends + 9/16" per rod), independent of the engine's refusal text.
   assert.deepEqual(namedMinimum("3 3/16 wide"), { axis: "W", value_in: 3.1875, quote: "3 3/16 wide" });
   assert.equal(namedMinimum("A 13-rod abacus needs 8 13/16\" wide. Nothing is built: make it 8 13/16\" wide")?.value_in, 8.8125);
@@ -215,4 +218,21 @@ test("honest refusals: the 4 abacus refusals pass (listed, minimum named, minimu
   const builds = gradeOne(stub({ refusals: { ...E.refusals, "abacus 10 wide 15 rods": { minimum: "10 wide", why: "test" } } }), entry("abacus 10 wide 15 rods"));
   assert.equal(builds.grade, "fail");
   assert.match(builds.refusal!.why, /but it built/);
+});
+
+test("#110 B1: 'queen platform bed with drawers' that builds 0 drawers with no note is not a pass (I31 grades)", async () => {
+  const E = await loadEngine();
+  const q = "queen platform bed with drawers";
+  const e = loadCorpus().find((x) => x.prompt === q);
+  assert.ok(e, `${q} is in the corpus`);
+  const p = E.generateFromPrompt(q);
+  const drawers = p.panels.filter((x: any) => /drawer/i.test(x.name)).length;
+  const r = gradeOne(E, e!);
+  if (drawers === 0) {
+    assert.notEqual(r.grade, "pass", "0 drawers, no note: must not pass");
+    assert.ok(r.invariants.some((v) => v.id === "I31" && v.scored), "I31 is the graded reason");
+  }
+  // Whatever the engine builds, a stub with the drawers stripped and no note is never a pass.
+  const stripped = { ...E, generateFromPrompt: (x: string) => { const b = E.generateFromPrompt(x); return x === q ? { ...b, panels: b.panels.filter((y: any) => !/drawer/i.test(y.name)), notes: [] } : b; } };
+  assert.notEqual(gradeOne(stripped, e!).grade, "pass");
 });

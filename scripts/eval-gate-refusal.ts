@@ -2,7 +2,7 @@
  * Honest refusals (YARD-SPEC "Honest refusals"). A refusal ("nothing built") is graded against evals/expected-refusals.json:
  *   pass  only when the prompt is listed there AND the refusal (1) says nothing is built and shows no parts, price or size,
  *         (2) names the listed usable minimum, (3) that minimum is above what was asked, and (4) the minimum, typed back
- *         into the prompt, builds cleanly (parts, no scored PER_BUILD invariant, not refused);
+ *         into the prompt, builds cleanly (parts, no graded invariant, not refused);
  *   fail  (class X-refusal) for a refusal of a prompt that is not listed (a build was expected), a listed prompt that
  *         builds instead of refusing, or a listed refusal that misses any of (1)-(4).
  * The gate only grades: the engine is untouched.
@@ -20,7 +20,7 @@ type Grader = {
   buildPlan: (p: any) => any;
   headerTitle: (p: any) => string;
   checkBuild: (p: any, q: string, plan?: any) => { id: string }[];
-  perBuild: ReadonlySet<string>;
+  graded: (id: string) => boolean;
 };
 
 export function loadExpectedRefusals(root: string): ExpectedRefusals {
@@ -62,7 +62,7 @@ export function judgeRefusal(E: Grader, prompt: string, d: Demands, p: any, plan
   try {
     const q: any = E.generateFromPrompt(retry);
     if (q.refused || !(q.panels?.length || q.instances?.length)) return wrong(`the named minimum does not build: "${retry}"`);
-    const hits = E.checkBuild(q, retry, E.buildPlan(q)).filter((v) => E.perBuild.has(v.id));
+    const hits = E.checkBuild(q, retry, E.buildPlan(q)).filter((v) => E.graded(v.id));
     if (hits.length) return wrong(`the named minimum builds with ${hits.map((v) => v.id).join(", ")}: "${retry}"`);
   } catch (err) {
     return wrong(`the named minimum threw: ${String(err).slice(0, 80)}`);

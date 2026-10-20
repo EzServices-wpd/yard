@@ -17,6 +17,15 @@ import { isTestTraffic, type LoggedRecord } from "../src/lib/ideas/testTraffic.t
 export const HEAD_ROOT = resolve(new URL("..", import.meta.url).pathname);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * The only checkBuild IDs that are listed without grading: geometry-quality checks that ratchet in
+ * evals/invariants-baseline.json and stay out of PER_BUILD (row 181). Every other ID grades, including every PER_BUILD ID
+ * (the set scripts/eval-score.ts counts) and the typed-word hard rules outside it (Critic #110 B1): requested drawers built
+ * (I31), typed size built (I35), typed count built or refused (I36), too-small size refused (I38). A new ID grades unless
+ * it is added here, so loosening is always an explicit edit to a gate file.
+ */
+export const REPORT_ONLY_IDS: ReadonlySet<string> = new Set(["I26", "I27", "I28", "I30", "I32", "I37"]);
+export const TYPED_RULE_IDS = ["I31", "I35", "I36", "I38"] as const;
 export type Engine = {
   root: string;
   generateFromPrompt: (q: string) => any;
@@ -26,8 +35,8 @@ export type Engine = {
   headerTitle: (p: any) => string;
   POCKET_DREAM: string;
   baseline: Record<string, { class: string; msg: string }>;
-  /** The scored invariant IDs: src/lib/yard/invariants.ts PER_BUILD, the same set scripts/eval-score.ts counts. */
-  perBuild: ReadonlySet<string>;
+  /** Whether a checkBuild ID grades: everything but REPORT_ONLY_IDS (asserted to cover the root's PER_BUILD in eval-gate.test.ts). */
+  graded: (id: string) => boolean;
   /** evals/expected-refusals.json from the head (like the canary baselines): the same expectations grade head and base. */
   refusals: ExpectedRefusals;
 };
@@ -36,7 +45,7 @@ export async function loadEngine(root = HEAD_ROOT): Promise<Engine> {
   const [pm, inv, rep, pdf, pocket] = await Promise.all([import(y("promptMain.ts")), import(y("invariants.ts")), import(y("report.ts")), import(y("pdf.ts")), import(y("pocket.ts"))]);
   const bf = join(root, "evals/invariants-baseline.json");
   const baseline = existsSync(bf) ? JSON.parse(readFileSync(bf, "utf8")).known : {};
-  return { root, generateFromPrompt: pm.generateFromPrompt, ignoredTypedWords: pm.ignoredTypedWords ?? (() => []), checkBuild: inv.checkBuild, buildPlan: rep.buildPlan, headerTitle: pdf.headerTitle, POCKET_DREAM: pocket.POCKET_DREAM, baseline, perBuild: new Set<string>(inv.PER_BUILD), refusals: loadExpectedRefusals(HEAD_ROOT) };
+  return { root, generateFromPrompt: pm.generateFromPrompt, ignoredTypedWords: pm.ignoredTypedWords ?? (() => []), checkBuild: inv.checkBuild, buildPlan: rep.buildPlan, headerTitle: pdf.headerTitle, POCKET_DREAM: pocket.POCKET_DREAM, baseline, graded: (id: string) => !REPORT_ONLY_IDS.has(id), refusals: loadExpectedRefusals(HEAD_ROOT) };
 }
 /** Same rule as scripts/eval-lib.ts: evals never touch the network (no xAI, no stores). */
 export function offline<T>(f: () => T): T {
@@ -195,7 +204,7 @@ export function honor(E: Engine, s: Demands, p: any, plan: any, builtFrom: strin
 // ---------------------------------------------------------------- grading
 /** Same weights as scripts/rank-errors.ts SEVERITY: a build that floats, miscounts, misses hardware or rots outdoors is a fail. */
 export const FAIL_INVARIANTS = new Set(["I1", "I3", "I9", "I13"]);
-/** pass / partial / fail from the scored (PER_BUILD) invariant IDs only, plus the typed-word honor check. */
+/** pass / partial / fail from the graded invariant IDs only (all but REPORT_ONLY_IDS), plus the typed-word honor check. */
 export function gradeOf(r: { empty: boolean; nounOk: boolean; scoredIds: string[]; honored: number; checkable: number }): Grade {
   if (r.empty || !r.nounOk || r.scoredIds.some((id) => FAIL_INVARIANTS.has(id))) return "fail";
   return r.scoredIds.length || r.honored < r.checkable ? "partial" : "pass";
@@ -205,7 +214,7 @@ export type PromptResult = {
   prompt: string; sources: string[]; ids: string[]; grade: Grade; classes: string[];
   header: string | null; overall: string | null; pieces: number | null; usd: number | null;
   honor: { honored: number; checkable: number; demandsFrom: string; items: HonorItem[] };
-  /** Every checkBuild hit. scored = in PER_BUILD; a report-only (ratchet/baseline) hit is listed but never grades. */
+  /** Every checkBuild hit. scored = graded (not in REPORT_ONLY_IDS); a geometry report-only hit is listed but never grades. */
   invariants: { id: string; cls: string; msg: string; known: boolean; scored: boolean }[];
   /** Set when the build refused or was expected to: honest = graded pass, otherwise X-refusal (eval-gate-refusal.ts). */
   refusal?: Refusal;
@@ -223,12 +232,12 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
     try { vs = E.checkBuild(p, e.prompt, plan); } catch (err) { vs = [{ id: "I1", cls: "F1", msg: `checkBuild threw: ${String(err).slice(0, 80)}` }]; }
     const seen = new Set<string>();
     const invariants = vs.filter((x) => { const k = `${x.id}|${x.msg}`; if (seen.has(k)) return false; seen.add(k); return true; })
-      .map((x) => ({ id: x.id, cls: x.cls, msg: x.msg, known: `${x.id}|${e.prompt}` in E.baseline, scored: E.perBuild.has(x.id) }))
+      .map((x) => ({ id: x.id, cls: x.cls, msg: x.msg, known: `${x.id}|${e.prompt}` in E.baseline, scored: E.graded(x.id) }))
       .sort((a, b) => (a.id + a.msg < b.id + b.msg ? -1 : 1));
     const h = honor(E, e.demands, p, plan, e.prompt, e.expect);
     const honored = h.items.filter((i) => i.ok === true).length;
     const checkable = h.items.length;
-    // Only PER_BUILD hits grade (row 181): a ratchet-only or baselined ID (I26-I32, I37…) is listed, never a class or a grade.
+    // Only graded hits count (row 181): a geometry report-only ID (I26, I27, I28, I30, I32, I37) is listed, never a class or a grade.
     const scored = invariants.filter((v) => v.scored);
     const classes = new Set<string>();
     if (h.empty) classes.add("X-build");
