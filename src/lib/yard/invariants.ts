@@ -1,4 +1,5 @@
 import { thicknessFailures } from "./stockThickness";
+import { nothingBuilt } from "./builtSize";
 import { riderFloor, rodArrayFailures, rodArrays } from "./rodArrays";
 import { countWasTyped, rowNeed, typedCount, typedSize } from "./recipeBuild";
 import { hardwareSaidNotBought } from "./hardwareSaid";
@@ -640,7 +641,8 @@ const TYPED_ROLLING = /\brolling\b(?!\s+(?:pin|ball|marble|hills?|stock|shutter|
  */
 function c13(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
   const lower = prompt.toLowerCase(), out: Violation[] = [];
-  if (/\b(?:craft|popsicle|lolly)\s*sticks?\b/.test(lower) || p.historic || p.displayOnly) return out;
+  // A refusal built nothing, so it has no parts to be missing (the refusal is I35's and I38's to check).
+  if (/\b(?:craft|popsicle|lolly)\s*sticks?\b/.test(lower) || p.historic || p.displayOnly || nothingBuilt(p)) return out;
   for (const t of TYPED_PURPOSES) {
     if (!t.ask.test(lower)) continue;
     if (!t.name.test(p.name) || p.standIn) out.push(v("C13", `typed "${t.label}" built as "${p.name}"`));
@@ -670,7 +672,8 @@ const MOUNTED_HOUSE = /\b(?:hanging|wall[- ]?mounted|wall[- ]?mount)\s+(?:bird\s
  */
 function c14(p: YardProject, prompt: string): Violation[] {
   const lower = prompt.toLowerCase(), out: Violation[] = [];
-  if (/\b(?:craft|popsicle|lolly)\s*sticks?\b/.test(lower) || p.historic || p.displayOnly) return out;
+  // A refusal built nothing, so it has no parts to be missing (the refusal is I35's and I38's to check).
+  if (/\b(?:craft|popsicle|lolly)\s*sticks?\b/.test(lower) || p.historic || p.displayOnly || nothingBuilt(p)) return out;
   const learner = () => routesToLearner(prompt, p, ignoredTypedWords(p, prompt).length > 0);
   for (const f of SMALL_FORMS) {
     if (!f.ask.test(lower)) continue;

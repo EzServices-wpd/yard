@@ -11,7 +11,8 @@ import { buildPlanPdf, headerTitle, slugPlan } from "@/lib/yard/pdf";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
 import { usd } from "@/lib/utils";
 import type { BuildPlan, YardProject } from "@/lib/yard/types";
-import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
+import { envelopeText } from "@/lib/yard/builtSize";
+import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 import { ideaSignature } from "@/lib/yard/ideaLibrary";
 import { candidateFromPrint, keepPrintedIdea } from "@/lib/yard/ideaKeep";
@@ -131,12 +132,8 @@ export function ExportDialog({
     project.pocket?.unit ??
     project.overall;
   // Shared Dia×H densify — never W×H×W diameter echo on stranger paper/PDF chrome.
-  const sizeLine = fmtUnitEnvelopeInches(unit.width, unit.height, unit.depth, {
-    shape: project.fitted?.unit?.shape,
-    prompt: project.prompt,
-    name: project.name,
-    legs: project.fitted?.unit?.legs,
-  });
+  // Nothing built prints no size (builtSize.ts).
+  const sizeLine = envelopeText(project, { unit }) ?? NOTHING_BUILT_STOCK;
 
   return (
     <div className="pointer-events-auto fixed inset-0 z-[60] flex flex-col bg-paper text-ink">

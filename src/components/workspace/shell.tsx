@@ -41,13 +41,14 @@ import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
-import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
+import { openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 import { modelFinishedDepth, modelProudNote } from "@/lib/yard/modelSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 import { REFUSED_OUTLINE_CAPTION, refusedOutline } from "@/lib/yard/refusedOutline";
+import { envelopeText, nothingBuilt } from "@/lib/yard/builtSize";
 
 /** (b) A build still pending after this long stops the lamp and offers builds that always work. */
 export const STALL_MS = 45_000;
@@ -228,7 +229,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     const live = useYard.getState().project;
     const house = live.kind === "closet" || live.kind === "opening" || Boolean(live.pocket) || Boolean(live.fitted);
     setMeasureOpen(house);
-    if (!house && !live.recastFrom && live.overall.width > 1 && live.overall.height > 1) {
+    // A refusal built nothing, so Measure holds no size of it (builtSize.ts); the fields wait for the next one typed.
+    if (nothingBuilt(live)) setMeasure({ width: "", height: "", depth: "" });
+    else if (!house && !live.recastFrom && live.overall.width > 1 && live.overall.height > 1) {
       const n = inchFrac;
       setMeasure({ width: n(live.overall.width), height: n(live.overall.height), depth: n(live.overall.depth) });
     }
@@ -828,14 +831,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     const finished = pocketUnit
                       ? pocketUnit.depth
                       : modelFinishedDepth(project.panels, project.overall.depth);
+                    // Nothing built shows no size (builtSize.ts): the chip just opens Measure.
+                    if (nothingBuilt(project)) return <>Measure</>;
                     const envelope = pocketUnit
                       ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
-                      : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, finished, {
-                          shape: project.fitted?.unit?.shape,
-                          prompt: project.prompt,
-                          name: project.name,
-                          legs: project.fitted?.unit?.legs,
-                        });
+                      : envelopeText(project, { finishedDepth: finished });
                     const emptyTalk = pocketUnit ? null : openingStorageMeasureEmptyTalk(project.prompt);
                     const companion = emptyTalk
                       ? emptyTalk.hudCompanion

@@ -9,6 +9,7 @@ import { saveBuild, shareFrom, shareUrl } from "@/lib/yard/shareBuild";
 import type { JoinMethod, SpaceKind } from "@/lib/yard/types";
 import { STOCK_WINDOWS, windowLabel } from "@/lib/yard/windows";
 import { POCKET_DREAM } from "@/lib/yard/pocket";
+import { MEASURE_NOTHING_BUILT, nothingBuilt } from "@/lib/yard/builtSize";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk, measureRefitTalk } from "@/lib/yard/voiceHonesty";
 import { parseInch, fieldInch } from "@/lib/yard/inchText";
 import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
@@ -284,6 +285,16 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
       return true;
     }).slice(0, 8);
   }, []);
+
+  // A refusal built nothing, so there is nothing to measure and no size to show (builtSize.ts).
+  if (nothingBuilt(project)) {
+    return (
+      <div className="p-4" data-yard-measure-panel="1" data-yard-measure-nothing="1">
+        <h2 className="font-display text-lg text-fg">Measure</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted">{MEASURE_NOTHING_BUILT}</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`p-4 ${phone ? "max-h-[50vh] overflow-y-auto" : ""}`} style={phone ? { maxHeight: "50vh" } : undefined} data-yard-measure-panel="1" data-yard-measure-tabs={tabs.map((t) => t.id).join(",")} data-yard-measure-phone={phone ? "1" : "0"}>

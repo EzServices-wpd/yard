@@ -6,9 +6,11 @@ import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
 import { planSheetNest, sheetSizeLabel, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, CutLine, YardProject } from "./types";
-import { fmtUnitEnvelope, shortSheetTalk } from "./pdfFormat";
+import { shortSheetTalk } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
 import { glossaryForPlan, speciesStockHonestyTalk } from "./voiceHonesty";
+import { envelopeText, nothingBuilt } from "./builtSize";
+import { NOTHING_BUILT_STOCK } from "./stockPill";
 import { planStepParts, stepKindOf } from "./stepParts";
 import { affiliateActive, affiliateConfig, affiliateDisclosure, outboundHref } from "./outbound";
 import { stepPlacements } from "./placement";
@@ -202,18 +204,23 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(clean(t), L, y + 12);
     y += 22;
   };
+  // A refusal built nothing: one page naming what was asked and why it wasn't built. No size, parts, checks or
+  // running header with a size in it (builtSize.ts); the refusal sentence is the only one that names sizes.
+  if (nothingBuilt(project)) {
+    font(9, "bold", KIT.muted);
+    doc.text("YARD BUILD PLAN", L, y + 9);
+    y += 22;
+    sectionTitle(headerTitle(project));
+    y += textBlock(project.refused ?? "", L, y, W, 11) + 10;
+    textBlock(`You asked for: "${project.typedPrompt ?? project.prompt ?? ""}"`, L, y, W, 9, "italic", KIT.muted);
+    return doc;
+  }
   const allIds = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)];
   const allTones = (tone: Tone) => new Map<string, Tone>(allIds.map((id) => [id, tone]));
-  const envelopeTalk = clean(
-    fmtUnitEnvelope(project.overall.width, project.overall.height, project.overall.depth, {
-      shape: project.fitted?.unit?.shape,
-      prompt: project.prompt,
-      name: project.name,
-      legs: project.fitted?.unit?.legs,
-    }),
-  );
-  // Typed axes print plainly; axes the stranger never typed are marked assumed (shared densify rule).
-  const envelope = /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
+  const envelopeTalk = clean(envelopeText(project) ?? "");
+  // Typed axes print plainly; axes the stranger never typed are marked assumed (shared densify rule). Nothing built
+  // prints no size (builtSize.ts).
+  const envelope = nothingBuilt(project) ? NOTHING_BUILT_STOCK : /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
 
   // ── what the build needs, read from the plan itself
   const hay = `${project.prompt ?? ""} ${project.name} ${plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ")}`.toLowerCase();
