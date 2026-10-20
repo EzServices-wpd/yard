@@ -25,12 +25,12 @@ const cost = (p: YardProject) => buildPlan(p).bom.reduce((s, b) => s + (b.estima
 
 /** Prompt, exact header, the minimum the note must name. */
 const REFUSED: [string, string, string][] = [
-  ["bookcase 1/2 wide", "Bookcase · nothing built", `at least 2 1/2" wide`],
-  ["bookcase 1 wide", "Bookcase · nothing built", `at least 2 1/2" wide`],
+  ["bookcase 1/2 wide", "Bookcase · nothing built", `at least 5 1/4" wide`],
+  ["bookcase 1 wide", "Bookcase · nothing built", `at least 5 1/4" wide`],
   ["cabinet 1/2 wide", "Cabinet · nothing built", `" wide`],
   ["shelf 1/4 wide", "Shelf unit · nothing built", `" wide`],
-  ["bookcase 1 deep", "Bookcase · nothing built", `at least 2 1/2" deep`],
-  ["bookcase 2 tall", "Bookcase · nothing built", `at least 2 1/2" tall`],
+  ["bookcase 1 deep", "Bookcase · nothing built", `at least 3 1/2" deep`],
+  ["bookcase 2 tall", "Bookcase · nothing built", `at least 5 1/4" tall`],
 ];
 
 for (const [prompt, header, min] of REFUSED) {
@@ -49,7 +49,7 @@ for (const [prompt, header, min] of REFUSED) {
 }
 
 it("the named minimum builds, every part real, on every carcass axis", () => {
-  for (const [ask, at] of [["wide", "bookcase 2 1/2 wide"], ["deep", "bookcase 2 1/2 deep"], ["tall", "bookcase 2 1/2 tall"]]) {
+  for (const [ask, at] of [["wide", "bookcase 5 1/4 wide"], ["deep", "bookcase 3 1/2 deep"], ["tall", "bookcase 5 1/4 tall"]]) {
     const p = generateFromPrompt(at);
     assert.ok(!p.refused, `${at} (${ask}) builds: ${p.cardNote}`);
     assert.deepEqual(realParts(p), [], at);

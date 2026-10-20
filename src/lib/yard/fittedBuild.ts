@@ -4,6 +4,7 @@
 import { doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
+import { shelvesThatFit } from "./usableFloors";
 import { boardFace, mattressDeck } from "./fittedParse";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
@@ -2845,6 +2846,17 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const forItem = purposeOf(prompt);
   const need = forItem && !forItem.item.outdoor && !/\b(?:\d+|one|two|three|four|five|six)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt) ? forItem.item.clear : null;
   const zoneY0 = rodY != null ? rodY + 2 : (u.upperStart ?? shelfZone0);
+  // Usable bays (usableFloors.ts): a default shelf count shrinks to the shelves that leave every bay a hand's room
+  // (3 3/4") at a typed height, and the card names the height the full count needs. A typed count stays as typed.
+  let shelfFitNote: string | null = null;
+  if (!need && shelves > 0 && spec.typedAxes?.height && spokenShelfCount(prompt) == null) {
+    const { fit, zoneFor } = shelvesThatFit(shelves, shelfZone1 - zoneY0, P);
+    if (fit < shelves) {
+      const fits = fit === 0 ? "No shelf fits" : `Only ${fit} ${fit === 1 ? "shelf fits" : "shelves fit"}`;
+      shelfFitNote = `${fits} in ${inchFrac(H)}" tall with a hand's room (3 3/4") over each; ${shelves} shelves need ${inchFrac(Math.ceil((H - (shelfZone1 - zoneY0) + zoneFor) * 16 - 1e-6) / 16)}".`;
+      shelves = fit;
+    }
+  }
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
     const y1 = shelfZone1;
@@ -3043,6 +3055,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       : []),
     guidanceConfirmTalk(`${prompt} ${spec.name ?? ""}`, alcove ? "alcove" : "floor"),
   ];
+  if (shelfFitNote) notes.splice(Math.min(1, notes.length), 0, shelfFitNote);
   if (purposeNote) {
     for (let k = 0; k < notes.length; k++) notes[k] = notes[k].replace(/\s*TV sits on top\./, "");
     notes.splice(Math.min(3, notes.length), 0, purposeNote);
@@ -3128,6 +3141,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels,
     primaryMaterialId: PLY,
     notes: notesNamed,
+    ...(shelfFitNote ? { cardNote: shelfFitNote } : {}),
     historic: false,
     opening: spec.opening,
     fitted: { ...spec, name },
