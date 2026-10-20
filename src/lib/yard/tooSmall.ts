@@ -13,6 +13,8 @@ import { canonicalMeasures, typedMeasures } from "./measureText";
 import { buildPlan } from "./report";
 import { STOP, typedHeadNoun, sentenceCase } from "./headNoun";
 import { isUnitItem } from "./unitItems";
+import { typedInteriorCounts } from "./closedStorage";
+import { normalizeUserPrompt } from "./voiceHonesty";
 import { cleanness, floorFamily, floorOn, outgrows, unusable, UNUSABLE, type Axis, type Cleanness } from "./usableFloors";
 import type { YardProject } from "./types";
 
@@ -63,10 +65,10 @@ export function refusalNoun(p: YardProject, prompt: string): string {
 }
 
 /** The typed sizes, per axis (an axis word wins over a W x D x H string). */
-export function typedAxes(prompt: string): Partial<Record<Axis, number>> {
+export function typedAxes(prompt: string, stockTuple = false): Partial<Record<Axis, number>> {
   const t = typedMeasures(prompt);
   const out: Partial<Record<Axis, number>> = {};
-  if (t.tuple) [out.width, out.depth, out.height] = t.tuple;
+  if (t.tuple && !stockTuple) [out.width, out.depth, out.height] = t.tuple;
   for (const a of AXES) if (t[a] != null) out[a] = t[a];
   return out;
 }
@@ -109,8 +111,10 @@ const real = (q: YardProject) => !nonPositiveParts(q, true).length;
  * call deeper, drawers hollowed as at the top) for the default-size reference and the search for the minimum.
  */
 export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt: string) => YardProject): YardProject | null {
-  if (p.refused || p.displayOnly || isUnitItem(p)) return null;
-  const typed = typedAxes(prompt);
+  // A pocket build is sized to a measured opening: its own fitting owns that size, not a usable floor.
+  if (p.refused || p.displayOnly || isUnitItem(p) || p.pocket) return null;
+  // The same words the build read: "2x4x8 bench" is 2x4 stock, not a 2" × 4" × 8" bench.
+  const typed = typedAxes(prompt, !typedMeasures(normalizeUserPrompt(prompt)).tuple);
   if (!AXES.some((a) => typed[a] != null)) return null;
   const family = floorFamily(p);
   const recipe = family === "measured" ? findRecipe(prompt) : null;
@@ -120,7 +124,7 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
   const measured = (a: Axis, v: number) => a !== rowAxis && (v < SMALL_TYPED_IN - 1e-6 || (recipe != null && v < recipe.size[a] - 1e-6));
   let base: Cleanness | null = null;
   const reference = () => (base ??= cleanness(rebuild(withoutSizes(prompt))));
-  const why = (q: YardProject, fit = true) => unusable(q, reference, real, fit);
+  const why = (q: YardProject, fit = true, hands = true) => unusable(q, reference, real, fit, hands);
   // A small typed size must be the size built: nothing clamped up, no part reaching past it (beyond the design's spill).
   const small = AXES.filter((a) => typed[a] != null && measured(a, typed[a]!));
   const outgrown = (q: YardProject, at: Partial<Record<Axis, number>>) => small.find((a) => outgrows(q, a, at[a] ?? typed[a]!, reference().spill[a]));
@@ -168,9 +172,10 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
     // The usable floor names the minimum unless the build only comes clean above it; then what it lacks is named.
     return say(a, min, min > f.inches + 1e-6 ? lacksAt(a, min - 1 / 16) ?? UNUSABLE.overlap : f.why, v);
   }
-  // At or over the floor: a small size must build clean (no overlap, nothing loose), and any typed size must leave
-  // every shelf bay and drawer a hand's room.
-  const lacks = why(p, small.length > 0 || nonPositiveParts(p).length > 0) ?? (outgrown(p, {}) ? UNUSABLE.outgrows : null);
+  // At or over the floor: a small size must build clean (no overlap, nothing loose) with every shelf bay and drawer a
+  // hand's room, and so must a typed shelf or drawer count (a default count is the builder's to fit, usableFloors.ts).
+  const counts = typedInteriorCounts(prompt);
+  const lacks = why(p, small.length > 0 || nonPositiveParts(p).length > 0, small.length > 0 || !!(counts.shelf || counts.drawer)) ?? (outgrown(p, {}) ? UNUSABLE.outgrows : null);
   if (!lacks) return null;
   const first = outgrown(p, {});
   const order = small.length ? [...(first ? [first] : []), ...small.filter((a) => a !== first)] : (["height", "width", "depth"] as const).filter((x) => typed[x] != null && x !== rowAxis);

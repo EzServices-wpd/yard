@@ -97,8 +97,8 @@ describe("I35: one reader for a typed size", () => {
   });
 
   it("I35 catches a fraction dropped on the floor", () => {
-    // A 4" shelf as the misread build (a 2" shelf is now refused as too small to hold its parts, I38).
-    const p = generateFromPrompt("shelf 4 wide");
-    assert.match(i35(p, "shelf 24 1/2 wide").map((x) => x.msg).join(), /typed 24 1\/2" width, built 4"/);
+    // A 6" shelf as the misread build (under 5 1/4" a shelf is refused at the usable storage floor, usableFloors.ts).
+    const p = generateFromPrompt("shelf 6 wide");
+    assert.match(i35(p, "shelf 24 1/2 wide").map((x) => x.msg).join(), /typed 24 1\/2" width, built 6"/);
   });
 });
