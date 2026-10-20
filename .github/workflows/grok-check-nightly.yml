@@ -1,0 +1,83 @@
+# Nightly Grok after-build check (arm B of the grok-intake A/B) — REPORT ONLY, uploaded as an artifact.
+# CALLS ARE OFF BY DEFAULT. A paid call is possible only when BOTH the repo variable YARD_GROK_CHECK is "on"
+# AND the XAI_API_KEY secret exists; otherwise the key is never handed to the job and the run only builds the
+# summaries and prices what it would spend. In code: scripts/grok-check/client.ts (gate) and budget.ts ($2/run cap,
+# priced before every call). Never runs on a PR. It grades the newest release/* branch's engine, server-side.
+name: grok-check-nightly
+
+on:
+  # 03:41 America/New_York all year (07:41 UTC in EDT, 08:41 UTC in EST); the first step skips the other one.
+  schedule:
+    - cron: "41 7 * * *"
+    - cron: "41 8 * * *"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "release branch to check (default: newest release/*)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grok-check-nightly
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Only at 03 New York time
+        id: hour
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ=America/New_York date +%H)" != "03" ]; then echo "run=no" >> "$GITHUB_OUTPUT"; else echo "run=yes" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.hour.outputs.run == 'yes'
+      - name: Pick the release branch
+        if: steps.hour.outputs.run == 'yes'
+        id: rel
+        env:
+          WANT: ${{ inputs.release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${WANT:-}" ]; then REL="$WANT"; else REL="$(git ls-remote --heads origin 'release/*' | awk '{print $2}' | sed 's#refs/heads/##' | sort | tail -1)"; fi
+          if ! [[ "$REL" =~ ^release/[0-9A-Za-z._-]+$ ]]; then echo "not a release branch: $REL"; exit 1; fi
+          echo "ref=$REL" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.hour.outputs.run == 'yes'
+        with:
+          ref: ${{ steps.rel.outputs.ref }}
+          path: .release
+      - uses: actions/setup-node@v4
+        if: steps.hour.outputs.run == 'yes'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: .release/package-lock.json
+      - name: Install the release engine
+        if: steps.hour.outputs.run == 'yes'
+        working-directory: .release
+        run: npm ci --no-audit --no-fund
+      - name: Check (report only; calls only when switched on, $2/run cap)
+        if: steps.hour.outputs.run == 'yes'
+        working-directory: .release
+        env:
+          YARD_GROK_CHECK: ${{ vars.YARD_GROK_CHECK }}
+          XAI_API_KEY: ${{ vars.YARD_GROK_CHECK == 'on' && secrets.XAI_API_KEY || '' }}
+          REL: ${{ steps.rel.outputs.ref }}
+        run: |
+          npx -y tsx "$GITHUB_WORKSPACE/scripts/grok-check/run.ts" --root . --ref "$REL" --out "$RUNNER_TEMP/grok-check"
+          cat "$RUNNER_TEMP/grok-check/grok-check.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Date (New York)
+        if: steps.hour.outputs.run == 'yes'
+        id: d
+        run: echo "day=$(TZ=America/New_York date +%F)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: steps.hour.outputs.run == 'yes'
+        with:
+          name: grok-check-${{ steps.d.outputs.day }}
+          path: ${{ runner.temp }}/grok-check/
+          retention-days: 30
+          if-no-files-found: error
