@@ -68,6 +68,22 @@ test("canaries hold (hard fail, separate from the totals)", async () => {
   const E = await loadEngine();
   for (const c of loadCanaries()) { const r = gradeCanary(E, c); assert.ok(r.ok, `${c.id}: ${r.failures.join("; ")}`); }
 });
+test("linen canary is a full hard fail: moving one shelf 2\" fails even when header, parts, price and size hold", async () => {
+  const E = await loadEngine();
+  const linen = loadCanaries().find((c) => c.id === "linen")!;
+  assert.equal(linen.baseline, "scripts/baselines/linen-closet.txt");
+  assert.ok(gradeCanary(E, linen).ok);
+  // Shelf 1 up 2": its marked height in the shelf step moves, nothing else does.
+  const moved = { ...E, buildPlan: (p: unknown) => {
+    const plan = E.buildPlan(p);
+    return { ...plan, instructions: plan.instructions.map((s: { title: string; description: string }) => /adjustable shelves/.test(s.title) ? { ...s, description: s.description.replace('sit 16 1/16"', 'sit 18 1/16"').replace('(16 13/16"', '(18 13/16"') } : s) };
+  } };
+  const r = gradeCanary(moved, linen);
+  assert.equal(r.ok, false);
+  assert.equal(r.failures.length, 1, r.failures.join("; "));
+  assert.match(r.failures[0], /plan differs from the baseline at line 8: .*18 1\/16/);
+  assert.deepEqual(r.got, gradeCanary(E, linen).got);
+});
 test("diff: a newly failing prompt fails the gate unless allowed with a reason; a total drop fails", () => {
   const row = (prompt: string, grade: "pass" | "partial" | "fail") => ({ prompt, sources: ["t"], ids: [], grade, classes: grade === "pass" ? [] : ["F1"], header: null, overall: null, pieces: null, usd: null, honor: { honored: 1, checkable: 1, demandsFrom: "typed-rules", items: [] }, invariants: [] });
   const g = (rows: ReturnType<typeof row>[]) => ({ totals: totalsOf(rows), canaries: { ok: true, results: [] }, prompts: rows });

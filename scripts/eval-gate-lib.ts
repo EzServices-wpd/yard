@@ -202,7 +202,27 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
 }
 
 // ---------------------------------------------------------------- canaries (hard fail, separate from the totals)
-export type Canary = { id: string; prompt: string; dream?: "POCKET_DREAM"; header?: string; pieces?: number; usd?: number; overall?: [number, number, number]; checks?: string[]; why: string };
+export type Canary = { id: string; prompt: string; dream?: "POCKET_DREAM"; header?: string; pieces?: number; usd?: number; overall?: [number, number, number]; checks?: string[]; /** Repo path of a byte-exact plan baseline (scripts/baselines/*.txt): the whole printed plan must match. */ baseline?: string; why: string };
+/** The printed plan exactly as scripts/linen-check.ts prints it: name, size, parts; Buy names; every step. */
+export function planText(p: any, plan: any): string {
+  return [
+    `${p.name} ${JSON.stringify(p.overall)} ${p.panels.map((x: any) => x.name).join("; ")}`,
+    plan.bom.map((b: any) => b.name).join(", "),
+    plan.instructions.map((s: any) => `${s.title}: ${s.description}`).join("\n"),
+  ].join("\n") + "\n";
+}
+/** First line where the plan differs from its baseline, or null when byte-identical. */
+export function baselineDiff(now: string, base: string): string | null {
+  if (now === base) return null;
+  const a = now.split("\n"), b = base.split("\n");
+  const i = a.findIndex((l, k) => l !== b[k]);
+  const at = i < 0 ? Math.min(a.length, b.length) : i;
+  const x = a[at] ?? "<end>", y = b[at] ?? "<end>";
+  let c = 0;
+  while (c < x.length && x[c] === y[c]) c++;
+  const from = Math.max(0, c - 30);
+  return `plan differs from the baseline at line ${at + 1}: "…${x.slice(from, c + 50)}" ≠ "…${y.slice(from, c + 50)}"`;
+}
 export type CanaryResult = { id: string; prompt: string; ok: boolean; failures: string[]; got: { header: string | null; pieces: number | null; usd: number | null; overall: string | null } };
 const CHECKS: Record<string, (p: any, plan: any) => string | null> = {
   pocket: (p) => (!p.pocket ? "no project.pocket (trapezoid spec)" : p.overall.height < 90 || p.panels.length < 10 ? `lost the trapezoid (H ${p.overall.height}, ${p.panels.length} panels)` : !/trapezoid/i.test(JSON.stringify(p.pocket)) && !/16(\.\d+)?\s*°|trapezoid/i.test([p.name, ...(p.notes ?? [])].join(" ")) ? "trapezoid angles gone" : null),
@@ -237,6 +257,12 @@ export function gradeCanary(E: Engine, c: Canary): CanaryResult {
     const o = p.overall;
     if (c.overall && [o.width, o.depth, o.height].some((v: number, i: number) => Math.abs(v - c.overall![i]) > 1 / 16)) failures.push(`size ${r16(o.width)}×${r16(o.depth)}×${r16(o.height)} ≠ ${c.overall.join("×")}`);
     for (const k of c.checks ?? []) { const f = CHECKS[k]?.(p, plan) ?? (CHECKS[k] ? null : `unknown check ${k}`); if (f) failures.push(f); }
+    // The whole printed plan (heights, gaps, every step), byte for byte: the head's committed baseline, never the base's.
+    if (c.baseline) {
+      const bf = join(HEAD_ROOT, c.baseline);
+      const d = existsSync(bf) ? baselineDiff(planText(p, plan), readFileSync(bf, "utf8")) : `baseline ${c.baseline} missing`;
+      if (d) failures.push(d);
+    }
     return { id: c.id, prompt: c.prompt, ok: !failures.length, failures, got: { header, pieces, usd, overall: `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` } };
   });
 }
