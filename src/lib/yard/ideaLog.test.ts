@@ -28,6 +28,7 @@ function fakeRedis() {
         case "ZREMRANGEBYSCORE": { const hi = Number(a[1]); let n = 0; for (const [m, sc] of zs(key)) if (sc <= hi) { zs(key).delete(m); n++; } return n; }
         case "ZREVRANGE": { const r = rev(key).slice(Number(a[0]), Number(a[1]) + 1); return a[2] ? r.flatMap(([m, s]) => [m, String(s)]) : r.map(([m]) => m); }
         case "HMGET": return a.map((f) => hs(key).get(String(f)) ?? null);
+        case "HEXISTS": return hs(key).has(String(a[0])) ? 1 : 0;
         case "ZMSCORE": return a.map((m) => { const v = zs(key).get(String(m)); return v === undefined ? null : String(v); });
         default: throw new Error(`unknown ${c}`);
       }
@@ -298,4 +299,53 @@ test("stamp: snapshot rows carry at and source (stamped rows pass through, old r
   assert.deepEqual([live.at, live.source], [STAMP_T.toISOString(), "live"]);
   assert.deepEqual([old.at, old.source], [null, "unknown"]);
   for (const row of [...snap.rows, ...snap.recent, ...snap.popular]) assert.ok("at" in row && "source" in row, row.key);
+});
+
+// ---- Meta (ideas:meta): latest live write wins; a test-source write never touches it; the prompt is safePrompt's ----
+test("meta: a re-log at a new size refreshes the size (HSET, latest wins); same key, same count, same commands", async () => {
+  const r = fakeRedis();
+  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
+  const row = { key: "k-water wheel", prompt: "water wheel", resultKey: "builtin:water-wheel", status: "Trusted" as const, source: "live" as const };
+  await store.record({ ...row, size: "18×25×31" }, new Date("2026-10-17T08:00:00Z"));
+  const before = r.cmds;
+  await store.record({ ...row, size: "18×24.5625×31.125" }, new Date("2026-10-17T08:30:00Z")); // past the coalesce window
+  assert.equal(JSON.parse(r.h.get("ideas:meta")!.get("k-water wheel")!).size, "18×24.5625×31.125", "the size built now");
+  assert.equal(r.h.get("ideas:meta")!.size, 1, "one row, not two");
+  assert.equal(r.z.get("ideas:top")!.get("k-water wheel"), 2, "its count carries on");
+  const refresh = r.cmds - before, mark = r.cmds;
+  await store.record({ ...row, size: "18×24.5625×31.125" }, new Date("2026-10-17T09:00:00Z")); // same size again: a control write
+  assert.equal(refresh, r.cmds - mark, "refreshing the size costs no extra command");
+  assert.ok(refresh <= WRITE_CMDS, `${refresh} ≤ ${WRITE_CMDS}`);
+});
+
+test("meta: a test-source write never touches meta (not a new row, not a live row's size); count and reply positions unchanged", async () => {
+  const r = fakeRedis();
+  const store = new IdeaStore(r.pipe, undefined, () => {}, async () => {});
+  const row = { key: "k-desk", prompt: "desk", resultKey: "builtin:desk", status: "Trusted" as const };
+  await store.record({ ...row, key: "k-new", size: "1×1×1", source: "test" }, new Date("2026-10-17T07:00:00Z"));
+  assert.equal(r.h.get("ideas:meta")?.has("k-new") ?? false, false, "a test write makes no meta row");
+  await store.record({ ...row, size: "60×30×29", source: "live" }, new Date("2026-10-17T08:00:00Z"));
+  const before = r.cmds;
+  await store.record({ ...row, size: "99×99×99", source: "test" }, new Date("2026-10-17T08:30:00Z"));
+  assert.equal(JSON.parse(r.h.get("ideas:meta")!.get("k-desk")!).size, "60×30×29", "the live row's size stands");
+  const testCmds = r.cmds - before, mark = r.cmds;
+  await store.record({ ...row, size: "60×30×29", source: "live" }, new Date("2026-10-17T09:00:00Z")); // a live control write
+  assert.equal(testCmds, r.cmds - mark, "same command count as a live write (a read holds the slot)");
+  // And through the handler: test traffic (every marker) never reaches meta, even for a row already logged live.
+  const { r: r2, post } = stampSetup();
+  await post("https://yard.wiki/api/ideas-log");
+  const live = r2.h.get("ideas:meta")!.get("k-bookcase 36 wide");
+  for (const u of ["?offline=1", "?local=1", "?test=1"]) await post("https://yard.wiki/api/ideas-log" + u);
+  await post("https://yard.wiki/api/ideas-log", { "x-yard-test": "1" });
+  await post("https://yard.wiki/api/ideas-log", {}, { VERCEL_ENV: "preview" });
+  assert.equal(r2.h.get("ideas:meta")!.get("k-bookcase 36 wide"), live);
+  assert.equal(r2.h.get("ideas:meta")!.size, 1);
+});
+
+test("meta: the stored prompt is safePrompt's (PII never reaches meta) and the size is the header's at 1/16", async () => {
+  for (const bad of ["bookshelf for jane@example.com", "bench at 42 Oak Street", "planter 90210"]) assert.equal(await recordFromPrompt(bad), null, bad);
+  const rec = (await recordFromPrompt("linen closet 31.5 wide 78 tall 16 deep"))!;
+  assert.equal(rec.prompt, safePrompt("linen closet 31.5 wide 78 tall 16 deep"));
+  assert.match(rec.size, /^31\.5×/, "31 1/2 wide, not rounded to 32");
+  assert.equal(rec.key, logKey(rec.prompt, rec.resultKey, "32×16×78"), "the key keeps whole inches, so counts carry on");
 });

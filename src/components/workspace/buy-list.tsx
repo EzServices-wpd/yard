@@ -128,7 +128,7 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
           <div className="min-w-0">
             <p className="text-sm font-medium text-fg">Get it all in one cart</p>
             <p className="mt-0.5 text-xs text-muted">
-              {itemCount} {itemCount === 1 ? "item" : "items"} go to Amazon with the quantities already set.
+              {itemCount} {itemCount === 1 ? "item goes" : "items go"} to Amazon with the quantities already set.
             </p>
           </div>
           <a

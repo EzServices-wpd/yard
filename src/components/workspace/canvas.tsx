@@ -165,6 +165,9 @@ function StepCapture() {
   return null;
 }
 
+/** The bench lighting: drei's "warehouse" preset file (Poly Haven empty_warehouse_01, CC0), served from our own origin. */
+export const BENCH_HDRI = "/hdri/empty_warehouse_01_1k.hdr";
+
 export function WorkspaceCanvas() {
   const project = useYard((s) => s.project);
   const explode = useYard((s) => s.explode);
@@ -244,7 +247,8 @@ export function WorkspaceCanvas() {
         <color attach="background" args={["#1a1612"]} />
         {/* The HDR preset loads async and suspends; its own boundary keeps that from suspending (hiding) the whole workspace (F43). */}
         <Suspense fallback={null}>
-          <Environment preset="warehouse" environmentIntensity={0.5} background={false} />
+          {/* Self-hosted (drei presets fetch from raw.githack.com at runtime): same CC0 Poly Haven file, public/hdri. */}
+          <Environment files={BENCH_HDRI} environmentIntensity={0.5} background={false} />
         </Suspense>
         <StudioLights project={project} useShadows={useShadows} />
         {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}

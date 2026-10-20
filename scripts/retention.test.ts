@@ -132,7 +132,7 @@ test("time trim: every write sends ZREMRANGEBYSCORE recent −inf (now − RETAI
   assert.ok(Math.min(...r.zs("ideas:recent").values()) >= clock.now - RETAIN_MS, "nothing in recent is older than RETAIN_DAYS");
   assert.equal(r.zs("ideas:recent").size, RETAIN_DAYS, "one a day, the one exactly RETAIN_DAYS old trimmed");
   assert.equal(WRITE_CMDS, 10);
-  assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSETNX", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYSCORE", "HSET", "HINCRBY", "EXPIRE", "HMGET"]);
+  assert.deepEqual(r.sent[0].map((c) => c[0]), ["INCRBY", "HSET", "ZINCRBY", "ZADD", "ZADD", "ZREMRANGEBYSCORE", "HSET", "HINCRBY", "EXPIRE", "HMGET"]);
 });
 
 test("last-seen: the later of the recent score and the stamp; LEGACY_SINCE for a row with neither", () => {

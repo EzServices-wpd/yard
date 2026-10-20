@@ -1423,8 +1423,8 @@
     "material": "lumber-1x6-8",
     "overall": {
       "width": 10,
-      "height": 10.625,
-      "depth": 7.75
+      "height": 10.6,
+      "depth": 7.7
     },
     "panels": 11,
     "instances": 0,

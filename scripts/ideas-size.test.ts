@@ -15,6 +15,10 @@ import fs from "node:fs";
 const feed = curatedFeed(RECIPES);
 const cards = feed.sections.flatMap((s) => s.cards);
 type Box = { width: number; height: number; depth: number };
+// A card whose drawing is a quarter-turned view (gen-idea-drawings' VIEW `turn: true`, the water wheel) is labelled
+// with its width and depth trading places on paper; the card says them back in the model's W × D × H, so it is the
+// header's size (one-size.test), still exactly the drawing's labels.
+const TURNED = new Set([...fs.readFileSync("scripts/gen-idea-drawings.ts", "utf8").matchAll(/"([\w-]+)": \{ turn: true\b/g)].map((x) => x[1]));
 
 test("formatSize: W × D × H in with shop fractions; round tops print dia; aria spells it out", () => {
   assert.deepEqual(formatSize({ width: 31.5, height: 78, depth: 16 }), { text: "31 1/2 × 16 × 78 in", aria: "31 and a half inches wide, 16 deep, 78 tall" });
@@ -50,7 +54,8 @@ test("manifest dims are exactly the drawing's own labels (else the engine's box)
   const m = DRAWINGS as Record<string, { v: string; dims: Box & { round?: boolean } }>;
   for (const c of cards) {
     const svg = fs.readFileSync(`public/ideas/drawings/${c.slug}.${m[c.slug].v}.svg`, "utf8");
-    const labels = drawnDims(svg);
+    const drawn = drawnDims(svg);
+    const labels = drawn && TURNED.has(c.slug) ? { ...drawn, width: drawn.depth, depth: drawn.width } : drawn;
     const want = labels ?? generateFromPrompt(c.examplePrompt).overall;
     const d = m[c.slug].dims;
     const sorted = (x: Box) => [x.width, x.height, x.depth].sort((a, b) => a - b);
@@ -72,7 +77,8 @@ test("a card with a labelled drawing prints exactly the drawing's labels (no 1/1
     if (!d) continue;
     labelled++;
     const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((x) => x[1].replace(/&quot;/g, '"')).filter((t) => /\d[^"]*"/.test(t)).map((t) => t.match(/(\d+(?: \d+\/\d+)?|\d+\/\d+)\s*"/)![1]);
-    const want = d.round ? `${texts[0]} dia × ${texts[1]} in` : `${texts[0]} × ${texts[1]} × ${texts[2]} in`;
+    const [w, dp, h] = TURNED.has(c.slug) ? [texts[1], texts[0], texts[2]] : [texts[0], texts[1], texts[2]];
+    const want = d.round ? `${texts[0]} dia × ${texts[1]} in` : `${w} × ${dp} × ${h} in`;
     assert.equal(c.size, want, `${c.slug}: card "${c.size}" vs drawing "${want}"`);
   }
   assert.ok(labelled >= 7, `only ${labelled} labelled drawings checked`);
@@ -80,7 +86,8 @@ test("a card with a labelled drawing prints exactly the drawing's labels (no 1/1
   const by = Object.fromEntries([...cards, ...searchPool(feed)].map((c) => [c.slug, c.size]));
   assert.equal(by["birdhouse"], "6 7/8 × 7 1/2 × 11 13/16 in");
   assert.equal(by["recipe-wall-mounted-mail-organizer"], "12 × 3 3/4 × 14 3/16 in");
-  assert.equal(by["recipe-water-wheel"], "24 9/16 × 18 × 31 1/8 in");
+  assert.deepEqual([...TURNED], ["recipe-water-wheel"]);
+  assert.equal(by["recipe-water-wheel"], "18 × 23 7/16 × 30 1/4 in");
   assert.equal(by["recipe-laptop-stand"], "11 3/8 × 8 7/8 × 6 5/16 in");
   assert.equal(by["recipe-jewelry-box"], "10 × 5 1/2 × 3 7/16 in");
   assert.equal(by["recipe-bird-feeder"], "10 × 7 11/16 × 10 5/8 in");
@@ -112,8 +119,9 @@ test("home sample cards: sizes from the engine drawing, in the pattern", () => {
   const got = Object.fromEntries(Object.entries(prompts).map(([k, p]) => { const s = showcaseFor(p); return [k, drawingSize(s.svg, s.overall).text]; }));
   for (const v of Object.values(got)) assert.match(v, SIZE_PATTERN);
   assert.equal(got.linen, "31 1/2 × 16 × 78 in");
-  // The engine draws the pocket unit with its fronts: 17 deep + 3/4 fronts (reported to SWE, not patched here).
-  assert.equal(got.pocket, "38 × 17 3/4 × 102 in");
+  // One size source (#93 round 2): the drawing labels the header's typed 17 deep (its line spans the body; the 3/4
+  // fronts stand proud of it), the same as the linen's 16. Before, it labelled the proud 17 3/4.
+  assert.equal(got.pocket, "38 × 17 × 102 in");
   const home = fs.readFileSync("src/routes/index.tsx", "utf8");
   assert.ok(!/size:\s*"\d/.test(home), "home pieces must not type a size");
 });

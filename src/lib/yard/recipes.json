@@ -4603,7 +4603,8 @@
      "on": [
       "Board"
      ],
-     "shape": "cylinder"
+     "shape": "cylinder",
+     "proud": true
     },
     {
      "role": "peg",
@@ -4620,7 +4621,8 @@
      "on": [
       "Board"
      ],
-     "shape": "cylinder"
+     "shape": "cylinder",
+     "proud": true
     },
     {
      "role": "peg",
@@ -4637,7 +4639,8 @@
      "on": [
       "Board"
      ],
-     "shape": "cylinder"
+     "shape": "cylinder",
+     "proud": true
     },
     {
      "role": "peg",
@@ -4654,7 +4657,8 @@
      "on": [
       "Board"
      ],
-     "shape": "cylinder"
+     "shape": "cylinder",
+     "proud": true
     }
    ],
    "moving": [],

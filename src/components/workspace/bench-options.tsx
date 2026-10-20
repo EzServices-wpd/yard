@@ -12,41 +12,59 @@ import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
 import type { WorkMode } from "@/lib/yard/types";
 
-/** The one toggle on the bar: "Material: ¾″ plywood ▾" (Jakob's: a familiar label, not "Options"). */
+/**
+ * The bar's two controls. Live walk 10-19: "Material: ¾″ plywood ▾" opened a View/Camera/Drawers menu. Rule: a
+ * control's label names what it opens. "Material: …" opens the stock picker (onStock); the options menu (size,
+ * view, build options, saved yards) has its own "Options" toggle.
+ */
 export function BenchOptionsToggle({
   open,
   onToggle,
+  onStock,
   panelId,
   buttonRef,
 }: {
   open: boolean;
   onToggle: () => void;
+  onStock: () => void;
   panelId: string;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const { label, wire } = useStockLabel();
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      aria-controls={panelId}
-      aria-haspopup="true"
-      aria-label={`Material: ${label}. Change material, size and view`}
-      data-yard-options-toggle
-      className={`inline-flex h-11 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-left sm:max-w-[18rem] ${
-        open ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:border-fg/30"
-      }`}
-    >
-      <span className="min-w-0 truncate text-sm">
-        <span className="text-muted">Material: </span>
-        <span className={wire ? "text-accent" : "text-fg"} data-yard-stock-label>
-          {label}
+    <div className="flex max-w-full shrink-0 items-center gap-1.5">
+      <button
+        type="button"
+        onClick={onStock}
+        aria-label={`Material: ${label}. Change material`}
+        data-yard-material-chip
+        className="inline-flex h-11 max-w-full shrink items-center gap-1.5 rounded-full border border-border px-3.5 text-left text-fg hover:border-fg/30 sm:max-w-[16rem]"
+      >
+        <span className="min-w-0 truncate text-sm">
+          <span className="text-muted">Material: </span>
+          <span className={wire ? "text-accent" : "text-fg"} data-yard-stock-label>
+            {label}
+          </span>
         </span>
-      </span>
-      <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
-    </button>
+        <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
+      </button>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-haspopup="true"
+        aria-label="Options: size, view and build options"
+        data-yard-options-toggle
+        className={`inline-flex h-11 shrink-0 items-center gap-1 rounded-full border px-3.5 text-sm ${
+          open ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:border-fg/30"
+        }`}
+      >
+        Options
+        <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+    </div>
   );
 }
 

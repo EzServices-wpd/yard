@@ -256,4 +256,15 @@ export const SWEEPS = {
       "sideboard 60 wide 34 tall 18 deep with 2 doors and 3 drawers", "utility cabinet 30 wide 72 tall 16 deep with 2 drawers 2 doors and 3 shelves", "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors", "chest of drawers 30 wide 44 tall 18 deep with 5 drawers",
     ],
   },
+  f21t: {
+    title: "every number typed is the dimension built, to 1/16\", however it is written (fractions, unicode, hyphens, feet-inches)",
+    inv: "I35",
+    file: "f21t-typed-size-forms.md",
+    prompts: [
+      'shelf 24 1/2" wide', "shelf 24½ wide", "shelf 24-1/2 wide", "shelf 24.5 wide", `shelf 2' 1/2" wide`, "shelf 2 ft 6 in wide", `shelf 2'6" wide`,
+      "bookcase 30 wide 12 deep 75 1/2 tall", "bookcase 30 wide 12 1/2 deep 72 tall", "cabinet 2 ft 6 in deep", "nightstand 22 1/2 wide", "nightstand 22-1/2 wide",
+      `nightstand 22 1/2" wide`, "table 92 5/8 long", "bookcase 24 1/2 x 12 x 60", `bookcase 2'6" x 12 x 60`, "bookcase 36 x 14 x 30 1/2", "bookcase 36 x 12½ x 60",
+      "linen closet 31 1/2x78x16", "linen closet 31 1/2 wide 78 tall 16 deep",
+    ],
+  },
 } as const;
