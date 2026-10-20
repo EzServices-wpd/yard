@@ -48,7 +48,8 @@ export function specBox(project: Pick<YardProject, "overall" | "pocket">): { wid
 
 /** Build the spec from the person's words (the raw prompt, never an engine rewrite) and the built project. */
 export function buildSpec(project: YardProject, typedWords?: string, opts: { override?: boolean } = {}): YardSpec {
-  const words = project.typedPrompt ?? typedWords ?? project.prompt ?? "";
+  // The words typed (typedPrompt when the engine rewrote them: "2'6\"" read as 30, a remap's sizes are never typed).
+  const words = project.typedPrompt ?? project.prompt ?? typedWords ?? "";
   const box = specBox(project);
   const finished = modelFinishedDepth(project.panels, box.depth);
   const bed = isBedLongWide(project.notes);
@@ -66,9 +67,11 @@ export function buildSpec(project: YardProject, typedWords?: string, opts: { ove
   }
   const lp = words.toLowerCase();
   const noDigits = !/\d/.test(lp);
+  // The engine's own reading ("cabinet 30 wide" for "cabinet 2'6\" wide") says whether any number sizes the build.
+  const said = (project.prompt ?? words).toLowerCase();
   // Digits that size nothing ("3 bays", "20lb tank") type no axis: with no dimension triple and no bare length, an
   // axis no number names is assumed.
-  const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(lp) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|long|length|tall|high|height|deep|depth))/.test(lp);
+  const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(said) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|long|length|tall|high|height|deep|depth))/.test(said);
   if (!noDigits && !sized) for (const a of AXES) assumed[a] = true;
   const stock = noDigits && !parts.length && (!Object.keys(assumed).length || AXES.every((a) => assumed[a]));
   if (stock) AXES.forEach((a) => (assumed[a] = true));
