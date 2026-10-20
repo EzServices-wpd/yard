@@ -65,6 +65,10 @@
    "class": "F3",
    "msg": "cut list has 8 pieces, model 9"
   },
+  "I3|coat rack 36 wide 12 high 4 deep": {
+   "class": "F3",
+   "msg": "cut list has 2 pieces, model 8"
+  },
   "I3|coat rack with bench 48 wide": {
    "class": "F3",
    "msg": "cut list has 12 pieces, model 20"
