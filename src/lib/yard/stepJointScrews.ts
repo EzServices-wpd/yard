@@ -30,6 +30,24 @@ function isThin(p: Panel) {
   return Math.min(p.size.width, p.size.height, p.size.depth) < 0.5;
 }
 
+/** A back part (never a drawer's back): "Back", "Upper back", "Back panel 2". */
+export const BACK_PART = /^(?:upper |lower )?back(?: panel)?(?: \d+)?$/i;
+const FASTEN = /\b(?:attach|fasten|screw|nail|brad|staple|glue|tack|pin)/i;
+
+/**
+ * True when this step fastens the back named `name`: the back-of-the-box step, or a step that uses the back and
+ * says how it goes on (its title names the back and the text fastens, or one sentence names the back and a
+ * fastening verb). Driving screws through the back into wall studs mounts the build; it does not fasten the back.
+ */
+export function fastensBack(s: { title: string; description?: string; partsUsed?: string[] }, name: string): boolean {
+  if (/^(?:Cut|Confirm)\b/i.test(s.title)) return false;
+  if (/to the back of the box/.test(s.title)) return true;
+  if (!(s.partsUsed ?? []).includes(name)) return false;
+  const d = s.description ?? "";
+  if (/\bback\b/i.test(s.title) && !/\bstuds?\b/i.test(s.title) && FASTEN.test(d)) return true;
+  return d.split(/(?<=[.!?])\s+/).some((t) => /\bback\b/i.test(t) && FASTEN.test(t) && !/\bstuds?\b/i.test(t));
+}
+
 const JOIN =
   /attach ([A-Z]{1,2}) ([A-Za-z][A-Za-z ]*?) to ((?:both |the )?(?:[A-Z]{1,2}(?: and [A-Z]{1,2})? )?[A-Za-z ]+?) with (\d+) × (#8 × [\d/ ]+" screws)(?: \((\d+) per (\w+)\))?/;
 
@@ -44,6 +62,18 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     );
   const letterOf = (p: Panel) =>
     plan.cutList.find((c) => c.label && panelsForLetter(project, plan.cutList, c.label).some((q) => q.id === p.id));
+  // "both E Uprights, C Bottom and D Seat": the parts a back fastens to, by cut-list letter.
+  const touchList = (ids: string[]) => {
+    const byLetter = new Map<string, number>();
+    for (const p of [...new Set(ids)].map((id) => project.panels.find((q) => q.id === id)!).filter(Boolean)) {
+      const line = letterOf(p);
+      const key = line ? `${line.label} ${line.name.replace(/\s*\d+$/, "")}` : p.name;
+      byLetter.set(key, (byLetter.get(key) ?? 0) + 1);
+    }
+    const many = (k: string) => (/shelf$/i.test(k) ? `${k.slice(0, -1)}ves` : `${k}s`);
+    const talk = [...byLetter.entries()].map(([k, n]) => (n === 2 ? `both ${many(k)}` : n > 2 ? `all ${n} ${many(k)}` : k));
+    return talk.length > 1 ? `${talk.slice(0, -1).join(", ")} and ${talk[talk.length - 1]}` : talk[0];
+  };
   let changed = false;
   let instructions = plan.instructions.map((step) => {
     const m = step.description.match(JOIN);
@@ -59,18 +89,7 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
       const hw0 = new Set(project.panels.filter((p) => p.materialId === "hardware").map((p) => p.id));
       const js = joints.filter((j) => xs.some((p) => p.id === j.a || p.id === j.b) && !hw0.has(j.a) && !hw0.has(j.b));
       const n = js.reduce((s, j) => s + j.screws, 0);
-      const others = [...new Set(js.map((j) => (xs.some((p) => p.id === j.a) ? j.b : j.a)))]
-        .map((id) => project.panels.find((p) => p.id === id)!)
-        .filter(Boolean);
-      const byLetter = new Map<string, number>();
-      for (const p of others) {
-        const line = letterOf(p);
-        const key = line ? `${line.label} ${line.name.replace(/\s*\d+$/, "")}` : p.name;
-        byLetter.set(key, (byLetter.get(key) ?? 0) + 1);
-      }
-      const many = (k: string) => (/shelf$/i.test(k) ? `${k.slice(0, -1)}ves` : `${k}s`);
-      const talk = [...byLetter.entries()].map(([k, n]) => (n === 2 ? `both ${many(k)}` : n > 2 ? `all ${n} ${many(k)}` : k));
-      const list = talk.length > 1 ? `${talk.slice(0, -1).join(", ")} and ${talk[talk.length - 1]}` : talk[0];
+      const list = touchList(js.map((j) => (xs.some((p) => p.id === j.a) ? j.b : j.a)));
       const text = `attach ${xl} ${xName} to the back edges of ${list} with ${n} × ${hw}, one about every 8" along each edge. Square the box first: both diagonals measure the same`;
       changed = true;
       return { ...step, title: `Attach ${xl} ${xName} to the back of the box`, description: step.description.replace(whole, text), partsUsed: step.partsUsed };
@@ -84,6 +103,40 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     changed = true;
     return { ...step, description: step.description.replace(whole, text) };
   });
+  // Every back is fastened in a step (I46, Critic #107 row 199): a back that no step fastens, though the model
+  // screws it to the parts it touches, gets the same join as any other. A thin back gets its own back-of-the-box
+  // step (placed below, after every part it fastens to); a thick back is fastened in the step that sets it.
+  const jointLine = plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""));
+  const len = jointLine?.name.match(/#8 x ([\d/ -]+)"/)?.[1]?.replace("-", " ");
+  if (len) {
+    const hwIds = new Set(project.panels.filter((p) => p.materialId === "hardware").map((p) => p.id));
+    for (const back of project.panels.filter((p) => !p.drawerId && BACK_PART.test(p.name))) {
+      if (instructions.some((s) => fastensBack(s, back.name))) continue;
+      const at = instructions.findIndex((s) => !/^(?:Cut|Confirm)\b/i.test(s.title) && !/\bstuds?\b/i.test(s.title) && (s.partsUsed ?? []).includes(back.name));
+      if (at < 0) continue;
+      const js = joints.filter((j) => (j.a === back.id || j.b === back.id) && j.screws > 0 && !hwIds.has(j.a) && !hwIds.has(j.b));
+      if (!js.length) continue;
+      const n = js.reduce((t, j) => t + j.screws, 0);
+      const list = touchList(js.map((j) => (j.a === back.id ? j.b : j.a)));
+      const line = letterOf(back);
+      const ref = line ? `${line.label} ${line.name.replace(/\s*\d+$/, "")}` : back.name;
+      const hw = `#8 × ${len}" screws`;
+      if (isThin(back)) {
+        const st = {
+          step: 0,
+          title: `Attach ${ref} to the back of the box`,
+          description: `One join: attach ${ref} to the back edges of ${list} with ${n} × ${hw}, one about every 8" along each edge. Square the box first: both diagonals measure the same. Glue the mating edges. Predrill near the ends so the ply does not split.`,
+          partsUsed: [back.name],
+        };
+        instructions = [...instructions.slice(0, at + 1), st, ...instructions.slice(at + 1)];
+      } else {
+        const s0 = instructions[at];
+        const text = `Fasten ${ref} to ${list} with ${n} × ${hw}, glued, one about every 8" along each joint.`;
+        instructions = instructions.map((s, i) => (i === at ? { ...s0, description: `${s0.description.replace(/\s*$/, "")}${/[.!?]$/.test(s0.description.trim()) ? "" : "."} ${text}` } : s));
+      }
+      changed = true;
+    }
+  }
   // A thin back goes on after every part it fastens to is in place.
   let backShelves = new Set<string>();
   const backAt = instructions.findIndex((s) => /to the back of the box/.test(s.title));

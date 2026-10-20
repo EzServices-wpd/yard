@@ -44,7 +44,7 @@
   "no-class: generic box|rolling bar cart painted black": "WRONG BUILD (row 183): 'rolling bar cart painted black' builds a 36x16x33 'Storage unit' box on casters with no shelves or handle.",
   "no-class: generic box|square cedar planter 18 inch": "WRONG BUILD (row 183): 'square cedar planter 18 inch' drops the 18\" and the square: a 36x16x30 open box.",
   "no-class: generic box|storage cubby 3x3": "WRONG BUILD (row 183): 'storage cubby 3x3' reads 3x3 as inches: a 3\"x3\"x30\" 'Storage unit' instead of a 3-by-3 cubby grid.",
-  "no-class: generic box|storage for board games": "DEFENSIBLE (no family yet, build matches the words): 'storage for board games' — untyped, built a 36x16x30 5-panel 'Storage unit' cabinet; a games cabinet is a fair read. Planter family would add drainage and a liner; no row.",
+  "no-class: generic box|storage for board games": "DEFENSIBLE (no family yet, build matches the words): 'storage for board games' — untyped, built a 36x16x30 5-panel 'Storage unit' cabinet; a games cabinet is a fair read; no row.",
   "no-class: generic box|towel bar set": "WRONG BUILD (row 183): 'towel bar set' builds a 36x16x30 5-panel 'Storage unit' box; a towel bar is a wall rail on two posts.",
   "no-class: generic box|wall mounted outdoor planter": "WRONG BUILD (row 186): 'wall mounted outdoor planter' builds a 36x12x30 floor planter box: no cleat, nothing on the wall.",
   "no-class: generic box|wooden bread box": "WRONG BUILD (row 183): 'wooden bread box' builds a 24x16x16 open 5-panel box with no lid or door; a bread box is ~16x10x8 with a lid.",

@@ -155,7 +155,7 @@ export function dropPartText(text: string, names: string[]): string {
   const esc = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   let t = text;
   for (const n of [...names].sort((a, b) => b.length - a.length)) {
-    t = t.replace(new RegExp(`(?:;\\s*)?${esc(n)}(?![\\d\\w]) — [^;.]*?"(?: glued up)?(?=;|\\.|$)`, "g"), "");
+    t = t.replace(new RegExp(`(?:;\\s*)?(?:\\b[A-Z]{1,2} )?${esc(n)}(?![\\d\\w]) — [^;.]*?"(?: glued up)?(?=;|\\.|$)`, "g"), "");
   }
   t = t.replace(/^\s*;\s*/, "").replace(/(^|\.\s+);\s*/g, "$1");
   const named = (sentence: string) => names.some((n) => new RegExp(`\\b${esc(n)}(?![\\d\\w])`, "i").test(sentence));
@@ -1213,7 +1213,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         title: platformBed ? "Set the sleep deck on ledgers and slats" : loft ? "Set the loft sleep platform on ledgers and slats" : "Set the two sleep platforms on ledgers and slats",
-        description: `${ledgers.map(cutLine).join("; ")}. Glue and screw a ledger inside each side rail. ${slats.length ? `${slats.length} slats (${cutLine(slats[0])}) span rail to rail on the ledgers. ` : ""}${decks.map(cutLine).join("; ")}: the deck lies on the slats and the mattress on the deck.`,
+        description: `${ledgers.map(cutLine).join("; ")}. Glue and screw a ledger inside each side rail${/structural screws/i.test((project.notes ?? []).join(" ")) ? ", with the structural screws on the Buy list, one about every 12\"" : ""}. ${slats.length ? `${slats.length} slats (${cutLine(slats[0])}) span rail to rail on the ledgers. ` : ""}${decks.map(cutLine).join("; ")}: the deck lies on the slats and the mattress on the deck.`,
         tips: "Screw each slat to both ledgers so the frame stays square.",
         partsUsed: names([...ledgers, ...slats, ...decks]),
       },
