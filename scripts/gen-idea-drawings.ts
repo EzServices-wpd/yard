@@ -182,7 +182,9 @@ for (const c of cards) {
   fs.writeFileSync(path.join(OUT, `${c.slug}.${v}.svg`), svg);
   const parts = built.panels.length + built.instances.length;
   // The size the card claims must be the size the drawing shows: its own labels, else the model's box.
-  const o = (!view.custom && drawnDims(raw)) || project.overall;
+  const labelled = !view.custom ? drawnDims(raw) : null;
+  // A quarter-turned drawing labels the model's depth across: the card still says W × D in the model's own axes.
+  const o = labelled && project !== built ? { ...labelled, width: labelled.depth, depth: labelled.width } : labelled || project.overall;
   manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r4(o.width), height: r4(o.height), depth: r4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) } };
   if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
     const model = JSON.stringify({
@@ -191,7 +193,7 @@ for (const c of cards) {
         p: [r2(p.position.x), r2(p.position.y), r2(p.position.z)],
         s: [r2(p.size.width), r2(p.size.height), r2(p.size.depth)],
         ...(p.yaw ? { yaw: r2(p.yaw) } : {}),
-        ...(p.polygon ? { poly: { plane: p.polygon.plane, pts: p.polygon.pts.map(([a, b]) => [r2(a), r2(b)]) } } : {}),
+        ...(p.polygon ? { poly: { plane: p.polygon.plane, pts: p.polygon.pts.map(([a, b]) => [r2(a), r2(b)]), ...(p.polygon.holes?.length ? { holes: p.polygon.holes.map((q) => [r2(q.x), r2(q.y), r2(q.r)]) } : {}) } } : {}),
         ...(p.type === "glass_panel" || p.type === "mirror" ? { glass: 1 } : {}),
       })),
     });
