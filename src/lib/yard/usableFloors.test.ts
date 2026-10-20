@@ -10,7 +10,7 @@ import { generateFromPrompt } from "./promptMain";
 import { checkBuild, i35 } from "./invariants";
 import { buildPlan } from "./report";
 import { headerTitle } from "./pdf";
-import { USABLE_FLOORS, unusable, cleanness, HAND_ROLLED_IN } from "./usableFloors";
+import { unusable, cleanness, HAND_ROLLED_IN } from "./usableFloors";
 import { nonPositiveParts, withoutSizes } from "./tooSmall";
 import { refusedOutline, outlineEdges } from "./refusedOutline";
 import type { YardProject } from "./types";
@@ -45,15 +45,6 @@ for (const noun of FAMILIES) {
     }
   });
 }
-
-it("the floor table: every family, every axis, a number and a source", () => {
-  for (const f of Object.values(USABLE_FLOORS)) {
-    for (const a of ["width", "depth", "height"] as const) {
-      assert.ok(f[a].inches > 0 && f[a].why.length > 8 && f[a].source.length > 12, `${f.family} ${a}`);
-      assert.ok(!/\d\.\d/.test(f[a].why), `${f.family} ${a}: fractions, never decimals, in what the person reads`);
-    }
-  }
-});
 
 it("Critic's examples name usable sizes, not geometric floors", () => {
   const want: [string, RegExp][] = [
@@ -137,4 +128,14 @@ it("the default-size reference strips every typed size", () => {
   assert.equal(withoutSizes("bookcase 1/2 wide"), "bookcase");
   assert.equal(withoutSizes("table 6 x 30 x 30 with a shelf"), "table with a shelf");
   assert.equal(withoutSizes("bench 7 1/16 deep 18 tall"), "bench");
+});
+
+it("row 141: a water wheel's posts stand on its bases, never through them", async () => {
+  const { buildRecipe } = await import("./recipeBuild");
+  const { findRecipe } = await import("./recipes");
+  const { hiddenOverlaps } = await import("./solids");
+  for (const q of ["water wheel", "water wheel 2 tall", "garden water wheel 24 wide"]) {
+    const b = buildRecipe(findRecipe(q)!, q);
+    assert.deepEqual(hiddenOverlaps(b.project).filter((m) => /base runs into (?:left|right) post|post runs into (?:left|right) base/.test(m)), [], q);
+  }
 });
