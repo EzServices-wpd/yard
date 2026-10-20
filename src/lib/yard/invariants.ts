@@ -1,3 +1,6 @@
+import { thicknessFailures } from "./stockThickness";
+import { riderFloor, rodArrayFailures, rodArrays } from "./rodArrays";
+import { countWasTyped, rowNeed, typedCount, typedSize } from "./recipeBuild";
 import { hardwareSaidNotBought } from "./hardwareSaid";
 import { drawerBoxes, isSolidDrawer } from "./hollowDrawers";
 import { finishFor } from "./typedFinish";
@@ -45,14 +48,14 @@ import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I29" | "I31" | "I32" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I36" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I29: "F12", I31: "F17", I32: "F17", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I36: "F32", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
- * I26 and I27 run on every build too (checkBuild) and ratchet in evals/invariants-baseline.json, but stay out of
+ * I26, I27, I28, I30, I31 and I32 run on every build too (checkBuild) and ratchet in evals/invariants-baseline.json, but stay out of
  * the eval score until they join this list (which re-records evals/score.json's max).
  */
 export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9", "I11", "I12", "I13", "I14", "I17", "I18", "I19", "I20", "I21", "I22", "I23", "I24", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19"];
@@ -129,10 +132,13 @@ function i7(p: YardProject): Violation[] {
 /** I8: a typed W/H/D lands on the model (±1/8"). */
 function i8(p: YardProject, prompt: string): Violation[] {
   const out: Violation[] = [];
-  const typed = (re: RegExp) => { const m = prompt.match(re); return m ? Number(m[1]) : null; };
-  const W = typed(/(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?\s*|"\s*)?wide\b/i);
-  const H = typed(/(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?\s*|"\s*)?(?:tall|high)\b/i);
-  const D = typed(/(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?\s*|"\s*)?deep\b/i);
+  // A shop size may carry a fraction ("8 1/4 wide", "8-1/4\" wide"), read whole.
+  const N = String.raw`(\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+)`;
+  const num = (t: string) => { const f = t.match(/^(?:(\d+(?:\.\d+)?)(?:\s+|-))?(\d+)\/(\d+)$/); return f ? Number(f[1] ?? 0) + Number(f[2]) / Number(f[3]) : Number(t); };
+  const typed = (axis: string) => { const m = prompt.match(new RegExp(String.raw`${N}\s*(?:in(?:ch(?:es)?)?\s*|"\s*)?${axis}\b`, "i")); return m ? num(m[1]) : null; };
+  const W = typed("wide");
+  const H = typed("(?:tall|high)");
+  const D = typed("deep");
   const o = p.overall;
   if (!o || !p.panels.length) return out;
   if (W && W <= 1200 && Math.abs(o.width - W) > 0.125) out.push(v("I8", `typed ${W} wide, model ${o.width}`));
@@ -377,8 +383,65 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...i29(plan), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
-    ...i26(project), ...i27(project, prompt), ...i31(project, prompt, plan), ...i32(project, plan),
+    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i36(project, prompt),
   ];
+}
+
+/** I30 (F32 follow-up, rod arrays fit their span): rods and what rides on them stay inside the parts that bound the row and clear each other (rodArrays.ts). */
+function i30(p: YardProject): Violation[] {
+  return rodArrayFailures(p as { panels: YardProject["panels"] }).map((m) => v("I30", m));
+}
+
+/**
+ * I36 (F32 counted rows): one rule for every counted row of rods. A typed count is built as typed or nothing is
+ * built; a refusal builds no parts and names the size that would build. A rider is never under its floor (the
+ * thinnest dowel that takes the rod's bore). A row never runs past a typed size. An untyped count that shrank says
+ * so on the card, naming the size the full count needs, in words that read plainly.
+ */
+/** "2 1/16" as inches. */
+const shopInches = (t: string) => t.trim().split(/\s+/).reduce((n, w) => n + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
+export function i36(p: YardProject, prompt: string): Violation[] {
+  const out: string[] = [];
+  if (p.refused) {
+    if (p.panels.length) out.push(`refused but still built ${p.panels.length} parts`);
+    if (!/\d[\d /]*" (?:wide|tall|deep)|\d+ or fewer/.test(p.refused)) out.push(`the refusal names no size or count that would build: "${p.refused}"`);
+    return out.map((m) => v("I36", m));
+  }
+  if (p.cardNote && /built [\d /]+" with \d+\.$|built [\d /]+" without them/.test(p.cardNote)) out.push(`card note reads unclearly: "${p.cardNote}"`);
+  const recipe = findRecipe(prompt);
+  // Measured against the row's real minimum, not the build at hand, so a row too narrow to lay out (posts that
+  // meet, rods fused into a block) is caught too: a build never stands at a typed size below what its count needs,
+  // never runs past a typed size, and a note's size is the typed one.
+  const need = recipe?.count ? rowNeed(recipe) : null;
+  const typedRun = need && recipe ? typedSize(prompt, recipe)[need.axis] : undefined;
+  if (need && typedRun != null && p.panels.length) {
+    const a = need.axis === "width" ? "x" : need.axis === "height" ? "y" : "z";
+    const lo = Math.min(...p.panels.map((q) => q.position[a])), hi = Math.max(...p.panels.map((q) => q.position[a] + q.size[need.axis]));
+    const rods = p.panels.filter((q) => new RegExp(`^${need.one.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\d+$`, "i").test(q.name)).length;
+    if (hi - lo > typedRun + 1 / 32 && !/, not the [\d /]+" typed\.$/.test(p.cardNote ?? "")) out.push(`the build runs ${inchFrac(hi - lo)}" past the ${inchFrac(typedRun)}" typed`);
+    if (rods && typedRun < need.frame + rods * need.floor - 1e-3) out.push(`${rods} ${need.one}s built at ${inchFrac(typedRun)}", under the ${inchFrac(need.frame + rods * need.floor)}" they need`);
+    const said = p.cardNote?.match(/^Only \d+ \S+ fits? in ([\d /]+)"/)?.[1];
+    if (said && Math.abs(shopInches(said) - typedRun) > 1 / 64) out.push(`the card says "${said}"" but ${inchFrac(typedRun)}" was typed`);
+  }
+  for (const arr of rodArrays(p.panels)) {
+    const rodDia = Math.min(arr.rods[0].size[arr.row[1]], arr.rods[0].size[arr.third[1]]);
+    const floor = riderFloor(rodDia);
+    const thin = arr.strung.flat().find((b) => Math.min(b.size[arr.row[1]], b.size[arr.third[1]]) < floor - 1e-3);
+    if (thin) out.push(`${thin.name} is ${inchFrac(Math.min(thin.size[arr.row[1]], thin.size[arr.third[1]]))}" across, under the ${inchFrac(floor)}" a ${inchFrac(rodDia)}" rod's bore needs`);
+    if (!recipe?.count) continue;
+    if (countWasTyped(prompt, recipe)) {
+      const n = typedCount(prompt, recipe);
+      if (arr.rods.length !== n) out.push(`typed ${n} ${recipe.count.word}, built ${arr.rods.length}`);
+    } else if (arr.rods.length < recipe.count.default && !/^Only \d+ .* needs [\d /]+"\.$/.test(p.cardNote ?? "")) {
+      out.push(`${arr.rods.length} of the ${recipe.count.default} ${recipe.count.word} built with no card note naming the size the full count needs`);
+    }
+  }
+  return out.map((m) => v("I36", m));
+}
+
+/** I28 (F32 stock thickness never scales): a part is its stock's thickness, or whole layers of it glued up and said so (stockThickness.ts). */
+function i28(p: YardProject, plan: BuildPlan): Violation[] {
+  return thicknessFailures(p, plan).map((m) => v("I28", m));
 }
 
 /**
@@ -445,6 +508,7 @@ export function i31(p: YardProject, prompt: string, plan: BuildPlan): Violation[
   if (bottomRow && /plywood/i.test(bottomRow.material ?? "") && boardBottoms) out.push(`step ${boardBottoms.step} glues the drawer bottoms from boards, the cut list cuts them from ${bottomRow.material}`);
   return out.map((m) => v("I31", m));
 }
+
 
 /** I26 (F30 no hidden overlap): no two solid parts share space unless a joint the plan cuts makes room (solids.ts). */
 function i26(p: YardProject): Violation[] {

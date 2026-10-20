@@ -128,7 +128,13 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
         });
       const [l, r] = [endOn(0), endOn(1)];
       if (l.length && r.length) {
-        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r].map((q) => q.id) });
+        // A rail between its posts that also sits on parts below it (a stretcher on a frame's feet) rests on them
+        // too: when the posts are screwed to its face it goes first, so it is never left hanging on nothing.
+        const seat = p.type === "rail" && !flat ? others.filter((q) => {
+          const B = boxes.get(q.id)!;
+          return !l.includes(q) && !r.includes(q) && Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
+        }) : [];
+        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r, ...seat].map((q) => q.id) });
         continue;
       }
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { mainMaterialId } from "@/lib/yard/mainMaterial";
+import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { fitBadge } from "@/lib/yard/fitBadge";
@@ -588,7 +589,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "stock" && (
         <section className="mt-4" data-yard-measure-section="stock">
-          <p className="text-sm text-fg">{stock?.name ?? "Stock"}{thickness ? ` · ${fieldInch(thickness)} thick` : ""}</p>
+          <p className="text-sm text-fg">{project.refused && !project.panels.length ? NOTHING_BUILT_STOCK : <>{stock?.name ?? "Stock"}{thickness ? ` · ${fieldInch(thickness)} thick` : ""}</>}</p>
           <p className="mt-1 text-[11px] text-muted">Pick a class. The build keeps its size and its noun.</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {stockChoices.map((item) => (
