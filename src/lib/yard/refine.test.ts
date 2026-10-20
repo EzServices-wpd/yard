@@ -158,6 +158,18 @@ it("refine keeps the form: remove doors keeps the carcase, add drawer on a bench
   assert.deepEqual(r2.refused, []);
   assert.match(r2.project!.name, /bench/i);
   assert.equal(r2.project!.panels.filter((p) => p.drawerPart === "front").length, 1);
+  // The drawer it adds is buildable from the plan: its slides are on Buy and the steps build, hang and front it (row 176).
+  const plan2 = buildPlan(r2.project!);
+  assert.ok(plan2.bom.some((b) => /side-mount drawer slides/i.test(b.name) && b.quantity === 1), "one pair of slides on Buy");
+  const titles2 = plan2.instructions.map((s) => s.title);
+  for (const re of [/^Build drawer sides, front, back, and bottom$/, /^Hang the drawer on \d+" slides$/, /^Fit the drawer front \(false front\)$/]) {
+    assert.ok(titles2.some((t) => re.test(t)), `steps carry ${re}: ${titles2.join(" | ")}`);
+  }
+  const fit = plan2.instructions.find((s) => /^Fit the drawer front/.test(s.title))!;
+  assert.ok(fit.partsUsed?.some((n) => /drawer front/i.test(n)), "the fit step owns the drawer front");
+  for (const s of plan2.instructions.filter((s) => !/^(?:Cut|Fit)\b/.test(s.title))) {
+    assert.ok(!(s.partsUsed ?? []).some((n) => /drawer front/i.test(n)), `${s.title} does not also set the drawer front`);
+  }
   for (const q of ["entry bench 48 wide", "bookcase 36 wide 72 tall"]) {
     const before = generateFromPrompt(q);
     const r3 = refineProject(before, "outdoor");

@@ -110,6 +110,39 @@ function drawerBoxSteps(drawers: Panel[], panels: Panel[], slide: number, onDivi
   ];
 }
 
+/**
+ * Every drawer and door the model carries gets its build steps (class F17), whatever branch wrote the plan: a branch
+ * that never builds its drawers (a bench whose drawers I41 added under the seat) gets the shared build / hang / fit
+ * drawer steps, and one that never hangs its doors gets the shared hang-doors step, both before the closing step.
+ */
+function withFrontSteps(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const panels = project.panels;
+  const drawers = drawerBoxes(panels);
+  const doors = panels.filter((p) => p.type === "door" && !isBoughtHardwareName(p.name));
+  const titles = steps.map((st) => st.title ?? "");
+  const needDrawers = drawers.length > 0 && !titles.some((t) => /\bdrawers?\b/i.test(t) && /\b(?:build|hang|slide|fit)\b/i.test(t));
+  const needDoors = doors.length > 0 && !titles.some((t) => /\bdoors?\b/i.test(t));
+  // A template figure (a playhouse, a dollhouse) hangs its own doors in its own words.
+  if ((!needDrawers && !needDoors) || project.shape) return steps;
+  const D = project.fitted?.unit?.depth ?? project.overall.depth;
+  const add: AssemblyStep[] = [];
+  if (needDrawers) add.push(...drawerBoxSteps(drawers, panels, drawerSlideInches(panels, D), panels.some((p) => p.type === "divider"), D));
+  if (needDoors) {
+    const cutLine = (p: Panel) => `${p.name} — ${dim(p)}"`;
+    add.push({ step: 0, ...hangDoorsStep(doors, cutLine, { overlay: "Overlay the carcase (the door sits on top of the face, not inside the opening). Adjust the screws until the gap is even." }), partsUsed: doors.map((p) => p.name) });
+  }
+  // The drawer and door parts belong to their own steps now; a carcase step that listed them (a drawer front set with
+  // the apron) gives them up. The cut step and whole-project steps keep every part.
+  const owned = new Set(add.flatMap((st) => st.partsUsed ?? []));
+  const body = steps.map((st) =>
+    /^cut\b/i.test(st.title ?? "") || !st.partsUsed || st.partsUsed.includes("*") ? st : { ...st, partsUsed: st.partsUsed.filter((n) => !owned.has(n)) },
+  );
+  const last = body[body.length - 1];
+  const closes = !!last && /\b(?:level|sit-test|shim|hang it|finish)\b/i.test(last.title ?? "");
+  const out = closes ? [...body.slice(0, -1), ...add, last] : [...body, ...add];
+  return out.map((st, k) => ({ ...st, step: k + 1 }));
+}
+
 function round(n: number) {
   return inchFrac(n);
 }
@@ -278,7 +311,7 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
     const prev = stepStockPrompt;
     stepStockPrompt = project.prompt ?? "";
     try {
-      const raw = uniquePanelSteps(project);
+      const raw = withFrontSteps(project, uniquePanelSteps(project));
       const steps = figurePartSteps(project, raw) ?? raw;
       return withDisplayModel(project, solidStockVoice(project) ? steps.map(solidWordsInStep) : steps);
     } finally {
@@ -1602,7 +1635,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const shoe = panels.filter((p) => /shoe|boot tray/i.test(p.name) || p.type === "bottom");
     const trayBay = shoe.some((p) => /boot tray/i.test(p.name));
     const bayName = trayBay ? "Boot tray" : shoe.find((p) => p.type === "bottom")?.name.replace(/ \d+$/, "") ?? "Shoe shelf";
-    const aprons = panels.filter((p) => /apron/i.test(p.name) || (p.type === "rail" && !/hanging/i.test(p.name)));
+    // A drawer front is a rail-typed part of its drawer: the drawer steps fit it, never the apron step.
+    const aprons = panels.filter((p) => !p.drawerId && !/drawer/i.test(p.name) && (/apron/i.test(p.name) || (p.type === "rail" && !/hanging/i.test(p.name))));
     const cubbies = panels.filter((p) => /cubby/i.test(p.name));
     // Only parts this bench has are named: an open-frame bench has no shoe shelf or cubby dividers to cut or set.
     const bayThen = shoe.length ? `${bayName.toLowerCase()}, then ` : "";

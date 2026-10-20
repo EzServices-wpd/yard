@@ -72,3 +72,26 @@ test("C41 after #103: a refused build (too small to hold its parts) drops no typ
     assert.deepEqual(i41(p, q), [], q);
   }
 });
+
+test("C41 / row 176: every drawer and door the build carries has its steps, and every slide on Buy is hung", async () => {
+  const { buildPlan } = await import("./report");
+  const { drawerBoxes } = await import("./hollowDrawers");
+  const heads = ["kitchen cart", "bench", "entry bench", "shoe bench", "storage bench", "chest", "bookcase", "cabinet", "nightstand", "tv stand", "toy box", "workbench", "desk", "dresser", "island"];
+  const feats = ["with doors", "with drawers", "with 3 drawers", "with a drawer", "with 2 doors on casters", "with a drawer and a door"];
+  const bad: string[] = [];
+  for (const h of heads) for (const f of feats) {
+    const q = `${h} ${f}`;
+    const p = generateFromPrompt(q);
+    if (p.refused || p.shape) continue;
+    const plan = buildPlan(p);
+    const titles = plan.instructions.map((s) => s.title);
+    const slides = plan.bom.filter((b) => /drawer slides?/i.test(b.name));
+    if (drawerBoxes(p.panels).length) {
+      if (!titles.some((t) => /^Build\b.*\bdrawer/i.test(t))) bad.push(`${q}: no build-drawers step`);
+      if (!titles.some((t) => /^Fit\b.*\bdrawer front/i.test(t))) bad.push(`${q}: no fit-fronts step`);
+      if (slides.length && !titles.some((t) => /^Hang\b.*\bdrawers?\b.*slides/i.test(t))) bad.push(`${q}: slides on Buy never hung`);
+    }
+    if (p.panels.some((x) => x.type === "door") && !titles.some((t) => /\bdoors?\b/i.test(t))) bad.push(`${q}: no hang-doors step`);
+  }
+  assert.deepEqual(bad, []);
+});
