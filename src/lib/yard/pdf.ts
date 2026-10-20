@@ -134,7 +134,10 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     }),
   );
   // Typed axes print plainly; axes the stranger never typed are marked assumed (shared densify rule).
-  const envelope = /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
+  // A refused build has no size to lock: the subline says nothing was built and the smallest size that builds.
+  const envelope = project.refused && !project.panels.length
+    ? refusedSubline(project.refused)
+    : /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
 
   // ── what the build needs, read from the plan itself
   const hay = `${project.prompt ?? ""} ${project.name} ${plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ")}`.toLowerCase();
@@ -1157,6 +1160,14 @@ export { planStepParts, stepKindOf };
  */
 /** What a refused build's header says after the thing asked for: no size, no count, no fallback family. */
 export const NOTHING_BUILT_HEADER = "nothing built";
+/**
+ * A refused build's cover subline: "Nothing built · needs at least 6 9/16" wide", the smallest size the refusal names
+ * (never an assumed size it didn't build); just "Nothing built" when the refusal names none.
+ */
+export function refusedSubline(refused: string): string {
+  const m = refused.match(/\bneeds (?:at least )?((?:\d+ )?\d+(?:\/\d+)?)(?:"|″| in\b)\s*(wide|tall|deep|long|high)\b/i);
+  return clean(m ? `Nothing built · needs at least ${m[1]}" ${m[2].toLowerCase()}` : "Nothing built");
+}
 export function headerTitle(project: YardProject, opts: { features?: boolean } = {}): string {
   // A refused build names what was asked for and says nothing was built: never a size it didn't build, never a fallback.
   if (project.refused && !project.panels.length) return `${clean(project.name).trim() || "Yard plan"} · ${NOTHING_BUILT_HEADER}`;
