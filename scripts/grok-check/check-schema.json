@@ -1,0 +1,20 @@
+{
+  "name": "yard_build_check",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["ok", "mismatches"],
+    "properties": {
+      "ok": {"type": "boolean"},
+      "mismatches": {"type": "array", "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "spec_quote", "build_shows", "severity"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["missing_feature", "wrong_count", "size_off", "over_budget", "wrong_noun", "material_off", "audience_off"]},
+          "spec_quote": {"type": "string"},
+          "build_shows": {"type": "string"},
+          "severity": {"type": "string", "enum": ["major", "minor"]}}}}
+    }
+  }
+}
