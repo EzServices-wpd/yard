@@ -4,6 +4,7 @@
  * served by /api/ideas behind the CDN. Pure: no engine, no store. Deletes nothing: test rows are only skipped.
  */
 import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
+import { isHeldType } from "./held";
 import { drawingFor, sizeOf, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 import { isLoggedTest } from "./testTraffic";
 
@@ -20,6 +21,9 @@ export const TEST_PROMPTS = new Set([
   "big ben", "eiffel tower", "brooklyn bridge", "trebuchet", "submarine", "water wheel",
   "linen closet 31.5 wide 78 tall 16 deep", "bookshelf 36x12x72",
 ]);
+
+/** Build types that are the engine's generic fallback, not a thing anyone asked for by name. */
+export const GENERIC_TYPES = new Set(["storage-unit", "storage", "thing", "box", "unit", "rough-block", "block"]);
 
 /** Chained follow-ups ("birdhouse. Then: 3/8 dowel") are a test or a session, never an idea to build. */
 export const isChained = (prompt: string) => /\bthen\s*:/i.test(prompt);
@@ -39,10 +43,21 @@ const ALIAS: Record<string, string> = { bookshelf: "bookcase", "raised-bed": "ra
 
 /** One build type per result key: "builtin:bookcase-36" / "recipe:bookshelf" → "bookcase". */
 export function typeKey(resultKey: string): string {
-  let k = resultKey.replace(/^[a-z]+:/, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
+  // A leading stock size is not the object: "builtin:3-4-soccer-goal" (3/4 PVC) is a soccer goal, not type "3" (row 111).
+  let k = resultKey.replace(/^[a-z]+:/, "").replace(/^(?:\d+-)+(?=[a-z])/, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
   k = ALIAS[k] ?? k;
+  // Quick win (e): the log's 40-char result keys cut "box" to "bo" ("Pine toolbo"): any key ending "bo" is a box.
+  if (/bo$/.test(k) && !/(?:^|-)(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/.test(k)) k = `${k}x`;
   return k || "thing";
 }
+
+/**
+ * The shared card-quality rule (row 111): a card title needs at least MIN_TITLE_LETTERS letters, so a title that is
+ * only digits, a fraction or a stub ("3", "3/4", "X") never renders in any section. liveFeed drops such cards and
+ * feedViolations reports one if it ever gets through.
+ */
+export const MIN_TITLE_LETTERS = 3;
+export const isJunkTitle = (title: string) => (title.match(/[a-z]/gi)?.length ?? 0) < MIN_TITLE_LETTERS;
 
 const titleOf = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 
@@ -109,19 +124,24 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   if (!snap.live || !groups.length) return { ...base, live: false };
   const curated = new Map<string, IdeaCard>();
   for (const s of base.sections) for (const c of s.cards) if (!curated.has(c.buildType)) curated.set(c.buildType, c);
-  const cards = groups.map((g) => cardFor(g, curated));
+  // Quick win (e): a generic fallback ("Storage unit") is never an idea; it stays off the page (the row is kept in the log).
+  // A held recipe (held.ts, the shared flag) never renders on Ideas, in Popular, Popular recently or a curated section.
+  const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type) && !isHeldType(g.type)).map((g) => cardFor(g, curated));
   const since = new Date(now.getTime() - HERO_DAYS * DAY).toISOString();
   const used = new Set<string>();
+  // Only a card a section actually renders is used (Critic row 111: Popular marked every Trusted card used, not just
+  // the SECTION_MAX it shows, so low-count builds like the mail organizer and under-stairs shelves showed nowhere).
   const take = (id: string, title: string, list: IdeaCard[]): IdeaSection => {
-    const all = sortCards(list).filter((c) => !used.has(c.slug) && !used.has(c.buildType));
-    all.forEach((c) => { used.add(c.slug); used.add(c.buildType); });
-    return { id, title, order: 0, total: all.length, cards: all.slice(0, SECTION_MAX).map((c) => ({ ...c, section: title })) };
+    const all = sortCards(list).filter((c) => !isJunkTitle(c.title) && !used.has(c.slug) && !used.has(c.buildType));
+    const shown = all.slice(0, SECTION_MAX);
+    shown.forEach((c) => { used.add(c.slug); used.add(c.buildType); });
+    return { id, title, order: 0, total: all.length, cards: shown.map((c) => ({ ...c, section: title })) };
   };
   const sections = [
     take("popular", "Popular", cards.filter((c) => c.status === "checked")),
     take("recent", "Popular recently", cards.filter((c) => (c.lastSeen ?? "") >= since)),
     ...base.sections.map((s) => {
-      const counted = s.cards.map((c) => cards.find((x) => x.slug === c.slug) ?? c);
+      const counted = s.cards.filter((c) => !isHeldType(c.buildType) && !isHeldType(c.recipeKey)).map((c) => cards.find((x) => x.slug === c.slug) ?? c);
       return take(s.id, s.title, counted);
     }),
   ].filter((s) => s.cards.length).map((s, order) => ({ ...s, order }));
@@ -151,7 +171,11 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
       // A counted card from the log never shows a test prompt: our release prompts, or a row logged as test traffic.
       if (c.count > 0 && (TEST_PROMPTS.has(p) || loggedTest.has(p))) out.push(`${c.slug}: test prompt "${c.examplePrompt}"`);
       if (!c.title.trim() || c.title.trim() === c.examplePrompt.trim() || /^[a-z]/.test(c.title)) out.push(`${c.slug}: title "${c.title}" is not a display title`);
+      if (isJunkTitle(c.title)) out.push(`${c.slug}: junk title "${c.title}" (fewer than ${MIN_TITLE_LETTERS} letters)`);
       if (c.status !== "checked" && c.status !== "new") out.push(`${c.slug}: status ${c.status}`);
+      if (GENERIC_TYPES.has(c.buildType)) out.push(`${c.slug}: generic fallback card`);
+      if (isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`${c.slug}: held recipe on Ideas (${s.id})`);
+      if (/bo$/.test(c.title) && !/(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/i.test(c.title)) out.push(`${c.slug}: cut-off title "${c.title}"`);
       if (c.drawing && !/^\/ideas\/drawings\/[\w-]+\.[0-9a-f]+(?:\.\w+)?\.svg$/.test(c.drawing.src)) out.push(`${c.slug}: drawing ${c.drawing.src}`);
       for (const k of Object.keys(c)) if (/href|store|offer|affiliate|price|shop/i.test(k)) out.push(`${c.slug}: store field ${k}`);
     }

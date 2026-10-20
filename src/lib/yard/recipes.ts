@@ -35,6 +35,8 @@ export type RecipePart = {
   bore?: number;
   /** A drilled hole array in its largest face (a cribbage board's peg tracks): count holes of dia inches in rows. */
   holes?: { count: number; dia: number; rows?: number };
+  /** Stands proud of the stated size on purpose (pegs set in a board's holes), like a proud door: the height guard skips it. */
+  proud?: boolean;
 };
 
 export type Recipe = {
