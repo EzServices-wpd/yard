@@ -405,7 +405,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const raw = idDepth === 1 ? hollowDrawers(generateSeeded(...args)) : generateSeeded(...args);
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", (q) => generateFromPrompt(q, ...(args.slice(1) as []))) : null;
-    // A clothes rod in a box too shallow for a pull-out is refused, naming the depth that hangs.
+    // A clothes rod in a box a hanger cannot use is refused, naming the depth that hangs.
     const hung = idDepth === 1 ? hangingDepthRefusal(small ?? raw, args[0] ?? "") : null;
     const built0 = hung ?? small ?? raw;
     // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).

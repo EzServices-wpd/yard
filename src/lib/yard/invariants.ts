@@ -442,7 +442,7 @@ function i28(p: YardProject, plan: BuildPlan): Violation[] {
   return thicknessFailures(p, plan).map((m) => v("I28", m));
 }
 
-/** I39 (F2 hanging clearance): a side-to-side clothes rod has room for a hanger, or the rod is an explicit pull-out. */
+/** I39 (F2 hanging clearance): a clothes rod runs side to side in a box a hanger can use. */
 function i39(p: YardProject): Violation[] {
   return hangingClearanceIssues(p).map((m) => v("I39", m));
 }

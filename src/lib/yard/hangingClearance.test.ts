@@ -1,17 +1,30 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
 import { checkBuild } from "./invariants.ts";
-import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, sideHangFits, hangerInterior, isPullOutRod } from "./hangingClearance.ts";
+import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, sideHangFits, hangerInterior, rodDropIn } from "./hangingClearance.ts";
+import type { Panel } from "./types.ts";
+
+const PROBES: { id: string; prompt: string; shelves?: number }[] = JSON.parse(
+  readFileSync(new URL("../../../evals/wardrobe-probes.json", import.meta.url), "utf8"),
+);
 
 const rodsOf = (prompt: string) => generateFromPrompt(prompt).panels.filter((p) => /hanging rod|clothes rod/i.test(p.name));
 const longAxis = (p: { size: { width: number; height: number; depth: number } }) =>
   p.size.width >= p.size.height && p.size.width >= p.size.depth ? "width" : p.size.depth >= p.size.height ? "depth" : "height";
+const shelfLines = (panels: Panel[]) => {
+  const lines = new Set<string>();
+  for (const p of panels) {
+    if (p.type !== "shelf") continue;
+    lines.add(p.name.match(/shelf\s*(\d+)/i)?.[1] ?? p.name);
+  }
+  return lines.size;
+};
 
-it("a clothes rod is side to side in hanger depth, or an explicit pull-out, or refused", () => {
+it("a clothes rod is side to side in hanger depth, or the build is refused", () => {
   const prompts = [
     "wardrobe", "wardrobe 36 wide", "wardrobe 76 tall", "wardrobe 22 deep", "wardrobe 24 deep", "wardrobe 26 deep",
     "wardrobe 8 deep", "wardrobe 15 3/4 deep", "wardrobe 12 deep", "wardrobe 19 deep", "wardrobe 20 deep",
@@ -42,7 +55,7 @@ it("an untyped wardrobe hangs side to side in a 24\" box, on a real closet rod",
   }
 });
 
-it("a typed 22 or 24 stays, and a typed depth under 12\" is refused with the minimum", () => {
+it("a typed 22 or 24 stays, and a typed 8\" depth is refused with the minimum", () => {
   assert.equal(generateFromPrompt("wardrobe 22 deep").overall.depth, 22);
   assert.equal(generateFromPrompt("wardrobe 24 deep").overall.depth, 24);
   assert.equal(longAxis(rodsOf("wardrobe 22 deep")[0]), "width");
@@ -53,16 +66,19 @@ it("a typed 22 or 24 stays, and a typed depth under 12\" is refused with the min
   assert.match(refused.refused ?? "", /8/);
 });
 
-it("a typed depth too shallow for hangers uses a front-to-back pull-out, not a side rod", () => {
-  for (const q of ["wardrobe 15 3/4 deep", "wardrobe 12 deep", "wardrobe 16 deep"]) {
+it("below about 20\" inside, a hanging build is refused and names 22\"; a shelves-only closet still builds", () => {
+  for (const q of ["wardrobe 12 deep", "wardrobe 15 3/4 deep", "wardrobe 16 deep", "wardrobe 19 deep", "closet system 96 wide 16 deep", "wardrobe 8 deep"]) {
     const p = generateFromPrompt(q);
-    const rods = p.panels.filter((x) => /rod/i.test(x.name));
-    assert.ok(rods.length >= 1 && rods.every(isPullOutRod), q);
-    assert.ok(rods.every((r) => longAxis(r) === "depth"), q);
-    assert.match(p.notes.join(" "), /pull-out rod runs front to back/i, q);
-    assert.ok(buildPlan(p).bom.some((b) => /closet rod/i.test(b.name)), q);
+    assert.equal(p.panels.length, 0, q);
+    assert.match(p.refused ?? "", new RegExp(`${HANGER_MIN_DEPTH_IN}`), q);
+    assert.doesNotMatch(p.refused ?? "", /pull-out/i, q);
   }
   assert.equal(longAxis(rodsOf("wardrobe 20 deep")[0]), "width");
+  const linen = generateFromPrompt("linen closet 24 wide 78 tall 16 deep");
+  assert.ok(linen.panels.length > 0 && !linen.panels.some((x) => /rod/i.test(x.name)));
+  const closet = generateFromPrompt("closet 30 wide 80 tall 16 deep");
+  assert.ok(closet.panels.length > 0 && !closet.refused, "closet");
+  assert.equal(closet.panels.filter((x) => /rod/i.test(x.name)).length, 0);
 });
 
 it("a wide closet splits the rod with real dividers, and double hang sits near 42 and 84", () => {
@@ -100,19 +116,42 @@ it("the linen closet canary is unchanged, and a pantry does not grow a rod", () 
   assert.equal(pantry.panels.filter((x) => /rod/i.test(x.name)).length, 0);
 });
 
-it("every carcass probe with a hanging rod clears the hanger rule", () => {
-  const file = [
-    "uploads/probes.jsonl",
-    "/home/ubuntu/.cursor/projects/workspace/uploads/probes_538d.jsonl",
-  ].find((f) => existsSync(f));
-  const prompts = file
-    ? readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l).prompt as string)
-    : ["wardrobe", "bookcase", "cabinet", "pantry cabinet", "linen closet", "dresser"];
-  const bad: string[] = [];
-  for (const q of prompts) {
+it("the rod step uses the same drop as the rod in the model", () => {
+  const p = generateFromPrompt("wardrobe");
+  const rod = p.panels.find((x) => /hanging rod/i.test(x.name))!;
+  const drop = rodDropIn(p.overall.height, rod.position.y);
+  assert.equal(drop, 18);
+  const step = buildPlan(p).instructions.find((s) => /hanging rod/i.test(s.title));
+  assert.match(step?.description ?? "", new RegExp(`about ${drop}" down`));
+});
+
+it("a typed shelf count is built exactly, or refused with no parts", () => {
+  const cases: [string, number][] = [
+    ...PROBES.filter((p) => p.shelves != null).map((p) => [p.prompt, p.shelves!] as [string, number]),
+    ["wardrobe with 8 shelves", 8],
+    ["wardrobe with 10 shelves", 10],
+    ["wardrobe 36 wide 72 tall with 5 shelves", 5],
+    ["wardrobe 72 tall with 4 shelves", 4],
+    ["wardrobe 36 tall with 12 shelves", 12],
+  ];
+  for (const [q, n] of cases) {
     const p = generateFromPrompt(q);
+    if (p.refused || !p.panels.length) {
+      assert.equal(p.panels.length, 0, q);
+      assert.match(p.refused ?? "", /or fewer/, q);
+      continue;
+    }
+    assert.equal(shelfLines(p.panels), n, q);
+  }
+});
+
+it("every wardrobe probe clears the hanger rule", () => {
+  const bad: string[] = [];
+  for (const probe of PROBES) {
+    const p = generateFromPrompt(probe.prompt);
     const issues = hangingClearanceIssues(p);
-    if (issues.length) bad.push(`${q}: ${issues.join("; ")}`);
+    if (issues.length) bad.push(`${probe.id}: ${issues.join("; ")}`);
+    if (probe.shelves != null && p.panels.length) assert.equal(shelfLines(p.panels), probe.shelves, probe.id);
   }
   assert.deepEqual(bad, []);
 });
