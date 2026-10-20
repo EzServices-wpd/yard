@@ -50,28 +50,28 @@
       "height": 34,
       "depth": 21
     },
-    "panels": 22,
+    "panels": 18,
     "instances": 0,
     "uniqueParts": [
-      "Back rail",
-      "Bottom",
+      "Back",
+      "Bottom (open back)",
       "Counter",
-      "False front",
+      "False front 1",
+      "False front 2",
       "Kick support",
-      "Left back",
       "Left door",
       "Left upright",
       "Mirror",
-      "Right back",
       "Right door",
       "Right upright",
       "Sink bay divider",
-      "Toekick",
+      "Toekick 1",
+      "Toekick 2",
       "bathroom trash can pocket divider"
     ],
     "notesHead": [
       "Vanity. Stands on its own on the floor.",
-      "Unit 36\" W × 21\" D × 34\" H. ¾\" plywood."
+      "Unit 36\" W × 21 3/4\" D × 34\" H (finished depth — doors stand proud). ¾\" plywood."
     ],
     "signals": {
       "mentionsYardBuilt": false,

@@ -48,7 +48,8 @@ function faces(project: YardProject) {
   const drawers = drawerBoxes(project.panels).length;
   const knee = (project.fitted?.unit?.kneeW ?? 0) > 0 || project.panels.some((p) => /knee/i.test(p.name));
   const woodMirror = project.panels.some((p) => (p.type === "mirror" || /\bmirror\b/i.test(p.name)) && /plywood/i.test(p.materialId ?? ""));
-  const fullBack = project.panels.some((p) => p.type === "back" && p.size.width > project.overall.width - 3);
+  const plumbY = Math.min(10, project.overall.height * 0.35);
+  const fullBack = project.panels.some((p) => p.type === "back" && p.position.x < -1 && p.position.x + p.size.width > 1 && p.position.y <= plumbY && p.position.y + p.size.height >= plumbY);
   const shelfThru = project.panels.some((p) => p.type === "shelf" && p.position.x < -1 && p.position.x + p.size.width > 1);
   const kick = project.panels.some((p) => p.type === "kick");
   return { doors, drawers, knee, woodMirror, fullBack, shelfThru, kick };

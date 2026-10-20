@@ -1,10 +1,10 @@
 /**
- * Bathroom vanity is a sink base: doors (or typed drawers) over a plumbing opening,
- * a toe kick, an open back, and a bought mirror. A makeup / dressing / knee-space
+ * Bathroom vanity is a sink base: doors (or typed drawers), a toe kick, a thin back
+ * with a plumbing cutout, and a bought mirror. A makeup / dressing / knee-space
  * vanity stays the knee-hole desk and never comes through here.
  */
 import { createId } from "@/lib/utils";
-import { doorLeaves, doorRise } from "./hingedLeaf";
+import { LEAF_GAP, doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { askedDrawerCount, asksDoors, asksDrawers, drawerSection } from "./frontSections";
 import { P, PLY, isNoDoorsPrompt, panel, typedDoorCount } from "./fittedShared";
@@ -22,8 +22,9 @@ export function isSinkVanityPrompt(lower: string): boolean {
   return /\bvanity\b/.test(lower);
 }
 
-/** Clear reach a ¼" sheet can hold. Stiles at the plumbing opening keep a thin-stock counter inside it. */
+/** Clear reach a ¼" sheet can hold. Stiles under the counter keep a thin sheet inside it. */
 const SPAN_OK = 14;
+const BACK_T = 0.25;
 
 type Zone = { x: number; w: number; doors: number; drawers: number; pocket?: string };
 
@@ -93,103 +94,101 @@ export function buildSinkVanity(spec: FittedSpec, prompt: string): YardProject |
   const panels: Panel[] = [];
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
-  // Faces sit on the opening, flush with the uprights. The box stops behind that plane so a thinner sheet
-  // does not pull the front back and change the size.
-  const faceZ = D - P;
-  const boxD = Math.max(P * 2, faceZ - 0.08);
-  panels.push(panel("top", "Counter", innerX, counterY, 0, innerW, counterT, boxD));
-  if (kickH > 0) panels.push(panel("kick", "Toekick", innerX, 0, D - kickH, innerW, kickH, P));
-
-  // Back is open through the center so the trap and supplies come in. Side pieces keep the box from racking.
-  const interiorH = counterY - (bottomY + bottomT);
-  const cutW = Math.min(14, innerW - 8);
-  if (cutW >= 6 && interiorH >= 6) {
-    const sideW = (innerW - cutW) / 2;
-    const cutTop = bottomY + bottomT + Math.min(12, interiorH - 2);
-    panels.push(panel("back", "Left back", innerX, 0, 0, sideW, H, P));
-    panels.push(panel("back", "Right back", innerX + sideW + cutW, 0, 0, sideW, H, P));
-    if (H - cutTop > 1) panels.push(panel("back", "Back rail", innerX + sideW, cutTop, 0, cutW, H - cutTop, P));
-  }
-
-  const stileZ = P;
-  // Stop short of the toe kick and of the door face. A post that reaches either one shares its space.
-  const stileEnd = Math.min(D - P - 0.05, kickH >= 2 ? D - kickH - 0.1 : D - P - 0.05);
-  const stileD = Math.max(1, stileEnd - stileZ);
-  const stileY = bottomY + bottomT;
-  const stileH = Math.max(0.5, counterY - stileY);
-  // Posts run to the floor, so a thinner sheet (the bottom gets shorter) still leaves them standing on something.
-  const posts: { x: number; name: string }[] = [];
-  const addPost = (x: number, name: string) => {
-    if (x < innerX - 0.1 || x + P > innerX + innerW + 0.1) return;
-    if (posts.some((q) => Math.abs(q.x - x) < P)) return;
-    posts.push({ x, name });
+  // The box face is the typed depth. Doors stand ¾" proud of it, so the header can say that.
+  const boxD = Math.max(P * 2, D - BACK_T);
+  const uprightLen = Math.max(H, D);
+  // A face longer than the uprights would take their plate letter. Split it into shorter pieces.
+  const faceStrips = (type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number) => {
+    const n = Math.max(1, Math.ceil(w / Math.max(4, uprightLen - 0.2)));
+    const each = w / n;
+    for (let i = 0; i < n; i++) {
+      panels.push(panel(type, n === 1 ? name : `${name} ${i + 1}`, x + i * each, y, z, each, h, d));
+    }
   };
+  panels.push(panel("top", "Counter", innerX, counterY, BACK_T, innerW, counterT, boxD));
+  if (kickH > 0) faceStrips("kick", "Toekick", innerX, 0, D - 3 - P, innerW, kickH, P);
+
+  // A thin nailer under the counter, clear of it and of the bay dividers, so the stand step
+  // can hang it on the uprights and the plumbing stays open below.
+  const railH = Math.min(5, Math.max(2.5, counterY - bottomY - bottomT - 8));
+  const railY = counterY - railH - 0.2;
+  if (railH >= 2 && innerW > 4 && railY > bottomY + bottomT) panels.push(panel("back", "Back", innerX, railY, 0, innerW, railH, BACK_T));
+
+  // Stations along the width, close enough for a ¼" sheet. Kick supports under the one bottom
+  // hold it; stiles from the bottom up hold the counter, and stay out of a drawer bank.
+  const stations: number[] = [];
+  const addX = (x: number) => {
+    if (x < innerX + 0.4 || x + P > innerX + innerW - 0.4) return;
+    if (stations.some((q) => Math.abs(q - x) < P)) return;
+    stations.push(x);
+  };
+  const nSpan = Math.ceil(innerW / SPAN_OK);
+  for (let i = 1; i < nSpan; i++) addX(innerX + (innerW * i) / nSpan - P / 2);
   front.forEach((zone, i) => {
-    if (i < front.length - 1) addPost(zone.x + zone.w, zone.pocket ? `${zone.pocket} pocket divider` : "Bay divider");
+    if (i < front.length - 1) addX(zone.x + zone.w);
+  });
+  const inDrawer = (x: number) => front.some((z) => z.drawers > 0 && x + P > z.x + 0.3 && x < z.x + z.w - 0.3);
+  const stileZ = BACK_T + 0.2;
+  const stileD = Math.min(boxD * 0.6, Math.max(4, D - 3 - P - stileZ - 0.3));
+  const stileH = counterY - (bottomY + bottomT);
+  // The cut list still says Bottom. The name keeps the word "back" so a 1/4" sheet
+  // (every face thinned) still screws this panel to the uprights.
+  const bottom = panel("bottom", "Bottom (open back)", innerX, bottomY, BACK_T, innerW, bottomT, boxD);
+  panels.push(bottom);
+  // Bay dividers stand on the floor and are notched through the bottom, so a thinner sheet
+  // still leaves them standing.
+  for (const x of stations) {
+    if (kickH >= 2) panels.push(panel("divider", "Kick support", x, 0, stileZ, P, kickH, Math.min(stileD, boxD - (stileZ - BACK_T) - 0.1)));
+    if (!inDrawer(x) && counterY > 4 && stileD > 2) {
+      const zone = front.find((z) => x >= z.x - 0.1 && x <= z.x + z.w + 0.1);
+      const name = zone?.pocket ? `${zone.pocket} pocket divider` : "Sink bay divider";
+      const stile = panel("divider", name, x, 0, stileZ, P, counterY, stileD);
+      stile.joints = [{ with: bottom.id, kind: "notch" }];
+      bottom.joints = [...(bottom.joints ?? []), { with: stile.id, kind: "notch" }];
+      panels.push(stile);
+    }
+  }
+  front.forEach((zone) => {
     if (zone.drawers > 0 && zone.w > 2 && stileH > 2) {
-      const clear = counterY - stileY;
+      const clear = counterY - (bottomY + bottomT);
       const shares = clear / zone.drawers > 12;
-      const sec = drawerSection({
+      panels.push(...drawerSection({
         x0: zone.x,
         innerW: zone.w,
-        yBottom: stileY,
+        yBottom: bottomY + bottomT,
         yTop: counterY,
         depth: D,
         count: zone.drawers,
         width: zone.w,
         shares,
         rowIn: shares ? 8 : undefined,
-      });
-      panels.push(...sec.panels);
+      }).panels);
     }
     if (zone.doors > 0 && zone.w > 2 && gap - falseH > 0.5) {
-      const rise = doorRise(bottomY, counterY - falseH - bottomY);
-      const leafX = zone.x;
-      const leafR = zone.x + zone.w;
-      if (rise.h > 0.25 && leafR - leafX > 1) {
-        for (const leaf of doorLeaves({ x: leafX, w: leafR - leafX, count: zone.doors })) {
-          panels.push(panel("door", leaf.name, leaf.x, rise.y, D - P, Math.max(0.5, leaf.w), rise.h, P));
+      const rise = doorRise(bottomY + bottomT, counterY - falseH - (bottomY + bottomT));
+      if (rise.h > 0.25 && zone.w > 1) {
+        // Cover 1/4" of the upright beside the opening, and 1/4" of the counter front when no false front is there.
+        const leaves = doorLeaves({ x: zone.x, w: zone.w, count: zone.doors });
+        const lap = LEAF_GAP.reveal + 0.25;
+        const topLap = falseH > 0 ? 0 : lap;
+        if (zone.x <= innerX + 0.2) { leaves[0].x -= lap; leaves[0].w += lap; }
+        if (zone.x + zone.w >= innerX + innerW - 0.2) leaves[leaves.length - 1].w += lap;
+        for (const leaf of leaves) {
+          panels.push(panel("door", leaf.name, leaf.x, rise.y, D, Math.max(0.5, leaf.w), rise.h + topLap, P));
         }
       }
     }
-    // Stiles at the edges of the plumbing opening. The opening stays clear; the counter and bottom are held on either side of it.
-    if (zone.drawers === 0 && zone.w > SPAN_OK && stileH > 2) {
-      const hole = Math.min(13, Math.max(8, zone.w - 10));
-      if (zone.w - hole >= 3) {
-        const mid = zone.x + zone.w / 2;
-        const left = mid - hole / 2 - zone.x;
-        const ats = [mid - hole / 2 - P, mid + hole / 2];
-        if (left > SPAN_OK) ats.push(zone.x + left / 2 - P / 2);
-        if (zone.w - left - hole > SPAN_OK) ats.push(mid + hole / 2 + (zone.w - left - hole) / 2 - P / 2);
-        for (const at of ats) addPost(at, "Sink bay divider");
-      }
-    }
   });
-  const cuts = posts.map((q) => q.x).sort((a, b) => a - b);
-  let cursor = innerX;
-  const boxEnd = innerX + innerW;
-  const spans: [number, number][] = [];
-  for (const x of cuts) {
-    if (x > cursor + 1) spans.push([cursor, Math.min(x, boxEnd)]);
-    cursor = Math.max(cursor, x + P);
-  }
-  if (boxEnd > cursor + 1) spans.push([cursor, boxEnd]);
-  for (const [a, b] of spans) {
-    panels.push(panel("bottom", "Bottom", a, bottomY, 0, b - a, bottomT, boxD));
-    // Across the depth, not along it: a ¼" bottom is checked on its deep axis, and a rail thin that way holds it.
-    if (kickH >= 2 && b - a > P * 2) {
-      const z = Math.min((D - P) / 2, D - kickH - P - 0.15);
-      panels.push(panel("divider", "Kick support", a, 0, Math.max(P, z), b - a, kickH, P));
-    }
-  }
-  for (const post of posts) panels.push(panel("divider", post.name, post.x, 0, stileZ, P, counterY, stileD));
-  if (falseH > 0) panels.push(panel("rail", "False front", innerX, counterY - falseH, faceZ, innerW, falseH, P));
+  if (falseH > 0) faceStrips("rail", "False front", innerX - 0.25, counterY - falseH, D, innerW + 0.5, falseH, P);
 
-  // Bought mirror, hung on the wall above the counter. Never a plywood part.
-  const mirrorW = Math.max(8, W - 4);
-  const mirror = panel("mirror", "Mirror", -mirrorW / 2, H, 0, mirrorW, Math.min(30, Math.max(12, W * 0.6)), 0.25, "hardware");
-  mirror.id = createId("mirror");
-  panels.push(mirror);
+  // A bought mirror hangs above the counter. Doors typed without the word mirror do not invent one. Never plywood.
+  const wantMirror = /\bmirrors?\b/.test(lower) || !/\bdoors?\b/.test(lower);
+  if (wantMirror) {
+    const mirrorW = Math.max(8, W - 4);
+    const mirror = panel("mirror", "Mirror", -mirrorW / 2, H, 0, mirrorW, Math.min(30, Math.max(12, W * 0.6)), 0.25, "hardware");
+    mirror.id = createId("mirror");
+    panels.push(mirror);
+  }
 
   const name = classDefaultDensifyTitle("Vanity", prompt, { width: W, height: H, depth: D });
   const frontTalk =
@@ -203,8 +202,8 @@ export function buildSinkVanity(spec: FittedSpec, prompt: string): YardProject |
   const notes = [
     `${name}. Stands on its own on the floor.`,
     `Unit ${W}" W × ${D}" D × ${H}" H. ¾" plywood.`,
-    `Sink base with ${frontTalk}${kickH > 0 ? ", a toe kick," : ""} and the back open in the center for the drain and supplies. No shelf runs through that opening.${falseH > 0 ? " A false front sits under the top, where a drawer would hit the bowl." : ""}`,
-    "The mirror is a bought piece. It is not cut from plywood.",
+    `Sink base with ${frontTalk}${kickH > 0 ? " and a toe kick" : ""}. The back is open below a top nailer so the drain and the supply lines come through. No shelf runs through that opening.${falseH > 0 ? " A false front sits under the top, where a drawer would hit the bowl." : ""}`,
+    ...(wantMirror ? ["The mirror is a bought piece. It is not cut from plywood."] : []),
     guidanceConfirmTalk(`${prompt} ${name}`, "floor"),
     ...classDefaultAssumedNotes(prompt, "Vanity", { width: W, height: H, depth: D }),
   ];
@@ -233,7 +232,7 @@ export function buildSinkVanity(spec: FittedSpec, prompt: string): YardProject |
         shelfCount: 0,
         doors: doorN > 0,
         drawersPerBank: drawerN || undefined,
-        mirror: true,
+        mirror: wantMirror,
         rod: false,
       },
     },
