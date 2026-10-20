@@ -49,7 +49,7 @@ function select(all: Entry[]): Entry[] {
   if (cls) {
     if (!existsSync(refFile)) throw new Error(`--class needs a reference gate (${refFile}); run --write first`);
     const ref: GateFile = JSON.parse(readFileSync(refFile, "utf8"));
-    const hit = new Set(ref.prompts.filter((r) => r.classes.includes(cls) || r.invariants.some((v) => v.id === cls)).map((r) => r.prompt));
+    const hit = new Set(ref.prompts.filter((r) => r.classes.includes(cls) || r.invariants.some((v) => v.id === cls || v.cls === cls)).map((r) => r.prompt));
     return all.filter((e) => hit.has(e.prompt));
   }
   return all;
@@ -116,7 +116,7 @@ async function main() {
   let bad = !gate.canaries.ok;
   if (cls) {
     const ref: GateFile = JSON.parse(readFileSync(refFile, "utf8"));
-    const trips = (r: PromptResult) => r.classes.includes(cls) || r.invariants.some((v) => v.id === cls);
+    const trips = (r: PromptResult) => r.classes.includes(cls) || r.invariants.some((v) => v.id === cls || v.cls === cls);
     const before = ref.prompts.filter(trips).length, now = rows.filter(trips).length;
     const refBy = new Map(ref.prompts.map((r) => [r.prompt, r]));
     const rank = { pass: 2, partial: 1, fail: 0 } as const;
