@@ -9,6 +9,7 @@
  * into and every drawer a flat hand fits into. The minimum a refusal names is the smallest size that passes both.
  */
 import { getCatalogItem } from "./catalog";
+import { benchModelBox } from "./benchFrame";
 import { ungroundedParts } from "./grounded";
 import { drawerBoxes } from "./hollowDrawers";
 import { hiddenOverlaps } from "./solids";
@@ -138,10 +139,32 @@ export function leastDrawer(p: YardProject): { height: number; width: number } {
   return { height, width };
 }
 
-/** What makes a build clean, measured once so a candidate size is held to the same ask at its default size. */
-export type Cleanness = { overlaps: number; ungrounded: number; bay: number; drawer: { height: number; width: number } };
+/** How far the parts reach on each axis (the bench's model box: panels and sticks). */
+export function reach(p: YardProject): Record<Axis, number> {
+  const b = benchModelBox(p);
+  return { width: b.maxX - b.minX, height: b.maxY - b.minY, depth: b.maxZ - b.minZ };
+}
+
+/**
+ * What makes a build clean, measured once so a candidate size is held to the same ask at its default size. `spill` is
+ * how far the default's parts reach past its stated size on each axis (an easel leg, a top's overhang): a typed size
+ * is held to its own number plus that, never to a box the design was never inside.
+ */
+export type Cleanness = { overlaps: number; ungrounded: number; bay: number; drawer: { height: number; width: number }; spill: Record<Axis, number> };
 export function cleanness(p: YardProject): Cleanness {
-  return { overlaps: hiddenOverlaps(p).length, ungrounded: ungroundedParts(p).length, bay: leastBay(p), drawer: leastDrawer(p) };
+  const r = reach(p);
+  const spill = { width: Math.max(0, r.width - p.overall.width), height: Math.max(0, r.height - p.overall.height), depth: Math.max(0, r.depth - p.overall.depth) };
+  return { overlaps: hiddenOverlaps(p).length, ungrounded: ungroundedParts(p).length, bay: leastBay(p), drawer: leastDrawer(p), spill };
+}
+
+/**
+ * A build outgrows the size typed on an axis when the builder made it bigger (a frame clamped up to its least size) or
+ * its parts reach past the number shown by more than the design's own spill and a sixteenth (a 3/4" abacus frame
+ * called 1/2" deep).
+ */
+export function outgrows(p: YardProject, a: Axis, typed: number, spill: number): boolean {
+  // Past a sixteenth: the shop's own rounding (a shelf cut to the next 1/8" from 6 1/16") is the size typed.
+  return Math.max(p.overall[a], reach(p)[a] - spill) > typed + 1 / 16 + 1e-6;
 }
 
 /** Why a size is not usable, as the refusal says it ("…needs at least 28 1/2" tall <why>"). */
@@ -151,6 +174,7 @@ export const UNUSABLE = {
   bay: `for a hand's room (${HAND_ROLLED_IN === 3.75 ? "3 3/4" : HAND_ROLLED_IN}") in every shelf bay`,
   drawer: `for a flat hand's room (${HAND_FLAT_IN.height}" by ${HAND_FLAT_IN.width}") in every drawer`,
   overlap: "for its parts to fit without running into each other",
+  outgrows: "for its parts to fit inside it",
   loose: "for every part to rest on the floor, a wall or another part",
 } as const;
 

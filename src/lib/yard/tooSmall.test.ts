@@ -57,9 +57,7 @@ it("the named minimum builds, every part real, on every carcass axis", () => {
 });
 
 it("other builders: refused below, real at the named minimum", () => {
-  // 'water wheel 1/2 wide' left this list at the merge with #90: stock thickness no longer scales, so its parts stay
-  // real (I38 holds, checked below) but they overlap in a 1/2" model (I26). That is a fit class, not I38; logged for Critic.
-  for (const prompt of ["table 1/2 tall", "stool 1 wide", "bench 1/2 deep", "abacus 1/2 tall", "kids tipi 1/2 wide"]) {
+  for (const prompt of ["water wheel 1/2 wide", "table 1/2 tall", "stool 1 wide", "bench 1/2 deep", "abacus 1/2 tall", "kids tipi 1/2 wide"]) {
     const p = generateFromPrompt(prompt);
     assert.ok(p.refused, `${prompt} refused`);
     assert.equal(p.panels.length, 0, prompt);
@@ -73,8 +71,9 @@ it("other builders: refused below, real at the named minimum", () => {
   }
 });
 
-it("water wheel 1/2 wide: every part stays real after #90 (I38)", () => {
+it("water wheel 1/2 wide: refused, its parts kept real and inside it (Critic #103 r2 row 142)", () => {
   const p = generateFromPrompt("water wheel 1/2 wide");
+  assert.match(p.refused ?? "", /^A water wheel needs at least [\d /]+" wide/);
   assert.deepEqual(realParts(p), []);
   assert.deepEqual(i38(p, buildPlan(p)), []);
 });

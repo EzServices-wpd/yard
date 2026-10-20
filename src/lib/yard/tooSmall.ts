@@ -13,7 +13,7 @@ import { canonicalMeasures, typedMeasures } from "./measureText";
 import { buildPlan } from "./report";
 import { STOP, typedHeadNoun, sentenceCase } from "./headNoun";
 import { isUnitItem } from "./unitItems";
-import { cleanness, floorFamily, floorOn, unusable, UNUSABLE, type Axis, type Cleanness } from "./usableFloors";
+import { cleanness, floorFamily, floorOn, outgrows, unusable, UNUSABLE, type Axis, type Cleanness } from "./usableFloors";
 import type { YardProject } from "./types";
 
 /** A typed size this small is measured for clean parts (overlaps, loose parts, bays, drawers), not just the table. */
@@ -50,7 +50,8 @@ export function askedNoun(p: YardProject): string {
  * carried on to the head noun typed when the card name stops short of it ("Linen" + "linen closet" → "linen closet").
  */
 export function refusalNoun(p: YardProject, prompt: string): string {
-  const card = askedNoun(p).toLowerCase();
+  // The object, never the card's details after it ("Picture frame · 5×7 photo · …" is a picture frame).
+  const card = askedNoun(p).split(" · ")[0].trim().toLowerCase();
   const head = typedHeadNoun(prompt);
   if (!head || card.split(/\s+/).some((w) => w.replace(/(?<!s)s$/, "") === head)) return card;
   const words = prompt.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
@@ -93,8 +94,11 @@ export function withoutSizes(prompt: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-function refused(p: YardProject, noun: string, why: string): YardProject {
-  return { ...p, name: sentenceCase(noun), panels: [], instances: [], refused: why, cardNote: why };
+/** Nothing built, named, showing the size typed on every typed axis (I35 holds a refusal to that too). */
+function refused(p: YardProject, noun: string, typed: Partial<Record<Axis, number>>, why: string): YardProject {
+  const overall = { ...p.overall };
+  for (const a of AXES) if (typed[a] != null) overall[a] = typed[a]!;
+  return { ...p, name: sentenceCase(noun), panels: [], instances: [], overall, refused: why, cardNote: why };
 }
 
 const real = (q: YardProject) => !nonPositiveParts(q, true).length;
@@ -116,12 +120,17 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
   let base: Cleanness | null = null;
   const reference = () => (base ??= cleanness(rebuild(withoutSizes(prompt))));
   const why = (q: YardProject, fit = true) => unusable(q, reference, real, fit);
-  const ok = (q: YardProject, fit = true) => why(q, fit) === null;
+  // A small typed size must be the size built: nothing clamped up, no part reaching past it (beyond the design's spill).
+  const small = AXES.filter((a) => typed[a] != null && measured(a, typed[a]!));
+  const outgrown = (q: YardProject, at: Partial<Record<Axis, number>>) => small.find((a) => outgrows(q, a, at[a] ?? typed[a]!, reference().spill[a]));
+  const ok = (q: YardProject, at: Partial<Record<Axis, number>> = {}) => why(q) === null && !outgrown(q, at);
   /** The smallest size from `from` up on one axis that is usable and clean, or null when none up to SEARCH_MAX_IN. */
   const least = (a: Axis, from: number): number | null => {
-    const at = (to: number) => ok(rebuild(withAxis(prompt, a, to)));
+    const at = (to: number) => ok(rebuild(withAxis(prompt, a, to)), { [a]: to });
     let lo = Math.round(from * 16), hi = lo;
-    if (at(hi / 16)) return hi / 16;
+    // The first inch in sixteenths (a clean size can sit just over the floor with an unclean band above it), then doubling.
+    for (; hi <= lo + 16; hi++) if (at(hi / 16)) return hi / 16;
+    lo = hi - 1;
     hi = Math.max(lo + 16, lo * 2);
     while (hi <= SEARCH_MAX_IN * 16 && !at(hi / 16)) { lo = hi; hi *= 2; }
     if (hi > SEARCH_MAX_IN * 16) return null;
@@ -133,7 +142,7 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
    * unclean band, so the first failure going down marks the floor): 1" steps, then halving to 1/16".
    */
   const leastDown = (a: Axis, top: number, floor: number): number | null => {
-    const at = (to: number) => ok(rebuild(withAxis(prompt, a, to)));
+    const at = (to: number) => ok(rebuild(withAxis(prompt, a, to)), { [a]: to });
     let hi = Math.round(top * 16);
     if (!at(hi / 16)) return null;
     let lo = hi;
@@ -142,8 +151,13 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
     while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (at(mid / 16)) hi = mid; else lo = mid; }
     return hi / 16;
   };
+  /** What the size just under a minimum lacks, as the refusal says it. */
+  const lacksAt = (a: Axis, to: number) => {
+    const q = rebuild(withAxis(prompt, a, to));
+    return why(q) ?? (outgrown(q, { [a]: to }) ? UNUSABLE.outgrows : null);
+  };
   const noun = refusalNoun(p, prompt);
-  const say = (a: Axis, min: number, why: string, v: number) => refused(p, noun, `${withArticle(noun, true)} needs at least ${inchFrac(min)}" ${WORD[a]}${/^for /.test(why) ? " " : ": "}${why}. Nothing is built at ${inchFrac(v)}".`);
+  const say = (a: Axis, min: number, why: string, v: number) => refused(p, noun, typed, `${withArticle(noun, true)} needs at least ${inchFrac(min)}" ${WORD[a]}${/^for /.test(why) ? " " : ": "}${why}. Nothing is built at ${inchFrac(v)}".`);
   // Under the family's usable floor, on any typed axis.
   for (const a of AXES) {
     const v = typed[a];
@@ -151,19 +165,20 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
     if (v == null || !f || v >= f.inches - 1e-6) continue;
     const min = least(a, f.inches) ?? f.inches;
     // The usable floor names the minimum unless the build only comes clean above it; then what it lacks is named.
-    return say(a, min, min > f.inches + 1e-6 ? why(rebuild(withAxis(prompt, a, min - 1 / 16))) ?? UNUSABLE.overlap : f.why, v);
+    return say(a, min, min > f.inches + 1e-6 ? lacksAt(a, min - 1 / 16) ?? UNUSABLE.overlap : f.why, v);
   }
   // At or over the floor: a small size must build clean (no overlap, nothing loose), and any typed size must leave
   // every shelf bay and drawer a hand's room.
-  const small = AXES.filter((a) => typed[a] != null && measured(a, typed[a]!));
-  const lacks = why(p, small.length > 0 || nonPositiveParts(p).length > 0);
+  const lacks = why(p, small.length > 0 || nonPositiveParts(p).length > 0) ?? (outgrown(p, {}) ? UNUSABLE.outgrows : null);
   if (!lacks) return null;
-  for (const a of small.length ? small : (["height", "width", "depth"] as const).filter((x) => typed[x] != null && x !== rowAxis)) {
+  const first = outgrown(p, {});
+  const order = small.length ? [...(first ? [first] : []), ...small.filter((a) => a !== first)] : (["height", "width", "depth"] as const).filter((x) => typed[x] != null && x !== rowAxis);
+  for (const a of order) {
     const v = typed[a]!;
     const top = recipe?.size[a];
     const min = (top != null && top > v ? leastDown(a, top, v) : null) ?? least(a, up16(v + 1 / 16));
     // The reason is what the size just under the minimum lacks (a 1/2" abacus has unreal parts; at 8" they collide).
-    if (min != null) return say(a, min, why(rebuild(withAxis(prompt, a, min - 1 / 16))) ?? lacks, v);
+    if (min != null) return say(a, min, lacksAt(a, min - 1 / 16) ?? lacks, v);
   }
   return null;
 }
