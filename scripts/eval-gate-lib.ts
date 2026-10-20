@@ -11,6 +11,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { typedDemands, validateSpec, type Demands } from "./eval-gate-typed.ts";
+import { isTestTraffic, type LoggedRecord } from "../src/lib/ideas/testTraffic.ts";
 
 export const HEAD_ROOT = resolve(new URL("..", import.meta.url).pathname);
 
@@ -318,18 +319,10 @@ export const stable = (x: unknown) => JSON.stringify(x, null, 1) + "\n";
 
 /**
  * Test traffic never enters the corpus. It is decided by the real signals in the logged record — the `test=1` query
- * flag on the logged URL and the `x-yard-test: 1` request header (src/lib/ideas/testSession.ts) — never by the prompt
- * text, so a real "test tube rack" is kept. A row with no logged record is not test traffic.
+ * flag on the logged URL and the `x-yard-test: 1` request header — never by the prompt text, so a real "test tube rack"
+ * is kept. One helper for the app and the gate: src/lib/ideas/testTraffic.ts (the Ideas live feed uses it too).
  */
-export type LoggedRecord = { url?: string; u?: string; headers?: Record<string, string | string[] | undefined> };
-export function isTestTraffic(rec: LoggedRecord | null | undefined): boolean {
-  if (!rec) return false;
-  const url = rec.url ?? rec.u ?? "";
-  const q = url.includes("?") ? url.slice(url.indexOf("?") + 1).split("#")[0] : "";
-  if (new URLSearchParams(q).getAll("test").includes("1")) return true;
-  for (const [k, v] of Object.entries(rec.headers ?? {})) if (k.toLowerCase() === "x-yard-test" && [v].flat().some((x) => String(x).trim() === "1")) return true;
-  return false;
-}
+export { isTestTraffic, type LoggedRecord } from "../src/lib/ideas/testTraffic.ts";
 /** Drop logged test traffic and case-insensitive duplicates (first wins); strips the record so it never lands in the corpus. */
 export function keepCorpusRows<T extends { prompt: string; rec?: LoggedRecord | null }>(rows: T[]): Omit<T, "rec">[] {
   const seen = new Set<string>();

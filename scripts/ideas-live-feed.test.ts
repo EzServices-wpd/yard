@@ -30,7 +30,8 @@ const SNAP: IdeasSnapshot = {
     row("big ben", "builtin:big-ben", 30, after(1)),
     row("birdhouse. Then: 3/8 dowel", "builtin:birdhouse", 3, after(5)),
     row("hanging birdhouse", "unknown:hanging-birdhouse", 5, after(5), "Unverified"),
-    row("critic probe shelf", "builtin:shelf", 7, after(1)),
+    // Critic's probes run with ?test=1 / x-yard-test, so the log stamps them "test": dropped by that flag, not the words.
+    { ...row("critic probe shelf", "builtin:shelf", 7, after(1)), source: "test" },
     row("birdhouse", "builtin:birdhouse", 6, after(6)),
     row("workbench 72 wide", "builtin:workbench-72", 5, after(2)),
     row("cat tree", "recipe:cat-tree", 3, after(20), "Unverified", "24×24×60"),
@@ -101,6 +102,7 @@ test("hero: the most-built checked idea in 7 days with ≤150 parts; null on the
 
 test("the invariant: live and fallback feeds pass; every shape field present; it catches each failure", () => {
   assert.deepEqual(feedViolations(feed), []);
+  assert.deepEqual(feedViolations(feed, SNAP), []);
   assert.deepEqual(feedViolations(curatedFeed(RECIPES)), []);
   for (const k of ["at", "live", "hero", "sections"]) assert.ok(k in feed, k);
   for (const s of feed.sections) {
@@ -125,4 +127,24 @@ test("home 'Making now' drops chained 'Then:' prompts (same isChained as the fee
   assert.ok(isChained("birdhouse. Then: 3/8 dowel"));
   const fs = await import("fs");
   assert.match(fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8"), /!isChained\(r\.prompt\)/);
+});
+
+test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-yard-test flag, never a word in the prompt", () => {
+  const real = [row("test tube rack", "builtin:test-tube-rack", 11, after(7)), row("canary yellow birdhouse", "builtin:birdhouse", 2, after(8)), row("testing station workbench", "builtin:workbench", 1, after(9))];
+  const flagged = { ...row("test tube rack for 12 tubes", "builtin:test-tube-rack", 40, after(7)), source: "test" as const };
+  for (const r of real) assert.ok(!isTestRow(r), r.prompt);
+  assert.ok(isTestRow(flagged));
+  assert.ok(!isTestRow({ ...real[0], source: "live" }));
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...real, flagged] };
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const cards = f.sections.flatMap((s) => s.cards);
+  const ttr = cards.find((c) => c.buildType === "test-tube-rack");
+  assert.ok(ttr, "test tube rack is in the Ideas feed");
+  assert.equal(ttr!.count, 11, "only the real row is counted; the test=1 row is not");
+  assert.equal(ttr!.examplePrompt, "test tube rack");
+  assert.deepEqual(feedViolations(f, snap), []);
+  // The invariant still catches a counted card whose example is a logged test row.
+  const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
+  bad.sections.flatMap((s) => s.cards).find((c) => c.buildType === "test-tube-rack")!.examplePrompt = "test tube rack for 12 tubes";
+  assert.match(feedViolations(bad, snap).join("\n"), /test prompt "test tube rack for 12 tubes"/);
 });
