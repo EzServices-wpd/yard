@@ -151,7 +151,8 @@ function closetCuts(project: YardProject): CutLine[] {
       const T = isPly || isSolidBoard ? STOCK_T : lumberT(id);
       const plies = Math.max(2, Math.round(dims.thicknessIn / T));
       // The row counts layers, so the note always says how many make each part: the part count reads off the model.
-      note = `${note ? `${note} ` : ""}Glue up ${plies} layers face to face for each ${inchFrac(dims.thicknessIn)}" ${family.toLowerCase()}.`;
+      // The text reads off the real layers: the count × the stock's thickness, never the part's modelled size.
+      note = `${note ? `${note} ` : ""}Glue up ${plies} layers face to face for each ${inchFrac(plies * T)}" ${family.toLowerCase()}.`;
       dims = { lengthIn: dims.lengthIn, widthIn: dims.widthIn, thicknessIn: T };
       qty = plies;
     }

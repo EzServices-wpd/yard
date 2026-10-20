@@ -385,6 +385,10 @@ export type YardProject = {
   /** Shop join the person picked. Buy and steps follow this, not the stock default. */
   shopJoin?: "screw" | "pocket" | "dowel" | "biscuit" | "glue";
   notes: string[];
+  /** Nothing was built, and why, in plain words (I32): a typed count that can't fit its typed size. */
+  refused?: string;
+  /** One plain line the result card shows under the title: what the build changed from the ask (I32). */
+  cardNote?: string;
   /** Stock that can hold this load. The plan offers a one-tap switch to it. */
   holdStockId?: string;
   historic?: boolean;
