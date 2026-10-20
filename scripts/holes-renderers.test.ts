@@ -89,6 +89,30 @@ test("PDF holes and round walls are true curves: rims are Bézier arcs, a hub's 
   }
 });
 
+test("a round wall reads as one surface: one tone for every facet, and its far rim is outlined (row 135)", () => {
+  const ww = holed.find((h) => h.prompt === "water wheel")!.project;
+  const doc = new SvgDoc(800, 800);
+  renderProject(doc as unknown as jsPDF, ww, { x: 0, y: 0, w: 800, h: 800 }, {
+    tones: new Map(ww.panels.map((p) => [p.id, "built" as const])),
+    partGroup: (id) => ({ "data-part": id }),
+  });
+  const svg = doc.toSvg();
+  for (const name of ["hub 1", "Collar 1"]) {
+    const i = ww.panels.findIndex((p) => p.name === name);
+    const id = ww.panels[i].id;
+    // The painter splits a solid's faces into several groups (depth order): read them all.
+    const g = [...svg.matchAll(new RegExp(`<g data-part="${id}">([\\s\\S]*?)</g>`, "g"))].map((m) => m[1]).join("");
+    // Soft wall facets fill and stroke in their own colour (no seams): those are the wall.
+    const wall = [...g.matchAll(/fill="(rgb\([^)]*\))" stroke="(rgb\([^)]*\))"/g)].filter((m) => m[1] === m[2]).map((m) => m[1]);
+    assert.ok(wall.length >= 6, `${name}: ${wall.length} wall facets painted`);
+    assert.equal(new Set(wall).size, 1, `${name}: the wall paints ${new Set(wall).size} tones (bands), want 1`);
+    // The cap facing away draws no outline, so the wall's facets carry that rim: one edge per visible facet.
+    const faces = projectSolids(ww)[i].faces.filter((f) => f.soft && f.n.x + f.n.y + f.n.z > 0);
+    const rim = faces.reduce((a, f) => a + (f.rim?.length ?? 0), 0);
+    assert.ok(rim >= faces.length, `${name}: ${rim} far-rim edges for ${faces.length} visible wall facets`);
+  }
+});
+
 test("iso plate: each holed part's face is an even-odd path with one ring per hole", () => {
   for (const { prompt, project } of holed) {
     const faces = isoFaces(project, []);
