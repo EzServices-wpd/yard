@@ -69,7 +69,8 @@ function refused(p: YardProject, why: string): YardProject {
   return { ...p, name: askedNoun(p), panels: [], instances: [], refused: why, cardNote: why };
 }
 
-const article = (noun: string) => (/^[aeiou]/i.test(noun) ? "An" : "A");
+// "An abacus", "an end table"; a "you"-sounding u takes "a" ("a utility cabinet", "a unit").
+const article = (noun: string) => (/^(?:[aeio]|u(?!ni|s[aeiou]|ti|ku|r[aeiou]))/i.test(noun) ? "An" : "A");
 
 /**
  * The refusal for a build too small to hold its parts, or null when it builds. `rebuild` builds a prompt (the same
