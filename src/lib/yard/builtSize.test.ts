@@ -51,15 +51,16 @@ it("a build still shows its size everywhere", () => {
   assert.equal(refusedOutline(p), null);
 });
 
-it("source guard: every unit line goes through builtSize.ts, and Measure checks nothingBuilt", () => {
+it("source guard: every surface that prints a unit line checks nothingBuilt (or reads envelopeText), Measure too", () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
   const files: string[] = [];
   const walk = (d: string) => { for (const f of readdirSync(d)) { const x = join(d, f); if (statSync(x).isDirectory()) walk(x); else if (/\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)) files.push(x); } };
   walk(root);
-  // The formatter's own definitions, its re-export, and the iso drawing (sized from its parts' box: no parts, no box).
-  const ALLOW = /(?:builtSize|voiceHonesty|pdfFormat|iso)\.ts$/;
-  const calls = files.filter((f) => !ALLOW.test(f) && /\bfmtUnitEnvelope(?:Inches)?\(/.test(readFileSync(f, "utf8")));
-  assert.deepEqual(calls.map((f) => f.slice(root.length)), []);
+  // Definitions and re-exports; drawings and steps sized from their parts (a refusal has none); logs of built recipes.
+  const ALLOW = /(?:builtSize|voiceHonesty|pdfFormat|headerSize|iso|pdfDraw|steps|ideaLog\.server|recipeIdeas)\.ts$/;
+  const SIZES = /\b(?:fmtUnitEnvelope(?:Inches)?|headerSize|headerAxes)\(/;
+  const unguarded = files.filter((f) => !ALLOW.test(f)).filter((f) => { const t = readFileSync(f, "utf8"); return SIZES.test(t) && !/\b(?:nothingBuilt|envelopeText)\(/.test(t); });
+  assert.deepEqual(unguarded.map((f) => f.slice(root.length)), []);
   for (const f of ["components/workspace/measure-panel.tsx", "components/workspace/measure-overlay.tsx", "components/workspace/shell.tsx"]) {
     assert.match(readFileSync(join(root, f), "utf8"), /nothingBuilt\(/, f);
   }

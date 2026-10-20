@@ -1,6 +1,6 @@
 "use client";
 import { userText } from "@/lib/yard/userText";
-import { headerTitle } from "@/lib/yard/pdf";
+import { headerAxes, headerTitle } from "@/lib/yard/pdf";
 import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -41,14 +41,15 @@ import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
-import { openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { modelFinishedDepth, modelProudNote } from "@/lib/yard/modelSize";
+import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
+import { modelProudNote } from "@/lib/yard/modelSize";
+import { headerSize } from "@/lib/yard/headerSize";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 import { REFUSED_OUTLINE_CAPTION, refusedOutline } from "@/lib/yard/refusedOutline";
-import { envelopeText, nothingBuilt } from "@/lib/yard/builtSize";
+import { nothingBuilt } from "@/lib/yard/builtSize";
 
 /** (b) A build still pending after this long stops the lamp and offers builds that always work. */
 export const STALL_MS = 45_000;
@@ -674,7 +675,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   <p className="min-w-0 truncate font-display text-[15px] text-fg">
                     {titlePending ? (
                       <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
-                    ) : project.name || headerTitle(project)}
+                    ) : headerTitle(project, { features: false })}
                   </p>
                   <DecisionLine />
                 </div>
@@ -826,16 +827,20 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 >
                   {(() => {
                     const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
-                    const inch = inchFrac;
                     const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
-                    const finished = pocketUnit
-                      ? pocketUnit.depth
-                      : modelFinishedDepth(project.panels, project.overall.depth);
                     // Nothing built shows no size (builtSize.ts): the chip just opens Measure.
                     if (nothingBuilt(project)) return <>Measure</>;
-                    const envelope = pocketUnit
-                      ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
-                      : envelopeText(project, { finishedDepth: finished });
+                    // One size: the header's own W × D × H (typed axes as typed, assumed axes the model's extent).
+                    const one = headerSize(project);
+                    // Same words and order as the header (W × D × H); a round piece keeps its "dia × H" talk.
+                    const envelope = project.fitted?.unit?.shape !== "round"
+                      ? headerAxes(project)
+                      : fmtUnitEnvelopeInches(one.width, one.height, one.depth, {
+                          shape: project.fitted?.unit?.shape,
+                          prompt: project.prompt,
+                          name: project.name,
+                          legs: project.fitted?.unit?.legs,
+                        });
                     const emptyTalk = pocketUnit ? null : openingStorageMeasureEmptyTalk(project.prompt);
                     const companion = emptyTalk
                       ? emptyTalk.hudCompanion

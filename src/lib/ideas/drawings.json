@@ -50,17 +50,17 @@
   "model": "/ideas/models/ldesk.d7a8c642.json"
  },
  "pocket": {
-  "v": "b25426b2",
+  "v": "d65987b4",
   "w": 480,
   "h": 360,
-  "parts": 32,
-  "bytes": 9545,
+  "parts": 50,
+  "bytes": 13867,
   "dims": {
    "width": 38,
    "height": 102,
-   "depth": 17.75
+   "depth": 17
   },
-  "model": "/ideas/models/pocket.1ba04a0c.json"
+  "model": "/ideas/models/pocket.31da6987.json"
  },
  "linen": {
   "v": "42f80edf",
@@ -102,30 +102,30 @@
   "model": "/ideas/models/window.0f073d5e.json"
  },
  "desk": {
-  "v": "9f8cece9",
+  "v": "612aad8e",
   "w": 480,
   "h": 360,
-  "parts": 22,
-  "bytes": 7124,
+  "parts": 40,
+  "bytes": 11293,
   "dims": {
    "width": 60,
    "height": 29,
-   "depth": 30.75
+   "depth": 30
   },
-  "model": "/ideas/models/desk.4757f2d5.json"
+  "model": "/ideas/models/desk.264dc27f.json"
  },
  "island": {
-  "v": "6891a8e0",
+  "v": "400060b5",
   "w": 480,
   "h": 360,
-  "parts": 7,
-  "bytes": 3587,
+  "parts": 22,
+  "bytes": 7099,
   "dims": {
    "width": 60,
    "height": 36,
    "depth": 36
   },
-  "model": "/ideas/models/island.2f4faf47.json"
+  "model": "/ideas/models/island.4978e77f.json"
  },
  "radiator": {
   "v": "ea998341",
@@ -245,11 +245,11 @@
   "model": "/ideas/models/daybed.04a1bc7b.json"
  },
  "round": {
-  "v": "4a99df2a",
+  "v": "01795bb2",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 7093,
+  "bytes": 7449,
   "dims": {
    "width": 40,
    "height": 30,
@@ -259,11 +259,11 @@
   "model": "/ideas/models/round.f87fd212.json"
  },
  "coffee": {
-  "v": "ae7d9e17",
+  "v": "762a7d0a",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 7111,
+  "bytes": 7467,
   "dims": {
    "width": 48,
    "height": 18,
@@ -286,17 +286,17 @@
   "model": "/ideas/models/shelves.c170a5b6.json"
  },
  "jarshelf": {
-  "v": "20ad59fe",
+  "v": "071381e5",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4093,
+  "bytes": 4087,
   "dims": {
    "width": 24,
-   "height": 19.25,
+   "height": 18,
    "depth": 4
   },
-  "model": "/ideas/models/jarshelf.63f47ab9.json"
+  "model": "/ideas/models/jarshelf.561578eb.json"
  },
  "wallcab": {
   "v": "04d443cb",
@@ -325,30 +325,30 @@
   "model": "/ideas/models/uppercab.d3d08fb7.json"
  },
  "coat": {
-  "v": "04001119",
+  "v": "a84cb919",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3837,
+  "bytes": 3833,
   "dims": {
    "width": 36,
    "height": 12,
-   "depth": 4.25
+   "depth": 4
   },
   "model": "/ideas/models/coat.68a0a38d.json"
  },
  "spice": {
-  "v": "0238b16f",
+  "v": "e0feb505",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4045,
+  "bytes": 4079,
   "dims": {
    "width": 18,
-   "height": 25.25,
+   "height": 24,
    "depth": 4
   },
-  "model": "/ideas/models/spice.3a77ee51.json"
+  "model": "/ideas/models/spice.23dc812f.json"
  },
  "wine": {
   "v": "64cf3410",
@@ -377,15 +377,15 @@
   "model": "/ideas/models/medicine.a560622e.json"
  },
  "ironing": {
-  "v": "d1b269db",
+  "v": "85d15d46",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3828,
+  "bytes": 3824,
   "dims": {
    "width": 16,
    "height": 48,
-   "depth": 6.75
+   "depth": 6
   },
   "model": "/ideas/models/ironing.1ee66cb3.json"
  },
@@ -455,7 +455,7 @@
   "model": "/ideas/models/shoerack.ac5433df.json"
  },
  "pantry": {
-  "v": "df02c576",
+  "v": "e5518ecf",
   "w": 480,
   "h": 360,
   "parts": 10,
@@ -463,35 +463,35 @@
   "dims": {
    "width": 24,
    "height": 84,
-   "depth": 16.75
+   "depth": 16
   },
   "model": "/ideas/models/pantry.df37f6df.json"
  },
  "dresser": {
-  "v": "8b1f786f",
+  "v": "5eeb297c",
   "w": 480,
   "h": 360,
-  "parts": 11,
-  "bytes": 4498,
+  "parts": 23,
+  "bytes": 7326,
   "dims": {
    "width": 60,
    "height": 36,
    "depth": 18.75
   },
-  "model": "/ideas/models/dresser.63cd2257.json"
+  "model": "/ideas/models/dresser.228867e9.json"
  },
  "nightstand": {
-  "v": "54603de2",
+  "v": "af5346a2",
   "w": 480,
   "h": 360,
-  "parts": 8,
-  "bytes": 3831,
+  "parts": 11,
+  "bytes": 4499,
   "dims": {
    "width": 18,
    "height": 24,
    "depth": 16.75
   },
-  "model": "/ideas/models/nightstand.8726241e.json"
+  "model": "/ideas/models/nightstand.fd5a22dd.json"
  },
  "overtoilet": {
   "v": "5e614dca",
@@ -507,17 +507,17 @@
   "model": "/ideas/models/overtoilet.65f32fc6.json"
  },
  "crate": {
-  "v": "d42138a1",
+  "v": "1815031c",
   "w": 480,
   "h": 360,
   "parts": 19,
-  "bytes": 6371,
+  "bytes": 19287,
   "dims": {
    "width": 36,
    "height": 25,
    "depth": 23
   },
-  "model": "/ideas/models/crate.6d75320b.json"
+  "model": "/ideas/models/crate.c63b0bc8.json"
  },
  "eiffel": {
   "v": "5709df4b",
@@ -642,17 +642,17 @@
   "model": "/ideas/models/workbench.ae058f79.json"
  },
  "birdhouse": {
-  "v": "29576471",
+  "v": "4d3fd234",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3663,
+  "bytes": 4216,
   "dims": {
    "width": 6.875,
    "height": 11.8125,
    "depth": 7.5
   },
-  "model": "/ideas/models/birdhouse.7725ffcb.json"
+  "model": "/ideas/models/birdhouse.94190074.json"
  },
  "raisedbed": {
   "v": "3b4e4f38",
@@ -678,33 +678,33 @@
    "height": 14.1875,
    "depth": 3.75
   },
-  "model": "/ideas/models/recipe-wall-mounted-mail-organizer.b3db8562.json"
+  "model": "/ideas/models/recipe-wall-mounted-mail-organizer.87ed9387.json"
  },
  "recipe-water-wheel": {
-  "v": "b55ce051",
+  "v": "6dc11bbc",
   "w": 480,
   "h": 360,
-  "parts": 13,
-  "bytes": 9619,
+  "parts": 24,
+  "bytes": 25026,
   "dims": {
-   "width": 24.5625,
-   "height": 31.125,
-   "depth": 18
+   "width": 18,
+   "height": 30.25,
+   "depth": 23.4375
   },
-  "model": "/ideas/models/recipe-water-wheel.d95b8793.json"
+  "model": "/ideas/models/recipe-water-wheel.353ff83b.json"
  },
  "recipe-abacus": {
-  "v": "96123fec",
+  "v": "502a709e",
   "w": 480,
   "h": 360,
   "parts": 58,
-  "bytes": 78611,
+  "bytes": 103482,
   "dims": {
    "width": 16,
    "height": 10.625,
    "depth": 3.5
   },
-  "model": "/ideas/models/recipe-abacus.a9ecdeaa.json"
+  "model": "/ideas/models/recipe-abacus.fbb2f3cb.json"
  },
  "recipe-under-stairs-shelf": {
   "v": "80eafc88",
@@ -730,7 +730,7 @@
    "height": 6.3125,
    "depth": 8.875
   },
-  "model": "/ideas/models/recipe-laptop-stand.10283a50.json"
+  "model": "/ideas/models/recipe-laptop-stand.bea86200.json"
  },
  "recipe-utility-cart": {
   "v": "642df52e",
@@ -756,7 +756,7 @@
    "height": 3.4375,
    "depth": 5.5
   },
-  "model": "/ideas/models/recipe-jewelry-box.c46b31b4.json"
+  "model": "/ideas/models/recipe-jewelry-box.b7c3823b.json"
  },
  "recipe-bird-feeder": {
   "v": "2202fcb9",
@@ -769,7 +769,7 @@
    "height": 10.625,
    "depth": 7.6875
   },
-  "model": "/ideas/models/recipe-bird-feeder.505e3e44.json"
+  "model": "/ideas/models/recipe-bird-feeder.651b3a36.json"
  },
  "recipe-raised-garden-bed": {
   "v": "3b4e4f38",
@@ -795,20 +795,20 @@
    "height": 19.1875,
    "depth": 20
   },
-  "model": "/ideas/models/recipe-outdoor-storage-bench.af2e3d41.json"
+  "model": "/ideas/models/recipe-outdoor-storage-bench.ca8bbbbb.json"
  },
  "recipe-guitar-hanger": {
-  "v": "41dfec46",
+  "v": "6efc26f3",
   "w": 480,
   "h": 360,
   "parts": 4,
-  "bytes": 7163,
+  "bytes": 7753,
   "dims": {
    "width": 5.5,
    "height": 10,
    "depth": 4.875
   },
-  "model": "/ideas/models/recipe-guitar-hanger.b5eaf7a0.json"
+  "model": "/ideas/models/recipe-guitar-hanger.636e0ddf.json"
  },
  "recipe-standing-desk-converter": {
   "v": "121610c5",

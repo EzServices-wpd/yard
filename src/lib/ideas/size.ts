@@ -1,7 +1,9 @@
 /**
  * Card size ↔ drawing size. A card's size is formatted from the engine dims its drawing shows (PR 3 #2, Batch C).
- * Pure, no engine import. Feature numbers ("30 low", "24″ knee") are not overall sizes and are skipped.
+ * Pure, no engine import (inchText is the shared formatter, no dependencies). Feature numbers ("30 low", "24″ knee") are not overall sizes and are skipped.
  */
+import { inchFrac } from "../yard/inchText";
+
 export type Dims = { width: number; height: number; depth: number };
 
 /** Relative tolerance: curated sizes round (a "3 ft" tower is 37.4″, a 36″ crate is 36 × 25 × 23 actual stock). */
@@ -36,15 +38,12 @@ export function sizeMatches(size: string | undefined | null, d: Dims): boolean {
   });
 }
 
-/** Inches as the shop prints them: whole or nearest 1/16, the drawings' own precision ("31 1/2", "6 5/16"). */
+/**
+ * Inches as the shop prints them: the one shared formatter (inchText), nearest 1/16 ("24 9/16"), so a card reads
+ * exactly what the header, steps and drawings print.
+ */
 export function inch(n: number): string {
-  const e = Math.round(n * 16) / 16;
-  const w = Math.floor(e);
-  let num = Math.round((e - w) * 16);
-  if (!num) return String(w);
-  let den = 16;
-  while (num % 2 === 0) { num /= 2; den /= 2; }
-  return `${w ? `${w} ` : ""}${num}/${den}`;
+  return inchFrac(n);
 }
 
 /** Inches spoken: 31.5 → "31 and a half", 17.75 → "17 and three quarters", 6.3125 → "6 and five sixteenths". */

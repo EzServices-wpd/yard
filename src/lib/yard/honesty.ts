@@ -12,6 +12,7 @@ import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
 import { mattressDeck } from "./fittedParse";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
+import { lippedShelfYs } from "./shelfLips";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
 export const STOCK_TOL = 0.75;
@@ -683,7 +684,17 @@ function injectRackRails(project: YardProject): YardProject {
   const label = wine ? "Bottle rail" : "Jar lip";
   const skipLast = wine && shelves.length > 1;
   const extras: Panel[] = [];
-  const ordered = [...shelves].sort((a, b) => a.position.y - b.position.y);
+  let ordered = [...shelves].sort((a, b) => a.position.y - b.position.y);
+  // A lip on the top shelf may not stand over the uprights: re-space the shelves evenly with the top one dropped by the
+  // lip (shared rule with the fitted racks), so its top edge is flush with the unit's top.
+  const unitTop = Math.max(project.overall.height, ...project.panels.filter((p) => p.type === "upright").map((p) => p.position.y + p.size.height));
+  const top = ordered[ordered.length - 1];
+  let moved: Map<string, number> | null = null;
+  if (!skipLast && top.position.y + top.size.height + lipH > unitTop + 1 / 16) {
+    const ys = lippedShelfYs(unitTop, ordered.length, top.size.height, lipH, ordered[0].position.y);
+    moved = new Map(ordered.map((s, i) => [s.id, ys[i]]));
+    ordered = ordered.map((s) => ({ ...s, position: { ...s.position, y: moved!.get(s.id)! } }));
+  }
   ordered.forEach((shelf, i) => {
     if (skipLast && i === ordered.length - 1) return;
     extras.push({
@@ -709,7 +720,7 @@ function injectRackRails(project: YardProject): YardProject {
   return {
     ...project,
     name,
-    panels: [...project.panels, ...extras],
+    panels: [...project.panels.map((p) => (moved?.has(p.id) ? { ...p, position: { ...p.position, y: moved.get(p.id)! } } : p)), ...extras],
     assumptions: { ...project.assumptions, installMode: "wall" },
     notes: [
       ...project.notes.filter((n) => !/honesty: rack/i.test(n)),

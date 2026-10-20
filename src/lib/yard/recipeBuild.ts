@@ -290,6 +290,13 @@ export const ROUND_WORD = /\b(?:wheels?|beads?|discs?|disks?|pulleys?|gears?|dru
  * runs along its longest; the two cross sides close to one diameter, centred. A bore cuts a centred hole
  * (a ring's rim is its bore width; a bead takes a 3/8 of its diameter bore unless it names one).
  */
+/** A part the recipe says stands proud of the stated size on purpose (a cribbage board's pegs, set in their holes). */
+function proudParts(recipe: Recipe, panels: Panel[]): void {
+  // "Peg1" in the recipe is "Peg 1" on the build: match on the name without its number.
+  const stem = (s: string) => s.replace(/\s*\d+$/, "").toLowerCase();
+  for (const p of panels) if (recipe.parts.some((q) => q.proud && (q.name === p.name || stem(q.name) === stem(p.name)))) p.proud = true;
+}
+
 /** A part's hole array is drilled in its largest face: an even grid of round holes, rows along the short side. */
 function holeArrays(recipe: Recipe, panels: Panel[]): void {
   for (const p of panels) {
@@ -1528,6 +1535,7 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
   }
   roundParts(recipe, panels);
   holeArrays(recipe, panels);
+  proudParts(recipe, panels);
   panels.splice(0, panels.length, ...curvedParts(recipe, panels, size));
   const rowNotes: string[] = widened ? [widened] : [];
   const asked = { ...typedSize(prompt, recipe), ...(sizeOverride && !widened ? sizeOverride : {}) };
@@ -1576,12 +1584,13 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
     const from = a === "y" ? 0 : Math.min(...panels.map((p) => p.position[a]));
     if (typedAxes[k] != null) continue;
     if (from > 0) for (const p of panels) p.position = { ...p.position, [a]: p.position[a] - from };
-    real[k] = Math.ceil((hi - from) * 8 - 1e-6) / 8;
+    // The model's exact extent (not rounded up to 1/8): the header, card and drawings all print this one number.
+    real[k] = Math.round((hi - from) * 1e4) / 1e4;
   }
   // The header height is the body's: pegs standing in their holes (a cribbage board's) don't count.
   const peg = (p: Panel) => p.type === "cleat" && /^dowel-/.test(p.materialId) && /\bpegs?\b/i.test(p.name);
   const bodyTop = Math.max(0, ...panels.filter((p) => !peg(p)).map((p) => p.position.y + p.size.height));
-  if (typedAxes.height == null && panels.some(peg) && bodyTop > 0 && bodyTop < real.height - 0.01 && panels.every((p) => !peg(p) || p.position.y <= bodyTop + 0.01)) real.height = Math.ceil(bodyTop * 8 - 1e-6) / 8;
+  if (typedAxes.height == null && panels.some(peg) && bodyTop > 0 && bodyTop < real.height - 0.01 && panels.every((p) => !peg(p) || p.position.y <= bodyTop + 0.01)) real.height = Math.round(bodyTop * 1e4) / 1e4;
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;

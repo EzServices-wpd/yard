@@ -156,6 +156,44 @@ export class SvgDoc {
     this.parts.push(`<path d="${d}" ${this.fillAttrs(style)} />`);
   }
 
+  private pathD = "";
+  /** jsPDF path ops: moveTo / lineTo / curveTo / close, then fillEvenOdd or fillStrokeEvenOdd paints them as one path. */
+  moveTo(x: number, y: number) {
+    this.touch(x, y);
+    this.pathD += `${this.pathD ? " " : ""}M ${x} ${y}`;
+    return this;
+  }
+  lineTo(x: number, y: number) {
+    this.touch(x, y);
+    this.pathD += ` L ${x} ${y}`;
+    return this;
+  }
+  curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
+    this.touch(x1, y1);
+    this.touch(x2, y2);
+    this.touch(x3, y3);
+    this.pathD += ` C ${x1} ${y1} ${x2} ${y2} ${x3} ${y3}`;
+    return this;
+  }
+  close() {
+    this.pathD += " Z";
+    return this;
+  }
+  private paintPath(style: "F" | "FD") {
+    if (this.pathD) {
+      this.stats.ops++;
+      this.parts.push(`<path d="${this.pathD}" fill-rule="evenodd" ${this.fillAttrs(style)} />`);
+    }
+    this.pathD = "";
+    return this;
+  }
+  fillEvenOdd() {
+    return this.paintPath("F");
+  }
+  fillStrokeEvenOdd() {
+    return this.paintPath("FD");
+  }
+
   rect(x: number, y: number, w: number, h: number, style: "F" | "S" | "FD" = "S") {
     this.touch(x, y);
     this.touch(x + w, y + h);

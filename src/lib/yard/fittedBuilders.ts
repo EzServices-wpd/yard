@@ -41,6 +41,7 @@ import {
   isWineRack, isShoeStorage, isOverToilet, isSpiceRack, isSpiceCabinet, isIroningCabinet,
   isMedicineCabinet, spokenTierCount, spokenBottleCount, shallowWallCabinetFace, SHELF_MIN_CLEAR,
 } from "./fittedShared";
+import { lippedShelfYs } from "./shelfLips";
 import { inch16, wineRackLayout, wineCapacityVoice, WINE_BOTTLE_CLEAR } from "./fittedWine";
 import { mattressDeck, framedSleep } from "./fittedParse";
 
@@ -774,8 +775,10 @@ export function buildHungOpen(spec: FittedSpec, prompt: string, affordances: Hou
   const panels: Panel[] = [];
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  // Lips ride on every shelf, the top one included: that shelf drops so its lip is flush with the uprights' tops.
+  const ys = lips ? lippedShelfYs(H, shelfN, P, 1.25) : null;
   for (let i = 0; i < shelfN; i++) {
-    const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
+    const y = ys ? ys[i] : shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
     panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
     if (lips) {
       panels.push(panel("rail", `Jar lip ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.25, P));
