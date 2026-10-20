@@ -544,16 +544,23 @@ function overhangTalk(ctx: Ctx, p: Panel, under: Panel[]): string {
   const o = overhangOf(ctx, p, under);
   if (!o) return "";
   const eq = (a: number, b: number) => Math.abs(a - b) < 1 / 16;
-  const ends = eq(o.l, o.r) ? (o.l > EPS ? `${f(o.l)} past each end` : "") : `${f(o.l)} past the left end and ${f(o.r)} past the right`;
+  // Only a part that runs past what holds it overhangs: one set back from that edge (a negative overhang) or flush
+  // says nothing for that side, never "0\" past the front" (I37 zero, outdoor bench seat boards).
+  const over = (a: number) => a > EPS;
+  const ends = eq(o.l, o.r)
+    ? over(o.l) ? `${f(o.l)} past each end` : ""
+    : over(o.l) && over(o.r) ? `${f(o.l)} past the left end and ${f(o.r)} past the right` : over(o.l) ? `${f(o.l)} past the left end` : over(o.r) ? `${f(o.r)} past the right end` : "";
   const fb = eq(o.bk, o.fr)
-    ? o.fr > EPS
+    ? over(o.fr)
       ? `${f(o.fr)} front and back`
       : ""
-    : Math.abs(o.bk) < EPS
-      ? `${f(o.fr)} past the front (${ctx.panels.some((q) => /\bback\b/i.test(q.name)) ? "back" : "rear"} edge flush)`
-      : Math.abs(o.fr) < EPS
-        ? `${f(o.bk)} past the back (front edge flush)`
-        : `${f(o.fr)} at the front and ${f(o.bk)} at the back`;
+    : !over(o.fr) && !over(o.bk)
+      ? ""
+      : !over(o.bk)
+        ? `${f(o.fr)} past the front${Math.abs(o.bk) < EPS ? ` (${ctx.panels.some((q) => /\bback\b/i.test(q.name)) ? "back" : "rear"} edge flush)` : ""}`
+        : !over(o.fr)
+          ? `${f(o.bk)} past the back${Math.abs(o.fr) < EPS ? " (front edge flush)" : ""}`
+          : `${f(o.fr)} at the front and ${f(o.bk)} at the back`;
   if (ends && fb && eq(o.l, o.r) && eq(o.bk, o.fr) && eq(o.l, o.fr)) return `centered, overhanging ${f(o.l)} on all four sides`;
   const bits = [ends, fb].filter(Boolean);
   return bits.length ? `overhang ${bits.join(" and ")}` : "";

@@ -241,29 +241,13 @@
    "class": "F30",
    "msg": "Front apron runs into Center support 1 with no joint cut for it"
   },
-  "I37|picnic table": {
-   "class": "F9",
-   "msg": "zero: 0″ dimension (step)"
-  },
   "I37|corner bookshelf 60 wide 84 tall": {
-   "class": "F9",
-   "msg": "zero: 0″ dimension (step)"
-  },
-  "I37|rain barrel stand": {
    "class": "F9",
    "msg": "zero: 0″ dimension (step)"
   },
   "I37|sandbox": {
    "class": "F9",
    "msg": "no-class: stand-in body (model)"
-  },
-  "I37|deck stairs": {
-   "class": "F9",
-   "msg": "zero: 0″ dimension (step)"
-  },
-  "I37|marble run": {
-   "class": "F9",
-   "msg": "zero: 0″ dimension (step)"
   },
   "I37|cribbage board": {
    "class": "F9",
@@ -304,14 +288,6 @@
   "I37|guitar hanger": {
    "class": "F9",
    "msg": "decimal-inch: decimal inches (note)"
-  },
-  "I37|outdoor storage bench": {
-   "class": "F9",
-   "msg": "zero: 0″ dimension (step)"
-  },
-  "I37|bird feeder": {
-   "class": "F9",
-   "msg": "zero: 0″ dimension (step)"
   },
   "I37|corner bookshelf 51 wide 41 tall 34.5 deep": {
    "class": "F9",
