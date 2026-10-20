@@ -47,6 +47,7 @@ import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
+import { REFUSED_OUTLINE_CAPTION, refusedOutline } from "@/lib/yard/refusedOutline";
 
 /** (b) A build still pending after this long stops the lamp and offers builds that always work. */
 export const STALL_MS = 45_000;
@@ -542,6 +543,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               <div data-yard-refused="1" role="status" className="max-w-md text-center">
                 <p className="font-display text-2xl text-fg">Nothing built</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted">{project.refused}</p>
+                {refusedOutline(project) && <p data-yard-refused-outline="1" className="mt-1 text-xs text-faint">{REFUSED_OUTLINE_CAPTION}</p>}
               </div>
             </div>
           )}

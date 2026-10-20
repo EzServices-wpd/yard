@@ -9,6 +9,7 @@ import { useYard } from "@/lib/yard/store";
 import { parseInch } from "@/lib/yard/inchText";
 import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/ghost";
 import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
+import { outlineEdges, refusedOutline, type OutlineBox } from "@/lib/yard/refusedOutline";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
 import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
@@ -91,7 +92,8 @@ function footprintTexture() {
 function FootprintShadow({ project }: { project: YardProject }) {
   const box = useMemo(() => benchModelBox(project), [project]);
   const tex = footprintTexture();
-  if (!tex) return null;
+  // Nothing built casts no shadow: a refusal shows only its outline (row 147).
+  if (!tex || refusedOutline(project)) return null;
   const w = box.maxX - box.minX, d = box.maxZ - box.minZ;
   const pad = Math.max(6, Math.min(w, d) * 0.35);
   return (
@@ -455,6 +457,17 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
   );
 }
 
+/** A refused build's faint dashed outline of the size typed (refusedOutline.ts): drawn, never presented as parts. */
+function RefusedOutline({ box }: { box: OutlineBox }) {
+  return (
+    <group>
+      {outlineEdges(box).map((p, i) => (
+        <Line key={i} points={p} color="#c4b49a" lineWidth={1} dashed dashSize={1.5} gapSize={1} transparent opacity={0.3} depthWrite={false} layers={LINE_LAYER} />
+      ))}
+    </group>
+  );
+}
+
 /** A finished build flies together once: parts start exploded and ease home (~0.7s). Still under reduced motion. */
 function useAssemble(ready: boolean): number {
   const [k, setK] = useState(1);
@@ -728,6 +741,7 @@ function BenchScene({
   const mw = parseInch(measure.width) || 0;
   const mh = parseInch(measure.height) || 0;
   const md = parseInch(measure.depth) || 0;
+  const outline = refusedOutline(project);
   const members =
     detail === "frame"
       ? project.instances.filter((i) => isFrameRole(i.role))
@@ -747,7 +761,8 @@ function BenchScene({
     <group>
       {showHull && <GhostLines strokes={hull} color={HULL} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
-      {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
+      {outline && <RefusedOutline box={outline} />}
+      {!outline && measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
         <StickCloud
           instances={shownMembers}
