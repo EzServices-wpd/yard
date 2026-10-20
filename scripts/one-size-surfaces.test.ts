@@ -115,7 +115,7 @@ test("PDF: the cover title, every running head and the Check it labels say the h
 
 test("step 1 says the size once, labelled W × D × H, never the name's bare W × H × D triple (row 132)", () => {
   // The typed-size prompts carry their triple in the name ("Linen 31 1/2" × 78" × 16""), so they are the ones that bite.
-  const typed = [...rows, ...["bookcase 36 x 72 x 12", "dresser 40 wide 34 tall 18 deep"].map((prompt) => { const p = generateFromPrompt(prompt); return { key: prompt, prompt, p, plan: buildPlan(p), size: headerSize(p), axes: headerAxes(p) }; })];
+  const typed = [...rows, ...["bookcase 36 x 72 x 12", "dresser 40 wide 34 tall 18 deep", "headboard 60 wide 30 tall"].map((prompt) => { const p = generateFromPrompt(prompt); return { key: prompt, prompt, p, plan: buildPlan(p), size: headerSize(p), axes: headerAxes(p) }; })];
   let named = 0;
   for (const r of typed) {
     const s1 = r.plan.instructions.find((s) => /^Confirm the/.test(s.title));

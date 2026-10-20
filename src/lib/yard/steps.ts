@@ -1209,7 +1209,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         title: "Confirm the size — do not cut yet",
         description: laminate
           ? `${bareName(project.name)}. Typed ${round(D)}" deep headboard from ${plyN}×¾" plywood plies laminated face-to-face (${round(W)}" × ${round(H)}" each) for behind the mattress. Mark the wall width and how high you want it above the mattress. ${partsOnThisListPhrase(project)}.`
-          : `${bareName(project.name)}. One ${round(W)}" × ${round(H)}" × ${round(D)}" plywood slab for behind the mattress. Mark the wall width and how high you want it above the mattress. ${partsOnThisListPhrase(project)}.`,
+          : `${bareName(project.name)}. One plywood slab ${round(W)}" wide × ${round(D)}" thick × ${round(H)}" high, for behind the mattress. Mark the wall width and how high you want it above the mattress. ${partsOnThisListPhrase(project)}.`,
         tips: laminate
           ? "A headboard is a wall board, not a box. Laminate plies to the typed depth — the lumber aisle does not sell a magic thick sheet. If a number on this plan disagrees with the cut list, trust the cut list."
           : "A headboard is a wall board, not a box. If a number on this plan disagrees with the cut list, trust the cut list.",
