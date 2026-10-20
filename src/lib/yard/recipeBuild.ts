@@ -1075,6 +1075,10 @@ export function seatOnCarriers(recipe: Recipe, panels: Panel[]): void {
   const over = (a: Panel, b: Panel) => (["x", "z"] as const).every((x) => { const k = x === "x" ? "width" : "depth"; return Math.min(a.position[x] + a.size[k], b.position[x] + b.size[k]) - Math.max(a.position[x], b.position[x]) > 0.01; });
   for (const p of [...panels].sort((a, b) => a.position.y - b.position.y)) {
     if (p.turns || part(p)?.kind === "hardware") continue;
+    // Only a part designed standing (tallest in the recipe's own box: a post, a leg) is cut to stand on its carrier,
+    // at any size. A board or sheet designed lying flat keeps its stock thickness (I28): never a 0.69" 1×6.
+    const b = part(p)?.box;
+    if (!b || b[4] * recipe.size.height < Math.max(b[3] * recipe.size.width, b[5] * recipe.size.depth)) continue;
     const top = p.position.y + p.size.height;
     const into = below(p).filter((c) => c !== p && c.position.y < p.position.y - 0.01 && c.position.y + c.size.height > p.position.y + 0.01 && over(p, c));
     if (!into.length) continue;
