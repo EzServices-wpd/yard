@@ -12,6 +12,7 @@ import { buildPlan } from "./report";
 import { headerTitle } from "./pdf";
 import { unusable, cleanness, HAND_ROLLED_IN } from "./usableFloors";
 import { nonPositiveParts, withoutSizes } from "./tooSmall";
+import { refusedOutline, outlineEdges } from "./refusedOutline";
 import type { YardProject } from "./types";
 
 /** Critic's tiny-size families (regrade-pr103/r2 probes/tiny.json). */
@@ -103,8 +104,38 @@ it("#90's count rule is unchanged: a typed count that doesn't fit is refused wit
   assert.ok(!q.refused && /^Only 1 rod fits in 2 1\/8" wide/.test(q.cardNote ?? ""), q.cardNote);
 });
 
+it("row 149: I35 catches a misread that lands under a minimum", () => {
+  const p = generateFromPrompt("shelf 2 wide");
+  assert.ok(p.refused);
+  assert.deepEqual(i35(p, "shelf 2 wide"), []);
+  const v = i35(p, "shelf 24 1/2 wide").map((x) => x.msg);
+  assert.ok(v.includes(`typed 24 1/2" width, the refusal says nothing is built at 2"`), JSON.stringify(v));
+  assert.ok(v.includes(`refused, but shows 2" width for the 24 1/2" typed`), JSON.stringify(v));
+});
+
+it("row 147: every refusal draws one outline of the typed size, a normal build none", () => {
+  for (const prompt of ["bookcase 1/2 wide", "abacus 2 1/8 wide 9 rods", "end table 1/2 tall"]) {
+    const p = generateFromPrompt(prompt);
+    const box = refusedOutline(p);
+    assert.ok(box, prompt);
+    assert.deepEqual(box, { width: p.overall.width, height: p.overall.height, depth: p.overall.depth });
+    assert.equal(outlineEdges(box!).length, 6, "two rings and four posts");
+  }
+  assert.equal(refusedOutline(generateFromPrompt("bookcase")), null);
+});
+
 it("the default-size reference strips every typed size", () => {
   assert.equal(withoutSizes("bookcase 1/2 wide"), "bookcase");
   assert.equal(withoutSizes("table 6 x 30 x 30 with a shelf"), "table with a shelf");
   assert.equal(withoutSizes("bench 7 1/16 deep 18 tall"), "bench");
+});
+
+it("row 141: a water wheel's posts stand on its bases, never through them", async () => {
+  const { buildRecipe } = await import("./recipeBuild");
+  const { findRecipe } = await import("./recipes");
+  const { hiddenOverlaps } = await import("./solids");
+  for (const q of ["water wheel", "water wheel 2 tall", "garden water wheel 24 wide"]) {
+    const b = buildRecipe(findRecipe(q)!, q);
+    assert.deepEqual(hiddenOverlaps(b.project).filter((m) => /base runs into (?:left|right) post|post runs into (?:left|right) base/.test(m)), [], q);
+  }
 });

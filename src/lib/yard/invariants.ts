@@ -454,6 +454,7 @@ export function i38(p: YardProject, plan: BuildPlan): Violation[] {
  * W x D x H string. A bought unit item keeps its own size, and a size over the input cap is said back (I10).
  */
 export function i35(p: YardProject, prompt: string): Violation[] {
+  if (prompt && p.refused && !boundPrompt(prompt).note) return i35Refused(p, prompt).map((m) => v("I35", m));
   if (!prompt || !p.panels.length || p.displayOnly || isUnitItem(p) || boundPrompt(prompt).note) return [];
   const typed = typedMeasures(prompt);
   const o = p.overall;
@@ -468,6 +469,32 @@ export function i35(p: YardProject, prompt: string): Violation[] {
     if (want.some((w, i) => Math.abs(w - got[i]) > TOL)) out.push(`typed ${typed.tuple.map((x) => `${inchFrac(x)}"`).join(" x ")}, built ${[o.width, o.depth, o.height].map((x) => `${inchFrac(x)}"`).join(" x ")}`);
   }
   return out.map((m) => v("I35", m));
+}
+
+/**
+ * I35 on a refusal (Critic #103 r2 row 149): a misread that lands under a minimum must not pass as an honest refusal.
+ * The size a refused build shows is the size typed, and its "Nothing is built at X"" names the typed size on the axis
+ * the refusal is about ("needs at least … wide").
+ */
+function i35Refused(p: YardProject, prompt: string): string[] {
+  const t = typedMeasures(prompt);
+  const typed: Partial<Record<"width" | "depth" | "height", number>> = {};
+  if (t.tuple) [typed.width, typed.depth, typed.height] = t.tuple;
+  for (const a of ["width", "depth", "height"] as const) if (t[a] != null) typed[a] = t[a];
+  const TOL = 1 / 16 + 1e-6;
+  const out: string[] = [];
+  for (const a of ["width", "depth", "height"] as const) {
+    const want = typed[a];
+    if (want != null && Math.abs(p.overall[a] - want) > TOL) out.push(`refused, but shows ${inchFrac(p.overall[a])}" ${a} for the ${inchFrac(want)}" typed`);
+  }
+  const m = /needs (?:at least )?[\d /]+" (wide|deep|tall)\b[\s\S]*?Nothing is built at ([\d /]+)"/.exec(p.refused ?? "");
+  if (m) {
+    const axis = ({ wide: "width", deep: "depth", tall: "height" } as const)[m[1] as "wide" | "deep" | "tall"];
+    const at = shopInches(m[2]), want = typed[axis];
+    if (want == null) out.push(`the refusal says nothing is built at ${m[2].trim()}" ${m[1]}, but no ${axis} was typed`);
+    else if (Math.abs(at - want) > TOL) out.push(`typed ${inchFrac(want)}" ${axis}, the refusal says nothing is built at ${m[2].trim()}"`);
+  }
+  return out;
 }
 
 /**
