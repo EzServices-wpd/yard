@@ -8,6 +8,7 @@ import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typ
 import { HEAD_ROOT, REPORT_ONLY_IDS, TYPED_RULE_IDS, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
 import { INVARIANT_CLASS, PER_BUILD } from "../src/lib/yard/invariants.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
+import { namedMinimum } from "./eval-gate-refusal.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
 test("typed lengths: every way a woodworker writes 24 1/2 is 24.5", () => {
@@ -181,6 +182,42 @@ test("a geometry report-only invariant ID never moves a prompt from pass to part
   assert.equal(gradeOne(withHit("I1"), entry!).grade, "fail");
   assert.equal(gradeOf({ empty: false, nounOk: true, scoredIds: [], honored: 3, checkable: 3 }), "pass");
   assert.equal(gradeOf({ empty: false, nounOk: true, scoredIds: [], honored: 2, checkable: 3 }), "partial");
+});
+
+test("honest refusals: the 4 abacus refusals pass (listed, minimum named, minimum builds clean); wrong or unexpected refusals fail", async () => {
+  const E = await loadEngine();
+  const entry = (prompt: string) => ({ prompt, sources: ["test"], ids: [], demands: typedDemands(prompt), demandsFrom: "typed-rules" });
+  // Hand-worked minimums (1 1/2" of ends + 9/16" per rod), independent of the engine's refusal text.
+  assert.deepEqual(namedMinimum("3 3/16 wide"), { axis: "W", value_in: 3.1875, quote: "3 3/16 wide" });
+  assert.equal(namedMinimum("A 13-rod abacus needs 8 13/16\" wide. Nothing is built: make it 8 13/16\" wide")?.value_in, 8.8125);
+  assert.deepEqual(Object.keys(E.refusals).sort(), ["abacus 2 wide", "abacus 3 wide 3 rods", "abacus 4 wide 13 rods", "abacus 8 wide 12 rods"]);
+  for (const q of Object.keys(E.refusals)) {
+    const r = gradeOne(E, entry(q));
+    assert.equal(r.header, "Abacus · nothing built", q);
+    assert.equal(r.grade, "pass", `${q}: ${r.refusal?.why}`);
+    assert.ok(r.refusal?.honest && r.classes.length === 0, q);
+  }
+  const refusedP = E.generateFromPrompt("abacus 3 wide 3 rods");
+  const stub = (over: Partial<typeof E>) => ({ ...E, ...over });
+  // A refusal of a prompt not listed (a build was expected) fails.
+  const notListed = gradeOne(stub({ generateFromPrompt: (q: string) => (q === "abacus 9 wide 3 rods" ? refusedP : E.generateFromPrompt(q)) }), entry("abacus 9 wide 3 rods"));
+  assert.equal(notListed.grade, "fail");
+  assert.match(notListed.refusal!.why, /build was expected/);
+  assert.ok(notListed.classes.includes("X-refusal"));
+  // Listed, but the refusal names the wrong minimum: fails.
+  const wrongMin = { ...E.refusals, "abacus 3 wide 3 rods": { minimum: "4 wide", why: "test" } };
+  assert.match(gradeOne(stub({ refusals: wrongMin }), entry("abacus 3 wide 3 rods")).refusal!.why, /expected 4 wide/);
+  // Listed, but the named minimum itself refuses: fails.
+  const minRefuses = stub({ generateFromPrompt: (q: string) => (q.startsWith("abacus 3 3/16 wide") ? refusedP : E.generateFromPrompt(q)) });
+  const r3 = gradeOne(minRefuses, entry("abacus 3 wide 3 rods"));
+  assert.equal(r3.grade, "fail");
+  assert.match(r3.refusal!.why, /minimum does not build/);
+  // Listed, refused, but a price still shows: fails.
+  assert.match(gradeOne(stub({ buildPlan: (p: any) => ({ ...E.buildPlan(p), totals: { ...E.buildPlan(p).totals, estCostUsd: 4.5 } }) }), entry("abacus 2 wide")).refusal!.why, /price/);
+  // Listed, but it builds instead of refusing: fails.
+  const builds = gradeOne(stub({ refusals: { ...E.refusals, "abacus 10 wide 15 rods": { minimum: "10 wide", why: "test" } } }), entry("abacus 10 wide 15 rods"));
+  assert.equal(builds.grade, "fail");
+  assert.match(builds.refusal!.why, /but it built/);
 });
 
 test("#110 B1: 'queen platform bed with drawers' that builds 0 drawers with no note is not a pass (I31 grades)", async () => {
