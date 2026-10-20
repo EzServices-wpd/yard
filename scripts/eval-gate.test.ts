@@ -137,3 +137,12 @@ test("corpus deletion fails the gate: a prompt in main's corpus missing from the
     assert.equal(cli(HEAD_ROOT).status, 0);
   } finally { rmSync(pr, { recursive: true, force: true }); }
 });
+test("recipe-bot auto-merge waits for the eval gate too, on the exact commit", () => {
+  const y = readFileSync(join(HEAD_ROOT, ".github/workflows/recipe-automerge.yml"), "utf8");
+  assert.match(y, /workflows: \[guards, eval-gate\]/);
+  assert.match(y, /for wf in guards\.yml eval-gate\.yml; do/);
+  assert.match(y, /\[ "\$got" = "completed\/success" \] \|\| \{[^}]*exit 0; \}/);
+  // The merge comes after both checks.
+  assert.ok(y.indexOf("eval-gate.yml; do") < y.indexOf("gh pr merge"));
+  assert.match(readFileSync(join(HEAD_ROOT, ".github/workflows/eval-gate.yml"), "utf8"), /^name: eval-gate$/m);
+});
