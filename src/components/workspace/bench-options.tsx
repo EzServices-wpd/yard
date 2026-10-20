@@ -30,9 +30,15 @@ export function BenchOptionsToggle({
   panelId: string;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const { label, wire } = useStockLabel();
+  const { label, wire, offersStock } = useStockLabel();
   return (
     <div className="flex max-w-full shrink-0 items-center gap-1.5">
+      {!offersStock ? (
+        <span data-yard-material-chip="none" className="inline-flex h-11 max-w-full shrink items-center rounded-full border border-border px-3.5 text-sm sm:max-w-[16rem]">
+          <span className="text-muted">Material:&nbsp;</span>
+          <span className="text-fg" data-yard-stock-label>{label}</span>
+        </span>
+      ) : (
       <button
         type="button"
         onClick={onStock}
@@ -48,6 +54,7 @@ export function BenchOptionsToggle({
         </span>
         <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
       </button>
+      )}
       <button
         ref={buttonRef}
         type="button"
@@ -111,7 +118,7 @@ export function BenchOptionsPanel({
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const reset = useYard((s) => s.reset);
   const plan = useYard((s) => s.plan);
-  const { label: stockLabel, wire } = useStockLabel();
+  const { label: stockLabel, wire, offersStock } = useStockLabel();
   const [toolsShown] = useBenchToolsShown();
 
   useEffect(() => {
@@ -200,6 +207,7 @@ export function BenchOptionsPanel({
             <span className={`block truncate ${wire ? "text-accent" : "text-fg"}`}>{wire ? "No real stock yet" : stockLabel}</span>
             {pieces ? <span className="block text-xs text-muted">{pieces} pieces</span> : null}
           </p>
+          {offersStock && (
           <button
             type="button"
             data-yard-stock
@@ -211,6 +219,7 @@ export function BenchOptionsPanel({
           >
             Choose stock
           </button>
+          )}
         </div>
       </Section>
       )}
