@@ -236,8 +236,10 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(TOOL_LABEL[t], tx + tw / 2, y + 42, { align: "center" });
   });
   y += 52;
-  if (project.prompt && y < BOTTOM - 20) {
-    textBlock(`You asked for: "${project.prompt}"`, L, y, W, 9, "italic", KIT.muted);
+  // The words the person typed (fractions, ft-in), never the engine's normalized prompt: same rule as the prompt bar.
+  const asked = project.typedPrompt || project.prompt;
+  if (asked && y < BOTTOM - 20) {
+    textBlock(`You asked for: "${asked}"`, L, y, W, 9, "italic", KIT.muted);
   }
 
   // ═════════════════════════ BEFORE YOU START
