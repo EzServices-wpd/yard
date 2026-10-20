@@ -86,7 +86,8 @@ export function typedAxesOf(
     // A number typed twice ("36 long 12 wide 12 tall") is free once its axis words have each used one.
     const owns = (x: number) => near(x, n) || (x % 1 !== 0 && Math.floor(x) === n);
     const owned = (Object.entries(words) as [Axis, number[]][]).reduce((k, [b, xs]) => k + (b === a ? 0 : xs.filter(owns).length), 0);
-    const times = Number.isInteger(n) ? (prompt.match(new RegExp(String.raw`(?<![\d./])${n}(?![\d.])`, "g")) ?? []).length : 1;
+    // A number typed in feet ("6 ft long" is 72) is typed once, though 72 never appears.
+    const times = Number.isInteger(n) ? Math.max(1, (prompt.match(new RegExp(String.raw`(?<![\d./])${n}(?![\d.])`, "g")) ?? []).length) : 1;
     if (owned >= times && !words[a]?.length) continue;
     // A number on its own axis is used there (already typed by its axis word, or typed now); only a number the
     // build does not stand at on its own axis looks for another axis.

@@ -34,8 +34,8 @@ const AXES: Axis[] = ["width", "height", "depth"];
 const WORD: Record<Axis, string> = { width: "wide", height: "tall", depth: "deep" };
 const inches = (t: string) => t.trim().split(/\s+/).reduce((n, w) => n + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
 const NOTE = /^Assumed\s+(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*(?:"|″|in)?\s*(wide|tall|deep|long)\b(?:\s*\(([^)]*)\))?/i;
-/** A note about the overall ("(default size)", "(bookcase class default)"), not a part. */
-const overallNote = (paren?: string) => !paren || /^(?:[a-z]+\s+)?(?:class\s+)?default(?:\s+size)?$/i.test(paren.trim());
+/** A note about the overall ("(default size)"), not a part ("(desk default)": an L-desk wing's depth). */
+const overallNote = (paren?: string) => !paren || /^(?:class\s+)?default(?:\s+size)?$/i.test(paren.trim());
 const NUMBER: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
 const COUNTED = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(?:[a-z-]+\s+)?(shelves|shelf|drawers?|doors?|bays?|cubbies|cubby|rungs?|steps?|legs?|hooks?|cubes?|baskets?|tiers?)\b/gi;
 const FEATURES = ["casters", "wheels", "doors", "drawers", "shelves", "hinges", "slides", "handles", "pulls", "knobs", "hooks", "mirror", "toe kick", "back", "lid", "cubbies", "rod"];
