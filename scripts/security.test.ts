@@ -13,6 +13,13 @@ test("every xAI call goes through the capped helper (src/lib/ai/xai.server.ts)",
   assert.deepEqual(bad, []);
 });
 
+test("in scripts/, only scripts/grok-check/client.ts talks to api.x.ai or reads XAI_API_KEY", () => {
+  const bad = walk("scripts")
+    .filter((f) => /\.(ts|tsx|js|mjs)$/.test(f) && !/\.test\./.test(f) && f !== path.join("scripts", "grok-check", "client.ts"))
+    .filter((f) => /api\.x\.ai|XAI_API_KEY/.test(fs.readFileSync(f, "utf8")));
+  assert.deepEqual(bad, []);
+});
+
 test("the recipe bot never takes recipe JSON from the client", () => {
   const src = fs.readFileSync("src/lib/ai/recipeBot.ts", "utf8");
   assert.doesNotMatch(src, /validator\(\(input: \{ recipeJson/);
