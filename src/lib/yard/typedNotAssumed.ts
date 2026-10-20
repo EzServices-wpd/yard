@@ -3,12 +3,14 @@
  * A typed axis is built or refused; the spec never marks it assumed and the cover never labels it assumed, sets a
  * different "default size … assumed" beside it, or shows an overall size the model does not have (the built box, or on
  * depth the finished depth with proud fronts, or the drawn extent). A typed size built differently is said on the cover, naming both sizes.
+ * The cover's subtitle, title and drawing tags agree on every axis, fresh or edited on the bench (row 202).
  * Header/pill, card, Measure readout, steps and Buy move to the spec in their own follow-ups.
  */
 import { modelFinishedDepth } from "./modelSize";
 import { coverAxesTalk } from "./headerSize";
 import { inchFrac } from "./inchText";
-import { drawnExtent } from "./pdfDraw";
+import { drawnExtent, lineSpans } from "./pdfDraw";
+import { headerTitle } from "./pdf";
 import { specBox } from "./spec";
 import { isBedLongWide, typedAxesOf, typedOffBy, type Axis } from "./typedAxesRead";
 import { isUnitItem } from "./unitItems";
@@ -44,10 +46,19 @@ export function typedAssumedFailures(p: YardProject, prompt: string): string[] {
     const a = WORD[m[2]];
     if (!fits(a, inches(m[1]))) out.push(`PDF cover shows ${m[1]}" ${m[2]}, built ${inchFrac(a === "depth" ? finished : box[a])}"`);
   }
-  // A typed size built differently is said on the cover, naming both sizes.
+  // Row 202: the cover says one size on every axis: its subtitle, its title (headerTitle) and its drawing's tags.
+  const title = headerTitle(p, { features: false }).match(new RegExp(String.raw`${NUM}" W × ${NUM}" D × ${NUM}" H`));
+  const tags = d ? lineSpans(p, d) : null;
+  for (const m of head.matchAll(new RegExp(String.raw`(?:^| x |, | and | · )${NUM}" (wide|tall|deep)\b`, "g"))) {
+    const a = WORD[m[2]];
+    const t = title ? inches(title[{ width: 1, depth: 2, height: 3 }[a]]) : null;
+    if (t != null && !near(t, inches(m[1]))) out.push(`PDF cover says ${m[1]}" ${m[2]}, its title ${inchFrac(t)}"`);
+    if (tags && !near(tags[a], inches(m[1]))) out.push(`PDF cover says ${m[1]}" ${m[2]}, its drawing tag ${inchFrac(tags[a])}"`);
+  }
+  // A typed size built differently is said on the cover, naming both sizes (an edited axis is the person's own value).
   for (const a of AXES) {
-    const t = bed ? null : typedOffBy(p.typedPrompt ?? prompt, a, a === "depth" ? [box.depth, finished] : [box[a]]);
+    const t = bed || p.spec?.size[a].edited ? null : typedOffBy(p.typedPrompt ?? prompt, a, a === "depth" ? [box.depth, finished] : [box[a]]);
     if (t != null && !talk.subtitle.includes(`(you typed ${inchFrac(t)}")`)) out.push(`typed ${inchFrac(t)}" ${a}, built ${inchFrac(box[a])}", and the cover does not name both`);
   }
-  return [...new Set(out)].slice(0, 4);
+  return [...new Set(out)].slice(0, 6);
 }

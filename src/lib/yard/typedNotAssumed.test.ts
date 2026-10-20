@@ -14,9 +14,10 @@ import { labeledAxisValues } from "./typedAxesRead";
 const cover = (q: string) => typedAxesTalk(generateFromPrompt(q)).subtitle;
 const i42 = (q: string) => typedAssumedFailures(generateFromPrompt(q), q);
 
-test("pocket vanity canary (nothing typed): the cover assumes the 38 x 102 unit, never the 48 7/8 x 104 x 35 1/2 room pocket", () => {
+test("pocket vanity canary (nothing typed): the cover assumes the 38 x 102 x 17 unit, never the 48 7/8 x 104 x 35 1/2 room pocket", () => {
   for (const q of ["pocket vanity", "house: bathroom pocket vanity original trapezoid"]) {
-    assert.equal(cover(q), '38" wide, 102" tall and 17 3/4" deep assumed, measure to lock · doors and drawer fronts stand proud', q);
+    // One depth on the page: the title's and tag's 17", the proud fronts said once, in the note (Critic #109 B1).
+    assert.equal(cover(q), '38" wide, 102" tall and 17" deep assumed, measure to lock · doors and drawer fronts stand proud', q);
     assert.deepEqual(i42(q), [], q);
   }
 });
@@ -77,8 +78,28 @@ test("one spec, built at intake: noun, typed/assumed axes, counts, features, sto
   assert.equal(s.refusal, null);
   // Flip the spec and the cover follows it: the cover never decides on its own.
   const flipped = { ...p, spec: { ...s, size: { ...s.size, width: { ...s.size.width, assumed: true }, depth: { ...s.size.depth, assumed: false } } } };
-  assert.match(typedAxesTalk(flipped).subtitle, /^48" tall x 12" deep · 30" wide assumed/);
+  assert.match(typedAxesTalk(flipped).subtitle, /^48" tall x 12 3\/4" deep · 30" wide assumed/);
   // A bench edit (a size override) types every axis: nothing on the cover is assumed.
   const edited = generateFromPrompt("bookcase 30 wide", undefined, undefined, { sizeOverride: { width: 30, height: 60, depth: 10 } } as never);
   assert.doesNotMatch(typedAxesTalk(edited).subtitle, /assumed/);
+});
+
+test("an edit in place rebuilds the spec from the spec before it: the edited axis is the person's own value, never 'you typed' the old one", async () => {
+  const { withEditedSpec } = await import("./spec");
+  const { headerTitle } = await import("./pdf");
+  // The store's Measure path for a fitted carcass: fittedOverride + honorUnit, then the bench's spec, edited.
+  const edit = (q: string, width: number) => {
+    const p = generateFromPrompt(q);
+    const f = p.fitted!;
+    return withEditedSpec(p, generateFromPrompt(q, p.primaryMaterialId, undefined, { fittedOverride: { ...f, unit: { ...f.unit, width }, opening: { ...f.opening, width } }, honorUnit: true } as never));
+  };
+  const linen = edit("linen closet 31.5 wide 78 tall 16 deep", 36);
+  assert.equal(typedAxesTalk(linen).subtitle, '36" wide x 78" tall x 16" deep · doors stand proud');
+  const ns = edit("nightstand", 24);
+  assert.deepEqual([ns.spec!.size.width.edited, ns.spec!.size.depth.assumed, ns.spec!.size.height.assumed], [true, true, true]);
+  // The cover's depth is its title's (fronts in the note once), and nothing says "you typed".
+  const depth = headerTitle(ns, { features: false }).match(/× ([\d /]+)" D/)![1];
+  assert.match(typedAxesTalk(ns).subtitle, new RegExp(`^24" wide · .*${depth}" deep assumed`));
+  assert.doesNotMatch(typedAxesTalk(ns).subtitle, /you typed/);
+  assert.deepEqual(typedAssumedFailures(ns, "nightstand"), []);
 });
