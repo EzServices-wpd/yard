@@ -1155,7 +1155,11 @@ export { planStepParts, stepKindOf };
  * The header everywhere a size shows: the name without its bare size, then the finished size with every
  * axis labelled in one order, W × D × H, and the axes nobody typed marked assumed.
  */
+/** What a refused build's header says after the thing asked for: no size, no count, no fallback family. */
+export const NOTHING_BUILT_HEADER = "nothing built";
 export function headerTitle(project: YardProject, opts: { features?: boolean } = {}): string {
+  // A refused build names what was asked for and says nothing was built: never a size it didn't build, never a fallback.
+  if (project.refused && !project.panels.length) return `${clean(project.name).trim() || "Yard plan"} · ${NOTHING_BUILT_HEADER}`;
   return [`${headerName(project)} · ${headerAxes(project)}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
 }
 
