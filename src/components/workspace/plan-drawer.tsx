@@ -20,7 +20,7 @@ import { ExportDialog } from "@/components/workspace/export-dialog";
 import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
-import { envelopeText } from "@/lib/yard/builtSize";
+import { envelopeText, nothingBuilt } from "@/lib/yard/builtSize";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 import { backerRowIds } from "@/lib/plan/backer";
 
@@ -189,6 +189,8 @@ function PlanBody({
   }
 
   async function makeRender() {
+    // Nothing built has nothing to picture and no size to describe (builtSize.ts).
+    if (nothingBuilt(project)) return;
     setRenderBusy(true);
     setRenderErr(null);
     try {

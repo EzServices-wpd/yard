@@ -9,6 +9,7 @@
  * into and every drawer a flat hand fits into. The minimum a refusal names is the smallest size that passes both.
  */
 import { getCatalogItem } from "./catalog";
+import { inchFrac } from "./inchText";
 import { benchModelBox } from "./benchFrame";
 import { ungroundedParts } from "./grounded";
 import { drawerBoxes } from "./hollowDrawers";
@@ -38,8 +39,8 @@ export const USABLE_FLOORS: Record<FamilyFloor["family"], FamilyFloor> = {
   storage: {
     family: "storage",
     label: "Storage carcass (bookcase, shelf unit, cabinet, dresser, chest, box, rack)",
-    width: { inches: HAND_ROLLED_IN, panels: 2, why: `a 3 3/4" opening a hand reaches into, between its two sides`, source: `${MIL}: rolled hand 3.75 in square` },
-    height: { inches: HAND_ROLLED_IN, panels: 2, why: `a 3 3/4" opening a hand reaches into, between its bottom and top`, source: `${MIL}: rolled hand 3.75 in square` },
+    width: { inches: HAND_ROLLED_IN, panels: 2, why: `a ${inchFrac(HAND_ROLLED_IN)}" opening a hand reaches into, between its two sides`, source: `${MIL}: rolled hand 3.75 in square` },
+    height: { inches: HAND_ROLLED_IN, panels: 2, why: `a ${inchFrac(HAND_ROLLED_IN)}" opening a hand reaches into, between its bottom and top`, source: `${MIL}: rolled hand 3.75 in square` },
     depth: { inches: 3.5, why: "the depth of a 2x4 wall's stud bay, the shallowest standard cabinet", source: "A 2x4 stud is 3 1/2\" deep (dressed size, NIST PS 20 American Softwood Lumber Standard); recessed medicine cabinets are built to that bay" },
   },
   table: {
@@ -82,7 +83,8 @@ export function floorFamily(p: YardProject): FloorFamily {
   if (f?.program === "table" || f?.family === "table") return "table";
   if (f?.family === "seat" || f?.program === "bench" || p.kind === "furniture") return "seat";
   if (f?.program === "desk") return f.unit?.kneeW ? "desk" : "workTop";
-  if (f?.family === "floor-carcase" || f?.family === "hung-cabinet" || f?.family === "hung-open" || isCarcass(p)) return "storage";
+  // Open wall pieces (a picture rail, a ledge) hold no hand-in storage unless they are a carcass: measured, not floored.
+  if (f?.family === "floor-carcase" || f?.family === "hung-cabinet" || isCarcass(p)) return "storage";
   return "measured";
 }
 
@@ -171,7 +173,7 @@ export function outgrows(p: YardProject, a: Axis, typed: number, spill: number):
 export const UNUSABLE = {
   none: "for anything to build",
   real: "for every part to be real",
-  bay: `for a hand's room (${HAND_ROLLED_IN === 3.75 ? "3 3/4" : HAND_ROLLED_IN}") in every shelf bay`,
+  bay: `for a hand's room (${inchFrac(HAND_ROLLED_IN)}") in every shelf bay`,
   drawer: `for a flat hand's room (${HAND_FLAT_IN.height}" by ${HAND_FLAT_IN.width}") in every drawer`,
   overlap: "for its parts to fit without running into each other",
   outgrows: "for its parts to fit inside it",

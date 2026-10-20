@@ -4,7 +4,7 @@
 import { doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
-import { shelvesThatFit } from "./usableFloors";
+import { HAND_ROLLED_IN, shelvesThatFit } from "./usableFloors";
 import { boardFace, mattressDeck } from "./fittedParse";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
@@ -2853,7 +2853,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     const { fit, zoneFor } = shelvesThatFit(shelves, shelfZone1 - zoneY0, P);
     if (fit < shelves) {
       const fits = fit === 0 ? "No shelf fits" : `Only ${fit} ${fit === 1 ? "shelf fits" : "shelves fit"}`;
-      shelfFitNote = `${fits} in ${inchFrac(H)}" tall with a hand's room (3 3/4") over each; ${shelves} shelves need ${inchFrac(Math.ceil((H - (shelfZone1 - zoneY0) + zoneFor) * 16 - 1e-6) / 16)}".`;
+      shelfFitNote = `${fits} in ${inchFrac(H)}" tall with a hand's room (${inchFrac(HAND_ROLLED_IN)}") over each; ${shelves} shelves need ${inchFrac(Math.ceil((H - (shelfZone1 - zoneY0) + zoneFor) * 16 - 1e-6) / 16)}".`;
       shelves = fit;
     }
   }
