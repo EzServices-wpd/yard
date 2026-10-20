@@ -112,8 +112,9 @@ describe("stale prompt results never overwrite a newer build", () => {
     await lateResultKeepsNewer("bookcase", "briefHousePrompt", { ok: true, brief });
   });
   it("hint callback from an older prompt", async () => {
-    // The hint branch re-reads the bench's form, so the newer build here is one the engine does not lock (plant stand).
-    await lateResultKeepsNewer(HINT_PATH, "hintSubject", { summary: "a tall box with legs and a top", subject: "cabinet" }, { newer: "plant stand" });
+    // The hint branch re-reads the bench's form, so the newer build here is one the engine does not lock (umbrella
+    // stand: no held-object row yet). "plant stand" builds its own stand family now (I34, row 76).
+    await lateResultKeepsNewer(HINT_PATH, "hintSubject", { summary: "a tall box with legs and a top", subject: "cabinet" }, { newer: "umbrella stand" });
   });
   it("interpret callback from an older prompt", async () => {
     await lateResultKeepsNewer(HINT_PATH, "interpretPrompt", { ok: true, real: "Queried stale form", notes: "stale interpret note" });

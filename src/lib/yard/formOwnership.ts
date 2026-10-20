@@ -56,6 +56,10 @@ function readAll(prompt: string, p: YardProject): boolean {
 export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean): boolean {
   // Critic 10-17: the generic fallback box never keeps a prompt that asks for another form.
   if (genericBoxOverAsk(prompt, p)) return false;
+  // Live walk 10-21 row 76: the storage family the head noun resolved to ("tool cabinet with drawers") read the whole
+  // ask; the modifier ahead of the head noun names what it stores. The family's build is the answer: no learner, and
+  // no lookup that could swap it or a failed one that blocks it.
+  if (half && closedCarcaseReadsAsk(prompt, p, () => ignoredTypedWords(p, prompt))) return true;
   return engineBuiltForm(prompt, p) && (!half || readAll(prompt, p));
 }
 

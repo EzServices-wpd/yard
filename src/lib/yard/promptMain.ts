@@ -22,7 +22,7 @@ import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
-import { inchFrac, parseInch } from "./inchText";
+import { INCH_NUM, inchFrac, parseInch, parseInchNum } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
@@ -59,7 +59,7 @@ import { blockKit, buildBlocks, defaultBlockStock, detectBlockSubject, pieceBoun
 import { composeProducts } from "./compose";
 import { applySpokenFace } from "./face";
 import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct } from "./productModel";
-import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
+import { heldCollection, heldObjectFor, heldPhrase, heldStandObject, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildRealObject, realObjectKind } from "./realObjects";
@@ -1171,7 +1171,17 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (!/\b(stands?|holders?|cradles?|racks?|shel(?:f|ves)|risers?|carts?)\b/.test(lower)) return null;
   // One precedence rule. A known build class wins (cat tree, any animal, robot, frame, and the house
   // furniture identities: shoe rack, bookcase, ladder / floating / utility shelving, printer stand…).
-  if (namedBuildClass(prompt)) return null;
+  // The weekend stick family of a stand for a real held object ("plant stand": a 10" potted plant) is its model, built
+  // only when craft stock is asked for: with no stock typed it would be thrown out for a stand-in and sent to the
+  // learner, so the held-object stand (real lumber, sized to what it holds) builds the family instead.
+  const cls = namedBuildClass(prompt);
+  // The held stand takes the stick model's place only: any other class read past it (an odd-shape plate) still wins.
+  // A typed sheet stock ("plant stand in 1/2 plywood") is the stand's deck, not a closed box of that sheet: the held
+  // stand cuts its deck and shelf from it and says the legs stay lumber. A typed craft stock keeps the stick model.
+  const asked = hasExplicitStock(prompt) ? requestedStock(prompt) : null;
+  const sheet = asked && asked.category === "sheet_goods" && /^plywood-/.test(asked.id) ? asked : null;
+  const heldTakesStick = !!cls?.startsWith("weekend:") && (!hasExplicitStock(prompt) || !!sheet) && !!heldStandObject(lower) && !namedBuildClass(prompt, { pastWeekend: true });
+  if (cls && !heldTakesStick) return null;
   // A shelf / tier count is a property of shelving furniture, never of a stand around one object.
   if (/\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:shel(?:f|ves)|tiers?|levels?)\b/.test(lower)) return null;
   // "shelf for my X collection" is a display shelf: X is what it shows.
@@ -1180,7 +1190,8 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (purposeOf(prompt) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
   const phrase = heldPhrase(stripPetUse(lower));
   if (!phrase) return null;
-  const held = heldObjectFor(phrase);
+  // The object reads the whole prompt: its typed size ("for a 14\" pot") and count ("with 3 pots") are its own.
+  const held = heldObjectFor(phrase, lower) ?? heldStandObject(lower);
   if (!held) {
     // Many of X (a count or a plural: "12 bottles", "jars", "my shoes") is storage furniture for X.
     if (holdsMany(phrase)) return null;
@@ -1190,10 +1201,19 @@ function placeHeldProduct(prompt: string): YardProject | null {
   }
   const titleFor = (label: string) => {
     const noun = (lower.match(/\b(stand|riser|shelf|holder|cradle|cart|rack)\b/)?.[1] ?? "stand");
-    const art = /^(?:one|two|three|four|\d+\s+\w+s)\b/i.test(label) && !/^\d+\s*(?:gallon|inch|″|")/i.test(label) ? "" : /^(?:[aeiou]|8\b|11\b|18\b)/i.test(label) ? "an " : "a ";
+    const art = /^(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+\s+\w+s)\b/i.test(label) && !/^\d+\s*(?:gallon|inch|″|")/i.test(label) ? "" : /^(?:[aeiou]|8\b|11\b|18\b)/i.test(label) ? "an " : "a ";
     return `${noun.charAt(0).toUpperCase()}${noun.slice(1)} for ${art}${label}`;
   };
-  if (held) return buildHeldStand(prompt, held, titleFor(held.label));
+  if (held) {
+    const stand = buildHeldStand(prompt, held, titleFor(held.label), heldTakesStick && sheet ? { sheet } : {});
+    // A typed inch size that names no axis and no held object ("pot stand 14 inch") is not guessed at: the note says
+    // it was not read and how to type it (I40: every typed size is used or refused with a note).
+    const loose = [...lower.matchAll(new RegExp(String.raw`(?<![\w/.])(${INCH_NUM})\s*(?:in|inch|inches|"|″)(?![\w-])(?:\s*-?\s*([a-z]+))?`, "g"))]
+      .filter((m) => !(m[2] && (/^(?:wide|width|long|length|deep|depth|tall|high|height|diameter|across|thick|square|round|plywood|ply|mdf|board|boards|lumber|sheet|dowels?|pine|oak|maple|cedar|birch|walnut|poplar|x|by)$/.test(m[2]) || heldObjectFor(m[2]))))
+      .map((m) => `${inchFrac(parseInchNum(m[1]))}"`);
+    if (loose.length) stand.notes = [...(stand.notes ?? []), `The typed ${loose.join(" and ")} names no axis, so the stand does not use it: type ${loose[0]} wide, ${loose[0]} deep or ${loose[0]} tall, or the size of what it holds.`];
+    return stand;
+  }
   // A named product with a listing or usual-family size keeps that envelope.
   if (!hasProductDrawing(phrase)) return null;
   const item = modeledProduct(phrase);
@@ -1353,15 +1373,15 @@ function generateRaw(
   if (cut) return cut;
   const placed = buildClass ? null : placeNamedProduct(prompt);
   if (placed && !formOverride) return placed;
-  const held = placeHeldProduct(prompt);
-  if (held && !formOverride) return held;
-  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser.
+  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser (or a one-pot stand).
   // A craft stock pick (popsicle, dowel…) stays craft.
   if (!formOverride && !opts.fittedOverride) {
     const tiers = plantStandTiers(lower);
     const ask = tiers ? requestedStock(prompt, materialOverride) : null;
     if (tiers && (!ask || carcaseKind(ask) || /^lumber-/.test(ask.id))) return buildTieredPlantStand(prompt, tiers);
   }
+  const held = placeHeldProduct(prompt);
+  if (held && !formOverride) return held;
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
   const scale = opts.scale ?? "full";
