@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
-import { HEAD_ROOT, corpusPrompts, corpusRemovals, gradeCanary, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { INVARIANT_CLASS, PER_BUILD } from "../src/lib/yard/invariants.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
@@ -149,4 +150,31 @@ test("recipe-bot auto-merge waits for the eval gate too, on the exact commit", (
   // The merge comes after both checks.
   assert.ok(y.indexOf("eval-gate.yml; do") < y.indexOf("gh pr merge"));
   assert.match(readFileSync(join(HEAD_ROOT, ".github/workflows/eval-gate.yml"), "utf8"), /^name: eval-gate$/m);
+});
+
+test("a report-only invariant ID never moves a prompt from pass to partial: gradeOne grades PER_BUILD only, the set eval-score counts (row 181)", async () => {
+  const scored = new Set<string>(PER_BUILD);
+  // Every checkBuild ID outside PER_BUILD (ratchet/baseline only), plus I37, the report-only hunter ID that dropped 36 prompts.
+  const reportOnly = [...new Set([...Object.keys(INVARIANT_CLASS).filter((id) => !scored.has(id)), "I37"])];
+  assert.ok(reportOnly.includes("I28") && reportOnly.length > 5, "I26-I32 and friends are report-only");
+  const E = await loadEngine();
+  assert.deepEqual([...E.perBuild].sort(), [...scored].sort(), "the gate reads PER_BUILD from invariants.ts, not a copy");
+  // One source for the set: eval-lib (eval-score) and the gate both import PER_BUILD from invariants.ts.
+  assert.match(readFileSync("scripts/eval-lib.ts", "utf8"), /PER_BUILD[^\n]*from "\.\.\/src\/lib\/yard\/invariants\.ts"/);
+  assert.match(readFileSync("scripts/eval-gate-lib.ts", "utf8"), /perBuild: new Set<string>\(inv\.PER_BUILD\)/);
+  const entry = loadCorpus().find((e) => gradeOne(E, e).grade === "pass");
+  assert.ok(entry, "the corpus has a passing prompt");
+  const base = gradeOne(E, entry!);
+  const withHit = (id: string) => ({ ...E, checkBuild: (p: any, q: string, plan?: any) => [...E.checkBuild(p, q, plan), { id, cls: INVARIANT_CLASS[id as keyof typeof INVARIANT_CLASS] ?? "F99", msg: `injected ${id}` }] });
+  for (const id of reportOnly) {
+    const r = gradeOne(withHit(id), entry!);
+    assert.equal(r.grade, "pass", `${id} (report-only) moved "${entry!.prompt}" to ${r.grade}`);
+    assert.ok(r.invariants.some((v) => v.id === id && !v.scored), `${id} is still listed, marked not scored`);
+    assert.deepEqual(r.classes, base.classes, `${id} adds no class`);
+  }
+  // A scored ID still grades: I4 → partial, I1 → fail.
+  assert.equal(gradeOne(withHit("I4"), entry!).grade, "partial");
+  assert.equal(gradeOne(withHit("I1"), entry!).grade, "fail");
+  assert.equal(gradeOf({ empty: false, nounOk: true, scoredIds: [], honored: 3, checkable: 3 }), "pass");
+  assert.equal(gradeOf({ empty: false, nounOk: true, scoredIds: [], honored: 2, checkable: 3 }), "partial");
 });
