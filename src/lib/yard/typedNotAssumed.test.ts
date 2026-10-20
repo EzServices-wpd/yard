@@ -7,7 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { generateFromPrompt } from "./promptMain";
-import { typedAxesTalk } from "./pdf";
+import { coverAxesTalk as typedAxesTalk } from "./headerSize";
 import { typedAssumedFailures } from "./typedNotAssumed";
 import { labeledAxisValues } from "./typedAxesRead";
 

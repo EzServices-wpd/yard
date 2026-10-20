@@ -6,7 +6,7 @@
  * Header/pill, card, Measure readout, steps and Buy move to the spec in their own follow-ups.
  */
 import { modelFinishedDepth } from "./modelSize";
-import { typedAxesTalk } from "./headerSize";
+import { coverAxesTalk } from "./headerSize";
 import { inchFrac } from "./inchText";
 import { drawnExtent } from "./pdfDraw";
 import { specBox } from "./spec";
@@ -31,7 +31,7 @@ export function typedAssumedFailures(p: YardProject, prompt: string): string[] {
   const fits = (a: Axis, n: number) => near(n, box[a]) || (a === "depth" && near(n, finished)) || (!!drawn && near(n, drawn[a]));
   const bed = isBedLongWide(p.notes);
   const typed = typedAxesOf(p.typedPrompt ?? prompt, bed, { ...box, depth: finished }, box);
-  const talk = typedAxesTalk(p);
+  const talk = coverAxesTalk(p);
   // The one spec, set at intake, agreeing with the typed words.
   if (!p.spec) out.push("no spec: the cover would have to decide typed versus assumed on its own");
   else for (const a of typed) if (!p.spec.size[a].typed || p.spec.size[a].assumed) out.push(`spec records the typed ${a} as ${p.spec.size[a].assumed ? "assumed" : "untyped"}`);
