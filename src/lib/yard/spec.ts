@@ -116,9 +116,13 @@ export function editedSpec(prev: YardSpec, built: YardProject): YardSpec {
   })) as Record<Axis, SpecAxis>;
   const moved = AXES.some((a) => size[a].edited && !prev.size[a].edited);
   const sameStock = built.primaryMaterialId === prev.stockId;
+  // A follow-on's own words ("add 2 more shelves", "with casters") add to what was asked; sizes stay the bench's.
+  const fresh = buildSpec(built);
   return {
     ...prev,
     size,
+    counts: { ...prev.counts, ...fresh.counts },
+    features: [...new Set([...prev.features, ...fresh.features])],
     stock: prev.stock && !moved,
     stockId: built.primaryMaterialId,
     species: sameStock ? prev.species : (namedLumberFromPrompt(built.prompt ?? "")?.display ?? null),
