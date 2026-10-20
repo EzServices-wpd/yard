@@ -120,7 +120,9 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
     // Corpus removals: main's own corpus files (the merge-base checkout) vs the PR's, so deleting a prompt cannot hide a regression.
     const headRoot = resolve(arg("--head-root") ?? HEAD_ROOT);
     const removalsFile = resolve(arg("--removals-allow") ?? resolve(headRoot, "evals/corpus-removals.json"));
-    const removals = arg("--base-root") ? corpusRemovals(corpusPrompts(resolve(arg("--base-root")!)), corpusPrompts(headRoot), existsSync(removalsFile) ? rd(removalsFile) : {}) : [];
+    // Fail closed: without main's checkout there is nothing to compare against, so the diff refuses to run.
+    if (!arg("--base-root")) throw new Error("--base-root <main checkout> is required (corpus-removal check)");
+    const removals = corpusRemovals(corpusPrompts(resolve(arg("--base-root")!)), corpusPrompts(headRoot), existsSync(removalsFile) ? rd(removalsFile) : {});
     const d = diffGates(rd(arg("--base")), rd(arg("--head")), allow, { base: rd(arg("--base-props")), head: rd(arg("--head-props")) }, removals);
     const changed = arg("--changed") ? readFileSync(resolve(arg("--changed")!), "utf8").split("\n").filter(Boolean) : [];
     const md = renderComment(d, { runtime: arg("--runtime"), run: arg("--run"), gateFiles: changed });

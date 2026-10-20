@@ -135,6 +135,10 @@ test("corpus deletion fails the gate: a prompt in main's corpus missing from the
     assert.equal(bad.status, 1, bad.stderr);
     assert.match(bad.stdout, /Eval gate ❌ fail/);
     assert.equal(cli(HEAD_ROOT).status, 0);
+    // Fail closed: the CI step without main's checkout does not pass.
+    const noBase = spawnSync(process.execPath, [...process.execArgv, join(HEAD_ROOT, "scripts/eval-gate-diff.ts"), "--base", gf, "--head", gf], { encoding: "utf8" });
+    assert.notEqual(noBase.status, 0);
+    assert.match(noBase.stderr, /--base-root <main checkout> is required/);
   } finally { rmSync(pr, { recursive: true, force: true }); }
 });
 test("recipe-bot auto-merge waits for the eval gate too, on the exact commit", () => {
