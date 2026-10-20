@@ -930,14 +930,14 @@ export function spokenDiameterInches(prompt: string): number {
 export function deskWidthFromPrompt(prompt: string): number {
   const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
   const ahead = t.match(
-    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
+    /(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
   );
   if (ahead) {
     const n = parseFloat(ahead[1]);
     if (Number.isFinite(n) && n >= 18 && n <= 120) return n;
   }
   const after = t.match(
-    /\b(?:writing\s+)?desk\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))/i,
+    /\b(?:writing\s+)?desk\s+(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(?!\s*(?:in|inch|inches|")?\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))\s*(?:in|inch|inches|")?/i,
   );
   if (after) {
     const n = parseFloat(after[1]);
@@ -1007,7 +1007,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
+      String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
       "i",
     ),
   );
@@ -1017,7 +1017,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`,
+      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*-?\s*${unit}${notAxis}`,
       "i",
     ),
   );
@@ -1031,7 +1031,7 @@ export function tableSpanFromPrompt(prompt: string): number {
     " ",
   );
   const leftover = stripped.match(
-    new RegExp(String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`, "i"),
+    new RegExp(String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*-?\s*${unit}${notAxis}`, "i"),
   );
   if (leftover && /\btable\b/i.test(stripped)) {
     const n = parseFloat(leftover[1]);
@@ -1055,7 +1055,7 @@ export function nounSpanFromPrompt(prompt: string): number {
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
+      String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
       "i",
     ),
   );
@@ -1065,7 +1065,7 @@ export function nounSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}`,
+      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*-?\s*${unit}`,
       "i",
     ),
   );
@@ -1293,7 +1293,7 @@ export function openingWidthFromPrompt(prompt: string): number {
   const ahead = t.match(
     new RegExp(
       // "48x18 opening" is a W×H pair — the width is the first number, never the trailing 18.
-      String.raw`(?:(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
+      String.raw`(?:(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
         storageNoun,
       "i",
     ),
@@ -1307,7 +1307,7 @@ export function openingWidthFromPrompt(prompt: string): number {
     new RegExp(
       String.raw`\b` +
         storageNoun +
-        String.raw`\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length))`,
+        String.raw`\s+(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(?!\s*(?:in|inch|inches|")?\s*(?:wide|width|deep|depth|tall|high|height|long|length))\s*(?:in|inch|inches|")?`,
       "i",
     ),
   );
