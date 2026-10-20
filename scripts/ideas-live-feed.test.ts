@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import { curatedFeed, type IdeasFeed } from "../src/lib/ideas/feed";
-import { SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, groupRows, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
+import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
@@ -30,7 +30,8 @@ const SNAP: IdeasSnapshot = {
     row("big ben", "builtin:big-ben", 30, after(1)),
     row("birdhouse. Then: 3/8 dowel", "builtin:birdhouse", 3, after(5)),
     row("hanging birdhouse", "unknown:hanging-birdhouse", 5, after(5), "Unverified"),
-    row("critic probe shelf", "builtin:shelf", 7, after(1)),
+    // Critic's probes run with ?test=1 / x-yard-test, so the log stamps them "test": dropped by that flag, not the words.
+    { ...row("critic probe shelf", "builtin:shelf", 7, after(1)), source: "test" },
     row("birdhouse", "builtin:birdhouse", 6, after(6)),
     row("workbench 72 wide", "builtin:workbench-72", 5, after(2)),
     row("cat tree", "recipe:cat-tree", 3, after(20), "Unverified", "24×24×60"),
@@ -101,6 +102,7 @@ test("hero: the most-built checked idea in 7 days with ≤150 parts; null on the
 
 test("the invariant: live and fallback feeds pass; every shape field present; it catches each failure", () => {
   assert.deepEqual(feedViolations(feed), []);
+  assert.deepEqual(feedViolations(feed, SNAP), []);
   assert.deepEqual(feedViolations(curatedFeed(RECIPES)), []);
   for (const k of ["at", "live", "hero", "sections"]) assert.ok(k in feed, k);
   for (const s of feed.sections) {
@@ -125,6 +127,26 @@ test("home 'Making now' drops chained 'Then:' prompts (same isChained as the fee
   assert.ok(isChained("birdhouse. Then: 3/8 dowel"));
   const fs = await import("fs");
   assert.match(fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8"), /!isChained\(r\.prompt\)/);
+});
+
+test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-yard-test flag, never a word in the prompt", () => {
+  const real = [row("test tube rack", "builtin:test-tube-rack", 11, after(7)), row("canary yellow birdhouse", "builtin:birdhouse", 2, after(8)), row("testing station workbench", "builtin:workbench", 1, after(9))];
+  const flagged = { ...row("test tube rack for 12 tubes", "builtin:test-tube-rack", 40, after(7)), source: "test" as const };
+  for (const r of real) assert.ok(!isTestRow(r), r.prompt);
+  assert.ok(isTestRow(flagged));
+  assert.ok(!isTestRow({ ...real[0], source: "live" }));
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...real, flagged] };
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const cards = f.sections.flatMap((s) => s.cards);
+  const ttr = cards.find((c) => c.buildType === "test-tube-rack");
+  assert.ok(ttr, "test tube rack is in the Ideas feed");
+  assert.equal(ttr!.count, 11, "only the real row is counted; the test=1 row is not");
+  assert.equal(ttr!.examplePrompt, "test tube rack");
+  assert.deepEqual(feedViolations(f, snap), []);
+  // The invariant still catches a counted card whose example is a logged test row.
+  const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
+  bad.sections.flatMap((s) => s.cards).find((c) => c.buildType === "test-tube-rack")!.examplePrompt = "test tube rack for 12 tubes";
+  assert.match(feedViolations(bad, snap).join("\n"), /test prompt "test tube rack for 12 tubes"/);
 });
 
 test("quick win (e): cut-off box keys read as boxes, generic fallbacks never become cards, no blank cards", () => {
@@ -152,4 +174,52 @@ test("held recipes never render on Ideas: HELD_TYPES is recipes.json's held set,
   const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
   for (const s of f.sections) for (const c of s.cards) assert.ok(!isHeldType(c.buildType) && !isHeldType(c.recipeKey), `${c.slug} in ${s.id}`);
   assert.deepEqual(feedViolations(f), []);
+});
+
+test("only rendered cards are used: a Trusted build past Popular's SECTION_MAX still shows in a later section (row 111)", () => {
+  // SECTION_MAX + 6 busy Trusted types fill Popular; the mail organizer and under-stairs shelves are Trusted but low-count.
+  const word = (i: number) => String.fromCharCode(97 + Math.floor(i / 26)) + String.fromCharCode(97 + (i % 26)) + "x";
+  const busy = Array.from({ length: SECTION_MAX + 6 }, (_, i) => row(`${word(i)} rack`, `builtin:${word(i)}-rack`, 500 - i, after(1)));
+  const snap: IdeasSnapshot = {
+    ...SNAP,
+    rows: [...busy, row("mail organizer", "builtin:mail-organizer", 2, after(30)), row("under stairs shelves", "builtin:under-stairs", 2, after(31))],
+  };
+  const feed = liveFeed(snap, curatedFeed(), NOW);
+  assert.deepEqual(feedViolations(feed), []);
+  const pop = feed.sections.find((s) => s.id === "popular")!;
+  assert.equal(pop.cards.length, SECTION_MAX);
+  const where = (t: string) => feed.sections.find((s) => s.cards.some((c) => c.buildType === t))?.id ?? null;
+  assert.equal(where("mail-organizer"), "recent", "mail organizer is in no section");
+  assert.equal(where("under-stairs"), "recent", "under-stairs shelves are in no section");
+  // Every Trusted type shows exactly once somewhere (busy types past both caps would stay hidden).
+  for (const s of feed.sections) for (const c of s.cards) assert.equal(feed.sections.filter((x) => x.cards.some((y) => y.buildType === c.buildType)).length, 1);
+});
+
+test("junk titles never render: the shared card-quality rule drops digit-only or stub titles in every section (row 111)", () => {
+  // The live junk "3" card was "3/4 PVC soccer goal" + "3/4 PVC trellis": the stock size was read as the build type.
+  assert.equal(typeKey("builtin:3-4-soccer-goal"), "soccer-goal");
+  assert.equal(typeKey("builtin:3-4-trellis"), "trellis");
+  assert.equal(typeKey("builtin:3-8-hardwood-dowel"), "hardwood-dowel");
+  assert.equal(typeKey("builtin:2x4-ladder"), "2x4-ladder");
+  for (const t of ["3", "3/4", "12", "X", "Tv", " 3 4 ", ""]) assert.ok(isJunkTitle(t), `"${t}" is junk`);
+  for (const t of ["Bed", "Soccer goal", "2×4 ladder", "8 flat washer"]) assert.ok(!isJunkTitle(t), `"${t}" is a title`);
+  assert.equal(MIN_TITLE_LETTERS, 3);
+  // Rows that still fold to a stub type ("3-4" → "3", "x" → "X") are dropped, even when Trusted and the busiest.
+  const snap: IdeasSnapshot = {
+    ...SNAP,
+    rows: [
+      ...SNAP.rows,
+      row("3/4", "builtin:3-4", 900, after(7)),
+      row("x", "builtin:x", 800, after(7)),
+      row("3/4 PVC soccer goal 48 wide 36 tall", "builtin:3-4-soccer-goal", 3, after(8), "Trusted", "48×12×36"),
+    ],
+  };
+  const feed = liveFeed(snap, curatedFeed(), NOW);
+  assert.deepEqual(feedViolations(feed), []);
+  const cards = feed.sections.flatMap((s) => s.cards);
+  assert.deepEqual(cards.filter((c) => isJunkTitle(c.title)).map((c) => c.title), []);
+  assert.ok(cards.some((c) => c.buildType === "soccer-goal" && c.title === "Soccer goal"), "the soccer goal shows under its own name");
+  // And the invariant names one if it ever gets through.
+  const bad: IdeasFeed = { ...feed, sections: [{ ...feed.sections[0], cards: [{ ...feed.sections[0].cards[0], title: "3" }, ...feed.sections[0].cards.slice(1)] }] };
+  assert.ok(feedViolations(bad).some((v) => /junk title "3"/.test(v)));
 });
