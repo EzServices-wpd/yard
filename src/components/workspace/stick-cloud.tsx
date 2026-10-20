@@ -7,7 +7,7 @@ import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
-import { benchDrawerPull, benchPullDepth } from "@/components/workspace/drawerGroups";
+import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
@@ -19,6 +19,7 @@ import {
   EdgeBand,
   PinHoles,
 } from "@/components/workspace/panelHardware";
+import { useExplodeRefs } from "@/components/workspace/explode-driver";
 
 export { StickCloud } from "@/components/workspace/stickCloudCraft";
 export { CarcaseJoins } from "@/components/workspace/carcaseJoins";
@@ -68,8 +69,10 @@ export function PanelMesh({
   const isDrawer = panel.type === "drawer";
   // Operate: a drawer slides as one group (shared drawer id, or its front plus the parts under it); a lone box keeps
   // today's own-depth pull (drawerGroups).
-  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel));
-  const pullDepth = useYard((s) => (isDrawer ? benchPullDepth(s.project.panels, panel) : 0));
+  // Tap a drawer while Operate is on: it opens alone to ~2/3 so its cavity shows; otherwise the stack staggers.
+  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel, s.facesOpen ? s.selectedId : null));
+  const wearsPull = useYard((s) => benchWearsPull(s.project.panels, panel));
+  const pullDepth = useYard((s) => (wearsPull ? (isDrawer ? benchPullDepth(s.project.panels, panel) : d) : 0));
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
@@ -234,14 +237,18 @@ export function PanelMesh({
   }, [panel.outline, panel.form, panel.strut, poly, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
+  // See inside: the staged explode moves these two groups (transform only, explode-driver.tsx).
+  const ex = useExplodeRefs(panel.id);
   if (hiddenInStep) return null;
 
   // Bought coat hooks: steel hook glyph, never a wood box the same color as the rail.
   if (isBoughtHardwareName(panel.name)) {
     return (
+      <group ref={ex.outer}><group ref={ex.inner}>
       <group position={groupPos} rotation={groupRot}>
         <group
           position={meshPos}
+          userData={{ yardPart: panel.id, yardPartGlyph: true }}
           onPointerDown={(e) => {
             e.stopPropagation();
             onSelect();
@@ -250,14 +257,17 @@ export function PanelMesh({
           <CoatHook w={w} h={h} d={d} />
         </group>
       </group>
+      </group></group>
     );
   }
 
   return (
+    <group ref={ex.outer}><group ref={ex.inner}>
     <group position={groupPos} rotation={groupRot}>
       <group position={meshPos}>
         <mesh
           frustumCulled={false}
+          userData={{ yardPart: panel.id, yardGhost: ghost }}
           castShadow={shadows}
           receiveShadow={shadows}
           onPointerDown={(e) => {
@@ -310,11 +320,12 @@ export function PanelMesh({
         {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
         )}
-        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
+        {wearsPull && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
         {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
       </group>
     </group>
+    </group></group>
   );
 }
