@@ -20,3 +20,9 @@ test("shell renders headerTitle() alone with a build or a refusal, 'Workbench' o
   assert.match(el, /pieceCount > 0 \|\| project\.refused \? headerTitle\(project\) : "Workbench"/);
   assert.doesNotMatch(el, /Workbench ·/);
 });
+
+test("a refused build's title names what was asked for and that nothing was built, never 'Workbench'", () => {
+  const p = generateFromPrompt("abacus 2 wide");
+  assert.ok(p.refused && !p.panels.length);
+  assert.equal(headerTitle(p), "Abacus · nothing built");
+});

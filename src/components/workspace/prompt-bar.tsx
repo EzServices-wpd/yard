@@ -91,6 +91,10 @@ export function PromptBar({
         <BenchOptionsToggle
           open={optionsOpen}
           onToggle={() => setOptionsOpen((v) => !v)}
+          onStock={() => {
+            setOptionsOpen(false);
+            onStock();
+          }}
           panelId={panelId}
           buttonRef={toggleRef}
         />

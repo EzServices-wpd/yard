@@ -1,4 +1,5 @@
 "use client";
+import { userText } from "@/lib/yard/userText";
 import { headerTitle } from "@/lib/yard/pdf";
 import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
@@ -46,6 +47,10 @@ import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
+
+/** (b) A build still pending after this long stops the lamp and offers builds that always work. */
+export const STALL_MS = 45_000;
+const STALL_IDEAS = ["linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide", "nightstand with 2 drawers"];
 
 export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: string; shareToken?: string }) {
   const [ready, setReady] = useState(false);
@@ -123,6 +128,26 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     setWasPending(pending);
     if (pending) setLampKey((k) => k + 1);
   }
+  // Quick win (a): the lamp covers the bench only while the engine solves. An AI check over a priced model is a
+  // small chip, never a veil over parts and a price. (b): a build still pending after STALL_MS fades the lamp and
+  // says so, with three builds to try, instead of an endless "Building".
+  const benchPieces = plan?.totals.pieces ?? woodCutPieceCount(project);
+  const priced = ready && benchPieces > 0 && !project.displayOnly;
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    setStalled(false);
+    if (!pending) return;
+    const t = window.setTimeout(() => setStalled(true), STALL_MS);
+    return () => window.clearTimeout(t);
+  }, [pending, lampKey]);
+  const lampOn = pending && !stalled && (building || !priced);
+  const aiChip = grokBusy && !building && priced && !stalled;
+  // Full tab titles: the tab says the header the page shows (never the terse "Build 48x36" from the URL).
+  useEffect(() => {
+    if (titlePending || benchPieces <= 0) return;
+    document.title = `${headerTitle(project)} · Yard`;
+  }, [titlePending, benchPieces, project]);
+
   const [orbitHint, setOrbitHint] = useState(false);
   useEffect(() => {
     try {
@@ -436,7 +461,24 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
           <RevealStatus />
-          <LavaLamp key={lampKey} show={pending} prompt={initialPrompt ?? project.prompt} caption={grokBusy ? "Fitting the opening" : "Building"} />
+          <LavaLamp key={lampKey} show={lampOn} prompt={initialPrompt ?? project.prompt} caption="Building" />
+          {aiChip && (
+            <p data-yard-ai-chip="1" className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/70 bg-surface/85 px-3 py-1 text-[11px] text-muted backdrop-blur">
+              Checking the fit…
+            </p>
+          )}
+          {stalled && (
+            <div data-yard-stalled="1" data-bench-overlay="stalled" className="absolute left-1/2 top-3 z-20 w-[min(28rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-xl border border-border bg-surface/95 px-4 py-3 text-center text-sm text-fg shadow-lg backdrop-blur">
+              <p>Yard couldn&apos;t finish this build. Try one of these, or change a word and build again.</p>
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                {STALL_IDEAS.map((q) => (
+                  <a key={q} href={`/workspace?q=${encodeURIComponent(q)}`} className="rounded-full border border-border px-3 py-1 text-xs text-fg hover:bg-bg">
+                    {q[0].toUpperCase() + q.slice(1)}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           {showOffer && (
             <div
               data-bench-overlay="offer"
@@ -461,7 +503,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 {steps.find((s) => s.step === activeStep)?.title}
               </p>
               <p className="mt-1 max-h-28 overflow-y-auto text-xs leading-relaxed text-muted">
-                {steps.find((s) => s.step === activeStep)?.description}
+                {userText(steps.find((s) => s.step === activeStep)?.description)}
               </p>
               <p className="mt-1 text-[11px] text-faint sm:mt-2">
                 Lit pieces are this step.
@@ -485,7 +527,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           )}
           {ready && /^Unverified:/.test(project.notes?.[0] ?? "") && (
             <p data-yard-unverified="1" className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
-              {project.notes[0]}
+              {userText(project.notes[0].replace(/^Unverified:\s*/, ""))}
             </p>
           )}
           {ready && project.displayOnly && (

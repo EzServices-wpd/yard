@@ -51,6 +51,16 @@ export function seededSizes(seed = 20261015, perNoun = 2): string[] {
   const pick = ([a, b]: [number, number]) => Math.round((a + r() * (b - a)) * 2) / 2;
   return SIZED.flatMap(([noun, w, h, d]) => Array.from({ length: perNoun }, () => `${noun} ${pick(w)} wide ${pick(h)} tall ${pick(d)} deep`));
 }
+/** Resized builds a class fix has broken before (#90): resized water wheels (I1) and counted rows (I30, I36). */
+export const RESIZED = [
+  "water wheel 24 wide", "water wheel 30 wide", "garden water wheel 24 wide",
+  "abacus 2 wide", "abacus 3 wide", "abacus 4 wide", "abacus 6 wide", "abacus 8 wide", "abacus 8 wide 12 rods", "abacus 8 1/4 wide 12 rods",
+  "abacus 10 wide 15 rods", "abacus 3 wide 3 rods", "abacus 30 rods",
+  // Fractional typed widths take the same fit check (Critic #90e): built at the typed width, or refused below the minimum.
+  "abacus 2 1/8 wide", "abacus 2 3/16 wide", "abacus 2 1/4 wide", "abacus 2 5/16 wide", "abacus 2 3/8 wide", "abacus 2 7/16 wide",
+  "abacus 1 1/2 wide", "abacus 1 9/16 wide", "abacus 1 wide 1 rod", "abacus 1 1/4 wide 2 rods", "abacus 1 3/8 wide 1 rod",
+  "abacus 2 1/8 wide 1 rod", "abacus 2 1/16 wide", "abacus 1 1/2 wide 5 rods", "abacus 1 1/2 wide 20 rods", "abacus 3 3/16 wide 3 rods",
+];
 export function corpus(): string[] {
-  return [...new Set([...EVAL_PROMPTS, ...IDEAS.map((i) => i.prompt), ...DREAMS.map((d) => d.prompt), ...RECIPES.recipes.map((r) => recipePrompt(r)), ...seededSizes(), ...typedForms()])];
+  return [...new Set([...EVAL_PROMPTS, ...IDEAS.map((i) => i.prompt), ...DREAMS.map((d) => d.prompt), ...RECIPES.recipes.map((r) => recipePrompt(r)), ...seededSizes(), ...typedForms(), ...RESIZED])];
 }
