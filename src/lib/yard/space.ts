@@ -37,17 +37,17 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
   // Typed opening width with adjectives between measure and noun — "31.5 inch linen closet".
   // Skip axis-labeled spans ("16 inch deep …") so Measure apply does not rewrite depth as width.
   p = p.replace(
-    /(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(\s*(?:inch(?:es)?|in|")?\s+)(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)((?:(?:bathroom|linen|utility|broom|coat|pantry|tall|storage|closet|wardrobe)\s+){0,3}(?:alcove|opening|niche|closet|wardrobe|pantry|cabinet|cupboard|armoire|hutch|locker|linen))\b/i,
+    /(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(\s*(?:inch(?:es)?|in|")?\s+)(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)((?:(?:bathroom|linen|utility|broom|coat|pantry|tall|storage|closet|wardrobe)\s+){0,3}(?:alcove|opening|niche|closet|wardrobe|pantry|cabinet|cupboard|armoire|hutch|locker|linen))\b/i,
     `${W}$2$3`,
   );
   // Bare desk width: "60\" desk …" / "desk 60\"" — keep W honest across Measure apply.
   if (deskLike) {
     p = p.replace(
-      /(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(\s*(?:inch(?:es)?|in|")?\s+)((?:writing\s+)?desk)\b/i,
+      /(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(\s*(?:inch(?:es)?|in|")?\s+)((?:writing\s+)?desk)\b/i,
       `${W}$2$3`,
     );
     p = p.replace(
-      /\b((?:writing\s+)?desk\s+)(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(?!\s*(?:inch(?:es)?|in|")?\s*(?:wide|width|deep|depth|tall|high|height|knee))(\s*(?:inch(?:es)?|in|")?)/i,
+      /\b((?:writing\s+)?desk\s+)(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(?!\s*(?:inch(?:es)?|in|")?\s*(?:wide|width|deep|depth|tall|high|height|knee))(\s*(?:inch(?:es)?|in|")?)/i,
       `$1${W}$3`,
     );
   }
@@ -55,11 +55,11 @@ export function stampPromptSize(prompt: string, w: number, h: number, d: number)
   const tableLike = /\btable\b/.test(p.toLowerCase()) && !/\bwork table\b/.test(p.toLowerCase());
   if (tableLike) {
     p = p.replace(
-      /(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(\s*-?\s*(?:inches|inch(?![a-z])|in(?![a-z])|")\s+)(?!(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)((?:\S+\s+){0,6}?table\b)/i,
+      /(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(\s*-?\s*(?:inches|inch(?![a-z])|in(?![a-z])|")\s+)(?!(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)((?:\S+\s+){0,6}?table\b)/i,
       `${W}$2$3`,
     );
     p = p.replace(
-      /(\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+)?)(?<![\d.])(\d+(?:\.\d+)?)(?![\d.])(\s*-?\s*(?:inches|inch(?![a-z])|in(?![a-z])|"))(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)/i,
+      /(\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+)?)(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(\s*-?\s*(?:inches|inch(?![a-z])|in(?![a-z])|"))(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|dia|diameter|round)\b)/i,
       `$1${W}$3`,
     );
   }

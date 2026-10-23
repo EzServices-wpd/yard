@@ -36,7 +36,7 @@ import {
 } from "./family";
 import {
   honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt,
-  tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle,
+  tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp,
   typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle,
   classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk,
 } from "./voiceHonesty";
@@ -3106,10 +3106,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     : kitchenBase && !/base|kitchen/i.test(spec.name)
       ? stampFull(/kitchen/.test(promptLower) ? "Kitchen base" : "Base cabinet")
       : (() => {
-          const cleaned = spec.name
-            .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
-            .replace(/\s+\d+(?:\.\d+)?"\s+(?:wide|tall|deep)\s*$/i, "")
-            .trim();
+          const cleaned = stripSizeStamp(spec.name);
           // Scrub leftover naked Media / naked Bench (named sit) from an older brief.
           let stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
           const sitScrub = sitBenchTitleStem(promptLower);

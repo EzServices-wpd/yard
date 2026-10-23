@@ -464,19 +464,35 @@ export function i38(p: YardProject, plan: BuildPlan): Violation[] {
 /**
  * I43 (F21 untyped axis, row 161: 'cabinet 12 1/2 deep' built 12" wide, 'desk 30 1/2 tall' 30" wide): an axis the
  * prompt does not type comes from the family's defaults, never from another typed axis. Its signature is a bare-size
- * reader that stopped at the decimal point: the untyped axis is the whole-number part of a typed non-whole size.
+ * reader that stopped at the decimal point: the untyped axis is the whole-number part of a typed non-whole size, and it
+ * moves when that typed size is taken out (a family default that equals it is not a leak, row 241). Row 239: a number
+ * typed before a period builds exactly as it does without the period.
  */
 export function i43(p: YardProject, prompt: string): Violation[] {
   if (!prompt || !p.panels.length || p.displayOnly || p.refused || isUnitItem(p)) return [];
-  const typed = typedMeasures(prompt);
-  if (typed.tuple) return [];
   const o = p.overall;
   const AX = ["width", "depth", "height"] as const;
   const out: string[] = [];
+  const moved = (q: string) => {
+    const t = generateFromPrompt(q);
+    return t.refused || !t.panels.length ? [] : AX.filter((b) => Math.abs(t.overall[b] - o[b]) > 1 / 16 + 1e-6).map((b) => [b, t.overall[b]] as const);
+  };
+  // Row 239: a number typed before a sentence's period ('desk 60.', 'cabinet 30. thanks') lands exactly as without it.
+  const unpunct = prompt.replace(/(\d)\.(?!\d)/g, "$1");
+  if (unpunct !== prompt) for (const [b, was] of moved(unpunct)) out.push(`${b} is ${inchFrac(o[b])}" with the period after the typed number, ${inchFrac(was)}" without it`);
+  const typed = typedMeasures(prompt);
+  if (typed.tuple) return out.map((m) => v("I43", m));
+  const WORD = { width: "wide|width", depth: "deep|depth", height: "tall|high|height" } as const;
   for (const a of AX) {
-    const v = typed[a];
-    if (v == null || Number.isInteger(v)) continue;
-    for (const b of AX) if (b !== a && typed[b] == null && Math.abs(o[b] - Math.floor(v)) < 1e-6) out.push(`untyped ${b} is ${inchFrac(o[b])}", the whole number of the typed ${inchFrac(v)}" ${a}`);
+    const val = typed[a];
+    if (val == null || Number.isInteger(val)) continue;
+    for (const b of AX) {
+      if (b === a || typed[b] != null || Math.abs(o[b] - Math.floor(val)) > 1e-6) continue;
+      // Oracle (row 241): the untyped axis took the typed number only if it changes when that typed size is taken
+      // out; a family default that happens to equal the whole number ('nightstand 24 1/2 wide' is 24" tall) stays.
+      const bare = prompt.replace(new RegExp(String.raw`\d[\d\s./'"″-]*(?:\s*(?:ft|feet|foot|in|inch(?:es)?)\b[\d\s./'"″-]*)*\s*(?:${WORD[a]})\b`, "gi"), " ").replace(/\s+/g, " ").trim();
+      if (bare === prompt.trim() || moved(bare).some(([x]) => x === b)) out.push(`untyped ${b} is ${inchFrac(o[b])}", the whole number of the typed ${inchFrac(val)}" ${a}`);
+    }
   }
   return out.map((m) => v("I43", m));
 }

@@ -40,3 +40,31 @@ it("a bare size by the noun is still its width ('desk 60', '60 inch desk', 'cabi
   for (const [q, w] of [["desk 60", 60], ["60 inch desk", 60], ["cabinet 30", 30], ["31.5 inch linen closet", 31.5], ["table 70 inch", 70], ["workbench 72 inches", 72]] as const)
     assert.equal(generateFromPrompt(q).overall.width, w, q);
 });
+
+it("row 239: a typed size before a sentence's period lands ('desk 60.', 'cabinet 30.')", () => {
+  for (const [q, w] of [["desk 60.", 60], ["I want a desk 60.", 60], ["make me a desk 60. thanks", 60], ["cabinet 30.", 30]] as const) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.overall.width, w, q);
+    assert.deepEqual(i43(p, q), [], q);
+  }
+  // A decimal is still one number: '24.5 deep' never reads as 24 then a period.
+  assert.equal(generateFromPrompt("desk 24.5 deep").overall.depth, 24.5);
+});
+
+it("row 241: I43 catches a dropped number before a period, and a family default equal to the whole number is no leak", () => {
+  // A build of 'desk 60.' at the 48" default width (what #115 at c8d0974 built) is flagged.
+  const p = generateFromPrompt("desk 60.");
+  const dropped = { ...p, overall: { ...p.overall, width: 48 } };
+  assert.match(i43(dropped, "desk 60.")[0]?.msg ?? "", /width is 48" with the period after the typed number, 60" without it/);
+  // 'nightstand 24 1/2 wide' is 24" tall because a nightstand is; 'desk 24 1/2 wide' is 24" deep because a desk is.
+  for (const q of ["nightstand 24 1/2 wide", "nightstand 24 1/2 wide.", "desk 24 1/2 wide", "desk 24 1/2 wide."]) assert.deepEqual(i43(generateFromPrompt(q), q), [], q);
+});
+
+it("row 240: a re-stamped title never prints the size twice", () => {
+  for (const [q, name] of [
+    ["pantry 24.5 deep", 'Pantry 24 1/2" deep'],
+    ["broom closet 72.5 tall", 'Broom closet 72 1/2" tall'],
+    ["wardrobe 6ft 2 1/2in tall", 'Wardrobe 74 1/2" tall'],
+    ["wardrobe 15 1/2 deep", 'Wardrobe 15 1/2" deep'],
+  ] as const) assert.equal(generateFromPrompt(q).name, name, q);
+});
