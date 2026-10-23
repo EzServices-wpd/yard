@@ -345,5 +345,210 @@ export function layoutFor(panels: readonly Panel[]): Layout {
   return { parts, movers, owner, g, W, H, D, midX, minY: A.minY, hingeLeft, tilt: { ang: 0, axis: tiltAxis(EXPLODE_VIEW.azimuthDeg) }, camDir: camDirOf(EXPLODE_VIEW) };
 }
 
+/** The pose of every part for the layout's current distances (PLAN §2.2, §2.5). */
+export function posesFor(L: Layout): Map<string, Pose> {
+  const out = new Map<string, Pose>();
+  const tall = L.W > 0 && L.H / L.W > 1.8;
+  const clear = doorClear(L);
+  // A column that steps toward an open door first slides out past the door's front edge (one shift for the
+  // whole column, so the staircase stays even).
+  const zOut = (clear as Map<number, number> & { z?: Map<number, number> }).z ?? new Map<number, number>();
+  const shiftZ = new Map<number, number>();
+  for (const m of L.movers.values()) {
+    const z = m.lat ? zOut.get(m.dir ?? 0) : undefined;
+    if (z === undefined) continue;
+    const minZ = Math.min(...m.parts.filter((q) => q.role !== "drawerFront").map((q) => q.z));
+    shiftZ.set(m.dir!, Math.max(shiftZ.get(m.dir!) ?? 0, z - (minZ + m.dist)));
+  }
+  // A drawer that spreads upward must first slide out past anything that ends up in front of it at its lifted
+  // height (a jewelry box's tray front wall stepping forward above the drawers): one extra shift per column side.
+  // A tipped drawer stands taller by its depth × sin(tilt): the bank spreads by that too, so tipped drawers never meet.
+  const tipped = (m: Mover) => (m.front && L.tilt.ang > 0 ? L.tilt.ang : 0);
+  const liftOf = (m: Mover) => (m.bank ? ((m.n ?? 1) - 1 - (m.k ?? 0)) * ((m.hh ?? 0) * m.bank.spread + (m.dd ?? 0) * Math.sin(tipped(m))) : 0);
+  for (const m of L.movers.values()) {
+    const lift = liftOf(m);
+    const tip = tipped(m);
+    if (!m.lat || (lift <= 0 && !tip)) continue;
+    const mine = m.parts.filter((q) => q.role !== "hardware");
+    const b = boxOf(mine);
+    // A tipped drawer's back rises by its depth × sin(tilt): it must clear what sits above it too.
+    const y0 = b.minY + lift, y1 = b.maxY + lift + (m.dd ?? 0) * Math.sin(tip);
+    let need = -Infinity;
+    for (const o of L.movers.values()) {
+      if (o.key.startsWith("D:") || o === m) continue;
+      const t: V3 = [o.axis[0] * o.dist, o.axis[1] * o.dist, o.axis[2] * o.dist];
+      for (const q of o.parts) {
+        if (q.role === "hardware" || q.role === "door" || q.role === "lid") continue;
+        if (ov1(q.y + t[1], q.y + q.h + t[1], y0, y1) <= 0.01 || ov1(q.x + t[0], q.x + q.w + t[0], b.minX, b.maxX) <= 0.01) continue;
+        need = Math.max(need, q.z + q.d + t[2] + 0.1 * L.g);
+      }
+    }
+    if (need === -Infinity) continue;
+    const minZ = Math.min(...mine.filter((q) => q.role !== "drawerFront").map((q) => q.z));
+    shiftZ.set(m.dir!, Math.max(shiftZ.get(m.dir!) ?? 0, need - (minZ + m.dist)));
+  }
+  for (const m of L.movers.values()) {
+    const lift = liftOf(m);
+    for (const p of m.parts) {
+      const side = m.lat ? Math.max(m.lat.side, clear.get(m.dir ?? 0) ?? 0) * (m.dir ?? 0) : 0;
+      const dz = m.lat ? Math.max(0, shiftZ.get(m.dir ?? 0) ?? 0) : 0;
+      const fz = m.front && p.role === "drawerFront" ? m.front.out : 0;
+      const t: V3 = [m.axis[0] * m.dist + side, m.axis[1] * m.dist + lift, m.axis[2] * m.dist + dz + fz];
+      const pose: Pose = { t, stage: p.role };
+      // The slide-out comes first; the column's sideways step and upward spread second (lat).
+      if (side || lift) pose.lat = [side, lift, 0];
+      if (p.role === "door") {
+        // Swing 105° on the real hinge side, then move outward: the open door never lands in front of its case.
+        const left = L.hingeLeft.get(p.id) ?? cxOf(p) < L.midX;
+        pose.rot = { axis: [0, 1, 0], ang: ((left ? -1 : 1) * 105 * Math.PI) / 180, pivot: [left ? p.x : p.x + p.w, cyOf(p), p.z + p.d / 2] };
+      } else if (tipped(m) && m.pivot) {
+        // A hollow drawer tips its open top toward the camera, about its own box's bottom centre (front and all).
+        // It tips only once it is out of the carcase (the lat window), never inside it.
+        pose.rot = { axis: L.tilt.axis, ang: tipped(m), pivot: m.pivot };
+        pose.rotLate = true;
+      } else if (m.face && p.role === "kick") {
+        // Turns once the drawers are out (the lat window), so it never sweeps through one sliding past.
+        pose.rot = faceTurn(p, L.camDir, m.face);
+        if (pose.rot) pose.rotLate = true;
+      } else if (p.role === "lid") {
+        // Tip back 75° on the hinge line (back edge, bottom face).
+        pose.rot = { axis: [1, 0, 0], ang: (-75 * Math.PI) / 180, pivot: [cxOf(p), p.y, p.z] };
+      }
+      // Tall builds: the upper zone lifts by another 0.12 × height so upper and lower read as separate units.
+      if (tall && cyOf(p) > L.minY + 0.5 * L.H && p.role !== "back" && p.role !== "sideL" && p.role !== "sideR") t[1] += 0.12 * L.H;
+      out.set(p.id, pose);
+    }
+  }
+  // Hardware rides on its host, exactly (within 0.01").
+  for (const h of L.parts) {
+    if (h.role !== "hardware") continue;
+    const host = h.host ? out.get(h.host) : undefined;
+    out.set(h.id, host ? { ...host, t: [...host.t] as V3 } : { t: [0, 0, 0] });
+  }
+  L.post?.(L, out);
+  return out;
+}
+
+/**
+ * How far a drawer column must step toward −x / +x so it lands clear of an open door on that side (a door
+ * swung open beside the case, level with the drawers): the door's posed outer edge + g/4 past the
+ * column's near edge. Doors move before drawers, so this uses the doors' current solved distance.
+ */
+function doorClear(L: Layout): Map<number, number> {
+  const out = new Map<number, number>();
+  /** dir → the open door's front edge + g/4 (z): a column stepping that way must slide out past it first. */
+  const zOut = new Map<number, number>();
+  (out as Map<number, number> & { z?: Map<number, number> }).z = zOut;
+  const drawers = L.parts.filter((p) => p.unit.startsWith("D:") && p.role !== "hardware");
+  if (!drawers.length) return out;
+  const D = boxOf(drawers);
+  for (const p of L.parts) {
+    if (p.role !== "door" || ov1(p.y, p.y + p.h, D.minY, D.maxY) <= 0) continue;
+    const m = L.owner.get(p.id);
+    if (!m) continue;
+    const left = L.hingeLeft.get(p.id) ?? cxOf(p) < L.midX;
+    const pose: Pose = {
+      t: [m.axis[0] * m.dist, m.axis[1] * m.dist, m.axis[2] * m.dist],
+      rot: { axis: [0, 1, 0], ang: ((left ? -1 : 1) * 105 * Math.PI) / 180, pivot: [left ? p.x : p.x + p.w, cyOf(p), p.z + p.d / 2] },
+    };
+    const cs = cornersOf(p, pose);
+    const xs = cs.map((c) => c[0]);
+    const need = left ? D.maxX - Math.min(...xs) + 0.25 * L.g : Math.max(...xs) - D.minX + 0.25 * L.g;
+    const dir = left ? -1 : 1;
+    out.set(dir, Math.max(out.get(dir) ?? 0, need));
+    zOut.set(dir, Math.max(zOut.get(dir) ?? -Infinity, Math.max(...cs.map((c) => c[2])) + 0.25 * L.g));
+  }
+  return out;
+}
+
+/** World corners of a part's box under a pose. */
+export function cornersOf(p: Pick<ExplodePart, "x" | "y" | "z" | "w" | "h" | "d">, pose?: Pose): V3[] {
+  const out: V3[] = [];
+  for (const X of [p.x, p.x + p.w]) for (const Y of [p.y, p.y + p.h]) for (const Z of [p.z, p.z + p.d]) out.push(applyPose([X, Y, Z], pose));
+  return out;
+}
+
+export function applyPose(v: V3, pose?: Pose, u = 1): V3 {
+  if (!pose) return v;
+  let [x, y, z] = v;
+  if (pose.rot) {
+    const { axis, ang, pivot } = pose.rot;
+    const a = ang * u, c = Math.cos(a), s = Math.sin(a);
+    const px = x - pivot[0], py = y - pivot[1], pz = z - pivot[2];
+    const [kx, ky, kz] = axis;
+    const dt = kx * px + ky * py + kz * pz;
+    // Rodrigues
+    x = px * c + (ky * pz - kz * py) * s + kx * dt * (1 - c) + pivot[0];
+    y = py * c + (kz * px - kx * pz) * s + ky * dt * (1 - c) + pivot[1];
+    z = pz * c + (kx * py - ky * px) * s + kz * dt * (1 - c) + pivot[2];
+  }
+  return [x + pose.t[0] * u, y + pose.t[1] * u, z + pose.t[2] * u];
+}
+
+/** Every part's posed corners (what the explode camera fits). */
+export function posedPoints(L: Layout, poses: Map<string, Pose>): V3[] {
+  const out: V3[] = [];
+  for (const p of L.parts) out.push(...cornersOf(p, poses.get(p.id)));
+  return out;
+}
+
+/** The exploded model's box (every part's posed corners). */
+export function explodedBox(L: Layout, poses: Map<string, Pose>): Box3 {
+  const b: Box3 = { minX: Infinity, minY: Infinity, minZ: Infinity, maxX: -Infinity, maxY: -Infinity, maxZ: -Infinity };
+  for (const p of L.parts) for (const [x, y, z] of cornersOf(p, poses.get(p.id))) {
+    b.minX = Math.min(b.minX, x); b.maxX = Math.max(b.maxX, x);
+    b.minY = Math.min(b.minY, y); b.maxY = Math.max(b.maxY, y);
+    b.minZ = Math.min(b.minZ, z); b.maxZ = Math.max(b.maxZ, z);
+  }
+  b.minY = Math.max(0, b.minY);
+  return b;
+}
+
 /** Explode camera (PLAN §3): azimuth 32° (unchanged), elevation 32° (up from 16°) to look into drawers and onto shelves. */
 export const EXPLODE_VIEW = { azimuthDeg: 32, elevationDeg: 32 } as const;
+/** Open tween; closing takes 0.7× (PLAN §6 item 1). */
+export const EXPLODE_MS = 1200;
+export const CLOSE_MS = Math.round(EXPLODE_MS * 0.7);
+/** Reduced motion: no tween, a 150 ms fade on the final pose. */
+export const REDUCED_FADE_MS = 150;
+
+/**
+ * Staged by unit: each role moves inside its own window of the one tween (fractions of it), so doors and
+ * lids swing clear first, the case opens, drawers slide out (then step sideways), shelves follow. Closing runs the same path
+ * backwards (drawers home first, doors shut last). [start, end] of the move, and of a swing.
+ */
+export function stageWindow(role: Role): { move: [number, number]; swing: [number, number] } {
+  switch (role) {
+    case "door": case "lid": return { move: [0.12, 0.72], swing: [0, 0.5] };
+    case "shelf": return { move: [0.68, 1], swing: [0, 1] };
+    case "drawerBox": case "drawerFront": return { move: [0.3, 0.75], swing: [0, 1] };
+    default: return { move: [0.12, 0.85], swing: [0, 1] };
+  }
+}
+
+/** A drawer column's sideways step: after the slide-out is ≥ 98% done (ease-out of [0.3, 0.75] at 0.65). */
+export const LAT_WINDOW: [number, number] = [0.65, 1];
+/** The readable cluster (explode-cluster.ts): a cluster piece first makes its usual sideways step and spread (`lat`,
+ * in CLUSTER_LAT_WINDOW), then travels to its place (`cl`) inside its block's own slice `clu` of CLUSTER_WINDOW,
+ * front block first; it turns in the second half of its slice, once clear. */
+export const CLUSTER_LAT_WINDOW: [number, number] = [0.65, 0.8];
+export const CLUSTER_WINDOW: [number, number] = [0.8, 1];
+
+export function windowed(u: number, w: [number, number]): number {
+  return easeParts(Math.min(1, Math.max(0, (u - w[0]) / Math.max(1e-6, w[1] - w[0]))));
+}
+
+/** A part's pose part-way through the tween (clock u in 0..1), staged by its role. */
+export function poseAt(pose: Pose, role: Role, u: number): Pose {
+  const w = stageWindow(pose.stage ?? role);
+  const m = windowed(u, w.move);
+  const l = pose.lat ? windowed(u, pose.clu ? CLUSTER_LAT_WINDOW : LAT_WINDOW) : 0;
+  const c = pose.cl && pose.clu ? windowed(u, pose.clu) : 0;
+  const L = pose.lat ?? [0, 0, 0], C = pose.cl ?? [0, 0, 0];
+  const t: V3 = [0, 1, 2].map((i) => (pose.t[i] - L[i] - C[i]) * m + L[i] * l + C[i] * c) as V3;
+  if (!pose.rot) return { t };
+  return { t, rot: { ...pose.rot, ang: pose.rot.ang * windowed(u, pose.clu ? [(pose.clu[0] + pose.clu[1]) / 2, pose.clu[1]] : pose.rotLate ? LAT_WINDOW : w.swing) } };
+}
+
+/** Strong ease-out for parts (no ease-in on UI). */
+export const easeParts = (u: number) => 1 - (1 - u) ** 3;
