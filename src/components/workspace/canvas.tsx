@@ -17,6 +17,7 @@ import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stic
 import { buildOrder } from "@/components/workspace/build-order";
 import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
+import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 
 const HULL = "#8a8478";
 const BENCH_BG = "#1a1612";
@@ -317,6 +318,15 @@ function overlayRects(canvas: HTMLCanvasElement): Rect[] {
   return out;
 }
 
+type Glide = {
+  from: { pos: THREE.Vector3; tgt: THREE.Vector3; off: [number, number] };
+  to: { pos: THREE.Vector3; tgt: THREE.Vector3; off: [number, number]; near: number; far: number; w: number; h: number };
+  t0: number;
+  dur: number;
+};
+/** The camera glide's ease (ease-out cubic). */
+const easeGlide = (u: number) => 1 - (1 - u) ** 3;
+
 function CameraRig({
   project, preset, stepIds, locked, overlayKey,
 }: {
@@ -326,16 +336,24 @@ function CameraRig({
   locked: boolean;
   overlayKey: string;
 }) {
-  const { camera, controls, gl, size, scene } = useThree();
+  const { camera, controls, gl, size, scene, invalidate } = useThree();
   const projectRef = useRef(project);
   projectRef.current = project;
   const presetKey = `${preset}|${overlayKey.split("|").pop() ?? ""}`;
   const lastPresetKey = useRef(presetKey);
+  const glide = useRef<Glide | null>(null);
+  // Operate on a build with drawers: the cavity camera looks down into the open drawers (Critic #84).
+  const facesOpen = useYard((s) => s.facesOpen);
+  const soloDrawer = useYard((s) => (s.facesOpen ? drawerGroupOf(s.project.panels, s.selectedId)?.ids[0] ?? null : null));
+  const cavityKey = `${facesOpen ? 1 : 0}|${soloDrawer ?? ""}`;
+  const lastCavity = useRef(cavityKey);
+  const fitRef = useRef<((glideMs?: number) => void) | null>(null);
+  const endGlide = () => { glide.current = null; };
   // Turning, zooming or panning by hand: remember the angle so a rebuild keeps it.
   useEffect(() => {
     const orbit = controls as unknown as (THREE.EventDispatcher<{ start: object; end: object }> & { target?: THREE.Vector3 }) | null;
     if (!orbit?.addEventListener) return;
-    const onStart = () => useYard.getState().setOrbited(true);
+    const onStart = () => { endGlide(); useYard.getState().setOrbited(true); };
     const onEnd = () => {
       if (!orbit.target) return;
       const d = camera.position.clone().sub(orbit.target);
@@ -353,6 +371,23 @@ function CameraRig({
       orbit.removeEventListener("end", onEnd);
     };
   }, [controls, camera]);
+  useFrame(() => {
+    const g = glide.current;
+    if (!g) return;
+    const cam = camera as THREE.PerspectiveCamera;
+    const k = Math.min(1, (performance.now() - g.t0) / g.dur);
+    const e = easeGlide(k);
+    const tgt = g.from.tgt.clone().lerp(g.to.tgt, e);
+    cam.position.copy(g.from.pos).lerp(g.to.pos, e);
+    cam.near = g.to.near; cam.far = Math.max(cam.far, g.to.far);
+    cam.setViewOffset(g.to.w, g.to.h, g.from.off[0] + (g.to.off[0] - g.from.off[0]) * e, g.from.off[1] + (g.to.off[1] - g.from.off[1]) * e, g.to.w, g.to.h);
+    cam.lookAt(tgt);
+    cam.updateProjectionMatrix();
+    const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
+    if (orbit?.target) orbit.target.copy(tgt);
+    if (k >= 1) { cam.far = g.to.far; cam.updateProjectionMatrix(); orbit?.update?.(); endGlide(); }
+    invalidate();
+  });
   useEffect(() => {
     if (locked) return;
     let cancelled = false;
@@ -362,14 +397,19 @@ function CameraRig({
     lastPresetKey.current = presetKey;
     const st = useYard.getState();
     const kept = !asked && st.orbited ? st.userView : null;
-    const fit = () => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const fit = (glideMs = 0) => {
       if (cancelled) return;
       const cam = camera as THREE.PerspectiveCamera;
       const viewport = { w: size.width, h: size.height };
       if (viewport.w < 10 || viewport.h < 10) return;
       // One framing path for every build: the solved model's box, the free canvas, a 3/4 view.
-      const box = benchModelBox(projectRef.current);
-      const base = benchView(projectRef.current, box);
+      const shut = benchModelBox(projectRef.current);
+      // Operate with drawers open: frame the pulled-out drawers too and look down into them from >= 40°.
+      const pulled = useYard.getState().facesOpen ? maxOpenPull(projectRef.current.panels, soloDrawer) : 0;
+      const cavity = pulled > 0 && drawerGroups(projectRef.current.panels).length > 0;
+      const box = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
+      const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
       const view = kept
@@ -380,49 +420,101 @@ function CameraRig({
             ? { azimuthDeg: faceX ? 0.01 : 90, elevationDeg: 8 }
             : preset === "top"
               ? { azimuthDeg: 0.01, elevationDeg: 89 }
-              : base;
+              : cavity ? { ...base, elevationDeg: Math.max(base.elevationDeg, 40) } : base;
       const overlays = overlayRects(gl.domElement);
       const frame = fitBench({ box, view, viewport, overlays, fovDeg: cam.fov });
-      cam.setViewOffset(viewport.w, viewport.h, frame.viewOffset.x, frame.viewOffset.y, viewport.w, viewport.h);
-      cam.near = Math.max(0.1, frame.distance / 200);
-      cam.far = frame.distance * 30;
-      cam.position.set(...frame.position);
       const tgt = new THREE.Vector3(...frame.target);
-      cam.lookAt(tgt);
-      cam.updateProjectionMatrix();
+      const near = Math.max(0.1, frame.distance / 200), far = frame.distance * 30;
       const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void; minDistance?: number; maxDistance?: number } | null;
-      if (orbit?.target) {
-        orbit.target.copy(tgt);
+      const to = { pos: new THREE.Vector3(...frame.position), tgt, off: [frame.viewOffset.x, frame.viewOffset.y] as [number, number], near, far, w: viewport.w, h: viewport.h };
+      const same = cam.position.distanceTo(to.pos) < 1e-3 && !!cam.view && Math.abs(cam.view.offsetX - to.off[0]) + Math.abs(cam.view.offsetY - to.off[1]) < 0.5;
+      if (glideMs > 0 && same && !glide.current) return;
+      if (glide.current) {
+        // A refit while gliding (the cards settled): land on the new frame, same clock.
+        glide.current.to = to;
+      } else if (glideMs > 0 && !reduced && cam.view?.enabled) {
+        glide.current = {
+          from: { pos: cam.position.clone(), tgt: orbit?.target?.clone() ?? tgt.clone(), off: [cam.view.offsetX, cam.view.offsetY] },
+          to, t0: performance.now(), dur: glideMs,
+        };
+      } else {
+        cam.setViewOffset(viewport.w, viewport.h, frame.viewOffset.x, frame.viewOffset.y, viewport.w, viewport.h);
+        cam.near = near;
+        cam.far = far;
+        cam.position.set(...frame.position);
+        cam.lookAt(tgt);
+        cam.updateProjectionMatrix();
+        if (orbit?.target) {
+          orbit.target.copy(tgt);
+          orbit.update?.();
+        }
+      }
+      if (orbit) {
         orbit.minDistance = Math.max(2, frame.distance * 0.15);
         orbit.maxDistance = frame.distance * 4;
-        orbit.update?.();
       }
       // Floor fades into the background well past the model — no hard floor edge.
       const bg = new THREE.Color(BENCH_BG);
       scene.fog = new THREE.Fog(bg, frame.distance * 1.6, frame.distance * 4.2);
-      // Live framing report (read by the bench sweep): real camera projection of the model box.
+      // Live framing report (read by the bench sweep): the framed camera's projection of the model box.
+      const probe = cam.clone();
+      probe.position.copy(to.pos);
+      probe.lookAt(tgt);
+      probe.setViewOffset(viewport.w, viewport.h, frame.viewOffset.x, frame.viewOffset.y, viewport.w, viewport.h);
+      probe.near = near; probe.far = far;
+      probe.updateProjectionMatrix();
+      probe.updateMatrixWorld(true);
       const pts = boxCorners(box).map(([x, y, z]) => {
-        const v = new THREE.Vector3(x, y, z).project(cam);
+        const v = new THREE.Vector3(x, y, z).project(probe);
         return { x: ((v.x + 1) / 2) * viewport.w, y: ((1 - v.y) / 2) * viewport.h };
       });
       (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset, kept: !!kept };
       // The framed pose, for a reveal glide already running on this camera (see RevealCamera).
       const prev = (cam.userData.framed as FramedPose | undefined)?.v ?? 0;
-      cam.userData.framed = { v: prev + 1, pos: cam.position.clone(), target: tgt.clone() } satisfies FramedPose;
+      cam.userData.framed = { v: prev + 1, pos: to.pos.clone(), target: tgt.clone() } satisfies FramedPose;
+      invalidate();
     };
+    fitRef.current = fit;
+    const cavityChanged = lastCavity.current !== cavityKey;
+    lastCavity.current = cavityKey;
+    if (cavityChanged && !kept && preset === "iso") {
+      fit(reduced ? 0 : 450);
+      return () => { cancelled = true; };
+    }
     // Fit now, so a remounted Canvas (every rebuild) has a framed camera before its first frame and the
     // reveal glide never starts from the Canvas default; then again once the overlay cards have laid
     // out. On a loaded device those timers land seconds late (setTimeout queues behind the mount).
     fit();
-    const t1 = window.setTimeout(fit, 60);
-    const t2 = window.setTimeout(fit, 450);
+    const t1 = window.setTimeout(() => fit(), 60);
+    const t2 = window.setTimeout(() => fit(), 450);
     return () => {
       cancelled = true;
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, invalidate, cavityKey]);
+  // While Operate is on, the free stage follows the cards: opening or closing the tray (More) or a card resizing
+  // refits the model with a short glide (the window resizing refits via size), so it never sits under a card or
+  // shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).
+  const followsStage = facesOpen;
+  useEffect(() => {
+    if (!followsStage || locked) return;
+    const host = gl.domElement.closest("[data-bench-host]");
+    if (!host) return;
+    let t = 0;
+    const kick = () => { window.clearTimeout(t); t = window.setTimeout(() => fitRef.current?.(450), 80); };
+    // Every card report refits, the first one included (it lands the glide on the cards' settled sizes in both the
+    // animated and the reduced-motion run, so both end on the same camera).
+    const ro = new ResizeObserver(kick);
+    // The cards are watched here; a window or canvas resize already refits through the main fit (size deps above),
+    // and a second, timer-driven refit on resize raced the cards' slide-in on a phone (reduced motion landed elsewhere).
+    const watch = () => host.querySelectorAll<HTMLElement>("[data-bench-overlay]").forEach((el) => ro.observe(el));
+    watch();
+    const mo = new MutationObserver(() => { watch(); kick(); });
+    mo.observe(host, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+    return () => { window.clearTimeout(t); ro.disconnect(); mo.disconnect(); };
+  }, [followsStage, locked, gl]);
   return null;
 }
 
