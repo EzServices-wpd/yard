@@ -100,8 +100,9 @@ export function withoutSizes(prompt: string): string {
 function refused(p: YardProject, noun: string, typed: Partial<Record<Axis, number>>, why: string): YardProject {
   const overall = { ...p.overall };
   for (const a of AXES) if (typed[a] != null) overall[a] = typed[a]!;
-  // The notes are the refusal alone: a note about the build (its shelf count, its stock) would talk about a size not built.
-  return { ...p, name: sentenceCase(noun), panels: [], instances: [], overall, notes: [why], refused: why, cardNote: why };
+  // Nothing is built, so no note about the build rides along (its shelf count, its stock, "Bead is 0\" across"):
+  // the refusal and card note say why.
+  return { ...p, name: sentenceCase(noun), panels: [], instances: [], overall, notes: [], refused: why, cardNote: why };
 }
 
 const real = (q: YardProject) => !nonPositiveParts(q, true).length;

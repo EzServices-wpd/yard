@@ -4,6 +4,7 @@
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
  */
+import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
 import { UNVERIFIED } from "./promptMain";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
@@ -1155,10 +1156,10 @@ type RowWords = { one: string; title: string; word: string; each: string; need: 
 const rodsOf = (w: RowWords, k: number) => `${k} ${k === 1 ? w.one : `${w.one}s`}`;
 /** A typed count that doesn't fit its typed side: nothing is built, and the card names the size it needs. */
 const refuseTyped = (w: RowWords, want: number, fits: number, at: number) =>
-  `${rodsOf(w, want)} ${want === 1 ? "doesn't" : "don't"} fit in ${inchFrac(at)}" ${w.word} (${w.each}). A ${want}-${w.one} ${w.title} needs ${inchFrac(w.need(want))}" ${w.word}. Nothing is built: make it ${inchFrac(w.need(want))}" ${w.word}${fits ? `, or ask for ${rodsOf(w, fits)}` : ""}.`;
+  `${rodsOf(w, want)} ${want === 1 ? "doesn't" : "don't"} fit in ${inchFrac(at)}" ${w.word} (${w.each}). ${withArticle(`${want}-${w.one} ${w.title}`, true)} needs ${inchFrac(w.need(want))}" ${w.word}. Nothing is built: make it ${inchFrac(w.need(want))}" ${w.word}${fits ? `, or ask for ${rodsOf(w, fits)}` : ""}.`;
 /** Not even one fits: nothing is built, and the card names the smallest size that takes one. */
 const refuseNone = (w: RowWords, full: number, at: number) =>
-  `${/^[aeiou]/i.test(w.title) ? "An" : "A"} ${w.title} needs at least ${inchFrac(w.need(1))}" ${w.word} for 1 ${w.one} (${w.each}). A full ${full}-${w.one} ${w.title} needs ${inchFrac(w.need(full))}". Nothing is built at ${inchFrac(at)}".`;
+  `${withArticle(w.title, true)} needs at least ${inchFrac(w.need(1))}" ${w.word} for 1 ${w.one} (${w.each}). A full ${full}-${w.one} ${w.title} needs ${inchFrac(w.need(full))}". Nothing is built at ${inchFrac(at)}".`;
 const eachWords = (floor: number, thinnest: number, rider?: string) => `each needs ${inchFrac(floor)}"${rider ? ` for ${inchFrac(thinnest)}" ${rider}s` : ""}`;
 
 /** What a counted row needs along its run, measured once on the recipe at its own size (I36). */
