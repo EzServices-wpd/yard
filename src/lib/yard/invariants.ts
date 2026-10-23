@@ -31,7 +31,6 @@ import { isUnitItem, unitItemAsk } from "./unitItems";
  */
 import { buildPlan } from "./report";
 import { supportsOf } from "./supportGraph";
-import { ungroundedParts } from "./grounded";
 import { spanFindings, stampSpanOffer } from "./spanCheck";
 import { placementIndex } from "./placeEveryPart";
 import { buildInfo } from "./buildInfo";
@@ -68,9 +67,24 @@ export const PER_BUILD: InvariantId[] = ["I1", "I3", "I4", "I6", "I7", "I8", "I9
 
 const v = (id: InvariantId, msg: string): Violation => ({ id, cls: INVARIANT_CLASS[id], msg });
 
-/** I1: every panel reaches the floor or a wall through what it rests on (grounded.ts, shared with usableFloors.ts). */
+/** I1: every panel reaches the floor or a wall through what it rests on. */
 function i1(p: YardProject): Violation[] {
-  return ungroundedParts(p).map((q) => v("I1", `${q.name} reaches neither the floor nor a wall`));
+  if (!p.panels.length) return [];
+  const sup = supportsOf(p);
+  const wall = p.assumptions?.installMode === "wall" || p.assumptions?.installMode === "alcove";
+  const memo = new Map<string, boolean>();
+  const grounded = (id: string, seen: Set<string>): boolean => {
+    if (memo.has(id)) return memo.get(id)!;
+    const s = sup.get(id);
+    if (!s) return true; // parts the graph does not track (hardware) are carried by their host
+    if (s.how === "floor") return true;
+    if (seen.has(id)) return wall; // a closed ring of parts on a wall-hung build hangs on the wall
+    seen.add(id);
+    const ok = s.on.length > 0 ? s.on.some((o) => grounded(o, seen)) : wall;
+    memo.set(id, ok);
+    return ok;
+  };
+  return p.panels.filter((q) => !grounded(q.id, new Set())).map((q) => v("I1", `${q.name} reaches neither the floor nor a wall`));
 }
 
 /** I3: cut-list counts equal model parts; plan total equals the Buy lines. */
