@@ -1068,9 +1068,9 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
 
 /**
  * A carried part never runs down into what carries it (Critic #103 r2 row 141: the water wheel's posts ran through
- * their bases once the bases kept their stock thickness at a small size). A part standing on a carrier below it (its
- * own carrier, or one further down its load path: a rail on posts on bases) starts at that carrier's top and keeps its
- * own top, as long as it stays a real part; one that can't is left for the usable-size check to refuse.
+ * their bases once the bases kept their stock thickness at a small size). A part standing on a carrier below it (one of
+ * its own carriers, never one further down the load path) starts at that carrier's top and keeps its own top, as long
+ * as it stays a real part; one that can't is left for the usable-size check to refuse.
  */
 export function seatOnCarriers(recipe: Recipe, panels: Panel[]): void {
   const part = (p: Panel) => recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
