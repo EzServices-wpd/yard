@@ -8,6 +8,7 @@ import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
 import { wantsFixedGlueShelves } from "./honesty";
+import { isFixedSpanShelf } from "./shelfSpan";
 import { rotorChain, type RotorLink } from "./solids";
 import { ANATOMY_NOTE } from "./classAnatomy";
 
@@ -205,7 +206,10 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
         panel &&
         /^Center divider\b/.test(panel.name) &&
         !wantsFixedGlueShelves(project) &&
-        (info?.on ?? []).every((id) => project.panels.find((p) => p.id === id)?.type === "shelf")
+        (info?.on ?? []).every((id) => {
+          const host = project.panels.find((p) => p.id === id);
+          return !!host && host.type === "shelf" && !isFixedSpanShelf(host);
+        })
       ) {
         return `Set the ${part.name} on ${onto}. The shelf stays on pins, so this joint takes no screws.`;
       }
@@ -368,6 +372,9 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
     }
     const step = out[at];
     if (handWritten || namesSupport(project, step, info)) continue;
+    // The span step already screws a fixed shelf to the uprights. A second "fasten it" line names no joint.
+    const fixedShelf = project.panels.find((p) => p.id === part.key);
+    if (fixedShelf && isFixedSpanShelf(fixedShelf) && /screw each fixed shelf/i.test(`${step.title} ${step.description}`)) continue;
     step.description = `${step.description} ${placeSentence(project, part, info, fix)}`;
   }
 
