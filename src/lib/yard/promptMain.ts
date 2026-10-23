@@ -27,6 +27,7 @@ import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
+import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
@@ -666,7 +667,8 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A door style frames each front only after its slab size, reveal and position are final, so a style
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
-  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])))));
+  const spanned = (p: YardProject) => separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]));
+  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(spanned(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0]))))))));
 }
 
 /** The header names the stock the frame is cut from: a sheet primary on a mostly-lumber build (a ply seat or
