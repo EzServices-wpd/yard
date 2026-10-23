@@ -299,6 +299,8 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
       const words = phrase.split(/\s+/);
       if (words.length < 2) return full;
       const named = entries.find((e) => e.name.toLowerCase() === phrase.toLowerCase());
+      // A part name carries no article: "Hang the door — 2 concealed hinges" is a step, not a dimension line.
+      if (!named && /\b(?:the|a|an)\b/i.test(phrase)) return full;
       const found = named ?? findPlate(entries, words[words.length - 1]);
       if (!found) return full;
       // Several cut lines share this exact name (center supports of two heights): its own size picks the letter.
@@ -502,6 +504,8 @@ export function densifyOneJoinInstructions(
         return instructions.some(
           (o) =>
             o !== step &&
+            // Hanging the build on studs drives screws through the back into the wall; it does not join the back.
+            !/\bstuds?\b/i.test(o.title) &&
             (o.partsUsed ?? []).length > 0 &&
             (o.partsUsed ?? []).every((n) => findPlate(entries, n)?.label === e.label),
         );
