@@ -24,8 +24,8 @@ test("invariant ratchet: no new violation, no stale baseline entry", () => {
 // #127 r3 (Chief): every wall/structural/lag/anchor/anti-tip line is tied by id, and the general fastener lines still
 // tied only by words are a visible count that may only fall (the follow-up PR takes it to 0).
 // General fastener Buy lines (#8 boxes, nails, brads, glides, screw eyes, pan-head) no step carries by id yet, over the
-// corpus (365 prompts): a ceiling that may only fall. The follow-up PR moves them to ids and sets this to 0.
-const I46_GENERAL_WORD_TIED_MAX = 344;
+// corpus (365 prompts): a ratchet that may only fall (it must equal the count). The follow-up PR moves them to ids and sets this to 0.
+const I46_GENERAL_WORD_TIED_MAX = 343;
 test("I46 ties: wall fasteners all by id; general fasteners word-tied is counted and never grows", () => {
   let wallById = 0, general = 0;
   const untied: string[] = [];
@@ -40,7 +40,9 @@ test("I46 ties: wall fasteners all by id; general fasteners word-tied is counted
   });
   console.log(`# I46 wall fasteners tied by id: ${wallById}, untied: ${untied.length}; general fasteners word-tied: ${general}`);
   assert.deepEqual(untied, []);
-  assert.ok(general <= I46_GENERAL_WORD_TIED_MAX, `general fasteners word-tied ${general} > ${I46_GENERAL_WORD_TIED_MAX}`);
+  // A ratchet like the baseline's NEW/STALE check: a rise fails, and so does a fall until the constant is lowered to match.
+  assert.ok(general <= I46_GENERAL_WORD_TIED_MAX, `NEW: general fasteners word-tied rose to ${general} (ceiling ${I46_GENERAL_WORD_TIED_MAX})`);
+  assert.ok(general >= I46_GENERAL_WORD_TIED_MAX, `STALE: general fasteners word-tied fell to ${general}: lower I46_GENERAL_WORD_TIED_MAX in scripts/invariants.test.ts to ${general}`);
 });
 
 test("I2 linen canary: header, size, 11 pieces, price = Buy", () => {
