@@ -39,6 +39,9 @@ function shownSize(project: YardProject, assumed: Partial<Record<Axis, boolean>>
   const unit = body.length && body.length < project.panels.length ? { ...project, panels: body } : project;
   const box = !project.instances.length && project.panels.length ? drawnExtent(unit) : null;
   const ext: Record<Axis, number> | null = box ? { width: box.max.x - box.min.x, height: box.max.y - Math.min(0, box.min.y), depth: box.max.z - box.min.z } : null;
+  // A pocket build's size is its fitted unit on every axis: the drawn extent would fold the proud fronts into the depth
+  // the note already names (#109 B1: pocket vanity 17" deep, never 17 3/4").
+  if (project.pocket?.unit) return { width: o.width, height: o.height, depth: o.depth };
   const at = (a: Axis) => (assumed[a] && ext && ext[a] > 0 ? ext[a] : o[a]);
   // C11: a whole bought item's depth is its real piece, so it reads the model's finished depth too.
   const depth = assumed.depth && ext && ext.depth > 0 ? ext.depth : isUnitItem(project) ? modelFinishedDepth(project.panels, o.depth) : o.depth;
@@ -105,6 +108,13 @@ function notesAxes(project: YardProject) {
   if (isUnitItem(project)) {
     axes.forEach((a) => delete assumed[a]);
     extra.length = 0;
+  }
+  // An edit in place reads its marks from the edited spec (spec.ts), never from notes the rebuild no longer carries: an
+  // axis set on the bench is the person's own value, every other axis keeps the mark it had (#109 B2).
+  const spec = project.spec;
+  if (spec && axes.some((a) => spec.size[a].edited)) {
+    for (const a of axes) if (spec.size[a].assumed && !spec.size[a].edited) assumed[a] = true; else delete assumed[a];
+    return { assumed, extra, stock: false };
   }
   return { assumed, extra, stock };
 }

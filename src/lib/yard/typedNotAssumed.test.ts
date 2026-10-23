@@ -102,4 +102,18 @@ test("an edit in place rebuilds the spec from the spec before it: the edited axi
   assert.match(typedAxesTalk(ns).subtitle, new RegExp(`^24" wide · .*${depth}" deep assumed`));
   assert.doesNotMatch(typedAxesTalk(ns).subtitle, /you typed/);
   assert.deepEqual(typedAssumedFailures(ns, "nightstand"), []);
+  // B1 on an edited build: the fronts are never folded into a depth the edit left alone or the one it set (the store's
+  // pocket and fitted Measure paths). Pocket vanity to 36 W stays 17" deep; a desk set to 28 deep reads 28, not 28 3/4.
+  const { fitPocketAsk } = await import("./pocket");
+  const pv = generateFromPrompt("pocket vanity");
+  const fit = fitPocketAsk(pv.pocket!, { width: 36, height: pv.pocket!.unit.height, depth: pv.pocket!.unit.depth, ceiling: pv.pocket!.walls.height });
+  const pv36 = withEditedSpec(pv, generateFromPrompt("pocket vanity", pv.primaryMaterialId, undefined, { pocketOverride: fit.spec } as never));
+  assert.equal(headerTitle(pv36, { features: false }), 'Bathroom pocket vanity · 36" W × 17" D × 102" H (D, H assumed)');
+  assert.equal(typedAxesTalk(pv36).subtitle.replace(/^36" wide · /, ""), '102" tall and 17" deep assumed, measure to lock · doors and drawer fronts stand proud');
+  const desk = generateFromPrompt("desk 60 wide");
+  const f = desk.fitted!;
+  const d28 = withEditedSpec(desk, generateFromPrompt("desk 60 wide", desk.primaryMaterialId, undefined, { fittedOverride: { ...f, opening: { ...f.opening, depth: 28 }, unit: { ...f.unit, depth: 28 } }, honorUnit: true } as never));
+  assert.equal(headerTitle(d28, { features: false }), 'Desk · 60" W × 28" D × 29" H (H assumed)');
+  assert.match(typedAxesTalk(d28).subtitle, /^60" wide x 28" deep · 29" tall assumed/);
+  assert.deepEqual([typedAssumedFailures(pv36, "pocket vanity"), typedAssumedFailures(d28, "desk 60 wide")], [[], []]);
 });
