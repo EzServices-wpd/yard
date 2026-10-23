@@ -241,6 +241,67 @@
    "class": "F30",
    "msg": "Front apron runs into Center support 1 with no joint cut for it"
   },
+  "I46|murphy bed": {
+   "class": "F7",
+   "msg": "Buy lists 5/16\" × 3\" lag screws with washers; no step drives them",
+   "reason": "Row 231 (safety): the note says 'Lag the cabinet to two wall studs before the bed is mounted' and Buy adds the 4 lags, but no step drives them. Fixed as a class in its own PR, class-wall-anchor (wall-anchor hardware on Buy gets its install step). Delete this entry when both PRs are in."
+  },
+  "I37|corner bookshelf 60 wide 84 tall": {
+   "class": "F9",
+   "msg": "zero: 0″ dimension (step)"
+  },
+  "I37|sandbox": {
+   "class": "F9",
+   "msg": "no-class: stand-in body (model)"
+  },
+  "I37|cribbage board": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|paper clip chain 12 inches long": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|paper clip": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|washer tower": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|corner bookshelf, 24 inches along each wall, 60 tall, five shelves": {
+   "class": "F9",
+   "msg": "zero: 0″ dimension (step)"
+  },
+  "I37|corner bookshelf, 6 inches along each wall, 60 tall, five shelves": {
+   "class": "F9",
+   "msg": "zero: 0″ dimension (step)"
+  },
+  "I37|laundry folding table 48 wide 36 high 24 deep": {
+   "class": "F9",
+   "msg": "zero: 0″ dimension (step)"
+  },
+  "I37|birdhouse shaped like church": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|barn birdhouse": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|guitar hanger": {
+   "class": "F9",
+   "msg": "decimal-inch: decimal inches (note)"
+  },
+  "I37|corner bookshelf 51 wide 41 tall 34.5 deep": {
+   "class": "F9",
+   "msg": "zero: 0″ dimension (step)"
+  },
+  "I37|corner bookshelf 25 wide 54.5 tall 39 deep": {
+   "class": "F9",
+   "msg": "zero: 0″ dimension (step)"
+  },
   "I28|sundial": {
    "class": "F32",
    "msg": "Plinth is 2.94\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers"

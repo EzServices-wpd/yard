@@ -1,7 +1,7 @@
 "use client";
 
 import { mainMaterialId } from "@/lib/yard/mainMaterial";
-import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
+import { NOTHING_BUILT_STOCK, nothingBuilt } from "@/lib/yard/stockPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { fitBadge } from "@/lib/yard/fitBadge";
@@ -600,7 +600,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "stock" && (
         <section className="mt-4" data-yard-measure-section="stock">
-          <p className="text-sm text-fg">{project.refused && !project.panels.length ? NOTHING_BUILT_STOCK : <>{stock?.name ?? "Stock"}{thickness ? ` · ${fieldInch(thickness)} thick` : ""}</>}</p>
+          <p className="text-sm text-fg">{nothingBuilt(project) ? NOTHING_BUILT_STOCK : <>{stock?.name ?? "Stock"}{thickness ? ` · ${fieldInch(thickness)} thick` : ""}</>}</p>
+          {/* A refusal built nothing, so it offers no stock to choose (the same rule as the material pill). */}
+          {!nothingBuilt(project) && (<>
           <p className="mt-1 text-[11px] text-muted">Pick a class. The build keeps its size and its noun.</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {stockChoices.map((item) => (
@@ -633,6 +635,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
               </button>
             ))}
           </div>
+          </>)}
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Joints</p>
           <div className="mt-1 flex flex-wrap gap-1">
             {(["screw", "pocket", "dowel", "biscuit", "glue"] as ShopJoin[]).map((id) => (
