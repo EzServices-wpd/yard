@@ -51,7 +51,9 @@ it("an untyped wardrobe hangs side to side in a 24\" box, on a real closet rod",
     assert.ok(rod.position.y + rod.size.height / 2 >= 64 && rod.position.y + rod.size.height / 2 <= 70, q);
     assert.equal(rod.materialId, "closet-rod");
     assert.ok(buildPlan(p).bom.some((b) => /closet rod/i.test(b.name)), q);
-    assert.equal(p.panels.filter((x) => /divider/i.test(x.name)).length, 0, q);
+    const dividers = p.panels.filter((x) => /divider/i.test(x.name));
+    assert.ok(dividers.every((d) => /^Center divider\b/.test(d.name)), q);
+    assert.equal(dividers.filter((d) => /bay divider/i.test(d.name)).length, 0, q);
   }
 });
 

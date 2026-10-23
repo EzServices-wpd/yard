@@ -5,8 +5,8 @@ import type { Panel } from "./types";
  * every check that asks "what is this build's form?" (the generic-box rule) leaves them out, because casters are
  * hardware under a build, never its form.
  */
-/** Mobility words: "rolling bookshelf", "kitchen island on casters", "cart with wheels". Never a rolling pin. */
-export const ROLLING = /\brolling\b(?!\s+(?:pin|ball|marble|hills?|stock|shutter|ladder))|\bon\s+(?:locking\s+)?(?:casters|castors|wheels)\b|\bwith\s+(?:locking\s+)?(?:casters|castors)\b|\bmobile\b(?=\s+[a-z])/i;
+/** Mobility words: "rolling bookshelf", "kitchen island on casters", "cart with doors and wheels". Never a rolling pin. */
+export const ROLLING = /\brolling\b(?!\s+(?:pin|ball|marble|hills?|stock|shutter|ladder))|\bon\s+(?:locking\s+)?(?:casters|castors|wheels)\b|\b(?:with|and|plus)\s+(?:locking\s+)?(?:casters|castors|wheels)\b|\bmobile\b(?=\s+[a-z])/i;
 /** The same words, every occurrence, for stripping them out of a prompt. */
 const ROLLING_ALL = new RegExp(ROLLING.source, "gi");
 
