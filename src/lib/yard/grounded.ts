@@ -1,6 +1,7 @@
 /**
- * I1's rule as one shared function: every panel reaches the floor or a wall through what it rests on. The invariant
- * (invariants.ts I1) and the usable-size check (usableFloors.ts) both read it, so a named minimum is held to I1 itself.
+ * I1's rule for the usable-size check (usableFloors.ts): every panel reaches the floor or a wall through what it rests on.
+ * invariants.ts keeps I1 as the grader's own copy (the engine can't import the grader: invariants.ts imports promptMain);
+ * usableFloors.table.test.ts holds the two to the same parts on every probe build, so they can't drift apart.
  */
 import { supportsOf } from "./supportGraph";
 import type { Panel, YardProject } from "./types";
