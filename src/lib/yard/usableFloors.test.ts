@@ -108,3 +108,13 @@ it("the default-size reference strips every typed size", () => {
   assert.equal(withoutSizes("table 6 x 30 x 30 with a shelf"), "table with a shelf");
   assert.equal(withoutSizes("bench 7 1/16 deep 18 tall"), "bench");
 });
+
+it("row 141: a water wheel's posts stand on its bases, never through them", async () => {
+  const { buildRecipe } = await import("./recipeBuild");
+  const { findRecipe } = await import("./recipes");
+  const { hiddenOverlaps } = await import("./solids");
+  for (const q of ["water wheel", "water wheel 2 tall", "garden water wheel 24 wide"]) {
+    const b = buildRecipe(findRecipe(q)!, q);
+    assert.deepEqual(hiddenOverlaps(b.project).filter((m) => /base runs into (?:left|right) post|post runs into (?:left|right) base/.test(m)), [], q);
+  }
+});

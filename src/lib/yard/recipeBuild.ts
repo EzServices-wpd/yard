@@ -1067,6 +1067,33 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
 }
 
 /**
+ * A carried part never runs down into what carries it (Critic #103 r2 row 141: the water wheel's posts ran through
+ * their bases once the bases kept their stock thickness at a small size). A part standing on a carrier below it (one of
+ * its own carriers, never one further down the load path) starts at that carrier's top and keeps its own top, as long
+ * as it stays a real part; one that can't is left for the usable-size check to refuse.
+ */
+export function seatOnCarriers(recipe: Recipe, panels: Panel[]): void {
+  const part = (p: Panel) => recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+  const byName = (n: string) => panels.filter((p) => p.name === n || p.name.replace(/ \d+$/, "") === n);
+  const over = (a: Panel, b: Panel) => (["x", "z"] as const).every((x) => { const k = x === "x" ? "width" : "depth"; return Math.min(a.position[x] + a.size[k], b.position[x] + b.size[k]) - Math.max(a.position[x], b.position[x]) > 0.01; });
+  for (const p of [...panels].sort((a, b) => a.position.y - b.position.y)) {
+    if (p.turns || part(p)?.kind === "hardware") continue;
+    // Only a part designed standing (tallest in the recipe's own box: a post, a leg) is cut to stand on its carrier,
+    // at any size. A board or sheet designed lying flat keeps its stock thickness (I28): never a 0.69" 1×6.
+    const b = part(p)?.box;
+    if (!b || b[4] * recipe.size.height < Math.max(b[3] * recipe.size.width, b[5] * recipe.size.depth)) continue;
+    const top = p.position.y + p.size.height;
+    // Its own carriers only: a fin on a tailplane sunk into the fuselage seats on the tailplane, still touching it.
+    const into = (part(p)?.on ?? []).flatMap(byName).filter((c) => c !== p && c.position.y < p.position.y - 0.01 && c.position.y + c.size.height > p.position.y + 0.01 && over(p, c));
+    if (!into.length) continue;
+    const seat = Math.max(...into.map((c) => c.position.y + c.size.height));
+    if (top - seat < 0.25) continue;
+    p.position = { ...p.position, y: seat };
+    p.size = { ...p.size, height: top - seat };
+  }
+}
+
+/**
  * A member carried by two parts at its ends (a cross rail between two posts) runs face to face between them:
  * when the carriers' faces moved (stock thickness kept while the width grew or shrank), its ends follow them.
  */
@@ -1534,6 +1561,7 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
   if (!((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride)) oneSheetThick(recipe, panels);
   bearOnCarriers(recipe, panels);
   if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride) { exteriorBoards(panels); oneSheetThick(recipe, panels); }
+  seatOnCarriers(recipe, panels);
   const sized = dowelSizes(panels);
   // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle
   // and the parts that turn on it, so it stands on the floor, never through it.
