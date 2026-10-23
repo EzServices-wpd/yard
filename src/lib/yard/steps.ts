@@ -51,6 +51,7 @@ import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMoun
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
+import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
@@ -239,6 +240,31 @@ function stockThrough(project: YardProject, into: string): string {
   if (verb === "Set") return `Set the joints the stock uses, through ${into}.`;
   if (verb === "Glue") return `Tape or glue through ${into}.`;
   return `Screw through ${into}.`;
+}
+
+/** What a span divider's bottom actually meets. A pinned shelf takes no screws from that divider. */
+function spanDividerTalk(project: YardProject, dividers: Panel[], panels: Panel[]): string {
+  const hostUnder = (div: Panel) => {
+    let best: Panel | undefined;
+    let gap = 0.12;
+    for (const q of panels) {
+      if (q === div) continue;
+      const g = Math.abs(q.position.y + q.size.height - div.position.y);
+      if (g > gap) continue;
+      const ox = Math.min(div.position.x + div.size.width, q.position.x + q.size.width) - Math.max(div.position.x, q.position.x);
+      const oz = Math.min(div.position.z + div.size.depth, q.position.z + q.size.depth) - Math.max(div.position.z, q.position.z);
+      if (ox < 0.25 || oz < 0.25) continue;
+      best = q;
+      gap = g;
+    }
+    return best;
+  };
+  const hosts = dividers.map(hostUnder).filter((h): h is Panel => !!h);
+  const pinnedShelf = (h: Panel) => !wantsFixedGlueShelves(project) && h.type === "shelf" && !isFixedSpanShelf(h);
+  const screwed = hosts.filter((h) => !pinnedShelf(h));
+  if (!screwed.length) return "Plumb each one on the shelf under it. The shelves stay on pins.";
+  const kinds = [...new Set(screwed.map((h) => (h.type === "cleat" ? "cleat" : h.type === "bottom" ? "bottom" : h.type === "top" ? "top" : h.name.toLowerCase())))];
+  return `Plumb each one on the part under it. ${stockThrough(project, `the ${kinds.join(" or ")} it stands on`)}`;
 }
 
 /** Prompt of the panel project being written (named solid stock labels / glue-up). */
@@ -2516,12 +2542,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         partsUsed: names(cubby),
       });
     }
-    if (rest.length) {
+    // A span divider stands on a shelf, so it is set after the shelves, not in this earlier step.
+    const span = rest.filter((p) => /^Center divider\b/.test(p.name) || p.name === "Shelf bearer");
+    const other = rest.filter((p) => !span.includes(p));
+    if (other.length) {
       steps.push({
         step: n++,
         title: "Set remaining dividers",
-        description: `${rest.map(cutLine).join("; ")}. Plumb each one. ${stockThrough(project, "the back and the nearest shelf or top")}`,
-        partsUsed: names(rest),
+        description: `${other.map(cutLine).join("; ")}. Plumb each one. ${stockThrough(project, "the back and the nearest shelf or top")}`,
+        partsUsed: names(other),
       });
     }
   }
@@ -2573,25 +2602,43 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     for (const st of drawerBoxSteps(drawers, panels, slide, dividers.length > 0, D)) steps.push({ ...st, step: n++ });
   }
 
-  if (shelves.length) {
+  const looseShelves = shelves.filter((p) => !isFixedSpanShelf(p));
+  const fixedSpanShelves = shelves.filter((p) => isFixedSpanShelf(p));
+  if (looseShelves.length) {
     const fixedGlue = wantsFixedGlueShelves(project);
     steps.push(
       fixedGlue
         ? {
             step: n++,
-            title: `Glue ${shelves.length} fixed shel${shelves.length === 1 ? "f" : "ves"}`,
-            description: `${shelves.map(cutLine).join("; ")}. ${shelfHeights(shelves)} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Square every bay. These shelves are fixed — no pins.`,
+            title: `Glue ${shelfLineCount(looseShelves)} fixed shel${shelfLineCount(looseShelves) === 1 ? "f" : "ves"}`,
+            description: `${looseShelves.map(cutLine).join("; ")}. ${shelfHeights(looseShelves)} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Square every bay. These shelves are fixed — no pins.`,
             tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out.",
-            partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
+            partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...looseShelves]),
           }
         : {
             step: n++,
-            title: `Pin ${shelves.length} adjustable shel${shelves.length === 1 ? "f" : "ves"} — 4 pins each`,
-            description: `${shelves.map(cutLine).join("; ")}. ${shelfHeights(shelves)} Drill 13/64" pin holes (a snug fit for 3/16" pins) in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 1¼" apart — the standard shelf-pin spacing. Four pins per shelf (${shelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
+            title: `Pin ${shelfLineCount(looseShelves)} adjustable shel${shelfLineCount(looseShelves) === 1 ? "f" : "ves"} — 4 pins each`,
+            description: `${looseShelves.map(cutLine).join("; ")}. ${shelfHeights(looseShelves)} Drill 13/64" pin holes (a snug fit for 3/16" pins) in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 1¼" apart — the standard shelf-pin spacing. Four pins per shelf${looseShelves.length === shelfLineCount(looseShelves) ? "" : " piece"} (${looseShelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
             tips: "A pegboard jig or a shelf-pin jig beats measuring every hole twice.",
-            partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves]),
+            partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...looseShelves]),
           },
     );
+  }
+
+  const spanDividers = dividers.filter((p) => /^Center divider\b/.test(p.name));
+  const shelfBearers = panels.filter((p) => p.name === "Shelf bearer");
+  const spanCleats = panels.filter((p) => p.type === "cleat" && /^Span cleat\b/.test(p.name));
+  const frontRails = panels.filter((p) => /^Front rail\b/.test(p.name));
+  if (spanDividers.length || frontRails.length) {
+    const railTalk = frontRails.length
+      ? `Glue and screw ${frontRails.length === 1 ? "the front rail" : "each front rail"} on edge under the front of its shelf. `
+      : "";
+    steps.push({
+      step: n++,
+      title: spanDividers.length ? (spanDividers.length === 1 ? "Set the center divider" : "Set the center dividers") : frontRails.length === 1 ? "Glue the front rail under the shelf" : "Glue the front rails under the shelves",
+      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? "Screw each fixed shelf to the uprights. " : ""}${shelfBearers.length ? "Screw each shelf bearer to the center divider beside it. " : ""}${railTalk}${spanDividers.length ? spanDividerTalk(project, spanDividers, panels) : ""}`.trim(),
+      partsUsed: names([...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails]),
+    });
   }
 
   const hangingRods = rails.filter((p) => /hanging rod/i.test(p.name));
