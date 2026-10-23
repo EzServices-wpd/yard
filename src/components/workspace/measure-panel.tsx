@@ -1,7 +1,7 @@
 "use client";
 
 import { mainMaterialId } from "@/lib/yard/mainMaterial";
-import { NOTHING_BUILT_STOCK, nothingBuilt } from "@/lib/yard/stockPill";
+import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { fitBadge } from "@/lib/yard/fitBadge";

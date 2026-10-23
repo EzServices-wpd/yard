@@ -33,7 +33,8 @@ for (const prompt of REFUSED) {
     assert.doesNotMatch(headerTitle(p), /\d/, "header");
     assert.deepEqual(headerFeatures(p), [], "header features");
     assert.equal(stockPillLabel(p, plan).label, NOTHING_BUILT_STOCK, "stock pill");
-    assert.deepEqual(p.notes, [p.refused], "notes are the refusal alone");
+    // Nothing built, so no note about the build rides along: a refusal's notes are empty (#107, tooSmall) or the refusal alone (#90's count rule).
+    assert.ok((p.notes ?? []).every((n) => n === p.refused), `notes are only the refusal: ${JSON.stringify(p.notes)}`);
     assert.equal(p.cardNote, p.refused);
     assert.doesNotMatch(candidateFromPrint(p, plan).size ?? "", SIZE, "saved idea");
     const pdf = [...buildPlanPdf(p, plan).output().matchAll(/\((.*?)\) Tj/g)].map((m) => m[1]).join(" ");
