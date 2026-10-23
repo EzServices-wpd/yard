@@ -41,7 +41,7 @@ import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
-import { isMakeupVanityPrompt } from "./sinkVanity";
+import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
   P, PLY, pick, cabinetStem, tableClassHeight, isIroningCabinet, isMedicineCabinet, isSpiceRack,
@@ -982,8 +982,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? height
         : undefined;
   // Bare workbench / potting bench is a standing shop top — never invent desk knee clearance.
-  // A makeup / dressing / knee-space vanity keeps the knee-hole desk. Every other vanity is a sink base.
-  const makeupVanity = program === "vanity" && isMakeupVanityPrompt(lower);
+  // A sink base is only a bath, sink, or plumbing cue (or a bare vanity at a typed 30–36 counter).
+  const makeupVanity = program === "vanity" && !isSinkVanityPrompt(lower, typedAxes.height ? height : undefined);
   const vanityDoorsSaid =
     program === "vanity" && /door/.test(lower) && !isDoorPortal(lower);
   // A typed feature bay ("pocket for the trash can") sizes the open bay to the object it holds.

@@ -204,7 +204,7 @@ test("one formatter: card inch() and the header both round to the nearest 1/16",
 
 test("headerSize class: an assumed height is the unit's own, never a wall-hung mirror above it (vanity seed, Critic #93)", async () => {
   const { headerSize, isWallAccessoryAbove } = await import("../src/lib/yard/headerSize.ts");
-  for (const q of ["30 inch vanity", "bathroom vanity", "vanity with mirror", "bathroom vanity 30 wide"]) {
+  for (const q of ["30 inch vanity", "bathroom vanity with a mirror", "vanity with mirror", "bathroom vanity 30 wide with a mirror"]) {
     const p = generateFromPrompt(q);
     assert.ok(p.panels.some((x) => isWallAccessoryAbove(x, p.overall.height)), `${q}: seed has a mirror over the top`);
     assert.equal(headerSize(p).height, p.overall.height, `${q}: header height is the vanity's ${p.overall.height}, not the mirror's top`);

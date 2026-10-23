@@ -50,7 +50,7 @@
       "height": 34,
       "depth": 21
     },
-    "panels": 18,
+    "panels": 13,
     "instances": 0,
     "uniqueParts": [
       "Back",
@@ -61,13 +61,11 @@
       "Kick support",
       "Left door",
       "Left upright",
-      "Mirror",
       "Right door",
       "Right upright",
-      "Sink bay divider",
       "Toekick 1",
       "Toekick 2",
-      "bathroom trash can pocket divider"
+      "bathroom trash can pocket wall"
     ],
     "notesHead": [
       "Vanity. Stands on its own on the floor.",
