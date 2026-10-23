@@ -31,7 +31,7 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
   // "X for kids" is the kids' X.
   const head = `${/\bfor\s+(?:kids?|children|toddlers?)\b/.test(lower) ? "kids " : ""}${headPhrase(lower)}`;
-  if (/\bmirrors?(?:\s+frames?)?$|\bframed\s+mirrors?$/.test(head)) return "mirror";
+  if (/\bmirrors?(?:\s+frames?)?$|\bframed\s+mirrors?$/.test(head) && !/\bno\s+mirrors?\b/.test(lower)) return "mirror";
   if (/\b(?:baby|child|kid|toddler|safety|stair|pet|dog|puppy)\s+gates?$/.test(head)) return "baby-gate";
   if (/\b(?:fire\s*wood|log|wood)\s+(?:racks?|holders?|stands?)$/.test(head)) return "firewood-rack";
   if (/\b(?:blanket|quilt|towel)\s+ladders?\b/.test(head)) return "rung-ladder";
