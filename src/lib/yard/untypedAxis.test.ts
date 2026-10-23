@@ -1,3 +1,4 @@
+import { stripSizeStamp } from "./voiceHonesty";
 /**
  * Row 161 (I43): an axis the prompt does not type comes from the family's defaults, never from another typed axis.
  * Literal answers (the family default widths, worked out from the untyped builds 'cabinet', 'desk'), measured from
@@ -67,4 +68,18 @@ it("row 240: a re-stamped title never prints the size twice", () => {
     ["wardrobe 6ft 2 1/2in tall", 'Wardrobe 74 1/2" tall'],
     ["wardrobe 15 1/2 deep", 'Wardrobe 15 1/2" deep'],
   ] as const) assert.equal(generateFromPrompt(q).name, name, q);
+});
+
+it("row 279: fractional sizes on any axis, in any typed form, are stripped once and stamped once", () => {
+  for (const q of ["closet 19 3/4 deep", "wardrobe 19 3/4 deep", 'wardrobe 19 3/4" deep', "pantry 24.5 deep", "wardrobe 21¾ deep", "closet 20½ deep", "pantry 23½ deep",
+    "bookcase 30 3/4 wide", "dresser 20½ wide", "bookcase 23½ wide", "bookcase 24.5 wide", "wardrobe 70 3/4 tall", "pantry 80½ tall", "closet 72.5 tall", "bookcase 59½ tall"]) {
+    const name = generateFromPrompt(q).name;
+    assert.equal((name.match(/\d+(?:\.\d+)?(?: \d+\/\d+)?"/g) ?? []).length <= 3 && !/(\d[\d /.]*")[^"]*\1/.test(name), true, `${q} -> ${name}`);
+  }
+  for (const stem of ["Wardrobe", "Closet", "Pantry"]) for (const ax of ["deep", "wide", "tall"]) for (const f of ["19 3/4", "21¾", "20½", "23½", "24.5", '19 3/4"', '21¾"', "19 3/4 in", "24.5 inch", "19 3/4″"]) {
+    assert.equal(stripSizeStamp(`${stem} ${f} ${ax}`), stem, `${stem} ${f} ${ax}`);
+    assert.equal(stripSizeStamp(`${stem} ${f} ${ax} ${f} ${ax}`), stem, `twice: ${stem} ${f} ${ax}`);
+  }
+  assert.equal(stripSizeStamp('Wardrobe 19 3/4" × 72" × 21¾"'), "Wardrobe");
+  assert.equal(stripSizeStamp("Bookcase"), "Bookcase");
 });

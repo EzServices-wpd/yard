@@ -1092,11 +1092,20 @@ export function nounSpanFromPrompt(prompt: string): number {
  * 'Wardrobe 15 1/2" deep 15 1/2" deep'). Every title re-stamp goes through here.
  */
 export function stripSizeStamp(name: string): string {
-  const N = String.raw`(?:\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)"`;
-  return name
-    .replace(new RegExp(String.raw`\s+${N}\s*×\s*${N}(?:\s*×\s*${N})?\s*$`), "")
-    .replace(new RegExp(String.raw`\s+${N}\s+(?:wide|tall|deep)\s*$`, "i"), "")
-    .trim();
+  // A size in any form a stamp or a typed name carries it: 19 3/4, 21¾, 21 ¾, 24.5, 3/4, with an inch mark (" or ″),
+  // "in"/"inch(es)" or none before the axis word (rows 240 and 279: 'Wardrobe 19 3/4" deep 19 3/4" deep').
+  const NUM = String.raw`(?:\d+(?:\.\d+)?(?:\s*[¼½¾⅛⅜⅝⅞]|\s+\d+\/\d+)?|\d+\/\d+|[¼½¾⅛⅜⅝⅞])`;
+  const N = String.raw`${NUM}\s*["″]`;
+  const AXN = String.raw`${NUM}\s*(?:["″]|in\b|inch(?:es)?\b)?`;
+  const pair = new RegExp(String.raw`\s+${N}\s*[×x]\s*${N}(?:\s*[×x]\s*${N})?\s*$`);
+  const axis = new RegExp(String.raw`\s+${AXN}\s+(?:wide|tall|deep)\s*$`, "i");
+  let out = name;
+  // Repeat, so a name already stamped twice comes back as its bare stem.
+  for (let prev = ""; prev !== out; ) {
+    prev = out;
+    out = out.replace(pair, "").replace(axis, "").trim();
+  }
+  return out;
 }
 
 /**
