@@ -1,7 +1,7 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
 import { headerSize, typedAxesTalk } from "./headerSize";
-import { drawerBoxes } from "./hollowDrawers";
+import { drawerBoxes, drawerSideT } from "./hollowDrawers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
@@ -2673,7 +2673,7 @@ function cutStockGroups(
     if (isBuyMirrorPanel(p.name, p.type)) continue;
     // Expand drawer envelopes into cuttable parts before stock grouping.
     if (isBoundingDrawerPanel(p.name, p.type)) {
-      for (const part of explodeDrawerBoxCuts(p.size.width, p.size.height, p.size.depth)) {
+      for (const part of explodeDrawerBoxCuts(p.size.width, p.size.height, p.size.depth, drawerSideT(p.materialId))) {
         enqueue({
           ...p,
           // The drawer bottom is cut from the stock its cut-list row names (the ¼" sheet), never the box's boards.
@@ -2810,7 +2810,7 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
     const d = Math.round(p.size.depth * 8) / 8;
     // Same class pack as closetCuts — never ask builders to cut a drawer envelope.
     if (isBoundingDrawerPanel(p.name, p.type)) {
-      for (const part of explodeDrawerBoxCuts(w, h, d)) {
+      for (const part of explodeDrawerBoxCuts(w, h, d, drawerSideT(p.materialId))) {
         push(part.name, part.type, part.width, part.height, part.depth);
       }
       continue;

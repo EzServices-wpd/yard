@@ -11,7 +11,9 @@ import { isSideEndTable, wantsShoes } from "./family";
 export const PLY = "plywood-3-4-4x8";
 export const PLY_BACKER = "plywood-1-4-4x8";
 export const TWO_BY_TWO = "lumber-2x2-8";
-export const P = 0.75;
+/** Carcase sheet thickness: a live binding, 3/4" unless a build runs at the picked sheet (sheetThickness.ts). */
+import { P } from "./sheetThickness";
+export { P };
 /** Stud spacing the hang steps assume. A back narrower than this cannot take a screw in two studs. */
 export const STUD_CENTER_IN = 16;
 /** Concealed hinge arm sticks in from the door's inner face. Shelves must stop short of it. */
