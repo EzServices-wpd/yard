@@ -14,10 +14,11 @@ import { buildPlanPdf, refusedSubline } from "../src/lib/yard/pdf";
 const pdfText = (doc: jsPDF) =>
   [...Buffer.from(doc.output("arraybuffer") as ArrayBuffer).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1"));
 
-// Expected minimums from the refusal rules themselves (9 rods × 9/16" + ends; two 3/4" panels + a 1" opening).
+// Expected minimums from the refusal rules themselves (9 rods × 9/16" + ends; two 3/4" panels + a 3 3/4" opening a hand
+// reaches into, usableFloors.ts).
 const CASES: [string, string][] = [
   ["abacus 2 1/8 wide 9 rods", 'Nothing built · needs at least 6 9/16" wide'],
-  ["bookcase 1/2 wide", 'Nothing built · needs at least 2 1/2" wide'],
+  ["bookcase 1/2 wide", 'Nothing built · needs at least 5 1/4" wide'],
 ];
 
 for (const [prompt, want] of CASES) {
