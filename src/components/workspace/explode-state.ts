@@ -33,6 +33,20 @@ export const explodeClock = {
   endedAt: 0,
 };
 
+/** A new solve for the camera to frame (CameraRig refits when it lands; a tap's solve can land a little later). */
+let solvedV = 0;
+const solvedSubs = new Set<() => void>();
+export function setSolved(s: ExplodeSolved) {
+  explodeClock.solved = s;
+  solvedV++;
+  solvedSubs.forEach((f) => f());
+}
+export const solvedVersion = () => solvedV;
+export function subscribeSolved(f: () => void) {
+  solvedSubs.add(f);
+  return () => void solvedSubs.delete(f);
+}
+
 export function startTween(to: number, dur: number, now = performance.now()) {
   const c = explodeClock;
   if (c.target === to && !c.tween && c.u === to) return;
