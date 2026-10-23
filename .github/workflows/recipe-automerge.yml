@@ -1,16 +1,22 @@
-# Recipe-bot auto-merge (approved by Ezra): once the full guards run (linen closet exact included) passes
-# on the yard-recipe-bot PR, merge it, but only if the PR touches nothing but the recipe store and the
-# prompt counts, and only the exact commit guards checked. Direct pushes to main are untouched.
+# Recipe-bot auto-merge (approved by Ezra): once BOTH the full guards run (linen closet exact included) and the
+# eval gate pass on the yard-recipe-bot PR, merge it, but only if the PR touches nothing but the recipe store and
+# the prompt counts, and only the exact commit both checked. A recipe change moves eval builds, so it never merges
+# ungated. Runs when either workflow finishes; whichever finishes last merges. Direct pushes to main are untouched.
 name: recipe-automerge
 
 on:
   workflow_run:
-    workflows: [guards]
+    workflows: [guards, eval-gate]
     types: [completed]
 
 permissions:
   contents: write
   pull-requests: write
+  actions: read
+
+concurrency:
+  group: recipe-automerge
+  cancel-in-progress: false
 
 jobs:
   merge:
@@ -32,6 +38,12 @@ jobs:
           [ -n "$pr" ] || { echo "no open recipe PR"; exit 0; }
           head=$(gh pr view "$pr" -R "$REPO" --json headRefOid --jq .headRefOid)
           [ "$head" = "$SHA" ] || { echo "PR head $head is newer than the checked $SHA; waiting for its guards run"; exit 0; }
+          # Both gates, on this exact commit: the newest pull_request run of each workflow must be completed/success.
+          for wf in guards.yml eval-gate.yml; do
+            got=$(gh api "repos/$REPO/actions/workflows/$wf/runs?head_sha=$SHA&event=pull_request&per_page=50" \
+              --jq '.workflow_runs | sort_by(.created_at) | last | if . == null then "none" else "\(.status)/\(.conclusion)" end')
+            [ "$got" = "completed/success" ] || { echo "$wf on $SHA is $got; not merging (the other workflow's completion re-runs this check)"; exit 0; }
+          done
           extra=$(gh pr view "$pr" -R "$REPO" --json files --jq '.files[].path' | grep -vxE 'src/lib/yard/(recipes|promptCounts)\.json' || true)
           [ -z "$extra" ] || { echo "PR touches more than the recipe files: $extra"; exit 1; }
           gh pr merge "$pr" -R "$REPO" --squash --delete-branch --match-head-commit "$SHA"
