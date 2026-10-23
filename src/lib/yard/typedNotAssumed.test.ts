@@ -117,3 +117,13 @@ test("an edit in place rebuilds the spec from the spec before it: the edited axi
   assert.match(typedAxesTalk(d28).subtitle, /^60" wide x 28" deep · 29" tall assumed/);
   assert.deepEqual([typedAssumedFailures(pv36, "pocket vanity"), typedAssumedFailures(d28, "desk 60 wide")], [[], []]);
 });
+
+test("row 296: a recipe on a drawer case stands at the typed height; the case takes what the body leaves (cover 8, tag 8)", async () => {
+  const { drawnExtent } = await import("./pdfDraw");
+  for (const [q, h] of [["jewelry box 12 wide 8 tall 8 deep with 3 drawers", 8], ["jewelry box 10 tall with 2 drawers", 10]] as const) {
+    const p = generateFromPrompt(q);
+    const d = drawnExtent(p);
+    assert.ok(Math.abs(d.max.y - d.min.y - h) < 1 / 32, `${q}: drawn ${d.max.y - d.min.y}`);
+    assert.deepEqual(i42(q), [], q);
+  }
+});
