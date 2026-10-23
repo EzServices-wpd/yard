@@ -50,7 +50,7 @@ import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMoun
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
-import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
+import { adjustableShelfTalk, isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
@@ -2592,7 +2592,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           }
         : {
             step: n++,
-            title: `Pin ${looseShelves.length} adjustable shel${looseShelves.length === 1 ? "f" : "ves"} — 4 pins each`,
+            title: `Pin ${adjustableShelfTalk(panels).phrase} — 4 pins each`,
             description: `${looseShelves.map(cutLine).join("; ")}. ${shelfHeights(looseShelves)} Drill 13/64" pin holes (a snug fit for 3/16" pins) in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 1¼" apart — the standard shelf-pin spacing. Four pins per shelf${looseShelves.length === shelfLineCount(looseShelves) ? "" : " piece"} (${looseShelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
             tips: "A pegboard jig or a shelf-pin jig beats measuring every hole twice.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...looseShelves]),

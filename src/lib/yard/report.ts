@@ -14,7 +14,7 @@ import { foldDownBuy, hingeContext, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
-import { isFixedSpanShelf } from "./shelfSpan";
+import { adjustableShelfTalk, isFixedSpanShelf } from "./shelfSpan";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -1018,6 +1018,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   // frame, a profile or legs has nothing to drill, so it buys no pins.
   const pinPieces = project.panels.filter((panel) => panel.type === "shelf" && !isFixedSpanShelf(panel) && shelfSpansUprights(panel, project.panels));
   const shelfCount = pinPieces.length;
+  const shelfTalk = adjustableShelfTalk(project.panels);
   // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
   // Shoe cubbies / jar lips / bottle rails are glued and screwed — never pin-shelf bookcases.
   if (
@@ -1035,7 +1036,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   ) {
     const pins = pinPieces.length * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
-    const pinWord = `${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4`;
+    const pinWord = shelfTalk.multi && shelfTalk.pieces === pinPieces.length
+      ? `${shelfTalk.phrase} × 4`
+      : `${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4`;
     bom.push({
       name: '3/16" shelf pins',
       quantity: packs,

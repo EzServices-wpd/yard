@@ -103,8 +103,8 @@ describe("shelf span supports", () => {
     assert.equal(shelves.length, 10);
     assert.equal(shelves.some((s) => s.polygon), false);
     for (const shelf of shelves) assert.ok(shelf.size.width <= shelfSpanLimit(shelf.materialId, shelf.size.height) + 1 / 32, shelf.name);
-    assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 10 adjustable shelves/);
-    assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /10 shelves/);
+    assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 5 shelves \(10 adjustable pieces\)/);
+    assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /5 shelves \(10 adjustable pieces\)/);
     assert.doesNotMatch(plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n"), /nosing/i);
     assert.equal(project.panels.some((q) => project.panels.some((d) => d !== q && /^Center divider\b/.test(d.name) && solidsOverlap(d, q))), false);
     assert.equal(stepScrewCount(plan), Number(plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN));
@@ -385,9 +385,9 @@ describe("shelf span supports", () => {
     const wardrobe = generateFromPrompt("wardrobe");
     const pinned = wardrobe.panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p));
     assert.equal(pinned.length, 6);
-    assert.match((wardrobe.notes ?? []).join("\n"), /\b6 adjustable shelves\b/);
+    assert.match((wardrobe.notes ?? []).join("\n"), /3 shelves \(6 adjustable pieces\)/);
     assert.doesNotMatch((wardrobe.notes ?? []).join("\n"), /4 adjustable shelf lines/);
-    assert.match(buildPlan(wardrobe).instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 6 adjustable shelves/);
+    assert.match(buildPlan(wardrobe).instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 3 shelves \(6 adjustable pieces\)/);
     const drawers = generateFromPrompt("wardrobe with 2 drawers");
     const div = drawers.panels.find((p) => p.name === "Center divider")!;
     const shelf = drawers.panels.find((p) => p.name === "Shelf 1")!;

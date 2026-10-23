@@ -784,13 +784,24 @@ function growCase(project: YardProject, drop: number): YardProject {
   };
 }
 
-/** "4 adjustable shelf lines" counted the screwed hat. The number is the pinned shelf pieces. */
+/** Loose pin shelves: one level per height, one piece per bay. A center divider is what makes a level into pieces. */
+export function adjustableShelfTalk(panels: Panel[]): { levels: number; pieces: number; multi: boolean; phrase: string } {
+  const loose = panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p));
+  const pieces = loose.length;
+  const levels = shelfLineCount(loose);
+  const multi = pieces > levels && panels.some((p) => /^Center divider\b/.test(p.name));
+  const phrase = multi
+    ? `${levels} shel${levels === 1 ? "f" : "ves"} (${pieces} adjustable pieces)`
+    : `${pieces} adjustable shel${pieces === 1 ? "f" : "ves"}`;
+  return { levels, pieces, multi, phrase };
+}
+
+/** "4 adjustable shelf lines" counted the screwed hat. A split case names the levels and the pieces. */
 function recountAdjustable(notes: string[] | undefined, panels: Panel[]): string[] | undefined {
   if (!notes?.length) return notes;
-  const n = panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p)).length;
-  if (!n) return notes;
-  const word = `${n} adjustable shel${n === 1 ? "f" : "ves"}`;
-  return notes.map((s) => s.replace(/\d+ adjustable shelf lines?/, word));
+  const talk = adjustableShelfTalk(panels);
+  if (!talk.pieces) return notes;
+  return notes.map((s) => s.replace(/\d+ adjustable shelf lines?/, talk.phrase));
 }
 
 /** Each hanging bay gets one fixed shelf on a back cleat. A fixed shelf still past its limit gets a front rail when the sag passes. */
