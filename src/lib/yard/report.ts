@@ -11,7 +11,7 @@ import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
 import { isUnitItem } from "./unitItems";
 import { isNoLidPrompt } from "./cueRules";
-import { foldDownBuy, hingedBuy } from "./hingedLeaf";
+import { foldDownBuy, hingeContext, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
@@ -839,7 +839,6 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase())) ||
     /\b(?:coat|hat|key|leash)\s+(?:rack|holder)\b/i.test(project.name);
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
-  const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
   const nightstand =
     !isBedsideShelf((project.prompt ?? "").toLowerCase()) &&
     !/^Bedside shelf/i.test(project.name) &&
@@ -1046,7 +1045,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     }
   }
   // Every door and lid: hinges by size and weight, stays, latches, pulls (one shared module).
-  bom.push(...hingedBuy(project, bom, { crate, screwless: stockJoinsWithoutScrews(project) }));
+  bom.push(...hingedBuy(project, bom, hingeContext(project)));
 
 
   const hangingRods = project.panels.filter(

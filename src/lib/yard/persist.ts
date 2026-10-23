@@ -1,5 +1,7 @@
 import type { YardProject } from "./types";
 import { emptyProject } from "./prompt";
+import { yardIsSavable } from "./savable";
+export { yardIsSavable };
 
 const KEY = "yard_project_v1";
 const LIB = "yard_library_v1";
@@ -76,12 +78,17 @@ function cardOf(project: YardProject): YardCard {
 export function listLocalYards(): YardCard[] {
   if (typeof window === "undefined") return [];
   const cards = safeParse<YardCard[]>(localStorage.getItem(LIB));
-  return Array.isArray(cards) ? cards : [];
+  if (!Array.isArray(cards)) return [];
+  // A refusal saved before this rule is left out of the list (and its record is never offered to open).
+  return cards.filter((c) => {
+    const full = safeParse<YardProject>(localStorage.getItem(`yard_full_${c.id}`));
+    return !full || yardIsSavable({ refused: full.refused, panels: full.panels ?? [], instances: full.instances ?? [], prompt: full.prompt });
+  });
 }
 
 export function saveLocalYard(project: YardProject) {
   if (typeof window === "undefined") return;
-  if (!project.prompt && project.instances.length === 0 && project.panels.length === 0) return;
+  if (!yardIsSavable(project)) return;
   try {
     localStorage.setItem(`yard_full_${project.id}`, JSON.stringify(project));
     const cards = listLocalYards().filter((c) => c.id !== project.id);

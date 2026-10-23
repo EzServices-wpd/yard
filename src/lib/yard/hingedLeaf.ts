@@ -12,6 +12,7 @@ import { createId } from "@/lib/utils";
 import { isHingedLidChest, isLiftOffLidPrompt, isToyChest } from "./family";
 import { isNoLidPrompt } from "./cueRules";
 import { doorHingesLeft, isHingedLidPanel } from "./operateFaces";
+import { getCatalogItem } from "./catalog";
 
 type Bom = BuildPlan["bom"];
 type BomLine = Bom[number];
@@ -117,6 +118,47 @@ export function leavesOf(project: YardProject): Leaf[] {
   return out;
 }
 
+/** What decides the door hinges Buy lists: a crate hangs utility hinges, glue-only stock buys none. */
+export function hingeContext(project: YardProject): { crate: boolean; screwless: boolean } {
+  const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
+  const item = project.primaryMaterialId ? getCatalogItem(project.primaryMaterialId) : undefined;
+  const joins = item?.preferredJoins ?? [];
+  return { crate, screwless: joins.length > 0 && !joins.includes("screw") && !joins.includes("nail") };
+}
+
+/**
+ * Hinge centres up from a leaf's bottom edge (inches): 3" in from the top and bottom (less on a leaf under 12"),
+ * the rest evenly between. The Where line (placement.ts) and the bench model (panelHardware) read this one list.
+ */
+export function hingeCenters(h: number, count: number): number[] {
+  const inset = h >= 12 ? 3 : Math.max(1.5, Math.round(h * 0.2 * 4) / 4);
+  const n = Math.max(2, count);
+  return Array.from({ length: n }, (_, i) => inset + ((h - 2 * inset) * i) / (n - 1));
+}
+
+const layoutCache = new WeakMap<YardProject, Map<string, number[]>>();
+
+/**
+ * Row 207: every door hinge Buy lists, per door part id (hinge centres up from the door's bottom edge). hingedBuy sums
+ * these counts and the bench draws exactly these hinges, so the model, the steps and Buy never disagree. Lids (piano
+ * hinge, T-hinges) are not in it: the model draws no lid hinges yet.
+ */
+export function doorHingeLayout(project: YardProject, given?: { crate: boolean; screwless: boolean }): Map<string, number[]> {
+  const hit = given ? undefined : layoutCache.get(project);
+  if (hit) return hit;
+  const ctx = given ?? hingeContext(project);
+  const out = new Map<string, number[]>();
+  const outdoor = /pressure-treated|exterior|galvan/i.test((project.notes ?? []).join(" "));
+  for (const l of leavesOf(project)) {
+    if (l.role !== "door") continue;
+    const h = l.part.size.height;
+    if (l.part.hinged) out.set(l.part.id, hingeCenters(h, specOfDeclared(l, outdoor).count));
+    else if (!ctx.screwless) out.set(l.part.id, hingeCenters(h, ctx.crate ? 2 : hingeSpec({ role: "door", w: l.part.size.width, h, t: l.part.size.depth }).count));
+  }
+  if (!given) layoutCache.set(project, out);
+  return out;
+}
+
 /** Operate hooks: attributes for the overview SVG group of one part (null for a part that does not swing). */
 export function leafSvgAttrs(project: YardProject): (id: string) => Record<string, string> | null {
   const by = new Map(leavesOf(project).map((l) => [l.part.id, l]));
@@ -144,12 +186,15 @@ export function hingedBuy(project: YardProject, bom: Bom, ctx: { crate: boolean;
   const have = () => bom.map((b) => b.name.toLowerCase()).join(" ") + " " + extra.map((b) => b.name.toLowerCase()).join(" ");
   const extra: BomLine[] = [];
   const doors = leaves.filter((l) => l.role === "door" && !l.part.hinged);
+  // The one door-hinge source (row 207): the bench draws the same list.
+  const layout = doorHingeLayout(project, ctx);
   if (doors.length && !ctx.screwless) {
     if (ctx.crate) {
-      extra.push({ name: HW.utility.name, quantity: 1, unit: "pair", searchQuery: HW.utility.searchQuery, estimatedCost: 6.98, notes: "Two hinges on the door, screwed into the left upright." });
+      const pairs = Math.max(1, Math.ceil(doors.reduce((a, d) => a + (layout.get(d.part.id)?.length ?? 0), 0) / 2));
+      extra.push({ name: HW.utility.name, quantity: pairs, unit: pairs === 1 ? "pair" : "pairs", searchQuery: HW.utility.searchQuery, estimatedCost: Math.round(6.98 * pairs * 100) / 100, notes: "Two hinges on the door, screwed into the left upright." });
       extra.push({ name: "Barrel bolt latch", quantity: 1, unit: "pc", searchQuery: "3 inch barrel bolt latch", estimatedCost: BOLT.each, notes: "Latch the door into the right upright so it stays shut." });
     } else {
-      const each = doors.map((d) => hingeSpec({ role: "door", w: d.part.size.width, h: d.part.size.height, t: d.part.size.depth }).count);
+      const each = doors.map((d) => layout.get(d.part.id)?.length ?? 0);
       const n = each.reduce((a, b) => a + b, 0);
       const pairs = Math.ceil(n / 2);
       extra.push({
