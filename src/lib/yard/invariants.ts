@@ -1,4 +1,4 @@
-import { anchorInstalled, anchorKind, fastenerId } from "./wallAnchorSteps";
+import { anchorKind, fastenerId, tiedById } from "./wallAnchorSteps";
 import { thicknessFailures } from "./stockThickness";
 import { riderFloor, rodArrayFailures, rodArrays } from "./rodArrays";
 import { countWasTyped, rowNeed, typedCount, typedSize } from "./recipeBuild";
@@ -602,35 +602,43 @@ function i18(p: YardProject, plan: BuildPlan): Violation[] {
 }
 
 /**
- * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199): every screw Buy lists is driven in some step,
- * and every back is fastened in some step. The joint-screw line's count is the count the steps drive (when the
- * steps state counts at all, else some step must screw); any other screw line (structural, lag, pocket) is named
- * by the step that drives it, by its own kind word, or lists it by id; wall-anchor lines (lag, anti-tip, rated anchors)
- * count only when a step lists their id, and every fastener a step lists or a structural screw it drives is on Buy; a back part (never a drawer's back) is in the parts of a step
- * that says how it is fastened. Report-only: it ratchets in evals/invariants-baseline.json, outside PER_BUILD.
+ * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199, #127 rows 291 and 311): Buy and the steps agree
+ * on fasteners, by part id. A line steps carry as data (fastenersUsed: the joint-screw line, wall screws, lags,
+ * anti-tip kits, rated anchors) must be listed by some step, the joint line's count is the sum the steps carry, and
+ * every id a step carries is a Buy line. No step prose is read for those lines. Other fastener lines (nails, brads,
+ * bolts, exterior screws) are not carried as data yet, so a step still has to name their kind. Every back (never a
+ * drawer's) is in the parts of a step that says how it is fastened. Report-only: it ratchets in
+ * evals/invariants-baseline.json, outside PER_BUILD.
  */
 export function i46(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const steps = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title));
+  const carried = new Map<string, number>();
+  for (const s of steps) for (const f of s.fastenersUsed ?? []) carried.set(f.id, (carried.get(f.id) ?? 0) + f.qty);
   const text = (s: (typeof steps)[number]) => `${s.title}. ${s.description ?? ""}`;
   for (const b of plan.bom) {
-    if (!/screw/i.test(b.name)) continue;
+    const id = fastenerId(b);
     const total = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+    if (carried.has(id)) {
+      if (Number.isFinite(total) && carried.get(id) !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps carry ${carried.get(id)}`));
+      continue;
+    }
+    if (tiedById(b) || anchorKind(b)) {
+      out.push(v("I46", `Buy lists ${b.name}; no step carries that line`));
+      continue;
+    }
+    if (!/screw/i.test(b.name)) continue;
     if (Number.isFinite(total)) {
       const n = stepScrewCount(plan);
       if (n > 0 && n !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps drive ${n}`));
       if (n > 0) continue;
     }
-    if (anchorKind(b)) continue;
-    const kind = /nail/i.test(b.name) ? /nail|screw/i : /structural/i.test(b.name) ? /structural|\bstuds?\b/i : /pocket/i.test(b.name) ? /pocket/i : /screw/i;
-    if (!steps.some((s) => kind.test(text(s)) || (s.fastenersUsed ?? []).includes(fastenerId(b)))) out.push(v("I46", `Buy lists ${b.name}; no step drives them`));
+    const kind = /nail/i.test(b.name) ? /nail|screw/i : /pocket/i.test(b.name) ? /pocket/i : /screw/i;
+    if (!steps.some((s) => kind.test(text(s)))) out.push(v("I46", `Buy lists ${b.name}; no step drives them`));
   }
-  // Wall-anchor hardware (lag screws, anti-tip kit, rated wall anchors) is tied by id: a step lists the Buy line it installs.
-  for (const b of plan.bom) if (anchorKind(b) && !anchorInstalled(plan, b)) out.push(v("I46", `Buy lists ${b.name}; no step installs that line`));
-  // The other way: every fastener a step lists is a Buy line, and a step that drives structural screws has them on Buy.
+  // The other way, by id: every fastener a step carries is a Buy line.
   const onBuy = new Set(plan.bom.map(fastenerId));
-  for (const s of steps) for (const id of s.fastenersUsed ?? []) if (!onBuy.has(id)) out.push(v("I46", `Step ${s.step} drives ${id.replace(/^buy:/, "")}; Buy does not list it`));
-  if (steps.some((s) => /\bstructural screws?\b/i.test(text(s))) && !plan.bom.some((b) => /structural/i.test(b.name))) out.push(v("I46", "A step drives structural screws; Buy does not list them"));
+  for (const s of steps) for (const f of s.fastenersUsed ?? []) if (!onBuy.has(f.id)) out.push(v("I46", `Step ${s.step} carries ${f.id.replace(/^buy:/, "")}; Buy does not list it`));
   for (const back of p.panels.filter((x) => !x.drawerId && BACK_PART.test(x.name))) {
     if (!plan.instructions.some((s) => fastensBack(s, back.name))) out.push(v("I46", `${back.name} is in no step that fastens it`));
   }

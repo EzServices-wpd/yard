@@ -1107,7 +1107,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
                 const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
                 return backReachesTwoStuds(backW)
                   ? "4 screws through the back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
-                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Lag the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
+                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Screw the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
               })()
           : overToilet
             ? "4-6 screws through the uprights into studs so the unit cannot tip onto the toilet. Guidance only — confirm wall type."
@@ -1116,7 +1116,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : wine
             ? "4-6 screws through the back into studs. A loaded wine rack will rip off drywall anchors. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
-            ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
+            ? "4-6 screws through the uprights into studs. Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
     });
   }

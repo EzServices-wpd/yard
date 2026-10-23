@@ -234,8 +234,11 @@ export function stepsStateJointScrews(project: YardProject, plan: BuildPlan): Bu
     perStep.set(at, (perStep.get(at) ?? 0) + j.screws);
   }
   const len = line.name.match(/#8 x ([\d/ -]+)"/)?.[1]?.replace("-", " ") ?? "1 1/4";
-  const instructions = plan.instructions.map((s, i) => {
+  const id = line.catalogId ?? `buy:${line.name}`;
+  const instructions = plan.instructions.map((s0, i) => {
     const t = perStep.get(i) ?? 0;
+    // The step carries the joint screws it drives as data, by the Buy line's id (row 311): I46 counts these, not words.
+    const s = t > 0 ? { ...s0, fastenersUsed: [...(s0.fastenersUsed ?? []), { id, qty: t }] } : s0;
     const stated = [...s.description.matchAll(/with (\d+) × #8 /g)].reduce((n, m) => n + Number(m[1]), 0);
     if (t === stated) return s;
     // The model's joints count these screws in the step that places the later part: say so, never "drives 0".

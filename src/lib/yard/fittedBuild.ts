@@ -1362,7 +1362,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         `${name}. Pegboard wall panel fitted to a ${W}" × ${H}" opening — panel anatomy. ¾" pegboard / plywood panel.`,
-        "Clear wall mount: lag into studs through the panel (or French cleat). Guidance only — confirm the opening.",
+        "Clear wall mount: screw into studs through the panel. Guidance only — confirm the opening.",
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: H, depth: panelD, kind: "alcove" },
@@ -1534,8 +1534,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `One ${W}" × ${slabH}" headboard fitted to the ${W}" wall span — ${slabH}" tall${plyNote} No box — it sits behind the mattress.`
           : `One ${W}" × ${slabH}" × ${slabD}" headboard${plyNote} No box — it sits behind the mattress.`,
         plies > 1
-          ? "Glue the plies face-to-face, clamp flat, then hang on a french cleat or lag into studs. Guidance only."
-          : "Hang on a french cleat or lag into studs. Guidance only.",
+          ? "Glue the plies face-to-face, clamp flat, then screw into studs. Guidance only."
+          : "Screw into studs. Guidance only.",
       ],
       historic: false,
       opening: { ...spec.opening, width: W, height: slabH, depth: slabD },
@@ -1578,7 +1578,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         `${name}. Key and mail shelf with ${hooks} hooks below the shelf. ¾" plywood.`,
-        `Mount height from the wall: ${mountFromOpening}" up from the finished floor (PDF states mount height). Clear wall mount — lag into studs through the rail.`,
+        `Mount height from the wall: ${mountFromOpening}" up from the finished floor (PDF states mount height). Clear wall mount — screw into studs through the rail.`,
         `Screw ${hooks} hooks into the rail below the mail shelf, about 6" on center. Hit studs. Guidance only.`,
       ],
       historic: false,
@@ -1643,7 +1643,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: stockId,
       notes: [
         `${name}. Wall-mounted coat hook board with ${hooks} hooks — clear wall mount.`,
-        `Mount height from the wall: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the board.`,
+        `Mount height from the wall: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — screw into studs through the board.`,
         `Screw ${hooks} coat hooks into the board, about 6" on center. Hit studs. Guidance only.`,
         ...(H > boardH + 0.4
           ? [`You typed ${Math.round(H * 10) / 10}" tall. A hook board is a plate, so this one is ${boardH}" tall — not a cabinet that height.`]
@@ -1780,7 +1780,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
               : pegRail
               ? `Peg rail spanning ${portalW}" — clear wall mount. ${hooks} pegs on a ${railH}" peg rail. ¾" plywood.`
               : `Tool rail spanning ${portalW}" — clear wall mount. ${hooks} hooks on a ${railH}" peg rail. ¾" plywood.`,
-            `Mount height from the opening: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — lag into studs through the rail.`,
+            `Mount height from the opening: ${mountFromOpening}" up from the finished floor. PDF states mount height. Clear wall mount — screw into studs through the rail.`,
             leashRail
               ? `Screw ${hooks} hooks into the rail, about 6" on center. Hit studs. Guidance only.`
               : pegRail
