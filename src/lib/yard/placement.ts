@@ -8,7 +8,7 @@
  * text, the PDF step pages, the dimension arrows on the step pictures, and the guards.
  */
 import { rotorChain } from "./solids";
-import { doorHingeCount } from "./hingedLeaf";
+import { doorHingeCount, hingeCenters } from "./hingedLeaf";
 import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
 import { ANATOMY_NOTE } from "./classAnatomy";
@@ -614,7 +614,8 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
   for (const d of doors) {
     const c = ctx.box.get(d.id)!;
     const h = c.max.y - c.min.y;
-    const inset = h >= 12 ? 3 : Math.max(1.5, Math.round(h * 0.2 * 4) / 4);
+    // One hinge-centre rule for the Where line and the bench model (hingedLeaf.hingeCenters, row 207).
+    const inset = hingeCenters(h, 2)[0];
     const key = `${Math.round(h * 16)}:${Math.round(c.min.y * 16)}`;
     out.measures.push({ kind: "hinge", id: d.id, value: inset });
     out.measures.push({ kind: "hingeHeight", id: d.id, value: c.min.y + inset });
@@ -630,9 +631,8 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
     const k = concealed ? doorHingeCount({ size: { width: c.max.x - c.min.x, height: h, depth: c.max.z - c.min.z } }) : n;
     if (k === 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
     // I15/F9: the door list and the floor list come from the same hinge centers, each rounded to 1/16".
-    const count = Math.max(2, k);
     const s16 = (x: number) => Math.round(x * 16) / 16;
-    const centers = Array.from({ length: count }, (_, i) => inset + ((h - 2 * inset) * i) / (count - 1));
+    const centers = hingeCenters(h, k);
     const join = (xs: string[]) => (xs.length > 2 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs.join(" and "));
     if (k > 3) s += `, with ${k - 2} more evenly between at ${join(centers.slice(1, -1).map((x) => f(s16(x))))} up from the door's bottom edge`;
     const sides = new Set(same.map(doorHingesLeft));
