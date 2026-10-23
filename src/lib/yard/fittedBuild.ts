@@ -61,7 +61,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
-import { closetShelfClearIn, MIN_HANG_ROOM_IN, ROD_DIA, rodCenters, rodForTypedShelves, rodSeatZ, shelfCountRefusal, shelvesThatFit, sideHangFits } from "./hangingClearance";
+import { closetShelfClearIn, MIN_HANG_ROOM_IN, ROD_DIA, rodCenters, rodForTypedShelves, rodSeatZ, shelfCountRefusal, shelvesThatFit, sideHangFits, singleRodNote } from "./hangingClearance";
 import { askedNoun } from "./tooSmall";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
@@ -3071,7 +3071,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? [
           rodYs.length > 1
             ? `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[rodYs.length - 1])}" up, with a second rod at ${Math.round(rodYs[0])}" for double hang, and shelves above.`
-            : `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[0])}" up, with the shelves above it, so coats and shirts hang full length.`,
+            : singleRodNote(rodYs[0]),
         ]
       : omitRodForShelves
         ? [`The hanging rod is left out so the shelves keep ${closetShelfClearIn()}" clear between them.`]

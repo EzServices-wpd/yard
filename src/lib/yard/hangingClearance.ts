@@ -25,8 +25,8 @@ export const DOUBLE_HANG_IN = 42;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
 export const ROD_DIA = 1.25;
-/** Shortest hang kept under a rod when typed shelves need the space above it. */
-export const MIN_HANG_ROOM_IN = 24;
+/** Shortest hang kept under a rod. Shirt length: about 40" clear, so shelves never drop the rod to a 24" hang. */
+export const MIN_HANG_ROOM_IN = 40;
 /** Clear opening a closet shelf is built to leave, face to face. */
 export const CLOSET_SHELF_CLEAR_IN = 7;
 /** A tighter opening is not a shelf. The closet gap is never set below this. */
@@ -78,6 +78,14 @@ export function rodDropIn(height: number, rodY: number): number {
   return Math.round(height - rodY);
 }
 
+/** One rod's note. Full-length coats only in the long-hang band; a shirt hang says so; a shorter rod claims neither. */
+export function singleRodNote(rodY: number): string {
+  const base = `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it`;
+  if (rodY + 1e-6 >= LONG_HANG_LO) return `${base}, so coats and shirts hang full length.`;
+  if (rodY + 1e-6 >= MIN_HANG_ROOM_IN) return `${base}, so shirts hang.`;
+  return `${base}.`;
+}
+
 const ROD_NAME = /\bhanging rod\b|\bclothes rod\b/i;
 
 /** Clear opening when `count` shelves are spaced evenly through `zone`. The top opening is the tight one. */
@@ -101,7 +109,7 @@ export function shelvesThatFit(zone: number, thick: number, clear = closetShelfC
 
 /**
  * Typed shelves keep their count when the clear gap fits. Lower the rod first.
- * If that would leave less than a real hang, drop the rod and use the full height.
+ * If that would leave less than a shirt's hang, drop the rod and use the full height.
  * When even the full height cannot hold them, `fit` is the largest count that can.
  */
 export function rodForTypedShelves(o: {

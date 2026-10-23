@@ -206,6 +206,59 @@ it("closet shelves keep about 7\" clear, and a refusal names a count that itself
   assert.equal(longAxis(rodsOf(`wardrobe ${HANGER_MIN_DEPTH_IN} deep`)[0]), "width");
 });
 
+it("typed shelves keep about 40\" of hang under the rod, or the rod is left out", () => {
+  const cases: [string, number][] = [
+    ["wardrobe with 6 shelves", 6],
+    ["wardrobe 84 tall with 6 shelves", 6],
+    ["wardrobe 72 tall with 4 shelves", 4],
+    ["wardrobe 66 tall with 3 shelves", 3],
+    ["wardrobe 96 tall with 6 shelves", 6],
+    ["wardrobe with 4 shelves", 4],
+  ];
+  for (const [q, n] of cases) {
+    const p = generateFromPrompt(q);
+    assert.ok(!p.refused && p.panels.length > 0, q);
+    assert.equal(shelfLines(p.panels), n, q);
+    const gaps = shelfClearGaps(p.panels);
+    assert.ok(gaps.length > 0 && Math.min(...gaps) + 1e-6 >= CLOSET_SHELF_CLEAR_IN, `${q} gap ${Math.min(...gaps)}`);
+    const rods = p.panels.filter((x) => /hanging rod/i.test(x.name));
+    const note = p.notes.join(" ");
+    if (!rods.length) {
+      assert.match(note, /hanging rod is left out/, q);
+      assert.doesNotMatch(note, /full length|shirts hang/, q);
+      continue;
+    }
+    const y = Math.min(...rods.map((r) => r.position.y));
+    assert.ok(y + 1e-6 >= 40, `${q} rod ${y}`);
+    if (y + 1e-6 >= 64) assert.match(note, /coats and shirts hang full length/, q);
+    else {
+      assert.doesNotMatch(note, /full length/, q);
+      assert.match(note, /so shirts hang/, q);
+    }
+  }
+});
+
+it("a shelf phrase on a wardrobe is one shelf, not a 12\" deep box", () => {
+  for (const q of ["wardrobe with 1 shelf", "wardrobe with a shelf", "wardrobe with one shelf"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(!p.refused && p.panels.length > 0, q);
+    assert.equal(p.overall.depth, 24, q);
+    assert.equal(p.overall.height, 84, q);
+    assert.equal(shelfLines(p.panels), 1, q);
+    const rod = p.panels.find((x) => /hanging rod/i.test(x.name));
+    assert.ok(rod && rod.position.y + 1e-6 >= 64, q);
+    assert.match(p.notes.join(" "), /coats and shirts hang full length/, q);
+  }
+});
+
+it("a typed wardrobe depth does not also set the width", () => {
+  const p = generateFromPrompt("wardrobe 19 3/4 deep");
+  assert.ok(!p.refused && p.panels.length > 0);
+  assert.equal(p.overall.depth, 19.75);
+  assert.equal(p.overall.width, 36);
+  assert.equal(p.overall.height, 84);
+});
+
 it("every wardrobe probe clears the hanger rule", () => {
   const bad: string[] = [];
   for (const probe of PROBES) {
