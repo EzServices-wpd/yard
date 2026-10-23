@@ -18,6 +18,7 @@
  *   polygon         N-sided planter / plant stand (miter = 180/N), honeycomb hexagon shelves
  */
 
+import { withArticle } from "./article";
 import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { panelWorldCorners } from "./geometry";
@@ -637,7 +638,7 @@ function buildPolyPlanter(lower: string): Build {
     const cx = r * Math.cos(phi);
     const cz = r * Math.sin(phi);
     // Board runs along the tangent (perpendicular to phi).
-    panels.push(angledBoard("upright", `Planter side ${k + 1}`, cx, 0, cz, side, H, T, phi + Math.PI / 2, `${tape(side)} on the outside face × ${tape(H)} tall. Bevel both long edges at ${deg(bevel)} so ${n} sides close into ${/^[aeiou]/i.test(shapeWord) ? "an" : "a"} ${shapeWord.toLowerCase()}.${bevel > 45 ? " Most saws tilt only to 45° — have the lumber desk cut the bevels, or butt the corners and plane them flush." : ""}`));
+    panels.push(angledBoard("upright", `Planter side ${k + 1}`, cx, 0, cz, side, H, T, phi + Math.PI / 2, `${tape(side)} on the outside face × ${tape(H)} tall. Bevel both long edges at ${deg(bevel)} so ${n} sides close into ${withArticle(shapeWord.toLowerCase())}.${bevel > 45 ? " Most saws tilt only to 45° — have the lumber desk cut the bevels, or butt the corners and plane them flush." : ""}`));
   }
   const inner = ngon(n, W - 2 * T, 0, 0);
   panels.push(planPlate("bottom", "Planter bottom", 2, T, inner, `${shapeWord}: ${tape((W - 2 * T) * Math.tan(Math.PI / n))} each side${n === 3 ? "" : `, ${tape(W - 2 * T)} across the flats`}. Trace it inside the assembled ring, cut on the line, drill 5 drainage holes.`));

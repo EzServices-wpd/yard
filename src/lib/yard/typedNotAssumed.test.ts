@@ -52,8 +52,13 @@ test("one, two or three typed axes: the cover marks assumed only the axes not ty
     assert.match(cover(q), want, q);
     assert.deepEqual(i42(q), [], q);
   }
-  // A typed size built at another size names both (the shoe rack's door is 48" wide; the build is not changed here).
-  assert.match(cover("shoe rack by the door 36 inches wide"), /^48" wide \(you typed 36"\)/);
+  // A typed size built at another size names both. (The shoe rack by the door now builds its typed 36" on release, so
+  // the rule is pinned on a box set 6" past a typed 30".)
+  assert.match(cover("shoe rack by the door 36 inches wide"), /^36" wide · /);
+  const off = generateFromPrompt("bookcase 30 wide");
+  const s0 = off.spec!;
+  const wider = { ...off, overall: { ...off.overall, width: 36 }, spec: { ...s0, size: { ...s0.size, width: { ...s0.size.width, inches: 36 } } } };
+  assert.match(typedAxesTalk(wider).subtitle, /^36" wide \(you typed 30"\)/);
 });
 
 test("typed sizes read the shop way: fractions and feet-and-inches, never decimals", () => {
