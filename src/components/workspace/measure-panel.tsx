@@ -15,6 +15,7 @@ import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
 import { planDiffLine } from "@/lib/yard/shopJoin";
 import { applySpaceCuts, type SpaceAsk } from "@/lib/yard/spaceCuts";
 import { applyInsideCount } from "@/lib/yard/insideCount";
+import { shelfLineCount } from "@/lib/yard/shelfSpan";
 import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
   bayClearTalk,
@@ -87,7 +88,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   function snap(): ChangeSnap {
     const live = useYard.getState();
     return {
-      shelves: live.project.panels.filter((p) => p.type === "shelf").length,
+      shelves: shelfLineCount(live.project.panels.filter((p) => p.type === "shelf")),
       sheets: sheetCountOf(live.plan?.sheetNest),
       steps: live.plan?.instructions.length ?? 0,
     };

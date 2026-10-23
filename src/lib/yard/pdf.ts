@@ -15,6 +15,7 @@ import { stepPlacements } from "./placement";
 import { buyListCart } from "./amazonCart";
 import { drawQr } from "./pdfQr";
 import { cutListName } from "./shopPlural";
+import { shelfLineCount } from "./shelfSpan";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
 import {
   TOOL_LABEL,
@@ -190,6 +191,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   font(28, "bold");
   tl.forEach((ln, i) => doc.text(ln, L, y + 26 + i * 32));
   y += tl.length * 32 + 8;
+  const said = headerFeatures(project);
+  if (said.length) y += textBlock(said.join(" · "), L, y, W, 12, "bold") + 4;
   y += textBlock(envelope, L, y, W, 13, "normal", KIT.muted, 16) + 6;
   // Only a build that is really ¾" plywood needs the "species = finish" disclaimer; named solid boards are the species.
   const onPly = project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""));
@@ -1201,7 +1204,11 @@ export function headerFeatures(project: YardProject): string[] {
     if (held) out.push(`${held} bottles`);
   }
   if (typed("hooks?\\b")) { const n = count(/\bhook\b/); if (n) out.push(plural(n, "hook", "hooks")); }
-  if (typed("shel(?:f|ves)\\b")) { const n = count(/^(?:grid |adjustable |fixed |inner )?shelf$/); if (n) out.push(plural(n, "shelf", "shelves")); }
+  if (typed("shel(?:f|ves)\\b")) {
+    const shelves = project.panels.filter((p) => /^(?:grid |adjustable |fixed |inner )?shelf$/i.test(p.name.replace(/\s*\d+$/, "")));
+    const n = shelfLineCount(shelves);
+    if (n) out.push(plural(n, "shelf", "shelves"));
+  }
   if (typed("cubb(?:y|ies)\\b")) {
     // Cubbies said back as the model's own count: dividers split the run into dividers + 1 openings.
     const dividers = count(/^cubby divider$/);

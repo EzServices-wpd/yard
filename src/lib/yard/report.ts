@@ -14,6 +14,7 @@ import { foldDownBuy, hingeContext, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
+import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -818,7 +819,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const pinShelves =
     !coatRack && !island && !nightstand && !floating && !ironing && !foldDown && !spice && !wine &&
     !wantsRackAffordance(project.prompt ?? "") && !wantsFixedGlueShelves(project);
-  const pinned = (p: Panel) => pinShelves && p.type === "shelf" && shelfSpansUprights(p, project.panels);
+  const pinned = (p: Panel) => pinShelves && p.type === "shelf" && !isFixedSpanShelf(p) && shelfSpansUprights(p, project.panels);
   // Joints the notes bolt (an A-frame's cleat and seat support through its legs) take carriage bolts, not screws.
   const boltedToLegs = (project.notes ?? []).some((n) => /held to both legs with \d+ 3\/8" carriage bolts/.test(n));
   const bolted = (a: Panel, b: Panel) => boltedToLegs && [[a, b], [b, a]].some(([x, y]) => /^Leg\b/.test(x.name) && /^(?:Top cleat|Seat support)\b/.test(y.name));
@@ -1015,7 +1016,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   }
   // Pins hold a shelf that spans between two uprights (sides, dividers). A shelf screwed down on a
   // frame, a profile or legs has nothing to drill, so it buys no pins.
-  const shelfCount = project.panels.filter((panel) => panel.type === "shelf" && shelfSpansUprights(panel, project.panels)).length;
+  const pinPieces = project.panels.filter((panel) => panel.type === "shelf" && !isFixedSpanShelf(panel) && shelfSpansUprights(panel, project.panels));
+  const shelfCount = shelfLineCount(pinPieces);
   // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
   // Shoe cubbies / jar lips / bottle rails are glued and screwed — never pin-shelf bookcases.
   if (
@@ -1031,8 +1033,11 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     !wantsRackAffordance(project.prompt ?? "") &&
     !wantsFixedGlueShelves(project)
   ) {
-    const pins = shelfCount * 4;
+    const pins = pinPieces.length * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
+    const pinWord = pinPieces.length === shelfCount
+      ? `${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4`
+      : `4 on each of ${pinPieces.length} pieces, ${shelfCount} shel${shelfCount === 1 ? "f" : "ves"}`;
     bom.push({
       name: '3/16" shelf pins',
       quantity: packs,
@@ -1040,7 +1045,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       catalogId: "shelf-pins",
       searchQuery: '3/16" shelf pins',
       estimatedCost: 6.49 * packs,
-      notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Set the shelves loose on the pins so they lift out to move.`,
+      notes: `${pins} pins (${pinWord}). Set the shelves loose on the pins so they lift out to move.`,
     });
   }
   const headboardPlies = project.panels.filter((p) => /headboard/i.test(p.name)).length;
