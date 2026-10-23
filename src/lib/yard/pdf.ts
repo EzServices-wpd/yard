@@ -45,7 +45,7 @@ export function slugPlan(name: string) {
 
 
 export { typedAxesTalk } from "./headerSize";
-import { headerSize, typedAxesTalk } from "./headerSize";
+import { coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
 
 const CRAFT_GLOSSARY = [
   { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them as they come." },
@@ -67,7 +67,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const TOP = GRID.top;
   const BOTTOM = pageH - GRID.bottom;
   const craft0 = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
-  const sizing = typedAxesTalk(project, craft0);
+  // The cover (subtitle, dimension tags) reads the project's one spec (I42).
+  const sizing = coverAxesTalk(project, craft0);
   // The header's own words and W × D × H order on the cover title and every running head (Critic #93: the PDF
   // title said "File cabinet 30" x 24" x 30"" in W × H × D under a W × D × H header).
   const title = clean(headerTitle(project, { features: false }));
