@@ -5,8 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
-import { HEAD_ROOT, corpusPrompts, corpusRemovals, gradeCanary, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, REPORT_ONLY_IDS, TYPED_RULE_IDS, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { INVARIANT_CLASS, PER_BUILD } from "../src/lib/yard/invariants.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
+import { namedMinimum } from "./eval-gate-refusal.ts";
 
 // Expected values are hand-worked inches (independent of the engine's parser).
 test("typed lengths: every way a woodworker writes 24 1/2 is 24.5", () => {
@@ -149,4 +151,88 @@ test("recipe-bot auto-merge waits for the eval gate too, on the exact commit", (
   // The merge comes after both checks.
   assert.ok(y.indexOf("eval-gate.yml; do") < y.indexOf("gh pr merge"));
   assert.match(readFileSync(join(HEAD_ROOT, ".github/workflows/eval-gate.yml"), "utf8"), /^name: eval-gate$/m);
+});
+
+test("a geometry report-only invariant ID never moves a prompt from pass to partial; PER_BUILD and typed-word rules still grade (row 181, #110 B1)", async () => {
+  // Exactly the geometry report-only IDs Critic allowed (#110 B1); nothing else is dropped.
+  const reportOnly = [...REPORT_ONLY_IDS].sort();
+  assert.deepEqual(reportOnly, ["I26", "I27", "I28", "I30", "I32", "I37"]);
+  const E = await loadEngine();
+  // Every PER_BUILD ID (the set eval-score counts, imported from invariants.ts) and every typed-word rule grades.
+  for (const id of [...PER_BUILD, ...TYPED_RULE_IDS, "I25", "I29"]) assert.ok(E.graded(id), `${id} grades`);
+  assert.match(readFileSync("scripts/eval-lib.ts", "utf8"), /PER_BUILD[^\n]*from "\.\.\/src\/lib\/yard\/invariants\.ts"/);
+  const entry = loadCorpus().find((e) => gradeOne(E, e).grade === "pass");
+  assert.ok(entry, "the corpus has a passing prompt");
+  const base = gradeOne(E, entry!);
+  const withHit = (id: string) => ({ ...E, checkBuild: (p: any, q: string, plan?: any) => [...E.checkBuild(p, q, plan), { id, cls: INVARIANT_CLASS[id as keyof typeof INVARIANT_CLASS] ?? "F99", msg: `injected ${id}` }] });
+  for (const id of reportOnly) {
+    const r = gradeOne(withHit(id), entry!);
+    assert.equal(r.grade, "pass", `${id} (report-only) moved "${entry!.prompt}" to ${r.grade}`);
+    assert.ok(r.invariants.some((v) => v.id === id && !v.scored), `${id} is still listed, marked not scored`);
+    assert.deepEqual(r.classes, base.classes, `${id} adds no class`);
+  }
+  // General case (B1): a new typed-word rule hit (I31, I35, I36, I38) still moves a prompt off pass.
+  for (const id of TYPED_RULE_IDS) {
+    const r = gradeOne(withHit(id), entry!);
+    assert.notEqual(r.grade, "pass", `${id} (typed-word rule) left "${entry!.prompt}" at pass`);
+    assert.ok(r.classes.includes(INVARIANT_CLASS[id]), `${id} tags ${INVARIANT_CLASS[id]}`);
+  }
+  // A scored ID still grades: I4 → partial, I1 → fail.
+  assert.equal(gradeOne(withHit("I4"), entry!).grade, "partial");
+  assert.equal(gradeOne(withHit("I1"), entry!).grade, "fail");
+  assert.equal(gradeOf({ empty: false, nounOk: true, scoredIds: [], honored: 3, checkable: 3 }), "pass");
+  assert.equal(gradeOf({ empty: false, nounOk: true, scoredIds: [], honored: 2, checkable: 3 }), "partial");
+});
+
+test("honest refusals: the 4 abacus refusals pass (listed, minimum named, minimum builds clean); wrong or unexpected refusals fail", async () => {
+  const E = await loadEngine();
+  const entry = (prompt: string) => ({ prompt, sources: ["test"], ids: [], demands: typedDemands(prompt), demandsFrom: "typed-rules" });
+  // Hand-worked minimums (1 1/2" of ends + 9/16" per rod), independent of the engine's refusal text.
+  assert.deepEqual(namedMinimum("3 3/16 wide"), { axis: "W", value_in: 3.1875, quote: "3 3/16 wide" });
+  assert.equal(namedMinimum("A 13-rod abacus needs 8 13/16\" wide. Nothing is built: make it 8 13/16\" wide")?.value_in, 8.8125);
+  assert.deepEqual(Object.keys(E.refusals).sort(), ["abacus 2 wide", "abacus 3 wide 3 rods", "abacus 4 wide 13 rods", "abacus 8 wide 12 rods"]);
+  for (const q of Object.keys(E.refusals)) {
+    const r = gradeOne(E, entry(q));
+    assert.equal(r.header, "Abacus · nothing built", q);
+    assert.equal(r.grade, "pass", `${q}: ${r.refusal?.why}`);
+    assert.ok(r.refusal?.honest && r.classes.length === 0, q);
+  }
+  const refusedP = E.generateFromPrompt("abacus 3 wide 3 rods");
+  const stub = (over: Partial<typeof E>) => ({ ...E, ...over });
+  // A refusal of a prompt not listed (a build was expected) fails.
+  const notListed = gradeOne(stub({ generateFromPrompt: (q: string) => (q === "abacus 9 wide 3 rods" ? refusedP : E.generateFromPrompt(q)) }), entry("abacus 9 wide 3 rods"));
+  assert.equal(notListed.grade, "fail");
+  assert.match(notListed.refusal!.why, /build was expected/);
+  assert.ok(notListed.classes.includes("X-refusal"));
+  // Listed, but the refusal names the wrong minimum: fails.
+  const wrongMin = { ...E.refusals, "abacus 3 wide 3 rods": { minimum: "4 wide", why: "test" } };
+  assert.match(gradeOne(stub({ refusals: wrongMin }), entry("abacus 3 wide 3 rods")).refusal!.why, /expected 4 wide/);
+  // Listed, but the named minimum itself refuses: fails.
+  const minRefuses = stub({ generateFromPrompt: (q: string) => (q.startsWith("abacus 3 3/16 wide") ? refusedP : E.generateFromPrompt(q)) });
+  const r3 = gradeOne(minRefuses, entry("abacus 3 wide 3 rods"));
+  assert.equal(r3.grade, "fail");
+  assert.match(r3.refusal!.why, /minimum does not build/);
+  // Listed, refused, but a price still shows: fails.
+  assert.match(gradeOne(stub({ buildPlan: (p: any) => ({ ...E.buildPlan(p), totals: { ...E.buildPlan(p).totals, estCostUsd: 4.5 } }) }), entry("abacus 2 wide")).refusal!.why, /price/);
+  // Listed, but it builds instead of refusing: fails.
+  const builds = gradeOne(stub({ refusals: { ...E.refusals, "abacus 10 wide 15 rods": { minimum: "10 wide", why: "test" } } }), entry("abacus 10 wide 15 rods"));
+  assert.equal(builds.grade, "fail");
+  assert.match(builds.refusal!.why, /but it built/);
+});
+
+test("#110 B1: 'queen platform bed with drawers' that builds 0 drawers with no note is not a pass (I31 grades)", async () => {
+  const E = await loadEngine();
+  const q = "queen platform bed with drawers";
+  const e = loadCorpus().find((x) => x.prompt === q);
+  assert.ok(e, `${q} is in the corpus`);
+  const p = E.generateFromPrompt(q);
+  const drawers = p.panels.filter((x: any) => /drawer/i.test(x.name)).length;
+  const r = gradeOne(E, e!);
+  if (drawers === 0) {
+    assert.notEqual(r.grade, "pass", "0 drawers, no note: must not pass");
+    assert.ok(r.invariants.some((v) => v.id === "I31" && v.scored), "I31 is the graded reason");
+  }
+  // Whatever the engine builds, a stub with the drawers stripped and no note is never a pass.
+  const stripped = { ...E, generateFromPrompt: (x: string) => { const b = E.generateFromPrompt(x); return x === q ? { ...b, panels: b.panels.filter((y: any) => !/drawer/i.test(y.name)), notes: [] } : b; } };
+  assert.notEqual(gradeOne(stripped, e!).grade, "pass");
 });
