@@ -1,16 +1,15 @@
 /**
  * Fixed shelves housed in a carcass: clear span follows the stock.
  *
- * Sagulator (woodbin.com/calcs/sagulator), fixed ends, ~12" deep, ~40 lb/ft of books,
- * sag near 0.02" per foot. Plywood has no creep factor; MDF and solid wood use Sagulator's
- * 1.5 creep, so the shop spans at 3/4" are plywood 30", MDF 24", 1× pine 26".
+ * Sagulator (woodbin.com/calcs/sagulator), simply supported, ~12" deep, ~40 lb/ft of books,
+ * sag near 0.02" per foot, plus creep. Plywood has no creep factor; MDF and solid wood use
+ * Sagulator's 1.5 creep, so the shop spans at 3/4" are plywood 30", MDF 24", 1× pine 26".
  * The same sag per foot means the clear span scales with thickness (L ∝ t).
- * A span equal to the limit stays (a 31 1/2" case is 30" inside). A little over that, and
- * still under the span check (about 36" on 3/4" plywood), gets a 1×2 glued to the front
- * edge of an adjustable shelf, so the nosing moves with the shelf. A fixed shelf may
- * carry that 1×2 either on its edge or between the uprights. Wider than the span check,
- * the case gets a fixed divider housed in the top and the bottom, and each bay is at or
- * under the stock limit. An island with a solid top is not a shelf span. The same panels
+ * A span equal to the limit stays (a 31 1/2" case is 30" inside). Any adjustable shelf
+ * past that gets a fixed divider housed in the top and the bottom, and each bay is at or
+ * under the stock limit. A fixed shelf may instead carry a 1×3 or 1×4 on edge, glued and
+ * screwed under the front edge, when that section's sag (simple support plus creep) is
+ * within 0.02" per foot. An island with a solid top is not a shelf span. The same panels
  * the model, cut list, steps and Buy read.
  */
 import { createId } from "@/lib/utils";
@@ -41,6 +40,67 @@ export function shelfSpanLimit(materialId: string | undefined, thick: number): n
 }
 
 const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0);
+
+/** Books at about 40 lb per foot of shelf, the load behind the shop spans. */
+const BOOK_LB_PER_FT = 40;
+/** Allowed sag: 0.02" per foot of span. */
+const SAG_PER_FT = 0.02;
+/**
+ * E (psi) so a 12" deep 3/4" shelf at its shop span sags exactly 0.02" per foot.
+ * δ = 5·w·L⁴·creep / (384·E·I), δ = L/600, I = 12·t³/12, w = 40/12.
+ */
+const E_PLY = 1_666_667;
+const E_PINE = 1_627_407;
+const E_MDF = 1_280_000;
+/** 1×3 then 1×4, actual height when the board stands on edge. */
+const EDGE_RAILS: { height: number; materialId: string }[] = [
+  { height: 2.5, materialId: "lumber-1x3-8" },
+  { height: 3.5, materialId: "lumber-1x4-8" },
+];
+
+function creepOf(materialId: string | undefined): number {
+  const id = (materialId ?? "").toLowerCase();
+  return /plywood|^ply-/.test(id) || !id ? 1 : 1.5;
+}
+
+function modulusOf(materialId: string | undefined): number {
+  const id = (materialId ?? "").toLowerCase();
+  if (/mdf|particle|chipboard|hardboard/.test(id)) return E_MDF;
+  if (/plywood|^ply-/.test(id) || !id) return E_PLY;
+  return E_PINE;
+}
+
+/** Second moment of the shelf, plus a rail on edge glued under the front (transformed section). */
+function sectionI(depth: number, thick: number, railH: number, n: number): number {
+  const Is = depth * thick ** 3 / 12;
+  const As = depth * thick;
+  const ys = thick / 2;
+  if (!(railH > 0)) return Is;
+  const br = 0.75;
+  const Ir = n * br * railH ** 3 / 12;
+  const Ar = n * br * railH;
+  const yr = -railH / 2;
+  const yb = (As * ys + Ar * yr) / (As + Ar);
+  return Is + As * (ys - yb) ** 2 + Ir + Ar * (yr - yb) ** 2;
+}
+
+/**
+ * Simply supported sag, inches, with creep. `railH` is a 3/4" rail on edge under the front
+ * (2.5 for a 1×3, 3.5 for a 1×4). Zero is the bare shelf.
+ */
+export function shelfSagIn(span: number, depth: number, thick: number, materialId: string | undefined, railH = 0): number {
+  if (!(span > 0) || !(depth > 0) || !(thick > 0)) return 0;
+  const Es = modulusOf(materialId);
+  const n = railH > 0 ? modulusOf("lumber-1x4-8") / Es : 1;
+  const I = sectionI(depth, thick, railH, n);
+  const w = BOOK_LB_PER_FT / 12;
+  return (5 * w * span ** 4 * creepOf(materialId)) / (384 * Es * I);
+}
+
+/** 0.02" of sag per foot of this span. */
+export function sagLimitIn(span: number): number {
+  return span * (SAG_PER_FT / 12);
+}
 
 function thickOf(panel: Panel): number {
   return Math.min(panel.size.width, panel.size.height, panel.size.depth);
@@ -169,24 +229,22 @@ export function shelfSpanViolations(project: YardProject): ShelfSpanHit[] {
     const limit = shelfSpanLimit(plate.materialId, thick);
     const span = Math.max(0, ...clearGaps(plate, project.panels).map(([a, b]) => b - a));
     if (span <= limit + EPS) continue;
-    // A 1×2 on the front carries the band between the stock limit and the span check.
-    const beam = allowSpanIn(thick, "shelf") * 1.1;
+    // A fixed shelf may stay one piece when a 1×3 or 1×4 on edge under the front keeps the sag in limit.
     const x0 = plate.position.x;
-    const braced =
-      span <= beam + EPS &&
-      project.panels.some((q) => {
-        if (!/^(?:Front stiffener|Shelf nosing)\b/.test(q.name)) return false;
-        if (overlap(x0, x0 + plate.size.width, q.position.x, q.position.x + q.size.width) < plate.size.width * 0.8) return false;
-        return Math.abs(q.position.y + q.size.height - plate.position.y) <= 0.35 || Math.abs(q.position.y - plate.position.y) <= 0.35;
-      });
+    const rail = project.panels.find((q) => {
+      if (!/^Front rail\b/.test(q.name)) return false;
+      if (overlap(x0, x0 + plate.size.width, q.position.x, q.position.x + q.size.width) < plate.size.width * 0.8) return false;
+      return Math.abs(q.position.y + q.size.height - plate.position.y) <= 0.12;
+    });
+    const braced = !!rail && isFixedSpanShelf(plate) && shelfSagIn(span, plate.size.depth, thick, plate.materialId, rail.size.height) <= sagLimitIn(span) + EPS;
     if (!braced) out.push({ name: plate.name, span, limit, thick, materialId: plate.materialId });
   }
   return out;
 }
 
-/** Pieces of one shelf share a name and a height. A divider cut does not add a shelf. */
+/** One shelf line per height. Bay pieces of that line are not extra shelves. */
 export function shelfLineCount(shelves: Panel[]): number {
-  return new Set(shelves.map((p) => `${p.name}|${Math.round(p.position.y * 4) / 4}`)).size;
+  return new Set(shelves.map((p) => Math.round(p.position.y * 4) / 4)).size;
 }
 
 /** The shelf over a hanging bay is screwed to the uprights. A divider may stand on it. Loose pin shelves may not carry one. */
@@ -255,7 +313,8 @@ function depthBox(plate: Panel, panels: Panel[], x: number, y0: number, y1: numb
     if (q1 <= mid) z0 = Math.max(z0, q1 + 0.125);
     else if (q0 >= mid) z1 = Math.min(z1, q0 - 0.125);
   }
-  const d = z1 - z0;
+  // The cut list rounds to 1/8". Keep the divider on that grid so the model and the cut agree.
+  const d = Math.floor((z1 - z0 + 1e-6) * 8) / 8;
   if (d < Math.max(2, plate.size.depth * 0.5)) return null;
   return { z: z0, d };
 }
@@ -475,10 +534,6 @@ function overSpan(plate: Panel, panels: Panel[]): boolean {
   return clearGaps(plate, panels).some(([a, b]) => b - a > cap + EPS);
 }
 
-function overBeam(plate: Panel, span: number): boolean {
-  return span > allowSpanIn(thickOf(plate), "shelf") * 1.1 + EPS;
-}
-
 /** Floor of this bay (the bottom under the shelf) up to the underside of the top. Never a loose shelf. */
 function columnEnds(panels: Panel[], x: number, plate: Panel): { y0: number; y1: number } | null {
   let y0 = 0;
@@ -498,19 +553,35 @@ function columnEnds(panels: Panel[], x: number, plate: Panel): { y0: number; y1:
     if (overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) <= 0) continue;
     if (y1 == null || q.position.y < y1) y1 = q.position.y;
   }
-  return y1 == null || y1 - y0 < 2 ? null : { y0, y1 };
+  if (y1 == null || y1 - y0 < 2) return null;
+  // A hanging rod owns its bay when the shelf above it is already inside the span check.
+  // The divider stands on that shelf and the rod stays one piece. A wider hat is cut with
+  // the rod, one of each per bay, because a rail under it does not shorten the span check.
+  const rod = panels.find((q) => isHangingRod(q) && overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) > 0 && q.position.y < y1 && q.position.y + q.size.height > y0);
+  if (rod) {
+    const hat = panels
+      .filter((p) => p.type === "shelf" && !p.outline && p.position.y >= rod.position.y + rod.size.height - 0.05 && overlap(x - 0.5, x + 0.5, p.position.x, p.position.x + p.size.width) > 0)
+      .sort((a, b) => a.position.y - b.position.y)[0];
+    if (!hat) return null;
+    const allow = allowSpanIn(thickOf(hat), "shelf") * 1.1;
+    if (hat.size.width <= allow + EPS) {
+      y0 = hat.position.y + hat.size.height;
+      if (y1 - y0 < 2) return null;
+    }
+  }
+  return { y0, y1 };
 }
 
-/** One fixed divider per station, housed in the top and the bottom, only past the span check. */
-function placeBayDividers(panels: Panel[], added: Panel[]) {
+/** One fixed divider per station, housed in the top and the bottom, wherever a taken shelf is past its stock limit. */
+function placeBayDividers(panels: Panel[], added: Panel[], take: (plate: Panel) => boolean) {
   const stations = new Map<number, number>();
   for (const plate of panels) {
-    if (plate.type !== "shelf" || isFixedSpanShelf(plate) || lightShelf(plate) || !overSpan(plate, panels)) continue;
+    if (plate.type !== "shelf" || lightShelf(plate) || !overSpan(plate, panels) || !take(plate)) continue;
     const limit = shelfSpanLimit(plate.materialId, thickOf(plate));
     const t = plate.size.height;
     if (!Number.isFinite(limit)) continue;
     for (const [a, b] of clearGaps(plate, panels)) {
-      if (!overBeam(plate, b - a)) continue;
+      if (b - a <= limit + EPS) continue;
       let k = Math.max(2, Math.ceil((b - a) / limit));
       while (k < 8 && (b - a - (k - 1) * t) / k > limit + EPS) k++;
       for (let i = 1; i < k; i++) {
@@ -540,7 +611,8 @@ function crosses(a: Panel, d: Panel): boolean {
 
 /** Each bay keeps its own shelf and, in a wardrobe, its own rod. The pieces meet the divider on a face. */
 function splitWide(panels: Panel[], dividers: Panel[]) {
-  const gap = 0.02;
+  // Pieces meet the divider on a face. A gap here walks the cut off the 1/8" the cut list uses.
+  const gap = 0;
   for (let i = panels.length - 1; i >= 0; i--) {
     const part = panels[i];
     const shelf = part.type === "shelf" && !part.outline;
@@ -630,10 +702,40 @@ function addStick(panels: Panel[], extra: Panel[], piece: Omit<Panel, "id">) {
   extra.push({ ...piece, id: createId("di"), name: n ? `${piece.name} ${n + 1}` : piece.name });
 }
 
+/** A build whose every board is one lumber size cannot grow a second size. Null when plywood is in the case. */
+function onlyLumber(panels: Panel[]): string | null {
+  const ids = new Set(panels.map((p) => p.materialId).filter((id) => /^lumber-/.test(id)));
+  if (panels.some((p) => /plywood|mdf|particle|hardboard/.test(p.materialId))) return null;
+  return ids.size === 1 ? [...ids][0] : null;
+}
+
 /**
- * Past the span check, each hanging bay gets one fixed shelf, a back cleat and a 1×2.
- * A narrower over-span shelf gets only the 1×2, and stays one piece.
+ * A 1×3 or 1×4 on edge under a fixed shelf's front edge, only when the sag (simple support
+ * plus creep) comes in under 0.02" per foot. The shelf stays full depth.
  */
+function edgeRail(panels: Panel[], extra: Panel[], shelf: Panel): boolean {
+  const span = Math.max(0, ...clearGaps(shelf, panels).map(([a, b]) => b - a));
+  if (!Number.isFinite(span)) return false;
+  const thick = thickOf(shelf);
+  const sole = onlyLumber(panels.concat(extra));
+  const choices = EDGE_RAILS.filter((r) => !sole || r.materialId === sole);
+  for (const rail of choices) {
+    if (shelfSagIn(span, shelf.size.depth, thick, shelf.materialId, rail.height) > sagLimitIn(span) + EPS) continue;
+    const n = extra.length;
+    addStick(panels, extra, {
+      type: "rail",
+      name: "Front rail",
+      position: { x: shelf.position.x, y: shelf.position.y - rail.height, z: shelf.position.z + shelf.size.depth - 0.75 },
+      size: { width: shelf.size.width, height: rail.height, depth: 0.75 },
+      materialId: rail.materialId,
+      cutNote: "Glued and screwed on edge under this shelf's front edge.",
+    });
+    if (extra.length > n) return true;
+  }
+  return false;
+}
+
+/** Each hanging bay gets one fixed shelf on a back cleat. A fixed shelf still past its limit gets a front rail when the sag passes. */
 function hatAndStiff(panels: Panel[], dividers: Panel[], extra: Panel[]) {
   if (dividers.length) {
     const rods = panels.filter(isHangingRod);
@@ -647,53 +749,12 @@ function hatAndStiff(panels: Panel[], dividers: Panel[], extra: Panel[]) {
       shelf.cutNote = "Screwed fixed shelf. Screw it to both uprights of the bay.";
       const y = shelf.position.y;
       addStick(panels, extra, { type: "cleat", name: "Back cleat", position: { x: shelf.position.x, y: y - 0.75, z: shelf.position.z }, size: { width: shelf.size.width, height: 0.75, depth: Math.min(1.5, shelf.size.depth) }, materialId: "lumber-1x2-8" });
-      stiffenFront(panels, extra, shelf);
     }
   }
   for (const shelf of panels) {
-    if (shelf.type !== "shelf" || isFixedSpanShelf(shelf) || lightShelf(shelf) || !overSpan(shelf, panels)) continue;
-    const span = Math.max(0, ...clearGaps(shelf, panels).map(([a, b]) => b - a));
-    if (!Number.isFinite(span) || overBeam(shelf, span)) continue;
-    noseFront(panels, extra, shelf);
+    if (shelf.type !== "shelf" || !isFixedSpanShelf(shelf) || lightShelf(shelf) || !overSpan(shelf, panels)) continue;
+    edgeRail(panels, extra, shelf);
   }
-}
-
-/** A 1×2 glued and screwed to an adjustable shelf's front edge. Inset from the uprights, so it moves with the shelf. */
-function noseFront(panels: Panel[], extra: Panel[], shelf: Panel) {
-  const noseD = 0.75;
-  if (shelf.size.depth < noseD + 3) return;
-  const inset = 0.125;
-  const w = shelf.size.width - inset * 2;
-  if (w < 4) return;
-  const front = shelf.position.z + shelf.size.depth;
-  const saved = shelf.size.depth;
-  shelf.size = { ...shelf.size, depth: saved - noseD };
-  const n = extra.length;
-  addStick(panels, extra, {
-    type: "rail",
-    name: "Shelf nosing",
-    position: { x: shelf.position.x + inset, y: shelf.position.y, z: front - noseD },
-    size: { width: w, height: shelf.size.height, depth: noseD },
-    materialId: "lumber-1x2-8",
-    cutNote: "Glued and screwed to this shelf's front edge. It moves with the shelf.",
-  });
-  if (extra.length === n) shelf.size = { ...shelf.size, depth: saved };
-}
-
-/** A 1×2 on the front edge. Under the shelf when the bay is open; in the shelf's plane when the next shelf is close. */
-function stiffenFront(panels: Panel[], extra: Panel[], shelf: Panel) {
-  const x = shelf.position.x;
-  const w = shelf.size.width;
-  const front = shelf.position.z + shelf.size.depth;
-  const under = { type: "rail" as const, name: "Front stiffener", position: { x, y: shelf.position.y - 1.5, z: front - 0.75 }, size: { width: w, height: 1.5, depth: 0.75 }, materialId: "lumber-1x2-8" };
-  const n = extra.length;
-  addStick(panels, extra, under);
-  if (extra.length > n || shelf.size.depth < 4) return;
-  const plane = { type: "rail" as const, name: "Front stiffener", position: { x, y: shelf.position.y, z: front - 1.5 }, size: { width: w, height: shelf.size.height, depth: 1.5 }, materialId: "lumber-1x2-8" };
-  const draft = { ...plane, id: "pending" };
-  if (crowdsRod(panels, draft) || panels.concat(extra).some((q) => q !== shelf && solidsOverlap(draft, q))) return;
-  shelf.size = { ...shelf.size, depth: shelf.size.depth - 1.5 };
-  addStick(panels, extra, plane);
 }
 
 /**
@@ -721,11 +782,27 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
       limit = shelfSpanLimit(plate.materialId, thick);
     }
   }
-  placeBayDividers(panels, added);
+  const glued = wantsFixedGlueShelves(project);
+  placeBayDividers(panels, added, (p) => !glued && !isFixedSpanShelf(p));
   splitCrossed(panels, added);
   splitWide(panels, added);
   const extra: Panel[] = [];
   hatAndStiff(panels, added, extra);
+  // A glued shelf (wine grid, media bay) stays one piece when a 1×3 or 1×4 on edge passes the sag.
+  if (glued) {
+    for (const shelf of panels) {
+      if (shelf.type !== "shelf" || lightShelf(shelf) || isFixedSpanShelf(shelf) || !overSpan(shelf, panels)) continue;
+      if (!edgeRail(panels, extra, shelf)) continue;
+      shelf.cutNote = "Screwed fixed shelf. Screw it to both uprights of the bay.";
+    }
+  }
+  const railed = (shelf: Panel) =>
+    extra.some((q) => /^Front rail\b/.test(q.name) && Math.abs(q.position.y + q.size.height - shelf.position.y) <= 0.12 && overlap(shelf.position.x, shelf.position.x + shelf.size.width, q.position.x, q.position.x + q.size.width) > shelf.size.width * 0.8);
+  if (panels.some((p) => p.type === "shelf" && (glued || isFixedSpanShelf(p)) && overSpan(p, panels) && !railed(p))) {
+    placeBayDividers(panels, added, (p) => (glued || isFixedSpanShelf(p)) && !railed(p));
+    splitCrossed(panels, added);
+    splitWide(panels, added);
+  }
   for (const p of extra) panels.push(p);
   if (!added.length && !extra.length) return project;
   const stations = [...new Set(added.map((d) => Math.round((d.position.x + d.size.width / 2) * 8) / 8))].sort((a, b) => a - b);

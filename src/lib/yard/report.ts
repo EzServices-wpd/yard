@@ -823,8 +823,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   // Joints the notes bolt (an A-frame's cleat and seat support through its legs) take carriage bolts, not screws.
   const boltedToLegs = (project.notes ?? []).some((n) => /held to both legs with \d+ 3\/8" carriage bolts/.test(n));
   const bolted = (a: Panel, b: Panel) => boltedToLegs && [[a, b], [b, a]].some(([x, y]) => /^Leg\b/.test(x.name) && /^(?:Top cleat|Seat support)\b/.test(y.name));
-  const nosingOnShelf = (a: Panel, b: Panel) => (/^Shelf nosing\b/.test(a.name) && b.type === "shelf") || (/^Shelf nosing\b/.test(b.name) && a.type === "shelf");
-  const buyJoints = panelJoints(project.panels, (a, b) => !nosingOnShelf(a, b) && (pinned(a) || pinned(b) || bolted(a, b)));
+  const buyJoints = panelJoints(project.panels, (a, b) => pinned(a) || pinned(b) || bolted(a, b));
   BUY_JOINTS.set(project, buyJoints);
   const modelScrews = screwTalk(buyJoints);
   // A build with no screwed joint (pegs glued in holes) buys no screws.

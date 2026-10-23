@@ -13,7 +13,8 @@ describe("inside counts change the plan", () => {
       honorUnit: true,
     });
     assert.equal(b.prompt, a.prompt);
-    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 3);
+    assert.equal(shelfLineCount(b.panels.filter((p) => p.type === "shelf")), 3);
+    assert.ok(b.panels.filter((p) => p.type === "shelf").length > 3);
     const qty = (p: ReturnType<typeof generateFromPrompt>) =>
       buildPlan(p).cutList.map((c) => `${c.name}×${c.quantity}`).join("|") + buildPlan(p).instructions.map((s) => s.description).join("\n");
     assert.notEqual(qty(a), qty(b));
@@ -50,14 +51,16 @@ function planText(p: ReturnType<typeof generateFromPrompt>) {
 describe("shelf-family counts drive the cut list", () => {
   it("bookshelf 36 wide: shelves 5 to 3 changes the cut list and the pin step", () => {
     const a = generateFromPrompt("bookshelf 36 wide");
-    assert.equal(a.panels.filter((p) => p.type === "shelf").length, 5);
+    assert.equal(shelfLineCount(a.panels.filter((p) => p.type === "shelf")), 5);
+    assert.equal(a.panels.filter((p) => p.type === "shelf").length, 10);
     const b = applyInsideCount(a, { shelves: 3 });
-    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 3);
+    assert.equal(shelfLineCount(b.panels.filter((p) => p.type === "shelf")), 3);
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 6);
     const text = planText(b);
     assert.notEqual(planText(a), text);
     assert.match(text, /Pin 3 adjustable shelves/);
     assert.doesNotMatch(text, /Pin 5 adjustable shelves/);
-    assert.match(text, /Shelf×3/);
+    assert.match(text, /Shelf×6/);
   });
 
   it("a shoe rack cubby count changes the dividers and the steps", () => {
@@ -84,7 +87,8 @@ describe("shelf-family counts drive the cut list", () => {
     const a = generateFromPrompt("bookshelf 36 wide");
     const bare = { ...a, fitted: undefined, recastFrom: undefined };
     const b = applyInsideCount(bare, { shelves: 2 });
-    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 2);
+    assert.equal(shelfLineCount(b.panels.filter((p) => p.type === "shelf")), 2);
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 4);
     assert.notEqual(planText(bare), planText(b));
     assert.match(planText(b), /Pin 2 adjustable shelves/);
   });
@@ -98,19 +102,30 @@ describe("a shelf level counts once, however many bays it spans", () => {
     ["half a sheet of plywood shelf", 3],
     ["kitchen island 48 long 22 deep 36 tall with slat shelf", 1],
     ["butcher block island on wheels 42 by 30", 1],
+    ["media console with 2 shelves", 2],
+    ["media console 72 wide with 2 shelves", 2],
   ];
   for (const [q, n] of cases) {
     it(q, () => {
       const p = generateFromPrompt(q);
       const word = `${n} shel${n === 1 ? "f" : "ves"}`;
-      assert.match(headerTitle(p), new RegExp(` · ${word}$`), headerTitle(p));
+      const named = shelfLineCount(p.panels.filter((x) => /^(?:grid |adjustable |fixed |inner )?shelf$/i.test(x.name.replace(/\s*\d+$/, ""))));
+      // "Bay 1 shelf 1" is a shelf level the picker counts. The header names a shelf only when the part is called Shelf.
+      if (/\bshel(?:f|ves)\b/i.test(q) && named) assert.match(headerTitle(p), new RegExp(` · ${word}$`), headerTitle(p));
+      else if (!/\bshel(?:f|ves)\b/i.test(q)) assert.doesNotMatch(headerTitle(p), /shelf/i, headerTitle(p));
       assert.equal(factsFromProject(p).shelves, p.panels.some((x) => x.type === "shelf") ? shelfLineCount(p.panels.filter((x) => x.type === "shelf")) : n);
-      assert.equal(shelfLineCount(p.panels.filter((x) => /^(?:grid |adjustable |fixed |inner )?shelf$/i.test(x.name.replace(/\s*\d+$/, "")))), n);
+      if (named) assert.equal(named, n);
+      else assert.equal(factsFromProject(p).shelves, n);
       const pieces = p.panels.filter((x) => x.type === "shelf").length;
       if (q.startsWith("butcher")) assert.equal(pieces, n);
       else assert.ok(pieces > n, `${q}: cut list still has a piece per bay`);
       const notes = (p.notes ?? []).join("\n");
       assert.doesNotMatch(notes, new RegExp(`\\b${pieces} adjustable shelf`));
+      if (/slat shelf/.test(q)) {
+        const back = buildPlan(p).instructions.find((s) => s.title === "Set the Back");
+        assert.match(back?.description ?? "", /both shelves/);
+        assert.doesNotMatch(back?.description ?? "", /\b3 shelves\b/);
+      }
     });
   }
 

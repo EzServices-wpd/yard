@@ -1203,7 +1203,7 @@ export function headerFeatures(project: YardProject): string[] {
     if (held) out.push(`${held} bottles`);
   }
   if (typed("hooks?\\b")) { const n = count(/\bhook\b/); if (n) out.push(plural(n, "hook", "hooks")); }
-  if (typed("shel(?:f|ves)\\b") || /\bisland\b/.test(lower)) {
+  if (typed("shel(?:f|ves)\\b")) {
     const shelves = project.panels.filter((p) => /^(?:grid |adjustable |fixed |inner )?shelf$/i.test(p.name.replace(/\s*\d+$/, "")));
     const n = shelfLineCount(shelves);
     if (n) out.push(plural(n, "shelf", "shelves"));

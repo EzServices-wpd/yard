@@ -34,7 +34,7 @@ export function typedInteriorCounts(prompt: string): Partial<Record<Feature, num
 
 const isFront = (x: Panel) => /\bdrawer front\b/i.test(x.name ?? "");
 const isDoor = (x: Panel) => /\bdoors?\b/i.test(x.name ?? "") && !/\b(?:stop|catch|hinge|pull|knob)\b/i.test(x.name ?? "");
-const isShelf = (x: Panel) => /\bshelf\b/i.test(x.name ?? "") && !/^Shelf nosing\b/.test(x.name ?? "");
+const isShelf = (x: Panel) => /\bshelf\b/i.test(x.name ?? "");
 
 /** The interior counts the model carries. A shelf level is one shelf, however many bay pieces share it. */
 export function modelInteriorCounts(p: YardProject): Record<Feature, number> {

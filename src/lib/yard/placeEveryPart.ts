@@ -145,9 +145,18 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
         return n === 1 ? role : `${n} ${plural(role, n)}`;
       });
   if (!project.panels.length) return names.map((n) => `the ${n}`).join(" and ");
-  const byFamily = new Map<string, number>();
-  for (const n of names) byFamily.set(familyWord(n), (byFamily.get(familyWord(n)) ?? 0) + 1);
-  const bits = [...byFamily.entries()].map(([w, n]) => (n === 1 ? `the ${names.find((x) => familyWord(x) === w)}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`));
+  // Two bay pieces of one shelf share a name. Count that shelf once.
+  const byFamily = new Map<string, Set<string>>();
+  for (const n of names) {
+    const w = familyWord(n);
+    const set = byFamily.get(w) ?? new Set<string>();
+    set.add(n);
+    byFamily.set(w, set);
+  }
+  const bits = [...byFamily.entries()].map(([w, set]) => {
+    const n = set.size;
+    return n === 1 ? `the ${[...set][0]}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`;
+  });
   return bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0];
 }
 

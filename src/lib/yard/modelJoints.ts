@@ -83,8 +83,7 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
         Math.abs(A.min[thinAxis(A)] - B.min[thinAxis(A)]) < 0.07 &&
         Math.abs(A.max[thinAxis(A)] - B.max[thinAxis(A)]) < 0.07 &&
         l1 >= 0.9 * Math.min(longest(A), longest(B));
-      // An edge nosing is glued along that shared edge. It is not a loose board beside another board.
-      if (coplanar && !/^Shelf nosing\b/.test(parts[i].name) && !/^Shelf nosing\b/.test(parts[j].name)) continue;
+      if (coplanar) continue;
       // A back edge is a thin sheet (backer, panel) on a box, never a dowel or a round part.
       const sheetThin = (p: Panel) => thinnest(p) < 0.5 && !/^dowel-/.test(p.materialId) && !p.polygon;
       if ((thinnest(parts[i]) < 0.5 && !sheetThin(parts[i])) || (thinnest(parts[j]) < 0.5 && !sheetThin(parts[j]))) continue;

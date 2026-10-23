@@ -785,11 +785,12 @@
       "height": 84,
       "depth": 9.25
     },
-    "panels": 15,
+    "panels": 16,
     "instances": 0,
     "uniqueParts": [
       "Back",
       "Bottom",
+      "Center divider",
       "Left upright",
       "Right upright",
       "Shelf 1",
@@ -797,11 +798,6 @@
       "Shelf 3",
       "Shelf 4",
       "Shelf 5",
-      "Shelf nosing",
-      "Shelf nosing 2",
-      "Shelf nosing 3",
-      "Shelf nosing 4",
-      "Shelf nosing 5",
       "Top"
     ],
     "notesHead": [
