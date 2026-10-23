@@ -14,6 +14,7 @@ import { foldDownBuy, hingeContext, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
+import { LAG_ROW, stepsInstallWallAnchors } from "./wallAnchorSteps";
 import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
@@ -1112,7 +1113,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
                 const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
                 return backReachesTwoStuds(backW)
                   ? "4 screws through the back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
-                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Lag the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
+                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Screw the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
               })()
           : overToilet
             ? "4-6 screws through the uprights into studs so the unit cannot tip onto the toilet. Guidance only — confirm wall type."
@@ -1121,7 +1122,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : wine
             ? "4-6 screws through the back into studs. A loaded wine rack will rip off drywall anchors. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
-            ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
+            ? "4-6 screws through the uprights into studs. Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
     });
   }
@@ -1430,7 +1431,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const named: [RegExp, RegExp, BuildPlan["bom"][number]][] = [
     [/\bcaulk/i, /caulk/, { name: "Exterior caulk", quantity: 1, estimatedCost: 6.98, unit: "tube", searchQuery: "exterior paintable caulk", notes: "Seal the seams the notes name." }],
     [/\b(?:exterior|dark|latex)\s+paint|\bpaint (?:it|the outside)/i, /paint/, { name: "Exterior paint", quantity: 1, estimatedCost: 14.98, unit: "quart", searchQuery: "exterior latex paint quart", notes: "Outside faces only, as the notes say." }],
-    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { name: '5/16" × 3" lag screws with washers', quantity: 4, estimatedCost: 0.98 * 4, unit: "each", searchQuery: "5/16 x 3 lag screw", notes: "Into the wall studs." }],
+    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { ...LAG_ROW }],
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
@@ -1798,7 +1799,7 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
 
 function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
-  const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))));
+  const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) })))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(spliceStep(stepsStrapAntiTip(project, plan)));
   const step = plan.instructions.length + 1;

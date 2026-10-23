@@ -23,7 +23,8 @@ import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { panelWorldCorners } from "./geometry";
 import { shelfInstallHeightsClause } from "./voiceHonesty";
-import type { AssemblyStep, FittedProgram, FittedSpec, OddShape, Panel, YardProject } from "./types";
+import type { AssemblyStep, FastenerUse, FittedProgram, FittedSpec, OddShape, Panel, YardProject } from "./types";
+import { fastenerText, wallScrew } from "./wallAnchorSteps";
 
 const PLY = "plywood-3-4-4x8";
 const BACKER = "plywood-1-4-4x8";
@@ -885,15 +886,16 @@ export function oddSteps(project: YardProject): AssemblyStep[] {
     .map(([n, c]) => `${n}: ${c}`)
     .join(" ");
   const steps: Omit<AssemblyStep, "step">[] = [];
-  const add = (title: string, description: string, panelIds: string[], tips?: string) =>
-    steps.push({ title, description, partsUsed: panelIds.length ? P.filter((p) => panelIds.includes(p.id)).map((p) => p.name) : undefined, tips });
+  const add = (title: string, description: string, panelIds: string[], tips?: string, fastenersUsed?: FastenerUse[]) =>
+    steps.push({ title, description, partsUsed: panelIds.length ? P.filter((p) => panelIds.includes(p.id)).map((p) => p.name) : undefined, tips, ...(fastenersUsed ? { fastenersUsed } : {}) });
+  const wall = (qty: number) => wallScrew(project, qty);
   const studs = "Find the studs with a stud finder and mark them with painter's tape.";
   switch (odd.kind) {
     case "l-footprint": {
       const desk = !!pr.desk;
       add("Measure the corner", `Check the corner is square: mark 36" along one wall and 48" along the other from the corner; the diagonal between marks should read 60". ${studs}`, []);
       add("Cut the parts", `Cut every part on the cut list. ${cutNotes} Keep the factory edges at the front.`, all);
-      add("Screw the wall cleats into studs", `Level a line ${tape(pr.H - T)} up on both walls. Screw Wall cleat A along the long wall and Wall cleat B along the short wall, 2 structural screws into every stud — both walls.`, ids(P, /^Wall cleat/));
+      add("Screw the wall cleats into studs", `Level a line ${tape(pr.H - T)} up on both walls. Screw Wall cleat A along the long wall and Wall cleat B along the short wall with ${fastenerText(wall(8))}, 2 into every stud — both walls (8 in all).`, ids(P, /^Wall cleat/), undefined, [wall(8)]);
       add("Stand the end panels", `Set End panel A at the far end of the long run and End panel B at the far end of the short run. Check each is plumb and screw it to the wall cleat's end.`, ids(P, /^End panel/));
       if (desk) add("Set the corner leg", `Cut the 2x2 Leg to ${tape(pr.H - T)} and stand it under the inside corner where the two tops will meet, ${tape(pr.D)} out from both walls.`, ids(P, /^Corner leg/));
       else add("Build the seat box", `Screw Face panel A along the front of the long run and Face panel B along the short run so they meet at the inside corner. Add the seat supports mid-run. Glue and screw every joint.`, ids(P, /^Face panel|^Seat support/));
@@ -908,7 +910,7 @@ export function oddSteps(project: YardProject): AssemblyStep[] {
       add("Add the side panels", `Screw Side panel A to the end of Back panel A and Side panel B to the end of Back panel B, beveled edges facing out toward the diagonal front.`, ids(P, /^Side panel/));
       add("Fit the diagonal bottom, top, and shelves", `Set the Diagonal bottom on the floor inside the L, the Diagonal top at the top, and each Diagonal shelf between — screw through the back and side panels into each plate (4 screws per plate edge).`, ids(P, /^Diagonal (?:bottom|top|shelf)/));
       if (pr.doors) add("Hang the diagonal door", `Hang the door on the 45° front with concealed hinges into the side panel edge. Adjust so the gaps are even.`, ids(P, /door/i));
-      add("Screw it into both walls", `Push it into the corner and screw through both back panels into studs on both walls, 2 structural screws per stud.`, all);
+      add("Screw it into both walls", `Push it into the corner and screw through both back panels into studs on both walls with 4 × ${fastenerText(wall(4))}, 2 per stud.`, all, undefined, [wall(4)]);
       break;
     }
     case "sloped": {
@@ -918,7 +920,7 @@ export function oddSteps(project: YardProject): AssemblyStep[] {
       add("Assemble the uprights and bottoms", `Stand the uprights and dividers on edge, angled tops all sloping the same way. Glue and screw each bottom between them.`, ids(P, /upright|Divider|^Bottom/i));
       add("Fit the shelves", `Glue and screw each shelf between its uprights. ${shelfInstallHeightsClause(P.filter((p) => /^Shelf\b/i.test(p.name)))} Short bays near the low side get fewer shelves — a shelf that would hit the slope is not on this list.`, ids(P, /^Shelf/));
       add("Add the sloped top and back", `Screw the Sloped top onto the angled upright ends, then nail the Sloped back on, squaring the case as you go.`, ids(P, /^Sloped/));
-      add("Screw it into studs", `Slide it under the slope and screw through the back into studs (2 structural screws per stud) so it cannot tip.`, all);
+      add("Screw it into studs", `Slide it under the slope and screw through the back into studs with 4 × ${fastenerText(wall(4))} (2 per stud) so it cannot tip.`, all, undefined, [wall(4)]);
       break;
     }
     case "wrap-opening": {

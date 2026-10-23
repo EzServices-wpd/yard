@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { fastenerText, structural, wallScrew, WALL_ANCHORS_ID } from "./wallAnchorSteps";
 import { headerSize, typedAxesTalk } from "./headerSize";
 import { drawerBoxes } from "./hollowDrawers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
@@ -54,7 +55,7 @@ import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
-import type { AssemblyStep, CatalogItem, Panel, YardInstance, YardProject } from "./types";
+import type { AssemblyStep, CatalogItem, FastenerUse, Panel, YardInstance, YardProject } from "./types";
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
@@ -901,9 +902,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 3,
         title: "Mount height from the opening — keep swing clear",
-        description: `Mount height from the opening: set the ${label.toLowerCase()} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal — above the swing, clear swing below. Predrill. Drive 3" structural screws into studs through the cleat. Keep clear swing below so the door opens under the shelf.`,
+        description: `Mount height from the opening: set the ${label.toLowerCase()} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal — above the swing, clear swing below. Predrill. Drive ${fastenerText(wallScrew(project, 4))} into studs through the cleat. Keep clear swing below so the door opens under the shelf.`,
         tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
         partsUsed: names(panels),
+        fastenersUsed: [wallScrew(project, 4)],
       },
     ];
   }
@@ -953,9 +955,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       const mountStep = {
         step: withHooks ? 4 : 3,
         title: "Mount height from the opening — keep swing clear",
-        description: `Mount height from the opening: set the towel rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the towels.`,
+        description: `Mount height from the opening: set the towel rail ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive ${fastenerText(wallScrew(project, 4))} into studs. Keep clear swing — the door must open past the towels.`,
         tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
         partsUsed: names(panels),
+        fastenersUsed: [wallScrew(project, 4)],
       };
       if (withHooks) {
         return [
@@ -978,35 +981,38 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           step: 4,
           title: "Mount height from the opening — keep swing clear",
           description: shoe
-            ? `Mount height from the opening: set the ${shoeCubbies ? "shoe cubbies" : "shoe rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
+            ? `Mount height from the opening: set the ${shoeCubbies ? "shoe cubbies" : "shoe rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive ${fastenerText(wallScrew(project, 4))} into studs. Keep clear swing — the door must open past the ${hooks} pairs without hitting footwear.`
             : /rod/.test(coatPrompt) && /coat/.test(coatPrompt)
-              ? `Mount height from the opening: set the coat rod ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal, spanning full width. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the coats.`
-              : `Mount height from the opening: set the ${hookRailLabel ? hookRailLabel.toLowerCase() : "rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the hooks.`,
+              ? `Mount height from the opening: set the coat rod ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal, spanning full width. Predrill. Drive ${fastenerText(wallScrew(project, 4))} into studs. Keep clear swing — the door must open past the coats.`
+              : `Mount height from the opening: set the ${hookRailLabel ? hookRailLabel.toLowerCase() : "rail"} ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal. Predrill. Drive ${fastenerText(wallScrew(project, 4))} into studs. Keep clear swing — the door must open past the hooks.`,
           tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
           partsUsed: names(backs.length ? backs : panels),
+          fastenersUsed: [wallScrew(project, 4)],
         }
       : toolRail || keyMail
         ? {
             step: 4,
             title: "Clear wall mount — PDF states mount height",
             description: keyMail
-              ? `Clear wall mount: set the key and mail shelf spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks below the mail shelf.`
+              ? `Clear wall mount: set the key and mail shelf spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive ${fastenerText(wallScrew(project, 4))} through the rail into studs. Screw ${hooks} hooks below the mail shelf.`
               : isLeashRail(coatPrompt) || /^Leash rail/i.test(project.name || "")
-                ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks.`
+                ? `Clear wall mount: set the leash rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive ${fastenerText(wallScrew(project, 4))} through the rail into studs. Screw ${hooks} hooks.`
               : pegRail
-                ? `Clear wall mount: set the peg rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} pegs.`
+                ? `Clear wall mount: set the peg rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive ${fastenerText(wallScrew(project, 4))} through the rail into studs. Screw ${hooks} pegs.`
                 : coatHookBoard
-                ? `Clear wall mount: set the coat hook board spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the board into studs. Screw ${hooks} coat hooks.`
-                : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the rail into studs. Screw ${hooks} hooks.`,
+                ? `Clear wall mount: set the coat hook board spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive ${fastenerText(wallScrew(project, 4))} through the board into studs. Screw ${hooks} coat hooks.`
+                : `Clear wall mount: set the tool rail spanning ${Math.round(project.opening?.width ?? W)}" at mount height ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive ${fastenerText(wallScrew(project, 4))} through the rail into studs. Screw ${hooks} hooks.`,
             tips: "PDF states mount height. Clear wall mount — hit studs.",
             partsUsed: names(backs.length ? backs : panels),
+            fastenersUsed: [wallScrew(project, 4)],
           }
         : {
           step: 4,
           title: "Hang it on studs",
-          description: `Find two studs. Predrill the rail. Drive 3" structural screws through the rail into the studs. A coat full of wet jackets will rip it off drywall anchors.`,
+          description: `Find two studs. Predrill the rail. Drive ${fastenerText(wallScrew(project, 4))} through the rail into the studs. A coat full of wet jackets will rip it off drywall anchors.`,
           tips: "Guidance only — hit a stud. Confirm the wall.",
           partsUsed: names(backs.length ? backs : panels),
+          fastenersUsed: [wallScrew(project, 4)],
         };
     return [
       {
@@ -1217,7 +1223,9 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       : loft
         ? `One elevated sleep platform on a post frame — open floor under`
         : `Two sleep platforms on a post frame — lower and upper bunk`;
-    const steps: { title: string; description: string; tips: string; partsUsed: string[] }[] = [
+    // The ledgers' structural screws: the notes put them on Buy, so this step carries them by id (one about every 12").
+    const ledgerFix = /structural screws/i.test((project.notes ?? []).join(" ")) ? structural(Math.max(4, ledgers.reduce((n, l) => n + Math.ceil(Math.max(l.size.width, l.size.height, l.size.depth) / 12) + 1, 0))) : null;
+    const steps: { title: string; description: string; tips: string; partsUsed: string[]; fastenersUsed?: FastenerUse[] }[] = [
       {
         title: "Confirm the sleep size — do not cut yet",
         description: `${project.name}. ${what}, ${round(W)}" long × ${round(D)}" wide × ${round(H)}" tall. Match the deck${decks.length > 1 ? "s" : ""} to your mattress (twin is usually 38 × 75). ${partsOnThisListPhrase(project)}.`,
@@ -1239,9 +1247,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         title: platformBed ? "Set the sleep deck on ledgers and slats" : loft ? "Set the loft sleep platform on ledgers and slats" : "Set the two sleep platforms on ledgers and slats",
-        description: `${ledgers.map(cutLine).join("; ")}. Glue and screw a ledger inside each side rail${/structural screws/i.test((project.notes ?? []).join(" ")) ? ", with the structural screws on the Buy list, one about every 12\"" : ""}. ${slats.length ? `${slats.length} slats (${cutLine(slats[0])}) span rail to rail on the ledgers. ` : ""}${decks.map(cutLine).join("; ")}: the deck lies on the slats and the mattress on the deck.`,
+        description: `${ledgers.map(cutLine).join("; ")}. Glue and screw a ledger inside each side rail${ledgerFix ? `, with the ${fastenerText(ledgerFix)} on the Buy list, one about every 12"` : ""}. ${slats.length ? `${slats.length} slats (${cutLine(slats[0])}) span rail to rail on the ledgers. ` : ""}${decks.map(cutLine).join("; ")}: the deck lies on the slats and the mattress on the deck.`,
         tips: "Screw each slat to both ledgers so the frame stays square.",
         partsUsed: names([...ledgers, ...slats, ...decks]),
+        fastenersUsed: ledgerFix ? [ledgerFix] : undefined,
       },
     ];
     if (centre.length)
@@ -1320,17 +1329,19 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       steps.push({
         step: 4,
         title: "Hang it on studs",
-        description: `Find two studs behind the bed. Predrill the laminated slab. Drive 3" structural screws through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
+        description: `Find two studs behind the bed. Predrill the laminated slab. Drive ${fastenerText(wallScrew(project, 4))} through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
         tips: "Guidance only — hit a stud. Drywall anchors alone will not hold a full-width plywood panel.",
         partsUsed: names(panels),
+        fastenersUsed: [wallScrew(project, 4)],
       });
     } else {
       steps.push({
         step: 3,
         title: "Hang it on studs",
-        description: `Find two studs behind the bed. Predrill the slab. Drive 3" structural screws through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
+        description: `Find two studs behind the bed. Predrill the slab. Drive ${fastenerText(wallScrew(project, 4))} through the board into the studs, or hang it on a french cleat (two interlocking angled strips — one on the wall, one on the back of the board). Center it on the bed. Typical top sits about 48–56" off the floor — match your mattress and pillows.`,
         tips: "Guidance only — hit a stud. Drywall anchors alone will not hold a full-width plywood panel.",
         partsUsed: names(panels),
+        fastenersUsed: [wallScrew(project, 4)],
       });
     }
     return steps;
@@ -1363,9 +1374,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 3,
         title: "Clear wall mount — PDF states mount height",
-        description: `Mount height from the wall: set the ironing board wall mount ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive 3" structural screws through the mount rail / wall cleat into studs. Keep clear swing so the ${boardLen}" board clears the wall and door swing when folded down.`,
+        description: `Mount height from the wall: set the ironing board wall mount ${mountFromOpening}" up from the finished floor. PDF states mount height. Predrill. Drive ${fastenerText(wallScrew(project, 4))} through the mount rail / wall cleat into studs. Keep clear swing so the ${boardLen}" board clears the wall and door swing when folded down.`,
         tips: "PDF states mount height from the wall. Clear swing — guidance only, confirm the hang.",
         partsUsed: names(panels),
+        fastenersUsed: [wallScrew(project, 4)],
       },
     ];
   }
@@ -1437,11 +1449,12 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 6,
         title: "Hang it on studs",
-        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A person leaning on the board will rip this off drywall anchors. ${ironing ? "Cover the board. " : ""}Close the door.`,
+        description: `Find two studs. Predrill the back. Drive ${fastenerText(wallScrew(project, 6))} through the back into the studs — 4 to 6 screws. A person leaning on the board will rip this off drywall anchors. ${ironing ? "Cover the board. " : ""}Close the door.`,
         tips: ironing
           ? "Guidance only — hit a stud. Confirm the hang height so the board comes down at a height you can iron at."
           : "Guidance only — hit a stud. Confirm the hang height so the board comes down at a height you can work at.",
         partsUsed: names(backs),
+        fastenersUsed: [wallScrew(project, 6)],
       },
     ];
   }
@@ -1496,12 +1509,13 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         description: (() => {
           const backW = backs[0]?.size.width ?? W - 1.5;
           if (backReachesTwoStuds(backW)) {
-            return `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws, one near each corner. Close the door and check the reveal.`;
+            return `Find two studs. Predrill the back. Drive ${fastenerText(wallScrew(project, 4))} through the back into the studs — 4 screws, one near each corner. Close the door and check the reveal.`;
           }
-          return `The back is ${round(backW)}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Drive 3" structural screws through the back into the stud you can reach, and use rated wall anchors at the other corners. Do not drive four corner screws and call them studs. Close the door and check the reveal.`;
+          return `The back is ${round(backW)}" wide, so it cannot hit two studs at ${STUD_CENTER_IN}" centers. Drive ${fastenerText(wallScrew(project, 4))} through the back into the stud you can reach, and use rated wall anchors at the other corners. Do not drive four corner screws and call them studs. Close the door and check the reveal.`;
         })(),
         tips: "Guidance only — confirm the wall. A loaded medicine cabinet will rip off drywall alone. Confirm the hang height so the mirror is at your eye line.",
         partsUsed: names(backs),
+        fastenersUsed: backReachesTwoStuds(backs[0]?.size.width ?? W - 1.5) ? [wallScrew(project, 4)] : [wallScrew(project, 2), { id: WALL_ANCHORS_ID, qty: 2 }],
       },
     ];
   }
@@ -1772,9 +1786,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang it on studs",
-        description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 screws. Loaded spice jars will rip off drywall anchors.`,
+        description: `Find two studs. Predrill the back. Drive ${fastenerText(wallScrew(project, 4))} through the back into the studs — 4 screws. Loaded spice jars will rip off drywall anchors.`,
         tips: "Guidance only — hit a stud. Confirm the hang height so jars sit at counter height.",
         partsUsed: names(backs),
+        fastenersUsed: [wallScrew(project, 4)],
       },
     ];
   }
@@ -1797,9 +1812,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const capShelves = sortedShelves.filter((p) => !midShelves.includes(p));
     const hang = {
       title: "Hang it on studs",
-      description: `Find two studs. Predrill the back. Drive 3" structural screws through the back into the studs — 4 to 6 screws. A loaded wine rack will rip off drywall anchors.`,
+      description: `Find two studs. Predrill the back. Drive ${fastenerText(wallScrew(project, 6))} through the back into the studs — 4 to 6 screws. A loaded wine rack will rip off drywall anchors.`,
       tips: "Guidance only — hit a stud. Confirm the hang height so you can reach a bottle.",
       partsUsed: names(backs),
+      fastenersUsed: [wallScrew(project, 6)],
     };
     const railsStep = {
       title: "Glue the bottle rails",
@@ -1809,7 +1825,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     };
     const confirm = {
       title: "Confirm the hang — do not cut yet",
-      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${capacity ? `${capacity} ` : ""}This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
+      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${capacity ? `${capacity} ` : ""}This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still screw it into the studs with ${fastenerText(wallScrew(project, 6))} so it cannot tip. ${partsOnThisListPhrase(project)}.`,
       tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
       partsUsed: ["*"],
     };
@@ -1902,10 +1918,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         },
         {
           step: 6,
-          title: "Set it over the toilet and lag into studs",
-          description: `Walk the unit over the toilet so the tank sits under the tank shelf, between the uprights. Predrill the uprights. Drive 3" structural screws through each upright into studs — a loaded étagère will tip without a wall lag.`,
+          title: "Set it over the toilet and screw it into studs",
+          description: `Walk the unit over the toilet so the tank sits under the tank shelf, between the uprights. Predrill the uprights. Drive 4 × ${fastenerText(wallScrew(project, 4))} into studs, 2 through each upright — a loaded étagère will tip unless it is screwed to the wall.`,
           tips: "Guidance only — hit a stud. Confirm tank clearance before you cut. Not stamped engineering.",
           partsUsed: names(uprights),
+          fastenersUsed: [wallScrew(project, 4)],
         },
       ];
     }
@@ -1940,9 +1957,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang it on studs above the tank",
-        description: `Find two studs above the toilet. Predrill the back. Drive 3" structural screws through the back into the studs. Leave clearance over the tank so the lid still opens.`,
+        description: `Find two studs above the toilet. Predrill the back. Drive ${fastenerText(wallScrew(project, 4))} through the back into the studs. Leave clearance over the tank so the lid still opens.`,
         tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded cabinet.",
         partsUsed: names(backs),
+        fastenersUsed: [wallScrew(project, 4)],
       },
     ];
   }
@@ -1952,13 +1970,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
       /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
       /shel/i.test(`${project.name} ${project.prompt ?? ""}`) &&
-      !uprights.length);
+      !uprights.length &&
+      // A shelf template needs a shelf: a Murphy bed's fold bracket is not a shelf bracket (row 312).
+      (shelves.length > 0 || panels.some((p) => p.type === "shelf")));
   if (floatingShelves) {
     const cleats = rails.filter((p) => /cleat/i.test(p.name));
     const brackets = rails.filter((p) => /bracket/i.test(p.name));
     const shelfBoards = shelves.length ? shelves : panels.filter((p) => p.type === "shelf");
     const lips = rails.filter((p) => /front lip|backstop|front fascia/i.test(p.name));
     const fascias = rails.filter((p) => /front fascia/i.test(p.name));
+    const cleatScrews = wallScrew(project, 4 * Math.max(1, cleats.length || shelfBoards.length));
     // Spoken brackets path — shelf + N brackets (not cleat densify).
     if (brackets.length && !cleats.length) {
       return [
@@ -1979,9 +2000,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         {
           step: 3,
           title: "Lag each bracket into studs",
-          description: `${brackets.map(cutLine).join("; ")}. Level each bracket on the wall across the ${round(W)}" span, hit a stud, and drive 3" structural screws through the bracket into the stud. Space the ${brackets.length} bracket${brackets.length === 1 ? "" : "s"} evenly under the shelf.`,
+          description: `${brackets.map(cutLine).join("; ")}. Level each bracket on the wall across the ${round(W)}" span, hit a stud, and drive ${fastenerText(wallScrew(project, 4))} through the bracket into the stud. Space the ${brackets.length} bracket${brackets.length === 1 ? "" : "s"} evenly under the shelf.`,
           tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
           partsUsed: names(brackets),
+          fastenersUsed: [wallScrew(project, 4)],
         },
         {
           step: 4,
@@ -2023,10 +2045,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Lag each wall cleat into studs",
-        description: `${(cleats.length ? cleats : shelfBoards).map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Level a cleat on the wall at each marked shelf height, hit at least two studs, and drive 3" structural screws through the cleat into the studs. Repeat for every marked height.`,
+        title: "Screw each wall cleat into studs",
+        description: `${(cleats.length ? cleats : shelfBoards).map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Level a cleat on the wall at each marked shelf height, hit at least two studs, and drive ${fastenerText(cleatScrews)} through the cleat into the studs, 2 per stud. Repeat for every marked height (${cleatScrews.qty} in all).`,
         tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
         partsUsed: names(cleats.length ? cleats : panels),
+        fastenersUsed: [cleatScrews],
       },
       {
         step: 4,
@@ -2080,9 +2103,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Hang it on studs above the range",
-        description: `Find two studs centered over the cooktop. Predrill the back. Drive 3" structural screws through the back into the studs. Bottom of the canopy typically sits 24–30" above the cooking surface — match your range and code.`,
+        description: `Find two studs centered over the cooktop. Predrill the back. Drive ${fastenerText(wallScrew(project, 4))} through the back into the studs. Bottom of the canopy typically sits 24–30" above the cooking surface — match your range and code.`,
         tips: "Guidance only — hit a stud. Drywall anchors will not hold a plywood hood. Confirm clearance over the burners.",
         partsUsed: names(backs),
+        fastenersUsed: [wallScrew(project, 4)],
       },
     ];
   }
@@ -2416,9 +2440,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: "Mount height from the opening — keep swing clear",
-      description: `Mount height from the opening: set the shoe cubbies ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal — ${pairs} pairs, clear swing. PDF states mount height from the opening. Unit ${round(W)}" wide × ${round(D)}" deep. Predrill. Drive 3" structural screws into studs. Keep clear swing — the door must open past the footwear.`,
+      description: `Mount height from the opening: set the shoe cubbies ${mountFromOpening}" up from the finished floor of the ${Math.round(project.opening?.width ?? W)}" × ${Math.round(openingH)}" door portal — ${pairs} pairs, clear swing. PDF states mount height from the opening. Unit ${round(W)}" wide × ${round(D)}" deep. Predrill. Drive ${fastenerText(wallScrew(project, 4))} into studs. Keep clear swing — the door must open past the footwear.`,
       tips: "PDF states mount height from the opening. Guidance only — confirm the portal.",
       partsUsed: ["*"],
+      fastenersUsed: [wallScrew(project, 4)],
     });
   } else {
     // A recipe object (abacus, water wheel) is a thing you build, not furniture placed on a floor footprint.
@@ -2649,16 +2674,17 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
 
   steps.push({
     step: n++,
-    title: alcove ? "Shim, then lag into studs" : wallHang ? "Hang it on studs" : "Level it",
+    title: alcove ? "Shim, then screw into studs" : wallHang ? "Hang it on studs" : "Level it",
     description: alcove
       ? pocket
         ? `Fasten the back and both uprights into the studs you marked. Shim the tight side (thin wedges to fill the gap — R ${inchFrac(pocket.rightClear)}" / L ${inchFrac(pocket.leftClear)}").${pocket.walls.notch?.side === "back" ? " Shim behind the back so it bears on the ledge face, and screw into studs above the ledge." : pocket.walls.notch ? " Leave the chase open — screw the chase-side upright to the chase face, clear of the pipes." : ""} Scribe (mark and cut the edge to match the wall) — don't force. The rectangle stays a rectangle.`
-        : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Lag (long heavy screws) through the uprights into studs (or masonry anchors). Do not rack (twist) the box to match a wonky wall.`
+        : `Slide the box into the ${round(W)}" × ${round(H)}" × ${round(D)}" opening. Shim the tight side (thin wedges). Drive ${fastenerText(wallScrew(project, 6))} through the uprights into studs. Do not rack (twist) the box to match a wonky wall.`
       : wallHang
-        ? "Find two studs. Predrill the back. Drive 3\" structural screws through the back into the studs. It hangs clear of the floor, so mark only the wall."
+        ? `Find two studs. Predrill the back. Drive ${fastenerText(wallScrew(project, 4))} through the back into the studs. It hangs clear of the floor, so mark only the wall.`
         : `Level the unit. ${backs.length ? "The back is already on it so the box stays square." : "Check both diagonals match so the frame stays square."} If it sits on a floor that is out, shim the feet — do not twist the main box.`,
     tips: `${guidanceConfirmTalk(`${project.prompt ?? ""} ${project.name}`, alcove ? "alcove" : wallHang ? "wall" : "floor")} Not stamped engineering.`,
     partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...shelves, ...doors, ...dividers]),
+    fastenersUsed: alcove ? [wallScrew(project, 6)] : wallHang ? [wallScrew(project, 4)] : undefined,
   });
 
   return steps;
