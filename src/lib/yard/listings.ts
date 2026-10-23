@@ -242,7 +242,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "plywood-3-4-4x8",
     retailer: "homedepot",
-    title: "3/4\" x 4x8 Sande sanded plywood",
+    title: "3/4\" x 4x8 Sande plywood",
     href: "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
     packQty: 1,
     packPrice: 38.43,
