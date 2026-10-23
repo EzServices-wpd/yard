@@ -27,10 +27,29 @@ import { builderNameCarries, withoutReadModifiers } from "./builderName";
 import { genericBoxOverAsk } from "./genericBox";
 import { closedCarcaseReadsAsk } from "./closedStorage";
 import { ignoredTypedWords } from "./promptMain";
+import { houseFamilyOf } from "./family";
 export { typedHeadNoun };
+const stem = (w: string) => w.replace(/ves$/, "f").replace(/ies$/, "y").replace(/s$/, "");
+/** The typed head noun when the engine's family table classifies its noun phrase ("utility cabinet", "tv stand"). */
+export function familyHeadNoun(prompt: string): string | null {
+  const head = typedHeadNoun(prompt);
+  return head && houseFamilyOf(prompt.split(/\swith\s/i)[0]) ? head : null;
+}
+/**
+ * I48: the feature words of a known family's ask ("with shelves", "with 3 drawers"), counted or not, are read when the
+ * model has parts named for them, the same as a typed count: a feature never sends a family to the learner.
+ */
+function featureWords(prompt: string): Set<string> {
+  if (!familyHeadNoun(prompt)) return new Set();
+  const tail = prompt.toLowerCase().split(/\swith\s/).slice(1).join(" ");
+  return new Set(tail.split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.test(w)));
+}
 function titleCarriesTypedWords(prompt: string, p: YardProject): boolean {
   const title = (p.name ?? "").toLowerCase();
-  return prompt.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.test(w)).every((w) => title.includes(w.replace(/s$/, "")));
+  const features = featureWords(prompt);
+  const parts = features.size ? p.panels.map((x) => x.name.toLowerCase()) : [];
+  return prompt.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.test(w)).every((w) =>
+    title.includes(w.replace(/s$/, "")) || (features.has(w) && parts.some((n) => n.includes(stem(w)))));
 }
 
 /** A library form owns a prompt only when it names the typed head noun ("wall clock" is a clock, not a Wall). */
