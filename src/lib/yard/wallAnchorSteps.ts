@@ -63,7 +63,8 @@ export function stepsInstallWallAnchors(project: YardProject, plan: BuildPlan): 
   for (const b of plan.bom) {
     if (!anchorKind(b) || anchorInstalled({ ...plan, instructions }, b)) continue;
     const kind = anchorKind(b)!;
-    const note = (project.notes ?? []).find((n) => kind.step.test(n) || (/anti-tip/i.test(b.name) && /anti-tip/i.test(n)));
+    // Only the note's sentence about this anchor rides along ("Kids bookcase: 42" tall …" stays in the notes).
+    const note = (project.notes ?? []).flatMap((n) => n.split(/(?<=[.!?])\s+/)).find((n) => kind.step.test(n));
     const st = anchorStep(project, b, note);
     // "… before the bed is mounted": anchor the box as soon as its back is on, before anything hangs from it.
     const before = note && /\bbefore\b/i.test(note);
