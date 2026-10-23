@@ -2600,6 +2600,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     );
   }
 
+  const shelfNosings = panels.filter((p) => /^Shelf nosing\b/.test(p.name));
+  if (shelfNosings.length) {
+    steps.push({
+      step: n++,
+      title: shelfNosings.length === 1 ? "Glue the shelf nosing to its shelf" : `Glue ${shelfNosings.length} shelf nosings to their shelves`,
+      description: `${shelfNosings.map(cutLine).join("; ")}. Glue and screw each 1×2 to the front edge of its own shelf. It moves with that shelf.`,
+      partsUsed: names(shelfNosings),
+    });
+  }
+
   const spanDividers = dividers.filter((p) => /^Center divider\b/.test(p.name));
   const shelfBearers = panels.filter((p) => p.name === "Shelf bearer");
   const spanCleats = panels.filter((p) => p.type === "cleat" && /^Span cleat\b/.test(p.name));

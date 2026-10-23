@@ -5,6 +5,7 @@ import { typedHeadNoun } from "./headNoun";
 import { typedSize } from "./recipeBuild";
 import { canonicalMeasures } from "./measureText";
 import type { Recipe } from "./recipes";
+import { shelfLineCount } from "./shelfSpan";
 
 /**
  * Closed storage carcase (refiner :20, 10-17). A prompt that types a carcase's size and its interior counts ("30 wide
@@ -33,12 +34,12 @@ export function typedInteriorCounts(prompt: string): Partial<Record<Feature, num
 
 const isFront = (x: Panel) => /\bdrawer front\b/i.test(x.name ?? "");
 const isDoor = (x: Panel) => /\bdoors?\b/i.test(x.name ?? "") && !/\b(?:stop|catch|hinge|pull|knob)\b/i.test(x.name ?? "");
-const isShelf = (x: Panel) => /\bshelf\b/i.test(x.name ?? "");
+const isShelf = (x: Panel) => /\bshelf\b/i.test(x.name ?? "") && !/^Shelf nosing\b/.test(x.name ?? "");
 
-/** The interior counts the model carries. */
+/** The interior counts the model carries. A shelf level is one shelf, however many bay pieces share it. */
 export function modelInteriorCounts(p: YardProject): Record<Feature, number> {
   const body = p.panels.filter((x) => !isCasterPart(x));
-  return { shelf: body.filter(isShelf).length, door: body.filter(isDoor).length, drawer: body.filter(isFront).length };
+  return { shelf: shelfLineCount(body.filter(isShelf)), door: body.filter(isDoor).length, drawer: body.filter(isFront).length };
 }
 
 /** The carcase is closed: two sides, a top, a bottom and a back. */

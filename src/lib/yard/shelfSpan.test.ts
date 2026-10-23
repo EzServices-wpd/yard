@@ -88,11 +88,12 @@ describe("shelf span supports", () => {
     assert.deepEqual(shelfSpanViolations(project), []);
   });
 
-  it("stiffens a 36 inch bookcase instead of dividing it, and keeps five shelves on pins", () => {
+  it("noses a 36 inch bookcase on the shelf edge instead of dividing it, and keeps five shelves on pins", () => {
     const project = generateFromPrompt("bookcase");
     const plan = buildPlan(project);
-    const stiff = project.panels.filter((p) => /^Front stiffener\b/.test(p.name));
-    assert.ok(stiff.length >= 1);
+    const noses = project.panels.filter((p) => /^Shelf nosing\b/.test(p.name));
+    assert.equal(noses.length, 5);
+    assert.equal(project.panels.filter((p) => /^Front stiffener\b/.test(p.name)).length, 0);
     assert.equal(project.panels.filter((p) => /^Center divider\b/.test(p.name)).length, 0);
     assert.equal(project.panels.filter((p) => p.name === "Shelf bearer").length, 0);
     assert.equal(shelfSpanViolations(project).length, 0);
@@ -104,9 +105,18 @@ describe("shelf span supports", () => {
     assert.equal(shelves.some((s) => s.polygon), false);
     assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 5 adjustable shelves/);
     assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /5 shelves × 4/);
-    assert.equal(project.panels.some((q) => stiff.some((d) => d !== q && solidsOverlap(d, q))), false);
-    const ids = new Set(stiff.map((p) => p.id));
-    assert.ok((BUY_JOINTS.get(project) ?? []).some((j) => j.screws > 0 && (ids.has(j.a) || ids.has(j.b))));
+    assert.match(plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n"), /Glue \d+ shelf nosings to their shelves/);
+    assert.match(plan.instructions.map((s) => s.description).join("\n"), /front edge of its own shelf/);
+    assert.match(plan.instructions.map((s) => s.description).join("\n"), /moves with that/);
+    const buy = BUY_JOINTS.get(project) ?? [];
+    for (const nose of noses) {
+      const shelf = shelves.find((s) => Math.abs(s.position.y - nose.position.y) < 0.05);
+      assert.ok(shelf, nose.name);
+      assert.ok(Math.abs(nose.position.y - shelf.position.y) < 0.02, `${nose.name} is fixed below the shelf`);
+      assert.ok(nose.position.z + nose.size.depth <= shelf.position.z + shelf.size.depth + nose.size.depth + 0.05);
+      assert.ok(buy.some((j) => j.screws > 0 && ((j.a === nose.id && j.b === shelf.id) || (j.b === nose.id && j.a === shelf.id))), `${nose.name} is not screwed to its shelf`);
+    }
+    assert.equal(project.panels.some((q) => noses.some((d) => d !== q && solidsOverlap(d, q))), false);
     assert.equal(stepScrewCount(plan), Number(plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN));
     assert.deepEqual(checkBuild(project, "bookcase", plan).map((v) => v.id), []);
   });
@@ -283,9 +293,22 @@ describe("shelf span supports", () => {
         }
       }
     }
-    for (const stiff of project.panels.filter((p) => /^Front stiffener\b/.test(p.name))) {
-      assert.ok(buy.some((j) => j.screws > 0 && (j.a === stiff.id || j.b === stiff.id)), `${stiff.name} is screwed in the step and missing from Buy`);
+    const noses = project.panels.filter((p) => /^Shelf nosing\b/.test(p.name));
+    assert.ok(noses.length >= 1);
+    for (const nose of noses) {
+      const shelf = project.panels.find((s) => s.type === "shelf" && Math.abs(s.position.y - nose.position.y) < 0.05);
+      assert.ok(shelf && Math.abs(nose.position.y - shelf.position.y) < 0.02, `${nose.name} is fixed below its shelf`);
+      assert.ok(paired(nose.id, shelf.id), `${nose.name} is screwed in the step and missing from Buy`);
     }
+  });
+
+  it("leaves a solid-top island without a span divider", () => {
+    const prompt = "butcher block island on wheels 42 by 30";
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    assert.equal(project.panels.filter((p) => /^Center divider\b/.test(p.name)).length, 0);
+    assert.equal(plan.instructions.some((s) => /center divider/i.test(s.title)), false);
+    assert.equal(plan.totals.estCostUsd, 326.09);
   });
 
   it("keeps a wide wardrobe free of floating parts and over-span shelves", () => {

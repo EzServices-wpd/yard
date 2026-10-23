@@ -6,9 +6,12 @@
  * 1.5 creep, so the shop spans at 3/4" are plywood 30", MDF 24", 1× pine 26".
  * The same sag per foot means the clear span scales with thickness (L ∝ t).
  * A span equal to the limit stays (a 31 1/2" case is 30" inside). A little over that, and
- * still under the span check (about 36" on 3/4" plywood), gets a 1×2 on the front edge.
- * Wider than that, the case gets a fixed divider housed in the top and the bottom, and
- * each bay gets its own shelves. The same panels the model, cut list, steps and Buy read.
+ * still under the span check (about 36" on 3/4" plywood), gets a 1×2 glued to the front
+ * edge of an adjustable shelf, so the nosing moves with the shelf. A fixed shelf may
+ * carry that 1×2 either on its edge or between the uprights. Wider than the span check,
+ * the case gets a fixed divider housed in the top and the bottom, and each bay is at or
+ * under the stock limit. An island with a solid top is not a shelf span. The same panels
+ * the model, cut list, steps and Buy read.
  */
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
@@ -148,7 +151,16 @@ function hangingBayShelf(plate: Panel, panels: Panel[]): boolean {
   return y0 != null && crossesHanging(panels, x, y0, plate.position.y);
 }
 
+/** A butcher-block or solid-top island is a slab, not a carcass shelf this rule divides. */
+function solidTopIsland(project: YardProject, prompt = ""): boolean {
+  const hay = `${prompt} ${project.prompt ?? ""} ${project.name ?? ""}`.toLowerCase();
+  if (!/\bisland\b/.test(hay)) return false;
+  if (/\bbutcher\b/.test(hay)) return true;
+  return project.panels.some((p) => (p.type === "top" || p.type === "counter") && !!p.materialId && !/plywood|mdf|particle|hardboard|cardboard/.test(p.materialId));
+}
+
 export function shelfSpanViolations(project: YardProject): ShelfSpanHit[] {
+  if (solidTopIsland(project)) return [];
   const out: ShelfSpanHit[] = [];
   for (const plate of project.panels) {
     if (plate.type !== "shelf" || !flatShelf(plate) || !housed(plate, project.panels)) continue;
@@ -163,7 +175,7 @@ export function shelfSpanViolations(project: YardProject): ShelfSpanHit[] {
     const braced =
       span <= beam + EPS &&
       project.panels.some((q) => {
-        if (!/^Front stiffener\b/.test(q.name)) return false;
+        if (!/^(?:Front stiffener|Shelf nosing)\b/.test(q.name)) return false;
         if (overlap(x0, x0 + plate.size.width, q.position.x, q.position.x + q.size.width) < plate.size.width * 0.8) return false;
         return Math.abs(q.position.y + q.size.height - plate.position.y) <= 0.35 || Math.abs(q.position.y - plate.position.y) <= 0.35;
       });
@@ -642,9 +654,30 @@ function hatAndStiff(panels: Panel[], dividers: Panel[], extra: Panel[]) {
     if (shelf.type !== "shelf" || isFixedSpanShelf(shelf) || lightShelf(shelf) || !overSpan(shelf, panels)) continue;
     const span = Math.max(0, ...clearGaps(shelf, panels).map(([a, b]) => b - a));
     if (!Number.isFinite(span) || overBeam(shelf, span)) continue;
-    liftClear(shelf, panels, 1.5);
-    stiffenFront(panels, extra, shelf);
+    noseFront(panels, extra, shelf);
   }
+}
+
+/** A 1×2 glued and screwed to an adjustable shelf's front edge. Inset from the uprights, so it moves with the shelf. */
+function noseFront(panels: Panel[], extra: Panel[], shelf: Panel) {
+  const noseD = 0.75;
+  if (shelf.size.depth < noseD + 3) return;
+  const inset = 0.125;
+  const w = shelf.size.width - inset * 2;
+  if (w < 4) return;
+  const front = shelf.position.z + shelf.size.depth;
+  const saved = shelf.size.depth;
+  shelf.size = { ...shelf.size, depth: saved - noseD };
+  const n = extra.length;
+  addStick(panels, extra, {
+    type: "rail",
+    name: "Shelf nosing",
+    position: { x: shelf.position.x + inset, y: shelf.position.y, z: front - noseD },
+    size: { width: w, height: shelf.size.height, depth: noseD },
+    materialId: "lumber-1x2-8",
+    cutNote: "Glued and screwed to this shelf's front edge. It moves with the shelf.",
+  });
+  if (extra.length === n) shelf.size = { ...shelf.size, depth: saved };
 }
 
 /** A 1×2 on the front edge. Under the shelf when the bay is open; in the shelf's plane when the next shelf is close. */
@@ -668,7 +701,7 @@ function stiffenFront(panels: Panel[], extra: Panel[], shelf: Panel) {
  * exceeds its stock gets a center divider in each opening. Same panels the rest of the plan reads.
  */
 export function withShelfSpanSupports(project: YardProject, prompt = ""): YardProject {
-  if (!project.panels.length || project.pocket || project.windowPkg || wantsOpenSpan(prompt)) return project;
+  if (!project.panels.length || project.pocket || project.windowPkg || wantsOpenSpan(prompt) || solidTopIsland(project, prompt)) return project;
   if (!project.panels.some((p) => p.type === "shelf" && overSpan(p, project.panels))) return project;
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
   for (const p of panels) if (p.type === "shelf" || p.type === "top" || p.type === "bottom") seatToSides(p, panels);
