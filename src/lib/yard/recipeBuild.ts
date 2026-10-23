@@ -713,6 +713,22 @@ function bearing(p: Panel, c: Panel): { a: "x" | "z"; got: number; need: number 
  * edge (held by end screws) is lengthened to run across the carrier's full width.
  */
 export function bearOnCarriers(recipe: Recipe, panels: Panel[]): void {
+  // A lower member that snapped taller lifts the rails in its footprint and leaves them 1/16" into the deck.
+  // The board sits on every rail it names, including one that runs along the board: the rail keeps its thickness and stops at the underside.
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (!part || !LOAD_ROLE.test(part.role ?? "") || !part.on?.length) continue;
+    const on = new Set(part.on);
+    for (const c of panels) {
+      if (c === p || !(on.has(c.name) || on.has(c.name.replace(/ \d+$/, "")))) continue;
+      const role = recipe.parts.find((q) => q.name === c.name || q.name === c.name.replace(/ \d+$/, ""))?.role ?? "";
+      if (!/rail|cleat|joist|apron|bearer|ledger|frame/i.test(`${role} ${c.name}`)) continue;
+      const bite = c.position.y + c.size.height - p.position.y;
+      const ox = Math.min(span(p, "x")[1], span(c, "x")[1]) - Math.max(span(p, "x")[0], span(c, "x")[0]);
+      const oz = Math.min(span(p, "z")[1], span(c, "z")[1]) - Math.max(span(p, "z")[0], span(c, "z")[0]);
+      if (bite > 1 / 32 && bite < 0.15 && ox > 0.05 && oz > 0.05) c.position = { ...c.position, y: c.position.y - bite };
+    }
+  }
   for (const p of panels) {
     for (const c of bearers(recipe, panels, p)) {
       const b = bearing(p, c);
