@@ -20,8 +20,9 @@ const CASTER_PLATE = 2.5;
 /** The prompt with its mobility words taken out (and a typed height less the casters), or null when none was typed. */
 export function mobilityAsk(prompt: string): { base: string } | null {
   if (!ROLLING.test(prompt)) return null;
+  // Every mobility word comes out ("mobile workbench … on casters"), so the base is built once, without casters.
   const base = prompt
-    .replace(ROLLING, " ")
+    .replace(new RegExp(ROLLING.source, "gi"), " ")
     .replace(/(\d+(?:\.\d+)?)(\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tall|high)\b)/i, (_m, n: string, rest: string) => `${Math.max(1, Number(n) - CASTER_H)}${rest}`)
     .replace(/\s+/g, " ")
     .trim();
@@ -34,7 +35,8 @@ export function takesCasters(p: YardProject): boolean {
   if (p.assumptions?.installMode === "wall" || p.assumptions?.installMode === "alcove") return false;
   if (!["closet", "furniture", "custom"].includes(p.kind)) return false;
   if (p.overall.height < 8 || p.overall.width < 10) return false;
-  return !p.panels.some(isCasterPart);
+  // A build that already rolls on its own wheels (a wagon, a toy truck) takes no casters: "with wheels" is its form.
+  return !p.panels.some((x) => isCasterPart(x) || /\bwheels?\b/i.test(x.name ?? ""));
 }
 
 /** Four locking swivel casters under the corners of the footprint; everything else rides 3" higher. */

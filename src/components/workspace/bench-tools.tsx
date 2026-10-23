@@ -57,7 +57,7 @@ export function BenchTools({
   const setCamera = useYard((s) => s.setCamera);
   const orbited = useYard((s) => s.orbited);
   const resetView = useYard((s) => s.resetView);
-  const { label: stockLabel, wire } = useStockLabel();
+  const { label: stockLabel, wire, offersStock } = useStockLabel();
   const [shown, setShown] = useBenchToolsShown();
 
   const faceKinds = operateFaceKinds(project.panels);
@@ -101,6 +101,7 @@ export function BenchTools({
           bare ? "w-full justify-center px-1 py-1" : "rounded-xl border border-border bg-surface/95 p-1 shadow-lg backdrop-blur sm:gap-1"
         }`}
       >
+        {offersStock && (
         <ToolBtn
           icon={<Layers className="size-4" aria-hidden />}
           label={wire ? "Pick stock" : "Stock"}
@@ -111,6 +112,7 @@ export function BenchTools({
           onClick={onStock}
           tool="stock"
         />
+        )}
         <ToolBtn
           icon={<Eye className="size-4" aria-hidden />}
           label="See inside"

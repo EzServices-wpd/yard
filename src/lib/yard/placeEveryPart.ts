@@ -541,9 +541,25 @@ function supportOrder(project: YardProject, steps: AssemblyStep[], parts: Part[]
       if (j != null && j !== at && isBuild(steps[j])) deps[at].add(j);
     }
   }
+  // Parts no step places (a drawer's box parts: built, hung, then faced) still order the steps that use them:
+  // such a step goes after the supports of those parts, and steps that use the same one keep their written
+  // order, so "Fit the drawer front" never runs ahead of the box it is fitted to (Critic #107 row 195).
+  const byName = new Map(project.panels.map((p) => [p.name, p] as const));
+  const unplaced = steps.map((s) =>
+    isBuild(s) ? (s.partsUsed ?? []).map((n) => byName.get(n)).filter((p): p is NonNullable<typeof p> => !!p && !where.has(p.id)) : [],
+  );
+  unplaced.forEach((ps, i) => {
+    for (const p of ps) {
+      for (const k of supports.get(p.id)?.on ?? []) {
+        const j = where.get(k);
+        if (j != null && j !== i && isBuild(steps[j])) deps[i].add(j);
+      }
+      for (let j = 0; j < i; j++) if (unplaced[j].includes(p)) deps[i].add(j);
+    }
+  });
   if (!deps.some((d, i) => [...d].some((j) => j > i))) return steps;
-  // Only steps that place parts move; prep, cut and check steps keep their slots.
-  const placing = steps.map((_, i) => i).filter((i) => isBuild(steps[i]) && [...where.values()].includes(i));
+  // Only steps that place parts (or use parts no step places) move; prep, cut and check steps keep their slots.
+  const placing = steps.map((_, i) => i).filter((i) => isBuild(steps[i]) && ([...where.values()].includes(i) || unplaced[i].length > 0));
   const done = new Set<number>(steps.map((_, i) => i).filter((i) => !placing.includes(i)));
   const order: number[] = [];
   const left = [...placing];
@@ -698,9 +714,13 @@ export function restsOnLaterStep(project: YardProject, steps: AssemblyStep[]): (
   if (!project.panels.length) return () => false;
   const supports = supportsOf(project);
   const where = placementIndex(project, steps);
+  // A family is the part's own name family, the same with or without a box number ("Drawer back" and
+  // "Drawer back 1" alike). A drawer's parts belong to that drawer, never to a carcase family: the drawer
+  // back is not the back, so one drawer and two drawers split the box joins the same way (row 199).
+  const famWord = (name: string) => familyOf(name).toLowerCase().split(/\s+/).pop();
   return (family, stepIndex) =>
     project.panels
-      .filter((p) => p.type === family || p.name.toLowerCase().split(/\s+/).pop() === family)
+      .filter((p) => !p.drawerId && (p.type === family || famWord(p.name) === family))
       .some((p) => (supports.get(p.id)?.on ?? []).some((k) => (where.get(k) ?? -1) > stepIndex));
 }
 

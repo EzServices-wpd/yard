@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { deleteLocalYard, listLocalYards, loadLocalYard, type YardCard } from "@/lib/yard/persist";
+import { deleteLocalYard, listLocalYards, loadLocalYard, yardIsSavable, type YardCard } from "@/lib/yard/persist";
 import { deleteRemoteYard, listRemoteYards, loadRemoteYard, saveRemoteYard } from "@/lib/yard/yards-api";
 import { useYard } from "@/lib/yard/store";
 
@@ -40,7 +40,7 @@ export function YardsMenu({ inline = false, onOpened }: { inline?: boolean; onOp
   }
 
   async function pushCloud() {
-    if (!user) return;
+    if (!user || !yardIsSavable(project)) return;
     try {
       await saveRemoteYard({ data: project });
       const rows = await listRemoteYards();
@@ -54,7 +54,7 @@ export function YardsMenu({ inline = false, onOpened }: { inline?: boolean; onOp
     <>
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted">On this device</p>
-        {user && (
+        {user && yardIsSavable(project) && (
           <button type="button" onClick={() => void pushCloud()} className="text-xs text-muted underline">
             Save to account
           </button>
