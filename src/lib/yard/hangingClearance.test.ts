@@ -5,7 +5,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
 import { checkBuild } from "./invariants.ts";
-import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, sideHangFits, hangerInterior, rodDropIn } from "./hangingClearance.ts";
+import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, sideHangFits, hangerInterior, rodDropIn } from "./hangingClearance.ts";
 import type { Panel } from "./types.ts";
 
 const PROBES: { id: string; prompt: string; shelves?: number }[] = JSON.parse(
@@ -125,6 +125,27 @@ it("the rod step uses the same drop as the rod in the model", () => {
   assert.match(step?.description ?? "", new RegExp(`about ${drop}" down`));
 });
 
+/** Clear openings between shelf faces, plus the openings off the rod (or the bottom) and the top. */
+function shelfClearGaps(panels: Panel[]): number[] {
+  const rows = [...new Map(panels.filter((p) => p.type === "shelf").map((p) => [p.position.y.toFixed(3), p])).values()].sort(
+    (a, b) => a.position.y - b.position.y,
+  );
+  if (!rows.length) return [];
+  const thick = rows[0].size.height;
+  const top = panels.find((p) => p.type === "top");
+  const rod = panels.filter((p) => /hanging rod/i.test(p.name)).sort((a, b) => b.position.y - a.position.y)[0];
+  const bottom = panels.find((p) => p.type === "bottom");
+  const y0 = rod ? rod.position.y + Math.min(rod.size.width, rod.size.height, rod.size.depth) : bottom ? bottom.position.y + bottom.size.height : 0;
+  const y1 = top ? top.position.y : rows[rows.length - 1].position.y + thick;
+  const gaps = [rows[0].position.y - y0];
+  for (let i = 0; i < rows.length - 1; i++) gaps.push(rows[i + 1].position.y - (rows[i].position.y + thick));
+  gaps.push(y1 - (rows[rows.length - 1].position.y + thick));
+  return gaps;
+}
+
+const askShelves = (prompt: string, n: number) =>
+  /\d+\s+shel/i.test(prompt) ? prompt.replace(/\d+(\s+shel(?:f|ves))/i, `${n}$1`) : `${prompt} with ${n} shelves`;
+
 it("a typed shelf count is built exactly, or refused with no parts", () => {
   const cases: [string, number][] = [
     ...PROBES.filter((p) => p.shelves != null).map((p) => [p.prompt, p.shelves!] as [string, number]),
@@ -142,7 +163,47 @@ it("a typed shelf count is built exactly, or refused with no parts", () => {
       continue;
     }
     assert.equal(shelfLines(p.panels), n, q);
+    const gaps = shelfClearGaps(p.panels);
+    assert.ok(gaps.length > 0 && Math.min(...gaps) >= SHELF_CLEAR_FLOOR_IN - 1e-6, `${q} gap ${Math.min(...gaps)}`);
+    assert.ok(Math.min(...gaps) + 1e-6 >= CLOSET_SHELF_CLEAR_IN, `${q} gap ${Math.min(...gaps)}`);
   }
+});
+
+it("closet shelves keep about 7\" clear, and a refusal names a count that itself builds", () => {
+  assert.ok(CLOSET_SHELF_CLEAR_IN >= SHELF_CLEAR_FLOOR_IN);
+  const prompts = [
+    "wardrobe",
+    "wardrobe 36 tall with 10 shelves",
+    "wardrobe 72 tall with 12 shelves",
+    "wardrobe 36 wide 72 tall with 5 shelves",
+    "wardrobe 72 tall with 4 shelves",
+    "wardrobe with 4 shelves",
+    "wardrobe with 10 shelves",
+    "wardrobe with 8 shelves",
+  ];
+  for (const q of prompts) {
+    const p = generateFromPrompt(q);
+    if (p.refused || !p.panels.length) {
+      assert.equal(p.panels.length, 0, q);
+      const named = Number(p.refused?.match(/fits (\d+) or fewer/)?.[1]);
+      assert.ok(Number.isFinite(named), q);
+      const again = named === 0 ? generateFromPrompt(q.replace(/\s+with \d+ shelves/, "")) : generateFromPrompt(askShelves(q, named));
+      assert.equal(again.refused, undefined, `${q} named ${named}: ${again.refused}`);
+      assert.ok(again.panels.length > 0, `${q} named ${named}`);
+      if (named > 0) assert.equal(shelfLines(again.panels), named, q);
+      const gaps = shelfClearGaps(again.panels);
+      if (gaps.length) assert.ok(Math.min(...gaps) + 1e-6 >= CLOSET_SHELF_CLEAR_IN, `${q} named ${named} gap ${Math.min(...gaps)}`);
+      assert.deepEqual(checkBuild(again, named === 0 ? q : askShelves(q, named)).filter((v) => ["I1", "I3", "I7", "I9", "I13"].includes(v.id)), [], q);
+      continue;
+    }
+    const gaps = shelfClearGaps(p.panels);
+    assert.ok(gaps.length > 0 && Math.min(...gaps) + 1e-6 >= CLOSET_SHELF_CLEAR_IN, `${q} gap ${Math.min(...gaps)}`);
+  }
+  const depth = generateFromPrompt("wardrobe 19 deep");
+  assert.match(depth.refused ?? "", new RegExp(`${HANGER_MIN_DEPTH_IN}`));
+  const built = generateFromPrompt(`wardrobe ${HANGER_MIN_DEPTH_IN} deep`);
+  assert.ok(built.panels.length > 0 && !built.refused);
+  assert.equal(longAxis(rodsOf(`wardrobe ${HANGER_MIN_DEPTH_IN} deep`)[0]), "width");
 });
 
 it("every wardrobe probe clears the hanger rule", () => {

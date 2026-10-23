@@ -25,10 +25,16 @@ export const DOUBLE_HANG_IN = 42;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
 export const ROD_DIA = 1.25;
-/** Clear space kept between a rod and the first shelf above it. */
-export const ROD_SHELF_GAP_IN = 2;
 /** Shortest hang kept under a rod when typed shelves need the space above it. */
 export const MIN_HANG_ROOM_IN = 24;
+/** Clear opening a closet shelf is built to leave, face to face. */
+export const CLOSET_SHELF_CLEAR_IN = 7;
+/** A tighter opening is not a shelf. The closet gap is never set below this. */
+export const SHELF_CLEAR_FLOOR_IN = 4;
+
+export function closetShelfClearIn(): number {
+  return Math.max(SHELF_CLEAR_FLOOR_IN, CLOSET_SHELF_CLEAR_IN);
+}
 
 export function sideHangFits(interiorIn: number): boolean {
   return interiorIn + CLEAR_TOL >= HANGER_CLEAR_IN;
@@ -74,41 +80,56 @@ export function rodDropIn(height: number, rodY: number): number {
 
 const ROD_NAME = /\bhanging rod\b|\bclothes rod\b/i;
 
-/** A shelf stack of `count` fits in `zone` when the shelves do not overlap and the zone is tall enough to place. */
-export function shelfZoneFits(count: number, zone: number, thick: number, minZone: number): boolean {
+/** Clear opening when `count` shelves are spaced evenly through `zone`. The top opening is the tight one. */
+export function shelfOpening(count: number, zone: number, thick: number): number {
+  if (count <= 0) return zone;
+  return zone / (count + 1) - thick;
+}
+
+/** A stack fits only when every opening keeps the closet gap (never under the 4" floor). */
+export function shelfZoneFits(count: number, zone: number, thick: number, clear = closetShelfClearIn()): boolean {
   if (count <= 0) return true;
-  return zone + 1e-6 >= Math.max(minZone, thick * (count + 1));
+  return shelfOpening(count, zone, thick) + 1e-6 >= Math.max(SHELF_CLEAR_FLOOR_IN, clear);
+}
+
+/** Largest count whose even spacing leaves that clear gap. */
+export function shelvesThatFit(zone: number, thick: number, clear = closetShelfClearIn()): number {
+  const pitch = thick + Math.max(SHELF_CLEAR_FLOOR_IN, clear);
+  if (!(zone > 0) || pitch <= 0) return 0;
+  return Math.max(0, Math.floor((zone + 1e-6) / pitch) - 1);
 }
 
 /**
- * Typed shelves keep their count. Lower the rod until they fit above it.
- * When even the shortest real hang cannot hold them, `fit` is how many can.
+ * Typed shelves keep their count when the clear gap fits. Lower the rod first.
+ * If that would leave less than a real hang, drop the rod and use the full height.
+ * When even the full height cannot hold them, `fit` is the largest count that can.
  */
 export function rodForTypedShelves(o: {
   rodY: number;
   zoneTop: number;
   hangFloor: number;
+  fullZone0: number;
   count: number;
   thick: number;
-  gap?: number;
-  minZone: number;
-}): { rodY: number } | { fit: number } {
-  const gap = o.gap ?? ROD_SHELF_GAP_IN;
-  const zoneAt = (rodY: number) => o.zoneTop - (rodY + gap);
-  if (shelfZoneFits(o.count, zoneAt(o.rodY), o.thick, o.minZone)) return { rodY: o.rodY };
-  const need = Math.max(o.minZone, o.thick * (o.count + 1));
-  const lowered = o.zoneTop - gap - need;
-  if (lowered + 1e-6 >= o.hangFloor && shelfZoneFits(o.count, zoneAt(lowered), o.thick, o.minZone)) return { rodY: lowered };
-  const open = zoneAt(o.hangFloor);
-  let fit = 0;
-  for (let n = o.count - 1; n >= 1; n--) if (shelfZoneFits(n, open, o.thick, o.minZone)) { fit = n; break; }
-  return { fit };
+  /** From the stored rod position up to the shelf zone: the top of the rod. */
+  lift?: number;
+  clear?: number;
+}): { rodY: number } | { omitRod: true } | { fit: number } {
+  const clear = Math.max(SHELF_CLEAR_FLOOR_IN, o.clear ?? CLOSET_SHELF_CLEAR_IN);
+  const lift = o.lift ?? ROD_DIA;
+  const zoneAt = (rodY: number) => o.zoneTop - (rodY + lift);
+  const full = o.zoneTop - o.fullZone0;
+  if (shelfZoneFits(o.count, zoneAt(o.rodY), o.thick, clear)) return { rodY: o.rodY };
+  const lowered = o.zoneTop - lift - (o.count + 1) * (o.thick + clear);
+  if (lowered + 1e-6 >= o.hangFloor && shelfZoneFits(o.count, zoneAt(lowered), o.thick, clear)) return { rodY: lowered };
+  if (shelfZoneFits(o.count, full, o.thick, clear)) return { omitRod: true };
+  return { fit: shelvesThatFit(full, o.thick, clear) };
 }
 
-/** Refusal for a typed shelf count the hanging section cannot make room for. Names the count that fits. */
-export function shelfCountRefusal(noun: string, asked: number, fit: number): string {
+/** Refusal for a typed shelf count that cannot keep the gap. Names the count that does. */
+export function shelfCountRefusal(noun: string, asked: number, fit: number, clear = closetShelfClearIn()): string {
   const a = /^[aeio]/i.test(noun) ? "An" : "A";
-  return `${a} ${noun.toLowerCase()} this tall fits ${fit} or fewer shelves above the hanging rod. Nothing is built with ${asked}.`;
+  return `${a} ${noun.toLowerCase()} this tall fits ${fit} or fewer shelves with ${clear}" clear between them. Nothing is built with ${asked}.`;
 }
 
 /** Interior depth a hanger actually gets: back's inner face to the box front (an overlay door stands proud). */
