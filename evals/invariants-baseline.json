@@ -241,6 +241,11 @@
    "class": "F30",
    "msg": "Front apron runs into Center support 1 with no joint cut for it"
   },
+  "I46|murphy bed": {
+   "class": "F7",
+   "msg": "Buy lists 5/16\" × 3\" lag screws with washers; no step drives them",
+   "reason": "Row 231 (safety): the note says 'Lag the cabinet to two wall studs before the bed is mounted' and Buy adds the 4 lags, but no step drives them. Fixed as a class in its own PR, class-wall-anchor (wall-anchor hardware on Buy gets its install step). Delete this entry when both PRs are in."
+  },
   "I37|corner bookshelf 60 wide 84 tall": {
    "class": "F9",
    "msg": "zero: 0″ dimension (step)"

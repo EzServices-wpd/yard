@@ -51,7 +51,6 @@ import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { typedMeasures } from "./measureText";
 import { boundPrompt } from "./promptLimits";
-import { anchorInstalled, anchorKind } from "./wallAnchorSteps";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
 export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I35" | "I36" | "I37" | "I38" | "I41" | "I46" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
@@ -604,9 +603,8 @@ function i18(p: YardProject, plan: BuildPlan): Violation[] {
 /**
  * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199): every screw Buy lists is driven in some step,
  * and every back is fastened in some step. The joint-screw line's count is the count the steps drive (when the
- * steps state counts at all, else some step must screw); any other screw line (structural, pocket) is named by the
- * step that drives it, by its own kind word; wall-anchor hardware (lags into studs, anti-tip kits, wall anchors; row
- * 231) is installed by a step that names it (wallAnchorSteps.ts); a back part (never a drawer's back) is in the parts of a step
+ * steps state counts at all, else some step must screw); any other screw line (structural, lag, pocket) is named
+ * by the step that drives it, by its own kind word; a back part (never a drawer's back) is in the parts of a step
  * that says how it is fastened. Report-only: it ratchets in evals/invariants-baseline.json, outside PER_BUILD.
  */
 export function i46(p: YardProject, plan: BuildPlan): Violation[] {
@@ -614,11 +612,6 @@ export function i46(p: YardProject, plan: BuildPlan): Violation[] {
   const steps = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title));
   const text = (s: (typeof steps)[number]) => `${s.title}. ${s.description ?? ""}`;
   for (const b of plan.bom) {
-    // Wall-anchor hardware (lags into studs, anti-tip kits, rated wall anchors) is installed by a step (row 231).
-    if (anchorKind(b)) {
-      if (!anchorInstalled(plan, b)) out.push(v("I46", `Buy lists ${b.name}; no step installs them`));
-      continue;
-    }
     if (!/screw/i.test(b.name)) continue;
     const total = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
     if (Number.isFinite(total)) {

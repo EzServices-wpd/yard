@@ -14,7 +14,6 @@ import { foldDownBuy, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
-import { stepsInstallWallAnchors } from "./wallAnchorSteps";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -1791,7 +1790,7 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
 
 function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
-  const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) })))));
+  const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(spliceStep(plan));
   const step = plan.instructions.length + 1;
