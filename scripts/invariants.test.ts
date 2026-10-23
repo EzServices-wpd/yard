@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
 import { headerTitle } from "../src/lib/yard/pdf.ts";
 import { buildPlan } from "../src/lib/yard/report.ts";
-import { violations, evalScore } from "./eval-lib.ts";
+import { i46Ties } from "../src/lib/yard/invariants.ts";
+import { violations, evalScore, offline } from "./eval-lib.ts";
 import { corpus, EVAL_PROMPTS, seededSizes } from "./invariants-corpus.ts";
 
 // Critic's invariants I1–I14 (critic-kb/invariants.md) over every built-in idea, learned recipe, eval prompt and
@@ -18,6 +19,26 @@ test("invariant ratchet: no new violation, no stale baseline entry", () => {
   const fresh = [...now.keys()].filter((k) => !(k in base)).map((k) => `NEW ${k}: ${now.get(k)}`);
   const stale = Object.keys(base).filter((k) => !now.has(k)).map((k) => `STALE ${k} (fixed: delete it from evals/invariants-baseline.json to close ${base[k].class})`);
   assert.deepEqual([...fresh, ...stale], []);
+});
+
+// #127 r3 (Chief): every wall/structural/lag/anchor/anti-tip line is tied by id, and the general fastener lines still
+// tied only by words are a visible count that may only fall (the follow-up PR takes it to 0).
+const I46_GENERAL_WORD_TIED_MAX: number = JSON.parse(readFileSync(new URL("../evals/invariants-baseline.json", import.meta.url), "utf8")).i46GeneralWordTied;
+test("I46 ties: wall fasteners all by id; general fasteners word-tied is counted and never grows", () => {
+  let wallById = 0, general = 0;
+  const untied: string[] = [];
+  offline(() => {
+    for (const q of corpus()) {
+      let t;
+      try { t = i46Ties(buildPlan(generateFromPrompt(q))); } catch { continue; }
+      wallById += t.wallById;
+      general += t.generalWordTied.length;
+      untied.push(...t.wallUntied.map((n) => `${q}: ${n}`));
+    }
+  });
+  console.log(`# I46 wall fasteners tied by id: ${wallById}, untied: ${untied.length}; general fasteners word-tied: ${general}`);
+  assert.deepEqual(untied, []);
+  assert.ok(general <= I46_GENERAL_WORD_TIED_MAX, `general fasteners word-tied ${general} > ${I46_GENERAL_WORD_TIED_MAX}`);
 });
 
 test("I2 linen canary: header, size, 11 pieces, price = Buy", () => {

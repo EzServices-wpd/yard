@@ -610,6 +610,18 @@ function i18(p: YardProject, plan: BuildPlan): Violation[] {
  * drawer's) is in the parts of a step that says how it is fastened. Report-only: it ratchets in
  * evals/invariants-baseline.json, outside PER_BUILD.
  */
+/**
+ * I46's tie counts, kept visible while general fasteners are still word-tied (Chief, #127 r3): wall, structural,
+ * lag, anchor and anti-tip lines a step carries by id, those no step carries (must be none), and the general
+ * fastener lines (#8 boxes, nails, brads) no step carries by id yet. The follow-up PR drives generalWordTied to 0.
+ */
+export function i46Ties(plan: BuildPlan): { wallById: number; wallUntied: string[]; generalWordTied: string[] } {
+  const carried = new Set(plan.instructions.flatMap((s) => (s.fastenersUsed ?? []).map((f) => f.id)));
+  const wall = plan.bom.filter((b) => tiedById(b) || anchorKind(b));
+  const general = plan.bom.filter((b) => !tiedById(b) && !anchorKind(b) && /screw|nail|brad/i.test(b.name) && !carried.has(fastenerId(b)));
+  return { wallById: wall.filter((b) => carried.has(fastenerId(b))).length, wallUntied: wall.filter((b) => !carried.has(fastenerId(b))).map((b) => b.name), generalWordTied: general.map((b) => b.name) };
+}
+
 export function i46(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const steps = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title));
