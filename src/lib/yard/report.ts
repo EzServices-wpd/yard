@@ -252,13 +252,30 @@ function cornerCutNote(c: CutLine): CutLine {
   return c;
 }
 
-/** After splice: name the sheet that actually fits the face. 102" stays whole on 4×10. */
+/** Sold plywood sheets, smallest face first (the size stamp picks among them). */
+const PLY_SHEETS = FORGE_CATALOG.filter((i) => i.category === "sheet_goods" && /plywood/i.test(i.id) && !!i.dims.thickness && !!i.dims.length && !!i.dims.width).sort(
+  (a, b) => a.dims.length! * a.dims.width! - b.dims.length! * b.dims.width!,
+);
+
+/**
+ * After splice: name the sheet that actually fits the face. 102" stays whole on 4×10.
+ * Rule: the size stamp changes a sheet's size, never its thickness. A row cut from a sold plywood sheet keeps that
+ * sheet when the face fits it, else takes the smallest sold sheet of the same thickness that fits (1/2" stays 1/2").
+ */
 function stampPlySheetSize(cuts: CutLine[]): CutLine[] {
   return cuts.map((c) => {
     if (!/ply/i.test(`${c.material ?? ""} ${c.name ?? ""}`)) return c;
     if (Math.min(c.lengthIn, c.widthIn) <= 2) return c;
-    const id = plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75);
-    const name = getCatalogItem(id)?.name;
+    const stock = PLY_SHEETS.find((s) => s.id === c.id.split("|")[0]);
+    let name: string | undefined;
+    if (stock) {
+      const fits = (s: CatalogItem) => fitsOnSheet(c.lengthIn, c.widthIn, { width: s.dims.width!, height: s.dims.length! });
+      const sameT = PLY_SHEETS.filter((s) => s.dims.thickness === stock.dims.thickness);
+      if (sameT.some((s) => s.name === c.material && fits(s))) return c;
+      name = sameT.find(fits)?.name;
+    } else {
+      name = getCatalogItem(plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75))?.name;
+    }
     if (!name || name === c.material) return c;
     return { ...c, material: name };
   });
