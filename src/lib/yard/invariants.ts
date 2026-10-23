@@ -1,3 +1,4 @@
+import { anchorKind, fastenerId, tiedById } from "./wallAnchorSteps";
 import { thicknessFailures } from "./stockThickness";
 import { riderFloor, rodArrayFailures, rodArrays } from "./rodArrays";
 import { countWasTyped, rowNeed, typedCount, typedSize } from "./recipeBuild";
@@ -45,6 +46,7 @@ import { panelJoints } from "./modelJoints";
 import { BACK_PART, fastensBack, stepScrewCount } from "./stepJointScrews";
 import type { BuildPlan, YardProject } from "./types";
 import { typedAxesTalk } from "./pdf";
+import { typedAssumedFailures } from "./typedNotAssumed";
 import { cutListIntro, pdfCutListIntro } from "./wholeItems";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
@@ -53,10 +55,10 @@ import { typedMeasures } from "./measureText";
 import { boundPrompt } from "./promptLimits";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I35" | "I36" | "I37" | "I38" | "I41" | "I46" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I35" | "I36" | "I37" | "I38" | "I41" | "I43" | "I46" | "I42" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I35: "F21", I36: "F32", I37: "F9", I38: "F2", I41: "F17", I46: "F7", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I35: "F21", I36: "F32", I37: "F9", I38: "F2", I41: "F17", I42: "F2", I43: "F21", I46: "F7", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -383,8 +385,16 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...i29(plan), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
-    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i35(project, prompt), ...i36(project, prompt), ...i37(project, plan), ...i38(project, plan), ...i41(project, prompt), ...i46(project, plan),
+    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i35(project, prompt), ...i36(project, prompt), ...i37(project, plan), ...i38(project, plan), ...i41(project, prompt), ...i43(project, prompt), ...i46(project, plan), ...i42(project, prompt),
   ];
+}
+
+/**
+ * I42 (F2 typed is never assumed): the project carries its one spec, and the PDF cover reading it never labels a typed
+ * axis assumed, sets a different "assumed" size beside it, or shows a size the model does not have (typedNotAssumed.ts).
+ */
+function i42(p: YardProject, prompt: string): Violation[] {
+  return typedAssumedFailures(p, prompt).map((m) => v("I42", m));
 }
 
 /** I30 (F32 follow-up, rod arrays fit their span): rods and what rides on them stay inside the parts that bound the row and clear each other (rodArrays.ts). */
@@ -491,6 +501,43 @@ export function i38(p: YardProject, plan: BuildPlan): Violation[] {
     if (k) out.push(`cut list: ${c.name} ${k.replace("In", "")} is ${Math.round(c[k] * 1000) / 1000}"`);
   }
   return out.map((m) => v("I38", m));
+}
+
+/**
+ * I43 (F21 untyped axis, row 161: 'cabinet 12 1/2 deep' built 12" wide, 'desk 30 1/2 tall' 30" wide): an axis the
+ * prompt does not type comes from the family's defaults, never from another typed axis. Its signature is a bare-size
+ * reader that stopped at the decimal point: the untyped axis is the whole-number part of a typed non-whole size, and it
+ * moves when that typed size is taken out (a family default that equals it is not a leak, row 241). Row 239: a number
+ * typed before a period builds exactly as it does without the period.
+ */
+export function i43(p: YardProject, prompt: string): Violation[] {
+  if (!prompt || !p.panels.length || p.displayOnly || p.refused || isUnitItem(p)) return [];
+  const o = p.overall;
+  const AX = ["width", "depth", "height"] as const;
+  const out: string[] = [];
+  const moved = (q: string) => {
+    const t = generateFromPrompt(q);
+    return t.refused || !t.panels.length ? [] : AX.filter((b) => Math.abs(t.overall[b] - o[b]) > 1 / 16 + 1e-6).map((b) => [b, t.overall[b]] as const);
+  };
+  // Row 239: a number typed before a sentence's period ('desk 60.', 'cabinet 30. thanks') lands exactly as without it.
+  // A list number that opens a line ("1. desk 60") is not a size.
+  const unpunct = prompt.replace(/(?<!^\s*\d*)(\d)\.(?!\d)/gm, "$1");
+  if (unpunct !== prompt) for (const [b, was] of moved(unpunct)) out.push(`${b} is ${inchFrac(o[b])}" with the period after the typed number, ${inchFrac(was)}" without it`);
+  const typed = typedMeasures(prompt);
+  if (typed.tuple) return out.map((m) => v("I43", m));
+  const WORD = { width: "wide|width", depth: "deep|depth", height: "tall|high|height" } as const;
+  for (const a of AX) {
+    const val = typed[a];
+    if (val == null || Number.isInteger(val)) continue;
+    for (const b of AX) {
+      if (b === a || typed[b] != null || Math.abs(o[b] - Math.floor(val)) > 1e-6) continue;
+      // Oracle (row 241): the untyped axis took the typed number only if it changes when that typed size is taken
+      // out; a family default that happens to equal the whole number ('nightstand 24 1/2 wide' is 24" tall) stays.
+      const bare = prompt.replace(new RegExp(String.raw`\d[\d\s./'"″-]*(?:\s*(?:ft|feet|foot|in|inch(?:es)?)\b[\d\s./'"″-]*)*\s*(?:${WORD[a]})\b`, "gi"), " ").replace(/\s+/g, " ").trim();
+      if (bare === prompt.trim() || moved(bare).some(([x]) => x === b)) out.push(`untyped ${b} is ${inchFrac(o[b])}", the whole number of the typed ${inchFrac(val)}" ${a}`);
+    }
+  }
+  return out.map((m) => v("I43", m));
 }
 
 /**
@@ -601,27 +648,55 @@ function i18(p: YardProject, plan: BuildPlan): Violation[] {
 }
 
 /**
- * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199): every screw Buy lists is driven in some step,
- * and every back is fastened in some step. The joint-screw line's count is the count the steps drive (when the
- * steps state counts at all, else some step must screw); any other screw line (structural, lag, pocket) is named
- * by the step that drives it, by its own kind word; a back part (never a drawer's back) is in the parts of a step
- * that says how it is fastened. Report-only: it ratchets in evals/invariants-baseline.json, outside PER_BUILD.
+ * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199, #127 rows 291 and 311): Buy and the steps agree
+ * on fasteners, by part id. A line steps carry as data (fastenersUsed: the joint-screw line, wall screws, lags,
+ * anti-tip kits, rated anchors) must be listed by some step, the joint line's count is the sum the steps carry, and
+ * every id a step carries is a Buy line. No step prose is read for those lines. Other fastener lines (nails, brads,
+ * bolts, exterior screws) are not carried as data yet, so a step still has to name their kind. Every back (never a
+ * drawer's) is in the parts of a step that says how it is fastened. Report-only: it ratchets in
+ * evals/invariants-baseline.json, outside PER_BUILD.
  */
+/**
+ * I46's tie counts, kept visible while general fasteners are still word-tied (Chief, #127 r3): wall, structural,
+ * lag, anchor and anti-tip lines a step carries by id, those no step carries (must be none), and the general
+ * fastener lines (#8 boxes, nails, brads) no step carries by id yet. The follow-up PR drives generalWordTied to 0.
+ */
+export function i46Ties(plan: BuildPlan): { wallById: number; wallUntied: string[]; generalWordTied: string[] } {
+  const carried = new Set(plan.instructions.flatMap((s) => (s.fastenersUsed ?? []).map((f) => f.id)));
+  const wall = plan.bom.filter((b) => tiedById(b) || anchorKind(b));
+  const general = plan.bom.filter((b) => !tiedById(b) && !anchorKind(b) && /screw|nail|brad/i.test(b.name) && !carried.has(fastenerId(b)));
+  return { wallById: wall.filter((b) => carried.has(fastenerId(b))).length, wallUntied: wall.filter((b) => !carried.has(fastenerId(b))).map((b) => b.name), generalWordTied: general.map((b) => b.name) };
+}
+
 export function i46(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const steps = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title));
+  const carried = new Map<string, number>();
+  for (const s of steps) for (const f of s.fastenersUsed ?? []) carried.set(f.id, (carried.get(f.id) ?? 0) + f.qty);
   const text = (s: (typeof steps)[number]) => `${s.title}. ${s.description ?? ""}`;
   for (const b of plan.bom) {
-    if (!/screw/i.test(b.name)) continue;
+    const id = fastenerId(b);
     const total = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+    if (carried.has(id)) {
+      if (Number.isFinite(total) && carried.get(id) !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps carry ${carried.get(id)}`));
+      continue;
+    }
+    if (tiedById(b) || anchorKind(b)) {
+      out.push(v("I46", `Buy lists ${b.name}; no step carries that line`));
+      continue;
+    }
+    if (!/screw/i.test(b.name)) continue;
     if (Number.isFinite(total)) {
       const n = stepScrewCount(plan);
       if (n > 0 && n !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps drive ${n}`));
       if (n > 0) continue;
     }
-    const kind = /nail/i.test(b.name) ? /nail|screw/i : /structural|lag/i.test(b.name) ? /structural|\blag|\bstuds?\b/i : /pocket/i.test(b.name) ? /pocket/i : /screw/i;
+    const kind = /nail/i.test(b.name) ? /nail|screw/i : /pocket/i.test(b.name) ? /pocket/i : /screw/i;
     if (!steps.some((s) => kind.test(text(s)))) out.push(v("I46", `Buy lists ${b.name}; no step drives them`));
   }
+  // The other way, by id: every fastener a step carries is a Buy line.
+  const onBuy = new Set(plan.bom.map(fastenerId));
+  for (const s of steps) for (const f of s.fastenersUsed ?? []) if (!onBuy.has(f.id)) out.push(v("I46", `Step ${s.step} carries ${f.id.replace(/^buy:/, "")}; Buy does not list it`));
   for (const back of p.panels.filter((x) => !x.drawerId && BACK_PART.test(x.name))) {
     if (!plan.instructions.some((s) => fastensBack(s, back.name))) out.push(v("I46", `${back.name} is in no step that fastens it`));
   }

@@ -32,6 +32,8 @@ export function typedForms(nouns = ["shelf", "bookcase", "cabinet"]): string[] {
   out.push("nightstand 22 1/2 wide", "nightstand 22-1/2 wide", `nightstand 22 1/2" wide`, "bookshelf 75 1/2 tall", "table 92 5/8 long");
   // Critic #103 F1 shots pr-07 / pr-08: these built 6", 6" and 3".
   out.push("bookcase 5ft6in tall", "bookcase 5ft6 tall", "cabinet 2ft3in wide");
+  // Row 161 (I43): an untyped W took the whole number of another typed axis ('cabinet 12 1/2 deep' built 12" wide).
+  out.push("cabinet 12 1/2 deep", "cabinet 12.5 deep", "cabinet 30 1/2 tall", "cabinet 22 1/2 tall", "desk 30 1/2 tall", "desk 24.5 deep", "nightstand 24 1/2 tall", "bookcase 11.5 deep", "table 29.5 tall");
   // Too small to hold its parts (#103 F2, I38): refused, named, never built at zero or below. ('water wheel 1/2 wide'
   // keeps real parts since #90, so it is no I38 case; its overlap in a 1/2" model is an open fit class, logged for Critic.)
   out.push("bookcase 1/2 wide", "cabinet 1/2 wide", "shelf 1/4 wide", "bookcase 1 wide", "bookcase 1 deep", "bookcase 2 tall", "table 1/2 tall", "stool 1 wide", "abacus 1/2 tall", "kids tipi 1/2 wide");

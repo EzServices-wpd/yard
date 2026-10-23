@@ -1348,10 +1348,15 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   const typedH = sizeOverride?.height ?? typedSize(prompt, recipe0).height;
   const r8 = (n: number) => Math.round(n * 8) / 8;
   const rowIn = Math.max(1.5, Math.min(SHARED_DRAWER_ROW_IN, recipe0.size.height * 0.5));
-  const secH = r8(typedH != null ? Math.min(count * rowIn, typedH * 0.6) : count * rowIn);
-  const built = buildRecipeBody(recipe0, prompt, materialOverride, typedH != null ? ({ ...(sizeOverride ?? {}), height: typedH - secH } as Size) : sizeOverride);
+  const secH0 = r8(typedH != null ? Math.min(count * rowIn, typedH * 0.6) : count * rowIn);
+  const built = buildRecipeBody(recipe0, prompt, materialOverride, typedH != null ? ({ ...(sizeOverride ?? {}), height: typedH - secH0 } as Size) : sizeOverride);
   const p = built.project;
   const body = p.panels;
+  // A body whose parts stop short of the height it was given (kept thicknesses, a recipe that doesn't fill its box)
+  // leaves the rest to the case: the whole build stands at the typed height, never short of it (row 296: 'jewelry box
+  // 12 wide 8 tall 8 deep with 3 drawers' stood 7 11/16" under a typed 8").
+  const bodyTop = Math.max(0, ...body.map((q) => q.position.y + q.size.height));
+  const secH = typedH != null && body.length && bodyTop < typedH - secH0 - 1 / 32 ? typedH - bodyTop : secH0;
   const minX = Math.min(...body.map((q) => q.position.x)), maxX = Math.max(...body.map((q) => q.position.x + q.size.width));
   const minZ = Math.min(...body.map((q) => q.position.z)), maxZ = Math.max(...body.map((q) => q.position.z + q.size.depth));
   const W = maxX - minX, D = maxZ - minZ;

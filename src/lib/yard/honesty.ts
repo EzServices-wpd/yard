@@ -11,7 +11,7 @@ import { detectHouseFamily, mediaIdentityLabel, tableTopShape, wantsShoes, isWal
 import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
 import { mattressDeck } from "./fittedParse";
-import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
+import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
 import { lippedShelfYs } from "./shelfLips";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -649,10 +649,7 @@ function snapName(
   typed?: TypedExtents | null,
   prompt?: string | null,
 ) {
-  const cleaned = name
-    .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
-    .replace(/\s+\d+(?:\.\d+)?"\s+(?:wide|tall|deep)\s*$/i, "")
-    .trim();
+  const cleaned = stripSizeStamp(name);
   const label = cleaned || name;
   // Class-default densify: bare (no digits) + partial typed axes share stampTypedAxesTitle densify.
   // Bare prompts often have null typedExtents — still must not re-full-stamp densified envelope.
