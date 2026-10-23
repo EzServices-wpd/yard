@@ -963,7 +963,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       catalogId: "vanity-mirror",
       searchQuery: `vanity wall mirror ${Math.round(dims.widthIn)}x${Math.round(dims.lengthIn)}`,
       estimatedCost: 39.99 * glassMirrors.length,
-      notes: `Buy glass this size — do not cut from plywood. Hang over the knee.`,
+      notes: (project.fitted?.unit?.kneeW ?? 0) > 0 || project.pocket
+        ? `Buy glass this size — do not cut from plywood. Hang over the knee.`
+        : `Buy glass this size — do not cut from plywood. Hang it on a French cleat into two studs.`,
     });
   }
   if (foldDown || ironing) {
@@ -1629,7 +1631,8 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const plan0 = ownEveryPart(project, shape(project, fallbackStepOne(project, buildPlanInner(project))));
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
-  for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
+  // A mirror panel is the sized glass line, not a second hardware row.
+  for (const p of project.panels) if (p.materialId === "hardware" && p.type !== "mirror") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
   // C13/C14: casters and screw eyes are bought as the real items (a typed "rolling", a hung feeder or birdhouse).
   const named = (name: string, n: number): BuildPlan["bom"] => {
     // C15: each is a checked store listing with its link (checkedStock.ts), and the screws the caster step names are bought too.

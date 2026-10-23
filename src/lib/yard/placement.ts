@@ -577,7 +577,11 @@ function hungTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
   const ry = ctx.floor ? 0 : ctx.unitBottom;
   out.measures.push({ kind: "top", id: p.id, refId: null, refY: ry, value: b.min.y - ry });
   let s = `Bottom edge of the ${p.name.toLowerCase()} sits ${f(b.min.y - ry)} up from ${ctx.floor ? "the floor" : "the bottom edge of the unit"}`;
-  if (below) s += ` — ${f(b.min.y - below.c.max.y)} above the top of ${nameOf(ctx, below.q)}`;
+  if (below) {
+    const gap = b.min.y - below.c.max.y;
+    // Flush with the piece under it is not a height. "0\" above" is an I37 zero (a sink mirror sits on the counter).
+    s += gap > 1 / 16 ? ` — ${f(gap)} above the top of ${nameOf(ctx, below.q)}` : `, on ${nameOf(ctx, below.q)}`;
+  }
   out.sentences.push(`${s}.`);
   const side = (dir: -1 | 1) => {
     let best: { q: Panel; d: number } | null = null;

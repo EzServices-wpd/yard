@@ -371,7 +371,9 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       continue;
     }
     const step = out[at];
-    if (handWritten || namesSupport(project, step, info)) continue;
+    // A mirror the step already hangs on a cleat or into studs is not also glued to the carcase it stands above.
+    const mirrorHung = project.panels.find((p) => p.id === part.key)?.type === "mirror" && !project.fitted?.unit?.kneeW && !project.pocket && /\b(?:cleat|studs?)\b/i.test(`${step.title} ${step.description}`);
+    if (handWritten || namesSupport(project, step, info) || mirrorHung) continue;
     // The span step already screws a fixed shelf to the uprights. A second "fasten it" line names no joint.
     const fixedShelf = project.panels.find((p) => p.id === part.key);
     if (fixedShelf && isFixedSpanShelf(fixedShelf) && /screw each fixed shelf/i.test(`${step.title} ${step.description}`)) continue;
