@@ -46,7 +46,8 @@ test("one, two or three typed axes: the cover marks assumed only the axes not ty
     // A bed reads long x wide: 44 wide is the bed's typed depth, only its height is assumed.
     ["bunk bed 82 long 44 wide", /^82" wide x 44" deep · 65" tall assumed/],
     ["cedar planter box 36 long 12 wide 12 tall", /^36" wide x 12" tall x 12" deep$/],
-    ["cabinet 12 1/2 deep", /^12 1\/2" deep · 12" wide and 30" tall assumed/],
+    // #115 (row 161 / I43): an untyped W is the family default, never the 12 of "12 1/2 deep".
+    ["cabinet 12 1/2 deep", /^12 1\/2" deep · 36" wide and 30" tall assumed/],
   ];
   for (const [q, want] of rows) {
     assert.match(cover(q), want, q);
