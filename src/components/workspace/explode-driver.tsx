@@ -92,6 +92,13 @@ export function explodeView(): BenchView {
 
 type Job = StepJob<ExplodeSolved> & { key: string };
 const cache = new Map<string, ExplodeSolved>();
+/** Solves kept (a key is build + viewport size, so resizing makes new ones): oldest dropped past this. */
+const CACHE_MAX = 8;
+function remember(k: string, s: ExplodeSolved) {
+  cache.delete(k);
+  cache.set(k, s);
+  if (cache.size > CACHE_MAX) cache.delete([...cache.keys()][0]);
+}
 
 export function ExplodeDriver({ project, explode }: { project: YardProject; explode: boolean }) {
   const { gl, size, invalidate } = useThree();
@@ -137,7 +144,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       const j = start();
       if (j.done) return;
       const r = runSlice(j, fallback, { maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS }, { onError });
-      if (r) { cache.set(j.key, r); return; }
+      if (r) { remember(j.key, r); return; }
       h = ric(tick);
     };
     h = window.setTimeout(tick, 1200);
@@ -167,7 +174,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       };
       const j = start();
       if (j.done) { show(j.done); return; }
-      const cancel = runJob(j, fallback, { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { cache.set(j.key, r); show(r); }, { onError });
+      const cancel = runJob(j, fallback, { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { remember(j.key, r); show(r); }, { onError });
       return cancel;
     }
     startTween(0, reduced ? 0 : CLOSE_MS);
