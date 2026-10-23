@@ -552,3 +552,64 @@ export function poseAt(pose: Pose, role: Role, u: number): Pose {
 
 /** Strong ease-out for parts (no ease-in on UI). */
 export const easeParts = (u: number) => 1 - (1 - u) ** 3;
+
+
+/** An oriented box (centre, unit axes, half extents) for the 3D clearance rule. */
+export type OBB = { c: V3; ax: V3[]; e: number[] };
+const vsub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const vdot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const vcross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+/** A part's box under a pose, shrunk by `shrink` inches so parts that only touch don't count. */
+export function obbOf(p: Pick<ExplodePart, "x" | "y" | "z" | "w" | "h" | "d">, pose: Pose | undefined, shrink: number): OBB {
+  const o = applyPose([0, 0, 0], pose);
+  const axis = (v: V3) => vsub(applyPose(v, pose), o);
+  const c = applyPose([p.x + p.w / 2, p.y + p.h / 2, p.z + p.d / 2], pose);
+  return { c, ax: [axis([1, 0, 0]), axis([0, 1, 0]), axis([0, 0, 1])], e: [p.w, p.h, p.d].map((s) => Math.max(0, s / 2 - shrink)) };
+}
+
+/** Separating-axis test for two oriented boxes. */
+export function obbOverlap(a: OBB, b: OBB): boolean {
+  if (a.e.some((x) => x <= 0) || b.e.some((x) => x <= 0)) return false;
+  const axes = [...a.ax, ...b.ax];
+  for (const u of a.ax) for (const v of b.ax) { const x = vcross(u, v); if (Math.hypot(...x) > 1e-6) axes.push(x); }
+  const d = vsub(b.c, a.c);
+  for (const L of axes) {
+    const ra = a.e.reduce((s, e, i) => s + e * Math.abs(vdot(a.ax[i], L)), 0);
+    const rb = b.e.reduce((s, e, i) => s + e * Math.abs(vdot(b.ax[i], L)), 0);
+    if (Math.abs(vdot(d, L)) > ra + rb) return false;
+  }
+  return true;
+}
+
+/**
+ * The 3D clearance rule over the whole tween: does any moving part pass through a part of another unit at any of
+ * `frames` frames? Parts that start inside one another (inset panels) only have to leave. Every solver step that
+ * tips or spreads drawers is checked with this and taken back if it fails (growIfClear).
+ */
+export function tweenCollides(L: Layout, poses: Map<string, Pose>, frames = 16): boolean {
+  const live = L.parts.filter((p) => p.role !== "hardware");
+  const rest = new Map(live.map((p) => [p.id, obbOf(p, undefined, 0.05)]));
+  const pairs: [ExplodePart, ExplodePart][] = [];
+  for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+    const a = live[i], b = live[j];
+    if (a.unit === b.unit) continue;
+    if (a.unit === "case" && b.unit === "case") continue;
+    if (obbOverlap(rest.get(a.id)!, rest.get(b.id)!)) continue;
+    pairs.push([a, b]);
+  }
+  for (let f = 1; f <= frames; f++) {
+    const u = f / frames;
+    const at = (p: ExplodePart) => { const q = poses.get(p.id); return obbOf(p, q && poseAt(q, p.role, u), 0.05); };
+    for (const [a, b] of pairs) if (obbOverlap(at(a), at(b))) return true;
+  }
+  return false;
+}
+
+/** Apply a solver step only if the tween stays clear; otherwise take it back. Returns whether it stuck. */
+export function growIfClear(L: Layout, apply: () => void, revert: () => void): boolean {
+  apply();
+  if (!tweenCollides(L, posesFor(L))) return true;
+  revert();
+  return false;
+}
