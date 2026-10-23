@@ -1825,7 +1825,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     };
     const confirm = {
       title: "Confirm the hang — do not cut yet",
-      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${capacity ? `${capacity} ` : ""}This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still lag it so it cannot tip. ${partsOnThisListPhrase(project)}.`,
+      description: `${project.name}. Wall-mounted wine rack ${round(W)}" wide × ${round(D)}" deep × ${round(H)}" high. ${capacity ? `${capacity} ` : ""}This hangs on the wall — do not mark a footprint on the floor. Find two studs. Typical bottom sits about 36–42" off the floor, or sit it on a counter and still screw it into the studs with ${fastenerText(wallScrew(project, 6))} so it cannot tip. ${partsOnThisListPhrase(project)}.`,
       tips: "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
       partsUsed: ["*"],
     };
