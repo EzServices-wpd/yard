@@ -35,7 +35,7 @@ test("row 292: tall freestanding casework and dressers buy one anti-tip kit and 
 
 test("row 292: a nightstand with a drawer gets the kit too; short open shelves, beds, islands and wall-hung units are not", () => {
   assert.equal(kitAndStrap("nightstand").kits.length, 1);
-  for (const q of ["bunk bed", "kitchen island", "floating shelf 36 wide", "medicine cabinet", "over-toilet shelf", "coffee table", "shoe bench"]) {
+  for (const q of ["bunk bed", "kitchen island", "floating shelf 36 wide", "medicine cabinet", "over-toilet shelf", "coffee table", "shoe bench", "rolling bar cart painted black"]) {
     const { kits, straps } = kitAndStrap(q);
     assert.deepEqual([kits.length, straps.length], [0, 0], q);
   }

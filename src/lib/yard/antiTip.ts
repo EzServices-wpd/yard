@@ -30,6 +30,8 @@ const CASEWORK_NAME = /\b(?:locker|dresser|wardrobe|armoire|bookcase|bookshelf|n
 /** A coat bench / hall tree: a bench with a tall coat back that tips forward under a hung load. */
 const HALL_TREE = /\b(?:coat bench|hall tree)\b/i;
 const TALL_IN = 30;
+/** A part that makes the unit roll. */
+const ROLLS = /\b(?:casters?|wheels?)\b/i;
 
 /** Whether this build is freestanding casework that can tip: over 30" tall, or with drawers. */
 export function needsAntiTip(project: YardProject): boolean {
@@ -39,6 +41,8 @@ export function needsAntiTip(project: YardProject): boolean {
   const hallTree = HALL_TREE.test(project.name);
   if (!(program && CASEWORK.has(program)) && !CASEWORK_NAME.test(project.name) && !hallTree) return false;
   if (NOT_CASEWORK.test(project.name) && !hallTree) return false;
+  // A unit on casters rolls: strapping it to a wall defeats the wheels ('rolling bar cart' builds as a Storage unit).
+  if (project.panels.some((p) => ROLLS.test(p.name))) return false;
   const drawers = project.panels.some((p) => p.drawerId);
   return project.overall.height > TALL_IN || drawers;
 }
