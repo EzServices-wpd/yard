@@ -152,7 +152,10 @@ function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string, typed: 
       // A member never grows past a typed size, and one spanning a whole typed size (a full-width rail) keeps that
       // span: either way it is laid across instead, its run kept as its cut length.
       const past = (to?: Panel["size"]) => !!to && (["width", "height", "depth"] as const).some((k) => typed[k] != null && ((to[k] > p.size[k] + 0.01 && to[k] > typed[k]! + 0.01) || (Math.abs(p.size[k] - typed[k]!) < 0.01 && Math.abs(to[k] - p.size[k]) > 0.01)));
-      if (past(best?.to)) best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock, true).find((o) => !past(o.to)) ?? best;
+      // With no board that keeps the span, the closest one that still fits inside the typed size (a 3" deep frame is
+      // a 2x2 centred, never a 2x4 standing 1/2" proud of the size shown); only when none fits does the closest stand.
+      const grows = (to: Panel["size"]) => (["width", "height", "depth"] as const).some((k) => typed[k] != null && to[k] > p.size[k] + 0.01 && to[k] > typed[k]! + 0.01);
+      if (past(best?.to)) best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock, true).find((o) => !past(o.to)) ?? [false, true].flatMap((across) => closestBoards(p.materialId, p.size, !!base(p.name)?.stock, across)).find((o) => !grows(o.to)) ?? best;
       const to = best?.to ?? p.size;
       if (best) next[i].materialId = best.id;
       const top0 = p.position.y + p.size.height;

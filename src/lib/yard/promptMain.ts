@@ -405,8 +405,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
     const raw = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
-    // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
-    const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", (q) => generateFromPrompt(q, ...(args.slice(1) as []))) : null;
+    // I38 and usable floors: a typed size too small to use is refused, naming the smallest usable, clean size (tooSmall.ts).
+    const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", (q) => hollowDrawers(generateFromPrompt(q, ...(args.slice(1) as [])))) : null;
     const built0 = small ?? raw;
     // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
     const typed = args[0] ?? "";
