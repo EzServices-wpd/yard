@@ -56,12 +56,23 @@ it("source guard: every surface that prints a unit line checks nothingBuilt (or 
   const files: string[] = [];
   const walk = (d: string) => { for (const f of readdirSync(d)) { const x = join(d, f); if (statSync(x).isDirectory()) walk(x); else if (/\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)) files.push(x); } };
   walk(root);
-  // Definitions and re-exports; drawings and steps sized from their parts (a refusal has none); logs of built recipes.
-  const ALLOW = /(?:builtSize|voiceHonesty|pdfFormat|headerSize|iso|pdfDraw|steps|ideaLog\.server|recipeIdeas)\.ts$/;
+  // Definitions and re-exports; drawings and steps sized from their parts (a refusal has none); recipe cards built
+  // by buildRecipe at the recipe's own size (no typed size, so never refused).
+  const ALLOW = /(?:builtSize|voiceHonesty|pdfFormat|headerSize|iso|pdfDraw|steps|recipeIdeas)\.ts$/;
   const SIZES = /\b(?:fmtUnitEnvelope(?:Inches)?|headerSize|headerAxes)\(/;
   const unguarded = files.filter((f) => !ALLOW.test(f)).filter((f) => { const t = readFileSync(f, "utf8"); return SIZES.test(t) && !/\b(?:nothingBuilt|envelopeText)\(/.test(t); });
   assert.deepEqual(unguarded.map((f) => f.slice(root.length)), []);
   for (const f of ["components/workspace/measure-panel.tsx", "components/workspace/measure-overlay.tsx", "components/workspace/shell.tsx"]) {
     assert.match(readFileSync(join(root, f), "utf8"), /nothingBuilt\(/, f);
   }
+});
+
+it("the Ideas log never records a refused size: no size, never Trusted", async () => {
+  const { recordFromPrompt } = await import("./ideaLog.server");
+  for (const q of ["bookcase 2 wide", "table 1/2 wide"]) {
+    const r = await recordFromPrompt(q);
+    assert.equal(r?.size, "", q);
+    assert.equal(r?.status, "Failed", q);
+  }
+  assert.match((await recordFromPrompt("bookcase"))?.size ?? "", /^36×12×84$/);
 });

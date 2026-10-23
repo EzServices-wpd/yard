@@ -439,7 +439,7 @@ function toRow(key: string, meta: string | null, rank: number, count: number): S
 export async function recordFromPrompt(raw: string, clientFailed = false): Promise<LogRecord | null> {
   const prompt = safePrompt(raw);
   if (!prompt) return null;
-  const [{ generateFromPrompt }, { buildInfo }, { headerSize }] = await Promise.all([import("./promptMain"), import("./buildInfo"), import("./headerSize")]);
+  const [{ generateFromPrompt }, { buildInfo }, { headerSize }, { nothingBuilt }] = await Promise.all([import("./promptMain"), import("./buildInfo"), import("./headerSize"), import("./builtSize")]);
   let status: LogStatus = "Failed";
   let size = "";
   let keySize = "";
@@ -447,6 +447,8 @@ export async function recordFromPrompt(raw: string, clientFailed = false): Promi
   let unknown = false;
   try {
     const p = generateFromPrompt(prompt);
+    // A refused size built nothing: never an idea, never a size (it would log as a Trusted 2" bookcase).
+    if (nothingBuilt(p)) return { key: logKey(prompt, "refused", ""), prompt, size: "", resultKey: "refused", status: "Failed" };
     const info = buildInfo(p);
     // A noun nothing owns (generic body / stand-in) is Unverified here and still goes to the 002 queue client-side (R6).
     unknown = !!(p.unmatched || p.displayOnly || (p as { standIn?: boolean }).standIn);
