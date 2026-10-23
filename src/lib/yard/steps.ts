@@ -1,5 +1,6 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
+import { STRUCTURAL_ID, WALL_ANCHORS_ID } from "./wallAnchorSteps";
 import { headerSize, typedAxesTalk } from "./headerSize";
 import { drawerBoxes } from "./hollowDrawers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
@@ -1476,6 +1477,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         })(),
         tips: "Guidance only — confirm the wall. A loaded medicine cabinet will rip off drywall alone. Confirm the hang height so the mirror is at your eye line.",
         partsUsed: names(backs),
+        fastenersUsed: backReachesTwoStuds(backs[0]?.size.width ?? W - 1.5) ? [STRUCTURAL_ID] : [STRUCTURAL_ID, WALL_ANCHORS_ID],
       },
     ];
   }
@@ -1880,6 +1882,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           description: `Walk the unit over the toilet so the tank sits under the tank shelf, between the uprights. Predrill the uprights. Drive 3" structural screws through each upright into studs — a loaded étagère will tip without a wall lag.`,
           tips: "Guidance only — hit a stud. Confirm tank clearance before you cut. Not stamped engineering.",
           partsUsed: names(uprights),
+          fastenersUsed: [STRUCTURAL_ID],
         },
       ];
     }
@@ -2001,6 +2004,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         description: `${(cleats.length ? cleats : shelfBoards).map(cutLine).join("; ")}. ${shelfInstallHeightsClause(shelfBoards, { wallMounted: true })} Level a cleat on the wall at each marked shelf height, hit at least two studs, and drive 3" structural screws through the cleat into the studs. Repeat for every marked height.`,
         tips: "Guidance only — hit a stud. Drywall anchors will not hold a loaded shelf.",
         partsUsed: names(cleats.length ? cleats : panels),
+        fastenersUsed: [STRUCTURAL_ID],
       },
       {
         step: 4,

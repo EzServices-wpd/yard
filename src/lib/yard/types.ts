@@ -504,6 +504,11 @@ export type AssemblyStep = {
   title: string;
   description: string;
   partsUsed?: string[];
+  /**
+   * The Buy fastener lines this step drives, by id (fastenerId: the line's catalogId, else "buy:" + its name). It ties a
+   * Buy line to the step that installs it exactly, never by a word in the step text (Critic #127 row 291).
+   */
+  fastenersUsed?: string[];
   tips?: string;
   imageDataUrl?: string;
 };

@@ -14,7 +14,7 @@ import { foldDownBuy, hingeContext, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
-import { stepsInstallWallAnchors } from "./wallAnchorSteps";
+import { LAG_ROW, stepsInstallWallAnchors } from "./wallAnchorSteps";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -1423,7 +1423,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const named: [RegExp, RegExp, BuildPlan["bom"][number]][] = [
     [/\bcaulk/i, /caulk/, { name: "Exterior caulk", quantity: 1, estimatedCost: 6.98, unit: "tube", searchQuery: "exterior paintable caulk", notes: "Seal the seams the notes name." }],
     [/\b(?:exterior|dark|latex)\s+paint|\bpaint (?:it|the outside)/i, /paint/, { name: "Exterior paint", quantity: 1, estimatedCost: 14.98, unit: "quart", searchQuery: "exterior latex paint quart", notes: "Outside faces only, as the notes say." }],
-    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { name: '5/16" × 3" lag screws with washers', quantity: 4, estimatedCost: 0.98 * 4, unit: "each", searchQuery: "5/16 x 3 lag screw", notes: "Into the wall studs." }],
+    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { ...LAG_ROW }],
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
