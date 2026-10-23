@@ -5,6 +5,8 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
+import { checkBuild } from "./invariants";
+import { ungroundedParts } from "./grounded";
 import { USABLE_FLOORS, HAND_ROLLED_IN, floorFamily, floorOn, isCarcass, leastBay, shelvesThatFit, cleanness } from "./usableFloors";
 
 it("the floor table: every family, every axis, a number and a source", () => {
@@ -38,4 +40,14 @@ it("shelves that fit: a hand's room over each", () => {
   assert.deepEqual(shelvesThatFit(5, 10.5, 0.75), { fit: 1, zoneFor: 27 });
   assert.deepEqual(shelvesThatFit(3, 60, 0.75), { fit: 3, zoneFor: 18 });
   assert.equal(shelvesThatFit(2, 4, 0.75).fit, 0);
+});
+
+it("grounded.ts and I1 agree: the same parts reach neither the floor nor a wall, on every build probed", () => {
+  const prompts = ["bookcase", "bookcase 30 wide 48 tall", "wall shelf", "floating shelf", "wardrobe", "desk 60 x 30 x 29", "linen closet 31.5 wide 78 tall 16 deep", "toy airplane", "birdhouse", "coat rack 36 wide 12 high 4 deep", "wall cabinet", "cat tree", "step stool", "water wheel", "jewelry box"];
+  for (const q of prompts) {
+    const p = generateFromPrompt(q);
+    const mine = ungroundedParts(p).map((x) => `${x.name} reaches neither the floor nor a wall`).sort();
+    const i1 = checkBuild(p, q).filter((v) => v.id === "I1").map((v) => v.msg).sort();
+    assert.deepEqual(mine, i1, q);
+  }
 });
