@@ -14,9 +14,10 @@ import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { oddShapeKind } from "./oddShapes";
 import type { AssemblyStep, CornerUnit, FittedSpec, Panel, YardProject } from "./types";
+// Corner shelves and wall panels are cut at the carcase sheet's thickness (3/4" unless the build is on another sheet).
+import { P as T } from "./sheetThickness";
 
 const PLY = "plywood-3-4-4x8";
-const T = 0.75;
 const DEFAULT_LEG = 12;
 const DEFAULT_FLOOR_H = 60;
 const SHELF_GAP = 12;
@@ -414,8 +415,8 @@ function tape(n: number): string {
 
 function cutTalk(p: Panel): string {
   const { width: w, height: h, depth: d } = p.size;
-  if (p.outline === "right-triangle") return `${p.name} — ${inch(w)} × ${inch(d)} legs, ¾" thick`;
-  if (p.outline === "quarter-round") return `${p.name} — ${inch(w)} radius, ¾" thick`;
+  if (p.outline === "right-triangle") return `${p.name} — ${inch(w)} × ${inch(d)} legs, ${inch(T)} thick`;
+  if (p.outline === "quarter-round") return `${p.name} — ${inch(w)} radius, ${inch(T)} thick`;
   const dims = [w, h, d].sort((x, y) => y - x);
   return `${p.name} — ${dims.map((n) => fmt(n)).join(" × ")}"`;
 }

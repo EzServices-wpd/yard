@@ -474,24 +474,29 @@ function refitBetween(p: Panel, was: Panel[], now: Panel[]): Panel {
 type PosAxis = "x" | "y" | "z";
 const AXES: [PosAxis, "width" | "height" | "depth"][] = [["x", "width"], ["y", "height"], ["z", "depth"]];
 
-function envelopeOf(panels: Panel[]) {
+export function envelopeOf(panels: Panel[]) {
   const b = panels.map(panelBox);
   return { x: [Math.min(...b.map((q) => q.x0)), Math.max(...b.map((q) => q.x1))], y: [Math.min(...b.map((q) => q.y0)), Math.max(...b.map((q) => q.y1))], z: [Math.min(...b.map((q) => q.z0)), Math.max(...b.map((q) => q.z1))] } as Record<PosAxis, number[]>;
 }
 
-/** A face that thins keeps its outer face where it was: one on the far side of the envelope moves out. */
-function keepOuterFace(p: Panel, was: Panel, env: Record<PosAxis, number[]>): Panel {
+/** A face that thins (or thickens to its sheet) keeps its outer face where it was: one on the far side of the envelope
+ * moves, so the build's outside size never changes. */
+export function keepOuterFace(p: Panel, was: Panel, env: Record<PosAxis, number[]>): Panel {
   if (p.yaw || p.polygon) return p;
   const pos = { ...p.position };
   for (const [a, k] of AXES) {
     const d = was.size[k] - p.size[k];
-    if (d > 0.01 && Math.abs(was.position[a] + was.size[k] - env[a][1]) < 0.02) pos[a] = was.position[a] + d;
+    if (Math.abs(d) > 0.01 && Math.abs(was.position[a] + was.size[k] - env[a][1]) < 0.02) pos[a] = was.position[a] + d;
   }
   return { ...p, position: pos };
 }
 
 /** Inside parts that met a face that moved still meet it: they grow to the face's new inner side. */
-function refitInside(was: Panel[], now: Panel[]): Panel[] {
+export function refitInside(was: Panel[], now: Panel[]): Panel[] {
+  // A face is met only where the two parts overlap on the other two axes (an apron meets the leg it butts, not the
+  // side apron that ends at the same x further back).
+  const faceOn = (i: number, j: number, a: PosAxis) =>
+    AXES.every(([b, k]) => b === a || Math.min(was[i].position[b] + was[i].size[k], was[j].position[b] + was[j].size[k]) - Math.max(was[i].position[b], was[j].position[b]) > 0.01);
   return now.map((p, i) => {
     if (p.yaw || p.polygon) return p;
     const pos = { ...p.position };
@@ -499,8 +504,8 @@ function refitInside(was: Panel[], now: Panel[]): Panel[] {
     for (const [a, k] of AXES) {
       const lo = was[i].position[a];
       const hi = lo + was[i].size[k];
-      const L = was.findIndex((q, j) => j !== i && q.size[k] < was[i].size[k] && Math.abs(q.position[a] + q.size[k] - lo) < 0.02 && Math.abs(now[j].position[a] + now[j].size[k] - lo) > 0.01);
-      const R = was.findIndex((q, j) => j !== i && q.size[k] < was[i].size[k] && Math.abs(q.position[a] - hi) < 0.02 && Math.abs(now[j].position[a] - hi) > 0.01);
+      const L = was.findIndex((q, j) => j !== i && q.size[k] < was[i].size[k] && Math.abs(q.position[a] + q.size[k] - lo) < 0.02 && Math.abs(now[j].position[a] + now[j].size[k] - lo) > 0.01 && faceOn(i, j, a));
+      const R = was.findIndex((q, j) => j !== i && q.size[k] < was[i].size[k] && Math.abs(q.position[a] - hi) < 0.02 && Math.abs(now[j].position[a] - hi) > 0.01 && faceOn(i, j, a));
       const nlo = L >= 0 ? now[L].position[a] + now[L].size[k] : pos[a];
       const nhi = R >= 0 ? now[R].position[a] : pos[a] + size[k];
       if ((L >= 0 || R >= 0) && nhi - nlo > 1) {

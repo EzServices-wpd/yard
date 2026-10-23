@@ -65,8 +65,8 @@ export function isStickAccessorySheet(p: { materialId?: string }): boolean {
  * Explode into ¾" sides + back and a ¼" bottom so sheetCutDims never treats
  * drawer height as "thickness" (the 19.5×15.75×6.375 lie).
  */
-export function explodeDrawerBoxCuts(boxW: number, boxH: number, boxD: number): DrawerCutPart[] {
-  const Ts = 0.75;
+export function explodeDrawerBoxCuts(boxW: number, boxH: number, boxD: number, sideT = 0.75): DrawerCutPart[] {
+  const Ts = sideT;
   const Tb = 0.25;
   const innerW = Math.max(Math.round((boxW - 2 * Ts) * 8) / 8, 1);
   const bottomD = Math.max(Math.round((boxD - Ts) * 8) / 8, 1);
