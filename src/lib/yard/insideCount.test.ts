@@ -13,7 +13,7 @@ describe("inside counts change the plan", () => {
       honorUnit: true,
     });
     assert.equal(b.prompt, a.prompt);
-    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 3);
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 6);
     const qty = (p: ReturnType<typeof generateFromPrompt>) =>
       buildPlan(p).cutList.map((c) => `${c.name}×${c.quantity}`).join("|") + buildPlan(p).instructions.map((s) => s.description).join("\n");
     assert.notEqual(qty(a), qty(b));
@@ -47,14 +47,14 @@ function planText(p: ReturnType<typeof generateFromPrompt>) {
 describe("shelf-family counts drive the cut list", () => {
   it("bookshelf 36 wide: shelves 5 to 3 changes the cut list and the pin step", () => {
     const a = generateFromPrompt("bookshelf 36 wide");
-    assert.equal(a.panels.filter((p) => p.type === "shelf").length, 5);
+    assert.equal(a.panels.filter((p) => p.type === "shelf").length, 10);
     const b = applyInsideCount(a, { shelves: 3 });
-    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 3);
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 6);
     const text = planText(b);
     assert.notEqual(planText(a), text);
-    assert.match(text, /Pin 3 adjustable shelves/);
-    assert.doesNotMatch(text, /Pin 5 adjustable shelves/);
-    assert.match(text, /Shelf×3/);
+    assert.match(text, /Pin 6 adjustable shelves/);
+    assert.doesNotMatch(text, /Pin 10 adjustable shelves/);
+    assert.match(text, /Shelf×6/);
   });
 
   it("a shoe rack cubby count changes the dividers and the steps", () => {
@@ -81,8 +81,8 @@ describe("shelf-family counts drive the cut list", () => {
     const a = generateFromPrompt("bookshelf 36 wide");
     const bare = { ...a, fitted: undefined, recastFrom: undefined };
     const b = applyInsideCount(bare, { shelves: 2 });
-    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 2);
+    assert.equal(b.panels.filter((p) => p.type === "shelf").length, 4);
     assert.notEqual(planText(bare), planText(b));
-    assert.match(planText(b), /Pin 2 adjustable shelves/);
+    assert.match(planText(b), /Pin 4 adjustable shelves/);
   });
 });

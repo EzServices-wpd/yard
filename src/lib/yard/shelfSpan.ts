@@ -11,9 +11,16 @@
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
 import { inchFrac } from "./inchText";
+import { wantsFixedGlueShelves } from "./honesty";
+import { solidsOverlap } from "./solids";
 import { wantsOpenSpan } from "./spanCheck";
 
 const EPS = 1 / 32;
+/** Shelves shallower than this carry light loads (a spice rack). The span rule does not apply. */
+const LIGHT_DEPTH = 8;
+/** Clear of a screw joint (0.07") and still a pin end (within 0.1" and 0.26"). */
+const PIN_GAP = 0.08;
+const PIN_NOTE = 'Drill 13/64" pin holes on both faces at each shelf, 1 1/4" from the front.';
 const PLATES = new Set(["shelf", "top"]);
 const STANDS = new Set(["shelf", "bottom", "top", "counter"]);
 
@@ -106,10 +113,46 @@ function clearGaps(plate: Panel, panels: Panel[]): [number, number][] {
   return gaps;
 }
 
+/** A prompt that names how many shelves to build. Splitting those would change the count it asked for. */
+function spokenShelfCount(prompt: string): boolean {
+  return /\b(?:\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt);
+}
+
+function lightShelf(plate: Panel): boolean {
+  return plate.type === "shelf" && plate.size.depth < LIGHT_DEPTH;
+}
+
+function isHangingRod(panel: Panel): boolean {
+  return panel.type === "rail" && /hanging rod/i.test(panel.name);
+}
+
+/** A rail, lip or rod the divider would cut through. A hanging rod is a bay, not a part to split. */
+function splitsAtDivider(panel: Panel): boolean {
+  if (isHangingRod(panel) || /^Center divider\b/.test(panel.name)) return false;
+  return panel.type === "rail" || /\blip\b|\brail\b|\brod\b/i.test(panel.name);
+}
+
+function crossesHanging(panels: Panel[], x: number, y0: number, y1: number): boolean {
+  return panels.some((q) => {
+    if (!isHangingRod(q)) return false;
+    if (overlap(x - 0.75, x + 0.75, q.position.x, q.position.x + q.size.width) <= 0) return false;
+    return overlap(y0, y1, q.position.y - 0.05, q.position.y + q.size.height + 0.05) > 0;
+  });
+}
+
+/** The shelf is the cap of a hanging-rod bay: the rod owns that opening (row 229). */
+function hangingBayShelf(plate: Panel, panels: Panel[]): boolean {
+  if (plate.type !== "shelf") return false;
+  const x = plate.position.x + plate.size.width / 2;
+  const y0 = plateBelow(panels, plate, x);
+  return y0 != null && crossesHanging(panels, x, y0, plate.position.y);
+}
+
 export function shelfSpanViolations(project: YardProject): ShelfSpanHit[] {
   const out: ShelfSpanHit[] = [];
   for (const plate of project.panels) {
     if (plate.type !== "shelf" || !flatShelf(plate) || !housed(plate, project.panels)) continue;
+    if (lightShelf(plate) || hangingBayShelf(plate, project.panels)) continue;
     const thick = thickOf(plate);
     const limit = shelfSpanLimit(plate.materialId, thick);
     const span = Math.max(0, ...clearGaps(plate, project.panels).map(([a, b]) => b - a));
@@ -251,10 +294,11 @@ export function separateSpanSupports(project: YardProject): YardProject {
   return changed ? { ...project, panels } : project;
 }
 
-function splitRods(panels: Panel[], dividers: Panel[]) {
+/** Cut a rail, lip or rod where a divider crosses it. The first piece keeps its name. Hanging rods are not cut. */
+function splitCrossed(panels: Panel[], dividers: Panel[]) {
   for (let i = panels.length - 1; i >= 0; i--) {
     const rod = panels[i];
-    if (rod.type !== "rail" || !/hanging rod/i.test(rod.name)) continue;
+    if (!splitsAtDivider(rod)) continue;
     const hits = dividers
       .filter((d) => {
         const ox = overlap(rod.position.x, rod.position.x + rod.size.width, d.position.x, d.position.x + d.size.width);
@@ -282,6 +326,116 @@ function splitRods(panels: Panel[], dividers: Panel[]) {
         size: { ...rod.size, width: piece.w },
       });
     });
+  }
+}
+
+function splitShelf(panels: Panel[], shelf: Panel, div: Panel) {
+  const left = div.position.x - PIN_GAP - shelf.position.x;
+  const rightX = div.position.x + div.size.width + PIN_GAP;
+  const right = shelf.position.x + shelf.size.width - rightX;
+  if (left < 1 || right < 1) return;
+  panels.push({ ...shelf, id: createId("sh"), position: { ...shelf.position, x: rightX }, size: { ...shelf.size, width: right } });
+  shelf.size = { ...shelf.size, width: left };
+}
+
+/** Pull a shelf end back off the divider so the shelf stays on pins and takes no screws. */
+function openPinGap(panels: Panel[], div: Panel) {
+  const x0 = div.position.x;
+  const x1 = x0 + div.size.width;
+  const y0 = div.position.y;
+  const y1 = y0 + div.size.height;
+  for (const shelf of panels) {
+    if (shelf.type !== "shelf") continue;
+    if (overlap(y0, y1, shelf.position.y, shelf.position.y + shelf.size.height) < shelf.size.height - 0.08) continue;
+    if (Math.abs(shelf.position.x + shelf.size.width - x0) <= 0.03 && shelf.size.width - PIN_GAP >= 1) {
+      shelf.size = { ...shelf.size, width: shelf.size.width - PIN_GAP };
+    }
+    if (Math.abs(shelf.position.x - x1) <= 0.03 && shelf.size.width - PIN_GAP >= 1) {
+      shelf.position = { ...shelf.position, x: shelf.position.x + PIN_GAP };
+      shelf.size = { ...shelf.size, width: shelf.size.width - PIN_GAP };
+    }
+  }
+}
+
+/**
+ * Adjustable shelves stay on pins. Stacked gap dividers at one station become one full-height
+ * upright, drilled for pins, and each shelf it passes through is cut in two.
+ */
+function uniteAdjustable(panels: Panel[], added: Panel[]) {
+  const groups = new Map<number, Panel[]>();
+  for (const div of added) {
+    const x = Math.round((div.position.x + div.size.width / 2) * 8) / 8;
+    groups.set(x, [...(groups.get(x) ?? []), div]);
+  }
+  for (const list of groups.values()) {
+    const clusters: Panel[][] = [];
+    for (const div of [...list].sort((a, b) => a.position.y - b.position.y)) {
+      const prev = clusters[clusters.length - 1];
+      const last = prev?.[prev.length - 1];
+      const x = div.position.x + div.size.width / 2;
+      const gap = last ? div.position.y - (last.position.y + last.size.height) : 0;
+      if (!last || gap > 2 || crossesHanging(panels, x, last.position.y + last.size.height, div.position.y)) clusters.push([div]);
+      else prev.push(div);
+    }
+    for (const cluster of clusters) {
+      const keep = cluster[0];
+      const y0 = Math.min(...cluster.map((d) => d.position.y));
+      const y1 = Math.max(...cluster.map((d) => d.position.y + d.size.height));
+      const z0 = Math.max(...cluster.map((d) => d.position.z));
+      const z1 = Math.min(...cluster.map((d) => d.position.z + d.size.depth));
+      keep.position = { ...keep.position, y: y0, ...(z1 - z0 >= 2 ? { z: z0 } : {}) };
+      keep.size = { ...keep.size, height: y1 - y0, ...(z1 - z0 >= 2 ? { depth: z1 - z0 } : {}) };
+      keep.cutNote = PIN_NOTE;
+      for (const extra of cluster.slice(1)) {
+        const at = panels.indexOf(extra);
+        if (at >= 0) panels.splice(at, 1);
+        const ai = added.indexOf(extra);
+        if (ai >= 0) added.splice(ai, 1);
+      }
+      for (const shelf of panels.filter((p) => p.type === "shelf")) {
+        if (overlap(y0, y1, shelf.position.y, shelf.position.y + shelf.size.height) <= 0.05) continue;
+        const mid = keep.position.x + keep.size.width / 2;
+        if (mid <= shelf.position.x + 0.5 || mid >= shelf.position.x + shelf.size.width - 0.5) continue;
+        splitShelf(panels, shelf, keep);
+      }
+      openPinGap(panels, keep);
+    }
+  }
+}
+
+/** A divider that still shares solid space with another part is trimmed off that part, or dropped. */
+function clearOverlaps(panels: Panel[]) {
+  const eps = 1 / 16;
+  for (let pass = 0; pass < 4; pass++) {
+    let hit = false;
+    for (const div of panels) {
+      if (!/^Center divider\b/.test(div.name)) continue;
+      for (const other of panels) {
+        if (other === div || !solidsOverlap(div, other)) continue;
+        hit = true;
+        const box = (axis: "x" | "y" | "z", size: "width" | "height" | "depth") => {
+          const q0 = other.position[axis];
+          const q1 = q0 + other.size[size];
+          const mid = div.position[axis] + div.size[size] / 2;
+          if (q1 <= mid) {
+            const next = q1 + eps;
+            div.size = { ...div.size, [size]: div.position[axis] + div.size[size] - next };
+            div.position = { ...div.position, [axis]: next };
+          } else div.size = { ...div.size, [size]: Math.max(0, q0 - eps - div.position[axis]) };
+        };
+        const yOv = overlap(div.position.y, div.position.y + div.size.height, other.position.y, other.position.y + other.size.height);
+        const zOv = overlap(div.position.z, div.position.z + div.size.depth, other.position.z, other.position.z + other.size.depth);
+        if (zOv <= yOv) box("z", "depth");
+        else box("y", "height");
+      }
+    }
+    if (!hit) break;
+  }
+  for (let i = panels.length - 1; i >= 0; i--) {
+    const div = panels[i];
+    if (/^Center divider\b/.test(div.name) && (div.size.height < 0.4 || div.size.depth < 2 || div.size.width < 0.2)) {
+      panels.splice(i, 1);
+    }
   }
 }
 
@@ -325,10 +479,17 @@ function braceTight(panels: Panel[], added: Panel[]) {
     let yEnd = tight[0].position.y;
     for (const s of shelves) {
       if (s.position.y < tight[0].position.y - 0.01) continue;
+      if (crossesHanging(panels, x0 + span / 2, yEnd, s.position.y)) break;
       if (hitsDrawer(panels, x0 + span / 2 - t / 2, stand, s.position.z, t, s.position.y - stand, s.size.depth)) break;
       yEnd = s.position.y;
     }
-    if (top && !hitsDrawer(panels, x0 + span / 2 - t / 2, stand, top.position.z, t, top.position.y - stand, top.size.depth)) yEnd = Math.max(yEnd, top.position.y);
+    if (
+      top &&
+      !crossesHanging(panels, x0 + span / 2, yEnd, top.position.y) &&
+      !hitsDrawer(panels, x0 + span / 2 - t / 2, stand, top.position.z, t, top.position.y - stand, top.size.depth)
+    ) {
+      yEnd = Math.max(yEnd, top.position.y);
+    }
     if (yEnd - stand < t) continue;
     let k = Math.max(2, Math.ceil(span / cap));
     while (k < 8 && (span - (k - 1) * t) / k > cap + EPS) k++;
@@ -352,7 +513,7 @@ function braceTight(panels: Panel[], added: Panel[]) {
 }
 
 function overSpan(plate: Panel, panels: Panel[]): boolean {
-  if (!flatShelf(plate) || !housed(plate, panels)) return false;
+  if (!flatShelf(plate) || !housed(plate, panels) || lightShelf(plate) || hangingBayShelf(plate, panels)) return false;
   const cap = shelfSpanLimit(plate.materialId, thickOf(plate));
   return clearGaps(plate, panels).some(([a, b]) => b - a > cap + EPS);
 }
@@ -383,6 +544,7 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
     }
   }
   for (const plate of plates) {
+    if (lightShelf(plate) || hangingBayShelf(plate, panels)) continue;
     const t = plate.size.height;
     const cap = shelfSpanLimit(plate.materialId, thickOf(plate));
     if (!Number.isFinite(cap)) continue;
@@ -396,7 +558,7 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
         if (alreadyHeld(plate, panels, at)) continue;
         const y0 = plateBelow(panels, plate, at);
         const y1 = plate.position.y;
-        if (y0 == null || y1 - y0 < t - 0.02) continue;
+        if (y0 == null || y1 - y0 < t - 0.02 || crossesHanging(panels, at, y0, y1)) continue;
         dividerAt(panels, added, plate, at, y0, y1, t);
       }
     }
@@ -408,7 +570,11 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
     const i = stations.indexOf(Math.round((d.position.x + d.size.width / 2) * 8) / 8);
     if (i > 0) d.name = `Center divider ${i + 1}`;
   }
-  splitRods(panels, added);
+  // Pins in Buy means the shelves stay adjustable: one drilled upright, shelves cut in two, not screwed.
+  if (!wantsFixedGlueShelves(project) && !spokenShelfCount(prompt)) uniteAdjustable(panels, added);
+  if (!added.length) return project;
+  splitCrossed(panels, added);
+  clearOverlaps(panels);
   const after = Math.max(0, ...panels.filter((p) => p.type === "shelf" && housed(p, panels)).flatMap((p) => clearGaps(p, panels).map(([a, b]) => b - a)));
   const word = stations.length === 1 ? "a divider stands in the middle" : `${stations.length} dividers stand across the span`;
   const note = `Center divider under the shelves: ${inchFrac(before)}" is a long span for ${inchFrac(thick)}" ${stockWord(materialId)} (books want about ${inchFrac(limit)}" between supports), so ${word} and every shelf span is ${inchFrac(after)}" or less.`;
