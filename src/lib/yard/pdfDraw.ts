@@ -665,7 +665,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   const fitPts = (fitSolids.length ? fitSolids : solids).flatMap((s) =>
     s.stick ? [s.stick.a, s.stick.b] : s.faces.flatMap((f) => f.pts),
   );
-  const dimsOn = !!opts.dims && !project.instances.length;
+  // Nothing built (a refusal, an empty bench): no part to measure, so no dimension line says 0" (refusal surfaces).
+  const dimsOn = !!opts.dims && !project.instances.length && project.panels.length > 0;
   const bb = bounds(fitPts.length ? fitPts : [{ x: 0, y: 0, z: 0 }]);
   const span = Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z, 1);
   const off = span * 0.1;

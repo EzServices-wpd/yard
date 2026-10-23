@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan, planToMarkdown } from "./report";
-import { buildPlanPdf, headerFeatures, headerTitle } from "./pdf";
+import { buildPlanPdf, headerFeatures, headerTitle, refusedSubline } from "./pdf";
 import { stockPillLabel, NOTHING_BUILT_STOCK } from "./stockPill";
 import { candidateFromPrint } from "./ideaKeep";
 import { envelopeText, nothingBuilt, shownSize } from "./builtSize";
@@ -20,8 +20,11 @@ import { refusedOutline } from "./refusedOutline";
 const REFUSED = ["bookcase 2 wide", "table 1/2 wide", "jewelry box 1/2 tall", "bookcase 12 tall 5 shelves", "linen closet 2 wide", "abacus 2 1/8 wide 9 rods"];
 const SIZE = /\d+(?:\s+\d+\/\d+)?"|\d+\/\d+"|\b\d+(?:\.\d+)?\s*(?:in|inch|inches)\b|["″]\s*[WHD]\b/;
 const flat = (t: string) => t.replace(/\\\(|\\\)/g, (m) => m[1]).replace(/\s+/g, " ");
-/** A surface's text with the refusal sentence taken out (the one place sizes are named, about the refusal itself). */
-const without = (t: string, refused: string) => flat(t).split(flat(refused)).join(" ");
+/**
+ * A surface's text with the refusal sentence taken out (the one place sizes are named, about the refusal itself), and
+ * the PDF cover subline read from it (#130: "Nothing built · needs at least <min>", the refusal's own minimum).
+ */
+const without = (t: string, refused: string) => flat(t).split(flat(refused)).join(" ").split(refusedSubline(refused)).join(" ");
 
 for (const prompt of REFUSED) {
   it(`${prompt}: refused, and no surface shows a size`, () => {

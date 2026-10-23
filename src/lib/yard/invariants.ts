@@ -1,3 +1,4 @@
+import { anchorKind, fastenerId, tiedById } from "./wallAnchorSteps";
 import { thicknessFailures } from "./stockThickness";
 import { nothingBuilt } from "./builtSize";
 import { riderFloor, rodArrayFailures, rodArrays } from "./rodArrays";
@@ -675,27 +676,55 @@ function i18(p: YardProject, plan: BuildPlan): Violation[] {
 }
 
 /**
- * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199): every screw Buy lists is driven in some step,
- * and every back is fastened in some step. The joint-screw line's count is the count the steps drive (when the
- * steps state counts at all, else some step must screw); any other screw line (structural, lag, pocket) is named
- * by the step that drives it, by its own kind word; a back part (never a drawer's back) is in the parts of a step
- * that says how it is fastened. Report-only: it ratchets in evals/invariants-baseline.json, outside PER_BUILD.
+ * I46 (F7 Buy = steps, the other way from I9; Critic #107 row 199, #127 rows 291 and 311): Buy and the steps agree
+ * on fasteners, by part id. A line steps carry as data (fastenersUsed: the joint-screw line, wall screws, lags,
+ * anti-tip kits, rated anchors) must be listed by some step, the joint line's count is the sum the steps carry, and
+ * every id a step carries is a Buy line. No step prose is read for those lines. Other fastener lines (nails, brads,
+ * bolts, exterior screws) are not carried as data yet, so a step still has to name their kind. Every back (never a
+ * drawer's) is in the parts of a step that says how it is fastened. Report-only: it ratchets in
+ * evals/invariants-baseline.json, outside PER_BUILD.
  */
+/**
+ * I46's tie counts, kept visible while general fasteners are still word-tied (Chief, #127 r3): wall, structural,
+ * lag, anchor and anti-tip lines a step carries by id, those no step carries (must be none), and the general
+ * fastener lines (#8 boxes, nails, brads) no step carries by id yet. The follow-up PR drives generalWordTied to 0.
+ */
+export function i46Ties(plan: BuildPlan): { wallById: number; wallUntied: string[]; generalWordTied: string[] } {
+  const carried = new Set(plan.instructions.flatMap((s) => (s.fastenersUsed ?? []).map((f) => f.id)));
+  const wall = plan.bom.filter((b) => tiedById(b) || anchorKind(b));
+  const general = plan.bom.filter((b) => !tiedById(b) && !anchorKind(b) && /screw|nail|brad/i.test(b.name) && !carried.has(fastenerId(b)));
+  return { wallById: wall.filter((b) => carried.has(fastenerId(b))).length, wallUntied: wall.filter((b) => !carried.has(fastenerId(b))).map((b) => b.name), generalWordTied: general.map((b) => b.name) };
+}
+
 export function i46(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
   const steps = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title));
+  const carried = new Map<string, number>();
+  for (const s of steps) for (const f of s.fastenersUsed ?? []) carried.set(f.id, (carried.get(f.id) ?? 0) + f.qty);
   const text = (s: (typeof steps)[number]) => `${s.title}. ${s.description ?? ""}`;
   for (const b of plan.bom) {
-    if (!/screw/i.test(b.name)) continue;
+    const id = fastenerId(b);
     const total = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+    if (carried.has(id)) {
+      if (Number.isFinite(total) && carried.get(id) !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps carry ${carried.get(id)}`));
+      continue;
+    }
+    if (tiedById(b) || anchorKind(b)) {
+      out.push(v("I46", `Buy lists ${b.name}; no step carries that line`));
+      continue;
+    }
+    if (!/screw/i.test(b.name)) continue;
     if (Number.isFinite(total)) {
       const n = stepScrewCount(plan);
       if (n > 0 && n !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps drive ${n}`));
       if (n > 0) continue;
     }
-    const kind = /nail/i.test(b.name) ? /nail|screw/i : /structural|lag/i.test(b.name) ? /structural|\blag|\bstuds?\b/i : /pocket/i.test(b.name) ? /pocket/i : /screw/i;
+    const kind = /nail/i.test(b.name) ? /nail|screw/i : /pocket/i.test(b.name) ? /pocket/i : /screw/i;
     if (!steps.some((s) => kind.test(text(s)))) out.push(v("I46", `Buy lists ${b.name}; no step drives them`));
   }
+  // The other way, by id: every fastener a step carries is a Buy line.
+  const onBuy = new Set(plan.bom.map(fastenerId));
+  for (const s of steps) for (const f of s.fastenersUsed ?? []) if (!onBuy.has(f.id)) out.push(v("I46", `Step ${s.step} carries ${f.id.replace(/^buy:/, "")}; Buy does not list it`));
   for (const back of p.panels.filter((x) => !x.drawerId && BACK_PART.test(x.name))) {
     if (!plan.instructions.some((s) => fastensBack(s, back.name))) out.push(v("I46", `${back.name} is in no step that fastens it`));
   }

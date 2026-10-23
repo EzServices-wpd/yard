@@ -184,7 +184,7 @@ export function ExportDialog({
           <p className="mt-2 font-mono text-sm tracking-tight text-ink">
             {sizeLine}
           </p>
-          {project.prompt && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.prompt}</p>}
+          {(project.typedPrompt || project.prompt) && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.typedPrompt || project.prompt}</p>}
           {kept === "new" && (
             <p className="mt-3 text-sm text-ink">
               New idea. It’s on{" "}
