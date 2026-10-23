@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { lengthIn, typedCounts, typedDemands, typedSizes } from "./eval-gate-typed.ts";
-import { HEAD_ROOT, REPORT_ONLY_IDS, TYPED_RULE_IDS, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, totalsOf } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, REPORT_ONLY_IDS, TYPED_RULE_IDS, corpusPrompts, corpusRemovals, gradeCanary, gradeOf, gradeOne, honor, isTestTraffic, keepCorpusRows, loadCanaries, loadCorpus, loadEngine, shelfLevelCount, totalsOf } from "./eval-gate-lib.ts";
 import { INVARIANT_CLASS, PER_BUILD } from "../src/lib/yard/invariants.ts";
 import { diffGates, renderComment } from "./eval-gate-diff.ts";
 import { namedMinimum } from "./eval-gate-refusal.ts";
@@ -218,6 +218,25 @@ test("honest refusals: the 4 abacus refusals pass (listed, minimum named, minimu
   const builds = gradeOne(stub({ refusals: { ...E.refusals, "abacus 10 wide 15 rods": { minimum: "10 wide", why: "test" } } }), entry("abacus 10 wide 15 rods"));
   assert.equal(builds.grade, "fail");
   assert.match(builds.refusal!.why, /but it built/);
+});
+
+test("a typed shelf count is levels, grouped by height within each bay", async () => {
+  const shelf = (x: number, w: number, y = 10) => ({ name: "Shelf", position: { x, y }, size: { width: w } });
+  assert.equal(shelfLevelCount([shelf(0, 20), shelf(28, 20)]), 1);
+  assert.equal(shelfLevelCount([shelf(0, 20), shelf(1, 20)]), 2);
+  const E = await loadEngine();
+  const wide = E.generateFromPrompt("bookcase 60 wide with 4 shelves");
+  const widePlan = E.buildPlan(wide);
+  const wideHonor = honor(E, typedDemands("bookcase 60 wide with 4 shelves"), wide, widePlan, "bookcase 60 wide with 4 shelves");
+  const wideCount = wideHonor.items.find((i) => i.kind === "count" && /shelves/.test(i.demand));
+  assert.equal(wideCount?.ok, true, wideCount?.shows);
+  assert.equal(wide.panels.filter((x: { name: string }) => /^Shelf\b/.test(x.name)).length, 8);
+  const two = E.generateFromPrompt("bookcase with 2 shelves");
+  const forced = typedDemands("bookcase with 4 shelves");
+  const twoHonor = honor(E, forced, two, E.buildPlan(two), "bookcase with 2 shelves");
+  const twoCount = twoHonor.items.find((i) => i.kind === "count" && /shelves/.test(i.demand));
+  assert.equal(twoCount?.ok, false);
+  assert.match(twoCount?.shows ?? "", /^2 shelves/);
 });
 
 test("#110 B1: 'queen platform bed with drawers' that builds 0 drawers with no note is not a pass (I31 grades)", async () => {

@@ -5473,7 +5473,7 @@ console.log("SOFT-TRUST OK", {
       failVoice("shelfHeight bookcase shelf count ≠ 5", shelfPanels.map((p) => p.name));
     }
     const pinStep = bookPlan.instructions.find(
-      (s) => /Pin \d+ adjustable shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
+      (s) => /Pin \d+ (?:adjustable )?shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
     );
     if (!pinStep) failVoice("shelfHeight bookcase missing pin/glue shelf step", bookPlan.instructions.map((s) => s.title));
     const pinBlob = `${pinStep!.title} ${pinStep!.description}`;
@@ -7708,7 +7708,7 @@ console.log("STRANGER PLAN OK", {
     if (!c.quarter && !/diagonal/i.test(blob)) failHonesty(`corner steps missing diagonal cut ${c.prompt}`);
     if (c.quarter && !/arc/i.test(blob)) failHonesty(`corner steps missing arc cut ${c.prompt}`);
     if (!/both walls/i.test(blob) || !/stud/i.test(blob)) failHonesty(`corner steps missing screw into both walls / studs ${c.prompt}`);
-    if (/shelf pin|5 ?mm|Pin \d+ adjustable|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
+    if (/shelf pin|5 ?mm|Pin \d+ (?:adjustable shel|shelves \()|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
     if (!c.wall && !/Wall panel A/.test(blob)) failHonesty(`corner steps missing wall panels ${c.prompt}`);
   }
   // Protect: rectangle bookcase, bookcase placed in a corner with a typed width, floating shelf with brackets.
@@ -8383,6 +8383,13 @@ console.log("STRANGER PLAN OK", {
   ] as const) {
     const p = generateFromPrompt(prompt);
     if (!titleRe.test(p.name)) failHonesty("shelf-count-carcase sibling title", prompt, p.name);
+    if (p.refused) {
+      // 36" cannot hold 5 shelves at 7" clear. The shared minimum is 48" (closetShelfMinHeight).
+      if (!/kids bookcase/.test(prompt) || !/at least 48" tall for 5 shelves with 7" clear/.test(p.refused) || p.panels.length) {
+        failHonesty("shelf-count-carcase sibling refusal", prompt, p.refused, p.panels.length);
+      }
+      continue;
+    }
     if (Math.abs(p.overall.width - wantW) > 2 || Math.abs(p.overall.height - wantH) > 2) {
       failHonesty("shelf-count-carcase sibling envelope", prompt, p.overall);
     }
