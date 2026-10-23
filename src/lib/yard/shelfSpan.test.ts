@@ -4,7 +4,9 @@ import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
 import { spanFindings } from "./spanCheck";
-import { isFixedSpanShelf, sagLimitIn, shelfDepthSpan, shelfLineCount, shelfSagIn, shelfSpanLimit, shelfSpanViolations } from "./shelfSpan";
+import { isFixedSpanShelf, sagLimitIn, shelfDepthSpan, shelfLevelsFit, shelfLineCount, shelfSagIn, shelfSpanLimit, shelfSpanViolations, typedShelfDemand } from "./shelfSpan";
+import { withAxis } from "./tooSmall";
+import { namedMinimum } from "../../../scripts/eval-gate-refusal.ts";
 import { hiddenOverlaps, solidsOverlap } from "./solids";
 import { headerTitle } from "./pdf";
 import { supportsOf } from "./supportGraph";
@@ -449,5 +451,54 @@ describe("shelf span supports", () => {
       }
     }
     assert.deepEqual(bad, []);
+  });
+
+  it("gives every typed shelf its own height, or names the height that fits", () => {
+    const cases: [string, number, "fits" | "refuses"][] = [
+      ["bookcase 36 tall with 8 shelves", 8, "fits"],
+      ["bookcase 24 tall with 8 shelves", 8, "refuses"],
+      ["bookcase 30 wide 24 tall with 8 shelves", 8, "refuses"],
+      ["bookshelf 42 wide with 5 shelves", 5, "fits"],
+      ["wardrobe 36 tall with 10 shelves", 10, "refuses"],
+      ["wardrobe 84 tall with 4 shelves", 4, "fits"],
+      ["closet 36 tall with 8 shelves", 8, "fits"],
+      ["closet 24 tall with 10 shelves", 10, "refuses"],
+      ["pantry cabinet 84 tall with 6 shelves", 6, "fits"],
+      ["pantry cabinet 24 tall with 8 shelves", 8, "refuses"],
+      ["linen closet 78 tall with 4 shelves", 4, "fits"],
+      ["linen closet 24 tall with 10 shelves", 10, "refuses"],
+    ];
+    const atHeight = (prompt: string, width: number, height: number) => {
+      const pinned = /\b(?:wide|width)\b/i.test(prompt) ? prompt : `${prompt} ${width} wide`;
+      const next = withAxis(pinned, "height", height);
+      return generateFromPrompt(next !== pinned ? next : `${pinned} ${height} tall`);
+    };
+    for (const [prompt, n, expect] of cases) {
+      assert.equal(typedShelfDemand(prompt), n, prompt);
+      const project = generateFromPrompt(prompt);
+      if (expect === "fits") {
+        assert.equal(project.refused, undefined, prompt);
+        assert.equal(shelfLevelsFit(project.panels, n), true, prompt);
+        assert.match(headerTitle(project), new RegExp(`\\b${n} shelves\\b`), prompt);
+        continue;
+      }
+      assert.equal(typeof project.refused, "string", prompt);
+      assert.equal(project.panels.length, 0, prompt);
+      assert.match(String(project.refused), /nothing is built/i);
+      assert.match(headerTitle(project), /nothing built/);
+      const min = namedMinimum(String(project.refused));
+      assert.ok(min && min.axis === "H" && min.value_in > project.overall.height + 1 / 32, `${prompt} ${project.refused}`);
+      const built = atHeight(prompt, project.overall.width, min.value_in);
+      assert.equal(built.refused, undefined, `${prompt} at ${min.quote}`);
+      assert.ok(Math.abs(built.overall.width - project.overall.width) < 0.02, prompt);
+      assert.equal(shelfLevelsFit(built.panels, n), true, `${prompt} at ${min.quote}`);
+      assert.match(headerTitle(built), new RegExp(`\\b${n} shelves\\b`), headerTitle(built));
+      const under = atHeight(prompt, project.overall.width, min.value_in - 1 / 16);
+      assert.equal(typeof under.refused, "string", `${prompt} just under ${min.quote}`);
+    }
+    assert.equal(typedShelfDemand("wardrobe with 2 drawers"), null);
+    assert.equal(typedShelfDemand("small 6 foot shelf"), null);
+    assert.equal(typedShelfDemand("pocket vanity"), null);
+    assert.equal(generateFromPrompt("wardrobe with 2 drawers").refused, undefined);
   });
 });
