@@ -735,6 +735,64 @@ function edgeRail(panels: Panel[], extra: Panel[], shelf: Panel): boolean {
   return false;
 }
 
+/** The shelf directly over a hanging rod sits 2" clear of it before any divider is cut to that height. */
+function clearRodHats(panels: Panel[]) {
+  const rods = panels.filter(isHangingRod);
+  if (!rods.length) return;
+  for (const shelf of panels.filter((p) => p.type === "shelf" && !p.outline)) {
+    const rod = rods.find((r) => overlap(shelf.position.x, shelf.position.x + shelf.size.width, r.position.x, r.position.x + r.size.width) > 1 && r.position.y + r.size.height <= shelf.position.y + 0.05);
+    if (!rod) continue;
+    const rodTop = rod.position.y + rod.size.height;
+    const between = panels.some((s) => s !== shelf && s.type === "shelf" && s.position.y > rodTop && s.position.y < shelf.position.y - 0.05 && overlap(shelf.position.x, shelf.position.x + shelf.size.width, s.position.x, s.position.x + s.size.width) > 1);
+    if (between || shelf.position.y >= rodTop + 2 - 0.02) continue;
+    shelf.position = { ...shelf.position, y: rodTop + 2 };
+  }
+}
+
+/** A front rail under a floor-level shelf hangs below the uprights. Lift the build and let the sides cover it. */
+function seatFrontRails(panels: Panel[]): number {
+  const rails = panels.filter((p) => /^Front rail\b/.test(p.name));
+  const sides = panels.filter((p) => p.type === "upright" || p.type === "back");
+  if (!rails.length || !sides.length) return 0;
+  const y0 = Math.min(...sides.map((p) => p.position.y));
+  const low = Math.min(...rails.map((p) => p.position.y));
+  if (low >= y0 - EPS) return 0;
+  const drop = y0 - low;
+  for (const p of panels) {
+    if (p.type === "upright" || p.type === "back") p.size = { ...p.size, height: p.size.height + drop };
+    else p.position = { ...p.position, y: p.position.y + drop };
+  }
+  return drop;
+}
+
+/** The grown case says one height: the number the drawings measure, in the name, the notes, and the unit. */
+function growCase(project: YardProject, drop: number): YardProject {
+  const newH = Math.round((project.overall.height + drop) * 16) / 16;
+  const from = `${inchFrac(project.overall.height)}"`;
+  const to = `${inchFrac(newH)}"`;
+  const say = (s: string) => s.split(from).join(to);
+  const fitted = project.fitted?.unit
+    ? { ...project.fitted, name: project.fitted.name ? say(project.fitted.name) : project.fitted.name, unit: { ...project.fitted.unit, height: Math.round((project.fitted.unit.height + drop) * 16) / 16 } }
+    : project.fitted;
+  return {
+    ...project,
+    name: say(project.name),
+    overall: { ...project.overall, height: newH },
+    notes: (project.notes ?? []).map(say),
+    ...(fitted ? { fitted } : {}),
+    ...(project.opening ? { opening: { ...project.opening, height: Math.round((project.opening.height + drop) * 16) / 16 } } : {}),
+  };
+}
+
+/** "4 adjustable shelf lines" counted the screwed hat. The number is the pinned shelf pieces. */
+function recountAdjustable(notes: string[] | undefined, panels: Panel[]): string[] | undefined {
+  if (!notes?.length) return notes;
+  const n = panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p)).length;
+  if (!n) return notes;
+  const word = `${n} adjustable shel${n === 1 ? "f" : "ves"}`;
+  return notes.map((s) => s.replace(/\d+ adjustable shelf lines?/, word));
+}
+
 /** Each hanging bay gets one fixed shelf on a back cleat. A fixed shelf still past its limit gets a front rail when the sag passes. */
 function hatAndStiff(panels: Panel[], dividers: Panel[], extra: Panel[]) {
   if (dividers.length) {
@@ -765,6 +823,7 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
   if (!project.panels.length || project.pocket || project.windowPkg || wantsOpenSpan(prompt) || solidTopIsland(project, prompt)) return project;
   if (!project.panels.some((p) => p.type === "shelf" && overSpan(p, project.panels))) return project;
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  clearRodHats(panels);
   for (const p of panels) if (p.type === "shelf" || p.type === "top" || p.type === "bottom") seatToSides(p, panels);
   const plates = panels.filter((p) => flatShelf(p) && housed(p, panels));
   const added: Panel[] = [];
@@ -805,6 +864,9 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
   }
   for (const p of extra) panels.push(p);
   if (!added.length && !extra.length) return project;
+  const drop = seatFrontRails(panels);
+  const seated = drop > EPS ? growCase(project, drop) : project;
+  const told = recountAdjustable(seated.notes, panels) ?? seated.notes;
   const stations = [...new Set(added.map((d) => Math.round((d.position.x + d.size.width / 2) * 8) / 8))].sort((a, b) => a - b);
   for (const d of added) {
     const i = stations.indexOf(Math.round((d.position.x + d.size.width / 2) * 8) / 8);
@@ -812,9 +874,9 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
   }
   if (!wantsFixedGlueShelves(project)) for (const d of added) d.cutNote = PIN_NOTE;
   clearOverlaps(panels);
-  if (!added.length) return { ...project, panels };
+  if (!added.length) return { ...seated, panels, ...(told ? { notes: told } : {}) };
   const after = Math.max(0, ...panels.filter((p) => p.type === "shelf" && housed(p, panels)).flatMap((p) => clearGaps(p, panels).map(([a, b]) => b - a)));
   const word = stations.length === 1 ? "a divider stands in the middle" : `${stations.length} dividers stand across the span`;
   const note = `Center divider under the shelves: ${inchFrac(before)}" is a long span for ${inchFrac(thick)}" ${stockWord(materialId)} (books want about ${inchFrac(limit)}" between supports), so ${word} and every shelf span is ${inchFrac(after)}" or less.`;
-  return { ...project, panels, notes: [...(project.notes ?? []), note] };
+  return { ...seated, panels, notes: [...(told ?? []), note] };
 }

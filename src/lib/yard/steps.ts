@@ -1783,7 +1783,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     /wine/i.test(project.name) ||
     (/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
   if (wineRack) {
-    const rails = panels.filter((p) => p.type === "rail" || /bottle rail/i.test(p.name));
+    const rails = panels.filter((p) => (p.type === "rail" || /bottle rail/i.test(p.name)) && !/^Front rail\b/.test(p.name));
     const dividers = panels.filter((p) => p.type === "divider");
     // Say the real bottle capacity up front (the same sentence as the notes).
     const capacity = (project.notes ?? []).join(" ").match(/Holds [^]*?(?=\s*Not a bookcase|$)/)?.[0]?.trim() ?? "";
@@ -2592,7 +2592,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           }
         : {
             step: n++,
-            title: `Pin ${shelfLineCount(looseShelves)} adjustable shel${shelfLineCount(looseShelves) === 1 ? "f" : "ves"} — 4 pins each`,
+            title: `Pin ${looseShelves.length} adjustable shel${looseShelves.length === 1 ? "f" : "ves"} — 4 pins each`,
             description: `${looseShelves.map(cutLine).join("; ")}. ${shelfHeights(looseShelves)} Drill 13/64" pin holes (a snug fit for 3/16" pins) in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 1¼" apart — the standard shelf-pin spacing. Four pins per shelf${looseShelves.length === shelfLineCount(looseShelves) ? "" : " piece"} (${looseShelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
             tips: "A pegboard jig or a shelf-pin jig beats measuring every hole twice.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...looseShelves]),

@@ -162,12 +162,8 @@ export function honor(E: Engine, s: Demands, p: any, plan: any, builtFrom: strin
   for (const c of s.counts) {
     const re = COUNT[c.thing];
     if (!re) continue;
+    // Each shelf part counts. Grouping by height merges two shelves that share a height.
     let n = names.filter((x) => re.test(x)).length;
-    // A typed shelf count is a count of shelf levels. A divider cuts a level into bay pieces.
-    if (c.thing === "shelves") {
-      const ys = new Set(p.panels.filter((x: { name: string; position?: { y: number } }) => re.test(x.name)).map((x: { position?: { y: number } }) => Math.round((x.position?.y ?? 0) * 4) / 4));
-      n = ys.size;
-    }
     // Drawer parts are not drawers: one drawer = one front ("Left drawer front 2"). Steps are treads when the model has treads.
     if (c.thing === "drawers") n = names.filter((x) => /\bdrawer front\b/i.test(x)).length;
     if (c.thing === "steps") { const t = names.filter((x) => /^(?:top )?tread\b/i.test(x)).length; if (t) n = t; }

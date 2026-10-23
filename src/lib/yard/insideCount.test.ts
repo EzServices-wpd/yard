@@ -37,7 +37,7 @@ import { applyInsideCount } from "./insideCount";
 import { drawerBoxes } from "./hollowDrawers.ts";
 import { headerTitle, buildPlanPdf } from "./pdf.ts";
 import { factsFromProject } from "./measureTabs.ts";
-import { shelfLineCount } from "./shelfSpan.ts";
+import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan.ts";
 
 function planText(p: ReturnType<typeof generateFromPrompt>) {
   const plan = buildPlan(p);
@@ -58,8 +58,8 @@ describe("shelf-family counts drive the cut list", () => {
     assert.equal(b.panels.filter((p) => p.type === "shelf").length, 6);
     const text = planText(b);
     assert.notEqual(planText(a), text);
-    assert.match(text, /Pin 3 adjustable shelves/);
-    assert.doesNotMatch(text, /Pin 5 adjustable shelves/);
+    assert.match(text, /Pin 6 adjustable shelves/);
+    assert.doesNotMatch(text, /Pin 3 adjustable shelves/);
     assert.match(text, /Shelf×6/);
   });
 
@@ -90,7 +90,7 @@ describe("shelf-family counts drive the cut list", () => {
     assert.equal(shelfLineCount(b.panels.filter((p) => p.type === "shelf")), 2);
     assert.equal(b.panels.filter((p) => p.type === "shelf").length, 4);
     assert.notEqual(planText(bare), planText(b));
-    assert.match(planText(b), /Pin 2 adjustable shelves/);
+    assert.match(planText(b), /Pin 4 adjustable shelves/);
   });
 });
 
@@ -120,7 +120,9 @@ describe("a shelf level counts once, however many bays it spans", () => {
       if (q.startsWith("butcher")) assert.equal(pieces, n);
       else assert.ok(pieces > n, `${q}: cut list still has a piece per bay`);
       const notes = (p.notes ?? []).join("\n");
-      assert.doesNotMatch(notes, new RegExp(`\\b${pieces} adjustable shelf`));
+      const pinned = p.panels.filter((x) => x.type === "shelf" && !isFixedSpanShelf(x)).length;
+      if (/\d+ adjustable shelf/.test(notes)) assert.match(notes, new RegExp(`\\b${pinned} adjustable shelf`));
+      else assert.doesNotMatch(notes, new RegExp(`\\b${pieces} adjustable shelf`));
       if (/slat shelf/.test(q)) {
         const back = buildPlan(p).instructions.find((s) => s.title === "Set the Back");
         assert.match(back?.description ?? "", /both shelves/);

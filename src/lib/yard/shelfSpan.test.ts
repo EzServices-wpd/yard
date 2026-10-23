@@ -5,7 +5,8 @@ import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
 import { spanFindings } from "./spanCheck";
 import { isFixedSpanShelf, sagLimitIn, shelfDepthSpan, shelfLineCount, shelfSagIn, shelfSpanLimit, shelfSpanViolations } from "./shelfSpan";
-import { solidsOverlap } from "./solids";
+import { hiddenOverlaps, solidsOverlap } from "./solids";
+import { headerTitle } from "./pdf";
 import { supportsOf } from "./supportGraph";
 import { shelfSpansUprights } from "./report";
 import { panelJoints } from "./modelJoints";
@@ -102,8 +103,8 @@ describe("shelf span supports", () => {
     assert.equal(shelves.length, 10);
     assert.equal(shelves.some((s) => s.polygon), false);
     for (const shelf of shelves) assert.ok(shelf.size.width <= shelfSpanLimit(shelf.materialId, shelf.size.height) + 1 / 32, shelf.name);
-    assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 5 adjustable shelves/);
-    assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /5 shelves/);
+    assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 10 adjustable shelves/);
+    assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /10 shelves/);
     assert.doesNotMatch(plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n"), /nosing/i);
     assert.equal(project.panels.some((q) => project.panels.some((d) => d !== q && /^Center divider\b/.test(d.name) && solidsOverlap(d, q))), false);
     assert.equal(stepScrewCount(plan), Number(plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN));
@@ -356,6 +357,50 @@ describe("shelf span supports", () => {
     assert.equal(desk.panels.filter((p) => /^Center divider\b/.test(p.name)).length, 0);
     assert.equal(plan.totals.pieces, 41);
     assert.equal(plan.totals.estCostUsd, 381.97);
+  });
+
+  it("seats the wine front rail inside one height and writes its step", () => {
+    const project = generateFromPrompt("pine wine rack 30 wide with 20 slots");
+    const plan = buildPlan(project);
+    const rail = project.panels.find((p) => /^Front rail\b/.test(p.name));
+    assert.ok(rail);
+    const sides = project.panels.filter((p) => p.type === "upright");
+    const y0 = Math.min(...sides.map((p) => p.position.y));
+    const y1 = Math.max(...sides.map((p) => p.position.y + p.size.height));
+    assert.ok(rail.position.y >= y0 - 1 / 32 && rail.position.y + rail.size.height <= y1 + 1 / 32);
+    const said = headerTitle(project).match(/× ([\d /]+)" H/)?.[1];
+    assert.ok(said);
+    const notes = (project.notes ?? []).join("\n");
+    const step = plan.instructions[0]?.description ?? "";
+    assert.match(notes, new RegExp(said.replace(/ /g, "\\s")));
+    assert.match(step, new RegExp(said.replace(/ /g, "\\s")));
+    assert.doesNotMatch(`${notes}\n${step}`, /18 3\/4/);
+    const railStep = plan.instructions.find((s) => /Front rail/.test(s.title));
+    assert.match(`${railStep?.title} ${railStep?.description}`, /on edge under the front/);
+    assert.doesNotMatch(`${railStep?.title} ${railStep?.description}`, /mounts to the wall|Lay the Front rail flat/);
+    assert.equal(plan.cutList.every((l) => /^Pine 1×4$/.test(l.material ?? "")), true);
+  });
+
+  it("counts pinned shelf pieces and lets I26 catch a 0.05 inch overlap", () => {
+    const wardrobe = generateFromPrompt("wardrobe");
+    const pinned = wardrobe.panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p));
+    assert.equal(pinned.length, 6);
+    assert.match((wardrobe.notes ?? []).join("\n"), /\b6 adjustable shelves\b/);
+    assert.doesNotMatch((wardrobe.notes ?? []).join("\n"), /4 adjustable shelf lines/);
+    assert.match(buildPlan(wardrobe).instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 6 adjustable shelves/);
+    const drawers = generateFromPrompt("wardrobe with 2 drawers");
+    const div = drawers.panels.find((p) => p.name === "Center divider")!;
+    const shelf = drawers.panels.find((p) => p.name === "Shelf 1")!;
+    const yOverlap = Math.min(div.position.y + div.size.height, shelf.position.y + shelf.size.height) - Math.max(div.position.y, shelf.position.y);
+    assert.ok(yOverlap <= 1 / 32);
+    const bite = { ...div, position: { ...div.position, y: shelf.position.y + shelf.size.height - 0.05 } };
+    assert.ok(hiddenOverlaps({ panels: [shelf, bite] }).some((m) => /Center divider/.test(m) && /Shelf 1/.test(m)));
+    const vanity = generateFromPrompt("pocket vanity");
+    const vanityPlan = buildPlan(vanity);
+    assert.equal(vanityPlan.totals.pieces, 50);
+    assert.equal(vanityPlan.totals.estCostUsd, 636.23);
+    assert.equal(vanity.panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p)).length, 6);
+    assert.match(vanityPlan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 6 adjustable shelves/);
   });
 
   it("holds every corpus and probe carcass shelf inside its stock limit", () => {

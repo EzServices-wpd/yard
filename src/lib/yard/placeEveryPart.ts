@@ -163,8 +163,18 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
 /** One sentence that sets the part on its real support with the way it really holds. */
 function placeSentence(project: YardProject, part: Part, info: SupportInfo | undefined, fix: string): string {
   const onto = supportTalk(project, info);
-  // A moving part rides free on its pin; a dowel part is glued into drilled holes. Neither takes screws.
   const panel = project.panels.find((p) => p.id === part.key);
+  // A span rail is glued on edge under its shelf. The floor template ("mounts to the wall") is not that joint.
+  if (panel && /^Front rail\b/.test(panel.name)) {
+    const shelf = project.panels.find((s) => {
+      if (s.type !== "shelf") return false;
+      if (Math.abs(s.position.y - (panel.position.y + panel.size.height)) > 0.15) return false;
+      const ox = Math.min(s.position.x + s.size.width, panel.position.x + panel.size.width) - Math.max(s.position.x, panel.position.x);
+      return ox > Math.min(s.size.width, panel.size.width) * 0.5;
+    });
+    return `Glue and screw the ${panel.name} on edge under the front of ${shelf ? `the ${shelf.name}` : "its shelf"}. It stays inside the case, between the uprights, and stiffens that shelf.`;
+  }
+  // A moving part rides free on its pin; a dowel part is glued into drilled holes. Neither takes screws.
   const link = panel ? rotorChain(project.panels).get(panel.id) : undefined;
   if (panel && link && (info?.on ?? []).includes(link.pin)) return rotorSentence(project, panel, link, fix);
   // A bored bead threads onto the rod it rides on, never through the bead before it.
@@ -369,10 +379,11 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       const sentence = placeSentence(project, part, info, fix);
       const turns = project.panels.find((p) => p.id === part.key)?.turns;
       const onPinNow = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
-      const verb = (turns || /\bcollar/i.test(part.name)) && onPinNow ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
+      const frontRail = /^Front rail\b/.test(part.name);
+      const verb = frontRail ? "Glue" : (turns || /\bcollar/i.test(part.name)) && onPinNow ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
       out.splice(insertAt, 0, {
         step: insertAt + 1,
-        title: `${verb} the ${part.name}`,
+        title: frontRail ? `Glue the ${part.name} under the shelf` : `${verb} the ${part.name}`,
         description: sentence,
         tips: INSERTED,
         partsUsed: [project.panels.length ? part.name : part.kind],
