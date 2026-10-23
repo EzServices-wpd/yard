@@ -1,9 +1,10 @@
 /**
  * I29 (F12 one letter per piece, refiner pass A 10-17): a step that gives a part's size uses the letter of the cut
- * line with that size. Wide carcases cut center supports at two or three heights, so several cut lines share one
- * name (F 13 3/4", G 13 × 11 3/4", H 13 × 11 1/2"). The step lettered every support with the first line's letter,
- * so a stranger following "F Center support 1 — 13 × 11 3/4" picked up the 13 3/4" board. Before the fix every build
- * below failed I29; after it none does.
+ * line with that size. Two builds still put two sizes on one name. A cubby stacks center supports at two or three
+ * heights (F 13 3/4", G 13 × 11 3/4", H 13 × 11 1/2"). A wide bookcase whose divider stations miss an eighth leaves
+ * two Shelf lines (20 1/2" and 20"). The step lettered every one of them with the first line's letter, so a stranger
+ * following "F Center support 1 — 13 × 11 3/4" picked up the 13 3/4" board. Every build below is still in that class,
+ * and none of them fails I29.
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -14,13 +15,13 @@ import { densifyPartsPlateTalk } from "./voiceHonesty";
 import type { CutLine } from "./types";
 
 const SWEEP = [
-  "built-in bookcase 48 wide 84 tall 12 deep", "bookcase 40 wide 72 tall 12 deep", "bookshelf 44 wide 60 tall 10 deep",
-  "bookcase 60 wide 84 tall 12 deep", "pantry shelves 42 wide 84 tall 16 deep", "garage shelves 48 wide 72 tall 18 deep",
-  "cubby shelf 48 wide 36 tall 12 deep", "storage cabinet 40 wide 72 tall 16 deep", "laundry shelves 46 wide 60 tall 14 deep",
-  "office bookcase 52 wide 80 tall 13 deep", "bookcase 39.5 wide 63.5 tall 12.5 deep", "bookcase 45.5 wide 88 tall 10.5 deep",
-  "bookshelf 50 wide 48 tall 12 deep", "bookcase 56 wide 72 tall 14 deep", "pantry cabinet 44 wide 80 tall 18 deep",
-  "closet shelves 48 wide 84 tall 14 deep", "book shelf 42 wide 30 tall 11 deep", "bookcase 64 wide 90 tall 12 deep",
-  "utility shelves 40 wide 60 tall 20 deep", "bookcase 72 wide 84 tall 12 deep",
+  "cubby shelf 40 wide 36 tall 12 deep", "cubby shelf 44 wide 36 tall 12 deep", "cubby shelf 48 wide 36 tall 12 deep",
+  "cubby shelf 52 wide 36 tall 12 deep", "cubby shelf 56 wide 36 tall 14 deep", "cubby shelf 60 wide 48 tall 12 deep",
+  "cubby shelf 42 wide 72 tall 12 deep", "bookcase 64 wide 90 tall 12 deep", "bookcase 72 wide 84 tall 12 deep",
+  "bookcase 62 wide 72 tall 12 deep", "bookshelf 66 wide 60 tall 10 deep", "pantry shelves 68 wide 84 tall 16 deep",
+  "garage shelves 70 wide 72 tall 18 deep", "office bookcase 76 wide 80 tall 13 deep", "built-in bookcase 80 wide 84 tall 12 deep",
+  "closet shelves 64 wide 84 tall 14 deep", "laundry shelves 66 wide 60 tall 14 deep", "utility shelves 72 wide 60 tall 20 deep",
+  "storage cabinet 64 wide 72 tall 16 deep", "pantry cabinet 68 wide 80 tall 18 deep", "bookcase 96 wide 84 tall 12 deep",
 ];
 
 describe("I29: a sized part in a step carries its own cut-list letter", () => {
