@@ -1,5 +1,6 @@
 import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
+import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
 import { tooSmallRefusal } from "./tooSmall";
@@ -401,7 +402,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const raw = idDepth === 1 ? hollowDrawers(generateSeeded(...args)) : generateSeeded(...args);
+    const raw = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
     // I38 and usable floors: a typed size too small to use is refused, naming the smallest usable, clean size (tooSmall.ts).
     const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", (q) => hollowDrawers(generateFromPrompt(q, ...(args.slice(1) as [])))) : null;
     const built0 = small ?? raw;

@@ -1,4 +1,5 @@
 import { sentenceCase, typedHeadNoun } from "./headNoun";
+import { featureTail, typedFeatures } from "./typedFeatures";
 import type { StructureKind, Vec3 } from "./types";
 import { classifyAnatomy } from "./anatomy";
 import { stripTypedSizes } from "./inchText";
@@ -728,6 +729,8 @@ export function subjectFromPrompt(prompt: string): string {
   let s = prompt.toLowerCase();
   const looks = s.match(/looks like (?:an? |the )?([a-z0-9][a-z0-9\s'-]{1,60})/);
   if (looks) s = looks[1];
+  // C41: feature words typed after the head noun ("trunk with doors", "wall unit with 2 doors") are never its name.
+  if (typedFeatures(s).length) s = s.slice(0, s.length - featureTail(s).length);
   // Word-bounded units, fractions and all: "12 inch" must not leave "ch", "1/4 inch" must not leave "1/".
   s = stripTypedSizes(s).replace(/(?<![\w/])\d+(?:\.\d+)?\s*(?:cm|mm|meters?|metres?|m)\b/g, " ");
   // A title is the subject only: the stock clause, sizes, stock and species words are not its name.
