@@ -1,0 +1,3598 @@
+{
+ "schema_version": 1,
+ "generated": "2026-10-19",
+ "note": "Facts only (sizes, counts, stock, hardware) recorded from public free plans and standards; no plan text or images copied. See SOURCES.md.",
+ "scoring": {
+  "axes": "overall_in.w = left-right facing the front (bed: across the mattress); d = front-back (bed: head to foot); h = floor to top. Compare with Yard project.overall {width, depth, height}.",
+  "dims_tolerance_in": {
+   "high": 1.0,
+   "medium": 2.0,
+   "low": 4.0
+  },
+  "dims_rule": "Score an axis only when its value is not null. If the prompt types the axis, Yard's own I8 already demands +/-1/8 in; this key still uses the confidence tolerance so a plan's rounding is not a failure.",
+  "part_count_tolerance_rel": {
+   "high": 0.25,
+   "medium": 0.35,
+   "low": 0.5
+  },
+  "part_count_rule": "Compare with the number of cut parts in Yard's cut list (bought hardware excluded). Plans count each board; Yard may count a glued-up top as one part, so this is a soft signal: report the ratio, fail only outside tolerance.",
+  "counts_rule": {
+   "exact": [
+    "drawers",
+    "doors",
+    "legs",
+    "bunks",
+    "steps",
+    "ladder_rungs",
+    "stair_treads",
+    "casters",
+    "lids",
+    "tiers"
+   ],
+   "plus_minus_1": [
+    "shelves",
+    "cubbies",
+    "seats",
+    "guardrails",
+    "arms"
+   ],
+   "relative_0.3": [
+    "slats",
+    "center_support_legs"
+   ]
+  },
+  "stock_rule": "Pass when Yard's primary material family matches any listed stock family (plywood / dimensional lumber 2x / board 1x / cedar picket / hardwood).",
+  "hardware_rule": "For each hardware item with a kind other than screw-*, nail-*, staple, none-slides: Yard's Buy list must contain that kind (qty checked when given, +/-0). 'none-slides' means Yard must NOT buy drawer slides.",
+  "hardware_kinds": {
+   "drawer-slide": [
+    "slide",
+    "glide"
+   ],
+   "hinge-concealed": [
+    "concealed",
+    "euro"
+   ],
+   "hinge-butt": [
+    "butt hinge"
+   ],
+   "hinge-piano": [
+    "piano"
+   ],
+   "hinge": [
+    "hinge"
+   ],
+   "caster": [
+    "caster",
+    "wheel"
+   ],
+   "bolt": [
+    "bolt"
+   ],
+   "bed-rail-bracket": [
+    "bed rail",
+    "rail bracket"
+   ],
+   "magnetic-catch": [
+    "magnetic",
+    "catch"
+   ],
+   "knob": [
+    "knob"
+   ],
+   "pull": [
+    "pull",
+    "handle"
+   ],
+   "furniture-leg": [
+    "leg"
+   ],
+   "shelf-pin": [
+    "shelf pin"
+   ],
+   "figure-8-fastener": [
+    "figure 8",
+    "figure-8",
+    "desktop fastener"
+   ],
+   "lag-screw": [
+    "lag"
+   ],
+   "loose-tenon": [
+    "tenon",
+    "domino"
+   ]
+  },
+  "standards_rule": "Each standard lists the build types it applies to and, where given, a check. Mattress standards apply to every bed/bunk/loft prompt that names a size."
+ },
+ "keys": [
+  {
+   "id": "aw-farmhouse-bed-twin",
+   "build_type": "bed-frame",
+   "prompt": "twin farmhouse bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Bed - Updated Plan in All Mattress Sizes",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-bed-updated-plan-all-mattress-sizes"
+   },
+   "overall_in": {
+    "w": 47,
+    "d": 82,
+    "h": 54
+   },
+   "dims_basis": "derived",
+   "part_count": 38,
+   "counts": {
+    "legs": 4,
+    "slats": 10
+   },
+   "primary_stock": [
+    "4x4",
+    "2x4",
+    "2x6",
+    "2x8",
+    "1x8",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    },
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Twin 38x75 mattress. W = 2x6 top cap 47; D = 75 siderail + two 3-1/2 legs; H = 51 leg + 2x4 + 2x6 caps.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-farmhouse-bed-queen",
+   "build_type": "bed-frame",
+   "prompt": "queen farmhouse bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Bed - Updated Plan in All Mattress Sizes",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-bed-updated-plan-all-mattress-sizes"
+   },
+   "overall_in": {
+    "w": 69,
+    "d": 87,
+    "h": 54
+   },
+   "dims_basis": "derived",
+   "part_count": 50,
+   "counts": {
+    "legs": 4,
+    "slats": 11,
+    "center_support_legs": 4
+   },
+   "primary_stock": [
+    "4x4",
+    "2x4",
+    "2x6",
+    "2x8",
+    "1x8",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    },
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Queen 60x80. Same derivation as twin; queen adds a center support with 4 short legs.",
+   "mattress": "queen"
+  },
+  {
+   "id": "aw-farmhouse-bed-king",
+   "build_type": "bed-frame",
+   "prompt": "king farmhouse bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Bed - Updated Plan in All Mattress Sizes",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-bed-updated-plan-all-mattress-sizes"
+   },
+   "overall_in": {
+    "w": 85,
+    "d": 87,
+    "h": 54
+   },
+   "dims_basis": "derived",
+   "part_count": 54,
+   "counts": {
+    "legs": 4,
+    "slats": 11,
+    "center_support_legs": 4
+   },
+   "primary_stock": [
+    "4x4",
+    "2x4",
+    "2x6",
+    "2x8",
+    "1x8",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    },
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Standard king 76x80.",
+   "mattress": "king"
+  },
+  {
+   "id": "aw-platform-bed-twin",
+   "build_type": "bed-frame",
+   "prompt": "twin platform bed frame",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Easy 2-Tool Platform Bed Frame (all sizes)",
+    "url": "https://www.ana-white.com/woodworking-projects/easy-2-tool-platform-bed-frame-free-plans-all-sizes"
+   },
+   "overall_in": {
+    "w": 42,
+    "d": 76,
+    "h": 13
+   },
+   "dims_basis": "derived",
+   "part_count": 26,
+   "counts": {
+    "legs": 4,
+    "slats": 12
+   },
+   "primary_stock": [
+    "2x4",
+    "2x6",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Plan sizes twin at 39x75. Corner legs are two 2x4 pieces each (counted as 4 legs, 8 cut pieces).",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-platform-bed-queen",
+   "build_type": "bed-frame",
+   "prompt": "queen platform bed frame",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Easy 2-Tool Platform Bed Frame (all sizes)",
+    "url": "https://www.ana-white.com/woodworking-projects/easy-2-tool-platform-bed-frame-free-plans-all-sizes"
+   },
+   "overall_in": {
+    "w": 63,
+    "d": 81,
+    "h": 14
+   },
+   "dims_basis": "derived",
+   "part_count": 28,
+   "counts": {
+    "legs": 5,
+    "slats": 12
+   },
+   "primary_stock": [
+    "2x4",
+    "2x6",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Queen 60x80; adds a middle cleat and one middle leg.",
+   "mattress": "queen"
+  },
+  {
+   "id": "aw-modern-farmhouse-bed-twin",
+   "build_type": "bed-frame",
+   "prompt": "twin modern farmhouse bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Modern Farmhouse Bed Frame",
+    "url": "https://www.ana-white.com/woodworking-projects/modern-farmhouse-bed-frame"
+   },
+   "overall_in": {
+    "w": 46,
+    "d": 82,
+    "h": 54
+   },
+   "dims_basis": "derived",
+   "part_count": 32,
+   "counts": {
+    "legs": 4,
+    "slats": 11
+   },
+   "primary_stock": [
+    "4x4",
+    "2x4",
+    "2x6",
+    "1x6",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Plan sizes twin at 39x75. W = 2x4 headboard top 46.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-modern-farmhouse-bed-queen",
+   "build_type": "bed-frame",
+   "prompt": "queen modern farmhouse bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Modern Farmhouse Bed Frame",
+    "url": "https://www.ana-white.com/woodworking-projects/modern-farmhouse-bed-frame"
+   },
+   "overall_in": {
+    "w": 67,
+    "d": 87,
+    "h": 54
+   },
+   "dims_basis": "derived",
+   "part_count": 32,
+   "counts": {
+    "legs": 4,
+    "slats": 10
+   },
+   "primary_stock": [
+    "4x4",
+    "2x4",
+    "2x6",
+    "1x6",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Queen 60x80. W = 2x4 headboard top 67.",
+   "mattress": "queen"
+  },
+  {
+   "id": "kr-craftsman-twin-bed",
+   "build_type": "bed-frame",
+   "prompt": "craftsman style twin bed",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Craftsman Style Twin Bed",
+    "url": "https://learn.kregtool.com/plans/craftsman-style-twin-bed/"
+   },
+   "overall_in": {
+    "w": 43,
+    "d": 80,
+    "h": 42.75
+   },
+   "dims_basis": "derived",
+   "part_count": 33,
+   "counts": {
+    "legs": 4,
+    "slats": 12
+   },
+   "primary_stock": [
+    "3x3 or 4x4",
+    "1x6",
+    "1x4",
+    "1x3",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "bed-rail-bracket",
+     "qty": 1
+    }
+   ],
+   "confidence": "medium",
+   "note": "W = 43 headboard cap; D = 75 rails + two 2-1/2 posts; H = 42 post + cap. Uses non-mortise bed rail brackets.",
+   "mattress": "twin"
+  },
+  {
+   "id": "kr-twin-storage-bed",
+   "build_type": "bed-frame",
+   "prompt": "twin bed with 6 storage drawers",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Twin Bed with Storage",
+    "url": "https://learn.kregtool.com/plans/twin-bed-with-storage/"
+   },
+   "overall_in": {
+    "w": 39.25,
+    "d": 82,
+    "h": 51
+   },
+   "dims_basis": "derived",
+   "part_count": 91,
+   "counts": {
+    "legs": 4,
+    "drawers": 6
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "4x4",
+    "2x4",
+    "2x6",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 6,
+     "len_in": 14
+    },
+    {
+     "kind": "pull",
+     "qty": 6
+    },
+    {
+     "kind": "lag-screw",
+     "qty": 16
+    }
+   ],
+   "confidence": "medium",
+   "note": "Two plywood drawer towers (75 long) under the deck. W = 2x6 cap 39-1/4.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-storage-bed-queen",
+   "build_type": "bed-frame",
+   "prompt": "queen storage bed with drawers",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Storage Bed with Drawers (Queen)",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-storage-bed-drawers-queen"
+   },
+   "overall_in": {
+    "w": 62,
+    "d": 88,
+    "h": 57
+   },
+   "dims_basis": "derived",
+   "part_count": 116,
+   "counts": {
+    "legs": 4,
+    "drawers": 6,
+    "slats": 18
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "4x4",
+    "2x4",
+    "2x6",
+    "1x4",
+    "1x10"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 6
+    },
+    {
+     "kind": "pull",
+     "qty": 6
+    }
+   ],
+   "confidence": "low",
+   "note": "Plan says 7 in narrower than the classic farmhouse bed; W = 2x6 cap 62; D = 80-1/4 boxes + legs; H = 54 leg + caps. Drawers optional in plan.",
+   "mattress": "queen"
+  },
+  {
+   "id": "aw-simple-nightstand",
+   "build_type": "nightstand",
+   "prompt": "nightstand 22 1/2 wide 22 1/2 deep 22 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Side Table or Nightstand [Super Simple Collection]",
+    "url": "https://www.ana-white.com/woodworking-projects/side-table-or-nightstand-super-simple-collection"
+   },
+   "overall_in": {
+    "w": 22.5,
+    "d": 22.5,
+    "h": 22
+   },
+   "dims_basis": "derived",
+   "part_count": 12,
+   "counts": {
+    "legs": 4,
+    "shelves": 1,
+    "drawers": 0
+   },
+   "primary_stock": [
+    "2x4",
+    "1x12",
+    "1x10"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top = two 1x12 at 22-1/2; H = 21-1/4 leg + 3/4 top."
+  },
+  {
+   "id": "aw-nightstand-drawer",
+   "build_type": "nightstand",
+   "prompt": "nightstand with drawer 30 wide 21 3/4 deep 20 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Easy Build End Table or Nightstand with Drawer",
+    "url": "https://www.ana-white.com/woodworking-projects/easy-build-end-table-or-nightstand-drawer"
+   },
+   "overall_in": {
+    "w": 30,
+    "d": 21.75,
+    "h": 20
+   },
+   "dims_basis": "derived",
+   "part_count": 20,
+   "counts": {
+    "legs": 4,
+    "drawers": 1
+   },
+   "primary_stock": [
+    "2x4",
+    "2x8",
+    "1x8",
+    "1x4",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 1,
+     "len_in": 18
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top = three 2x8 at 30 (3 x 7-1/4 deep). H = 18-1/2 leg + 1-1/2 top. Plan states 1/2 in slide clearance per side."
+  },
+  {
+   "id": "aw-minimalist-nightstand",
+   "build_type": "nightstand",
+   "prompt": "modern nightstand with drawer and shelf 27 wide 16 deep 20 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Minimalist Modern Nightstand",
+    "url": "https://www.ana-white.com/woodworking-projects/minimalist-modern-nightstand-free-plans"
+   },
+   "overall_in": {
+    "w": 27,
+    "d": 16.25,
+    "h": 20.25
+   },
+   "dims_basis": "derived",
+   "part_count": 28,
+   "counts": {
+    "legs": 0,
+    "drawers": 1,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1x2",
+    "1x6",
+    "1x10"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 1,
+     "len_in": 16,
+     "mount": "bottom"
+    }
+   ],
+   "confidence": "low",
+   "note": "Plywood box on panel sides (no legs). W = 1x2 rail trim 27."
+  },
+  {
+   "id": "aw-minimalist-nightstand-narrow",
+   "build_type": "nightstand",
+   "prompt": "narrow nightstand with drawer 16 wide 18 deep 20 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Minimalist Modern Nightstand (Narrow)",
+    "url": "https://www.ana-white.com/woodworking-projects/minimalist-modern-nightstand-narrow-free-plans"
+   },
+   "overall_in": {
+    "w": 16,
+    "d": 18.75,
+    "h": 20.25
+   },
+   "dims_basis": "derived",
+   "part_count": 28,
+   "counts": {
+    "legs": 0,
+    "drawers": 1,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1x2",
+    "1x6",
+    "1x10"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 1,
+     "len_in": 18
+    }
+   ],
+   "confidence": "low",
+   "note": "W = 1x2 horizontal trim 16; D = 18 side + trim."
+  },
+  {
+   "id": "kr-wide-3-drawer-nightstand",
+   "build_type": "nightstand",
+   "prompt": "3 drawer nightstand 28 wide 16 1/2 deep 28 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Wide 3-Drawer Nightstand",
+    "url": "https://learn.kregtool.com/plans/wide-3-drawer-nightstand/"
+   },
+   "overall_in": {
+    "w": 28,
+    "d": 16.5,
+    "h": 28
+   },
+   "dims_basis": "stated+derived",
+   "part_count": 38,
+   "counts": {
+    "legs": 4,
+    "drawers": 3
+   },
+   "primary_stock": [
+    "2x2",
+    "1x2",
+    "3/4 plywood",
+    "1/2 plywood",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 3,
+     "mount": "side"
+    },
+    {
+     "kind": "knob",
+     "qty": 2
+    },
+    {
+     "kind": "pull",
+     "qty": 2
+    }
+   ],
+   "confidence": "high",
+   "note": "Plan text gives 28 wide; top 28 x 16-1/2; H = 27-1/4 leg + 3/4 top."
+  },
+  {
+   "id": "kr-modern-line-nightstand",
+   "build_type": "nightstand",
+   "prompt": "modern 2 drawer nightstand 23 wide 16 deep",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Modern Line Nightstand",
+    "url": "https://learn.kregtool.com/plans/modern-line-nightstand/"
+   },
+   "overall_in": {
+    "w": 23,
+    "d": 16,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 29,
+   "counts": {
+    "drawers": 2
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1x1 hardwood",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 2,
+     "len_in": 14,
+     "soft_close": true
+    },
+    {
+     "kind": "figure-8-fastener",
+     "qty": 8
+    },
+    {
+     "kind": "pull",
+     "qty": 4
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top and bottom 23 x 16. Height not stated in the plan text; H not scored."
+  },
+  {
+   "id": "kr-end-table-4-drawer",
+   "build_type": "nightstand",
+   "prompt": "end table with 4 drawers 21 wide 21 deep 30 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Simple End Table with Drawers",
+    "url": "https://learn.kregtool.com/plans/simple-end-table-with-drawers/"
+   },
+   "overall_in": {
+    "w": 21,
+    "d": 21,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 44,
+   "counts": {
+    "legs": 4,
+    "drawers": 4
+   },
+   "primary_stock": [
+    "2x2",
+    "3/4 plywood",
+    "1x2",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 4,
+     "len_in": 16,
+     "type": "ball-bearing"
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 21 x 21; H = 29-1/4 leg + 3/4 top."
+  },
+  {
+   "id": "kr-three-drawer-dresser",
+   "build_type": "dresser",
+   "prompt": "low 3 drawer dresser with cubbies 66 wide 22 1/2 deep 28 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Three Drawer Dresser",
+    "url": "https://learn.kregtool.com/plans/three-drawer-dresser/"
+   },
+   "overall_in": {
+    "w": 66,
+    "d": 22.5,
+    "h": 28
+   },
+   "dims_basis": "stated",
+   "part_count": 34,
+   "counts": {
+    "drawers": 3,
+    "cubbies": 3,
+    "legs": 0
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1x5",
+    "1x6",
+    "1x8",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 3,
+     "len_in": 21
+    }
+   ],
+   "confidence": "high",
+   "note": "Plan states overall 66w x 22-1/2d x 28h."
+  },
+  {
+   "id": "aw-cubby-dresser",
+   "build_type": "dresser",
+   "prompt": "6 drawer cubby dresser no drawer slides 50 wide 21 deep 32 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "DIY Cubby Dresser with Easy Square Drawers (no slides)",
+    "url": "https://www.ana-white.com/woodworking-projects/diy-cubby-dresser-easy-square-drawers-no-drawer-slides-free-plans"
+   },
+   "overall_in": {
+    "w": 50.5,
+    "d": 21,
+    "h": 32.5
+   },
+   "dims_basis": "derived",
+   "part_count": 82,
+   "counts": {
+    "drawers": 6,
+    "legs": 4
+   },
+   "primary_stock": [
+    "2x4",
+    "2x2",
+    "1x2",
+    "1x6",
+    "1x10",
+    "1x12",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "none-slides",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Drawers ride on 1x2 wood guides, no metal slides. W = 47-1/2 top boards + two 2x4 breadboard ends; H = 31 face-frame leg + 1-1/2 top."
+  },
+  {
+   "id": "kr-pb-teen-dresser",
+   "build_type": "dresser",
+   "prompt": "7 drawer dresser 48 wide 20 deep 37 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "PB Teen Inspired Dresser",
+    "url": "https://learn.kregtool.com/plans/pb-teen-inspired-dresser/"
+   },
+   "overall_in": {
+    "w": 48,
+    "d": 20,
+    "h": 37
+   },
+   "dims_basis": "derived",
+   "part_count": 73,
+   "counts": {
+    "drawers": 7,
+    "legs": 4
+   },
+   "primary_stock": [
+    "1x8",
+    "1x6",
+    "3/4 plywood",
+    "1/2 plywood",
+    "1/4 plywood",
+    "4x4 feet"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 7
+    },
+    {
+     "kind": "pull",
+     "qty": 8
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 48 wide, 7-1/4+7-1/4+5-1/2 deep; H = 32-1/4 sides + 4 feet + top. Drawer faces are planked (two boards each)."
+  },
+  {
+   "id": "kr-modern-8-drawer-dresser",
+   "build_type": "dresser",
+   "prompt": "8 drawer dresser on tapered legs 48 wide 20 deep 44 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Modern 8-Drawer Dresser",
+    "url": "https://learn.kregtool.com/plans/modern-8-drawer-dresser/"
+   },
+   "overall_in": {
+    "w": 48,
+    "d": 20,
+    "h": 43.6
+   },
+   "dims_basis": "derived",
+   "part_count": 56,
+   "counts": {
+    "drawers": 8,
+    "legs": 6
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1/4 plywood",
+    "1x4",
+    "3/4 OSB"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 8,
+     "len_in": 18
+    },
+    {
+     "kind": "furniture-leg",
+     "qty": 6,
+     "len_in": 5.5
+    },
+    {
+     "kind": "pull",
+     "qty": 8
+    }
+   ],
+   "confidence": "medium",
+   "note": "Carcass 48 x 20 x 38-1/8 (back panel) on 5-1/2 bought tapered legs; legs are bought parts, not cut."
+  },
+  {
+   "id": "kr-10-drawer-dresser",
+   "build_type": "dresser",
+   "prompt": "10 drawer dresser 72 wide 15 deep 30 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "10-Drawer Red Oak Dresser",
+    "url": "https://learn.kregtool.com/plans/10-drawer-red-oak-dresser/"
+   },
+   "overall_in": {
+    "w": 72.5,
+    "d": 14.75,
+    "h": 29.75
+   },
+   "dims_basis": "derived",
+   "part_count": 78,
+   "counts": {
+    "drawers": 10
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1/4 plywood",
+    "2x2 base"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 10,
+     "type": "full-extension"
+    },
+    {
+     "kind": "knob",
+     "qty": 16
+    }
+   ],
+   "confidence": "low",
+   "note": "Top 72-1/2 x 14-3/4; H = 27 side + base + top (approx)."
+  },
+  {
+   "id": "kr-built-in-dresser-cubbies",
+   "build_type": "dresser",
+   "prompt": "built in dresser with 10 drawers and cubbies above 62 wide 16 deep",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Built-In Dresser with Cubbies",
+    "url": "https://learn.kregtool.com/plans/built-in-dresser-with-cubbies/"
+   },
+   "overall_in": {
+    "w": 62.25,
+    "d": 16.5,
+    "h": 83.5
+   },
+   "dims_basis": "derived",
+   "part_count": 85,
+   "counts": {
+    "drawers": 10
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1/4 plywood",
+    "2x4"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 10,
+     "len_in": 14
+    },
+    {
+     "kind": "pull",
+     "qty": 10
+    }
+   ],
+   "confidence": "low",
+   "note": "Dresser 62-1/4 x 16-1/2 x ~36-1/2 with a 46-3/4 cubby hutch on top. Cubby count not scored."
+  },
+  {
+   "id": "kr-cane-drawer-dresser",
+   "build_type": "dresser",
+   "prompt": "modern 6 drawer dresser 47 wide 18 deep",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Modern Dresser with Cane Drawers",
+    "url": "https://learn.kregtool.com/plans/modern-dresser-with-cane-drawers/"
+   },
+   "overall_in": {
+    "w": 47,
+    "d": 18,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 50,
+   "counts": {
+    "drawers": 6,
+    "legs": 4
+   },
+   "primary_stock": [
+    "3/4 oak plywood",
+    "1/2 board",
+    "1x2 oak"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 6
+    }
+   ],
+   "confidence": "low",
+   "note": "Case 47 x 18 x 28 on short legs; overall H not stated."
+  },
+  {
+   "id": "aw-parsons-bookshelf",
+   "build_type": "bookshelf",
+   "prompt": "5 shelf bookshelf 42 wide 14 1/4 deep 75 1/2 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "DIY Parsons Style Bookshelf - 5 Shelf Tower",
+    "url": "https://www.ana-white.com/woodworking-projects/diy-parsons-style-bookshelf-5-shelf-tower-free-plans"
+   },
+   "overall_in": {
+    "w": 42,
+    "d": 14.25,
+    "h": 75.5
+   },
+   "dims_basis": "stated",
+   "part_count": 25,
+   "counts": {
+    "shelves": 5,
+    "legs": 4
+   },
+   "primary_stock": [
+    "2x2",
+    "1x12"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Plan states 75-1/2 tall x 42 wide x 14-1/4 deep."
+  },
+  {
+   "id": "aw-rustic-bookshelf",
+   "build_type": "bookshelf",
+   "prompt": "rustic bookshelf 26 wide 15 deep 63 1/2 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Rustic Bookshelf Plans with 2x2 Face Frames",
+    "url": "https://www.ana-white.com/woodworking-projects/rustic-bookshelf-plans-2x2-face-frames"
+   },
+   "overall_in": {
+    "w": 26,
+    "d": 15,
+    "h": 63.5
+   },
+   "dims_basis": "derived",
+   "part_count": 37,
+   "counts": {
+    "shelves": 4,
+    "legs": 4
+   },
+   "primary_stock": [
+    "1x12",
+    "2x2",
+    "1x2",
+    "1x3",
+    "1x4 planks"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top = six 1x3 at 26; H = 62-3/4 leg + top."
+  },
+  {
+   "id": "aw-framed-3-shelf-bookshelf",
+   "build_type": "bookshelf",
+   "prompt": "3 shelf bookshelf 42 wide 14 deep 42 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Framed Three Shelf Bookshelf",
+    "url": "https://www.ana-white.com/woodworking-projects/framed-three-shelf-bookshelf"
+   },
+   "overall_in": {
+    "w": 42,
+    "d": 14,
+    "h": 42.5
+   },
+   "dims_basis": "derived",
+   "part_count": 33,
+   "counts": {
+    "shelves": 3
+   },
+   "primary_stock": [
+    "1x12",
+    "1x2",
+    "1x3",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "nail-brad",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 14 x 42; H = 41-3/4 legs + top."
+  },
+  {
+   "id": "kr-bookshelf-modern-legs",
+   "build_type": "bookshelf",
+   "prompt": "bookshelf with 2 shelves on short legs 37 1/2 wide 12 deep 40 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Traditional Bookshelf with Modern Legs",
+    "url": "https://learn.kregtool.com/plans/traditional-bookshelf-with-modern-legs/"
+   },
+   "overall_in": {
+    "w": 37.5,
+    "d": 12,
+    "h": 39.75
+   },
+   "dims_basis": "derived",
+   "part_count": 18,
+   "counts": {
+    "shelves": 2,
+    "legs": 4
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1/4 plywood",
+    "1x board"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Case 36 sides + top on 3 in legs."
+  },
+  {
+   "id": "kr-wall-shelf-small",
+   "build_type": "shelf",
+   "prompt": "small wall shelf 18 wide 7 1/4 deep 22 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Simple Bedroom Wall Shelf",
+    "url": "https://learn.kregtool.com/plans/simple-bedroom-wall-shelf/"
+   },
+   "overall_in": {
+    "w": 18,
+    "d": 7.25,
+    "h": 22
+   },
+   "dims_basis": "derived",
+   "part_count": 7,
+   "counts": {
+    "shelves": 1
+   },
+   "primary_stock": [
+    "1x8",
+    "1x2",
+    "3/8 dowel"
+   ],
+   "hardware": [
+    {
+     "kind": "shelf-pin",
+     "qty": 4
+    }
+   ],
+   "confidence": "medium",
+   "note": "Sides 22; top 16-1/2 between sides."
+  },
+  {
+   "id": "aw-side-street-bunk",
+   "build_type": "bunk-bed",
+   "prompt": "modern twin bunk bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Modern Bunk Beds - Side Street",
+    "url": "https://www.ana-white.com/woodworking-projects/modern-bunk-beds-side-street"
+   },
+   "overall_in": {
+    "w": 42,
+    "d": 82,
+    "h": 72
+   },
+   "dims_basis": "derived",
+   "part_count": 52,
+   "counts": {
+    "bunks": 2,
+    "legs": 4,
+    "ladder_rungs": 4,
+    "guardrails": 1
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "bolt",
+     "qty": 32,
+     "len_in": 3.5
+    }
+   ],
+   "confidence": "medium",
+   "note": "Siderails 82; legs 72; slats 39 (twin). Siderails bolt to the ends. Excludes slats.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-essential-bunk-standard",
+   "build_type": "bunk-bed",
+   "prompt": "twin bunk bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Essential Bunk Bed - Low and Standard Sizes",
+    "url": "https://www.ana-white.com/woodworking-projects/essential-bunk-bed-low-bunk-and-standard-bunk-sizes"
+   },
+   "overall_in": {
+    "w": 41,
+    "d": 78,
+    "h": 64.5
+   },
+   "dims_basis": "derived",
+   "part_count": 46,
+   "counts": {
+    "bunks": 2,
+    "legs": 4,
+    "ladder_rungs": 3,
+    "slats": 20
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Standard-height variant (64-1/2 legs).",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-essential-bunk-low",
+   "build_type": "bunk-bed",
+   "prompt": "low twin bunk bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Essential Bunk Bed - Low and Standard Sizes",
+    "url": "https://www.ana-white.com/woodworking-projects/essential-bunk-bed-low-bunk-and-standard-bunk-sizes"
+   },
+   "overall_in": {
+    "w": 41,
+    "d": 78,
+    "h": 50.5
+   },
+   "dims_basis": "derived",
+   "part_count": 45,
+   "counts": {
+    "bunks": 2,
+    "legs": 4,
+    "ladder_rungs": 2,
+    "slats": 20
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Low-bunk variant (50-1/2 legs).",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-heavy-duty-bunk-twin",
+   "build_type": "bunk-bed",
+   "prompt": "heavy duty twin bunk bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Heavy-Duty Bunk Bed Plans (Twin, Full, Queen)",
+    "url": "https://www.ana-white.com/woodworking-projects/free-heavy-duty-bunk-bed-plans-twin-full-or-queen-sizes"
+   },
+   "overall_in": {
+    "w": 42,
+    "d": 82,
+    "h": 71.75
+   },
+   "dims_basis": "derived",
+   "part_count": 50,
+   "counts": {
+    "bunks": 2,
+    "legs": 4,
+    "slats": 24
+   },
+   "primary_stock": [
+    "4x4",
+    "2x8",
+    "2x4",
+    "2x2",
+    "1x3"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Posts 71-3/4; end rails 35 between 4x4 posts.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-heavy-duty-bunk-queen",
+   "build_type": "bunk-bed",
+   "prompt": "queen over queen bunk bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Heavy-Duty Bunk Bed Plans (Twin, Full, Queen)",
+    "url": "https://www.ana-white.com/woodworking-projects/free-heavy-duty-bunk-bed-plans-twin-full-or-queen-sizes"
+   },
+   "overall_in": {
+    "w": 63,
+    "d": 87,
+    "h": 71.75
+   },
+   "dims_basis": "derived",
+   "part_count": 52,
+   "counts": {
+    "bunks": 2,
+    "legs": 4,
+    "slats": 24
+   },
+   "primary_stock": [
+    "4x4",
+    "2x8",
+    "2x4",
+    "2x2",
+    "1x3"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "End rails 56; side rails 80.",
+   "mattress": "queen"
+  },
+  {
+   "id": "aw-simple-bunk-twin-ladder",
+   "build_type": "bunk-bed",
+   "prompt": "simple twin over twin bunk bed with ladder",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Simple Bunk Beds (Twin over Twin)",
+    "url": "https://www.ana-white.com/woodworking-projects/simple-bunk-beds-twin-over-twin"
+   },
+   "overall_in": {
+    "w": null,
+    "d": null,
+    "h": null
+   },
+   "dims_basis": "counts-only",
+   "part_count": null,
+   "counts": {
+    "bunks": 2,
+    "ladder_rungs": 6,
+    "guardrails": 1
+   },
+   "primary_stock": [
+    "1x6",
+    "1x3",
+    "2x4"
+   ],
+   "hardware": [],
+   "confidence": "low",
+   "note": "Two stacked simple twin beds; plan lists ladder (2 sides, 6 treads) and one 44-3/4 guardrail. Score counts only.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-loft-bed-tall",
+   "build_type": "loft-bed",
+   "prompt": "twin loft bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Essential Loft Bed (Adjustable Heights)",
+    "url": "https://www.ana-white.com/woodworking-projects/essential-loft-bed-adjustable-heights"
+   },
+   "overall_in": {
+    "w": 41,
+    "d": 78,
+    "h": 70.5
+   },
+   "dims_basis": "derived",
+   "part_count": 34,
+   "counts": {
+    "bunks": 1,
+    "legs": 4,
+    "ladder_rungs": 4,
+    "slats": 10
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Tall option, 71 in legs.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-loft-bed-mid",
+   "build_type": "loft-bed",
+   "prompt": "mid height twin loft bed",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Essential Loft Bed (Adjustable Heights)",
+    "url": "https://www.ana-white.com/woodworking-projects/essential-loft-bed-adjustable-heights"
+   },
+   "overall_in": {
+    "w": 41,
+    "d": 78,
+    "h": 45
+   },
+   "dims_basis": "derived",
+   "part_count": 29,
+   "counts": {
+    "bunks": 1,
+    "legs": 4,
+    "ladder_rungs": 2,
+    "slats": 10
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Mid option, 45 in legs.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-camp-loft-stairs",
+   "build_type": "loft-bed",
+   "prompt": "junior loft bed with stairs",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Camp Loft Bed with Stair, Junior Height",
+    "url": "https://www.ana-white.com/woodworking-projects/camp-loft-bed-stair-junior-height"
+   },
+   "overall_in": {
+    "w": null,
+    "d": 78,
+    "h": 65.5
+   },
+   "dims_basis": "derived",
+   "part_count": 53,
+   "counts": {
+    "bunks": 1,
+    "legs": 4,
+    "stair_treads": 6
+   },
+   "primary_stock": [
+    "2x4",
+    "2x6",
+    "2x2",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Bed 75 rails, 65-1/2 legs; a stair platform adds width (W not scored). Needs slats or bunkie board.",
+   "mattress": "twin"
+  },
+  {
+   "id": "aw-easy-picnic-table",
+   "build_type": "picnic-table",
+   "prompt": "picnic table",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Easiest to Build Picnic Table",
+    "url": "https://www.ana-white.com/woodworking-projects/easiest-build-picnic-table-plans-free-pdf"
+   },
+   "overall_in": {
+    "w": 72,
+    "d": 61,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 23,
+   "counts": {
+    "legs": 4,
+    "seats": 2
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Boards 72 long; seat supports 61 wide; H assumed standard 30 (legs 25 deg)."
+  },
+  {
+   "id": "aw-modern-picnic-table",
+   "build_type": "picnic-table",
+   "prompt": "modern picnic table 72 long",
+   "source": {
+    "publisher": "Ana White",
+    "title": "The Modern Minimal Picnic Table",
+    "url": "https://www.ana-white.com/woodworking-projects/modern-minimal-picnic-table-free-diy-plans"
+   },
+   "overall_in": {
+    "w": 72,
+    "d": 66,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 26,
+   "counts": {
+    "legs": 4,
+    "seats": 2
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Boards 71-7/8; seat supports 65-7/8; legs 29 at 10 deg + top."
+  },
+  {
+   "id": "aw-square-picnic-table",
+   "build_type": "picnic-table",
+   "prompt": "square picnic table seats 8",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Square Picnic Table",
+    "url": "https://www.ana-white.com/woodworking-projects/square-picnic-table"
+   },
+   "overall_in": {
+    "w": null,
+    "d": null,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 44,
+   "counts": {
+    "legs": 4,
+    "seats": 4
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Tabletop 47-1/2 square with seats on all four sides; overall footprint not stated (only H scored).",
+   "tabletop_in": {
+    "w": 47.5,
+    "d": 47.5
+   }
+  },
+  {
+   "id": "aw-kids-picnic-table",
+   "build_type": "picnic-table",
+   "prompt": "kids picnic table",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Little Kids Picnic Table",
+    "url": "https://www.ana-white.com/woodworking-projects/little-kids-picnic-table"
+   },
+   "overall_in": {
+    "w": 31,
+    "d": 35.5,
+    "h": 20
+   },
+   "dims_basis": "derived",
+   "part_count": 16,
+   "counts": {
+    "legs": 4,
+    "seats": 2
+   },
+   "primary_stock": [
+    "1x6",
+    "1x3",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Boards 31; seat stringers 35-1/2; legs 22 at 30 deg."
+  },
+  {
+   "id": "fh-a-frame-picnic-table",
+   "build_type": "picnic-table",
+   "prompt": "8 foot picnic table seats 8",
+   "source": {
+    "publisher": "Family Handyman",
+    "title": "A-Frame Picnic Table (Outdoor Projects bookazine cutting list)",
+    "url": "https://cdn-origin.tmbi.com/CM/images/TFH/Digital/OutdoorProjects.pdf"
+   },
+   "overall_in": {
+    "w": 90,
+    "d": 58.5,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 16,
+   "counts": {
+    "legs": 4,
+    "seats": 2
+   },
+   "primary_stock": [
+    "2x10",
+    "2x8",
+    "2x6"
+   ],
+   "hardware": [],
+   "confidence": "low",
+   "note": "Cutting list: 2x10 boards 90 long; seat supports 58-1/2; H standard 30 assumed."
+  },
+  {
+   "id": "aw-step-stool-straight",
+   "build_type": "step-stool",
+   "prompt": "step stool 16 wide",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Simple Step Stool Plans - Straight Legs",
+    "url": "https://www.ana-white.com/woodworking-projects/simple-step-stool-plans-straight-legs"
+   },
+   "overall_in": {
+    "w": 16,
+    "d": 9.25,
+    "h": 8
+   },
+   "dims_basis": "derived",
+   "part_count": 5,
+   "counts": {
+    "legs": 2,
+    "steps": 1
+   },
+   "primary_stock": [
+    "1x10",
+    "1x3"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Top 1x10 at 16; legs 7-1/4 + top."
+  },
+  {
+   "id": "aw-step-stool-splayed",
+   "build_type": "step-stool",
+   "prompt": "step stool with splayed legs",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Wood Step Stool Plans with Splayed Legs",
+    "url": "https://www.ana-white.com/woodworking-projects/wood-step-stool-plans-splayed-legs"
+   },
+   "overall_in": {
+    "w": 16,
+    "d": 9.25,
+    "h": 8
+   },
+   "dims_basis": "derived",
+   "part_count": 5,
+   "counts": {
+    "legs": 2,
+    "steps": 1
+   },
+   "primary_stock": [
+    "1x10",
+    "1x3"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Same top; legs beveled 5 deg."
+  },
+  {
+   "id": "aw-two-step-stool",
+   "build_type": "step-stool",
+   "prompt": "two step stool",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Essential Two Step Stool",
+    "url": "https://www.ana-white.com/woodworking-projects/essential-two-step-stool"
+   },
+   "overall_in": {
+    "w": 17,
+    "d": 11.25,
+    "h": 13
+   },
+   "dims_basis": "derived",
+   "part_count": 8,
+   "counts": {
+    "steps": 2
+   },
+   "primary_stock": [
+    "1x12",
+    "1x6",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top step 1x6 at 17; sides 1x12 at 12-1/4."
+  },
+  {
+   "id": "aw-kids-storage-step-stool",
+   "build_type": "step-stool",
+   "prompt": "kids step stool with storage",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Kid's Storage Step Stool",
+    "url": "https://www.ana-white.com/woodworking-projects/kids-storage-step-stool"
+   },
+   "overall_in": {
+    "w": 14,
+    "d": 11.25,
+    "h": 14
+   },
+   "dims_basis": "derived",
+   "part_count": 8,
+   "counts": {
+    "steps": 2
+   },
+   "primary_stock": [
+    "1x12",
+    "1x8",
+    "1x6"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Sides 1x12 at 14; treads 1x8 at 14."
+  },
+  {
+   "id": "aw-farmhouse-coffee-table",
+   "build_type": "coffee-table",
+   "prompt": "farmhouse coffee table 46 long 22 wide 18 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Coffee Table [Beginner/Under $40]",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-coffee-table-beginnerunder-40"
+   },
+   "overall_in": {
+    "w": 46,
+    "d": 22,
+    "h": 18
+   },
+   "dims_basis": "derived",
+   "part_count": 26,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top four 2x6 at 46; legs 16-1/2 + top."
+  },
+  {
+   "id": "aw-rustic-x-coffee-table",
+   "build_type": "coffee-table",
+   "prompt": "rustic x coffee table 52 long 27 wide 18 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Rustic X Coffee Table",
+    "url": "https://www.ana-white.com/woodworking-projects/rustic-x-coffee-table"
+   },
+   "overall_in": {
+    "w": 52,
+    "d": 27.5,
+    "h": 18
+   },
+   "dims_basis": "derived",
+   "part_count": 25,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2",
+    "1x12"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top five 2x6 at 52."
+  },
+  {
+   "id": "aw-2x4-outdoor-coffee-table",
+   "build_type": "coffee-table",
+   "prompt": "2x4 outdoor coffee table 50 long 23 1/2 wide 16 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "2x4 Outdoor Coffee Table",
+    "url": "https://www.ana-white.com/woodworking-projects/2x4-outdoor-coffee-table"
+   },
+   "overall_in": {
+    "w": 50,
+    "d": 23.5,
+    "h": 16
+   },
+   "dims_basis": "derived",
+   "part_count": 19,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "2x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "47 boards + two breadboard ends; legs 14-1/2 + top."
+  },
+  {
+   "id": "aw-farmhouse-side-table",
+   "build_type": "side-table",
+   "prompt": "farmhouse side table 27 1/2 square 24 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Side Table (Beginner, Indoor/Outdoor)",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-side-table-beginner-indooroutdoor"
+   },
+   "overall_in": {
+    "w": 27.5,
+    "d": 27.5,
+    "h": 24
+   },
+   "dims_basis": "derived",
+   "part_count": 23,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Large option: top five 2x6 at 27-1/2."
+  },
+  {
+   "id": "aw-narrow-console",
+   "build_type": "console-table",
+   "prompt": "narrow console table with doors 32 wide 11 deep 30 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Narrow Console Table with Charging Station",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-narrow-console-table-charging-station-storage"
+   },
+   "overall_in": {
+    "w": 32,
+    "d": 11,
+    "h": 30
+   },
+   "dims_basis": "stated+derived",
+   "part_count": 10,
+   "counts": {
+    "shelves": 2
+   },
+   "primary_stock": [
+    "1x12",
+    "1x6",
+    "1x4",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "hinge-butt",
+     "qty": 3
+    }
+   ],
+   "confidence": "medium",
+   "note": "Plan notes overall height 30. Door parts are cut to fit and not in the count."
+  },
+  {
+   "id": "aw-homestead-console",
+   "build_type": "console-table",
+   "prompt": "console table 48 long 11 deep 29 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Homestead Console Table",
+    "url": "https://www.ana-white.com/woodworking-projects/homestead-console-table-free-plans"
+   },
+   "overall_in": {
+    "w": 48,
+    "d": 11,
+    "h": 28.5
+   },
+   "dims_basis": "derived",
+   "part_count": 13,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "2x6",
+    "2x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top two 2x6 at 48; legs 27-1/8 at 5 deg."
+  },
+  {
+   "id": "aw-pine-open-console",
+   "build_type": "console-table",
+   "prompt": "open shelf console table 54 long 11 1/4 deep 30 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Pine and Plain Open Shelf Console Table",
+    "url": "https://www.ana-white.com/woodworking-projects/pine-and-plain-open-shelf-console-table-free-plans"
+   },
+   "overall_in": {
+    "w": 54,
+    "d": 11.25,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 7,
+   "counts": {
+    "shelves": 1,
+    "legs": 0
+   },
+   "primary_stock": [
+    "1x12",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Top 1x12 at 54; sides 29-1/4."
+  },
+  {
+   "id": "aw-farmhouse-dining-table",
+   "build_type": "dining-table",
+   "prompt": "farmhouse dining table 85 long 38 wide",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Farmhouse Table - Updated Pocket Hole Plans",
+    "url": "https://www.ana-white.com/woodworking-projects/farmhouse-table-updated-pocket-hole-plans"
+   },
+   "overall_in": {
+    "w": 85,
+    "d": 38,
+    "h": 30.5
+   },
+   "dims_basis": "derived",
+   "part_count": 18,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "4x4",
+    "2x4",
+    "2x8",
+    "2x10"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Planks 70-1/2 + two 2x8 breadboard ends; legs 29 + top."
+  },
+  {
+   "id": "aw-beginner-farm-table",
+   "build_type": "dining-table",
+   "prompt": "farm table 92 5/8 long 33 wide 30 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Beginner Farm Table (2 Tools + $50 Lumber)",
+    "url": "https://www.ana-white.com/woodworking-projects/beginner-farm-table-2-tools-50-lumber"
+   },
+   "overall_in": {
+    "w": 92.625,
+    "d": 33,
+    "h": 30
+   },
+   "dims_basis": "stated+derived",
+   "part_count": 18,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "2x4",
+    "2x6"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Plan states 92-5/8 long; six 2x6 top; legs 28-1/2 + top."
+  },
+  {
+   "id": "kr-cedar-dining-table",
+   "build_type": "dining-table",
+   "prompt": "outdoor cedar dining table 84 long 36 wide 30 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Modern Farmhouse Indoor/Outdoor Dining Table",
+    "url": "https://learn.kregtool.com/plans/modern-farmhouse-indoor-outdoor-dining-table/"
+   },
+   "overall_in": {
+    "w": 84,
+    "d": 36,
+    "h": 30
+   },
+   "dims_basis": "stated",
+   "part_count": 23,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "4x4 cedar",
+    "2x4 cedar"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Plan states finished size 84 long x 36 wide x 30 tall."
+  },
+  {
+   "id": "aw-benchmark-media-console",
+   "build_type": "tv-stand",
+   "prompt": "media console with 2 doors 58 wide 16 deep 30 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Benchmark Media Console",
+    "url": "https://www.ana-white.com/woodworking-projects/benchmark-media-console"
+   },
+   "overall_in": {
+    "w": 58,
+    "d": 16.5,
+    "h": 30
+   },
+   "dims_basis": "derived",
+   "part_count": 45,
+   "counts": {
+    "legs": 6,
+    "doors": 2,
+    "shelves": 2
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "2x2",
+    "1x2",
+    "1x3",
+    "1x6",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "hinge-concealed",
+     "qty": 4
+    },
+    {
+     "kind": "knob",
+     "qty": 6
+    }
+   ],
+   "confidence": "medium",
+   "note": "Back 58 x 26-1/2; legs 29-1/4 + top. Euro hinges."
+  },
+  {
+   "id": "aw-open-shelf-media-console",
+   "build_type": "tv-stand",
+   "prompt": "open shelf tv stand 60 wide 14 deep 28 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Open Shelf Media Console",
+    "url": "https://www.ana-white.com/woodworking-projects/open-shelf-media-console"
+   },
+   "overall_in": {
+    "w": 60,
+    "d": 14.25,
+    "h": 28.5
+   },
+   "dims_basis": "derived",
+   "part_count": 19,
+   "counts": {
+    "legs": 4,
+    "shelves": 2
+   },
+   "primary_stock": [
+    "1x12",
+    "2x3",
+    "2x2",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top trim 60; legs 2x3 at 27."
+  },
+  {
+   "id": "aw-narrow-media-console",
+   "build_type": "tv-stand",
+   "prompt": "narrow media console with flip down doors on casters 72 wide",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Narrow Media Console Flip Down Doors",
+    "url": "https://www.ana-white.com/woodworking-projects/narrow-media-console-flip-down-doors"
+   },
+   "overall_in": {
+    "w": 72,
+    "d": 11.25,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 12,
+   "counts": {},
+   "primary_stock": [
+    "1x12",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "hinge",
+     "qty": 6
+    },
+    {
+     "kind": "magnetic-catch",
+     "qty": 6
+    },
+    {
+     "kind": "knob",
+     "qty": 12
+    },
+    {
+     "kind": "caster",
+     "qty": 4
+    }
+   ],
+   "confidence": "low",
+   "note": "1x12 shell 72 long on casters; H not stated."
+  },
+  {
+   "id": "kr-media-cabinet-2-door",
+   "build_type": "tv-stand",
+   "prompt": "small media cabinet with 2 doors 25 wide 13 deep 27 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Media Console with Weight Storage and Tile Top",
+    "url": "https://learn.kregtool.com/plans/media-console-with-weight-storage-and-tile-top/"
+   },
+   "overall_in": {
+    "w": 25.5,
+    "d": 12.75,
+    "h": 27
+   },
+   "dims_basis": "derived",
+   "part_count": 25,
+   "counts": {
+    "doors": 2,
+    "shelves": 3
+   },
+   "primary_stock": [
+    "3/4 hardwood",
+    "1/4 panel"
+   ],
+   "hardware": [
+    {
+     "kind": "loose-tenon",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Case 24 x 12-3/4 x 26 on a 1 in base."
+  },
+  {
+   "id": "aw-country-shoe-bench",
+   "build_type": "shoe-rack",
+   "prompt": "shoe bench 36 wide 11 1/4 deep 19 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Country Shoe Bench",
+    "url": "https://www.ana-white.com/woodworking-projects/country-shoe-bench"
+   },
+   "overall_in": {
+    "w": 36,
+    "d": 11.25,
+    "h": 19
+   },
+   "dims_basis": "derived",
+   "part_count": 8,
+   "counts": {
+    "shelves": 2
+   },
+   "primary_stock": [
+    "1x12",
+    "1x3"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 1x12 at 36; sides 18-1/4."
+  },
+  {
+   "id": "aw-braden-shoe-bench",
+   "build_type": "shoe-rack",
+   "prompt": "shoe shelf entryway bench 30 1/2 wide 23 deep 18 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Braden Shoe Shelf Entryway Bench",
+    "url": "https://www.ana-white.com/woodworking-projects/braden-shoe-shelf-entryway-bench"
+   },
+   "overall_in": {
+    "w": 30.5,
+    "d": 23,
+    "h": 18
+   },
+   "dims_basis": "derived",
+   "part_count": 11,
+   "counts": {
+    "shelves": 2
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1x4",
+    "1x2",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "nail-brad",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 30-1/2 x 23; sides 17-1/4."
+  },
+  {
+   "id": "aw-2-tier-shoe-rack",
+   "build_type": "shoe-rack",
+   "prompt": "2 tier shoe rack 32 wide",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Quick & Easy 2-Tier Shoe Rack",
+    "url": "https://www.ana-white.com/woodworking-projects/quick-easy-2-tier-shoe-rack-just-3-boards"
+   },
+   "overall_in": {
+    "w": 32,
+    "d": 11.5,
+    "h": 12
+   },
+   "dims_basis": "stated+derived",
+   "part_count": 14,
+   "counts": {
+    "legs": 4,
+    "tiers": 2,
+    "slats": 6
+   },
+   "primary_stock": [
+    "2x2",
+    "1x3"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Plan states about 32 wide; legs 12."
+  },
+  {
+   "id": "aw-stackable-shoe-rack",
+   "build_type": "shoe-rack",
+   "prompt": "stackable shoe rack 32 wide",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Stackable 1x Board Shoe Rack",
+    "url": "https://www.ana-white.com/woodworking-projects/stackable-1x-board-shoe-rack-free-diy-plans"
+   },
+   "overall_in": {
+    "w": 32,
+    "d": 12,
+    "h": 7.25
+   },
+   "dims_basis": "stated+derived",
+   "part_count": 5,
+   "counts": {
+    "tiers": 1,
+    "slats": 3
+   },
+   "primary_stock": [
+    "1x8",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Plan states about 32 wide; 1x8 ends 12 long."
+  },
+  {
+   "id": "kr-shoe-bench-slats",
+   "build_type": "shoe-rack",
+   "prompt": "shoe bench with slatted shelf 38 wide 18 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Shoe Bench with Storage and Seat",
+    "url": "https://learn.kregtool.com/plans/shoe-bench-with-storage-and-seat/"
+   },
+   "overall_in": {
+    "w": 38,
+    "d": 15.5,
+    "h": 18
+   },
+   "dims_basis": "derived",
+   "part_count": 27,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 1x4 x5 at 38; legs 17-1/4."
+  },
+  {
+   "id": "aw-outdoor-dining-bench",
+   "build_type": "bench",
+   "prompt": "outdoor bench 44 1/2 long 16 deep 18 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Simple Outdoor Dining Bench",
+    "url": "https://www.ana-white.com/woodworking-projects/simple-outdoor-dining-bench"
+   },
+   "overall_in": {
+    "w": 44.5,
+    "d": 15.875,
+    "h": 18
+   },
+   "dims_basis": "derived",
+   "part_count": 20,
+   "counts": {
+    "legs": 4,
+    "slats": 12
+   },
+   "primary_stock": [
+    "2x4",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Frame 44-1/2 x 15-7/8; legs 17-1/4 + slats."
+  },
+  {
+   "id": "aw-firepit-bench",
+   "build_type": "bench",
+   "prompt": "2x4 outdoor bench with back and arms 48 long",
+   "source": {
+    "publisher": "Ana White",
+    "title": "DIY Outdoor Bench - Easy 2x4 Firepit Seating",
+    "url": "https://www.ana-white.com/woodworking-projects/diy-outdoor-bench-easy-2x4-firepit-seating-plan"
+   },
+   "overall_in": {
+    "w": 48,
+    "d": null,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 19,
+   "counts": {
+    "arms": 2
+   },
+   "primary_stock": [
+    "2x4",
+    "2x6"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Seat/back 2x6 at 48; only W scored."
+  },
+  {
+   "id": "kr-storage-chest",
+   "build_type": "chest",
+   "prompt": "storage chest with hinged lid 48 wide 16 1/2 deep",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Storage Chest",
+    "url": "https://learn.kregtool.com/plans/storage-chest/"
+   },
+   "overall_in": {
+    "w": 48,
+    "d": 16.5,
+    "h": 22.75
+   },
+   "dims_basis": "derived",
+   "part_count": 13,
+   "counts": {
+    "lids": 1
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "2x4 base",
+    "1x2 trim"
+   ],
+   "hardware": [
+    {
+     "kind": "hinge-piano",
+     "qty": 2
+    }
+   ],
+   "confidence": "medium",
+   "note": "Plan text: box 45 x 15 x 18; lid 48 x 16-1/2; 4 in base."
+  },
+  {
+   "id": "aw-20-raised-planter",
+   "build_type": "planter",
+   "prompt": "raised cedar planter box 36 long 18 wide 24 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "$20 Raised Planter Box - Cedar Sided",
+    "url": "https://www.ana-white.com/woodworking-projects/20-raised-planter-box-cedar-sided"
+   },
+   "overall_in": {
+    "w": 36.5,
+    "d": 18,
+    "h": 23.75
+   },
+   "dims_basis": "derived",
+   "part_count": 20,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "2x2",
+    "cedar fence picket",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Sides 35-1/2, ends 17, legs 23-3/4."
+  },
+  {
+   "id": "aw-cedar-planter-2x2",
+   "build_type": "planter",
+   "prompt": "square cedar planter 18 inch",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Cedar Planters with 2x2 Legs",
+    "url": "https://www.ana-white.com/woodworking-projects/cedar-planters-2x2-legs"
+   },
+   "overall_in": {
+    "w": 18.5,
+    "d": 18.5,
+    "h": 23.75
+   },
+   "dims_basis": "derived",
+   "part_count": 31,
+   "counts": {
+    "legs": 4
+   },
+   "primary_stock": [
+    "cedar fence picket",
+    "1x3",
+    "1x2",
+    "2x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-pocket",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Legs 23-3/4; frame 17."
+  },
+  {
+   "id": "aw-raised-planter-shelf",
+   "build_type": "planter",
+   "prompt": "raised planter with bottom shelf 47 long 22 wide 30 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Cedar Fence Picket Raised Planter with Shelf",
+    "url": "https://www.ana-white.com/woodworking-projects/cedar-fence-picket-raised-planter-shelf"
+   },
+   "overall_in": {
+    "w": 46.75,
+    "d": 22,
+    "h": 30.5
+   },
+   "dims_basis": "derived",
+   "part_count": 32,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "2x4",
+    "cedar fence picket"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Side pickets 46-3/4; legs 30-1/2."
+  },
+  {
+   "id": "kr-raised-planter-shelf",
+   "build_type": "planter",
+   "prompt": "raised planter box with shelf 48 wide 24 deep 36 tall",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Easy DIY Raised Planter Box with Shelf",
+    "url": "https://learn.kregtool.com/plans/easy-diy-raised-planter-box-with-shelf/"
+   },
+   "overall_in": {
+    "w": 48.5,
+    "d": 24,
+    "h": 36
+   },
+   "dims_basis": "derived",
+   "part_count": 54,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "1x3",
+    "cedar fence picket",
+    "1x2"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-exterior",
+     "qty": null
+    },
+    {
+     "kind": "staple",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top trim 48-1/2 x 24; legs 36 (each leg is two 1x3)."
+  },
+  {
+   "id": "aw-modern-birdhouse",
+   "build_type": "birdhouse",
+   "prompt": "modern cedar birdhouse",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Modern Cedar Fence Picket Birdhouse Kit",
+    "url": "https://www.ana-white.com/woodworking-projects/modern-cedar-fence-picket-birdhouse-kit"
+   },
+   "overall_in": {
+    "w": 5.5,
+    "d": 6.5,
+    "h": 8.5
+   },
+   "dims_basis": "derived",
+   "part_count": 6,
+   "counts": {},
+   "primary_stock": [
+    "1/2 cedar fence picket"
+   ],
+   "hardware": [
+    {
+     "kind": "nail-brad",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Box 5-1/2 wide; back 8-1/2 tall."
+  },
+  {
+   "id": "aw-picket-birdhouse",
+   "build_type": "birdhouse",
+   "prompt": "birdhouse from one cedar fence picket",
+   "source": {
+    "publisher": "Ana White",
+    "title": "DIY Birdhouse from One Cedar Fence Picket",
+    "url": "https://www.ana-white.com/woodworking-projects/diy-birdhouse-one-cedar-fence-picket"
+   },
+   "overall_in": {
+    "w": 6.5,
+    "d": 8.5,
+    "h": 8.5
+   },
+   "dims_basis": "derived",
+   "part_count": 7,
+   "counts": {},
+   "primary_stock": [
+    "1/2 cedar fence picket"
+   ],
+   "hardware": [
+    {
+     "kind": "nail-brad",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Gable ends 7-1/4; roof and floor 8-1/2."
+  },
+  {
+   "id": "aw-garage-workbench",
+   "build_type": "workbench",
+   "prompt": "garage workbench 55 wide 34 1/2 deep 36 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Easy DIY Garage Workshop Workbench",
+    "url": "https://www.ana-white.com/woodworking-projects/easy-diy-garage-workshop-workbench"
+   },
+   "overall_in": {
+    "w": 55,
+    "d": 34.5,
+    "h": 36
+   },
+   "dims_basis": "derived",
+   "part_count": 26,
+   "counts": {
+    "legs": 4,
+    "shelves": 1
+   },
+   "primary_stock": [
+    "2x4",
+    "3/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Ply top 55 x 34-1/2; legs 35-1/4 + top."
+  },
+  {
+   "id": "kr-mobile-plywood-workbench",
+   "build_type": "workbench",
+   "prompt": "mobile workbench 84 wide 34 deep on casters",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Mobile Plywood Workbench with Storage",
+    "url": "https://learn.kregtool.com/plans/mobile-plywood-workbench-with-storage/"
+   },
+   "overall_in": {
+    "w": 84,
+    "d": 34,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 44,
+   "counts": {
+    "legs": 4,
+    "shelves": 3
+   },
+   "primary_stock": [
+    "3/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "caster",
+     "qty": 4,
+     "dia_in": 2,
+     "locking": true
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top 84 x 34; legs are doubled 3-1/2 ply strips (8 pieces = 4 legs)."
+  },
+  {
+   "id": "kr-mobile-workbench-drawer",
+   "build_type": "workbench",
+   "prompt": "mobile workbench with drawer 44 wide 28 deep",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Mobile Workbench with Drawer",
+    "url": "https://learn.kregtool.com/plans/mobile-workbench-with-drawer/"
+   },
+   "overall_in": {
+    "w": 44,
+    "d": 28,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 27,
+   "counts": {
+    "legs": 4,
+    "drawers": 1,
+    "shelves": 2
+   },
+   "primary_stock": [
+    "2x4",
+    "3/4 plywood",
+    "1/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "caster",
+     "qty": 4,
+     "type": "drop-down"
+    },
+    {
+     "kind": "drawer-slide",
+     "qty": 1
+    },
+    {
+     "kind": "pull",
+     "qty": 1
+    }
+   ],
+   "confidence": "medium",
+   "note": "Bottom shelf 28 x 44; top not in list."
+  },
+  {
+   "id": "kr-torsion-box-workbench",
+   "build_type": "workbench",
+   "prompt": "workbench with drawers and doors 84 long",
+   "source": {
+    "publisher": "Kreg Tool",
+    "title": "Torsion Box Workbench",
+    "url": "https://learn.kregtool.com/plans/torsion-box-workbench/"
+   },
+   "overall_in": {
+    "w": 84,
+    "d": null,
+    "h": null
+   },
+   "dims_basis": "derived",
+   "part_count": 125,
+   "counts": {
+    "drawers": 12,
+    "doors": 2
+   },
+   "primary_stock": [
+    "3/4 plywood",
+    "1/2 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "drawer-slide",
+     "qty": 15,
+     "len_in": 14
+    },
+    {
+     "kind": "pull",
+     "qty": 14
+    }
+   ],
+   "confidence": "low",
+   "note": "Stretchers 84; 2 large + 10 narrow drawers + trays; 2 doors."
+  },
+  {
+   "id": "aw-rolling-island",
+   "build_type": "cart",
+   "prompt": "small rolling kitchen island with drawer 33 wide 25 deep 36 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Rustic X Small Rolling Kitchen Island",
+    "url": "https://www.ana-white.com/woodworking-projects/rustic-x-small-rolling-kitchen-island"
+   },
+   "overall_in": {
+    "w": 33,
+    "d": 25.5,
+    "h": 36
+   },
+   "dims_basis": "derived",
+   "part_count": 41,
+   "counts": {
+    "legs": 4,
+    "drawers": 1,
+    "shelves": 1,
+    "casters": 4
+   },
+   "primary_stock": [
+    "2x4",
+    "1x12",
+    "1x6",
+    "1x4",
+    "project panel"
+   ],
+   "hardware": [
+    {
+     "kind": "caster",
+     "qty": 4,
+     "clearance_in": 3
+    },
+    {
+     "kind": "pull",
+     "qty": 1
+    },
+    {
+     "kind": "drawer-slide",
+     "qty": 1
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top panel 24 x 31-1/2 + 1x2 edge; legs 32-1/4 + 3 in casters + top."
+  },
+  {
+   "id": "aw-tiny-prep-cart",
+   "build_type": "cart",
+   "prompt": "small kitchen cart 20 by 20 counter height with doors on casters",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Tiny Kitchen Island Prep Cart with Trash",
+    "url": "https://www.ana-white.com/woodworking-projects/tiny-kitchen-island-prep-cart-trash-free-plans"
+   },
+   "overall_in": {
+    "w": 20.25,
+    "d": 20.25,
+    "h": 36
+   },
+   "dims_basis": "stated+derived",
+   "part_count": 31,
+   "counts": {
+    "legs": 4,
+    "drawers": 1,
+    "casters": 4
+   },
+   "primary_stock": [
+    "2x2",
+    "3/4 plywood",
+    "1x2",
+    "1x4",
+    "1x6"
+   ],
+   "hardware": [
+    {
+     "kind": "caster",
+     "qty": 4,
+     "dia_in": 2
+    },
+    {
+     "kind": "hinge",
+     "qty": 3
+    },
+    {
+     "kind": "magnetic-catch",
+     "qty": 3
+    },
+    {
+     "kind": "knob",
+     "qty": 2
+    },
+    {
+     "kind": "pull",
+     "qty": 1
+    }
+   ],
+   "confidence": "medium",
+   "note": "Plan states about 20 x 20, counter height."
+  },
+  {
+   "id": "aw-easy-kitchen-island",
+   "build_type": "cart",
+   "prompt": "kitchen island 48 long 22 deep 36 tall with slat shelf",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Easy Kitchen Island Plans",
+    "url": "https://www.ana-white.com/woodworking-projects/easy-kitchen-island-plans"
+   },
+   "overall_in": {
+    "w": 48,
+    "d": 22,
+    "h": 36
+   },
+   "dims_basis": "derived",
+   "part_count": 45,
+   "counts": {
+    "legs": 4,
+    "shelves": 1,
+    "slats": 24
+   },
+   "primary_stock": [
+    "2x4",
+    "2x6",
+    "2x2",
+    "1x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "medium",
+   "note": "Top four 2x6 at 48; legs 34-1/2 + top."
+  },
+  {
+   "id": "aw-base-cabinet-template",
+   "build_type": "cabinet",
+   "prompt": "kitchen base cabinet 24 wide",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Frameless Kitchen Base Cabinet - Universal Template",
+    "url": "https://www.ana-white.com/woodworking-projects/frameless-kitchen-base-cabinet-universal-template"
+   },
+   "overall_in": {
+    "w": 24,
+    "d": 24,
+    "h": 34.5
+   },
+   "dims_basis": "stated",
+   "part_count": null,
+   "counts": {},
+   "primary_stock": [
+    "3/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "hinge-concealed",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Template: 34-1/2 carcass height (36 with counter), 24 deep including full-overlay faces, up to 36 wide. Width is the typed value."
+  },
+  {
+   "id": "aw-wall-cabinet-template",
+   "build_type": "cabinet",
+   "prompt": "kitchen wall cabinet 30 wide 30 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "Frameless Kitchen Wall Cabinet - Universal Template",
+    "url": "https://www.ana-white.com/woodworking-projects/frameless-kitchen-wall-cabinet-universal-template"
+   },
+   "overall_in": {
+    "w": 30,
+    "d": 12,
+    "h": 30
+   },
+   "dims_basis": "stated",
+   "part_count": null,
+   "counts": {
+    "shelves": 2
+   },
+   "primary_stock": [
+    "3/4 plywood"
+   ],
+   "hardware": [
+    {
+     "kind": "hinge-concealed",
+     "qty": null
+    }
+   ],
+   "confidence": "high",
+   "note": "Template: 30 standard height, 11-1/4 carcass depth + 3/4 door, up to 36 wide, at least 2 fixed shelves (top and bottom)."
+  },
+  {
+   "id": "aw-garage-shelves-2x4",
+   "build_type": "shelf",
+   "prompt": "freestanding 2x4 garage shelves 72 tall",
+   "source": {
+    "publisher": "Ana White",
+    "title": "2x4 Easy Build Garage Shelves [Freestanding]",
+    "url": "https://www.ana-white.com/woodworking-projects/2x4-easy-build-garage-shelves-freestanding"
+   },
+   "overall_in": {
+    "w": null,
+    "d": null,
+    "h": 72
+   },
+   "dims_basis": "derived",
+   "part_count": null,
+   "counts": {},
+   "primary_stock": [
+    "2x4"
+   ],
+   "hardware": [
+    {
+     "kind": "screw-construction",
+     "qty": null
+    }
+   ],
+   "confidence": "low",
+   "note": "Leg supports 72 tall; length set by user. Plan advises anchoring to the wall."
+  }
+ ],
+ "standards": [
+  {
+   "id": "mattress-twin",
+   "fact": "twin mattress width x length",
+   "value": {
+    "w": 38,
+    "l": 75
+   },
+   "unit": "in",
+   "source": {
+    "title": "Sleep Foundation: Mattress Sizes",
+    "url": "https://www.sleepfoundation.org/mattress-sizes"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bed-frame",
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": "inside of the deck (between rails) >= mattress w and l, and <= mattress + 2 in on each axis"
+  },
+  {
+   "id": "mattress-twin-xl",
+   "fact": "twin-xl mattress width x length",
+   "value": {
+    "w": 38,
+    "l": 80
+   },
+   "unit": "in",
+   "source": {
+    "title": "Sleep Foundation: Mattress Sizes",
+    "url": "https://www.sleepfoundation.org/mattress-sizes"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bed-frame",
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": "inside of the deck (between rails) >= mattress w and l, and <= mattress + 2 in on each axis"
+  },
+  {
+   "id": "mattress-full",
+   "fact": "full mattress width x length",
+   "value": {
+    "w": 54,
+    "l": 75
+   },
+   "unit": "in",
+   "source": {
+    "title": "Sleep Foundation: Mattress Sizes",
+    "url": "https://www.sleepfoundation.org/mattress-sizes"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bed-frame",
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": "inside of the deck (between rails) >= mattress w and l, and <= mattress + 2 in on each axis"
+  },
+  {
+   "id": "mattress-queen",
+   "fact": "queen mattress width x length",
+   "value": {
+    "w": 60,
+    "l": 80
+   },
+   "unit": "in",
+   "source": {
+    "title": "Sleep Foundation: Mattress Sizes",
+    "url": "https://www.sleepfoundation.org/mattress-sizes"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bed-frame",
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": "inside of the deck (between rails) >= mattress w and l, and <= mattress + 2 in on each axis"
+  },
+  {
+   "id": "mattress-king",
+   "fact": "king mattress width x length",
+   "value": {
+    "w": 76,
+    "l": 80
+   },
+   "unit": "in",
+   "source": {
+    "title": "Sleep Foundation: Mattress Sizes",
+    "url": "https://www.sleepfoundation.org/mattress-sizes"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bed-frame",
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": "inside of the deck (between rails) >= mattress w and l, and <= mattress + 2 in on each axis"
+  },
+  {
+   "id": "mattress-california-king",
+   "fact": "california-king mattress width x length",
+   "value": {
+    "w": 72,
+    "l": 84
+   },
+   "unit": "in",
+   "source": {
+    "title": "Sleep Foundation: Mattress Sizes",
+    "url": "https://www.sleepfoundation.org/mattress-sizes"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bed-frame",
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": "inside of the deck (between rails) >= mattress w and l, and <= mattress + 2 in on each axis"
+  },
+  {
+   "id": "table-dining-height",
+   "fact": "dining table top height",
+   "value": {
+    "min": 28,
+    "max": 30,
+    "typical": 30
+   },
+   "unit": "in",
+   "source": {
+    "title": "Omba: Standard Furniture Dimensions",
+    "url": "https://ombahome.com/en-us/pages/standard-furniture-dimensions"
+   },
+   "confidence": "medium",
+   "applies_to": [
+    "dining-table",
+    "picnic-table"
+   ],
+   "check": "untyped H within range"
+  },
+  {
+   "id": "seat-height",
+   "fact": "dining chair / bench seat height",
+   "value": {
+    "min": 17,
+    "max": 19
+   },
+   "unit": "in",
+   "source": {
+    "title": "Omba: Standard Furniture Dimensions",
+    "url": "https://ombahome.com/en-us/pages/standard-furniture-dimensions"
+   },
+   "confidence": "medium",
+   "applies_to": [
+    "bench",
+    "picnic-table"
+   ],
+   "check": "seat surface within range"
+  },
+  {
+   "id": "counter-height",
+   "fact": "counter-height surface",
+   "value": {
+    "min": 34,
+    "max": 36,
+    "typical": 36
+   },
+   "unit": "in",
+   "source": {
+    "title": "Omba: Standard Furniture Dimensions",
+    "url": "https://ombahome.com/en-us/pages/standard-furniture-dimensions"
+   },
+   "confidence": "medium",
+   "applies_to": [
+    "cart",
+    "cabinet",
+    "workbench"
+   ],
+   "check": null
+  },
+  {
+   "id": "bar-height",
+   "fact": "bar-height surface",
+   "value": {
+    "min": 40,
+    "max": 42
+   },
+   "unit": "in",
+   "source": {
+    "title": "Omba: Standard Furniture Dimensions",
+    "url": "https://ombahome.com/en-us/pages/standard-furniture-dimensions"
+   },
+   "confidence": "medium",
+   "applies_to": [
+    "table"
+   ],
+   "check": null
+  },
+  {
+   "id": "coffee-table-height",
+   "fact": "coffee table height",
+   "value": {
+    "min": 16,
+    "max": 18
+   },
+   "unit": "in",
+   "source": {
+    "title": "Omba: Standard Furniture Dimensions",
+    "url": "https://ombahome.com/en-us/pages/standard-furniture-dimensions"
+   },
+   "confidence": "medium",
+   "applies_to": [
+    "coffee-table"
+   ],
+   "check": null
+  },
+  {
+   "id": "stair-riser-max",
+   "fact": "stair riser height, maximum (IRC R311.7.5.1)",
+   "value": 7.75,
+   "unit": "in",
+   "source": {
+    "title": "IRC 2021 R311.7.5 (visual interpretation)",
+    "url": "https://www.viewrail.com/wp-content/uploads/2025/04/2021-International-Residential-Code-Visual-Interpretation.pdf"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "step-stool",
+    "loft-bed",
+    "deck"
+   ],
+   "check": "every rise between treads <= 7.75"
+  },
+  {
+   "id": "stair-tread-min",
+   "fact": "stair tread depth, minimum (IRC R311.7.5.2)",
+   "value": 10,
+   "unit": "in",
+   "source": {
+    "title": "IRC 2021 R311.7.5 (visual interpretation)",
+    "url": "https://www.viewrail.com/wp-content/uploads/2025/04/2021-International-Residential-Code-Visual-Interpretation.pdf"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "loft-bed",
+    "deck"
+   ],
+   "check": null
+  },
+  {
+   "id": "bunk-guardrail",
+   "fact": "upper bunk guardrails on both sides when foundation > 30 in above floor; rail top >= 5 in above mattress top (16 CFR 1513.3)",
+   "value": {
+    "foundation_over_in": 30,
+    "rail_above_mattress_in": 5
+   },
+   "unit": "in",
+   "source": {
+    "title": "eCFR 16 CFR 1513.3",
+    "url": "https://www.ecfr.gov/current/title-16/chapter-II/subchapter-C/part-1513/section-1513.3"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "bunk-bed",
+    "loft-bed"
+   ],
+   "check": null
+  },
+  {
+   "id": "cpsc-tipover",
+   "fact": "clothing storage units >= 27 in tall need a tip restraint (16 CFR 1261 / ASTM F2057-23)",
+   "value": {
+    "min_height_in": 27
+   },
+   "unit": "in",
+   "source": {
+    "title": "CPSC: Clothing Storage Units",
+    "url": "https://www.cpsc.gov/Business--Manufacturing/Business-Education/Business-Guidance/Clothing-Storage-Units"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "dresser",
+    "nightstand",
+    "wardrobe"
+   ],
+   "check": "tall dresser/wardrobe Buy list includes an anti-tip kit"
+  },
+  {
+   "id": "slide-clearance",
+   "fact": "side-mount drawer slide clearance per side",
+   "value": 0.5,
+   "unit": "in",
+   "source": {
+    "title": "Woodsmith: How to Choose Drawer Slides",
+    "url": "https://www.woodsmith.com/article/metal-drawer-slides/"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "dresser",
+    "nightstand",
+    "cart",
+    "workbench"
+   ],
+   "check": "opening width - drawer box width == 1.0 +/- 0.0625"
+  },
+  {
+   "id": "base-cabinet",
+   "fact": "kitchen base cabinet: 34.5 carcass height, 24 deep with faces, single box <= 36 wide",
+   "value": {
+    "h": 34.5,
+    "d": 24,
+    "max_w": 36
+   },
+   "unit": "in",
+   "source": {
+    "title": "Ana White: Frameless Kitchen Base Cabinet template",
+    "url": "https://www.ana-white.com/woodworking-projects/frameless-kitchen-base-cabinet-universal-template"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "cabinet"
+   ],
+   "check": null
+  },
+  {
+   "id": "wall-cabinet",
+   "fact": "kitchen wall cabinet: 30 tall standard (42 to ceiling), 11.25 carcass depth, <= 36 wide",
+   "value": {
+    "h": 30,
+    "d": 11.25,
+    "max_w": 36
+   },
+   "unit": "in",
+   "source": {
+    "title": "Ana White: Frameless Kitchen Wall Cabinet template",
+    "url": "https://www.ana-white.com/woodworking-projects/frameless-kitchen-wall-cabinet-universal-template"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "cabinet"
+   ],
+   "check": null
+  },
+  {
+   "id": "shelf-bay-span",
+   "fact": "bookshelf bay width before shelves sag (3/4 plywood)",
+   "value": 36,
+   "unit": "in",
+   "source": {
+    "title": "Ana White: Frameless Bookshelf - Build in Any Size",
+    "url": "https://www.ana-white.com/woodworking-projects/frameless-bookshelf-build-any-size"
+   },
+   "confidence": "medium",
+   "applies_to": [
+    "bookshelf",
+    "shelf",
+    "cabinet"
+   ],
+   "check": "every bay clear span <= 36 or a divider/support is added"
+  },
+  {
+   "id": "bluebird-box",
+   "fact": "Eastern bluebird box: 1.5 in hole, 5.5x5.5 floor, ~9 in deep",
+   "value": {
+    "hole": 1.5,
+    "floor": 5.5,
+    "depth": 9
+   },
+   "unit": "in",
+   "source": {
+    "title": "NestWatch: Eastern Bluebird",
+    "url": "https://nestwatch.org/learn/all-about-birdhouses/birds/eastern-bluebird/"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "birdhouse"
+   ],
+   "check": null
+  },
+  {
+   "id": "wren-box",
+   "fact": "House wren box: 1 in hole, 5.5x5.5 floor, ~8 in deep",
+   "value": {
+    "hole": 1.0,
+    "floor": 5.5,
+    "depth": 8
+   },
+   "unit": "in",
+   "source": {
+    "title": "NestWatch: House Wren",
+    "url": "https://nestwatch.org/learn/all-about-birdhouses/birds/house-wren/"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "birdhouse"
+   ],
+   "check": null
+  },
+  {
+   "id": "lumber-actual",
+   "fact": "nominal to actual lumber: 1x = 0.75 thick, 2x = 1.5 thick, 2x4 = 1.5x3.5, 4x4 = 3.5x3.5",
+   "value": {
+    "1x": 0.75,
+    "2x": 1.5,
+    "2x4": [
+     1.5,
+     3.5
+    ],
+    "4x4": [
+     3.5,
+     3.5
+    ]
+   },
+   "unit": "in",
+   "source": {
+    "title": "OpenCutList FAQ (actual vs nominal)",
+    "url": "https://docs.opencutlist.org/support/frequently-asked-questions"
+   },
+   "confidence": "high",
+   "applies_to": [
+    "*"
+   ],
+   "check": "every member's cross-section equals its stock's actual size"
+  }
+ ]
+}
