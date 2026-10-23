@@ -81,6 +81,7 @@ import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
 import { isOutdoorPrompt, withOutdoorNotes } from "./outdoor";
 import { notesWithFinishedDepth } from "./modelSize";
+import { buildSpec } from "./spec";
 
 export function emptyProject(): YardProject {
   return {
@@ -412,7 +413,11 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const built0 = hung ?? small ?? raw;
     // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
     const typed = args[0] ?? "";
-    const built = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
+    const built1 = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
+    // One spec object per prompt (spec.ts), built once here at intake; a bench edit types every axis.
+    const o = args[3];
+    const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
+    const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } finally {
     idDepth--;
