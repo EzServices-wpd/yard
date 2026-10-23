@@ -40,8 +40,12 @@ test("row 295 desk 60 wide: depth stays assumed and counts the 1/2\" proud front
 test("row 295 bathroom vanity 36 wide: depth stays assumed at 21 1/2 (fronts proud), never a typed 21", () => {
   const r = restock("bathroom vanity 36 wide");
   assert.equal(r.title, 'Vanity 36" wide · 36" W × 21 1/2" D × 34" H (D, H assumed)');
-  assert.equal(r.cover, '36" wide · 34" tall and 21 1/2" deep assumed, measure to lock · drawer fronts stand proud');
-  assert.deepEqual(r.i42, []);
+  // #113 builds the vanity as a sink base with doors, so its proud fronts are doors (same note at 3/4").
+  assert.equal(r.cover, '36" wide · 34" tall and 21 1/2" deep assumed, measure to lock · doors stand proud');
+  assert.match(coverAxesTalk(r.before).subtitle, / · doors stand proud$/);
+  // #113's sink base thins its sides in place too: the only I42 left is the row-298 geometry (cover 36, tag 35 3/4).
+  assert.deepEqual(r.i42.filter((m) => !row298(m)), []);
+  assert.deepEqual(r.i42, ['PDF cover says 36" wide, its drawing tag 35 3/4"']);
 });
 
 test("row 295 nightstand 20 wide 24 tall: depth stays assumed at 16 1/2, never a typed 16; typed W and H stay typed", () => {
