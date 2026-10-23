@@ -8383,6 +8383,13 @@ console.log("STRANGER PLAN OK", {
   ] as const) {
     const p = generateFromPrompt(prompt);
     if (!titleRe.test(p.name)) failHonesty("shelf-count-carcase sibling title", prompt, p.name);
+    if (p.refused) {
+      // 36" cannot hold 5 shelves at 7" clear. The shared minimum is 48" (closetShelfMinHeight).
+      if (!/kids bookcase/.test(prompt) || !/at least 48" tall for 5 shelves with 7" clear/.test(p.refused) || p.panels.length) {
+        failHonesty("shelf-count-carcase sibling refusal", prompt, p.refused, p.panels.length);
+      }
+      continue;
+    }
     if (Math.abs(p.overall.width - wantW) > 2 || Math.abs(p.overall.height - wantH) > 2) {
       failHonesty("shelf-count-carcase sibling envelope", prompt, p.overall);
     }

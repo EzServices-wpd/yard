@@ -2633,10 +2633,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const railTalk = frontRails.length
       ? `Glue and screw ${frontRails.length === 1 ? "the front rail" : "each front rail"} on edge under the front of its shelf. `
       : "";
+    const hatShelf = fixedSpanShelves.length > 0 && panels.some((p) => /hanging rod/i.test(p.name));
     steps.push({
       step: n++,
       title: spanDividers.length ? (spanDividers.length === 1 ? "Set the center divider" : "Set the center dividers") : frontRails.length === 1 ? "Glue the front rail under the shelf" : "Glue the front rails under the shelves",
-      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? "Screw each fixed shelf to the uprights. " : ""}${shelfBearers.length ? "Screw each shelf bearer to the center divider beside it. " : ""}${railTalk}${spanDividers.length ? spanDividerTalk(project, spanDividers, panels) : ""}`.trim(),
+      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? `Screw each fixed shelf to the uprights${hatShelf ? ", including the hat shelf over the rod" : ""}. ` : ""}${shelfBearers.length ? "Screw each shelf bearer to the center divider beside it. " : ""}${railTalk}${spanDividers.length ? spanDividerTalk(project, spanDividers, panels) : ""}`.trim(),
       partsUsed: names([...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails]),
     });
   }

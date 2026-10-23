@@ -11,7 +11,8 @@ import { withArticle } from "./article";
 import { inchFrac } from "./inchText";
 import { canonicalMeasures, typedMeasures } from "./measureText";
 import { buildPlan } from "./report";
-import { MIN_USABLE_SHELF_CLEAR, shelfLevelsFit, typedShelfDemand } from "./shelfSpan";
+import { closetShelfClearIn, closetShelfMinHeight, rodShelfMinHeight, typedRodDemand, typedShelfDemand } from "./shelfClear";
+import { shelfLevelLayout, shelfLevelsFit } from "./shelfSpan";
 import type { YardProject } from "./types";
 
 /** The least clear opening a carcass keeps between its two panels on any axis. */
@@ -20,9 +21,6 @@ export const MIN_INTERIOR_IN = 1;
 export const SMALL_TYPED_IN = 12;
 /** The largest size the search for a minimum tries (no builder needs more to hold its parts). */
 const SEARCH_MAX_IN = 120;
-/** A hanging rod keeps most of a tall wardrobe, so ten shelves need more height than a bare carcass. */
-const SHELF_SEARCH_MAX_IN = 168;
-
 type Axis = "width" | "depth" | "height";
 const WORD: Record<Axis, string> = { width: "wide", depth: "deep", height: "tall" };
 const AXIS_WORDS: Record<Axis, string> = { width: "wide", depth: "deep", height: "tall|high" };
@@ -118,49 +116,23 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
 }
 
 /**
- * A typed shelf count never shrinks. Each level keeps its own height, with a usable opening under the next
- * one. When the case is too short, nothing is built and the note names the shortest height that fits.
+ * A typed shelf count never shrinks. Each level keeps 7" clear. A rod is in the minimum only
+ * when one was typed. The height is closetShelfMinHeight, the same number #112 names.
  */
-export function shelfCountRefusal(p: YardProject, prompt: string, rebuild: (prompt: string) => YardProject): YardProject | null {
+export function shelfCountRefusal(p: YardProject, prompt: string, _rebuild: (prompt: string) => YardProject): YardProject | null {
+  void _rebuild;
   if (p.refused || !p.panels.length) return null;
   const asked = typedShelfDemand(prompt);
   if (asked == null || shelfLevelsFit(p.panels, asked)) return null;
+  // Corner shelves are named Triangle, not Shelf. This minimum is the even carcass stack only.
+  const layout = shelfLevelLayout(p.panels);
+  if (layout.levels === 0) return null;
   const noun = askedNoun(p).toLowerCase();
-  // Keep the case's width. A bare height of 120" is also read as a 12" opening, so the
-  // search would measure a different carcass and name a height that does not fit this one.
-  const pinned = /\b(?:wide|width)\b/i.test(prompt) ? prompt : `${prompt} ${p.overall.width} wide`;
-  const promptAt = (h: number) => {
-    const next = withAxis(pinned, "height", h);
-    return next !== pinned ? next : `${pinned} ${h} tall`;
-  };
-  const ok = (h: number) => {
-    const q = rebuild(promptAt(h));
-    return !q.refused && q.panels.length > 0 && shelfLevelsFit(q.panels, asked);
-  };
-  const v = p.overall.height;
-  let lo = Math.round(v * 16);
-  let hi = Math.max(lo + 16, Math.min(SHELF_SEARCH_MAX_IN * 16, lo * 2));
-  while (hi <= SHELF_SEARCH_MAX_IN * 16 && !ok(hi / 16)) {
-    if (hi === SHELF_SEARCH_MAX_IN * 16) break;
-    lo = hi;
-    hi = Math.min(SHELF_SEARCH_MAX_IN * 16, hi * 2);
-  }
-  if (!ok(hi / 16)) return null;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1;
-    if (ok(mid / 16)) hi = mid;
-    else lo = mid;
-  }
-  // Shelf heights round to the quarter inch, so a single sixteenth can miss while the one under it fits.
-  // Walk down through those holes to the shortest height that still holds every level.
-  let misses = 0;
-  for (let s = hi - 1; s > Math.round(v * 16); s--) {
-    if (ok(s / 16)) {
-      hi = s;
-      misses = 0;
-    } else if (++misses >= 4) break;
-  }
-  const min = hi / 16;
+  const withRod = typedRodDemand(prompt);
+  const min = withRod ? rodShelfMinHeight(asked) : closetShelfMinHeight(asked);
+  // Already at least that tall: the miss is not this height, so the build stands.
+  if (p.overall.height + 1e-6 >= min) return null;
   const word = asked === 1 ? "shelf" : "shelves";
-  return refused(p, `${withArticle(noun, true)} needs at least ${inchFrac(min)}" tall so ${asked} ${word} each get their own height, with a ${inchFrac(MIN_USABLE_SHELF_CLEAR)}" opening between them. Nothing is built at ${inchFrac(v)}".`);
+  const rod = withRod ? " and a hanging rod" : "";
+  return refused(p, `${withArticle(noun, true)} needs at least ${inchFrac(min)}" tall for ${asked} ${word} with ${inchFrac(closetShelfClearIn())}" clear between them${rod}. Nothing is built at ${inchFrac(p.overall.height)}".`);
 }

@@ -18,6 +18,9 @@ import { inchFrac } from "./inchText";
 import { wantsFixedGlueShelves } from "./honesty";
 import { solidsOverlap } from "./solids";
 import { allowSpanIn, wantsOpenSpan } from "./spanCheck";
+import { closetShelfClearIn } from "./shelfClear";
+
+export { closetShelfMinHeight, rodShelfMinHeight, typedRodDemand, typedShelfDemand } from "./shelfClear";
 
 const EPS = 1 / 32;
 /** Shelves shallower than this carry light loads (a spice rack). The span rule does not apply. */
@@ -247,22 +250,6 @@ export function shelfLineCount(shelves: Panel[]): number {
   return new Set(shelves.map((p) => Math.round(p.position.y * 4) / 4)).size;
 }
 
-/** Opening under the next shelf. The same 2" the rod hat keeps: less than that is not a usable shelf. */
-export const MIN_USABLE_SHELF_CLEAR = 2;
-
-const SHELF_FAMILY = /\b(?:bookcases?|bookshel(?:f|ves)|wardrobes?|closets?|pantr(?:y|ies)|linens?)\b/i;
-const TYPED_SHELF = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:adjustable\s+|fixed\s+|open\s+)?shel(?:f|ves)\b/i;
-const SHELF_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-
-/** A typed shelf count on a bay-shelf carcass. "6 foot shelf" is a size, not six shelves. */
-export function typedShelfDemand(prompt: string): number | null {
-  if (!SHELF_FAMILY.test(prompt)) return null;
-  const m = prompt.match(TYPED_SHELF);
-  if (!m) return null;
-  const n = /\d/.test(m[1]) ? parseInt(m[1], 10) : SHELF_WORDS[m[1].toLowerCase()];
-  return n >= 1 && n <= 12 ? n : null;
-}
-
 /** Levels of the shelf stack: one height per shelf number. Two bays of Shelf 4 are one level. */
 export function shelfLevelLayout(panels: Panel[]): { levels: number; keyed: number; minClear: number; shared: boolean } {
   const at = new Map<string, number>();
@@ -287,7 +274,7 @@ export function shelfLevelLayout(panels: Panel[]): { levels: number; keyed: numb
 /** The typed count is still there: one height each, and a usable opening between them. */
 export function shelfLevelsFit(panels: Panel[], asked: number): boolean {
   const layout = shelfLevelLayout(panels);
-  return !layout.shared && layout.keyed === asked && layout.levels === asked && layout.minClear + 1e-6 >= MIN_USABLE_SHELF_CLEAR;
+  return !layout.shared && layout.keyed === asked && layout.levels === asked && layout.minClear + 1e-6 >= closetShelfClearIn();
 }
 
 /** The shelf over a hanging bay is screwed to the uprights. A divider may stand on it. Loose pin shelves may not carry one. */
@@ -841,15 +828,33 @@ function growCase(project: YardProject, drop: number): YardProject {
   };
 }
 
-/** Loose pin shelves: one level per height, one piece per bay. A center divider is what makes a level into pieces. */
+/** Loose pin shelves: one level per height, one piece per bay. A center divider is what makes a level into pieces. The screwed shelf over a rod is the hat, and it is named with the adjustable ones. */
 export function adjustableShelfTalk(panels: Panel[]): { levels: number; pieces: number; multi: boolean; phrase: string } {
+  const rods = panels.filter((p) => p.type === "rail" && /hanging rod/i.test(p.name));
+  const hats = panels.filter(
+    (p) =>
+      isFixedSpanShelf(p) &&
+      rods.some(
+        (r) =>
+          overlap(p.position.x, p.position.x + p.size.width, r.position.x, r.position.x + r.size.width) > 1 &&
+          r.position.y + r.size.height <= p.position.y + 0.05,
+      ),
+  );
   const loose = panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p));
   const pieces = loose.length;
   const levels = shelfLineCount(loose);
+  const hatLevels = shelfLineCount(hats);
   const multi = pieces > levels && panels.some((p) => /^Center divider\b/.test(p.name));
-  const phrase = multi
-    ? `${levels} shel${levels === 1 ? "f" : "ves"} (${pieces} adjustable pieces)`
+  const adjustable = multi
+    ? `${levels} adjustable (${pieces} pieces)`
     : `${pieces} adjustable shel${pieces === 1 ? "f" : "ves"}`;
+  const total = hatLevels + levels;
+  const phrase =
+    hatLevels > 0 && pieces > 0
+      ? `${total} shel${total === 1 ? "f" : "ves"}: ${hatLevels} fixed hat shel${hatLevels === 1 ? "f" : "ves"} over the rod and ${adjustable}`
+      : multi
+        ? `${levels} shel${levels === 1 ? "f" : "ves"} (${pieces} adjustable pieces)`
+        : `${pieces} adjustable shel${pieces === 1 ? "f" : "ves"}`;
   return { levels, pieces, multi, phrase };
 }
 

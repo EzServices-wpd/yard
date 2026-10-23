@@ -4,7 +4,8 @@ import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
 import { spanFindings } from "./spanCheck";
-import { isFixedSpanShelf, sagLimitIn, shelfDepthSpan, shelfLevelsFit, shelfLineCount, shelfSagIn, shelfSpanLimit, shelfSpanViolations, typedShelfDemand } from "./shelfSpan";
+import { adjustableShelfTalk, isFixedSpanShelf, sagLimitIn, shelfDepthSpan, shelfLevelsFit, shelfLineCount, shelfSagIn, shelfSpanLimit, shelfSpanViolations, typedShelfDemand } from "./shelfSpan";
+import { closetShelfMinHeight, rodShelfMinHeight } from "./shelfClear";
 import { withAxis } from "./tooSmall";
 import { namedMinimum } from "../../../scripts/eval-gate-refusal.ts";
 import { hiddenOverlaps, solidsOverlap } from "./solids";
@@ -387,9 +388,14 @@ describe("shelf span supports", () => {
     const wardrobe = generateFromPrompt("wardrobe");
     const pinned = wardrobe.panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p));
     assert.equal(pinned.length, 6);
-    assert.match((wardrobe.notes ?? []).join("\n"), /3 shelves \(6 adjustable pieces\)/);
+    const hat = "4 shelves: 1 fixed hat shelf over the rod and 3 adjustable (6 pieces)";
+    assert.equal(adjustableShelfTalk(wardrobe.panels).phrase, hat);
+    assert.match((wardrobe.notes ?? []).join("\n"), /4 shelves: 1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
     assert.doesNotMatch((wardrobe.notes ?? []).join("\n"), /4 adjustable shelf lines/);
-    assert.match(buildPlan(wardrobe).instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 3 shelves \(6 adjustable pieces\)/);
+    const wardrobePlan = buildPlan(wardrobe);
+    assert.match(wardrobePlan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 4 shelves: 1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
+    assert.match(wardrobePlan.instructions.find((s) => /center divider/i.test(s.title))?.description ?? "", /hat shelf over the rod/);
+    assert.match(wardrobePlan.bom.find((b) => /shelf pins/i.test(b.name))?.notes ?? "", /4 shelves: 1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
     const drawers = generateFromPrompt("wardrobe with 2 drawers");
     const div = drawers.panels.find((p) => p.name === "Center divider")!;
     const shelf = drawers.panels.find((p) => p.name === "Shelf 1")!;
@@ -455,13 +461,13 @@ describe("shelf span supports", () => {
 
   it("gives every typed shelf its own height, or names the height that fits", () => {
     const cases: [string, number, "fits" | "refuses"][] = [
-      ["bookcase 36 tall with 8 shelves", 8, "fits"],
+      ["bookcase 36 tall with 8 shelves", 8, "refuses"],
       ["bookcase 24 tall with 8 shelves", 8, "refuses"],
       ["bookcase 30 wide 24 tall with 8 shelves", 8, "refuses"],
       ["bookshelf 42 wide with 5 shelves", 5, "fits"],
-      ["wardrobe 36 tall with 10 shelves", 10, "refuses"],
-      ["wardrobe 84 tall with 4 shelves", 4, "fits"],
-      ["closet 36 tall with 8 shelves", 8, "fits"],
+      ["wardrobe 36 wide 36 tall with 10 shelves", 10, "refuses"],
+      ["wardrobe 36 wide 84 tall with 4 shelves", 4, "fits"],
+      ["closet 36 tall with 8 shelves", 8, "refuses"],
       ["closet 24 tall with 10 shelves", 10, "refuses"],
       ["pantry cabinet 84 tall with 6 shelves", 6, "fits"],
       ["pantry cabinet 24 tall with 8 shelves", 8, "refuses"],
@@ -485,20 +491,61 @@ describe("shelf span supports", () => {
       assert.equal(typeof project.refused, "string", prompt);
       assert.equal(project.panels.length, 0, prompt);
       assert.match(String(project.refused), /nothing is built/i);
+      assert.match(String(project.refused), /7" clear/);
       assert.match(headerTitle(project), /nothing built/);
       const min = namedMinimum(String(project.refused));
+      const expectMin = /\brods?\b/i.test(prompt) ? rodShelfMinHeight(n) : closetShelfMinHeight(n);
+      assert.equal(min?.value_in, expectMin, `${prompt} ${project.refused}`);
       assert.ok(min && min.axis === "H" && min.value_in > project.overall.height + 1 / 32, `${prompt} ${project.refused}`);
       const built = atHeight(prompt, project.overall.width, min.value_in);
       assert.equal(built.refused, undefined, `${prompt} at ${min.quote}`);
       assert.ok(Math.abs(built.overall.width - project.overall.width) < 0.02, prompt);
       assert.equal(shelfLevelsFit(built.panels, n), true, `${prompt} at ${min.quote}`);
       assert.match(headerTitle(built), new RegExp(`\\b${n} shelves\\b`), headerTitle(built));
-      const under = atHeight(prompt, project.overall.width, min.value_in - 1 / 16);
-      assert.equal(typeof under.refused, "string", `${prompt} just under ${min.quote}`);
+      const under = atHeight(prompt, project.overall.width, min.value_in - 1);
+      assert.equal(typeof under.refused, "string", `${prompt} an inch under ${min.quote}`);
     }
     assert.equal(typedShelfDemand("wardrobe with 2 drawers"), null);
     assert.equal(typedShelfDemand("small 6 foot shelf"), null);
     assert.equal(typedShelfDemand("pocket vanity"), null);
     assert.equal(generateFromPrompt("wardrobe with 2 drawers").refused, undefined);
+    const four = generateFromPrompt("wardrobe with 4 shelves");
+    assert.equal(four.refused, undefined);
+    assert.equal(shelfLevelsFit(four.panels, 4), true);
+    assert.match((four.notes ?? []).join("\n"), /4 shelves: 1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
+    assert.match((four.notes ?? []).join("\n"), /so shirts hang/);
+    assert.doesNotMatch((four.notes ?? []).join("\n"), /left out/);
+    const six = generateFromPrompt("wardrobe with 6 shelves");
+    assert.equal(six.refused, undefined);
+    assert.equal(shelfLevelsFit(six.panels, 6), true);
+    assert.equal(six.panels.some((p) => /hanging rod/i.test(p.name)), false);
+    assert.match((six.notes ?? []).join("\n"), /The hanging rod is left out so the shelves keep 7" clear between them/);
+    const sixTall = generateFromPrompt("wardrobe 36 wide 100 tall with 6 shelves");
+    assert.equal(sixTall.refused, undefined);
+    assert.match(adjustableShelfTalk(sixTall.panels).phrase, /6 shelves: 1 fixed hat shelf over the rod and 5 adjustable \(10 pieces\)/);
+    assert.match((sixTall.notes ?? []).join("\n"), /fixed hat shelf over the rod/);
+    const wide = generateFromPrompt("wardrobe 66 wide");
+    const widePhrase = adjustableShelfTalk(wide.panels).phrase;
+    assert.match(widePhrase, /fixed hat shelf over the rod/);
+    const widePlan = buildPlan(wide);
+    assert.match((wide.notes ?? []).join("\n"), new RegExp(widePhrase.replace(/[()]/g, "\\$&")));
+    assert.match(widePlan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", new RegExp(widePhrase.replace(/[()]/g, "\\$&")));
+    assert.match(widePlan.bom.find((b) => /shelf pins/i.test(b.name))?.notes ?? "", new RegExp(widePhrase.replace(/[()]/g, "\\$&")));
+    const ten = generateFromPrompt("wardrobe 36 wide 36 tall with 10 shelves");
+    assert.match(String(ten.refused), /86 3\/4" tall for 10 shelves with 7" clear/);
+    assert.equal(namedMinimum(String(ten.refused))?.value_in, 86.75);
+    const tenBuilt = generateFromPrompt("wardrobe 36 wide 86.75 tall with 10 shelves");
+    assert.equal(tenBuilt.refused, undefined);
+    assert.equal(shelfLevelsFit(tenBuilt.panels, 10), true);
+    assert.match((tenBuilt.notes ?? []).join("\n"), /hanging rod is left out/);
+    assert.match(headerTitle(tenBuilt), /\b10 shelves\b/);
+    const tenRod = generateFromPrompt("wardrobe 36 wide 36 tall with a rod and 10 shelves");
+    assert.match(String(tenRod.refused), /128 3\/4" tall for 10 shelves with 7" clear between them and a hanging rod/);
+    assert.equal(namedMinimum(String(tenRod.refused))?.value_in, rodShelfMinHeight(10));
+    const tenRodBuilt = generateFromPrompt("wardrobe 36 wide 128.75 tall with a rod and 10 shelves");
+    assert.equal(tenRodBuilt.refused, undefined);
+    assert.equal(tenRodBuilt.panels.some((p) => /hanging rod/i.test(p.name)), true);
+    assert.equal(shelfLevelsFit(tenRodBuilt.panels, 10), true);
+    assert.match(adjustableShelfTalk(tenRodBuilt.panels).phrase, /10 shelves: 1 fixed hat shelf over the rod and 9 adjustable/);
   });
 });

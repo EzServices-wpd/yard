@@ -1054,7 +1054,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   ) {
     const pins = pinPieces.length * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
-    const pinWord = shelfTalk.multi && shelfTalk.pieces === pinPieces.length
+    const pinWord = shelfTalk.phrase.includes("fixed hat shelf") || (shelfTalk.multi && shelfTalk.pieces === pinPieces.length)
       ? `${shelfTalk.phrase} × 4`
       : `${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4`;
     bom.push({
