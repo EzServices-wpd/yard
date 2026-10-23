@@ -1,4 +1,5 @@
 import { generateFromPrompt } from "./promptMain";
+import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
 import { stampCount } from "./measureTabs";
 import type { Panel, YardProject } from "./types";
 
@@ -46,7 +47,10 @@ function retileInside(project: YardProject, patch: InsidePatch): YardProject {
   if (patch.drawers != null) panels = retileNamed(panels, "drawer", patch.drawers, "Drawer");
   if (patch.cubbies != null) panels = retileCubbies(panels, patch.cubbies);
   if (panels === project.panels) return project;
-  return { ...project, panels };
+  // Shelf heights moved, so a previous span divider would cut through them. Place it again from the new gaps.
+  const bare = panels.filter((p) => !/^Center divider\b/.test(p.name));
+  const notes = (project.notes ?? []).filter((n) => !n.startsWith("Center divider under the shelves:"));
+  return separateSpanSupports(withShelfSpanSupports({ ...project, panels: bare, notes }, project.prompt));
 }
 
 function retileShelves(panels: Panel[], count: number, overallH: number): Panel[] {
@@ -54,6 +58,11 @@ function retileShelves(panels: Panel[], count: number, overallH: number): Panel[
   if (!shelves.length) return panels;
   const n = Math.max(0, Math.round(count));
   const proto = shelves[0];
+  // Bay pieces of one level are not the shelf. Retile the full run, then the span rule splits it again.
+  const x0 = Math.min(...shelves.map((s) => s.position.x));
+  const x1 = Math.max(...shelves.map((s) => s.position.x + s.size.width));
+  const z0 = Math.min(...shelves.map((s) => s.position.z));
+  const depth = Math.max(...shelves.map((s) => s.position.z + s.size.depth)) - z0;
   const bottom = panels.find((p) => p.type === "bottom");
   const top = panels.find((p) => p.type === "top");
   const low = (bottom?.position.y ?? 0) + (bottom?.size.height ?? proto.size.height);
@@ -66,7 +75,9 @@ function retileShelves(panels: Panel[], count: number, overallH: number): Panel[
       ...src,
       id: `shelf-${i + 1}`,
       name: n === 1 ? "Shelf" : `Shelf ${i + 1}`,
-      position: { ...src.position, y: Math.round(y * 16) / 16 },
+      position: { ...src.position, x: x0, y: Math.round(y * 16) / 16, z: z0 },
+      size: { ...src.size, width: x1 - x0, depth },
+      polygon: undefined,
     };
   });
   return [...panels.filter((p) => p.type !== "shelf"), ...next];

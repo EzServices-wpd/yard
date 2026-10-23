@@ -299,6 +299,8 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
       const words = phrase.split(/\s+/);
       if (words.length < 2) return full;
       const named = entries.find((e) => e.name.toLowerCase() === phrase.toLowerCase());
+      // A part name carries no article: "Hang the door — 2 concealed hinges" is a step, not a dimension line.
+      if (!named && /\b(?:the|a|an)\b/i.test(phrase)) return full;
       const found = named ?? findPlate(entries, words[words.length - 1]);
       if (!found) return full;
       // Several cut lines share this exact name (center supports of two heights): its own size picks the letter.
@@ -502,6 +504,8 @@ export function densifyOneJoinInstructions(
         return instructions.some(
           (o) =>
             o !== step &&
+            // Hanging the build on studs drives screws through the back into the wall; it does not join the back.
+            !/\bstuds?\b/i.test(o.title) &&
             (o.partsUsed ?? []).length > 0 &&
             (o.partsUsed ?? []).every((n) => findPlate(entries, n)?.label === e.label),
         );
@@ -930,14 +934,14 @@ export function spokenDiameterInches(prompt: string): number {
 export function deskWidthFromPrompt(prompt: string): number {
   const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
   const ahead = t.match(
-    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
+    /(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
   );
   if (ahead) {
     const n = parseFloat(ahead[1]);
     if (Number.isFinite(n) && n >= 18 && n <= 120) return n;
   }
   const after = t.match(
-    /\b(?:writing\s+)?desk\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))/i,
+    /\b(?:writing\s+)?desk\s+(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(?!\s*(?:in|inch|inches|")?\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))\s*(?:in|inch|inches|")?/i,
   );
   if (after) {
     const n = parseFloat(after[1]);
@@ -1007,7 +1011,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
+      String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
       "i",
     ),
   );
@@ -1017,7 +1021,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`,
+      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}${notAxis}`,
       "i",
     ),
   );
@@ -1031,7 +1035,7 @@ export function tableSpanFromPrompt(prompt: string): number {
     " ",
   );
   const leftover = stripped.match(
-    new RegExp(String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`, "i"),
+    new RegExp(String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}${notAxis}`, "i"),
   );
   if (leftover && /\btable\b/i.test(stripped)) {
     const n = parseFloat(leftover[1]);
@@ -1055,7 +1059,7 @@ export function nounSpanFromPrompt(prompt: string): number {
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
+      String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
       "i",
     ),
   );
@@ -1065,7 +1069,7 @@ export function nounSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}`,
+      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}`,
       "i",
     ),
   );
@@ -1085,6 +1089,28 @@ export function nounSpanFromPrompt(prompt: string): number {
  * (halves welcome). Do not steal axis-labeled measures ("16 inch deep linen closet").
  * Returns NaN when no bare opening width is spoken.
  */
+
+/**
+ * A name with any size already stamped on its end taken off, in every form inchFrac writes ('15 1/2"', '3/4"',
+ * '24.5"', 'W" × H" × D"', '15 1/2" deep'), so a re-stamp never prints the size twice (Critic row 240:
+ * 'Wardrobe 15 1/2" deep 15 1/2" deep'). Every title re-stamp goes through here.
+ */
+export function stripSizeStamp(name: string): string {
+  // A size in any form a stamp or a typed name carries it: 19 3/4, 21¾, 21 ¾, 24.5, 3/4, with an inch mark (" or ″),
+  // "in"/"inch(es)" or none before the axis word (rows 240 and 279: 'Wardrobe 19 3/4" deep 19 3/4" deep').
+  const NUM = String.raw`(?:\d+(?:\.\d+)?(?:\s*[¼½¾⅛⅜⅝⅞]|\s+\d+\/\d+)?|\d+\/\d+|[¼½¾⅛⅜⅝⅞])`;
+  const N = String.raw`${NUM}\s*["″]`;
+  const AXN = String.raw`${NUM}\s*(?:["″]|in\b|inch(?:es)?\b)?`;
+  const pair = new RegExp(String.raw`\s+${N}\s*[×x]\s*${N}(?:\s*[×x]\s*${N})?\s*$`);
+  const axis = new RegExp(String.raw`\s+${AXN}\s+(?:wide|tall|deep)\s*$`, "i");
+  let out = name;
+  // Repeat, so a name already stamped twice comes back as its bare stem.
+  for (let prev = ""; prev !== out; ) {
+    prev = out;
+    out = out.replace(pair, "").replace(axis, "").trim();
+  }
+  return out;
+}
 
 /**
  * Title stamp from axes the stranger actually typed — never invent stock H/D into the title.
@@ -1293,7 +1319,7 @@ export function openingWidthFromPrompt(prompt: string): number {
   const ahead = t.match(
     new RegExp(
       // "48x18 opening" is a W×H pair — the width is the first number, never the trailing 18.
-      String.raw`(?:(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
+      String.raw`(?:(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
         storageNoun,
       "i",
     ),
@@ -1307,7 +1333,7 @@ export function openingWidthFromPrompt(prompt: string): number {
     new RegExp(
       String.raw`\b` +
         storageNoun +
-        String.raw`\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length))`,
+        String.raw`\s+(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(?!\s*(?:in|inch|inches|")?\s*(?:wide|width|deep|depth|tall|high|height|long|length))\s*(?:in|inch|inches|")?`,
       "i",
     ),
   );

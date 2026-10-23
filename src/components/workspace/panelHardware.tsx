@@ -41,10 +41,14 @@ export function EdgeBand({ w, h, d }: { w: number; h: number; d: number }) {
   );
 }
 
-export function DoorHinges({ w, h, d, isLeft }: { w: number; h: number; d: number; isLeft: boolean }) {
+/**
+ * The hinges Buy lists for this door, drawn where the Where line puts them (row 207): `centers` are inches up from the
+ * door's bottom edge, straight from hingedLeaf.doorHingeLayout. No list, no hinges: the count is never made up here.
+ */
+export function DoorHinges({ w, h, d, isLeft, centers }: { w: number; h: number; d: number; isLeft: boolean; centers: readonly number[] }) {
   const x = isLeft ? -w / 2 + 0.85 : w / 2 - 0.85;
   const z = -d / 2 + 0.12;
-  const ys = [h / 2 - 3.5, -h / 2 + 3.5];
+  const ys = centers.map((c) => -h / 2 + c);
   return (
     <group>
       {ys.map((y) => (
