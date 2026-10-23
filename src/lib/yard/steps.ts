@@ -2465,7 +2465,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       });
     }
     // A span divider stands on a shelf, so it is set after the shelves, not in this earlier step.
-    const span = rest.filter((p) => /^Center divider\b/.test(p.name));
+    const span = rest.filter((p) => /^Center divider\b/.test(p.name) || p.name === "Shelf bearer");
     const other = rest.filter((p) => !span.includes(p));
     if (other.length) {
       steps.push({
@@ -2548,13 +2548,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   const spanDividers = dividers.filter((p) => /^Center divider\b/.test(p.name));
+  const shelfBearers = panels.filter((p) => p.name === "Shelf bearer");
   const spanCleats = panels.filter((p) => p.type === "cleat" && /^Span cleat\b/.test(p.name));
   if (spanDividers.length) {
     steps.push({
       step: n++,
       title: spanDividers.length === 1 ? "Set the center divider" : "Set the center dividers",
-      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? "Screw each fixed shelf to the uprights. " : ""}${spanDividerTalk(project, spanDividers, panels)}`,
-      partsUsed: names([...fixedSpanShelves, ...spanCleats, ...spanDividers]),
+      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? "Screw each fixed shelf to the uprights. " : ""}${shelfBearers.length ? "Screw each shelf bearer to the center divider beside it. " : ""}${spanDividerTalk(project, spanDividers, panels)}`,
+      partsUsed: names([...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers]),
     });
   }
 
