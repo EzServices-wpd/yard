@@ -48,7 +48,7 @@ import { withPlacementTalk } from "./placement";
 import { restsOnLaterStep } from "./placeEveryPart";
 import { panelStock } from "./partStock";
 import { backReachesTwoStuds, STUD_CENTER_IN } from "./fitted";
-import { stepsStrapAntiTip } from "./antiTip";
+import { withAntiTipKit } from "./antiTip";
 
 function letterLabel(i: number) {
   let n = i;
@@ -1799,11 +1799,11 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
 
 function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
-  const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) })))));
+  const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, withAntiTipKit(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))))));
   const extra = spaceCutStep(project);
-  if (!extra) return positivePlan(spliceStep(stepsStrapAntiTip(project, plan)));
+  if (!extra) return positivePlan(spliceStep(plan));
   const step = plan.instructions.length + 1;
-  return positivePlan(spliceStep(stepsStrapAntiTip(project, { ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] })));
+  return positivePlan(spliceStep({ ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] }));
 }
 
 /** Pieces the "Cut the …" step tells you to cut ("4 Posts …", "16 Rafter layers …"), or null with no such step. */

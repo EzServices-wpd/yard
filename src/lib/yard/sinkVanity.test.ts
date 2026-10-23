@@ -157,5 +157,5 @@ it("the linen closet canary is unchanged", () => {
   assert.equal(project.overall.depth, 16);
   assert.equal(project.overall.height, 78);
   assert.equal(project.panels.length, 11);
-  assert.equal(plan.totals.estCostUsd, 183.7);
+  assert.equal(plan.totals.estCostUsd, 193.68);
 });
