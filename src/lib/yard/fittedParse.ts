@@ -4,6 +4,7 @@
 import { footprintFeet } from "./honesty";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
+import { asksDoors } from "./frontSections";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import type { FittedProgram, FittedSpec, FittedUnit, PocketWalls } from "./types";
@@ -1138,7 +1139,11 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "vanity" && !makeupVanity && !(/\bdrawers?\b/.test(lower) && !/\bdoors?\b/.test(lower))) ||
     isStorageHutch(lower);
   const doors = doorsByName || !!house?.affordances.includes("door") || (/door/.test(lower) && !isDoorPortal(lower));
-  const doorsFinal =
+  // A family's no-doors default (a cart, an island, a printer stand) never beats doors the person typed: the head noun
+  // picks the family and the typed doors become its front. Only a body with no front to hang them on (a bed frame,
+  // open or slotted shelving) keeps none, and the feature-honesty note says so.
+  const typedDoors = asksDoors(lower) && !isDoorPortal(lower) && !isBunkBed(lower) && !isLoftBed(lower) && !isDaybed(lower) && !isSlotRack(lower) && !isOpenKitchenShelving(lower) && !isFilingShelf(lower);
+  const doorsFinal = typedDoors ? true :
     isNoDoorsPrompt(lower) ||
     isBunkBed(lower) ||
     isLoftBed(lower) ||

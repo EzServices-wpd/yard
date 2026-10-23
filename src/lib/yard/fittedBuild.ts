@@ -9,7 +9,7 @@ import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import { createId } from "@/lib/utils";
 import { drawerBoxFromOpening } from "./shopPlural";
-import { asksDoors, BANK_DRAWER_ROW_IN, doorsKept, drawerSection, drawersTooTallToFill } from "./frontSections";
+import { askedDrawerCount, asksDoors, asksDrawers, BANK_DRAWER_ROW_IN, doorsKept, drawerSection, drawersTooTallToFill } from "./frontSections";
 import { slideForDepth } from "./stockLook";
 import type { FittedProgram, FittedSpec, FittedUnit, Panel, PocketWalls, YardProject } from "./types";
 import { buildPocket, clearancesAt, looksLikePocket, parsePocket } from "./pocket";
@@ -1214,11 +1214,34 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(
       panel("rail", "Front apron", x0 + P, H - P - apronH, D - P, innerW, apronH, P),
     );
+    // Typed drawers are the front under the seat ("bench with drawers"): the bays between the dividers (which carry
+    // the seat, as on the cubby bench) take the drawers left to right, stacked when there are more drawers than bays,
+    // under the front apron. The head noun keeps it a bench; the drawers are its front.
+    const drawerN = asksDrawers(prompt.toLowerCase()) && !bootTray && !bookBin && !affordances.includes("hooks") ? askedDrawerCount(prompt.toLowerCase()) : 0;
+    const benchDrawers = drawerN > 0;
     for (let i = 1; i < cubbyN; i++) {
       const x = x0 + (W * i) / cubbyN - P / 2;
       panels.push(
-        panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT),
+        panel("divider", benchDrawers ? `Bay divider ${i}` : `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT),
       );
+    }
+    const openBays = benchDrawers ? Math.max(0, cubbyN - drawerN) : 0;
+    if (benchDrawers) {
+      let k = 0;
+      for (let i = 0; i < cubbyN; i++) {
+        const per = Math.floor(drawerN / cubbyN) + (i < drawerN % cubbyN ? 1 : 0);
+        if (!per) continue;
+        const left = i === 0 ? x0 + P : x0 + (W * i) / cubbyN + P / 2;
+        const right = i === cubbyN - 1 ? x0 + W - P : x0 + (W * (i + 1)) / cubbyN - P / 2;
+        const bay = drawerSection({ x0: left, innerW: right - left, yBottom: P, yTop: H - P - apronH, depth: D, count: per, width: right - left, shares: false });
+        const ids = new Map<number, number>();
+        for (const q of bay.panels) {
+          const row = Math.round(q.position.y * 1000);
+          if (!ids.has(row)) ids.set(row, ++k);
+          const n = ids.get(row)!;
+          panels.push({ ...q, name: q.type === "drawer" ? (drawerN === 1 ? "Drawer" : `Drawer ${n}`) : drawerN === 1 ? "Drawer front" : `Drawer front ${n}` });
+        }
+      }
     }
     const wantHooks = affordances.includes("hooks");
     const pegH = wantHooks ? Math.max(10, Math.min(18, Math.round(H * 0.7))) : 0;
@@ -1253,6 +1276,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `${name}. Book bin bench with an open book bin under the seat and ${cubbyN} bays — the bin and dividers carry the sitting load. ¾" plywood.`
           : wantHooks
           ? `${name}. Cubby bench with ${cubbyN} shoe bays and a ${pegH}" peg rail for coats — entry combo, not a hollow box. ¾" plywood.`
+          : benchDrawers
+          ? `${name}. Sittable bench with ${drawerN} drawer${drawerN === 1 ? "" : "s"} under the seat, below the front apron${openBays ? `, and ${openBays} open bay${openBays === 1 ? "" : "s"}` : ""}. ¾" plywood.`
           : sitTitle === "Window seat"
             ? `${name}. Sittable window seat at ${H}" seat height with ${cubbyN} open bays under the lid line — weight-bearing seat, not a hollow storage box. ¾" plywood.`
           : `${name}. Sittable cubby bench with ${cubbyN} open shoe bays — not a hollow storage box. ¾" plywood.`,
@@ -1260,6 +1285,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           ? `The boot tray, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, boot tray, and back.`
           : bookBin
           ? `The book bin, cubby dividers, and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, book bin, and back.`
+          : benchDrawers
+          ? `The bay dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, ${lowShelf.toLowerCase()}, and back.`
           : `The cubby dividers and front apron carry sit load so the ${innerW}" seat does not sag. Glue and screw each divider into the seat, ${lowShelf.toLowerCase()}, and back.`,
         wantHooks
           ? `Screw ${Math.max(3, Math.min(8, Math.round(W / 6)))} coat hooks into the peg rail, about 6" on center. Level it on the floor. Guidance only.`
