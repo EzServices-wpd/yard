@@ -374,6 +374,8 @@ export type YardProject = {
    * ("lemonade stand" → "table 48 wide 42 tall 24 deep"). The prompt box shows this, never the remap.
    */
   typedPrompt?: string;
+  /** The one spec object per prompt (spec.ts), built once at intake. */
+  spec?: import("./spec").YardSpec;
   /** Built as a stand-in primitive (table, shelf, box) for a noun no builder owns; the recipe lookup may replace it. */
   standIn?: boolean;
   /** A lookup-fallback block: drawn only, with no cut list, Buy, price or steps. */

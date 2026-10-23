@@ -27,6 +27,7 @@ import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
+import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
@@ -79,6 +80,7 @@ import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
 import { isOutdoorPrompt, withOutdoorNotes } from "./outdoor";
 import { notesWithFinishedDepth } from "./modelSize";
+import { buildSpec } from "./spec";
 
 export function emptyProject(): YardProject {
   return {
@@ -408,7 +410,11 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const built0 = small ?? raw;
     // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
     const typed = args[0] ?? "";
-    const built = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
+    const built1 = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
+    // One spec object per prompt (spec.ts), built once here at intake; a bench edit types every axis.
+    const o = args[3];
+    const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
+    const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } finally {
     idDepth--;
@@ -666,7 +672,8 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A door style frames each front only after its slab size, reveal and position are final, so a style
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
-  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])))));
+  const spanned = (p: YardProject) => separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]));
+  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(spanned(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0]))))))));
 }
 
 /** The header names the stock the frame is cut from: a sheet primary on a mostly-lumber build (a ply seat or

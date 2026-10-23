@@ -7,6 +7,8 @@ import { panelStockThickness } from "./modelJoints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
+import { wantsFixedGlueShelves } from "./honesty";
+import { isFixedSpanShelf } from "./shelfSpan";
 import { rotorChain, type RotorLink } from "./solids";
 import { ANATOMY_NOTE } from "./classAnatomy";
 
@@ -143,9 +145,18 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
         return n === 1 ? role : `${n} ${plural(role, n)}`;
       });
   if (!project.panels.length) return names.map((n) => `the ${n}`).join(" and ");
-  const byFamily = new Map<string, number>();
-  for (const n of names) byFamily.set(familyWord(n), (byFamily.get(familyWord(n)) ?? 0) + 1);
-  const bits = [...byFamily.entries()].map(([w, n]) => (n === 1 ? `the ${names.find((x) => familyWord(x) === w)}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`));
+  // Two bay pieces of one shelf share a name. Count that shelf once.
+  const byFamily = new Map<string, Set<string>>();
+  for (const n of names) {
+    const w = familyWord(n);
+    const set = byFamily.get(w) ?? new Set<string>();
+    set.add(n);
+    byFamily.set(w, set);
+  }
+  const bits = [...byFamily.entries()].map(([w, set]) => {
+    const n = set.size;
+    return n === 1 ? `the ${[...set][0]}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`;
+  });
   return bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0];
 }
 
@@ -199,6 +210,18 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
     case "front":
       return `Set the ${part.name} on the face of ${onto} and fasten it from inside the drawer with ${fix}`;
     case "rests":
+      // A span divider on a pinned shelf is not screwed there. Buy leaves that joint out.
+      if (
+        panel &&
+        /^Center divider\b/.test(panel.name) &&
+        !wantsFixedGlueShelves(project) &&
+        (info?.on ?? []).every((id) => {
+          const host = project.panels.find((p) => p.id === id);
+          return !!host && host.type === "shelf" && !isFixedSpanShelf(host);
+        })
+      ) {
+        return `Set the ${part.name} on ${onto}. The shelf stays on pins, so this joint takes no screws.`;
+      }
       return `Set the ${part.name} on ${onto}. Fasten it with ${fix}`;
     default:
       return `Fasten the ${part.name} to ${onto} with ${fix}`;
@@ -357,7 +380,12 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       continue;
     }
     const step = out[at];
-    if (handWritten || namesSupport(project, step, info)) continue;
+    // A mirror the step already hangs on a cleat or into studs is not also glued to the carcase it stands above.
+    const mirrorHung = project.panels.find((p) => p.id === part.key)?.type === "mirror" && !project.fitted?.unit?.kneeW && !project.pocket && /\b(?:cleat|studs?)\b/i.test(`${step.title} ${step.description}`);
+    if (handWritten || namesSupport(project, step, info) || mirrorHung) continue;
+    // The span step already screws a fixed shelf to the uprights. A second "fasten it" line names no joint.
+    const fixedShelf = project.panels.find((p) => p.id === part.key);
+    if (fixedShelf && isFixedSpanShelf(fixedShelf) && /screw each fixed shelf/i.test(`${step.title} ${step.description}`)) continue;
     step.description = `${step.description} ${placeSentence(project, part, info, fix)}`;
   }
 

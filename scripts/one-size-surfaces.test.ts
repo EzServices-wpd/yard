@@ -21,7 +21,7 @@ import { drawnDims } from "../src/lib/ideas/size";
 import { inchFrac } from "../src/lib/yard/inchText";
 
 const BUILDS: Record<string, string> = {
-  vanity: "vanity with drawers",
+  vanity: "vanity with drawers and a mirror",
   "vanity 30": "30 inch vanity",
   filing: "filing cabinet 30x30x24 2 doors 2 drawers",
   linen: "linen closet 31.5 wide 78 tall 16 deep",

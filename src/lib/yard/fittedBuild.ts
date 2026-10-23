@@ -36,7 +36,7 @@ import {
 } from "./family";
 import {
   honorSpeciesInTitle, speciesSubstituteNote, speciesStockHonestyTalk, deskWidthFromPrompt,
-  tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle,
+  tableSpanFromPrompt, nounSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp,
   typedOpeningStorageAxes, typedClassDefaultAxes, isClassDefaultDensifyPrompt, classDefaultDensifyTitle,
   classDefaultAssumedNotes, normalizeUserPrompt, spokenAxisInches, guidanceConfirmTalk,
 } from "./voiceHonesty";
@@ -61,6 +61,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
+import { buildSinkVanity } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
 import { PET_ANIMAL } from "./fallbackPrimitive";
@@ -171,6 +172,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const W = u.width;
   const H = u.height;
   const D = u.depth;
+  const sink = buildSinkVanity(spec, prompt);
+  if (sink) return sink;
   const x0 = -W / 2;
   const panels: Panel[] = [];
   const house = detectHouseFamily(prompt);
@@ -2798,7 +2801,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, workTopT, D));
     if (u.mirror && spec.program === "vanity") {
       const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - workTopFace - 3);
-      panels.push(panel("mirror", "Mirror", kneeL, workTopFace + 2, 0.4, knee, mh, 0.2));
+      panels.push(panel("mirror", "Mirror", kneeL, workTopFace + 2, 0.4, knee, mh, 0.2, "mirror-glass"));
     }
   } else if (u.drawersPerBank) {
     // Front sections: the drawers own their section. It fills the carcase unless doors or typed shelves share the
@@ -3133,10 +3136,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     : kitchenBase && !/base|kitchen/i.test(spec.name)
       ? stampFull(/kitchen/.test(promptLower) ? "Kitchen base" : "Base cabinet")
       : (() => {
-          const cleaned = spec.name
-            .replace(/\s+\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"(?:\s*×\s*\d+(?:\.\d+)?")?\s*$/, "")
-            .replace(/\s+\d+(?:\.\d+)?"\s+(?:wide|tall|deep)\s*$/i, "")
-            .trim();
+          const cleaned = stripSizeStamp(spec.name);
           // Scrub leftover naked Media / naked Bench (named sit) from an older brief.
           let stem = /^Media$/i.test(cleaned) ? "Media console" : cleaned || spec.name;
           const sitScrub = sitBenchTitleStem(promptLower);

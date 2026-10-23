@@ -12,6 +12,7 @@
 import { getCatalogItem } from "./catalog";
 import { isBoughtHardwareName } from "./boughtHardware";
 import { panelWorldCorners } from "./geometry";
+import { solidsOverlap } from "./solids";
 import type { Panel, YardInstance } from "./types";
 
 export type JointKind = "butt" | "face" | "back" | "frame";
@@ -61,6 +62,9 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       const declared =
         parts[i].joints?.some((x) => x.with === parts[j].id) || parts[j].joints?.some((x) => x.with === parts[i].id);
       if (g < -tol && !declared && g < -0.8) continue;
+      // A span divider in a shelf notch does not share solid wood, so it is not a screw joint.
+      const dividerHere = /^Center divider\b/.test(parts[i].name) || /^Center divider\b/.test(parts[j].name);
+      if (dividerHere && (parts[i].polygon || parts[j].polygon) && !solidsOverlap(parts[i], parts[j])) continue;
       // A moving joint is a clearance fit on its pin, never screwed shut.
       // A frame-and-panel door is glued up on its own, its panel floating in a groove: no screws inside the leaf.
       if (!!parts[i].turns !== !!parts[j].turns || isAxleCollar(parts[i]) || isAxleCollar(parts[j]) || (parts[i].turns && /^dowel-/.test(parts[i].materialId + parts[j].materialId)) || (parts[i].leaf && parts[i].leaf?.id === parts[j].leaf?.id) || noScrew(parts[i], parts[j]) || parts[i].hinged || parts[j].hinged || (parts[i].structural && parts[j].structural)) continue;
