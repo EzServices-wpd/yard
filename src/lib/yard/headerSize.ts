@@ -111,8 +111,10 @@ function notesAxes(project: YardProject) {
   }
   // An edit in place reads its marks from the edited spec (spec.ts), never from notes the rebuild no longer carries: an
   // axis set on the bench is the person's own value, every other axis keeps the mark it had (#109 B2).
+  // A restock rebuilds from the bench's unit, whose notes no longer say which axes were assumed (row 295, family
+  // sweep: 'dresser' restocked read '18" D (W, H assumed)', the fronts dropped): a bench rebuild reads the spec too.
   const spec = project.spec;
-  if (spec && axes.some((a) => spec.size[a].edited)) {
+  if (spec && (spec.bench || axes.some((a) => spec.size[a].edited))) {
     for (const a of axes) if (spec.size[a].assumed && !spec.size[a].edited) assumed[a] = true; else delete assumed[a];
     return { assumed, extra, stock: false };
   }

@@ -29,6 +29,8 @@ export type YardSpec = {
   stockId: string;
   species: string | null;
   refusal: string | null;
+  /** Rebuilt on the bench (Measure, refit, restock): its marks are the spec's, never re-read from the rebuild's notes. */
+  bench?: true;
 };
 
 const AXES: Axis[] = ["width", "height", "depth"];
@@ -130,6 +132,7 @@ export function editedSpec(prev: YardSpec, built: YardProject, set?: readonly Ax
     stockId: built.primaryMaterialId,
     species: sameStock ? prev.species : (namedLumberFromPrompt(built.prompt ?? "")?.display ?? null),
     refusal: built.refused ?? null,
+    bench: true,
   };
 }
 

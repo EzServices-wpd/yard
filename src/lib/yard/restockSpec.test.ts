@@ -64,3 +64,16 @@ test("row 295 bookcase 36 wide 72 tall 12 deep: all three stay typed, nothing ed
   assert.deepEqual(r.i42.filter((m) => !row298(m)), []);
   assert.deepEqual(r.i42, ['PDF cover says 36" wide, its drawing tag 35 3/4"']);
 });
+
+test("row 295 family sweep: an untyped carcass restocked keeps every axis assumed on the header too (dresser, wardrobe, linen)", () => {
+  // These rebuild from the bench's unit, whose notes no longer say what was assumed: the header reads the spec.
+  for (const [q, want] of [
+    ["dresser", 'Dresser · 35 3/4" W × 18 1/2" D × 36" H (size assumed)'],
+    ["wardrobe", 'Wardrobe · 35 15/16" W × 16 1/2" D × 84" H (size assumed)'],
+  ] as const) {
+    const r = restock(q);
+    assert.equal(r.title, want, q);
+    assert.match(r.cover, / deep assumed, measure to lock · (?:drawer fronts|doors) stand proud$/, q);
+  }
+  assert.match(restock("linen closet").title, /× 16 1\/2" D × 78" H \(size assumed\)$/);
+});
