@@ -6,6 +6,7 @@ import { refineProject } from "./refine";
 import { i46 } from "./invariants";
 import { BACK_PART, fastensBack } from "./stepJointScrews";
 import { dropPartText } from "./steps";
+import { anchorInstalled, anchorKind } from "./wallAnchorSteps";
 import type { YardProject } from "./types";
 
 globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
@@ -16,9 +17,9 @@ globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
  */
 export const I46_KNOWN: Record<string, string> = {
   "modern nightstand with drawer and shelf 27 wide 16 deep 20 tall":
-    "WRONG BUILD (row 184): two products side by side ('Attach the other product'); neither Back is in an assembly step, the composite's steps only stand the bases and set the tops",
+    "WRONG BUILD (row 230): 'X with Y' builds two products side by side, drops the typed size (27→47 W) and never fastens either back. Its own PR fixes the class.",
   "raised planter box with shelf 48 wide 24 deep 36 tall":
-    "WRONG BUILD (row 184): two products side by side ('Attach the other product'); neither Back is in an assembly step, the composite's steps only stand the base",
+    "WRONG BUILD (row 230): 'X with Y' builds two products side by side, drops the typed size (48→84 W) and never fastens either back. Its own PR fixes the class.",
 };
 
 const plan = (p: YardProject) => buildPlan(p);
@@ -87,5 +88,29 @@ test("rows 196 and 198: dropping a part from a lettered cut line leaves no lette
   assert.equal(dropPartText('A Front apron — 1 × 2"; G Drawer front — 3 × 4". Set the apron.', ["Drawer front"]), 'A Front apron — 1 × 2". Set the apron.');
   for (const q of ["nightstand with a door", "bathroom medicine cabinet 16 wide 24 high 4 deep"]) {
     for (const t of titles(generateFromPrompt(q))) assert.doesNotMatch(t, /^[A-Z]{1,2} (?:Hang|Set|Fit|Build|Attach|Stand) /, `${q}: "${t}"`);
+  }
+});
+
+test("I46 / row 231: wall-anchor hardware on Buy is installed by a step (Murphy bed lags go into the studs)", () => {
+  const p = generateFromPrompt("murphy bed");
+  const pl = plan(p);
+  const lag = pl.bom.find((b) => /\blag screws?\b/i.test(b.name));
+  assert.ok(lag, "the Murphy bed buys lag screws");
+  const at = pl.instructions.findIndex((s) => /^Lag the cabinet to the wall studs$/.test(s.title));
+  assert.ok(at >= 0, titles(p).join(" | "));
+  const st = pl.instructions[at];
+  assert.match(st.description, new RegExp(`${lag!.quantity} × ${lag!.name.replace(/[.*+?^${}()|[\]\\"]/g, "\\$&")}`));
+  assert.match(st.description, /\bstuds?\b/);
+  // "before the bed is mounted": after the back is on, before the fold bracket and the bed frame.
+  const backAt = pl.instructions.findIndex((s) => fastensBack(s, "Back"));
+  const bedAt = pl.instructions.findIndex((s) => /fold bracket|bed frame|bed face/i.test(s.title));
+  assert.ok(backAt >= 0 && backAt < at && at < bedAt, `back ${backAt} lag ${at} bed ${bedAt}`);
+  assert.deepEqual(i46(p, pl), []);
+  // The class: every wall-anchor row (lags, anti-tip kits, wall anchors) on these builds has its install step.
+  for (const q of ["murphy bed", "vinyl record shelf 36 wide", "record shelf 24 wide", "record storage shelf 30 wide", "simple bookshelf for my kids room", "medicine cabinet 16 wide", "kids bookcase"]) {
+    const pq = generateFromPrompt(q);
+    const plq = plan(pq);
+    for (const b of plq.bom.filter((r) => anchorKind(r))) assert.ok(anchorInstalled(plq, b), `${q}: ${b.name} has no install step`);
+    assert.equal(i46(pq, plq).filter((x) => /installs/.test(x.msg)).length, 0, q);
   }
 });

@@ -241,11 +241,6 @@
    "class": "F30",
    "msg": "Front apron runs into Center support 1 with no joint cut for it"
   },
-  "I46|murphy bed": {
-   "class": "F7",
-   "msg": "Buy lists 5/16\" × 3\" lag screws with washers; no step drives them",
-   "reason": "WRONG TEXT: the note says 'Lag the cabinet to two wall studs before the bed is mounted' and Buy adds the lags from it, but the recipe's generic steps have no wall-mount step. Close it when the recipe step writer turns that note into a step."
-  },
   "I37|corner bookshelf 60 wide 84 tall": {
    "class": "F9",
    "msg": "zero: 0″ dimension (step)"
