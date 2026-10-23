@@ -199,7 +199,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   switch (info?.how) {
     case "floor":
       if (wallMounted(project)) {
-        return `Lay the ${part.name} flat on the bench, square to the marks: the base the next parts fasten to. The finished piece mounts to the wall, screwed into studs, in the hang step.`;
+        return `Lay the ${part.name} flat on the bench, square to the marks: the base the next parts fasten to. The finished piece goes on the wall once it is built.`;
       }
       return `Set the ${part.name} on the floor, square to the marks. It is the base the next parts fasten to.`;
     case "hinges":
@@ -644,7 +644,7 @@ function splitByLayer(
         const list = listNames(ps.map((p) => p.name));
         if (how === "floor") {
           return wallMounted(project)
-            ? `Lay the ${list} flat on the bench, square to the marks: the base the rest fastens to. The finished piece mounts to the wall, screwed into studs, in the hang step.`
+            ? `Lay the ${list} flat on the bench, square to the marks: the base the rest fastens to. The finished piece goes on the wall once it is built.`
             : `Stand the ${list} on the floor, square to the marks.`;
         }
         if (how === "rests") return `Set the ${list} on ${talk}.`;
@@ -660,6 +660,8 @@ function splitByLayer(
         description: k === 0 ? `${step.description} ${body}` : body,
         tips: k === 0 ? step.tips : "Each layer goes on after the parts it rests on.",
         partsUsed: group.map((p) => p.name),
+        // The step's fasteners stay on the step that drives them (row 312): a layer split off it carries none.
+        fastenersUsed: k === 0 ? step.fastenersUsed : undefined,
       });
     });
   });
