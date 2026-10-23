@@ -92,6 +92,9 @@ jobs:
       - name: Invariants I1-I14 + eval scoreboard (no xAI)
         run: npx tsx --test scripts/invariants.test.ts
 
+      - name: I37 silent-fallback hunter over the eval corpus (known hits in evals/hunter-baseline.json; only new hits fail)
+        run: npx tsx --test scripts/hunter.test.ts
+
       - name: Weekend canaries (Big Ben, Eiffel Tower, Brooklyn Bridge, trebuchet, submarine, water wheel)
         run: npx tsx --test scripts/weekend-canaries.test.ts
 
