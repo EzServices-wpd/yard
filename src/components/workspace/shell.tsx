@@ -141,9 +141,10 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   }, [pending, lampKey]);
   const lampOn = pending && !stalled && (building || !priced);
   const aiChip = grokBusy && !building && priced && !stalled;
-  // Full tab titles: the tab says the header the page shows (never the terse "Build 48x36" from the URL).
+  // Full tab titles: the tab says the header the page shows (never the terse "Build 48x36" from the URL). A refused
+  // build has no pieces but still names itself: "Abacus · nothing built · Yard", not "Workspace · Yard".
   useEffect(() => {
-    if (titlePending || benchPieces <= 0) return;
+    if (titlePending || (benchPieces <= 0 && !project.refused)) return;
     document.title = `${headerTitle(project)} · Yard`;
   }, [titlePending, benchPieces, project]);
 
