@@ -1329,6 +1329,7 @@ export function openingWidthFromPrompt(prompt: string): number {
     // Opening / carcase widths — reject hardware ("2 inch closet rod").
     if (Number.isFinite(n) && n >= 12 && n <= 120) return n;
   }
+  // (?!\.?\d) keeps the whole decimal. "19.75 deep" must not backtrack to a 19.7" width.
   const after = t.match(
     new RegExp(
       String.raw`\b` +

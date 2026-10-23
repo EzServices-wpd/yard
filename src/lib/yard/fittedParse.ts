@@ -41,6 +41,7 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
+import { clothesRodDefaultDepth } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
 import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
@@ -809,7 +810,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? Math.min(8, Math.max(6, Number.isFinite(depth) ? depth : 8))
                     : /floating/.test(lower) && /shel/.test(lower)
                       ? 3.25
-                    : /shelf/.test(lower) && !/bookcase|bookshelf/.test(lower)
+                    : /shelf/.test(lower) && !/bookcase|bookshelf|\bwardrobe\b|\barmoire\b/.test(lower)
                       ? 18
                     : isStorageHutch(lower)
                       ? 72
@@ -889,9 +890,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                           ? 12
                         : house?.family === "hung-cabinet"
                           ? 12
-                        : /shelf|rack/.test(lower)
+                        : /shelf|rack/.test(lower) && !/\b(?:wardrobe|armoire)\b/.test(lower)
                           ? 12
-                          : 16);
+                          : (clothesRodDefaultDepth(lower, program) ?? 16));
     if (trip.d == null) {
       const board = detectMaterial(prompt);
       const face = snapToBoardFace(depth, board);
