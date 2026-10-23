@@ -368,8 +368,10 @@ export const useYard = create<YardState>((set, get) => ({
           ? refinedPrompt(current.typedPrompt, prompt)
           : undefined);
     const next0 = typedPrompt ? { ...built, typedPrompt } : built;
-    // A restock or a follow-on edits the build on the bench: its spec is the bench's, edited (spec.ts).
-    const next = (opts?.restock || follow) && current.spec ? withEditedSpec(current, next0) : next0;
+    // A restock or a follow-on edits the build on the bench: its spec is the bench's, edited (spec.ts). A restock sets
+    // no axis (rule 4: thickness only); a follow-on sets only the axes its words resized.
+    const resized = (["width", "height", "depth"] as const).filter((a) => !!genOpts.sizeOverride && Math.abs(genOpts.sizeOverride[a] - current.overall[a]) >= 1 / 32);
+    const next = (opts?.restock || follow) && current.spec ? withEditedSpec(current, next0, opts?.restock ? [] : resized) : next0;
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     const srcPocket = next.pocket ?? next.recastFrom?.pocket;
     const srcFitted = next.fitted ?? next.recastFrom?.fitted;

@@ -105,13 +105,16 @@ function specInches(project: YardProject): Record<Axis, number> {
 
 /**
  * The spec after an edit in place (Measure, a refit, a restock), rebuilt from the spec before it, never from the
- * prompt: an axis whose size changed is the person's own value (typed, edited); every other axis keeps its mark.
+ * prompt: an axis the edit set is the person's own value (typed, edited); every other axis keeps its mark and re-reads
+ * its finished size. `set` names the axes the edit set; left out (Measure), an axis whose size moved is one it set.
+ * A restock sets none (YARD-SPEC rule 4: switching stock changes thickness only, so thinner proud fronts that move the
+ * finished depth never make an untouched depth "typed", row 295).
  */
-export function editedSpec(prev: YardSpec, built: YardProject): YardSpec {
+export function editedSpec(prev: YardSpec, built: YardProject, set?: readonly Axis[]): YardSpec {
   const now = specInches(built);
   const size = Object.fromEntries(AXES.map((a) => {
     const was = prev.size[a];
-    const moved = Math.abs(now[a] - was.inches) >= 1 / 32;
+    const moved = (!set || set.includes(a)) && Math.abs(now[a] - was.inches) >= 1 / 32;
     return [a, moved ? { inches: now[a], typed: true, assumed: false, edited: true } : { ...was, inches: now[a] }];
   })) as Record<Axis, SpecAxis>;
   const moved = AXES.some((a) => size[a].edited && !prev.size[a].edited);
@@ -131,8 +134,8 @@ export function editedSpec(prev: YardSpec, built: YardProject): YardSpec {
 }
 
 /** A build rebuilt on the bench from `prev` carries `prev`'s spec, edited (store: Measure, refit, restock). */
-export function withEditedSpec(prev: YardProject, built: YardProject): YardProject {
-  return built.refused ? built : { ...built, spec: editedSpec(specOf(prev), built) };
+export function withEditedSpec(prev: YardProject, built: YardProject, set?: readonly Axis[]): YardProject {
+  return built.refused ? built : { ...built, spec: editedSpec(specOf(prev), built, set) };
 }
 
 /**
