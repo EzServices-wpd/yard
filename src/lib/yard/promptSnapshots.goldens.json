@@ -813,12 +813,16 @@
       "height": 84,
       "depth": 9.25
     },
-    "panels": 11,
+    "panels": 15,
     "instances": 0,
     "uniqueParts": [
       "Back",
       "Bottom",
-      "Center divider",
+      "Front stiffener",
+      "Front stiffener 2",
+      "Front stiffener 3",
+      "Front stiffener 4",
+      "Front stiffener 5",
       "Left upright",
       "Right upright",
       "Shelf 1",

@@ -4,7 +4,7 @@ import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
 import { spanFindings } from "./spanCheck";
-import { isFixedSpanShelf, shelfDepthSpan, shelfSpanLimit, shelfSpanViolations } from "./shelfSpan";
+import { isFixedSpanShelf, shelfDepthSpan, shelfLineCount, shelfSpanLimit, shelfSpanViolations } from "./shelfSpan";
 import { solidsOverlap } from "./solids";
 import { supportsOf } from "./supportGraph";
 import { shelfSpansUprights } from "./report";
@@ -88,32 +88,26 @@ describe("shelf span supports", () => {
     assert.deepEqual(shelfSpanViolations(project), []);
   });
 
-  it("puts a center divider on a 36 inch bookcase in the model, cut list, steps and buy", () => {
+  it("stiffens a 36 inch bookcase instead of dividing it, and keeps five shelves on pins", () => {
     const project = generateFromPrompt("bookcase");
     const plan = buildPlan(project);
-    const parts = project.panels.filter((p) => /^Center divider\b/.test(p.name));
-    assert.ok(parts.length >= 1);
+    const stiff = project.panels.filter((p) => /^Front stiffener\b/.test(p.name));
+    assert.ok(stiff.length >= 1);
+    assert.equal(project.panels.filter((p) => /^Center divider\b/.test(p.name)).length, 0);
+    assert.equal(project.panels.filter((p) => p.name === "Shelf bearer").length, 0);
     assert.equal(shelfSpanViolations(project).length, 0);
+    assert.deepEqual(spanFindings(project), []);
     assert.equal(project.panels.filter((p) => p.name.startsWith("Center support")).length, 0);
-    const ids = new Set(parts.map((p) => p.id));
-    const cut = plan.cutList.filter((c) => (c.partIds ?? []).some((id) => ids.has(id)));
-    assert.equal(cut.reduce((n, c) => n + c.quantity, 0), parts.length);
-    assert.ok(plan.instructions.some((s) => /Center divider/.test(`${s.title} ${s.description} ${(s.partsUsed ?? []).join(" ")}`)));
-    assert.ok(plan.bom.some((b) => b.catalogId === parts[0].materialId));
-    assert.ok(plan.bom.some((b) => b.catalogId === "shelf-pins"));
-    assert.match(parts[0].cutNote ?? "", /pin holes on both faces/);
     const shelves = project.panels.filter((p) => p.type === "shelf");
     assert.equal(shelves.length, 5);
     assert.equal(new Set(shelves.map((s) => s.name)).size, shelves.length);
+    assert.equal(shelves.some((s) => s.polygon), false);
     assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 5 adjustable shelves/);
     assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /5 shelves × 4/);
-    assert.equal(project.panels.some((q) => parts.some((d) => d !== q && solidsOverlap(d, q))), false);
-    const looseIds = new Set(shelves.filter((s) => !isFixedSpanShelf(s)).map((s) => s.id));
-    assert.equal(
-      panelJoints(project.panels).some((j) => (ids.has(j.a) && looseIds.has(j.b)) || (ids.has(j.b) && looseIds.has(j.a))),
-      false,
-    );
+    assert.equal(project.panels.some((q) => stiff.some((d) => d !== q && solidsOverlap(d, q))), false);
+    const ids = new Set(stiff.map((p) => p.id));
     assert.ok((BUY_JOINTS.get(project) ?? []).some((j) => j.screws > 0 && (ids.has(j.a) || ids.has(j.b))));
+    assert.equal(stepScrewCount(plan), Number(plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN));
     assert.deepEqual(checkBuild(project, "bookcase", plan).map((v) => v.id), []);
   });
 
@@ -128,17 +122,21 @@ describe("shelf span supports", () => {
     for (const type of ["door", "upright"] as const) {
       assert.equal(half.panels.filter((p) => p.type === type).length, thick.panels.filter((p) => p.type === type).length);
     }
-    assert.equal(half.panels.filter((p) => p.type === "shelf").length, thick.panels.filter((p) => p.type === "shelf").length);
+    assert.equal(shelfLineCount(half.panels.filter((p) => p.type === "shelf")), shelfLineCount(thick.panels.filter((p) => p.type === "shelf")));
+    assert.ok(half.panels.filter((p) => p.type === "shelf").length > thick.panels.filter((p) => p.type === "shelf").length);
+    assert.equal(half.panels.some((p) => p.type === "shelf" && p.polygon), false);
     assert.equal(shelfSpanViolations(half).length, 0);
     assert.equal(checkBuild(half, prompt, buildPlan(half)).some((v) => v.id === "I14"), false);
   });
 
   it("keeps one divider column when a 36 inch bookcase switches from 3/4 to 1/2", () => {
-    assert.equal(cols("bookshelf 36 wide", "plywood-3-4-4x8"), 1);
+    assert.equal(cols("bookshelf 36 wide", "plywood-3-4-4x8"), 0);
     assert.equal(cols("bookshelf 36 wide", "plywood-1-2-4x8"), 1);
+    const full = generateFromPrompt("bookshelf 36 wide", "plywood-3-4-4x8");
     const half = generateFromPrompt("bookshelf 36 wide", "plywood-1-2-4x8");
+    assert.equal(full.panels.filter((p) => p.type === "shelf").length, 5);
     assert.equal(half.panels.filter((p) => p.name.startsWith("Center support")).length, 0);
-    assert.equal(half.panels.filter((p) => p.type === "shelf").length, 5);
+    assert.equal(shelfLineCount(half.panels.filter((p) => p.type === "shelf")), 5);
   });
 
   it("does not divide a shallow spice rack or run a divider through a jar lip", () => {
@@ -184,35 +182,54 @@ describe("shelf span supports", () => {
     const plan = buildPlan(project);
     const planText = plan.instructions.map((s) => s.description).join("\n");
     assert.doesNotMatch(planText, /Fasten the Center divider to the .*Shelf/i);
-    const bought = BUY_JOINTS.get(project) ?? [];
-    const divIds = new Set(project.panels.filter((p) => /^Center divider\b/.test(p.name)).map((p) => p.id));
-    assert.ok(bought.some((j) => j.screws > 0 && (divIds.has(j.a) || divIds.has(j.b))));
+    assert.equal(project.panels.some((p) => p.type === "shelf" && p.polygon), false);
+    assert.deepEqual(spanFindings(project), []);
     const screwLine = Number(plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN);
     assert.equal(stepScrewCount(plan), screwLine);
   });
 
-  it("supports the shelf over a wide hanging bay without crossing the rod", () => {
+  it("gives each wide hanging bay its own rod and one fixed shelf clear of the rod", () => {
     for (const prompt of ["wardrobe 48 wide", "wardrobe 72 wide"]) {
       const project = generateFromPrompt(prompt);
+      const plan = buildPlan(project);
       assert.equal(shelfSpanViolations(project).length, 0, prompt);
-      const rod = project.panels.find((p) => p.name === "Hanging rod")!;
-      assert.ok(rod);
-      for (const part of project.panels.filter((p) => /^Center divider\b/.test(p.name) || /^Span cleat\b/.test(p.name))) {
-        assert.equal(solidsOverlap(part, rod), false, `${prompt} ${part.name}`);
-        const overlapsY = part.position.y + part.size.height > rod.position.y && part.position.y < rod.position.y + rod.size.height;
-        assert.equal(overlapsY, false, `${prompt} ${part.name}`);
+      assert.deepEqual(spanFindings(project), [], prompt);
+      assert.equal(checkBuild(project, prompt, plan).some((v) => v.id === "I1" || v.id === "I7"), false, prompt);
+      const rods = project.panels.filter((p) => /hanging rod/i.test(p.name));
+      const divs = project.panels.filter((p) => /^Center divider\b/.test(p.name));
+      assert.ok(divs.length >= 1 && rods.length === divs.length + 1, prompt);
+      assert.ok(rods.some((r) => r.name === "Hanging rod"), prompt);
+      for (const rod of rods) {
+        assert.equal(divs.some((d) => solidsOverlap(d, rod)), false, `${prompt} ${rod.name}`);
+        const hat = project.panels.find((p) => isFixedSpanShelf(p) && Math.min(p.position.x + p.size.width, rod.position.x + rod.size.width) - Math.max(p.position.x, rod.position.x) > 1);
+        assert.ok(hat, `${prompt} ${rod.name} hat`);
+        assert.ok(hat.position.y >= rod.position.y + rod.size.height + 2 - 0.02, `${prompt} gap`);
+        assert.equal(project.panels.some((p) => /^Back cleat\b/.test(p.name) && Math.abs(p.position.x - hat.position.x) < 0.2 && Math.abs(p.size.width - hat.size.width) < 0.2), true, prompt);
+        assert.equal(project.panels.some((p) => /^Front stiffener\b/.test(p.name) && Math.abs(p.position.x - hat.position.x) < 0.2), true, prompt);
       }
+      const top = Math.min(...project.panels.filter((p) => p.type === "top").map((p) => p.position.y));
+      for (const div of divs) assert.ok(Math.abs(div.position.y + div.size.height - top) < 0.05, `${prompt} ${div.name} stops short`);
       const lines = new Set(project.panels.filter((p) => p.type === "shelf").map((p) => Math.round(p.position.y * 4) / 4));
       assert.equal(lines.size, project.fitted?.unit.shelfCount);
     }
   });
 
-  it("puts a bearer under a shelf the span check still calls long", () => {
+  it("splits a wide carcass into bays and does not hang a bearer beside the divider", () => {
     for (const prompt of ["closet 72 wide 96 tall 24 deep", "half a sheet of plywood shelf", "office bookcase with doors 42 wide"]) {
       const project = generateFromPrompt(prompt);
       assert.deepEqual(spanFindings(project), [], prompt);
-      assert.ok(project.panels.some((p) => p.name === "Shelf bearer"), prompt);
-      assert.equal(project.panels.some((p) => p.name === "Shelf bearer" && project.panels.some((q) => q !== p && solidsOverlap(p, q))), false, prompt);
+      assert.equal(project.panels.some((p) => p.name === "Shelf bearer"), false, prompt);
+      assert.equal(project.panels.some((p) => p.type === "shelf" && p.polygon), false, prompt);
+      const shelves = project.panels.filter((p) => p.type === "shelf");
+      assert.ok(shelves.length > shelfLineCount(shelves), prompt);
+      const divs = project.panels.filter((p) => /^Center divider\b/.test(p.name));
+      const top = Math.min(...project.panels.filter((p) => p.type === "top").map((p) => p.position.y));
+      assert.ok(divs.length >= 1, prompt);
+      for (const div of divs) {
+        assert.ok(div.position.y < 2, `${prompt} ${div.name} does not start at the bottom`);
+        assert.ok(Math.abs(div.position.y + div.size.height - top) < 0.05, `${prompt} ${div.name} stops short of the top`);
+        assert.equal(project.panels.some((q) => q !== div && solidsOverlap(div, q)), false, prompt);
+      }
     }
   });
 
@@ -231,7 +248,7 @@ describe("shelf span supports", () => {
   });
 
   it("matches the divider step's fasteners to Buy when a shelf count is typed", () => {
-    const prompt = "bookcase 36 wide 12 deep 72 tall with three shelves";
+    const prompt = "bookcase 48 wide 12 deep 72 tall with three shelves";
     const project = generateFromPrompt(prompt);
     const plan = buildPlan(project);
     const step = plan.instructions.find((s) => /center divider/i.test(s.title));
@@ -243,6 +260,43 @@ describe("shelf span supports", () => {
     const open = buildPlan(generateFromPrompt("bookcase"));
     const openBought = Number(open.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN);
     assert.equal(stepScrewCount(open), openBought);
+  });
+
+  it("counts a screw in Buy when the divider step says screw and the divider ends under a shelf", () => {
+    // file cabinet at 877f11d: the divider step says "Screw through the bottom" and the divider
+    // stops under Shelf 2, a pair Buy leaves out (0 screws).
+    const prompt = "file cabinet";
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const step = plan.instructions.find((s) => /center divider/i.test(s.title));
+    const buy = BUY_JOINTS.get(project) ?? [];
+    const paired = (a: string, b: string) =>
+      buy.some((j) => j.screws > 0 && ((j.a === a && j.b === b) || (j.a === b && j.b === a)));
+    if (step && /screw/i.test(step.description) && !/takes no screws/i.test(step.description)) {
+      for (const div of project.panels.filter((p) => /^Center divider\b/.test(p.name))) {
+        const top = div.position.y + div.size.height;
+        for (const shelf of project.panels.filter((p) => p.type === "shelf")) {
+          const ox = Math.min(div.position.x + div.size.width, shelf.position.x + shelf.size.width) - Math.max(div.position.x, shelf.position.x);
+          const oz = Math.min(div.position.z + div.size.depth, shelf.position.z + shelf.size.depth) - Math.max(div.position.z, shelf.position.z);
+          if (ox <= 0.2 || oz <= 0.2 || Math.abs(shelf.position.y - top) > 0.35) continue;
+          assert.ok(paired(div.id, shelf.id), `${prompt}: ${div.name} ends under ${shelf.name} and Buy has 0 screws`);
+        }
+      }
+    }
+    for (const stiff of project.panels.filter((p) => /^Front stiffener\b/.test(p.name))) {
+      assert.ok(buy.some((j) => j.screws > 0 && (j.a === stiff.id || j.b === stiff.id)), `${stiff.name} is screwed in the step and missing from Buy`);
+    }
+  });
+
+  it("keeps a wide wardrobe free of floating parts and over-span shelves", () => {
+    const bad: string[] = [];
+    for (const prompt of ["wardrobe 72 wide", "wardrobe 40x72"]) {
+      const project = generateFromPrompt(prompt);
+      const ids = checkBuild(project, prompt, buildPlan(project)).map((v) => v.id);
+      if (ids.includes("I1")) bad.push(`${prompt} I1`);
+      if (ids.includes("I7")) bad.push(`${prompt} I7`);
+    }
+    assert.deepEqual(bad, []);
   });
 
   it("leaves cardboard and the desk knee without a span divider", () => {
@@ -276,6 +330,7 @@ describe("shelf span supports", () => {
           bad.push(`${prompt}: ${shelf.name} depth ${shelfDepthSpan(shelf, project.panels).toFixed(1)} > ${limit}`);
         }
       }
+      if (project.panels.some((p) => p.type === "shelf" && !isFixedSpanShelf(p) && p.polygon)) bad.push(`${prompt}: notched loose shelf`);
       const loose = new Set(project.panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p) && shelfSpansUprights(p, project.panels)).map((p) => p.id));
       const sup = supportsOf(project);
       for (const div of project.panels.filter((p) => /^Center divider\b/.test(p.name))) {
@@ -283,6 +338,11 @@ describe("shelf span supports", () => {
         if (other) bad.push(`${prompt}: ${div.name} overlaps ${other.name}`);
         const info = sup.get(div.id);
         if (info?.on.some((id) => loose.has(id))) bad.push(`${prompt}: ${div.name} stands on a pinned shelf`);
+        const meetX = (q: { position: { x: number }; size: { width: number } }) => Math.min(div.position.x + div.size.width, q.position.x + q.size.width) - Math.max(div.position.x, q.position.x) > 0.2;
+        const cap = project.panels.filter((q) => q.type === "top" && meetX(q)).map((q) => q.position.y);
+        const caseTop = cap.length ? Math.min(...cap) : null;
+        const underLoose = project.panels.find((q) => loose.has(q.id) && Math.abs(q.position.y - (div.position.y + div.size.height)) <= 0.35 && meetX(q));
+        if (underLoose && (caseTop == null || div.position.y + div.size.height < caseTop - 1)) bad.push(`${prompt}: ${div.name} ends under ${underLoose.name}`);
       }
       for (const rod of project.panels.filter((p) => p.type === "rail" && /hanging rod/i.test(p.name))) {
         const rodTop = rod.position.y + rod.size.height;

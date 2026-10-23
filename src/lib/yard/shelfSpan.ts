@@ -5,15 +5,17 @@
  * sag near 0.02" per foot. Plywood has no creep factor; MDF and solid wood use Sagulator's
  * 1.5 creep, so the shop spans at 3/4" are plywood 30", MDF 24", 1× pine 26".
  * The same sag per foot means the clear span scales with thickness (L ∝ t).
- * A span equal to the limit stays (a 31 1/2" case is 30" inside). Anything longer gets a
- * center divider in each opening, the same panel the model, cut list, steps and Buy read.
+ * A span equal to the limit stays (a 31 1/2" case is 30" inside). A little over that, and
+ * still under the span check (about 36" on 3/4" plywood), gets a 1×2 on the front edge.
+ * Wider than that, the case gets a fixed divider housed in the top and the bottom, and
+ * each bay gets its own shelves. The same panels the model, cut list, steps and Buy read.
  */
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
 import { inchFrac } from "./inchText";
 import { wantsFixedGlueShelves } from "./honesty";
 import { solidsOverlap } from "./solids";
-import { spanFindings, wantsOpenSpan } from "./spanCheck";
+import { allowSpanIn, wantsOpenSpan } from "./spanCheck";
 
 const EPS = 1 / 32;
 /** Shelves shallower than this carry light loads (a spice rack). The span rule does not apply. */
@@ -154,7 +156,18 @@ export function shelfSpanViolations(project: YardProject): ShelfSpanHit[] {
     const thick = thickOf(plate);
     const limit = shelfSpanLimit(plate.materialId, thick);
     const span = Math.max(0, ...clearGaps(plate, project.panels).map(([a, b]) => b - a));
-    if (span > limit + EPS) out.push({ name: plate.name, span, limit, thick, materialId: plate.materialId });
+    if (span <= limit + EPS) continue;
+    // A 1×2 on the front carries the band between the stock limit and the span check.
+    const beam = allowSpanIn(thick, "shelf") * 1.1;
+    const x0 = plate.position.x;
+    const braced =
+      span <= beam + EPS &&
+      project.panels.some((q) => {
+        if (!/^Front stiffener\b/.test(q.name)) return false;
+        if (overlap(x0, x0 + plate.size.width, q.position.x, q.position.x + q.size.width) < plate.size.width * 0.8) return false;
+        return Math.abs(q.position.y + q.size.height - plate.position.y) <= 0.35 || Math.abs(q.position.y - plate.position.y) <= 0.35;
+      });
+    if (!braced) out.push({ name: plate.name, span, limit, thick, materialId: plate.materialId });
   }
   return out;
 }
@@ -376,146 +389,6 @@ function widestShelfGap(panels: Panel[]): number {
   return span;
 }
 
-const ROD_CLEAR = 2;
-const BRIDGE = 0.35;
-
-function rodBlocks(panels: Panel[], x: number, y0: number, y1: number): boolean {
-  return panels.some((q) => {
-    if (!isHangingRod(q)) return false;
-    if (overlap(x - 0.75, x + 0.75, q.position.x, q.position.x + q.size.width) <= 0) return false;
-    return overlap(y0, y1, q.position.y - 0.05, q.position.y + q.size.height + ROD_CLEAR) > 0;
-  });
-}
-
-/** The shelf over a hanging rod is cut into spans the stock can carry, and screwed down. The divider stands on it, 2" clear of the rod. */
-function fixHangingCaps(panels: Panel[], stations: Map<number, number>) {
-  const caps = panels.filter((p) => p.type === "shelf" && hangingBayShelf(p, panels) && overSpan(p, panels));
-  for (const shelf of caps) {
-    const limit = shelfSpanLimit(shelf.materialId, thickOf(shelf));
-    if (!Number.isFinite(limit)) continue;
-    const span = shelf.size.width;
-    let k = Math.max(2, Math.ceil(span / limit));
-    while (k < 8 && span / k > limit + EPS) k++;
-    const x0 = shelf.position.x;
-    const note = "Screwed fixed shelf. Screw it to the uprights, then the divider stands on it.";
-    const pieces: Panel[] = [];
-    for (let i = 0; i < k; i++) {
-      pieces.push({
-        ...shelf,
-        id: i === 0 ? shelf.id : createId("sh"),
-        position: { ...shelf.position, x: x0 + (span * i) / k },
-        size: { ...shelf.size, width: span / k },
-        cutNote: note,
-      });
-      if (i > 0) {
-        const at = x0 + (span * i) / k;
-        stations.set(Math.round(at * 8) / 8, at);
-      }
-    }
-    const at = panels.indexOf(shelf);
-    if (at >= 0) panels.splice(at, 1, ...pieces);
-  }
-}
-
-function carrierTop(panels: Panel[], x: number, below: number): number | null {
-  let y: number | null = null;
-  for (const q of panels) {
-    if (q.type !== "bottom" && !isFixedSpanShelf(q)) continue;
-    const top = q.position.y + q.size.height;
-    if (top > below - 0.02) continue;
-    if (overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) <= 0) continue;
-    if (rodBlocks(panels, x, top, below)) continue;
-    if (y == null || top > y) y = top;
-  }
-  return y;
-}
-
-function caseTop(panels: Panel[], x: number, y0: number): number | null {
-  let y: number | null = null;
-  for (const q of panels) {
-    if (q.type !== "top" || q.position.y < y0 + 0.4) continue;
-    if (overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) <= 0) continue;
-    if (y == null || q.position.y < y) y = q.position.y;
-  }
-  return y;
-}
-
-/** One divider per station, from a fixed carrier (the bottom, or the screwed shelf over a rod) up to the top. */
-function placeColumns(panels: Panel[], added: Panel[]) {
-  const stations = new Map<number, number>();
-  fixHangingCaps(panels, stations);
-  for (const plate of panels) {
-    if (plate.type !== "shelf" || isFixedSpanShelf(plate) || lightShelf(plate) || !overSpan(plate, panels)) continue;
-    const t = plate.size.height;
-    const limit = shelfSpanLimit(plate.materialId, thickOf(plate));
-    if (!Number.isFinite(limit)) continue;
-    for (const [a, b] of clearGaps(plate, panels)) {
-      if (b - a <= limit + EPS) continue;
-      let k = Math.max(2, Math.ceil((b - a) / limit));
-      while (k < 8 && (b - a - (k - 1) * t) / k > limit + EPS) k++;
-      for (let i = 1; i < k; i++) {
-        const at = a + ((b - a) * i) / k;
-        stations.set(Math.round(at * 8) / 8, at);
-      }
-    }
-  }
-  for (const at of stations.values()) {
-    const loose = panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p) && p.position.x < at && at < p.position.x + p.size.width);
-    const fixed = panels.filter((p) => isFixedSpanShelf(p) && p.position.x - 0.5 < at && at < p.position.x + p.size.width + 0.5);
-    const plate = loose[0] ?? fixed[0];
-    if (!plate) continue;
-    const below = loose.length ? Math.min(...loose.map((p) => p.position.y)) : Math.min(...fixed.map((p) => p.position.y + p.size.height)) + 1;
-    const y0 = carrierTop(panels, at, below) ?? (fixed.length ? Math.min(...fixed.map((p) => p.position.y + p.size.height)) : null);
-    const y1 = y0 == null ? null : caseTop(panels, at, y0);
-    if (y0 == null || y1 == null || y1 - y0 < plate.size.height - 0.02) continue;
-    if (rodBlocks(panels, at, y0, y1) || inOpenKnee(panels, at, y0) || alreadyHeld(plate, panels, at)) continue;
-    const t = plate.size.height;
-    if (hitsDrawer(panels, at - t / 2, y0, plate.position.z, t, y1 - y0, plate.size.depth)) continue;
-    dividerAt(panels, added, plate, at, y0, y1, t);
-  }
-}
-
-/** A divider passing through a loose shelf takes a notch, so the two solids do not share space and the divider does not stand on that shelf. */
-function notchPassThrough(panels: Panel[]) {
-  const divs = panels.filter((d) => /^Center divider\b/.test(d.name));
-  for (const shelf of panels) {
-    if (shelf.type !== "shelf" || isFixedSpanShelf(shelf)) continue;
-    const hits = divs.filter((d) => {
-      const oy = overlap(shelf.position.y, shelf.position.y + shelf.size.height, d.position.y, d.position.y + d.size.height);
-      const ox = overlap(shelf.position.x, shelf.position.x + shelf.size.width, d.position.x, d.position.x + d.size.width);
-      return oy > 0.2 && ox > 0.2;
-    });
-    if (!hits.length) continue;
-    const slots: [number, number][] = [];
-    for (const d of hits) {
-      const back = shelf.position.z + shelf.size.depth - BRIDGE;
-      if (d.position.z + d.size.depth > back) d.size = { ...d.size, depth: Math.max(2, back - d.position.z) };
-      const a = d.position.x - shelf.position.x - 0.1;
-      slots.push([Math.max(0.2, a), Math.min(shelf.size.width - 0.2, a + d.size.width + 0.2)]);
-    }
-    slots.sort((p, q) => p[0] - q[0]);
-    const merged: [number, number][] = [];
-    for (const s of slots) {
-      const last = merged[merged.length - 1];
-      if (last && s[0] <= last[1]) last[1] = Math.max(last[1], s[1]);
-      else merged.push([s[0], s[1]]);
-    }
-    const W = shelf.size.width;
-    const D = shelf.size.depth;
-    const zb = Math.max(BRIDGE, D - BRIDGE);
-    const pts: [number, number][] = [];
-    let x = 0;
-    for (const [a, b] of merged) {
-      if (b - a < 0.2 || a >= W - 0.2) continue;
-      pts.push([x, 0], [a, 0], [a, zb], [b, zb], [b, 0]);
-      x = b;
-    }
-    if (!pts.length) continue;
-    pts.push([W, 0], [W, D], [0, D]);
-    shelf.polygon = { plane: "xz", pts };
-  }
-}
-
 /** A divider that still shares solid space with another part is trimmed off that part, or dropped. */
 function clearOverlaps(panels: Panel[]) {
   const eps = 1 / 16;
@@ -584,108 +457,210 @@ function dividerAt(panels: Panel[], added: Panel[], plate: Panel, at: number, y0
   return panel;
 }
 
-/** Openings shorter than the stock can't hold a sliver. One divider runs the stack and the shelves split around it. */
-function braceTight(panels: Panel[], added: Panel[]) {
-  const seen = new Set<string>();
-  for (const shelf of panels.filter((p) => p.type === "shelf" && overSpan(p, panels))) {
-    const key = `${Math.round(shelf.position.x * 4)}:${Math.round(shelf.size.width * 4)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const bay = panels.filter((p) => (p.type === "shelf" || p.type === "top") && Math.abs(p.position.x - shelf.position.x) < 0.35 && Math.abs(p.size.width - shelf.size.width) < 0.35);
-    const shelves = bay.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y);
-    const top = bay.filter((p) => p.type === "top").sort((a, b) => b.position.y - a.position.y)[0];
-    const tight = shelves.filter((s) => overSpan(s, panels));
-    if (!tight.length) continue;
-    const t = shelf.size.height;
-    const cap = shelfSpanLimit(shelf.materialId, thickOf(shelf));
-    const x0 = shelf.position.x;
-    const span = shelf.size.width;
-    const stand = plateBelow(panels, tight[0], x0 + span / 2);
-    if (stand == null) continue;
-    let yEnd = tight[0].position.y;
-    for (const s of shelves) {
-      if (s.position.y < tight[0].position.y - 0.01) continue;
-      if (crossesHanging(panels, x0 + span / 2, yEnd, s.position.y)) break;
-      if (hitsDrawer(panels, x0 + span / 2 - t / 2, stand, s.position.z, t, s.position.y - stand, s.size.depth)) break;
-      yEnd = s.position.y;
-    }
-    if (
-      top &&
-      !crossesHanging(panels, x0 + span / 2, yEnd, top.position.y) &&
-      !hitsDrawer(panels, x0 + span / 2 - t / 2, stand, top.position.z, t, top.position.y - stand, top.size.depth)
-    ) {
-      yEnd = Math.max(yEnd, top.position.y);
-    }
-    if (yEnd - stand < t) continue;
-    let k = Math.max(2, Math.ceil(span / cap));
-    while (k < 8 && (span - (k - 1) * t) / k > cap + EPS) k++;
-    for (let i = 1; i < k; i++) {
-      const at = x0 + (span * i) / k;
-      if (alreadyHeld(tight[0], panels, at)) continue;
-      const div = dividerAt(panels, added, tight[0], at, stand, yEnd, t);
-      if (!div) continue;
-      for (const s of [...shelves]) {
-        const topY = s.position.y + s.size.height;
-        if (s.position.y < stand - 0.02 || topY > yEnd + 0.02 || s.position.y <= stand + 0.02) continue;
-        const x1 = s.position.x + s.size.width;
-        const left = div.position.x - s.position.x;
-        const right = x1 - (div.position.x + div.size.width);
-        if (left < 1 || right < 1) continue;
-        panels.push({ ...s, id: createId("sh"), position: { ...s.position, x: div.position.x + div.size.width }, size: { ...s.size, width: right } });
-        s.size = { ...s.size, width: left };
-      }
-    }
-  }
-}
-
 function overSpan(plate: Panel, panels: Panel[]): boolean {
   if (!flatShelf(plate) || !housed(plate, panels) || lightShelf(plate)) return false;
   const cap = shelfSpanLimit(plate.materialId, thickOf(plate));
   return clearGaps(plate, panels).some(([a, b]) => b - a > cap + EPS);
 }
 
-/**
- * The span check only counts a support whose top is under the shelf. A divider that runs through
- * the shelf does not, so a block beside that divider stands under the shelf and fastens to the divider.
- * It stops short of the shelf below, so it never stands on a pinned shelf.
- */
-function bearLongShelves(project: YardProject, panels: Panel[]) {
-  const over = new Set(spanFindings({ ...project, panels }).filter((f) => f.load === "shelf").map((f) => f.panelId));
-  for (const shelf of panels) {
-    if (!over.has(shelf.id)) continue;
-    const divs = panels.filter((d) => {
-      if (!/^Center divider\b/.test(d.name)) return false;
-      const oy = overlap(shelf.position.y - 0.2, shelf.position.y + shelf.size.height, d.position.y, d.position.y + d.size.height);
-      const ox = overlap(shelf.position.x, shelf.position.x + shelf.size.width, d.position.x, d.position.x + d.size.width);
-      return oy > 0.2 && ox > 0.2;
-    });
-    for (const div of divs) {
-      const w = div.size.width;
-      let x = div.position.x + div.size.width;
-      if (x + w > shelf.position.x + shelf.size.width - 0.2) x = div.position.x - w;
-      if (x < shelf.position.x + 0.2) continue;
-      const y = shelf.position.y - 2.25;
-      const crowded = panels.some((q) => {
-        if (q === shelf) return false;
-        const top = q.position.y + q.size.height;
-        if (top <= y - 0.15 || q.position.y >= shelf.position.y - 0.05) return false;
-        const ox = overlap(x, x + w, q.position.x, q.position.x + q.size.width);
-        const oz = overlap(shelf.position.z, shelf.position.z + shelf.size.depth, q.position.z, q.position.z + q.size.depth);
-        return ox > 0.2 && oz > 0.2;
-      });
-      if (crowded || rodBlocks(panels, x + w / 2, y, shelf.position.y)) continue;
-      const bearer: Panel = {
-        id: createId("di"),
-        type: "divider",
-        name: "Shelf bearer",
-        position: { x, y, z: shelf.position.z },
-        size: { width: w, height: 2.25, depth: shelf.size.depth },
-        materialId: shelf.materialId,
-      };
-      if (panels.some((q) => solidsOverlap(bearer, q))) continue;
-      panels.push(bearer);
+function overBeam(plate: Panel, span: number): boolean {
+  return span > allowSpanIn(thickOf(plate), "shelf") * 1.1 + EPS;
+}
+
+/** Floor of this bay (the bottom under the shelf) up to the underside of the top. Never a loose shelf. */
+function columnEnds(panels: Panel[], x: number, plate: Panel): { y0: number; y1: number } | null {
+  let y0 = 0;
+  let bottom = false;
+  for (const q of panels) {
+    if (q.type !== "bottom") continue;
+    const top = q.position.y + q.size.height;
+    if (top > plate.position.y + 0.05) continue;
+    if (overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) <= 0) continue;
+    if (!bottom || top > y0) { y0 = top; bottom = true; }
+  }
+  if (!bottom && !panels.some((q) => q.type === "upright" && overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) > 0)) return null;
+  let y1: number | null = null;
+  for (const q of panels) {
+    if ((q.type !== "top" && q.type !== "counter" && q.type !== "bottom") || q.position.y < y0 + 0.4) continue;
+    if (q.type === "bottom" && q.position.y + q.size.height <= plate.position.y + 0.05) continue;
+    if (overlap(x - 0.5, x + 0.5, q.position.x, q.position.x + q.size.width) <= 0) continue;
+    if (y1 == null || q.position.y < y1) y1 = q.position.y;
+  }
+  return y1 == null || y1 - y0 < 2 ? null : { y0, y1 };
+}
+
+/** One fixed divider per station, housed in the top and the bottom, only past the span check. */
+function placeBayDividers(panels: Panel[], added: Panel[]) {
+  const stations = new Map<number, number>();
+  for (const plate of panels) {
+    if (plate.type !== "shelf" || isFixedSpanShelf(plate) || lightShelf(plate) || !overSpan(plate, panels)) continue;
+    const limit = shelfSpanLimit(plate.materialId, thickOf(plate));
+    const t = plate.size.height;
+    if (!Number.isFinite(limit)) continue;
+    for (const [a, b] of clearGaps(plate, panels)) {
+      if (!overBeam(plate, b - a)) continue;
+      let k = Math.max(2, Math.ceil((b - a) / limit));
+      while (k < 8 && (b - a - (k - 1) * t) / k > limit + EPS) k++;
+      for (let i = 1; i < k; i++) {
+        const at = a + ((b - a) * i) / k;
+        stations.set(Math.round(at * 8) / 8, at);
+      }
     }
   }
+  for (const at of stations.values()) {
+    const plate = panels
+      .filter((p) => p.type === "shelf" && !lightShelf(p) && p.position.x < at && at < p.position.x + p.size.width)
+      .sort((a, b) => a.position.y - b.position.y)[0];
+    if (!plate || alreadyHeld(plate, panels, at)) continue;
+    const ends = columnEnds(panels, at, plate);
+    if (!ends || inOpenKnee(panels, at, ends.y0)) continue;
+    dividerAt(panels, added, plate, at, ends.y0, ends.y1, plate.size.height);
+  }
+}
+
+function crosses(a: Panel, d: Panel): boolean {
+  return (
+    overlap(a.position.x, a.position.x + a.size.width, d.position.x, d.position.x + d.size.width) > 0.2 &&
+    overlap(a.position.y, a.position.y + a.size.height, d.position.y, d.position.y + d.size.height) > 0.2 &&
+    overlap(a.position.z, a.position.z + a.size.depth, d.position.z, d.position.z + d.size.depth) > 0.2
+  );
+}
+
+/** Each bay keeps its own shelf and, in a wardrobe, its own rod. The pieces meet the divider on a face. */
+function splitWide(panels: Panel[], dividers: Panel[]) {
+  const gap = 0.02;
+  for (let i = panels.length - 1; i >= 0; i--) {
+    const part = panels[i];
+    const shelf = part.type === "shelf" && !part.outline;
+    if (!shelf && !isHangingRod(part)) continue;
+    const hits = dividers.filter((d) => crosses(part, d)).sort((a, b) => a.position.x - b.position.x);
+    if (!hits.length) continue;
+    const pieces: { x: number; w: number }[] = [];
+    let x = part.position.x;
+    const end = x + part.size.width;
+    for (const d of hits) {
+      if (d.position.x - gap - x >= 1) pieces.push({ x, w: d.position.x - gap - x });
+      x = Math.max(x, d.position.x + d.size.width + gap);
+    }
+    if (end - x >= 1) pieces.push({ x, w: end - x });
+    if (pieces.length < 2) continue;
+    panels.splice(i, 1);
+    pieces.forEach((piece, n) =>
+      panels.push({
+        ...part,
+        id: n === 0 ? part.id : createId(shelf ? "sh" : "ra"),
+        name: shelf || n === 0 ? part.name : `${part.name} ${n + 1}`,
+        position: { ...part.position, x: piece.x },
+        size: { ...part.size, width: piece.w },
+        polygon: undefined,
+      }),
+    );
+  }
+  // A deep shelf cut into bays is also cut front to back, so each piece stays within the stock and
+  // still meets the divider along its whole depth. The loaded-top support can then stay on the left bay.
+  for (let i = panels.length - 1; i >= 0; i--) {
+    const part = panels[i];
+    if (part.type !== "shelf" || part.outline) continue;
+    const limit = shelfSpanLimit(part.materialId, thickOf(part));
+    if (!(part.size.depth > limit + EPS)) continue;
+    const near = dividers.some((d) => {
+      const end = Math.min(Math.abs(d.position.x - (part.position.x + part.size.width)), Math.abs(d.position.x + d.size.width - part.position.x));
+      return end < 0.3 && overlap(part.position.y, part.position.y + part.size.height, d.position.y, d.position.y + d.size.height) > 0.2;
+    });
+    if (!near) continue;
+    let k = Math.max(2, Math.ceil(part.size.depth / limit));
+    while (k < 6 && part.size.depth / k > limit + EPS) k++;
+    const z0 = part.position.z;
+    const d = part.size.depth;
+    panels.splice(i, 1);
+    for (let n = 0; n < k; n++) {
+      const z = z0 + (d * n) / k;
+      const zn = z0 + (d * (n + 1)) / k;
+      panels.push({
+        ...part,
+        id: n === 0 ? part.id : createId("sh"),
+        position: { ...part.position, z: n === 0 ? z : z + gap },
+        size: { ...part.size, depth: (n === k - 1 ? zn : zn - gap) - (n === 0 ? z : z + gap) },
+      });
+    }
+  }
+}
+
+function crowdsRod(panels: Panel[], part: Panel): boolean {
+  return panels.some((q) => {
+    if (!isHangingRod(q)) return false;
+    const ox = overlap(part.position.x, part.position.x + part.size.width, q.position.x, q.position.x + q.size.width);
+    const oz = overlap(part.position.z, part.position.z + part.size.depth, q.position.z, q.position.z + q.size.depth);
+    const top = q.position.y + q.size.height;
+    return ox > 0.5 && oz > 0.5 && part.position.y < top + 2 - 0.02 && part.position.y + part.size.height > top + 0.02;
+  });
+}
+
+/** Raise a shelf so a 1×2 under it stays 2" clear of the rod, when the bay above has room. */
+function liftClear(shelf: Panel, panels: Panel[], drop: number) {
+  const rod = panels.find((q) => isHangingRod(q) && overlap(shelf.position.x, shelf.position.x + shelf.size.width, q.position.x, q.position.x + q.size.width) > 0.5 && q.position.y + q.size.height <= shelf.position.y + 0.2);
+  if (!rod) return;
+  const need = rod.position.y + rod.size.height + 2 + drop;
+  if (shelf.position.y >= need - 0.02) return;
+  const blocked = panels.some((q) => {
+    if (q === shelf || q === rod) return false;
+    const ox = overlap(shelf.position.x, shelf.position.x + shelf.size.width, q.position.x, q.position.x + q.size.width);
+    const oz = overlap(shelf.position.z, shelf.position.z + shelf.size.depth, q.position.z, q.position.z + q.size.depth);
+    return ox > 0.5 && oz > 0.5 && q.position.y < need + shelf.size.height - 0.02 && q.position.y + q.size.height > shelf.position.y + shelf.size.height - 0.02;
+  });
+  if (!blocked) shelf.position = { ...shelf.position, y: need };
+}
+
+function addStick(panels: Panel[], extra: Panel[], piece: Omit<Panel, "id">) {
+  const draft = { ...piece, id: "pending" };
+  if (crowdsRod(panels, draft) || [...panels, ...extra].some((q) => solidsOverlap(draft, q))) return;
+  const n = extra.filter((p) => p.name === piece.name || p.name.startsWith(`${piece.name} `)).length;
+  extra.push({ ...piece, id: createId("di"), name: n ? `${piece.name} ${n + 1}` : piece.name });
+}
+
+/**
+ * Past the span check, each hanging bay gets one fixed shelf, a back cleat and a 1×2.
+ * A narrower over-span shelf gets only the 1×2, and stays one piece.
+ */
+function hatAndStiff(panels: Panel[], dividers: Panel[], extra: Panel[]) {
+  if (dividers.length) {
+    const rods = panels.filter(isHangingRod);
+    for (const shelf of panels.filter((p) => p.type === "shelf" && !p.outline)) {
+      const rod = rods.find((r) => overlap(shelf.position.x, shelf.position.x + shelf.size.width, r.position.x, r.position.x + r.size.width) > 1 && r.position.y + r.size.height <= shelf.position.y + 0.05);
+      if (!rod) continue;
+      const rodTop = rod.position.y + rod.size.height;
+      const between = panels.some((s) => s !== shelf && s.type === "shelf" && s.position.y > rodTop && s.position.y < shelf.position.y - 0.05 && overlap(shelf.position.x, shelf.position.x + shelf.size.width, s.position.x, s.position.x + s.size.width) > 1);
+      if (between) continue;
+      if (shelf.position.y < rodTop + 2) shelf.position = { ...shelf.position, y: rodTop + 2 };
+      shelf.cutNote = "Screwed fixed shelf. Screw it to both uprights of the bay.";
+      const y = shelf.position.y;
+      addStick(panels, extra, { type: "cleat", name: "Back cleat", position: { x: shelf.position.x, y: y - 0.75, z: shelf.position.z }, size: { width: shelf.size.width, height: 0.75, depth: Math.min(1.5, shelf.size.depth) }, materialId: "lumber-1x2-8" });
+      stiffenFront(panels, extra, shelf);
+    }
+  }
+  for (const shelf of panels) {
+    if (shelf.type !== "shelf" || isFixedSpanShelf(shelf) || lightShelf(shelf) || !overSpan(shelf, panels)) continue;
+    const span = Math.max(0, ...clearGaps(shelf, panels).map(([a, b]) => b - a));
+    if (!Number.isFinite(span) || overBeam(shelf, span)) continue;
+    liftClear(shelf, panels, 1.5);
+    stiffenFront(panels, extra, shelf);
+  }
+}
+
+/** A 1×2 on the front edge. Under the shelf when the bay is open; in the shelf's plane when the next shelf is close. */
+function stiffenFront(panels: Panel[], extra: Panel[], shelf: Panel) {
+  const x = shelf.position.x;
+  const w = shelf.size.width;
+  const front = shelf.position.z + shelf.size.depth;
+  const under = { type: "rail" as const, name: "Front stiffener", position: { x, y: shelf.position.y - 1.5, z: front - 0.75 }, size: { width: w, height: 1.5, depth: 0.75 }, materialId: "lumber-1x2-8" };
+  const n = extra.length;
+  addStick(panels, extra, under);
+  if (extra.length > n || shelf.size.depth < 4) return;
+  const plane = { type: "rail" as const, name: "Front stiffener", position: { x, y: shelf.position.y, z: front - 1.5 }, size: { width: w, height: shelf.size.height, depth: 1.5 }, materialId: "lumber-1x2-8" };
+  const draft = { ...plane, id: "pending" };
+  if (crowdsRod(panels, draft) || panels.concat(extra).some((q) => q !== shelf && solidsOverlap(draft, q))) return;
+  shelf.size = { ...shelf.size, depth: shelf.size.depth - 1.5 };
+  addStick(panels, extra, plane);
 }
 
 /**
@@ -713,20 +688,21 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
       limit = shelfSpanLimit(plate.materialId, thick);
     }
   }
-  placeColumns(panels, added);
-  braceTight(panels, added);
-  notchPassThrough(panels);
-  if (!added.length) return project;
+  placeBayDividers(panels, added);
+  splitCrossed(panels, added);
+  splitWide(panels, added);
+  const extra: Panel[] = [];
+  hatAndStiff(panels, added, extra);
+  for (const p of extra) panels.push(p);
+  if (!added.length && !extra.length) return project;
   const stations = [...new Set(added.map((d) => Math.round((d.position.x + d.size.width / 2) * 8) / 8))].sort((a, b) => a - b);
   for (const d of added) {
     const i = stations.indexOf(Math.round((d.position.x + d.size.width / 2) * 8) / 8);
     if (i > 0) d.name = `Center divider ${i + 1}`;
   }
   if (!wantsFixedGlueShelves(project)) for (const d of added) d.cutNote = PIN_NOTE;
-  if (!added.length) return project;
-  bearLongShelves(project, panels);
-  splitCrossed(panels, added);
   clearOverlaps(panels);
+  if (!added.length) return { ...project, panels };
   const after = Math.max(0, ...panels.filter((p) => p.type === "shelf" && housed(p, panels)).flatMap((p) => clearGaps(p, panels).map(([a, b]) => b - a)));
   const word = stations.length === 1 ? "a divider stands in the middle" : `${stations.length} dividers stand across the span`;
   const note = `Center divider under the shelves: ${inchFrac(before)}" is a long span for ${inchFrac(thick)}" ${stockWord(materialId)} (books want about ${inchFrac(limit)}" between supports), so ${word} and every shelf span is ${inchFrac(after)}" or less.`;
