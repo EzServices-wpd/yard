@@ -61,6 +61,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
+import { buildSinkVanity } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
 import { PET_ANIMAL } from "./fallbackPrimitive";
@@ -171,6 +172,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const W = u.width;
   const H = u.height;
   const D = u.depth;
+  const sink = buildSinkVanity(spec, prompt);
+  if (sink) return sink;
   const x0 = -W / 2;
   const panels: Panel[] = [];
   const house = detectHouseFamily(prompt);
@@ -2798,7 +2801,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     panels.push(panel("counter", spec.program === "desk" ? "Desktop" : "Counter", x0, boxH, 0, W, workTopT, D));
     if (u.mirror && spec.program === "vanity") {
       const mh = Math.max(8, (u.upperStart ?? Math.min(H, 54)) - workTopFace - 3);
-      panels.push(panel("mirror", "Mirror", kneeL, workTopFace + 2, 0.4, knee, mh, 0.2));
+      panels.push(panel("mirror", "Mirror", kneeL, workTopFace + 2, 0.4, knee, mh, 0.2, "mirror-glass"));
     }
   } else if (u.drawersPerBank) {
     // Front sections: the drawers own their section. It fills the carcase unless doors or typed shelves share the

@@ -357,7 +357,9 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       continue;
     }
     const step = out[at];
-    if (handWritten || namesSupport(project, step, info)) continue;
+    // A mirror the step already hangs on a cleat or into studs is not also glued to the carcase it stands above.
+    const mirrorHung = project.panels.find((p) => p.id === part.key)?.type === "mirror" && !project.fitted?.unit?.kneeW && !project.pocket && /\b(?:cleat|studs?)\b/i.test(`${step.title} ${step.description}`);
+    if (handWritten || namesSupport(project, step, info) || mirrorHung) continue;
     step.description = `${step.description} ${placeSentence(project, part, info, fix)}`;
   }
 
