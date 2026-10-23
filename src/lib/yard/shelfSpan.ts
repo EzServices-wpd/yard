@@ -13,7 +13,7 @@ import type { Panel, YardProject } from "./types";
 import { inchFrac } from "./inchText";
 import { wantsFixedGlueShelves } from "./honesty";
 import { solidsOverlap } from "./solids";
-import { wantsOpenSpan } from "./spanCheck";
+import { spanFindings, wantsOpenSpan } from "./spanCheck";
 
 const EPS = 1 / 32;
 /** Shelves shallower than this carry light loads (a spice rack). The span rule does not apply. */
@@ -296,9 +296,11 @@ function alreadyHeld(plate: Panel, panels: Panel[], at: number): boolean {
  * Cut the divider into the bays between those supports so the two meet on a face.
  */
 export function separateSpanSupports(project: YardProject): YardProject {
-  const blocks = project.panels.filter((p) => p.name.startsWith("Center support"));
-  if (!blocks.length || !project.panels.some((p) => /^Center divider\b/.test(p.name))) return project;
-  const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  const kept = project.panels.filter((b) => b.name !== "Shelf bearer" || !project.panels.some((q) => q !== b && solidsOverlap(b, q)));
+  const base = kept.length === project.panels.length ? project : { ...project, panels: kept };
+  const blocks = base.panels.filter((p) => p.name.startsWith("Center support"));
+  if (!blocks.length || !base.panels.some((p) => /^Center divider\b/.test(p.name))) return base;
+  const panels = base.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
   let changed = false;
   for (let i = panels.length - 1; i >= 0; i--) {
     const d = panels[i];
@@ -325,7 +327,7 @@ export function separateSpanSupports(project: YardProject): YardProject {
     panels.splice(i, 1, ...pieces.map((piece) => ({ ...d, id: createId("di"), position: { ...d.position, z: piece.z }, size: { ...d.size, depth: piece.d } })));
     changed = true;
   }
-  return changed ? { ...project, panels } : project;
+  return changed ? { ...base, panels } : base;
 }
 
 /** Cut a rail, lip or rod where a divider crosses it. The first piece keeps its name. Hanging rods are not cut. */
@@ -643,6 +645,50 @@ function overSpan(plate: Panel, panels: Panel[]): boolean {
 }
 
 /**
+ * The span check only counts a support whose top is under the shelf. A divider that runs through
+ * the shelf does not, so a block beside that divider stands under the shelf and fastens to the divider.
+ * It stops short of the shelf below, so it never stands on a pinned shelf.
+ */
+function bearLongShelves(project: YardProject, panels: Panel[]) {
+  const over = new Set(spanFindings({ ...project, panels }).filter((f) => f.load === "shelf").map((f) => f.panelId));
+  for (const shelf of panels) {
+    if (!over.has(shelf.id)) continue;
+    const divs = panels.filter((d) => {
+      if (!/^Center divider\b/.test(d.name)) return false;
+      const oy = overlap(shelf.position.y - 0.2, shelf.position.y + shelf.size.height, d.position.y, d.position.y + d.size.height);
+      const ox = overlap(shelf.position.x, shelf.position.x + shelf.size.width, d.position.x, d.position.x + d.size.width);
+      return oy > 0.2 && ox > 0.2;
+    });
+    for (const div of divs) {
+      const w = div.size.width;
+      let x = div.position.x + div.size.width;
+      if (x + w > shelf.position.x + shelf.size.width - 0.2) x = div.position.x - w;
+      if (x < shelf.position.x + 0.2) continue;
+      const y = shelf.position.y - 2.25;
+      const crowded = panels.some((q) => {
+        if (q === shelf) return false;
+        const top = q.position.y + q.size.height;
+        if (top <= y - 0.15 || q.position.y >= shelf.position.y - 0.05) return false;
+        const ox = overlap(x, x + w, q.position.x, q.position.x + q.size.width);
+        const oz = overlap(shelf.position.z, shelf.position.z + shelf.size.depth, q.position.z, q.position.z + q.size.depth);
+        return ox > 0.2 && oz > 0.2;
+      });
+      if (crowded || rodBlocks(panels, x + w / 2, y, shelf.position.y)) continue;
+      const bearer: Panel = {
+        id: createId("di"),
+        type: "divider",
+        name: "Shelf bearer",
+        position: { x, y, z: shelf.position.z },
+        size: { width: w, height: 2.25, depth: shelf.size.depth },
+        materialId: shelf.materialId,
+      };
+      if (panels.some((q) => solidsOverlap(bearer, q))) continue;
+      panels.push(bearer);
+    }
+  }
+}
+
+/**
  * One rule for every carcass: a housed shelf (and the case top over it) whose clear span
  * exceeds its stock gets a center divider in each opening. Same panels the rest of the plan reads.
  */
@@ -678,6 +724,7 @@ export function withShelfSpanSupports(project: YardProject, prompt = ""): YardPr
   }
   if (!wantsFixedGlueShelves(project)) for (const d of added) d.cutNote = PIN_NOTE;
   if (!added.length) return project;
+  bearLongShelves(project, panels);
   splitCrossed(panels, added);
   clearOverlaps(panels);
   const after = Math.max(0, ...panels.filter((p) => p.type === "shelf" && housed(p, panels)).flatMap((p) => clearGaps(p, panels).map(([a, b]) => b - a)));

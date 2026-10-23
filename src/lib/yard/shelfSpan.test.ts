@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
+import { spanFindings } from "./spanCheck";
 import { isFixedSpanShelf, shelfDepthSpan, shelfSpanLimit, shelfSpanViolations } from "./shelfSpan";
 import { solidsOverlap } from "./solids";
 import { supportsOf } from "./supportGraph";
@@ -203,6 +204,15 @@ describe("shelf span supports", () => {
       }
       const lines = new Set(project.panels.filter((p) => p.type === "shelf").map((p) => Math.round(p.position.y * 4) / 4));
       assert.equal(lines.size, project.fitted?.unit.shelfCount);
+    }
+  });
+
+  it("puts a bearer under a shelf the span check still calls long", () => {
+    for (const prompt of ["closet 72 wide 96 tall 24 deep", "half a sheet of plywood shelf", "office bookcase with doors 42 wide"]) {
+      const project = generateFromPrompt(prompt);
+      assert.deepEqual(spanFindings(project), [], prompt);
+      assert.ok(project.panels.some((p) => p.name === "Shelf bearer"), prompt);
+      assert.equal(project.panels.some((p) => p.name === "Shelf bearer" && project.panels.some((q) => q !== p && solidsOverlap(p, q))), false, prompt);
     }
   });
 
