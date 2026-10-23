@@ -1,0 +1,36 @@
+{
+ "source": "props-regressions",
+ "note": "Shrunk failing cases from scripts/props.test.ts (PROPS_WRITE_REGRESSIONS=1). Graded by the eval gate like any other corpus prompt.",
+ "prompts": [
+  {
+   "id": "prop:size: mixed fractions (24 1/2)",
+   "prompt": "bookcase 18 1/2 wide 30 tall 8 deep",
+   "note": "shrunk counterexample, fast-check seed 20261019; fixed by #103 (class-size-parse, I35): \"24 1/2\" is read as 2 on main"
+  },
+  {
+   "id": "prop:size: unicode fractions (24½)",
+   "prompt": "bookcase 18½ wide 30 tall 8 deep",
+   "note": "shrunk counterexample, fast-check seed 20261019; fixed by #103 (class-size-parse, I35): \"24½\" is not read as 24 1/2 on main (\"bookcase 30½ wide 60 tall\" builds 60 wide)"
+  },
+  {
+   "id": "prop:size: hyphen fractions (24-1/2)",
+   "prompt": "bookcase 18-1/2 wide 30 tall 8 deep",
+   "note": "shrunk counterexample, fast-check seed 20261019; fixed by #103 (class-size-parse, I35): \"24-1/2\" is read as 2 on main"
+  },
+  {
+   "id": "prop:size: feet-inches (2' 6\", 2 ft 6 in)",
+   "prompt": "bookcase 1' 6 1/2\" wide 30 tall 8 deep",
+   "note": "shrunk counterexample, fast-check seed 20261019; fixed by #103 (class-size-parse, I35): feet-inches are not read on main (\"bookcase 2' 6\\\" wide 60 tall\" builds 60 wide)"
+  },
+  {
+   "id": "prop:size: W×D×H strings with fractions",
+   "prompt": "bookcase 18 1/2x8 1/2x30 1/2",
+   "note": "shrunk counterexample, fast-check seed 20261019; fixed by #103 (class-size-parse, I35): fractions inside W×D×H strings (\"30 1/2x12x60\") are misread on main"
+  },
+  {
+   "id": "prop:count: abacus rods built or refused",
+   "prompt": "abacus 4 wide 13 rods",
+   "note": "shrunk counterexample, fast-check seed 20261019; Typed-count rule (#90, Critic regrade at 90c0deb): main silently builds fewer rods than typed (\"abacus 10 wide 15 rods\" → 12); #90 builds the count or refuses with the minimum width"
+  }
+ ]
+}
