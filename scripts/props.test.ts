@@ -95,7 +95,9 @@ function countHonored({ prompt, thing, n }: CountCase) {
   const p = build(prompt);
   if (p.error) return false;
   if (typeof p.refused === "string" && p.refused) return true; // refused out loud is honest
-  const built = p.panels.filter((x: { name: string }) => COUNT_RE[thing].test(x.name)).length;
+  const hit = p.panels.filter((x: { name: string; position?: { y: number } }) => COUNT_RE[thing].test(x.name));
+  // A typed shelf count is a count of shelf levels. A divider cuts a level into bay pieces.
+  const built = thing === "shelves" ? new Set(hit.map((x: { position?: { y: number } }) => Math.round((x.position?.y ?? 0) * 4) / 4)).size : hit.length;
   return built === n;
 }
 const stockArb = fc.constantFrom(...STOCK);
