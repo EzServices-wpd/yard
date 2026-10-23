@@ -7,6 +7,7 @@
  *   on the typed axis at which every part is real is found by rebuilding, and named.
  */
 import { getCatalogItem } from "./catalog";
+import { withArticle } from "./article";
 import { inchFrac } from "./inchText";
 import { canonicalMeasures, typedMeasures } from "./measureText";
 import { buildPlan } from "./report";
@@ -66,11 +67,10 @@ export function withAxis(prompt: string, axis: Axis, to: number): string {
 }
 
 function refused(p: YardProject, why: string): YardProject {
-  return { ...p, name: askedNoun(p), panels: [], instances: [], refused: why, cardNote: why };
+  // Nothing is built, so no note about the parts it would have had ("Bead is 0\" across", I37 zero) rides along.
+  return { ...p, name: askedNoun(p), panels: [], instances: [], notes: [], refused: why, cardNote: why };
 }
 
-// "An abacus", "an end table"; a "you"-sounding u takes "a" ("a utility cabinet", "a unit").
-const article = (noun: string) => (/^(?:[aeio]|u(?!ni|s[aeiou]|ti|ku|r[aeiou]))/i.test(noun) ? "An" : "A");
 
 /**
  * The refusal for a build too small to hold its parts, or null when it builds. `rebuild` builds a prompt (the same
@@ -91,7 +91,7 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
       for (const a of ["width", "depth", "height"] as const) {
         const v = typed[a];
         if (v != null && v < min - 1e-6) {
-          return refused(p, `${article(lower)} ${lower} needs at least ${inchFrac(min)}" ${WORD[a]}: two ${inchFrac(t)}" panels and a ${inchFrac(MIN_INTERIOR_IN)}" opening between them. Nothing is built at ${inchFrac(v)}".`);
+          return refused(p, `${withArticle(lower, true)} needs at least ${inchFrac(min)}" ${WORD[a]}: two ${inchFrac(t)}" panels and a ${inchFrac(MIN_INTERIOR_IN)}" opening between them. Nothing is built at ${inchFrac(v)}".`);
         }
       }
     }
@@ -109,7 +109,7 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
     if (hi > SEARCH_MAX_IN * 16) continue;
     while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ok(mid / 16)) hi = mid; else lo = mid; }
     const min = hi / 16;
-    return refused(p, `${article(lower)} ${lower} needs at least ${inchFrac(min)}" ${WORD[a]} for its parts to fit. Nothing is built at ${inchFrac(v)}".`);
+    return refused(p, `${withArticle(lower, true)} needs at least ${inchFrac(min)}" ${WORD[a]} for its parts to fit. Nothing is built at ${inchFrac(v)}".`);
   }
   return null;
 }

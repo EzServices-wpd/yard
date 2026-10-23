@@ -98,3 +98,17 @@ it("I38 catches a part at zero or below, and a picture-frame backer keeps its 0.
   assert.ok(backer && backer.size.depth > 0, JSON.stringify(backer?.size));
   assert.deepEqual(i38(f, buildPlan(f)), []);
 });
+
+it("the refusal note's a/an comes from the shared article.ts: 'A utility cabinet', 'A bookcase', 'An entertainment center'", () => {
+  for (const [prompt, opens] of [["utility cabinet 1/2 wide", "A utility cabinet needs"], ["bookcase 1/2 wide", "A bookcase needs"], ["entertainment center 1/2 wide", "An entertainment center needs"]] as const) {
+    const p = generateFromPrompt(prompt);
+    assert.ok(p.refused, `${prompt} is refused`);
+    assert.ok(p.cardNote!.startsWith(opens), `${prompt}: ${p.cardNote}`);
+  }
+});
+
+it("a refusal carries no note about parts it never built ('abacus 1/2 tall' kept 'Bead is 0\" across')", () => {
+  const p = generateFromPrompt("abacus 1/2 tall");
+  assert.ok(p.refused);
+  assert.deepEqual(p.notes ?? [], []);
+});
