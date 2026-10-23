@@ -478,7 +478,8 @@ export function i43(p: YardProject, prompt: string): Violation[] {
     return t.refused || !t.panels.length ? [] : AX.filter((b) => Math.abs(t.overall[b] - o[b]) > 1 / 16 + 1e-6).map((b) => [b, t.overall[b]] as const);
   };
   // Row 239: a number typed before a sentence's period ('desk 60.', 'cabinet 30. thanks') lands exactly as without it.
-  const unpunct = prompt.replace(/(\d)\.(?!\d)/g, "$1");
+  // A list number that opens a line ("1. desk 60") is not a size.
+  const unpunct = prompt.replace(/(?<!^\s*\d*)(\d)\.(?!\d)/gm, "$1");
   if (unpunct !== prompt) for (const [b, was] of moved(unpunct)) out.push(`${b} is ${inchFrac(o[b])}" with the period after the typed number, ${inchFrac(was)}" without it`);
   const typed = typedMeasures(prompt);
   if (typed.tuple) return out.map((m) => v("I43", m));
