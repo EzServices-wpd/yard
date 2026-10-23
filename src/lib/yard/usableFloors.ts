@@ -121,9 +121,20 @@ export function leastBay(p: YardProject): number {
   const x0 = Math.min(...ups.map((q) => q.position.x + q.size.width)), x1 = Math.max(...ups.map((q) => q.position.x));
   const inner = x1 - x0;
   if (!(inner > 0)) return Infinity;
-  const flats = p.panels
-    .filter((q) => (q.type === "shelf" || q.type === "bottom" || q.type === "top") && Math.min(q.position.x + q.size.width, x1) - Math.max(q.position.x, x0) >= inner / 2)
-    .sort((a, b) => a.position.y - b.position.y);
+  // A level is every flat at one height: a shelf divided over its span (#114) is one level in two pieces, so the
+  // pieces' widths inside the carcass add up before the level is held to spanning most of it.
+  const levels = new Map<string, { y: number; top: number; across: number }>();
+  for (const q of p.panels) {
+    if (q.type !== "shelf" && q.type !== "bottom" && q.type !== "top") continue;
+    const key = `${q.position.y.toFixed(3)}:${q.size.height.toFixed(3)}`;
+    const l = levels.get(key) ?? { y: q.position.y, top: q.position.y + q.size.height, across: 0 };
+    l.across += Math.max(0, Math.min(q.position.x + q.size.width, x1) - Math.max(q.position.x, x0));
+    levels.set(key, l);
+  }
+  const flats = [...levels.values()]
+    .filter((l) => l.across >= inner / 2)
+    .sort((a, b) => a.y - b.y)
+    .map((l) => ({ position: { y: l.y }, size: { height: l.top - l.y } }));
   const drawers = p.panels.filter((q) => q.type === "drawer");
   let least = Infinity;
   for (let i = 1; i < flats.length; i++) {

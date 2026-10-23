@@ -85,14 +85,15 @@ it("row 148: the refusal names the object, with a/an by sound", () => {
 it("a default shelf count shrinks to keep a hand's room per bay, and says so; a typed count is refused", () => {
   const p = generateFromPrompt("bookcase 12 tall");
   assert.ok(!p.refused);
-  const shelves = p.panels.filter((q) => q.type === "shelf");
-  assert.equal(shelves.length, 1);
+  // Counted as levels (distinct heights): a shelf divided over its span (#114) is one shelf in two pieces.
+  const levels = (q: typeof p) => new Set(q.panels.filter((x) => x.type === "shelf").map((x) => x.position.y.toFixed(3))).size;
+  assert.equal(levels(p), 1);
   assert.match(p.cardNote ?? "", /^Only 1 shelf fits in 12" tall with a hand's room \(3 3\/4"\) over each; 5 shelves need 28 1\/2"\.$/);
   const typed = generateFromPrompt("bookcase 12 tall 5 shelves");
   assert.match(typed.refused ?? "", /needs at least 28 1\/2" tall for a hand's room \(3 3\/4"\) in every shelf bay\. Nothing is built at 12"\./);
   // An untyped height keeps the default count, and a normal one is untouched.
-  assert.equal(generateFromPrompt("bookcase").panels.filter((q) => q.type === "shelf").length, 5);
-  assert.equal(generateFromPrompt("shelf").panels.filter((q) => q.type === "shelf").length, 3);
+  assert.equal(levels(generateFromPrompt("bookcase")), 5);
+  assert.equal(levels(generateFromPrompt("shelf")), 3);
   assert.ok(HAND_ROLLED_IN === 3.75);
 });
 
