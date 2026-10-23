@@ -5,7 +5,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
 import { checkBuild } from "./invariants.ts";
-import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodDropIn } from "./hangingClearance.ts";
+import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodDropIn, unsupportedFloorSpan } from "./hangingClearance.ts";
 import type { Panel } from "./types.ts";
 
 const PROBES: { id: string; prompt: string; shelves?: number }[] = JSON.parse(
@@ -146,9 +146,6 @@ function shelfClearGaps(panels: Panel[]): number[] {
   return gaps;
 }
 
-const askShelves = (prompt: string, n: number) =>
-  /\d+\s+shel/i.test(prompt) ? prompt.replace(/\d+(\s+shel(?:f|ves))/i, `${n}$1`) : `${prompt} with ${n} shelves`;
-
 it("a typed shelf count is built exactly, or refused with no parts", () => {
   const cases: [string, number][] = [
     ...PROBES.filter((p) => p.shelves != null).map((p) => [p.prompt, p.shelves!] as [string, number]),
@@ -162,7 +159,7 @@ it("a typed shelf count is built exactly, or refused with no parts", () => {
     const p = generateFromPrompt(q);
     if (p.refused || !p.panels.length) {
       assert.equal(p.panels.length, 0, q);
-      assert.match(p.refused ?? "", /or fewer/, q);
+      assert.match(p.refused ?? "", /at least [\d /]+" tall/, q);
       continue;
     }
     assert.equal(shelfLines(p.panels), n, q);
@@ -188,15 +185,17 @@ it("closet shelves keep about 7\" clear, and a refusal names a count that itself
     const p = generateFromPrompt(q);
     if (p.refused || !p.panels.length) {
       assert.equal(p.panels.length, 0, q);
-      const named = Number(p.refused?.match(/fits (\d+) or fewer/)?.[1]);
-      assert.ok(Number.isFinite(named), q);
-      const again = named === 0 ? generateFromPrompt(q.replace(/\s+with \d+ shelves/, "")) : generateFromPrompt(askShelves(q, named));
-      assert.equal(again.refused, undefined, `${q} named ${named}: ${again.refused}`);
-      assert.ok(again.panels.length > 0, `${q} named ${named}`);
-      if (named > 0) assert.equal(shelfLines(again.panels), named, q);
+      const height = p.refused?.match(/at least ([\d /]+)" tall/)?.[1];
+      const asked = Number(q.match(/(\d+)\s+shel/i)?.[1]);
+      assert.ok(height && Number.isFinite(asked), q);
+      const againQ = /(?:tall|high)/i.test(q) ? q.replace(/\d[\d /]*\s*(?:tall|high)/i, `${height} tall`) : q.replace(/wardrobe/i, `wardrobe ${height} tall`);
+      const again = generateFromPrompt(againQ);
+      assert.equal(again.refused, undefined, `${q} named ${height}: ${again.refused}`);
+      assert.ok(again.panels.length > 0, `${q} named ${height}`);
+      assert.equal(shelfLines(again.panels), asked, againQ);
       const gaps = shelfClearGaps(again.panels);
-      if (gaps.length) assert.ok(Math.min(...gaps) + 1e-6 >= CLOSET_SHELF_CLEAR_IN, `${q} named ${named} gap ${Math.min(...gaps)}`);
-      assert.deepEqual(checkBuild(again, named === 0 ? q : askShelves(q, named)).filter((v) => ["I1", "I3", "I7", "I9", "I13"].includes(v.id)), [], q);
+      assert.ok(gaps.length > 0 && Math.min(...gaps) + 1e-6 >= CLOSET_SHELF_CLEAR_IN, `${q} named ${height} gap ${Math.min(...gaps)}`);
+      assert.deepEqual(checkBuild(again, againQ).filter((v) => ["I1", "I3", "I7", "I9", "I13"].includes(v.id)), [], q);
       continue;
     }
     const gaps = shelfClearGaps(p.panels);
@@ -260,6 +259,39 @@ it("a typed wardrobe depth does not also set the width", () => {
   assert.equal(p.overall.depth, 19.75);
   assert.equal(p.overall.width, 36);
   assert.equal(p.overall.height, 84);
+});
+
+it("no wardrobe rod or raised floor spans past 42 inches", () => {
+  const prompts = [
+    "wardrobe", "wardrobe 36 wide", "wardrobe 48 wide", "wardrobe 54 wide", "wardrobe 60 wide", "wardrobe 72 wide", "wardrobe 96 wide",
+    "wardrobe 48 wide 72 tall", "wardrobe 60 wide 72 tall", "wardrobe 72 wide 72 tall", "wardrobe 48 wide 96 tall", "wardrobe 72 wide 96 tall",
+    "wardrobe with drawers", "wardrobe with 2 drawers", "wardrobe 48 wide with 2 drawers", "wardrobe 54 wide with 2 drawers",
+    "wardrobe 60 wide with 3 drawers", "wardrobe 72 wide with 2 drawers", "wardrobe 96 wide with 2 drawers", "wardrobe 72 wide with 3 shelves",
+  ];
+  for (const q of prompts) {
+    const p = generateFromPrompt(q);
+    assert.ok(p.panels.length > 0 && !p.refused, q);
+    for (const rod of p.panels.filter((x) => /hanging rod/i.test(x.name))) {
+      assert.ok(rod.size.width <= ROD_BAY_MAX_IN + 1e-6, `${q} ${rod.name} ${rod.size.width}`);
+    }
+    for (const floor of p.panels.filter((x) => x.type === "bottom" && x.position.y >= 0.3)) {
+      const span = unsupportedFloorSpan(floor, p.panels);
+      assert.ok(span <= ROD_BAY_MAX_IN + 1e-6, `${q} ${floor.name} spans ${span}`);
+    }
+    assert.deepEqual(checkBuild(p, q).filter((v) => ["I1", "I7"].includes(v.id)).map((v) => v.id), [], q);
+  }
+  for (const q of ["wardrobe 48 wide", "wardrobe 72 wide"]) {
+    const note = generateFromPrompt(q).notes.join(" ");
+    assert.match(note, /fixed hat shelf/, q);
+    assert.match(note, /No pinned shelf above the hat/, q);
+    assert.doesNotMatch(note, /\d+ adjustable shelf line/, q);
+    assert.match(note, /in each of [23] bays/, q);
+  }
+  const tall = generateFromPrompt("wardrobe 72 wide 96 tall").notes.join(" ");
+  assert.match(tall, /fixed hat shelf/);
+  assert.match(tall, /1 adjustable shelf line above it/);
+  assert.match(tall, /in each of 3 bays/);
+  assert.doesNotMatch(tall, /No pinned shelf above the hat/);
 });
 
 it("every wardrobe probe clears the hanger rule", () => {

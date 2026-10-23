@@ -4,6 +4,7 @@
  * is the usual untyped depth). Below that, a build that would hang clothes is refused and names
  * the depth that does hang. Shelves-only closets are not hanging builds.
  */
+import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { askedNoun } from "./tooSmall";
 import type { Panel, YardProject } from "./types";
@@ -134,10 +135,15 @@ export function rodForTypedShelves(o: {
   return { fit: shelvesThatFit(full, o.thick, clear) };
 }
 
-/** Refusal for a typed shelf count that cannot keep the gap. Names the count that does. */
-export function shelfCountRefusal(noun: string, asked: number, fit: number, clear = closetShelfClearIn()): string {
+/** Shortest overall height that holds `count` closet shelves at the gap, with the rod left out. */
+export function closetShelfMinHeight(count: number, thick = 0.75, clear = closetShelfClearIn()): number {
+  return (count + 1) * (thick + Math.max(SHELF_CLEAR_FLOOR_IN, clear)) + thick * 2;
+}
+
+/** Refusal for a typed shelf count that cannot keep the gap. Names the height that does. */
+export function shelfCountRefusal(noun: string, asked: number, clear = closetShelfClearIn()): string {
   const a = /^[aeio]/i.test(noun) ? "An" : "A";
-  return `${a} ${noun.toLowerCase()} this tall fits ${fit} or fewer shelves with ${clear}" clear between them. Nothing is built with ${asked}.`;
+  return `${a} ${noun.toLowerCase()} needs at least ${inchFrac(closetShelfMinHeight(asked, 0.75, clear))}" tall for ${asked} shelves with ${clear}" clear between them. Nothing is built.`;
 }
 
 /** Interior depth a hanger actually gets: back's inner face to the box front (an overlay door stands proud). */
@@ -180,4 +186,252 @@ export function hangingDepthRefusal(p: YardProject, prompt: string): YardProject
   const a = /^[aeio]/i.test(noun) ? "An" : "A";
   const why = `${a} ${noun.toLowerCase()} needs at least ${inchFrac(HANGER_MIN_DEPTH_IN)}" deep so clothes can hang (hangers need about ${HANGER_CLEAR_IN}" inside). Nothing is built at ${inchFrac(p.overall.depth)}".`;
   return { ...p, name: noun, panels: [], instances: [], refused: why, cardNote: why, notes: [why] };
+}
+
+const BAY_EPS = 1 / 32;
+
+function isHangingRod(panel: Panel): boolean {
+  return panel.type === "rail" && /hanging rod/i.test(panel.name);
+}
+
+function overlapLen(a0: number, a1: number, b0: number, b1: number): number {
+  return Math.min(a1, b1) - Math.max(a0, b0);
+}
+
+/** A bay divider, not the splitter inside a drawer bank. */
+function bayVerticals(panels: Panel[]): Panel[] {
+  return panels.filter((q) => q.type === "divider" && q.size.width <= 2.25 && q.size.height >= 2 && !/drawer bay divider/i.test(q.name));
+}
+
+function crossesPart(a: Panel, d: Panel): boolean {
+  return (
+    overlapLen(a.position.x, a.position.x + a.size.width, d.position.x, d.position.x + d.size.width) > 0.2 &&
+    overlapLen(a.position.y, a.position.y + a.size.height, d.position.y, d.position.y + d.size.height) > 0.2 &&
+    overlapLen(a.position.z, a.position.z + a.size.depth, d.position.z, d.position.z + d.size.depth) > 0.2
+  );
+}
+
+/**
+ * Longest clear run of a raised floor. A vertical counts only when its top lands under the floor.
+ * A divider that runs through the floor does not shorten it.
+ */
+export function unsupportedFloorSpan(floor: Panel, panels: Panel[]): number {
+  const x0 = floor.position.x;
+  const x1 = x0 + floor.size.width;
+  const stops = [x0, x1];
+  for (const q of panels) {
+    if (q === floor || q.type === "back" || q.type === "door" || q.type === "rail") continue;
+    if (q.size.width > 2.25 || q.size.height < 2) continue;
+    const top = q.position.y + q.size.height;
+    if (Math.abs(top - floor.position.y) > 0.35) continue;
+    const at = q.position.x + q.size.width / 2;
+    if (at <= x0 + 0.5 || at >= x1 - 0.5) continue;
+    const oz = overlapLen(floor.position.z, floor.position.z + floor.size.depth, q.position.z, q.position.z + q.size.depth);
+    if (oz < floor.size.depth * 0.5) continue;
+    stops.push(at);
+  }
+  stops.sort((a, b) => a - b);
+  let span = 0;
+  for (let i = 1; i < stops.length; i++) span = Math.max(span, stops[i] - stops[i - 1]);
+  return span;
+}
+
+function splitOnDividers(panels: Panel[], index: number, dividers: Panel[]): boolean {
+  const part = panels[index];
+  const hits = dividers.filter((d) => crossesPart(part, d)).sort((a, b) => a.position.x - b.position.x);
+  if (!hits.length) return false;
+  const pieces: { x: number; w: number }[] = [];
+  let x = part.position.x;
+  const end = x + part.size.width;
+  for (const d of hits) {
+    if (d.position.x - x >= 1) pieces.push({ x, w: d.position.x - x });
+    x = Math.max(x, d.position.x + d.size.width);
+  }
+  if (end - x >= 1) pieces.push({ x, w: end - x });
+  if (pieces.length < 2) return false;
+  panels.splice(index, 1);
+  pieces.forEach((piece, n) =>
+    panels.push({
+      ...part,
+      id: n === 0 ? part.id : createId(part.type === "rail" ? "ra" : "bo"),
+      name: n === 0 ? part.name : `${part.name} ${n + 1}`,
+      position: { ...part.position, x: piece.x },
+      size: { ...part.size, width: piece.w },
+    }),
+  );
+  return true;
+}
+
+function splitMatching(panels: Panel[], take: (panel: Panel) => boolean): boolean {
+  let changed = false;
+  for (let i = panels.length - 1; i >= 0; i--) {
+    if (!take(panels[i])) continue;
+    if (splitOnDividers(panels, i, bayVerticals(panels))) changed = true;
+  }
+  return changed;
+}
+
+/** Depth that still covers the rod, cut back where another divider already stands. */
+function openDepth(panels: Panel[], at: number, t: number, y0: number, y1: number, z0: number, z1: number, host: Panel): { z: number; d: number } | null {
+  const blocks = panels
+    .filter(
+      (q) =>
+        q.type === "divider" &&
+        overlapLen(at - t / 2, at + t / 2, q.position.x, q.position.x + q.size.width) > 0.2 &&
+        overlapLen(y0, y1, q.position.y, q.position.y + q.size.height) > 0.2 &&
+        overlapLen(z0, z1, q.position.z, q.position.z + q.size.depth) > 0.2,
+    )
+    .map((q) => [q.position.z, q.position.z + q.size.depth] as [number, number])
+    .sort((a, b) => a[0] - b[0]);
+  const spans: [number, number][] = [];
+  let z = z0;
+  for (const [a, b] of blocks) {
+    if (a - z >= 1) spans.push([z, a]);
+    z = Math.max(z, b);
+  }
+  if (z1 - z >= 1) spans.push([z, z1]);
+  const rod0 = host.position.z;
+  const rod1 = rod0 + host.size.depth;
+  const hit = spans.find(([a, b]) => a <= rod0 + 0.2 && b >= rod1 - 0.2);
+  return hit ? { z: hit[0], d: hit[1] - hit[0] } : null;
+}
+
+/** Full height of the hanging bay: on the carcase bottom, up to a raised floor or the top. */
+function standBayDivider(panels: Panel[], at: number, host: Panel): boolean {
+  const t = 0.75;
+  if (bayVerticals(panels).some((d) => Math.abs(d.position.x + d.size.width / 2 - at) < 1.5)) return false;
+  const ground = panels.filter((p) => p.type === "bottom" && p.position.y < 0.3);
+  const y0 = ground.length ? Math.max(...ground.map((b) => b.position.y + b.size.height)) : 0.75;
+  const raised = panels
+    .filter((p) => p.type === "bottom" && p.position.y > y0 + 4 && overlapLen(at - t / 2, at + t / 2, p.position.x, p.position.x + p.size.width) > 0)
+    .sort((a, b) => a.position.y - b.position.y)[0];
+  const cap = panels.filter((p) => p.type === "top").sort((a, b) => a.position.y - b.position.y)[0];
+  const y1 = raised ? raised.position.y : cap ? cap.position.y : y0;
+  if (y1 - y0 < 4) return false;
+  const prefer = raised ?? ground[0] ?? host;
+  const span = openDepth(panels, at, t, y0, y1, prefer.position.z, prefer.position.z + prefer.size.depth, host);
+  if (!span) return false;
+  const box = { x: at - t / 2, y: y0, z: span.z, w: t, h: y1 - y0, d: span.d };
+  const hitsDrawer = panels.some(
+    (q) =>
+      (q.type === "drawer" || /drawer front/i.test(q.name)) &&
+      overlapLen(box.x, box.x + box.w, q.position.x, q.position.x + q.size.width) > 0.2 &&
+      overlapLen(box.y, box.y + box.h, q.position.y, q.position.y + q.size.height) > 0.2 &&
+      overlapLen(box.z, box.z + box.d, q.position.z, q.position.z + q.size.depth) > 0.2,
+  );
+  if (hitsDrawer) return false;
+  const n = panels.filter((p) => /^Bay divider\b/.test(p.name)).length;
+  panels.push({
+    id: createId("di"),
+    type: "divider",
+    name: `Bay divider ${n + 1}`,
+    position: { x: box.x, y: box.y, z: box.z },
+    size: { width: box.w, height: box.h, depth: box.d },
+    materialId: (ground[0] ?? host).materialId,
+  });
+  return true;
+}
+
+/** A divider that stabs a raised floor is cut so its top bears the floor and the rest continues above it. */
+function bearRaisedFloors(panels: Panel[]): boolean {
+  let changed = false;
+  const floors = panels.filter((p) => p.type === "bottom" && p.position.y >= 0.3 && unsupportedFloorSpan(p, panels) > ROD_BAY_MAX_IN + BAY_EPS);
+  for (const floor of floors) {
+    const piercers = bayVerticals(panels).filter(
+      (d) => crossesPart(floor, d) && d.position.y < floor.position.y - 0.05 && d.position.y + d.size.height > floor.position.y + floor.size.height + 0.05,
+    );
+    for (const d of piercers) {
+      const top = d.position.y + d.size.height;
+      const aboveY = floor.position.y + floor.size.height;
+      const aboveH = top - aboveY;
+      d.size = { ...d.size, height: Math.max(0.5, floor.position.y - d.position.y) };
+      if (aboveH > 1) {
+        panels.push({
+          ...d,
+          id: createId("di"),
+          name: `${d.name} upper`,
+          position: { ...d.position, y: aboveY },
+          size: { ...d.size, height: aboveH },
+        });
+      }
+      changed = true;
+    }
+    if (unsupportedFloorSpan(floor, panels) <= ROD_BAY_MAX_IN + BAY_EPS) continue;
+    const n = Math.max(2, Math.ceil((floor.size.width - BAY_EPS) / ROD_BAY_MAX_IN));
+    for (let i = 1; i < n; i++) {
+      if (standBayDivider(panels, floor.position.x + (floor.size.width * i) / n, floor)) changed = true;
+    }
+  }
+  return changed;
+}
+
+/**
+ * Every hanging bay is 42" or less, shelf or no shelf. Rods are cut at the dividers.
+ * A raised floor (the drawer-bay floor) is borne by those dividers, not stabbed by them.
+ */
+export function supportHangingBays(project: YardProject): YardProject {
+  if (!project.panels.length || project.refused || !project.panels.some(isHangingRod)) return project;
+  const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  const wideRod = (p: Panel) => isHangingRod(p) && p.size.width > ROD_BAY_MAX_IN + BAY_EPS;
+  let changed = splitMatching(panels, wideRod);
+  for (let guard = 0; panels.some(wideRod) && guard < 6; guard++) {
+    const rod = panels.find(wideRod)!;
+    const n = Math.max(2, Math.ceil((rod.size.width - BAY_EPS) / ROD_BAY_MAX_IN));
+    let placed = false;
+    for (let i = 1; i < n; i++) {
+      if (standBayDivider(panels, rod.position.x + (rod.size.width * i) / n, rod)) placed = true;
+    }
+    if (splitMatching(panels, wideRod)) changed = true;
+    if (!placed) break;
+    changed = true;
+  }
+  if (bearRaisedFloors(panels)) changed = true;
+  return changed ? { ...project, panels } : project;
+}
+
+function bayRodNote(rodY: number, count: number, hat: boolean): string {
+  const above = hat ? "with the fixed hat shelf above it" : "with the shelves above it";
+  const base = `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up in each of ${count} bays, ${above}`;
+  if (rodY + 1e-6 >= LONG_HANG_LO) return `${base}, so coats and shirts hang full length.`;
+  if (rodY + 1e-6 >= MIN_HANG_ROOM_IN) return `${base}, so shirts hang.`;
+  return `${base}.`;
+}
+
+/** Shelf and rod notes follow the bays actually built: a fixed hat is not an adjustable line, and each bay's rod is counted. */
+export function hangingTalk(project: YardProject): YardProject {
+  if (!project.panels.length || project.refused) return project;
+  const rods = project.panels.filter(isHangingRod);
+  const rows = new Map<string, { y: number; fixed: boolean }>();
+  for (const shelf of project.panels) {
+    if (shelf.type !== "shelf") continue;
+    const key = shelf.position.y.toFixed(2);
+    const row = rows.get(key) ?? { y: shelf.position.y, fixed: false };
+    if (/^Screwed fixed shelf/.test(shelf.cutNote ?? "")) row.fixed = true;
+    rows.set(key, row);
+  }
+  const lines = [...rows.values()];
+  const hats = lines.filter((line) => line.fixed);
+  const hatY = hats.length ? Math.min(...hats.map((line) => line.y)) : null;
+  const above = hatY == null ? [] : lines.filter((line) => !line.fixed && line.y > hatY + 0.05);
+  let changed = false;
+  let notes = [...(project.notes ?? [])];
+  if (hats.length) {
+    const shelf = above.length
+      ? `One fixed hat shelf over the rod, and ${above.length} adjustable shelf line${above.length === 1 ? "" : "s"} above it.`
+      : "One fixed hat shelf over the rod. No pinned shelf above the hat.";
+    notes = notes.map((note) => {
+      if (!/\d+ adjustable shelf lines?\./.test(note)) return note;
+      changed = true;
+      return shelf;
+    });
+  }
+  if (rods.length > 1 && rods.every((rod) => Math.abs(rod.position.y - rods[0].position.y) < 0.6)) {
+    const next = bayRodNote(rods[0].position.y, rods.length, hats.length > 0);
+    notes = notes.map((note) => {
+      if (!/closet rod in two sockets runs side to side/.test(note) || /second rod/.test(note)) return note;
+      changed = true;
+      return next;
+    });
+  }
+  return changed ? { ...project, notes } : project;
 }

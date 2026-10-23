@@ -3,7 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
-import { hangingDepthRefusal } from "./hangingClearance";
+import { hangingDepthRefusal, hangingTalk, supportHangingBays } from "./hangingClearance";
 import { tooSmallRefusal } from "./tooSmall";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -675,7 +675,7 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A door style frames each front only after its slab size, reveal and position are final, so a style
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
-  const spanned = (p: YardProject) => separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]));
+  const spanned = (p: YardProject) => hangingTalk(supportHangingBays(separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]))));
   return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(spanned(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0]))))))));
 }
 

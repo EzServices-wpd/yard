@@ -3214,7 +3214,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   };
   if (!shelfMiss) return built;
   const noun = askedNoun(built);
-  const why = shelfCountRefusal(noun, shelfMiss.asked, shelfMiss.fit);
+  const why = shelfCountRefusal(noun, shelfMiss.asked);
   return { ...built, name: noun, panels: [], instances: [], notes: [why], cardNote: why, refused: why };
 }
 
