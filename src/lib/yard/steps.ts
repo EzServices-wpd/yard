@@ -2588,10 +2588,14 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   if (mirrors.length) {
+    // A knee desk hangs the glass over the knee. A sink base has no knee: the same mirror hangs on a French cleat into studs.
+    const hang = u?.kneeW || pocket
+      ? "Hang over the knee, between the counter and the uppers. French cleat (two interlocking angled strips — one on the wall, one on the mirror) or mirror clips into studs — not into the plywood back alone."
+      : "Hang it on a French cleat into two studs: two interlocking angled strips, one on the wall and one on the mirror. Not into the plywood back alone.";
     steps.push({
       step: n++,
       title: "Hang the bought mirror",
-      description: `${mirrors.map((p) => `${p.name} — ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}"`).join("; ")}. Buy glass this size — do not cut it from the plywood. Hang over the knee, between the counter and the uppers. French cleat (two interlocking angled strips — one on the wall, one on the mirror) or mirror clips into studs — not into the plywood back alone.`,
+      description: `${mirrors.map((p) => `${p.name} — ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}"`).join("; ")}. Buy glass this size — do not cut it from the plywood. ${hang}`,
       partsUsed: names(mirrors),
     });
   }
