@@ -3,8 +3,9 @@ import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
-import { shelfSpanViolations } from "./shelfSpan";
+import { shelfDepthSpan, shelfSpanLimit, shelfSpanViolations } from "./shelfSpan";
 import { solidsOverlap } from "./solids";
+import { stepScrewCount } from "./stepJointScrews";
 import { corpus } from "../../../scripts/invariants-corpus.ts";
 
 /** The 55 carcass probes that spanned 3/4" plywood with no centre support (row 206). */
@@ -98,13 +99,10 @@ describe("shelf span supports", () => {
     assert.ok(plan.bom.some((b) => b.catalogId === "shelf-pins"));
     assert.match(parts[0].cutNote ?? "", /pin holes on both faces/);
     const shelves = project.panels.filter((p) => p.type === "shelf");
-    assert.equal(shelves.length, 10);
-    for (const shelf of shelves) {
-      const left = parts[0].position.x - (shelf.position.x + shelf.size.width);
-      const right = shelf.position.x - (parts[0].position.x + parts[0].size.width);
-      const gap = left > 0 && left < 0.2 ? left : right > 0 && right < 0.2 ? right : 0;
-      if (gap) assert.ok(gap > 0.07 && gap <= 0.1, `pin gap ${gap}`);
-    }
+    assert.equal(shelves.length, 5);
+    assert.equal(new Set(shelves.map((s) => s.name)).size, shelves.length);
+    assert.match(plan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 5 adjustable shelves/);
+    assert.match(plan.bom.find((b) => b.catalogId === "shelf-pins")?.notes ?? "", /5 shelves × 4/);
     assert.equal(project.panels.some((q) => parts.some((d) => d !== q && solidsOverlap(d, q))), false);
     assert.deepEqual(checkBuild(project, "bookcase", plan).map((v) => v.id), []);
   });
@@ -120,7 +118,7 @@ describe("shelf span supports", () => {
     for (const type of ["door", "upright"] as const) {
       assert.equal(half.panels.filter((p) => p.type === type).length, thick.panels.filter((p) => p.type === type).length);
     }
-    assert.equal(half.panels.filter((p) => p.type === "shelf").length, thick.panels.filter((p) => p.type === "shelf").length * 2);
+    assert.equal(half.panels.filter((p) => p.type === "shelf").length, thick.panels.filter((p) => p.type === "shelf").length);
     assert.equal(shelfSpanViolations(half).length, 0);
     assert.equal(checkBuild(half, prompt, buildPlan(half)).some((v) => v.id === "I14"), false);
   });
@@ -130,7 +128,7 @@ describe("shelf span supports", () => {
     assert.equal(cols("bookshelf 36 wide", "plywood-1-2-4x8"), 1);
     const half = generateFromPrompt("bookshelf 36 wide", "plywood-1-2-4x8");
     assert.equal(half.panels.filter((p) => p.name.startsWith("Center support")).length, 0);
-    assert.equal(half.panels.filter((p) => p.type === "shelf").length, 10);
+    assert.equal(half.panels.filter((p) => p.type === "shelf").length, 5);
   });
 
   it("does not divide a shallow spice rack or run a divider through a jar lip", () => {
@@ -158,6 +156,58 @@ describe("shelf span supports", () => {
       assert.equal(overlapsY, false);
     }
     assert.equal(shelfSpanViolations(project).length, 0);
+    const hat = project.panels.filter((p) => p.type === "shelf").sort((a, b) => a.position.y - b.position.y)[0];
+    assert.ok(hat.size.width > 30);
+    const under = project.panels.find((p) => /^Center divider\b/.test(p.name) && p.position.y + p.size.height <= hat.position.y + 0.2 && p.position.y + p.size.height > hat.position.y - 1);
+    assert.ok(under, "hat shelf has a short divider under it");
+    const foot = project.panels.find((p) => p.type === "cleat" && Math.abs(p.position.y + p.size.height - under!.position.y) <= 0.05);
+    assert.ok(foot, "short divider sits on a fixed cleat");
+    assert.equal(project.panels.some((p) => p.type === "shelf" && Math.abs(p.position.y + p.size.height - under!.position.y) <= 0.05), false);
+  });
+
+  it("supports the shelf over a wide hanging bay without crossing the rod", () => {
+    for (const prompt of ["wardrobe 48 wide", "wardrobe 72 wide"]) {
+      const project = generateFromPrompt(prompt);
+      assert.equal(shelfSpanViolations(project).length, 0, prompt);
+      const rod = project.panels.find((p) => p.name === "Hanging rod")!;
+      assert.ok(rod);
+      for (const part of project.panels.filter((p) => /^Center divider\b/.test(p.name) || /^Span cleat\b/.test(p.name))) {
+        assert.equal(solidsOverlap(part, rod), false, `${prompt} ${part.name}`);
+        const overlapsY = part.position.y + part.size.height > rod.position.y && part.position.y < rod.position.y + rod.size.height;
+        assert.equal(overlapsY, false, `${prompt} ${part.name}`);
+      }
+      const lines = new Set(project.panels.filter((p) => p.type === "shelf").map((p) => Math.round(p.position.y * 4) / 4));
+      assert.equal(lines.size, project.fitted?.unit.shelfCount);
+    }
+  });
+
+  it("keeps every shelf piece within the stock limit after overlap cleanup", () => {
+    const prompts = ["kids playhouse for a 5 year old", "pantry cabinet 36x18x78"];
+    for (const prompt of prompts) {
+      const project = generateFromPrompt(prompt);
+      assert.deepEqual(shelfSpanViolations(project), [], prompt);
+      for (const shelf of project.panels.filter((p) => p.type === "shelf" && !p.outline)) {
+        const thick = Math.min(shelf.size.width, shelf.size.height, shelf.size.depth);
+        const limit = shelfSpanLimit(shelf.materialId, thick);
+        const depth = shelfDepthSpan(shelf, project.panels);
+        assert.ok(depth <= limit + 1 / 32, `${prompt} ${shelf.name} depth ${depth.toFixed(1)} > ${limit}`);
+      }
+    }
+  });
+
+  it("matches the divider step's fasteners to Buy when a shelf count is typed", () => {
+    const prompt = "bookcase 36 wide 12 deep 72 tall with three shelves";
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const step = plan.instructions.find((s) => /center divider/i.test(s.title));
+    assert.ok(step);
+    assert.doesNotMatch(step.description, /Shelf[^.]*Fasten it with #8/i);
+    assert.match(step.description, /takes no screws|Screw through the bottom/);
+    const bought = Number(plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN);
+    assert.equal(stepScrewCount(plan), bought);
+    const open = buildPlan(generateFromPrompt("bookcase"));
+    const openBought = Number(open.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""))?.notes?.match(/(\d+) screws/)?.[1] ?? NaN);
+    assert.equal(stepScrewCount(open), openBought);
   });
 
   it("leaves cardboard and the desk knee without a span divider", () => {
@@ -178,6 +228,19 @@ describe("shelf span supports", () => {
       const project = generateFromPrompt(prompt);
       const hits = shelfSpanViolations(project);
       if (hits.length) bad.push(`${prompt}: ${hits[0].name} ${hits[0].span.toFixed(1)} > ${hits[0].limit}`);
+      for (const shelf of project.panels.filter((p) => p.type === "shelf" && !p.outline)) {
+        const thick = Math.min(shelf.size.width, shelf.size.height, shelf.size.depth);
+        const limit = shelfSpanLimit(shelf.materialId, thick);
+        const sharesSupport = project.panels.some(
+          (q) =>
+            q.name.startsWith("Center support") &&
+            q.position.y < shelf.position.y + shelf.size.height &&
+            q.position.y + q.size.height > shelf.position.y - 0.2,
+        );
+        if (sharesSupport && shelfDepthSpan(shelf, project.panels) > limit + 1 / 32) {
+          bad.push(`${prompt}: ${shelf.name} depth ${shelfDepthSpan(shelf, project.panels).toFixed(1)} > ${limit}`);
+        }
+      }
       for (const div of project.panels.filter((p) => /^Center divider\b/.test(p.name))) {
         const other = project.panels.find((q) => q !== div && solidsOverlap(div, q));
         if (other) bad.push(`${prompt}: ${div.name} overlaps ${other.name}`);

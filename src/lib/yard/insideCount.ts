@@ -57,34 +57,23 @@ function retileShelves(panels: Panel[], count: number, overallH: number): Panel[
   const shelves = panels.filter((p) => p.type === "shelf");
   if (!shelves.length) return panels;
   const n = Math.max(0, Math.round(count));
-  // A span divider cuts a shelf into two. Rebuild from the whole bay between the uprights.
-  const proto = shelfAcrossBay(panels, shelves[0]);
+  const proto = shelves[0];
   const bottom = panels.find((p) => p.type === "bottom");
   const top = panels.find((p) => p.type === "top");
   const low = (bottom?.position.y ?? 0) + (bottom?.size.height ?? proto.size.height);
   const high = top?.position.y ?? overallH - proto.size.height;
   const span = Math.max(proto.size.height, high - low - proto.size.height);
   const next = Array.from({ length: n }, (_, i) => {
+    const src = shelves[Math.min(i, shelves.length - 1)];
     const y = n <= 1 ? low + span / 2 : low + (span * (i + 1)) / (n + 1);
     return {
-      ...proto,
+      ...src,
       id: `shelf-${i + 1}`,
       name: n === 1 ? "Shelf" : `Shelf ${i + 1}`,
-      position: { ...proto.position, y: Math.round(y * 16) / 16 },
+      position: { ...src.position, y: Math.round(y * 16) / 16 },
     };
   });
   return [...panels.filter((p) => p.type !== "shelf"), ...next];
-}
-
-function shelfAcrossBay(panels: Panel[], proto: Panel): Panel {
-  const uprights = panels.filter((p) => p.type === "upright" && !/\b(?:leg|post)s?\b/i.test(p.name));
-  if (uprights.length < 2) return proto;
-  const left = uprights.reduce((a, b) => (a.position.x < b.position.x ? a : b));
-  const right = uprights.reduce((a, b) => (a.position.x > b.position.x ? a : b));
-  const x = left.position.x + left.size.width;
-  const width = right.position.x - x;
-  if (width < 4 || width < proto.size.width - 0.1 || width > proto.size.width * 2 + 2) return proto;
-  return { ...proto, position: { ...proto.position, x }, size: { ...proto.size, width } };
 }
 
 function retileNamed(panels: Panel[], type: Panel["type"], count: number, label: string): Panel[] {

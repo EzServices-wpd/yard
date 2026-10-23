@@ -7,6 +7,7 @@ import { panelStockThickness } from "./modelJoints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
+import { wantsFixedGlueShelves } from "./honesty";
 import { rotorChain, type RotorLink } from "./solids";
 import { ANATOMY_NOTE } from "./classAnatomy";
 
@@ -199,6 +200,15 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
     case "front":
       return `Set the ${part.name} on the face of ${onto} and fasten it from inside the drawer with ${fix}`;
     case "rests":
+      // A span divider on a pinned shelf is not screwed there. Buy leaves that joint out.
+      if (
+        panel &&
+        /^Center divider\b/.test(panel.name) &&
+        !wantsFixedGlueShelves(project) &&
+        (info?.on ?? []).every((id) => project.panels.find((p) => p.id === id)?.type === "shelf")
+      ) {
+        return `Set the ${part.name} on ${onto}. The shelf stays on pins, so this joint takes no screws.`;
+      }
       return `Set the ${part.name} on ${onto}. Fasten it with ${fix}`;
     default:
       return `Fasten the ${part.name} to ${onto} with ${fix}`;
