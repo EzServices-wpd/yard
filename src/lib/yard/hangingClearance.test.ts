@@ -5,7 +5,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
 import { checkBuild } from "./invariants.ts";
-import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, sideHangFits, hangerInterior, rodDropIn } from "./hangingClearance.ts";
+import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodDropIn } from "./hangingClearance.ts";
 import type { Panel } from "./types.ts";
 
 const PROBES: { id: string; prompt: string; shelves?: number }[] = JSON.parse(
@@ -90,14 +90,15 @@ it("a wide closet splits the rod with real dividers, and double hang sits near 4
   assert.equal(closet.overall.height, 102);
   const rods = closet.panels.filter((x) => /hanging rod/i.test(x.name));
   assert.equal(rods.length, 3);
-  assert.ok(rods.every((r) => longAxis(r) === "width" && r.size.width <= 42));
+  assert.ok(rods.every((r) => longAxis(r) === "width" && r.size.width <= ROD_BAY_MAX_IN));
   assert.ok(closet.panels.filter((x) => /bay divider/i.test(x.name)).length >= 2);
   const doubled = generateFromPrompt("closet system 80 wide 102 tall double hang");
   const ys = [...new Set(doubled.panels.filter((x) => /hanging rod/i.test(x.name)).map((r) => Math.round(r.position.y)))].sort((a, b) => a - b);
   assert.deepEqual(ys, [42, 84]);
   const wide = generateFromPrompt("wardrobe 48 wide");
-  assert.ok(wide.panels.some((x) => /bay divider/i.test(x.name)));
-  assert.ok(wide.panels.filter((x) => /hanging rod/i.test(x.name)).every((r) => r.size.width <= 42));
+  const wideRods = wide.panels.filter((x) => /hanging rod/i.test(x.name));
+  assert.ok(wideRods.length >= 2 && wideRods.every((r) => r.size.width <= ROD_BAY_MAX_IN));
+  assert.ok(wide.panels.some((x) => /center divider|bay divider/i.test(x.name)));
 });
 
 it("drawers keep the rod under the drawer bank", () => {

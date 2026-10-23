@@ -3200,7 +3200,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     notes: notesNamed,
     historic: false,
     opening: spec.opening,
-    fitted: { ...spec, name },
+    fitted: {
+      ...spec,
+      name,
+      unit: { ...spec.unit, shelfCount: rodY != null && typedShelves == null ? shelves : spec.unit.shelfCount },
+    },
     assumptions: {
       load: spec.program === "bookcase" || spec.program === "pantry" ? "heavy" : "medium",
       units: "inches",
