@@ -19,6 +19,9 @@ import type {
   YardProject,
 } from "./types";
 
+/** The framing fastener Buy line; the steps that nail the kings and the header carry it by this id. */
+const FRAMING_FASTENER_ID = "framing-nails";
+
 const STUD = "lumber-2x4-8";
 
 function win(
@@ -594,7 +597,7 @@ export function windowBom(project: YardProject): BomLine[] {
   }
   bom.push(
     { name: "Wood shims", quantity: 1, unit: "bundle", catalogId: "shims", searchQuery: "wood shims", estimatedCost: stickCost("shims", 4) },
-    { name: "16d framing nails or structural screws", quantity: 1, unit: "box", catalogId: "framing-nails", searchQuery: "16d framing nails", estimatedCost: stickCost("framing-nails", 10) },
+    { name: "16d framing nails or structural screws", quantity: 1, unit: "box", catalogId: FRAMING_FASTENER_ID, searchQuery: "16d framing nails", estimatedCost: stickCost("framing-nails", 10) },
   );
   if (!door || /exterior|entry|front|french/i.test(`${w?.line ?? ""} ${project.prompt}`)) {
     bom.push({
@@ -694,6 +697,8 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
       title: `Stand the kings — ${kingLen}"`,
       description: `Two kings, full height between plates (${kingLen}"). They run past the header to the top plate. Nail into the plates, then the jacks will sit inside them.`,
       partsUsed: ["Left king", "Right king", "king"],
+      // The framing line on Buy, carried by id (Critic #127 precheck check 4): 3 per king end.
+      fastenersUsed: [{ id: FRAMING_FASTENER_ID, qty: 12 }],
     },
     {
       step: 4,
@@ -713,6 +718,8 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
       title: "Set the header on the jacks",
       description: `The header bears on both jacks, tight to the kings. Check it is level before you nail. The RO below must still read ${w.roW}" × ${w.roH}".`,
       partsUsed: ["header", "jack", "king"],
+      // Through each king into the header ends, 4 a side.
+      fastenersUsed: [{ id: FRAMING_FASTENER_ID, qty: 8 }],
     },
     {
       step: 7,
