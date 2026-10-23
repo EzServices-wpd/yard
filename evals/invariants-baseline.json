@@ -1,6 +1,6 @@
 {
  "note": "Known invariant violations at the start of the ratchet (2026-10-15). A key not listed here fails CI. A listed key that no longer fires also fails (STALE): delete it in the fix's commit, which is the red-before/green-after record that closes the class.",
- "i46GeneralWordTied": 38,
+ "i46GeneralWordTied": 344,
  "i46GeneralWordTiedNote": "#127 r3 (Chief, one-time exception): general fastener Buy lines (#8 boxes, nails, brads, glides, screw eyes, pan-head) no step carries by id yet, over the invariants corpus. scripts/invariants.test.ts fails if it grows; the follow-up PR moves them to ids and takes it to 0.",
  "known": {
   "I13|barn birdhouse": {
