@@ -11,8 +11,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
+import * as THREE from "three";
+import { simulateHollowDrawers, SIM_DRAWER_TAG } from "../src/components/workspace/explode-sim.ts";
+import { fitPoints } from "../src/components/workspace/explode-frame.ts";
 import {
-  CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, applyPose, boxOf, classify, layoutFor, poseAt, posesFor,
+  CLOSE_MS, EXPLODE_MS, REDUCED_FADE_MS, TILT_MAX, applyPose, boxOf, camDirOf, classify, faceTurn, layoutFor, poseAt, posesFor,
+  setDrawerTag, tiltAxis, tweenCollides,
   type ExplodePart, type Layout, type Pose, type V3,
 } from "../src/components/workspace/explode-layout.ts";
 import { explodeClock, explodeSettled, resetExplodeClock, startTween, stepTween } from "../src/components/workspace/explode-state.ts";
@@ -118,6 +122,48 @@ for (const [build, prompt] of Object.entries(BUILDS)) {
     });
   }
 
+  test(`${build} (simulated hollow 5-part drawers): no part passes through another unit at any frame`, () => {
+    const panels = generateFromPrompt(prompt).panels;
+    // The 6-drawer dresser's drawers are #94-tagged hollow boxes already (the real-parts tests cover it).
+    if (!panels.some((p) => p.type === "drawer") || build === "dresser6") return;
+    setDrawerTag(SIM_DRAWER_TAG);
+    try {
+      for (const steps of [0, 3]) {
+        const L = grown(layoutFor(simulateHollowDrawers(panels)), steps);
+        const poses = posesFor(L);
+        // The library's clearance rule (the solver's) agrees with this file's own 61-frame check.
+        assert.equal(tweenCollides(L, poses, 40), false, `steps ${steps}`);
+        const hits = new Set<string>();
+        for (let f = 0; f <= 60; f++) {
+          const u = f / 60;
+          const box = new Map(L.parts.map((p) => { const pose = poses.get(p.id); return [p.id, obb(p, pose && poseAt(pose, p.role, u), 0.05)]; }));
+          for (const a of L.parts.filter(moving)) for (const b of L.parts) {
+            if (a.id === b.id || b.role === "hardware") continue;
+            if (a.unit === b.unit && !(a.role === "drawerFront" || b.role === "drawerFront")) continue;
+            if (overlap(obb(a, undefined, 0.05), obb(b, undefined, 0.05))) continue;
+            if (overlap(box.get(a.id)!, box.get(b.id)!)) hits.add(`${a.name} × ${b.name} @${Math.round(u * EXPLODE_MS)}ms (steps ${steps})`);
+          }
+        }
+        assert.deepEqual([...hits].slice(0, 8), []);
+      }
+    } finally {
+      setDrawerTag("drawerId");
+    }
+  });
+
+  test(`${build}: the clearance rule sees a real clash (a moving unit posed into the case)`, () => {
+    const L = layoutFor(generateFromPrompt(prompt).panels);
+    const poses = posesFor(L);
+    assert.equal(tweenCollides(L, poses, 40), false);
+    const caseBox = boxOf(L.parts.filter((p) => p.unit === "case"));
+    const mover = L.parts.find((p) => moving(p) && p.w > 1 && p.h > 1);
+    if (!mover) return;
+    // Every part of that unit lands in the middle of the case at the end of the tween.
+    const into: V3 = [(caseBox.minX + caseBox.maxX) / 2 - (mover.x + mover.w / 2), (caseBox.minY + caseBox.maxY) / 2 - (mover.y + mover.h / 2), (caseBox.minZ + caseBox.maxZ) / 2 - (mover.z + mover.d / 2)];
+    for (const p of L.parts) if (p.unit === mover.unit) poses.set(p.id, { t: into });
+    assert.equal(tweenCollides(L, poses, 40), true);
+  });
+
   test(`${build}: hardware rides its host, the anchor stays put, closing reverses opening`, () => {
     const L = layoutFor(generateFromPrompt(prompt).panels);
     const poses = posesFor(L);
@@ -198,4 +244,43 @@ test("the one explode clock: a tween runs to its end and stops; reduced motion (
   assert.equal(explodeClock.u, 0);
   assert.equal(stepTween(1), false);
   resetExplodeClock();
+});
+
+test("a tipped drawer's open top faces the camera more than a level one, from either side (left and right columns)", () => {
+  const rot = (v: V3, r: NonNullable<Pose["rot"]>) => sub(applyPose(v, { t: [0, 0, 0], rot: { ...r, pivot: [0, 0, 0] } }), [0, 0, 0]);
+  for (const az of [32, -32, 60, 0]) {
+    const cam = camDirOf({ azimuthDeg: az, elevationDeg: 32 });
+    const up = rot([0, 1, 0], { axis: tiltAxis(az), ang: TILT_MAX, pivot: [0, 0, 0] });
+    assert.ok(up[0] * cam[0] + up[1] * cam[1] + up[2] * cam[2] > cam[1] + 0.05, `az ${az}`);
+  }
+});
+
+test("a toekick turned fully faces the camera square on", () => {
+  const kick = { x: 0, y: 0, z: 0, w: 24, h: 4, d: 0.75 };
+  const cam = camDirOf({ azimuthDeg: 32, elevationDeg: 32 });
+  const r = faceTurn(kick, cam, 1)!;
+  const n = applyPose([0, 0, 1], { t: [0, 0, 0], rot: { ...r, pivot: [0, 0, 0] } });
+  assert.ok(n[0] * cam[0] + n[1] * cam[1] + n[2] * cam[2] > 0.999);
+  assert.equal(faceTurn(kick, cam, 0), undefined);
+});
+
+test("fitPoints frames every posed corner inside the free rect (desk 1280x800 with a card, phone 390x844)", () => {
+  for (const [build, prompt] of Object.entries(BUILDS)) {
+    const L = grown(layoutFor(generateFromPrompt(prompt).panels), 3);
+    const poses = posesFor(L);
+    const points = L.parts.flatMap((p) => { const out: V3[] = []; for (const X of [p.x, p.x + p.w]) for (const Y of [p.y, p.y + p.h]) for (const Z of [p.z, p.z + p.d]) out.push(applyPose([X, Y, Z], poses.get(p.id))); return out; });
+    for (const [w, h, overlays] of [[1280, 800, [{ left: 0, top: 0, right: 360, bottom: 800 }]], [390, 844, []]] as const) {
+      const fr = fitPoints({ points, view: { azimuthDeg: 32, elevationDeg: 32 }, viewport: { w, h }, overlays: [...overlays], fovDeg: 34 });
+      const cam = new THREE.PerspectiveCamera(34, w / h, 0.1, 1e5);
+      cam.position.set(...fr.position);
+      cam.lookAt(new THREE.Vector3(...fr.target));
+      cam.setViewOffset(w, h, fr.viewOffset.x, fr.viewOffset.y, w, h);
+      cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+      for (const [x, y, z] of points) {
+        const v = new THREE.Vector3(x, y, z).project(cam);
+        const px = ((v.x + 1) / 2) * w, py = ((1 - v.y) / 2) * h;
+        assert.ok(px >= fr.safe.left - 0.5 && px <= fr.safe.right + 0.5 && py >= fr.safe.top - 0.5 && py <= fr.safe.bottom + 0.5, `${build} ${w}x${h}: (${px.toFixed(1)}, ${py.toFixed(1)}) outside ${JSON.stringify(fr.safe)}`);
+      }
+    }
+  }
 });
