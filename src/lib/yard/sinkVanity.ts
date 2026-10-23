@@ -1,4 +1,4 @@
-/** Sink base for a bath, sink, or plumbing cue, or a bare vanity with a typed counter of 30–36. Bedroom, makeup, seating, stool, table, or mirror cues stay the knee-hole desk. The plumbing corridor stays clear. */
+/** Sink base for a bath, powder room, sink, or plumbing cue, or a bare vanity with a typed counter of 30–36. Bedroom, makeup, seating, stool, table, or mirror cues stay the knee-hole desk. The plumbing corridor stays clear. */
 import { createId } from "@/lib/utils";
 import { LEAF_GAP, doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
@@ -8,7 +8,7 @@ import { detectMaterial } from "./promptHelpers";
 import { classDefaultAssumedNotes, classDefaultDensifyTitle, guidanceConfirmTalk } from "./voiceHonesty";
 import type { FittedSpec, Panel, YardProject } from "./types";
 
-const PLUMB = /\b(?:bathrooms?|sinks?|baths?|plumbing)\b/;
+const PLUMB = /\b(?:bathrooms?|powder\s*rooms?|sinks?|baths?|plumbing)\b/;
 const DESK = /\b(?:bedrooms?|makeup|make-up|dressing|seating)\b|\bsit(?:s|ting)?\b|\b(?:stools?|chairs?|tables?|mirrors?)\b|\bknee\s*space\b/;
 const SPAN_OK = 14;
 const BACK_T = 0.25;

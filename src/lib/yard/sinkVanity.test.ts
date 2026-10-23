@@ -95,6 +95,32 @@ it("a sink base hangs a mirror only when one was asked for", () => {
   }
 });
 
+it("a requested sink mirror is one part and one Buy line, hung on the French cleat", () => {
+  const project = generateFromPrompt("bathroom vanity with a mirror");
+  const plan = buildPlan(project);
+  const mirrors = project.panels.filter((p) => p.type === "mirror" || /\bmirror\b/i.test(p.name));
+  assert.equal(mirrors.length, 1);
+  assert.equal(mirrors[0].name, "Mirror");
+  const buy = plan.bom.filter((b) => /mirror/i.test(b.name));
+  assert.equal(buy.length, 1, buy.map((b) => b.name).join(", "));
+  const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  assert.match(text, /french cleat/i);
+  assert.match(text, /studs/i);
+  assert.doesNotMatch(text, /knee/i);
+  assert.doesNotMatch(text, /glue the mirror/i);
+  assert.doesNotMatch(`${buy[0].notes ?? ""}`, /knee/i);
+  assert.deepEqual(checkBuild(project, "bathroom vanity with a mirror", plan).map((v) => v.msg), []);
+});
+
+it("a powder room vanity is a sink base", () => {
+  const project = generateFromPrompt("powder room vanity");
+  const got = faces(project);
+  assert.equal(got.knee, false);
+  assert.ok(got.doors >= 1);
+  assert.equal(got.mirror, false);
+  assert.deepEqual(checkBuild(project, "powder room vanity", buildPlan(project)).map((v) => v.msg), []);
+});
+
 it("typed door and drawer counts on a bathroom vanity are the counts built", () => {
   const cases: [string, number, number][] = [
     ["bathroom vanity with 2 doors", 2, 0],
@@ -116,6 +142,8 @@ it("bedroom, makeup, seating, stool, table, and mirror cues stay a knee-hole des
   ]) {
     const project = generateFromPrompt(prompt);
     assert.ok((project.fitted?.unit?.kneeW ?? 0) > 0 || project.panels.some((p) => /knee/i.test(p.name)) || /knee/i.test(project.name), prompt);
+    const askedMirror = /\bmirrors?\b/i.test(prompt) && !/\bno\s+mirror\b/i.test(prompt);
+    assert.equal(faces(project).mirror, askedMirror, `${prompt}: mirror`);
     assert.equal(faces(project).woodMirror, false, prompt);
     assert.ok(project.overall.height < 40, `${prompt}: ${project.overall.height} tall`);
     assert.equal(project.panels.some((p) => /sink bay/i.test(p.name)), false, prompt);

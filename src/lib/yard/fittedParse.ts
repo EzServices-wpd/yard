@@ -1154,10 +1154,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "media" && !/door/.test(lower))
       ? false
       : doors;
-  // Door-carcase vanity: never invent a mirror when doors were typed (pocket early-return sets mirror).
+  // A mirror only when one was asked for. A medicine cabinet's door is that ask. A desk vanity does not invent one.
   const mirror =
-    /mirror/.test(lower) ||
-    (makeupVanity && !vanityDoorsSaid) ||
+    (/mirror/.test(lower) && !/\bno\s+mirror\b/.test(lower)) ||
     isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)
