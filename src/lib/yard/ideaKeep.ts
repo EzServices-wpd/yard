@@ -20,7 +20,7 @@ import {
 } from "./ideaLibrary";
 import { isWireStock } from "./promptHelpers";
 import type { BuildPlan, YardProject } from "./types";
-import { fmtUnitEnvelopeInches } from "./voiceHonesty";
+import { envelopeText } from "./builtSize";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 
 const inflight = new Map<string, Promise<KeepResult>>();
@@ -67,12 +67,7 @@ export function candidateFromPrint(project: YardProject, plan: BuildPlan): IdeaC
   const material = getCatalogItem(project.primaryMaterialId);
   const wire = isWireStock(material);
   const unit = project.fitted?.unit ?? project.pocket?.unit ?? project.overall;
-  const size = fmtUnitEnvelopeInches(unit.width, unit.height, unit.depth, {
-    shape: project.fitted?.unit?.shape,
-    prompt: project.prompt,
-    name: project.name,
-    legs: project.fitted?.unit?.legs,
-  });
+  const size = envelopeText(project, { unit }) ?? "";
   const honesty = inspectHonesty(project, plan);
   const pieces = plan.totals.pieces || project.instances.length + project.panels.length;
   const stock = wire ? "" : namedStockDisplayName(project.prompt ?? "", material);

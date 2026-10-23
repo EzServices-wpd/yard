@@ -49,6 +49,7 @@ import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 import { REFUSED_OUTLINE_CAPTION, refusedOutline } from "@/lib/yard/refusedOutline";
+import { nothingBuilt } from "@/lib/yard/builtSize";
 
 /** (b) A build still pending after this long stops the lamp and offers builds that always work. */
 export const STALL_MS = 45_000;
@@ -230,7 +231,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     const live = useYard.getState().project;
     const house = live.kind === "closet" || live.kind === "opening" || Boolean(live.pocket) || Boolean(live.fitted);
     setMeasureOpen(house);
-    if (!house && !live.recastFrom && live.overall.width > 1 && live.overall.height > 1) {
+    // A refusal built nothing, so Measure holds no size of it (builtSize.ts); the fields wait for the next one typed.
+    if (nothingBuilt(live)) setMeasure({ width: "", height: "", depth: "" });
+    else if (!house && !live.recastFrom && live.overall.width > 1 && live.overall.height > 1) {
       const n = inchFrac;
       setMeasure({ width: n(live.overall.width), height: n(live.overall.height), depth: n(live.overall.depth) });
     }
@@ -826,6 +829,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   {(() => {
                     const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
                     const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
+                    // Nothing built shows no size (builtSize.ts): the chip just opens Measure.
+                    if (nothingBuilt(project)) return <>Measure</>;
                     // One size: the header's own W × D × H (typed axes as typed, assumed axes the model's extent).
                     const one = headerSize(project);
                     // Same words and order as the header (W × D × H); a round piece keeps its "dia × H" talk.

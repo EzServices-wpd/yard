@@ -2,6 +2,7 @@
 
 import { useYard } from "@/lib/yard/store";
 import { parseInch } from "@/lib/yard/inchText";
+import { nothingBuilt } from "@/lib/yard/builtSize";
 import { isRoundUnitEnvelope, measureChipAxisLabels, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
 
 /**
@@ -24,7 +25,8 @@ export function MeasureFields() {
     project.instances.length > 0 ||
     project.panels.length > 0;
 
-  if (!canSize) return null;
+  // Nothing built has no size to edit or show (builtSize.ts).
+  if (!canSize || nothingBuilt(project)) return null;
 
   function commitLive() {
     applyMeasure();

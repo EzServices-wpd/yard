@@ -19,7 +19,8 @@ import { useCutTicks } from "@/components/workspace/cut-ticks";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
-import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
+import { shopWordsChipTalk, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
+import { envelopeText, nothingBuilt } from "@/lib/yard/builtSize";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 import { backerRowIds } from "@/lib/plan/backer";
 
@@ -134,7 +135,7 @@ function PlanBody({
             materialName: itemName,
             pieceCount: project.instances.length || project.panels.length || undefined,
             joints: project.buildStats?.joints,
-            envelope: fmtUnitEnvelopeInches(project.overall.width, project.overall.height, project.overall.depth, { shape: project.fitted?.unit?.shape, prompt: project.prompt, name: project.name, legs: project.fitted?.unit?.legs }),
+            envelope: envelopeText(project) ?? undefined,
           },
         });
       }
@@ -188,6 +189,8 @@ function PlanBody({
   }
 
   async function makeRender() {
+    // Nothing built has nothing to picture and no size to describe (builtSize.ts).
+    if (nothingBuilt(project)) return;
     setRenderBusy(true);
     setRenderErr(null);
     try {
