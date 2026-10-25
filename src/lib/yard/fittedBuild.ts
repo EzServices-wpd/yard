@@ -54,6 +54,7 @@ import {
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
   SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes,
 } from "./fittedShared";
+import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, ROD_SHELF_LIFT_IN, typedRodDemand, typedShelfDemand } from "./shelfClear";
 import { lippedShelfYs } from "./shelfLips";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
@@ -2868,7 +2869,29 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // The rod hangs in the door or open section only: under a drawer section, with hanging room below it, else none.
   const rodWant = hang ? Math.min(H - 8, Math.max(60, H * 0.72)) : null;
   const rodRoom = drawersFillLower && !u.upperStart ? null : drawerBelowTop != null && !u.upperStart ? drawerBelowTop - 3.25 : H;
-  const rodY = rodWant == null || rodRoom == null ? null : rodWant <= rodRoom ? rodWant : rodRoom - (bottomY + P) >= 24 ? rodRoom : null;
+  let rodY = rodWant == null || rodRoom == null ? null : rodWant <= rodRoom ? rodWant : rodRoom - (bottomY + P) >= 24 ? rodRoom : null;
+  // A typed shelf count keeps 7" clear. Lower a default rod to a 40" hang, or leave it out and say so.
+  // A rod the person typed stays, and the refusal names the taller height.
+  let omitRodForShelves = false;
+  let rodLowered = false;
+  const typedShelves = typedShelfDemand(prompt);
+  if (rodY != null && typedShelves != null) {
+    const plan = rodPlanForTypedShelves({
+      rodY,
+      zoneTop: shelfZone1,
+      hangFloor: bottomY + P + MIN_HANG_ROOM_IN,
+      fullZone0: u.upperStart ?? shelfZone0,
+      count: typedShelves,
+      thick: P,
+    });
+    if ("rodY" in plan) {
+      rodLowered = Math.abs(plan.rodY - rodY) > 0.01;
+      rodY = plan.rodY;
+    } else if ("omitRod" in plan && !typedRodDemand(prompt)) {
+      rodY = null;
+      omitRodForShelves = true;
+    }
+  }
   const shelvesAsked = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
   // Shelves live only in a door or open section: drawers that fill the carcase leave no room for them.
   let shelves = drawersFillLower && !u.upperStart ? 0 : shelvesAsked;
@@ -2876,7 +2899,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // sets the shelf pitch. A typed shelf count still wins.
   const forItem = purposeOf(prompt);
   const need = forItem && !forItem.item.outdoor && !/\b(?:\d+|one|two|three|four|five|six)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt) ? forItem.item.clear : null;
-  const zoneY0 = rodY != null ? rodY + 2 : (u.upperStart ?? shelfZone0);
+  const zoneY0 = rodY != null ? rodY + ROD_SHELF_LIFT_IN : (u.upperStart ?? shelfZone0);
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
     const y1 = shelfZone1;
@@ -3064,7 +3087,11 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
           : shelves
             ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",
-    ...(rodY != null ? [`A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it, so coats and shirts hang full length.`] : []),
+    ...(rodY != null
+      ? [`A 1 1/4" closet rod in two sockets runs side to side ${rodLowered ? inchFrac(rodY) : Math.round(rodY)}" up, with the shelves above it, so ${rodLowered && rodY < 64 ? "shirts hang" : "coats and shirts hang full length"}.`]
+      : omitRodForShelves
+        ? [`The hanging rod is left out so the shelves keep ${closetShelfClearIn()}" clear between them.`]
+        : []),
     alcove
       ? "Anchor uprights into studs. Shim the tight side. Do not rack the box to match a wonky wall."
       : "Level it. Add a back (already on the bench) so it cannot rack.",
