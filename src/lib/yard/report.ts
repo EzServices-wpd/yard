@@ -10,10 +10,12 @@ import { ownEveryPart } from "./ownEveryPart";
 import { unitSizeById } from "./unitSizes";
 import { isUnitItem } from "./unitItems";
 import { isNoLidPrompt } from "./cueRules";
-import { foldDownBuy, hingedBuy } from "./hingedLeaf";
+import { foldDownBuy, hingeContext, hingedBuy } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
+import { LAG_ROW, stepsInstallWallAnchors } from "./wallAnchorSteps";
+import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -249,13 +251,30 @@ function cornerCutNote(c: CutLine): CutLine {
   return c;
 }
 
-/** After splice: name the sheet that actually fits the face. 102" stays whole on 4×10. */
+/** Sold plywood sheets, smallest face first (the size stamp picks among them). */
+const PLY_SHEETS = FORGE_CATALOG.filter((i) => i.category === "sheet_goods" && /plywood/i.test(i.id) && !!i.dims.thickness && !!i.dims.length && !!i.dims.width).sort(
+  (a, b) => a.dims.length! * a.dims.width! - b.dims.length! * b.dims.width!,
+);
+
+/**
+ * After splice: name the sheet that actually fits the face. 102" stays whole on 4×10.
+ * Rule: the size stamp changes a sheet's size, never its thickness. A row cut from a sold plywood sheet keeps that
+ * sheet when the face fits it, else takes the smallest sold sheet of the same thickness that fits (1/2" stays 1/2").
+ */
 function stampPlySheetSize(cuts: CutLine[]): CutLine[] {
   return cuts.map((c) => {
     if (!/ply/i.test(`${c.material ?? ""} ${c.name ?? ""}`)) return c;
     if (Math.min(c.lengthIn, c.widthIn) <= 2) return c;
-    const id = plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75);
-    const name = getCatalogItem(id)?.name;
+    const stock = PLY_SHEETS.find((s) => s.id === c.id.split("|")[0]);
+    let name: string | undefined;
+    if (stock) {
+      const fits = (s: CatalogItem) => fitsOnSheet(c.lengthIn, c.widthIn, { width: s.dims.width!, height: s.dims.length! });
+      const sameT = PLY_SHEETS.filter((s) => s.dims.thickness === stock.dims.thickness);
+      if (sameT.some((s) => s.name === c.material && fits(s))) return c;
+      name = sameT.find(fits)?.name;
+    } else {
+      name = getCatalogItem(plySheetCatalogId(c.lengthIn, c.widthIn, c.thicknessIn ?? 0.75))?.name;
+    }
     if (!name || name === c.material) return c;
     return { ...c, material: name };
   });
@@ -772,7 +791,6 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase())) ||
     /\b(?:coat|hat|key|leash)\s+(?:rack|holder)\b/i.test(project.name);
   const island = /island/i.test(project.name) || /island/.test((project.prompt ?? "").toLowerCase());
-  const crate = /crate/i.test(project.name) || /crate/.test((project.prompt ?? "").toLowerCase());
   const nightstand =
     !isBedsideShelf((project.prompt ?? "").toLowerCase()) &&
     !/^Bedside shelf/i.test(project.name) &&
@@ -819,7 +837,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const pinShelves =
     !coatRack && !island && !nightstand && !floating && !ironing && !foldDown && !spice && !wine &&
     !wantsRackAffordance(project.prompt ?? "") && !wantsFixedGlueShelves(project);
-  const pinned = (p: Panel) => pinShelves && p.type === "shelf" && shelfSpansUprights(p, project.panels);
+  const pinned = (p: Panel) => pinShelves && p.type === "shelf" && !isFixedSpanShelf(p) && shelfSpansUprights(p, project.panels);
   // Joints the notes bolt (an A-frame's cleat and seat support through its legs) take carriage bolts, not screws.
   const boltedToLegs = (project.notes ?? []).some((n) => /held to both legs with \d+ 3\/8" carriage bolts/.test(n));
   const bolted = (a: Panel, b: Panel) => boltedToLegs && [[a, b], [b, a]].some(([x, y]) => /^Leg\b/.test(x.name) && /^(?:Top cleat|Seat support)\b/.test(y.name));
@@ -962,7 +980,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       catalogId: "vanity-mirror",
       searchQuery: `vanity wall mirror ${Math.round(dims.widthIn)}x${Math.round(dims.lengthIn)}`,
       estimatedCost: 39.99 * glassMirrors.length,
-      notes: `Buy glass this size — do not cut from plywood. Hang over the knee.`,
+      notes: (project.fitted?.unit?.kneeW ?? 0) > 0 || project.pocket
+        ? `Buy glass this size — do not cut from plywood. Hang over the knee.`
+        : `Buy glass this size — do not cut from plywood. Hang it on a French cleat into two studs.`,
     });
   }
   if (foldDown || ironing) {
@@ -979,7 +999,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     }
   }
   // Every door and lid: hinges by size and weight, stays, latches, pulls (one shared module).
-  bom.push(...hingedBuy(project, bom, { crate, screwless: stockJoinsWithoutScrews(project) }));
+  bom.push(...hingedBuy(project, bom, hingeContext(project)));
 
 
   const hangingRods = project.panels.filter(
@@ -1014,7 +1034,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   }
   // Pins hold a shelf that spans between two uprights (sides, dividers). A shelf screwed down on a
   // frame, a profile or legs has nothing to drill, so it buys no pins.
-  const shelfCount = project.panels.filter((panel) => panel.type === "shelf" && shelfSpansUprights(panel, project.panels)).length;
+  const pinPieces = project.panels.filter((panel) => panel.type === "shelf" && !isFixedSpanShelf(panel) && shelfSpansUprights(panel, project.panels));
+  const shelfCount = shelfLineCount(pinPieces);
   // Floating shelves sit on wall cleats — no adjustable pins, no uprights to drill.
   // Shoe cubbies / jar lips / bottle rails are glued and screwed — never pin-shelf bookcases.
   if (
@@ -1030,8 +1051,11 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
     !wantsRackAffordance(project.prompt ?? "") &&
     !wantsFixedGlueShelves(project)
   ) {
-    const pins = shelfCount * 4;
+    const pins = pinPieces.length * 4;
     const packs = Math.max(1, Math.ceil(pins / 50));
+    const pinWord = pinPieces.length === shelfCount
+      ? `${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4`
+      : `4 on each of ${pinPieces.length} pieces, ${shelfCount} shel${shelfCount === 1 ? "f" : "ves"}`;
     bom.push({
       name: '3/16" shelf pins',
       quantity: packs,
@@ -1039,7 +1063,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       catalogId: "shelf-pins",
       searchQuery: '3/16" shelf pins',
       estimatedCost: 6.49 * packs,
-      notes: `${pins} pins (${shelfCount} shel${shelfCount === 1 ? "f" : "ves"} × 4). Set the shelves loose on the pins so they lift out to move.`,
+      notes: `${pins} pins (${pinWord}). Set the shelves loose on the pins so they lift out to move.`,
     });
   }
   const headboardPlies = project.panels.filter((p) => /headboard/i.test(p.name)).length;
@@ -1105,7 +1129,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
                 const backW = project.panels.find((p) => p.type === "back")?.size.width ?? 0;
                 return backReachesTwoStuds(backW)
                   ? "4 screws through the back into studs. A loaded medicine cabinet will rip off drywall anchors. Guidance only — confirm wall type."
-                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Lag the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
+                  : `Back is ${backW}" wide — shorter than ${STUD_CENTER_IN}" stud centers, so it cannot take a screw in two studs. Screw the corner that hits a stud and use rated wall anchors at the others. Guidance only — confirm wall type.`;
               })()
           : overToilet
             ? "4-6 screws through the uprights into studs so the unit cannot tip onto the toilet. Guidance only — confirm wall type."
@@ -1114,7 +1138,7 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : wine
             ? "4-6 screws through the back into studs. A loaded wine rack will rip off drywall anchors. Guidance only — confirm wall type."
           : project.panels.some((p) => p.type === "upright")
-            ? "4-6 screws through the uprights into studs (or masonry anchors). Guidance only — confirm wall type."
+            ? "4-6 screws through the uprights into studs. Guidance only — confirm wall type."
             : "4-6 screws through the board into studs. Guidance only — confirm wall type.",
     });
   }
@@ -1423,7 +1447,7 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   const named: [RegExp, RegExp, BuildPlan["bom"][number]][] = [
     [/\bcaulk/i, /caulk/, { name: "Exterior caulk", quantity: 1, estimatedCost: 6.98, unit: "tube", searchQuery: "exterior paintable caulk", notes: "Seal the seams the notes name." }],
     [/\b(?:exterior|dark|latex)\s+paint|\bpaint (?:it|the outside)/i, /paint/, { name: "Exterior paint", quantity: 1, estimatedCost: 14.98, unit: "quart", searchQuery: "exterior latex paint quart", notes: "Outside faces only, as the notes say." }],
-    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { name: '5/16" × 3" lag screws with washers', quantity: 4, estimatedCost: 0.98 * 4, unit: "each", searchQuery: "5/16 x 3 lag screw", notes: "Into the wall studs." }],
+    [/\blag (?:screws?|bolts?)|\blag the\b/i, /\blag\b/, { ...LAG_ROW }],
     [/landscape[- ]fabric/i, /fabric/, { name: "Landscape fabric", quantity: 1, estimatedCost: 12.98, unit: "roll", searchQuery: "landscape fabric 3 ft roll", notes: "Under the sand or soil, as the notes say." }],
     [/\bhandles?\b/i, /handle|pull/, { name: "Handles", quantity: 2, estimatedCost: 4.98 * 2, unit: "each", searchQuery: "galvanized door pull handle", notes: "The handles the notes name." }],
     [/fabric cover|\bcanvas\b/i, /canvas|fabric/, { name: "Canvas drop cloth, 9 × 12 ft", quantity: 1, estimatedCost: 24.98, unit: "each", searchQuery: "canvas drop cloth 9x12", notes: "Cut to the cover panels and hem the edges." }],
@@ -1624,7 +1648,8 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const plan0 = ownEveryPart(project, shape(project, fallbackStepOne(project, buildPlanInner(project))));
   // Hardware parts (hinges, catches) are bought by count.
   const hw = new Map<string, number>();
-  for (const p of project.panels) if (p.materialId === "hardware") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
+  // A mirror panel is the sized glass line, not a second hardware row.
+  for (const p of project.panels) if (p.materialId === "hardware" && p.type !== "mirror") { const k = p.name.replace(/ \d+$/, "").replace(/^(?:Left|Right|Front|Back|Top|Bottom|Upper|Lower)\s+/i, ""); hw.set(k, (hw.get(k) ?? 0) + 1); }
   // C13/C14: casters and screw eyes are bought as the real items (a typed "rolling", a hung feeder or birdhouse).
   const named = (name: string, n: number): BuildPlan["bom"] => {
     // C15: each is a checked store listing with its link (checkedStock.ts), and the screws the caster step names are bought too.
@@ -1790,7 +1815,7 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
 
 function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
-  const plan = withAccessorySheetCuts(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))));
+  const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) })))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(spliceStep(plan));
   const step = plan.instructions.length + 1;

@@ -144,6 +144,7 @@ function stemOf(clause: string): string | null {
 function accessory(stem: string, others: string[]): boolean {
   const rest = others.join(" ").toLowerCase();
   if (stem === "Mirror" && /vanity|dresser|medicine/.test(rest)) return true;
+  if ((stem === "Stool" || stem === "Chair") && /vanity/.test(rest)) return true;
   if (stem === "Ladder" && /bunk|loft/.test(rest)) return true;
   if (stem === "Shelf" && /bookcase|bookshelf|closet|hutch|dresser|wardrobe|pantry|linen/.test(rest)) return true;
   // A seat builds its own under-seat shelf: "entry bench with shoe shelf" is one bench.
