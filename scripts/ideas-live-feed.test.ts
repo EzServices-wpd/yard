@@ -127,11 +127,44 @@ test("types.json is current with the engine (re-run scripts/gen-idea-types.ts)",
   assert.deepEqual(TYPES, ideaTypes());
 });
 
-test("home 'Making now' drops chained 'Then:' prompts (same isChained as the feed)", async () => {
-  const { isChained } = await import("../src/lib/ideas/liveFeed");
-  assert.ok(isChained("birdhouse. Then: 3/8 dowel"));
-  const fs = await import("fs");
-  assert.match(fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8"), /!isChained\(r\.prompt\)/);
+// Privacy page: the Ideas library never keeps the words people typed. The home strip and the Ideas feed show and rebuild
+// from the engine's result (build type + logged W×D×H), never a visitor's prompt, typos and all.
+test("no typed prompt reaches the Ideas feed, the hero or the home 'Making now' strip", async () => {
+  const { makingNow } = await import("../src/lib/ideas/liveFeed");
+  const base = curatedFeed(RECIPES);
+  // Log-only types that DO render: a baked drawing of their engine type (types.json) and no curated card of their own,
+  // so the card is built from the log rows (cardFor's log branch), not copied from a curated card.
+  const curatedTypes = new Set(base.sections.flatMap((s) => s.cards.map((c) => c.buildType)));
+  const shown = [...new Set(Object.values(TYPES as Record<string, string>))].filter((t) => !curatedTypes.has(t) && drawingForType(t) && typeKey(`builtin:${t}`) === t);
+  assert.ok(shown.length >= 2, `need log-only drawn types, got ${shown}`);
+  // Typo prompts, newest in the log so they lead "Popular recently" and the strip.
+  const typed = shown.map((t, i) => row(`${t.replace(/-/g, " ")} wiht teh typo ${i} 24 wide`, `builtin:${t}`, 3, after(40 + i), "Trusted", "24×12×30"));
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...typed] };
+  const f = liveFeed(snap, base, NOW);
+  const cards0 = f.sections.flatMap((s) => s.cards);
+  for (const t of shown) assert.ok(cards0.some((c) => c.buildType === t && c.count > 0 && c.drawing), `${t} is a shown, drawn log card`);
+  const strip = makingNow(f);
+  assert.ok(strip.length > 0, "the strip has rows on a live feed");
+  for (const t of shown) assert.ok(strip.some((it) => cards0.find((c) => c.slug === it.slug)?.buildType === t), `${t} is in the strip`);
+  const json = JSON.stringify({ f, strip }).toLowerCase();
+  for (const r of typed) assert.ok(!json.includes(r.prompt.toLowerCase()), `typed prompt leaked: "${r.prompt}"`);
+  // Any example prompt that is not Yard's own (a curated or recipe card's) is never a logged prompt.
+  const ours = new Set(base.sections.flatMap((s) => s.cards.map((c) => c.examplePrompt)));
+  const logged = new Set(snap.rows.map((r) => r.prompt));
+  for (const c of f.sections.flatMap((s) => s.cards)) if (!ours.has(c.examplePrompt)) assert.ok(!logged.has(c.examplePrompt), `${c.slug}: "${c.examplePrompt}"`);
+  if (f.hero && !ours.has(f.hero.examplePrompt)) assert.ok(!logged.has(f.hero.examplePrompt), f.hero.examplePrompt);
+  // Each strip row is a counted feed card: its display title and engine size, newest build first.
+  const cards = f.sections.flatMap((s) => s.cards);
+  for (const it of strip) {
+    const c = cards.find((x) => x.slug === it.slug)!;
+    assert.ok(c && c.count > 0 && c.lastSeen, it.slug);
+    assert.deepEqual([it.title, it.size, it.q], [c.title, c.size, c.examplePrompt]);
+  }
+  assert.deepEqual(strip.map((it) => cards.find((x) => x.slug === it.slug)!.lastSeen), [...strip.map((it) => cards.find((x) => x.slug === it.slug)!.lastSeen)].sort().reverse());
+  assert.deepEqual(makingNow(curatedFeed(RECIPES)), [], "no strip on the fallback feed");
+  // The strip renders only these items: it never reads the raw snapshot or a row's prompt.
+  const src = fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8");
+  assert.doesNotMatch(src, /ideas-snapshot|loadSnapshot|\.prompt\b/);
 });
 
 test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-yard-test flag, never a word in the prompt", () => {
@@ -146,7 +179,7 @@ test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-
   const ttr = cards.find((c) => c.buildType === "test-tube-rack");
   assert.ok(ttr, "test tube rack is in the Ideas feed");
   assert.equal(ttr!.count, 11, "only the real row is counted; the test=1 row is not");
-  assert.equal(ttr!.examplePrompt, "test tube rack");
+  assert.equal(ttr!.examplePrompt, "test tube rack 36 wide 72 tall 12 deep", "built from the engine type and logged size, not the typed words");
   assert.deepEqual(feedViolations(f, snap), []);
   // The invariant still catches a counted card whose example is a logged test row.
   const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
