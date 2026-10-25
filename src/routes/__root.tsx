@@ -86,7 +86,6 @@ export const Route = createRootRoute({
       { property: "og:image", content: ogImage },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:url", content: `https://${host}/` },
       { property: "x:game:image", content: xBanner },
       { property: "x:game:image:width", content: "1200" },
       { property: "x:game:image:height", content: "264" },
@@ -100,8 +99,8 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
-      { rel: "canonical", href: `https://${host}/` },
     ],
+    // No canonical or og:url here: each page's own head sets one (src/lib/canonical.ts); a root "/" was a second canonical.
   }),
   notFoundComponent: NotFound,
   component: () => (

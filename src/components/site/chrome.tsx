@@ -55,7 +55,7 @@ export function SiteChrome({
           <Link to="/" className="flex min-h-11 items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav aria-label="Main" className="flex items-center gap-1">
             {NAV.map((n) => {
               const on = n.to === "/ideas" && active === "ideas";
               return (
@@ -84,7 +84,7 @@ export function SiteFooter({ active }: { active?: "ideas" | "about" | "privacy" 
     <footer>
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-ink-muted">Yard · Think it up. Yard works it out.</p>
-        <nav className="-mx-2.5 flex flex-wrap items-center gap-x-1">
+        <nav aria-label="Footer" className="-mx-2.5 flex flex-wrap items-center gap-x-1">
           {FOOT.map((n) => (
             <Link
               key={n.to}

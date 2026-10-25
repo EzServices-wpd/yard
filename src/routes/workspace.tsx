@@ -1,6 +1,7 @@
 import { pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { createFileRoute } from "@tanstack/react-router";
 import { WorkspaceApp } from "@/components/workspace/shell";
+import { canonical, workbenchPath } from "@/lib/canonical";
 /** The share token's prompt only (base64url JSON, same as shareBuild.encodeShare). Inline so the route tree never loads the engine. */
 function sharedPrompt(token: string): string | undefined {
   try {
@@ -40,7 +41,9 @@ export const Route = createFileRoute("/workspace")({
     const prompt = (y ? sharedPrompt(y) : q) ?? "";
     const title = prompt ? buildTitle(prompt) : "Workspace · Yard";
     const desc = prompt ? `${title.replace(/ · Yard$/, "")}: the 3D model, cut list, Buy list and step-by-step plan on Yard.` : "Type a build and get a 3D model, cut list, Buy list and plan.";
-    return { meta: [{ title }, { name: "description", content: desc }, { property: "og:title", content: title }, { property: "og:description", content: desc }, { name: "twitter:title", content: title }, { name: "twitter:description", content: desc }] };
+    // Its own URL, not "/": a shared build unfurls as itself (the ?y= share link exactly, or the ?q= build).
+    const own = canonical(workbenchPath({ q, y }));
+    return { meta: [{ title }, { name: "description", content: desc }, { property: "og:title", content: title }, { property: "og:description", content: desc }, { name: "twitter:title", content: title }, { name: "twitter:description", content: desc }, ...own.meta], links: own.links };
   },
   component: WorkspacePage,
 });
