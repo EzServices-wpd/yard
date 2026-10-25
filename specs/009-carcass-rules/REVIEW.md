@@ -24,7 +24,7 @@ Scope changes below are proposals; each needs Chief/Critic (and, for canaries, E
 | F-4 | Error & rescue | Two refusal sentences for the same rule: #112 ends "Nothing is built.", #142 "Nothing is built at 36"." Rule 6 wants one honest form. | Decided by Critic: #142's sentence wins (spec FR-011). #112 r8 adopts it; no table PR changes the wording except the full noun ("linen closet", PR 9). **D-3.** |
 | F-5 | Edge cases | Five typed-shelf regexes disagree: `spokenShelfCount` (1–12, drops 0), `fittedBuild.ts:2681` (to "eight"), `:2901` (to "six"), `spec.ts COUNTED` (digits incl. 0, to "twelve", but reads sizes as counts on raw words), #142 `typedShelfDemand` (to "ten", 1–12, family-gated). Row 211 is this. | Decided by Critic: `typedShelfDemand` widened survives; the others delegate or are replaced per family PR (plan §3). **D-2.** |
 | F-6 | Edge cases | `shelfLineCount` groups levels at 1/4"; the precheck groups at 1/16". Two shelves 1/8" apart (stacked bay pieces) read as one level on the header and two in the grader. | `shelfPlanOf` counts at 1/16" (FR-003); PR 2 lists every build whose count moves. |
-| F-7 | Performance | A parity test that rebuilds ~250 prompts on every guards run adds to a 38-minute job already hitting its 45-minute timeout. | Budget ≤ 30 s, one process, carcass prompts only (plan §4). If over, it runs in the eval-gate job instead. |
+| F-7 | Performance | A parity test that rebuilds ~250 prompts on every guards run adds to the guards run (r5: sharded since #143 into 4 parallel unit-test shards, each with a 20-minute timeout). | Budget ≤ 30 s, one process, carcass prompts only (plan §4). If over, it runs in the eval-gate job instead. |
 | F-8 | Tests | An "intended diffs" list would be a new allow/baseline file, which precheck check 8 FAILs on added keys, and renaming it to dodge the pattern would evade Critic's check. | Intended changes are explicit assertions in the parity test with the row they fix; no allow file (plan §4). |
 | F-9 | Tests | Parity fixture copies the precheck's prompts; it can drift from Critic's `sets.py`. | Fixture records the precheck date; Critic's precheck stays the grader; the fixture only guards parity. |
 | F-10 | Security / spend | No new inputs, keys, network or paid calls. All runs under `env -u XAI_API_KEY`. | None needed. |
@@ -41,7 +41,7 @@ Scope changes below are proposals; each needs Chief/Critic (and, for canaries, E
 | F-22 | Real sizes (Critic r2, B3; row 360) | Minimums over 96" (12 → 102 1/4", 13 → 110") are named as buildable, but a 4×8 sheet can't cut them. | Stock limit plus FR-011 second form naming K (11). The 13-shelf row (PR 1) and the wardrobe 12/13 rows (PR 5, row 361) are asserted changes. |
 | F-23 | Formula (Critic r2, B4) | `(H − S) + stack` at the typed H undercounts when the outside grows with H (dresser 50 1/2" builds at 6 1/16"). | `minH` = smallest H in 1/16" steps where the builder's own zone fits; the formula is the start value; closed forms kept for the no-zone and rod cases. |
 | F-24 | Gate (Critic r2, row 363) | "Widened in place" while two callers already serve wardrobe/pantry/linen. | The gate moves to the callers behind `WIDENED_SHELF_FAMILIES`, which grows one family per PR (plan §3). |
-| F-20 | Rod (Critic) | The rod rules lived only in code; #112 r7 drops a typed rod. | Rod and hat rules written as table rows (FR-005, plan §2); #112 r8 must keep the tip's refusal at 97 3/4". |
+| F-20 | Rod (Critic) | The rod rules lived only in code; #112 r7 drops a typed rod. | Rod and hat rules written as table rows (FR-005, plan §2); #112 r8 must keep the tip's refusal (a typed rod is never dropped). Its wording moves in PR 5 to FR-011's second form, because 97 3/4" is over 96" (up to 96" holds 5). |
 
 ## Error & rescue registry (new code paths)
 | Path | Can fail | Rescue | User sees |
@@ -59,7 +59,7 @@ Scope changes below are proposals; each needs Chief/Critic (and, for canaries, E
 2. **D-2 One typed-count reader** (decided by Critic): `shelfClear.ts typedShelfDemand`, widened in place, not `spec.ts COUNTED` (plan §3). T011 pins that size phrases are never counts.
 3. **D-3 One refusal sentence** (decided by Critic): `{A|An} {noun} needs at least {MIN}" tall for {N} {shelf|shelves} with 7" clear between them{ and a hanging rod}. Nothing is built at {H}".` (spec FR-011).
 4. **D-4 Start gate**: PR 1 waits for #112 to merge (#142 merged in 4e74ad3). Owner: Chief.
-5. **D-5 New precheck prompts**: Critic added six "009" rows (78 assertions) and is adding `ends_supported`. Critic wrote the r2 D-5 rows (1/2" ply, dresser, vanity, `bookcase 60 wide 30 tall` default, header-count guards), and they are quoted in acceptance.md for Critic to paste into `sets.py`. Owner: Critic.
+5. **D-5 New precheck prompts**: Critic added six "009" rows and, in r3, the ten D-5 rows (88 assertions) and is adding `ends_supported`. Critic wrote the r2 D-5 rows (1/2" ply, dresser, vanity, `bookcase 60 wide 30 tall` default, header-count guards), and they are quoted in acceptance.md for Critic to paste into `sets.py`. Owner: Critic.
 
 ## NOT in scope
 Hinge/door/drawer rules; wine rack (row 314, #142); pocket vanity (`buildPocket`); sink vanity; corner unit; ladder, cubby,

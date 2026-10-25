@@ -2,8 +2,8 @@
 
 Source of row text: the team's ranked error log (rows 242, 300, 304, 307, 314, 315, 342) and the precheck's `lib/sets.py`
 (both outside the repo). "Tip" = the release branch as Critic probed it on 4e74ad3 (#142 merged); 4e74ad3..1fd539d changes
-no shelf code. "#112" = r7 793c55fa (open). The grader is the precheck on each PR's head sha: **check 7 (78 assertions:
-the brief's 68, #112/#142's, and Critic's six "009" rows) 0 regressions vs base, check 3 0 Pass→worse, check 6 0 new
+no shelf code. "#112" = r7 793c55fa (open). The grader is the precheck on each PR's head sha: **check 7 (88 assertions:
+the brief's 68, #112/#142's, Critic's six "009" rows and the ten r3 D-5 rows) 0 regressions vs base, check 3 0 Pass→worse, check 6 0 new
 contradictions, check 2 canaries 7/7, `ends_supported` once Critic adds it, and no new invariant codes.** Every refusal's
 minimum rebuild must be clean of **all** invariants; the only exception is I11 "closet wording" on wardrobes and pantries,
 which is pre-existing on every wardrobe and is named as such, not counted as a pass. A new invariant on a minimum build is a FAIL.
@@ -51,7 +51,7 @@ them{ and a hanging rod}. Nothing is built at {H}".`
 | #112 | 8 wide wardrobes | `rods_le 42` | hold/open per #112 | hold | 5 |
 | 009 | `bookcase 60 wide 30 tall with 8 shelves` | `levels_usable (8, 7.0)` + minimum probe (guard) | refuses at 71 1/4", rebuild clean | hold | 1 |
 | 361 | `wardrobe with 13 shelves` | suggested `levels_usable (13, 7.0)` | 13 at 11/16" clear (**open**) | **asserted change** in PR 5: second-form refusal (needs 110", up to 96" holds 11) | 5 |
-| rod | `wardrobe with a hanging rod 60 tall with 6 shelves` | typed rod kept or refused | refuses at 97 3/4" (`rodShelfMinHeight(6)`); #112 r7 drops the rod (must not ship) | hold: a typed rod is never dropped | 5 |
+| rod | `wardrobe with a hanging rod 60 tall with 6 shelves` | typed rod kept or refused; refusal text (check 6 sweep) | refuses with "needs at least 97 3/4" tall" (`rodShelfMinHeight(6)`, over 96"); #112 r7 drops the rod (must not ship) | hold: a typed rod is never dropped. **Asserted change** in PR 5 (wording only): "A wardrobe needs 97 3/4" tall for 6 shelves with 7" clear between them and a hanging rod, taller than a 4×8 sheet cuts. A wardrobe up to 96" tall holds 5. Nothing is built at 60"." (K = 5: `rodShelfMinHeight(5)` = 90") | 5 |
 | exact | `wardrobe 86 tall with 10 shelves` | refusal text (check 6 sweep) | refuses at 86 3/4" (the exact minimum; at 86" even positions give 6 15/16" clear) | hold | 5 |
 
 ## FR-010: every shelf piece held at both ends (new)
