@@ -365,7 +365,7 @@ let readerOff = false;
  * follow-on edit to the bench. Off, failed, capped, late or a different object → the typed words build, as today.
  */
 function readerWanted(typed: string, fresh: boolean | undefined): boolean {
-  if (readerOff || typeof window === "undefined" || import.meta.env.VITE_PUBLIC_AI_READER !== "on" || !needsReader(typed)) return false;
+  if (readerOff || typeof window === "undefined" || typeof import.meta.env === "undefined" || import.meta.env.VITE_PUBLIC_AI_READER !== "on" || !needsReader(typed)) return false;
   const f = currentTestFlags();
   const bench = useYard.getState().project.prompt;
   return !f.offline && !f.local && !(!fresh && bench.trim() && looksLikeFollowOn(typed, bench));
