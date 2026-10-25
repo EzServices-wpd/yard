@@ -9,6 +9,7 @@
  */
 import type { BuildPlan, YardProject } from "./types";
 import { anchorKind } from "./wallAnchorSteps";
+import { holdsSoilOrWater } from "./outdoor";
 
 type Row = BuildPlan["bom"][number];
 
@@ -39,6 +40,8 @@ const ROLLS = /\b(?:casters?|wheels?)\b/i;
 export function needsAntiTip(project: YardProject): boolean {
   if (project.displayOnly || project.refused) return false;
   if (project.assumptions?.installMode !== "freestanding") return false;
+  // A planter, trough or bed of soil is not a tipping case-good and often stands nowhere near a wall (row 400).
+  if (holdsSoilOrWater(project.typedPrompt ?? project.prompt, project.name)) return false;
   const program = project.fitted?.program;
   const hallTree = HALL_TREE.test(project.name);
   if (!(program && CASEWORK.has(program)) && !CASEWORK_NAME.test(project.name) && !hallTree) return false;

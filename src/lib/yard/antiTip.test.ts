@@ -75,3 +75,12 @@ test("row 292: the kit's Buy line is the id the strap step carries, and I46 flag
   const off = { ...pl, bom: pl.bom.map((b) => (fastenerId(b) === ANTI_TIP_ID ? { ...b, quantity: 2 } : b)) };
   assert.ok(i46(p, off).some((x) => /Buy lists 2 Furniture anti-tip kit; the steps carry 1/.test(x.msg)));
 });
+
+test("row 400: a planter over 30\" holds soil, not a tipping case-good: no kit and no strap step", () => {
+  for (const q of ["raised planter 36 tall", "cedar planter box 36 wide 18 deep 34 tall"]) {
+    const { p, kits, straps } = kitAndStrap(q);
+    assert.ok(p.overall.height > 30, `${q}: ${p.overall.height}`);
+    assert.equal(needsAntiTip(p), false, q);
+    assert.deepEqual([kits.length, straps.length], [0, 0], q);
+  }
+});
