@@ -51,3 +51,32 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
     </a>
   );
 }
+
+/**
+ * A catalog row (All ideas, and a search hit with no drawing): the engine title and size as one link to its build, never
+ * an empty picture box. A type Critic never graded says so.
+ */
+export function IdeaRow({ card, href, onOpen, onIntent }: { card: Card; href: string; onOpen: () => void; onIntent?: () => void }) {
+  return (
+    <a
+      href={href}
+      onClick={(e) => {
+        if (!plainClick(e)) return;
+        e.preventDefault();
+        onOpen();
+      }}
+      onPointerEnter={onIntent}
+      onFocus={onIntent}
+      onTouchStart={onIntent}
+      data-idea-row={card.slug}
+      data-build-type={card.buildType}
+      className="group flex h-full min-h-12 flex-col justify-center border-b border-rule py-2 text-left"
+    >
+      <span className="flex flex-wrap items-baseline gap-x-2">
+        <span className="font-display text-base leading-tight text-ink group-hover:underline">{card.title}</span>
+        {card.status === "new" ? <span className="text-[13px] text-ink-muted">New, not checked yet</span> : null}
+      </span>
+      <CardSize card={card} className="mt-0.5" />
+    </a>
+  );
+}
