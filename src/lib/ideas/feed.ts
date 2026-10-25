@@ -51,6 +51,18 @@ export function drawingFor(slug: string, manifest: Manifest = DRAWINGS as Manife
   return { src: `${base}.svg`, ...(m.model ? { model: m.model } : {}), w: m.w, h: m.h, parts: m.parts, v: m.v, ...(m.dims ? { dims: m.dims } : {}) };
 }
 
+/**
+ * The drawing of a build type (I-draw): its own manifest key, else the drawing baked for a card of that same engine
+ * type (types.json maps each baked slug to the engine's result-key type, so "jar-rack" draws as jarshelf). Null when
+ * no card of that type was ever baked; liveFeed then leaves the card off the page.
+ */
+const SLUG_OF_TYPE = new Map<string, string>();
+for (const [slug, type] of Object.entries(TYPES as Record<string, string>)) if (!SLUG_OF_TYPE.has(type) && (DRAWINGS as Manifest)[slug]) SLUG_OF_TYPE.set(type, slug);
+export function drawingForType(type: string): DrawingRef | null {
+  const slug = SLUG_OF_TYPE.get(type);
+  return drawingFor(type) ?? (slug ? drawingFor(slug) : null);
+}
+
 /** One build type per card: the prompt stem without sizes or filler ("bookshelf 36x12x72" → "bookshelf"). */
 export function buildTypeOf(prompt: string): string {
   return ideaStem(prompt) || prompt.trim().toLowerCase();
