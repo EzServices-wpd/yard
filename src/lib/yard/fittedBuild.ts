@@ -54,6 +54,7 @@ import {
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
   SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes,
 } from "./fittedShared";
+import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, typedRodDemand, typedShelfDemand } from "./shelfClear";
 import { lippedShelfYs } from "./shelfLips";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
@@ -61,9 +62,8 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
-import { closetShelfClearIn, MIN_HANG_ROOM_IN, ROD_DIA, rodCenters, rodForTypedShelves, rodSeatZ, shelfCountRefusal, shelvesThatFit, sideHangFits, singleRodNote } from "./hangingClearance";
+import { ROD_DIA, rodCenters, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote } from "./hangingClearance";
 import { buildSinkVanity } from "./sinkVanity";
-import { askedNoun } from "./tooSmall";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
 import { PET_ANIMAL } from "./fallbackPrimitive";
@@ -2875,12 +2875,13 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // The rod hangs in the door or open section only: under a drawer section, with hanging room below it, else none.
   const rodRoom = drawersFillLower && !u.upperStart ? null : drawerBelowTop != null && !u.upperStart ? drawerBelowTop - 3.25 : H;
   let rodY = !hang || rodWant == null || rodRoom == null ? null : rodWant <= rodRoom ? rodWant : rodRoom - (bottomY + P) >= MIN_HANG_ROOM_IN ? rodRoom : null;
-  // A typed shelf count is sacred. Lower the rod so the shelves keep a real gap; if they cannot, refuse.
-  let shelfMiss: { asked: number; fit: number } | null = null;
+  // A typed shelf count keeps 7" clear. Lower a default rod to a 40" hang, or leave it out and say so.
+  // A rod the person typed stays, and the refusal (shelfCountRefusal) names the taller height.
   let omitRodForShelves = false;
-  const typedShelves = spokenShelfCount(prompt);
+  let rodLowered = false;
+  const typedShelves = typedShelfDemand(prompt);
   if (rodY != null && sideOk && typedShelves != null) {
-    const plan = rodForTypedShelves({
+    const plan = rodPlanForTypedShelves({
       rodY,
       zoneTop: shelfZone1,
       hangFloor: bottomY + P + MIN_HANG_ROOM_IN,
@@ -2888,14 +2889,16 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       count: typedShelves,
       thick: P,
     });
-    if ("rodY" in plan) rodY = plan.rodY;
-    else if ("omitRod" in plan) {
+    if ("rodY" in plan) {
+      rodLowered = Math.abs(plan.rodY - rodY) > 0.01;
+      rodY = plan.rodY;
+    } else if ("omitRod" in plan && !typedRodDemand(prompt)) {
       rodY = null;
       omitRodForShelves = true;
-    } else shelfMiss = { asked: typedShelves, fit: plan.fit };
+    }
   }
   const lowY = rodY != null && centers.length > 1 && centers[0] <= rodY - 30 ? centers[0] : null;
-  const rodYs = shelfMiss ? [] : [lowY, rodY].filter((y): y is number => y != null && sideOk);
+  const rodYs = [lowY, rodY].filter((y): y is number => y != null && sideOk);
   const shelvesAsked = u.shelfCount ?? (spec.program === "bookcase" ? 5 : spec.program === "closet" ? 1 : spec.program === "pantry" || spec.program === "wardrobe" ? 4 : spec.program === "media" ? 2 : 0);
   // Shelves live only in a door or open section: drawers that fill the carcase leave no room for them.
   let shelves = drawersFillLower && !u.upperStart ? 0 : shelvesAsked;
@@ -2905,7 +2908,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const need = forItem && !forItem.item.outdoor && !/\b(?:\d+|one|two|three|four|five|six)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt) ? forItem.item.clear : null;
   const zoneY0 = rodY != null ? rodY + ROD_DIA : (u.upperStart ?? shelfZone0);
   // Only the default count is trimmed, down to what keeps a closet gap above the rod.
-  // A typed count already has that gap, or the build was refused.
+  // A typed count already has that gap, or the build is refused (shelfCountRefusal).
   if (rodY != null && typedShelves == null) shelves = Math.min(shelves, shelvesThatFit(shelfZone1 - zoneY0, P));
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
@@ -3101,7 +3104,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       ? [
           rodYs.length > 1
             ? `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[rodYs.length - 1])}" up, with a second rod at ${Math.round(rodYs[0])}" for double hang, and shelves above.`
-            : singleRodNote(rodYs[0]),
+            : singleRodNote(rodYs[0], rodLowered),
         ]
       : omitRodForShelves
         ? [`The hanging rod is left out so the shelves keep ${closetShelfClearIn()}" clear between them.`]
@@ -3188,7 +3191,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
         })();
   const notesNamed = notes.map((n, i) => (i === 0 ? n.replace(spec.name, name) : n));
 
-  const built: YardProject = {
+  return {
     id: createId("proj"),
     name,
     prompt,
@@ -3212,10 +3215,6 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       wallType: "wood_stud",
     },
   };
-  if (!shelfMiss) return built;
-  const noun = askedNoun(built);
-  const why = shelfCountRefusal(noun, shelfMiss.asked);
-  return { ...built, name: noun, panels: [], instances: [], notes: [why], cardNote: why, refused: why };
 }
 
 export function fittedFromPocketProject(project: YardProject): FittedSpec | undefined {

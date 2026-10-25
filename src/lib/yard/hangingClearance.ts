@@ -6,6 +6,7 @@
  */
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
+import { closetShelfClearIn, MIN_HANG_ROOM_IN, SHELF_CLEAR_FLOOR_IN } from "./shelfClear";
 import { askedNoun } from "./tooSmall";
 import type { Panel, YardProject } from "./types";
 
@@ -26,16 +27,8 @@ export const DOUBLE_HANG_IN = 42;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
 export const ROD_DIA = 1.25;
-/** Shortest hang kept under a rod. Shirt length: about 40" clear, so shelves never drop the rod to a 24" hang. */
-export const MIN_HANG_ROOM_IN = 40;
-/** Clear opening a closet shelf is built to leave, face to face. */
-export const CLOSET_SHELF_CLEAR_IN = 7;
-/** A tighter opening is not a shelf. The closet gap is never set below this. */
-export const SHELF_CLEAR_FLOOR_IN = 4;
-
-export function closetShelfClearIn(): number {
-  return Math.max(SHELF_CLEAR_FLOOR_IN, CLOSET_SHELF_CLEAR_IN);
-}
+// One shelf-stack rule for the whole carcass family lives in shelfClear.ts (#142).
+export { CLOSET_SHELF_CLEAR_IN, MIN_HANG_ROOM_IN, SHELF_CLEAR_FLOOR_IN, closetShelfClearIn } from "./shelfClear";
 
 export function sideHangFits(interiorIn: number): boolean {
   return interiorIn + CLEAR_TOL >= HANGER_CLEAR_IN;
@@ -85,68 +78,18 @@ function hangTail(rodY: number): string {
   return ".";
 }
 
-/** One rod's note. Full-length coats only in the long-hang band; a shirt hang says so; a shorter rod claims neither. */
-export function singleRodNote(rodY: number): string {
-  return `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it${hangTail(rodY)}`;
+/** One rod's note. Full-length coats only in the long-hang band; a shirt hang says so; a shorter rod claims neither. A rod lowered for typed shelves names its exact height. */
+export function singleRodNote(rodY: number, exact = false): string {
+  return `A 1 1/4" closet rod in two sockets runs side to side ${exact ? inchFrac(rodY) : Math.round(rodY)}" up, with the shelves above it${hangTail(rodY)}`;
 }
 
 const ROD_NAME = /\bhanging rod\b|\bclothes rod\b/i;
-
-/** Clear opening when `count` shelves are spaced evenly through `zone`. The top opening is the tight one. */
-export function shelfOpening(count: number, zone: number, thick: number): number {
-  if (count <= 0) return zone;
-  return zone / (count + 1) - thick;
-}
-
-/** A stack fits only when every opening keeps the closet gap (never under the 4" floor). */
-export function shelfZoneFits(count: number, zone: number, thick: number, clear = closetShelfClearIn()): boolean {
-  if (count <= 0) return true;
-  return shelfOpening(count, zone, thick) + 1e-6 >= Math.max(SHELF_CLEAR_FLOOR_IN, clear);
-}
 
 /** Largest count whose even spacing leaves that clear gap. */
 export function shelvesThatFit(zone: number, thick: number, clear = closetShelfClearIn()): number {
   const pitch = thick + Math.max(SHELF_CLEAR_FLOOR_IN, clear);
   if (!(zone > 0) || pitch <= 0) return 0;
   return Math.max(0, Math.floor((zone + 1e-6) / pitch) - 1);
-}
-
-/**
- * Typed shelves keep their count when the clear gap fits. Lower the rod first.
- * If that would leave less than a shirt's hang, drop the rod and use the full height.
- * When even the full height cannot hold them, `fit` is the largest count that can.
- */
-export function rodForTypedShelves(o: {
-  rodY: number;
-  zoneTop: number;
-  hangFloor: number;
-  fullZone0: number;
-  count: number;
-  thick: number;
-  /** From the stored rod position up to the shelf zone: the top of the rod. */
-  lift?: number;
-  clear?: number;
-}): { rodY: number } | { omitRod: true } | { fit: number } {
-  const clear = Math.max(SHELF_CLEAR_FLOOR_IN, o.clear ?? CLOSET_SHELF_CLEAR_IN);
-  const lift = o.lift ?? ROD_DIA;
-  const zoneAt = (rodY: number) => o.zoneTop - (rodY + lift);
-  const full = o.zoneTop - o.fullZone0;
-  if (shelfZoneFits(o.count, zoneAt(o.rodY), o.thick, clear)) return { rodY: o.rodY };
-  const lowered = o.zoneTop - lift - (o.count + 1) * (o.thick + clear);
-  if (lowered + 1e-6 >= o.hangFloor && shelfZoneFits(o.count, zoneAt(lowered), o.thick, clear)) return { rodY: lowered };
-  if (shelfZoneFits(o.count, full, o.thick, clear)) return { omitRod: true };
-  return { fit: shelvesThatFit(full, o.thick, clear) };
-}
-
-/** Shortest overall height that holds `count` closet shelves at the gap, with the rod left out. */
-export function closetShelfMinHeight(count: number, thick = 0.75, clear = closetShelfClearIn()): number {
-  return (count + 1) * (thick + Math.max(SHELF_CLEAR_FLOOR_IN, clear)) + thick * 2;
-}
-
-/** Refusal for a typed shelf count that cannot keep the gap. Names the height that does. */
-export function shelfCountRefusal(noun: string, asked: number, clear = closetShelfClearIn()): string {
-  const a = /^[aeio]/i.test(noun) ? "An" : "A";
-  return `${a} ${noun.toLowerCase()} needs at least ${inchFrac(closetShelfMinHeight(asked, 0.75, clear))}" tall for ${asked} shelves with ${clear}" clear between them. Nothing is built.`;
 }
 
 /** Interior depth a hanger actually gets: back's inner face to the box front (an overlay door stands proud). */
@@ -399,10 +342,11 @@ function rodAbove(rodY: number, rodH: number, lines: { y: number; fixed: boolean
   return over.some((line) => line.fixed) ? "hat" : "shelves";
 }
 
-function bayRodNote(rodY: number, count: number, above: "hat" | "shelves" | "none"): string {
+/** `at` is the height the builder already wrote (a rod lowered for typed shelves says 42 1/2", not 43"). */
+function bayRodNote(rodY: number, at: string, count: number, above: "hat" | "shelves" | "none"): string {
   const where = count > 1 ? ` in each of ${count} bays` : "";
   const over = above === "hat" ? ", with the fixed hat shelf above it" : above === "shelves" ? ", with the shelves above it" : "";
-  return `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up${where}${over}${hangTail(rodY)}`;
+  return `A 1 1/4" closet rod in two sockets runs side to side ${at}" up${where}${over}${hangTail(rodY)}`;
 }
 
 /** Shelf and rod notes follow the bays actually built: a fixed hat is not an adjustable line, and each bay's rod is counted. */
@@ -439,9 +383,11 @@ export function hangingTalk(project: YardProject): YardProject {
     });
   }
   if (rods.length && rods.every((rod) => Math.abs(rod.position.y - rods[0].position.y) < 0.6)) {
-    const next = bayRodNote(rods[0].position.y, rods.length, rodAbove(rods[0].position.y, rods[0].size.height, lines));
+    const overRod = rodAbove(rods[0].position.y, rods[0].size.height, lines);
     notes = notes.map((note) => {
       if (!/closet rod in two sockets runs side to side/.test(note) || /second rod/.test(note)) return note;
+      const at = note.match(/runs side to side ([\d /]+)" up/)?.[1] ?? String(Math.round(rods[0].position.y));
+      const next = bayRodNote(rods[0].position.y, at, rods.length, overRod);
       if (note === next) return note;
       changed = true;
       return next;
