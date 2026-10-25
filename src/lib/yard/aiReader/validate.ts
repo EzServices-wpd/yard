@@ -21,9 +21,14 @@ export function quoteAt(prompt: string, q: string): number {
 const quoted = (prompt: string, q: unknown) => typeof q === "string" && q.trim().length > 0 && quoteAt(prompt, q) >= 0;
 /** The axis word typed right after the quote ("6 ft" + " tall"), if any: a size quoted without it keeps that axis. */
 const AXIS_AFTER = /^\s*(?:inches|inch|in|"|ft|feet|foot)?\s*(wide|width|deep|depth|tall|high|height|long|length)\b/;
+/** The axis word typed right after the quote, or null. */
+export const typedAxisAfter = (prompt: string, quote: string): string | null => {
+  const i = quoteAt(prompt, quote);
+  return i < 0 ? null : (norm(prompt).slice(i + norm(quote).length).match(AXIS_AFTER)?.[1] ?? null);
+};
 const nextAxisFits = (prompt: string, s: ReaderSize) => {
-  const i = quoteAt(prompt, s.quote); const m = norm(prompt).slice(i + norm(s.quote).length).match(AXIS_AFTER);
-  return !m || NAMED.find(([re]) => re.test(m[1]))![1].includes(s.axis);
+  const w = typedAxisAfter(prompt, s.quote);
+  return !w || NAMED.find(([re]) => re.test(w))![1].includes(s.axis);
 };
 const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, pair: 2, dual: 2, double: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const clamp01 = (x: unknown) => (typeof x === "number" && x >= 0 && x <= 1 ? x : 0);

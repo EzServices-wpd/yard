@@ -17,7 +17,7 @@ import { generateFromPrompt } from "../promptMain";
 import { inchFrac } from "../inchText";
 import type { YardProject } from "../types";
 import type { ReaderSize, ReaderSpec } from "./spec";
-import { quoteUnit } from "./validate";
+import { quoteUnit, typedAxisAfter } from "./validate";
 
 const WORD = { W: "wide", D: "deep", H: "tall", L: "long" } as const;
 const MIN_CONFIDENCE = 0.7;
@@ -29,7 +29,9 @@ const rewritable = (s: ReaderSize) => {
   const q = s.quote.toLowerCase(), unit = quoteUnit(q), nums = q.match(/\d+(?:\.\d+)?(?:[\s-]+\d+\/\d+)?|\d+\/\d+/g) ?? [];
   const metricUnits = new Set(q.match(/\d\s*(cm|mm|m)\b|centimet|millimet|met(?:er|re)/g)?.map((u) => u.replace(/^\d\s*/, "")) ?? []);
   // One measurement only: one metric number in one unit, or feet (with at most its inches: 6 ft 2 in).
-  return unit !== "in" && !/[x×*,]|\bby\b/i.test(q) && (unit === "ft" ? nums.length <= 2 : nums.length === 1 && metricUnits.size <= 1);
+  // At most one axis word, and feet carry only their own inches (< 12): "4 ft 30 wide" is two sizes, never rewritten.
+  const axisWords = q.match(/\b(?:wide|width|deep|depth|tall|high|height|long|length)\b/g) ?? [];
+  return unit !== "in" && !/[x×*,]|\bby\b/i.test(q) && axisWords.length <= 1 && (unit === "ft" ? nums.length === 1 || (nums.length === 2 && parseFloat(nums[1]) < 12) : nums.length === 1 && metricUnits.size <= 1);
 };
 const replaceOnce = (out: string, quote: string, to: string) => {
   const lo = out.toLowerCase(), qo = quote.toLowerCase();
@@ -50,7 +52,8 @@ export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: Read
   let out = prompt;
   for (const [quote, sizes] of byQuote) {
     if (sizes.length !== 1 || !rewritable(sizes[0]) || honored(sizes[0]) || (perAxis.get(sizes[0].axis)?.size ?? 0) > 1) continue;
-    const to = sizes.map((s) => `${inchFrac(s.inches)} ${WORD[s.axis as keyof typeof WORD]}`).join(" ");
+    // The axis word already typed after the quote ("1.8 m tall") stays; only the number is rewritten.
+    const to = typedAxisAfter(out, quote) ? inchFrac(sizes[0].inches) : `${inchFrac(sizes[0].inches)} ${WORD[sizes[0].axis as keyof typeof WORD]}`;
     const next = replaceOnce(out, quote, to);
     if (next === null) continue;
     out = next;
