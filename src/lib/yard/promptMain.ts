@@ -3,7 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
-import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays } from "./hangingClearance";
+import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -405,9 +405,11 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const raw = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
+    // Row 438: a typed rod count over the finished bays is built as double hang, trimmed to the count.
+    const raw = (idDepth === 1 ? withRodPairs(raw0, args[0] ?? "", (q) => withFeatureNotes(hollowDrawers(rebuild(q)), args[0])) : null) ?? raw0;
     const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", rebuild) : null;
     const shelves = !small && idDepth === 1 ? shelfCountRefusal(raw, args[0] ?? "", rebuild) : null;
     // A clothes rod in a box a hanger cannot use is refused, naming the depth that hangs; so is a typed rod count that does not fit (row 433).

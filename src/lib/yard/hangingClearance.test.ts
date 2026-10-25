@@ -372,10 +372,45 @@ it("row 433: a typed rod count that does not fit is refused naming the height, n
   }
   const three = generateFromPrompt("closet with 3 rods");
   assert.equal(three.panels.length, 0);
-  assert.match(three.refused ?? "", /for 3 rods, taller than a 4×8 sheet cuts\. A closet up to 96" tall holds 2\. Nothing is built at 84"\./);
+  assert.match(three.refused ?? "", /for 3 rods, taller than a 4×8 sheet cuts\. A closet up to 96" tall holds 2; one 44" wide and 88" tall holds 3\. Nothing is built at 84"\./);
   assert.equal(rodsOf("closet with 2 rods 88 tall").length, 2);
-  assert.ok(rodsOf("closet 96 wide with 3 rods").length >= 3);
-  // The named height itself builds the count: two bays at 88" stack a pair in each.
+  assert.equal(rodsOf("closet 96 wide with 3 rods").length, 3);
+  // The named height itself builds exactly the count.
   assert.match(generateFromPrompt("closet 60 wide with 3 rods").refused ?? "", /needs at least 88" tall for 3 rods/);
-  assert.ok(rodsOf("closet 60 wide 88 tall with 3 rods").length >= 3);
+  assert.equal(rodsOf("closet 60 wide 88 tall with 3 rods").length, 3);
+  assert.equal(rodsOf("closet 44 wide 88 tall with 3 rods").length, 3);
+});
+
+it("row 438: a typed rod count is built exactly over the finished bays, or a note names the count built", () => {
+  const cases: [string, number][] = [
+    ["closet 48 wide 96 tall with 3 rods", 3], ["closet 60 wide 96 tall with 3 rods", 3], ["closet 72 wide 96 tall with 3 rods", 3],
+    ["closet 48 wide 88 tall with 3 rods", 3], ["closet 72 wide 96 tall with 5 rods", 5], ["closet 120 wide 96 tall with 5 rods", 5],
+  ];
+  for (const [q, n] of cases) {
+    const rods = rodsOf(q);
+    assert.equal(rods.length, n, q);
+    assert.equal(new Set(rods.map((r) => r.name)).size, rods.length, `${q}: rod names repeat`);
+  }
+  for (const q of ["closet two rods 70 wide 96 tall", "wardrobe 80 wide 2 rods 96 tall"]) {
+    const p = generateFromPrompt(q);
+    assert.equal(rodsOf(q).length, 3, q);
+    assert.match(p.notes.join(" "), /You asked for 2 rods\. 3 rods are built, one in each of the 3 bays: a rod can't pass through a divider\./, q);
+  }
+  assert.deepEqual(rodsOf("closet with 2 rods 96 tall").map((r) => r.name).sort(), ["Lower hanging rod", "Upper hanging rod"]);
+});
+
+it("row 439: a rod size is not a rod count", () => {
+  const plain = rodsOf("closet with rods").length;
+  for (const q of ["closet with 1 1/4 rods", "closet with 1-1/4 rods", "wardrobe with 1 1/4 hanging rods", "closet with 3/4 rods", "closet with 2.5 rods", "closet with 2-3 rods", "closet with 2 1/2 rods"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(!p.refused, `${q}: ${p.refused}`);
+    assert.equal(rodsOf(q).length, plain, q);
+  }
+  for (const q of ["closet with 2 rods", "closet with two rods"]) assert.match(generateFromPrompt(q).refused ?? "", /for 2 rods/, q);
+});
+
+it("row 440: when drawers take the lower tier, the one-rod note names the drawers, not a height the box already has", () => {
+  const notes = generateFromPrompt("wardrobe 96 tall with drawers and 2 rods").notes.join(" ");
+  assert.match(notes, /You asked for 2 rods\. One rod is built: the drawers leave room for one rod/);
+  assert.doesNotMatch(notes, /needs the box at least 88/);
 });

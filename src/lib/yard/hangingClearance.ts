@@ -32,6 +32,7 @@ const TIER_HANG_IN = 34;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
 export const ROD_DIA = 1.25;
+const BAY_EPS = 1 / 32;
 // One shelf-stack rule for the whole carcass family lives in shelfClear.ts (#142).
 export { CLOSET_SHELF_CLEAR_IN, MIN_HANG_ROOM_IN, SHELF_CLEAR_FLOOR_IN, closetShelfClearIn } from "./shelfClear";
 
@@ -50,17 +51,26 @@ export function isClothesRodPrompt(lower: string): boolean {
   return /\bcloset\b/.test(lower) && (/system|walk-?in|along the wall|wall of closets|\brods?\b|\bhangs?\b/.test(lower) || hangWord || railWord);
 }
 
-const ROD_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+const ROD_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
 
-/** Typed rod count: "3 rods", "two hanging rods". 0 when none is typed. */
+/** Typed rod count: "3 rods", "two hanging rods", "1 rod". 0 when none is typed. A rod size ("1 1/4 rods", "1-1/4", "2.5") is not a count (row 439). */
 export function rodsAsked(prompt: string): number {
-  const m = prompt.match(/\b(\d+|two|three|four|five|six)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods\b/i);
+  const m = prompt.match(/(?<![\d/.-])(?<!\d\s)\b(\d+|one|two|three|four|five|six)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods?\b(?![\d/.-])/i);
   return !m ? 0 : /\d/.test(m[1]) ? parseInt(m[1], 10) : ROD_WORDS[m[1].toLowerCase()];
 }
 
-/** "2 rods", "two hanging rods": the person asked for a pair of rods (double hang). */
-export function twoRodsAsked(prompt: string): boolean {
-  return rodsAsked(prompt) === 2;
+/**
+ * Row 438: more rods typed than the finished bays hold one each, in a box tall enough for double hang: build it as
+ * double hang, and hangingTalk keeps exactly the typed count (pairs in n − bays bays). Null when the first build stands.
+ * The bays are only known after the shelf-span and rod splits, so this reads the built rods, not a guess.
+ */
+export function withRodPairs(p: YardProject, prompt: string, rebuild: (q: string) => YardProject): YardProject | null {
+  if (p.refused || p.overall.height < DOUBLE_HANG_MIN_H_IN || /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) return null;
+  const prog = p.fitted?.program;
+  const rods = p.panels.filter(isHangingRod);
+  if ((prog !== "wardrobe" && prog !== "closet") || !rods.length || rods.length >= rodsAsked(prompt)) return null;
+  const paired = rebuild(`${prompt} double hang`);
+  return paired.panels.filter(isHangingRod).length > rods.length ? paired : null;
 }
 
 /** Default depth for a clothes-rod build, or null when this prompt is not one. */
@@ -170,6 +180,11 @@ export function hangingDepthRefusal(p: YardProject, prompt: string): YardProject
   return { ...p, name: noun, panels: [], instances: [], refused: why, cardNote: why, notes: [why] };
 }
 
+/** Narrowest box whose rod split gives the ceil(n / 2) bays that hold n rods as double-hang pairs (row 442). */
+function wideFor(n: number, t = 0.75): number {
+  return Math.ceil(ROD_BAY_MAX_IN * (Math.ceil(n / 2) - 1) + 2 * t + BAY_EPS);
+}
+
 /**
  * Row 433 (FR-004 count rule): a typed rod count the build does not hold is refused, never cut to one rod.
  * Each bay stacks at most a double-hang pair, which needs DOUBLE_HANG_MIN_H_IN; a third tier is another TIER_HANG_IN of hang.
@@ -192,11 +207,9 @@ export function rodCountRefusal(p: YardProject, prompt: string): YardProject | n
   const why =
     tiers <= 2
       ? `${a} ${noun.toLowerCase()} needs at least ${minH}" tall for ${n} rods. ${at}`
-      : `${a} ${noun.toLowerCase()} needs at least ${minH}" tall for ${n} rods, taller than a 4×8 sheet cuts. ${a} ${noun.toLowerCase()} up to 96" tall holds ${bays * 2}. ${at}`;
+      : `${a} ${noun.toLowerCase()} needs at least ${minH}" tall for ${n} rods, taller than a 4×8 sheet cuts. ${a} ${noun.toLowerCase()} up to 96" tall holds ${bays * 2}; one ${wideFor(n)}" wide and ${DOUBLE_HANG_MIN_H_IN}" tall holds ${n}. ${at}`;
   return { ...p, name: noun, panels: [], instances: [], refused: why, cardNote: why, notes: [why] };
 }
-
-const BAY_EPS = 1 / 32;
 
 function isHangingRod(panel: Panel): boolean {
   return panel.type === "rail" && /hanging rod/i.test(panel.name);
@@ -453,8 +466,9 @@ function bayRodNote(rodY: number, at: string, count: number, above: "hat" | "she
 }
 
 /** Shelf and rod notes follow the bays actually built: a fixed hat is not an adjustable line, and each bay's rod is counted. */
-export function hangingTalk(project: YardProject, prompt = ""): YardProject {
-  if (!project.panels.length || project.refused) return project;
+export function hangingTalk(input: YardProject, prompt = ""): YardProject {
+  if (!input.panels.length || input.refused) return input;
+  const project = fitRodCount(input, prompt);
   const rods = project.panels.filter(isHangingRod);
   const rows = new Map<string, { y: number; fixed: boolean }>();
   for (const shelf of project.panels) {
@@ -496,10 +510,60 @@ export function hangingTalk(project: YardProject, prompt = ""): YardProject {
       return next;
     });
   }
-  // Two rods asked, one built (the box is under double-hang height): say so instead of dropping the second.
-  if (rods.length === 1 && twoRodsAsked(prompt)) {
-    notes.push(`You asked for 2 rods. One rod is built: a second rod for double hang needs the box at least ${DOUBLE_HANG_MIN_H_IN}" tall, and this one is ${inchFrac(project.overall.height)}".`);
-    changed = true;
+  return changed || project !== input ? { ...project, notes } : project;
+}
+
+/**
+ * Row 438: the typed rod count, after the rod split, is built exactly: a double-hang pair in (n − bays) bays and one
+ * rod in each other bay. A count the bays can't take is said in a note naming what is built (or refused, rodCountRefusal).
+ * Stacked rods are named upper and lower (row 441).
+ */
+function fitRodCount(project: YardProject, prompt: string): YardProject {
+  const n = rodsAsked(prompt);
+  const rodsNow = project.panels.filter(isHangingRod);
+  if (!rodsNow.length) return project;
+  const bayOf = (r: Panel) => r.position.x.toFixed(2);
+  const keys = [...new Set(rodsNow.map(bayOf))].sort((a, b) => +a - +b);
+  const tiers = (k: string) => rodsNow.filter((r) => bayOf(r) === k).sort((a, b) => b.position.y - a.position.y);
+  const drop = new Set<Panel>();
+  if (n >= 1 && rodsNow.length > n) {
+    let pairs = Math.max(0, n - keys.length);
+    for (const k of keys) {
+      const t = tiers(k);
+      if (t.length < 2) continue;
+      if (pairs > 0) pairs--;
+      else t.slice(1).forEach((r) => drop.add(r));
+    }
   }
-  return changed ? { ...project, notes } : project;
+  const panels = project.panels
+    .filter((p) => !drop.has(p))
+    .map((p) => {
+      if (!isHangingRod(p)) return p;
+      const t = tiers(bayOf(p)).filter((r) => !drop.has(r));
+      if (t.length < 2) return p;
+      const bay = keys.length > 1 ? `Bay ${keys.indexOf(bayOf(p)) + 1} ` : "";
+      const tier = t[0] === p ? "upper" : "lower";
+      return { ...p, name: bay ? `${bay}${tier} hanging rod` : `${tier[0].toUpperCase()}${tier.slice(1)} hanging rod` };
+    });
+  const rods = panels.filter(isHangingRod);
+  let notes = [...(project.notes ?? [])];
+  const pairBays = keys.filter((k) => rods.filter((r) => bayOf(r) === k).length > 1).length;
+  if (drop.size || (pairBays && keys.length > 1)) {
+    const hi = Math.round(Math.max(...rods.map((r) => r.position.y)));
+    const lo = Math.round(Math.min(...rods.map((r) => r.position.y)));
+    const where = pairBays === keys.length ? `in each of the ${keys.length} bays` : `in ${pairBays} of the ${keys.length} bays, and one rod ${hi}" up in each other bay`;
+    const rodNote = pairBays ? `${rods.length} closet rods, 1 1/4" in two sockets each, run side to side: a double-hang pair ${lo}" and ${hi}" up ${where}.` : singleRodNote(hi);
+    notes = notes.map((note) => (/closet rod in two sockets runs side to side/.test(note) ? rodNote : note));
+  }
+  if (n >= 1 && rods.length !== n) {
+    const built = rods.length === 1 ? "One rod is" : `${rods.length} rods are`;
+    const why =
+      rods.length > n
+        ? `, one in each of the ${keys.length} bays: a rod can't pass through a divider`
+        : project.panels.some((p) => /drawer/i.test(p.name))
+          ? `: the drawers leave room for one rod in each hanging bay, not a double-hang pair`
+          : `: there is room for one rod in each bay here, not a double-hang pair`;
+    notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"}. ${built} built${why}.`);
+  }
+  return drop.size || pairBays || notes.length !== (project.notes ?? []).length ? { ...project, panels, notes } : project;
 }
