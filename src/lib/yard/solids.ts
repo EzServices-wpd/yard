@@ -15,7 +15,7 @@ import type { Panel, YardProject } from "./types";
 type Ax = "x" | "y" | "z";
 const AX: Ax[] = ["x", "y", "z"];
 const SZ = { x: "width", y: "height", z: "depth" } as const;
-/** Overlap deeper than this on every axis is interpenetration (the same 1/16" I16 uses). */
+/** Callers that pass this treat a shallower box overlap as a miss. I26 uses 1/32" so a 0.05" bite is a hit. */
 export const SOLID_EPS = 1 / 16;
 /** A sample point counts as inside a solid only this far in from its surface. */
 const SKIN = 1 / 64;
@@ -119,14 +119,14 @@ export function jointCutFor(a: Panel, b: Panel): boolean {
   return drilled(a, b) || drilled(b, a);
 }
 
-/** I26: pairs of solid parts that share space with no joint cut for it. */
+/** I26: pairs of solid parts that share space with no joint cut for it. Deeper than 1/32" on every axis, so a 0.05" bite counts. */
 export function hiddenOverlaps(project: Pick<YardProject, "panels">): string[] {
   const ps = project.panels.filter(solidPart);
   const out: string[] = [];
   for (let i = 0; i < ps.length; i++)
     for (let j = i + 1; j < ps.length; j++) {
       const a = ps[i], b = ps[j];
-      if (jointCutFor(a, b) || !solidsOverlap(a, b)) continue;
+      if (jointCutFor(a, b) || !solidsOverlap(a, b, 1 / 32)) continue;
       out.push(`${a.name} runs into ${b.name} with no joint cut for it`);
     }
   return out;
