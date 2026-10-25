@@ -2,7 +2,7 @@
 // from the engine's solved dims (the drawing's own labels, else the model's box), never from a typed string.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { curatedFeed, searchPool } from "../src/lib/ideas/feed";
+import { curatedFeed, drawingForType, searchPool } from "../src/lib/ideas/feed";
 import { SIZE_PATTERN, drawingSize, formatSize, inch, inchWords, drawnDims } from "../src/lib/ideas/size";
 import { liveFeed } from "../src/lib/ideas/liveFeed";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
@@ -104,7 +104,9 @@ test("window card: framing title, size of the drawn framing, the unit it is for 
 test("live feed cards: drawing dims when there is a drawing, else the engine's logged W×D×H", () => {
   const at = new Date().toISOString();
   const row = (prompt: string, resultKey: string, size: string) => ({ key: prompt, prompt, size, resultKey, status: "Trusted" as const, count: 3, lastSeen: at });
-  const live = liveFeed({ live: true, at, rows: [row("a garden gnome house", "builtin:gnome-house", "10.5×8×12.25"), row("a big linen closet", "builtin:linen", "30×16×80")], recent: [] } as never, feed);
+  const live = liveFeed({ live: true, at, rows: [row("a garden gnome house", "builtin:gnome-house", "10.5×8×12.25"), row("a big linen closet", "builtin:linen", "30×16×80")], recent: [] } as never, feed, undefined, undefined,
+    // I-draw shows only drawn cards: the gnome house gets a drawing with no baked dims, so its size is the logged W×D×H.
+    (t) => (t === "gnome-house" ? { src: "/ideas/drawings/gnome-house.0a.svg", w: 480, h: 360, parts: 1, v: "0a" } : drawingForType(t)));
   const all = live.sections.flatMap((s) => s.cards);
   assert.equal(all.find((c) => c.slug === "gnome-house")?.size, "10 1/2 × 8 × 12 1/4 in");
   for (const c of all) if (c.size) assert.match(c.size, SIZE_PATTERN, c.slug);

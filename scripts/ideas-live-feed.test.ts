@@ -2,15 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
-import { curatedFeed, type IdeasFeed } from "../src/lib/ideas/feed";
+import { curatedFeed, drawingFor, drawingForType, type DrawingRef, type IdeasFeed } from "../src/lib/ideas/feed";
 import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import TYPES from "../src/lib/ideas/types.json";
+import TWINS from "../src/lib/ideas/typeTwins.json";
+import LIVE_SNAP from "./fixtures/ideas-snapshot-2026-10-23.json";
+import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import type { IdeasSnapshot, SnapshotRow } from "../src/lib/yard/ideaLog";
 
 const NOW = new Date("2026-10-18T12:00:00Z");
+/** Tests about filtering, titles and grading (not drawings) give every log type a baked-looking drawing. */
+const drawAny = (t: string): DrawingRef => ({ src: `/ideas/drawings/${t}.0a.svg`, w: 480, h: 360, parts: 1, v: "0a" });
 const after = (h: number) => new Date(Date.parse(TEST_CUTOFF) + h * 3_600_000).toISOString();
 let n = 0;
 const row = (prompt: string, resultKey: string, count: number, lastSeen: string | null, status: SnapshotRow["status"] = "Trusted", size = "36×12×72"): SnapshotRow =>
@@ -73,7 +78,7 @@ test("Popular groups by build type with a curated title; linen and bookshelf app
 });
 
 test("Popular recently is the live log of the last 7 days; new types are 'new' with their own size", () => {
-  const recent = feed.sections.find((s) => s.id === "recent")!;
+  const recent = liveFeed(SNAP, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny).sections.find((s) => s.id === "recent")!;
   const cat = recent.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
   assert.deepEqual(cat.dims, { width: 24, depth: 24, height: 60 });
@@ -136,7 +141,7 @@ test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-
   assert.ok(isTestRow(flagged));
   assert.ok(!isTestRow({ ...real[0], source: "live" }));
   const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...real, flagged] };
-  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny);
   const cards = f.sections.flatMap((s) => s.cards);
   const ttr = cards.find((c) => c.buildType === "test-tube-rack");
   assert.ok(ttr, "test tube rack is in the Ideas feed");
@@ -150,14 +155,14 @@ test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-
 });
 
 test("quick win (e): cut-off box keys read as boxes, generic fallbacks never become cards, no blank cards", () => {
-  assert.equal(typeKey("builtin:pine-toolbo"), "pine-toolbox");
+  assert.equal(typeKey("builtin:toolbo"), "toolbox");
   assert.equal(typeKey("recipe:planter-bo"), "planter-box");
   assert.equal(typeKey("recipe:gumbo"), "gumbo");
-  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("storage", "builtin:storage-unit", 50, after(3)), row("pine toolbox", "builtin:pine-toolbo", 4, after(3))] };
-  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("storage", "builtin:storage-unit", 50, after(3)), row("pine toolbox", "builtin:toolbo", 4, after(3))] };
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny);
   const all = f.sections.flatMap((s) => s.cards);
   assert.ok(!all.some((c) => c.buildType === "storage-unit"), "no Storage unit card");
-  assert.ok(all.some((c) => c.title === "Pine toolbox"), "Pine toolbox, not Pine toolbo");
+  assert.ok(all.some((c) => c.title === "Toolbox"), "Toolbox, not Toolbo");
   assert.deepEqual(feedViolations(f), []);
   const src = fs.readFileSync("src/components/ideas/IdeaDrawing.tsx", "utf8");
   assert.match(src, /data-idea-no-drawing/);
@@ -187,9 +192,9 @@ test("only rendered cards are used: a Trusted build past Popular's SECTION_MAX s
   // Since row 169 Popular takes only types Critic graded, so the busy racks are graded here (checked cards in the base).
   const cur = curatedFeed();
   const proto = cur.sections[0].cards[0];
-  const gradedBusy = busy.map((r) => ({ ...proto, slug: typeKey(r.resultKey), buildType: typeKey(r.resultKey), title: `${r.prompt[0].toUpperCase()}${r.prompt.slice(1)}`, examplePrompt: r.prompt, drawing: null, status: "checked" as const }));
+  const gradedBusy = busy.map((r) => ({ ...proto, slug: typeKey(r.resultKey), buildType: typeKey(r.resultKey), title: `${r.prompt[0].toUpperCase()}${r.prompt.slice(1)}`, examplePrompt: r.prompt, drawing: drawAny(typeKey(r.resultKey)), status: "checked" as const }));
   const base: IdeasFeed = { ...cur, sections: [...cur.sections, { id: "graded-racks", title: "Racks", order: cur.sections.length, total: gradedBusy.length, cards: gradedBusy }] };
-  const feed = liveFeed(snap, base, NOW);
+  const feed = liveFeed(snap, base, NOW, TEST_CUTOFF, drawAny);
   assert.deepEqual(feedViolations(feed, undefined, gradedTypes(base)), []);
   const pop = feed.sections.find((s) => s.id === "popular")!;
   assert.equal(pop.cards.length, SECTION_MAX);
@@ -219,7 +224,7 @@ test("junk titles never render: the shared card-quality rule drops digit-only or
       row("3/4 PVC soccer goal 48 wide 36 tall", "builtin:3-4-soccer-goal", 3, after(8), "Trusted", "48×12×36"),
     ],
   };
-  const feed = liveFeed(snap, curatedFeed(), NOW);
+  const feed = liveFeed(snap, curatedFeed(), NOW, TEST_CUTOFF, drawAny);
   assert.deepEqual(feedViolations(feed), []);
   const cards = feed.sections.flatMap((s) => s.cards);
   assert.deepEqual(cards.filter((c) => isJunkTitle(c.title)).map((c) => c.title), []);
@@ -244,7 +249,7 @@ test("Popular lists only Trusted builds Critic graded (row 169): an engine-Trust
   const base = curatedFeed(RECIPES);
   const graded = gradedTypes(base);
   assert.ok(!graded.has("dollhouse") && !graded.has("shoe-prehung-interior") && graded.has("shoe-rack") && graded.has("linen"));
-  const f = liveFeed(snap, base, NOW);
+  const f = liveFeed(snap, base, NOW, TEST_CUTOFF, drawAny);
   assert.deepEqual(feedViolations(f, undefined, graded), []);
   const pop = f.sections.find((s) => s.id === "popular")!;
   const popTypes = pop.cards.map((c) => c.buildType);
@@ -256,11 +261,75 @@ test("Popular lists only Trusted builds Critic graded (row 169): an engine-Trust
   assert.equal(all.find((c) => c.buildType === "dollhouse")?.status, "new");
   assert.ok(f.hero && graded.has(f.sections.flatMap((s) => s.cards).find((c) => c.slug === f.hero!.slug)!.buildType));
   // A graded type whose builds are all Unverified in the log is not Popular either (Trusted AND graded).
-  const unv = liveFeed({ ...snap, rows: snap.rows.map((r) => (r.resultKey === "builtin:shoe-rack" ? { ...r, status: "Unverified" as const } : r)) }, base, NOW);
+  const unv = liveFeed({ ...snap, rows: snap.rows.map((r) => (r.resultKey === "builtin:shoe-rack" ? { ...r, status: "Unverified" as const } : r)) }, base, NOW, TEST_CUTOFF, drawAny);
   assert.ok(!unv.sections.find((s) => s.id === "popular")!.cards.some((c) => c.buildType === "shoe-rack"));
   // The guard names an ungraded card on Popular or a counted checked card nobody graded.
   const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
   const bp = bad.sections.find((s) => s.id === "popular")!;
   bp.cards.push({ ...bp.cards[0], slug: "dollhouse", buildType: "dollhouse", title: "Dollhouse", examplePrompt: "cardboard dollhouse 12 wide 16 tall", count: 0 });
   assert.ok(feedViolations(bad, undefined, graded).some((v) => /dollhouse: not graded by Critic, in popular/.test(v)));
+});
+
+// I-draw (Chief 10-23, /workspace/ideas-review/REPORT.md): 25 of 82 live cards painted no image, a grey title stand-in.
+const live = LIVE_SNAP as unknown as IdeasSnapshot;
+const liveBase = curatedFeed(RECIPES);
+const liveF = liveFeed(live, liveBase, new Date(live.at));
+
+test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the feed shows paints its own baked drawing", () => {
+  const cards = liveF.sections.flatMap((s) => s.cards.map((c) => ({ s: s.id, c })));
+  assert.ok(cards.length > 40, `only ${cards.length} cards`);
+  for (const { s, c } of cards) {
+    assert.ok(c.drawing, `${c.slug} in ${s} has no drawing`);
+    assert.ok(fs.existsSync(path.join("public", c.drawing!.src)), `${c.slug}: ${c.drawing!.src} is not baked`);
+  }
+  assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
+  // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
+  for (const t of ["soccer-goal", "rocket", "dollhouse", "cat-tree", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  // Row 168: "Corner shelf" shows once (the log's corner-shelf rows count on the drawn Corner shelf card), and no two cards share a title.
+  const titles = cards.map(({ c }) => c.title.toLowerCase());
+  assert.equal(titles.filter((t) => t === "corner shelf").length, 1);
+  assert.deepEqual(titles.filter((t, i) => titles.indexOf(t) !== i), []);
+  const corner = cards.find(({ c }) => c.slug === "corner")!.c;
+  assert.equal(corner.count, groupRows(live.rows).find((g) => g.type === "corner-bookshelf")!.count);
+});
+
+test("I-draw guard: feedViolations names a shown card with no drawing, by section", () => {
+  const bad: IdeasFeed = JSON.parse(JSON.stringify(liveF));
+  const r = bad.sections.find((s) => s.id === "recent")!;
+  r.cards[0] = { ...r.cards[0], drawing: null };
+  assert.ok(feedViolations(bad).includes(`${r.cards[0].slug}: no drawing in recent`), feedViolations(bad).join("\n"));
+  // And liveFeed itself never shows one: with no drawings at all, only curated (baked) cards are left.
+  const none = liveFeed(live, liveBase, new Date(live.at), TEST_CUTOFF, () => null);
+  for (const s of none.sections) for (const c of s.cards) assert.ok(c.drawing && liveBase.sections.some((b) => b.cards.some((x) => x.slug === c.slug)), `${c.slug} in ${s.id}`);
+  assert.deepEqual(feedViolations(none), []);
+});
+
+const pieces = (prompt: string) => [...new Set((generateFromPrompt(prompt) as { panels: { name: string }[] }).panels.map((p) => p.name.replace(/\s*\d+$|\s*\([^)]*\)$/g, "")))].sort();
+
+test("one log type per drawn build: a leading lumber species is the stock (pine toolbox = toolbox), and each drawn twin builds the same pieces", () => {
+  assert.equal(typeKey("builtin:pine-toolbo"), "toolbox");
+  assert.equal(typeKey("builtin:cedar-birdhouse"), "birdhouse");
+  assert.equal(typeKey("builtin:walnut-spice-rack"), "spice-rack");
+  assert.equal(typeKey("recipe:cedar-planter-bo"), "planter-box");
+  assert.equal(typeKey("builtin:cedar"), "cedar");
+  // The live log's own prompts: the species-keyed row and the plain-keyed row of each type build the same pieces.
+  const keyed = (k: string) => live.rows.find((r) => r.resultKey === k)!.prompt;
+  for (const [w, bare] of [["builtin:pine-toolbo", "builtin:toolbo"], ["builtin:cedar-birdhouse", "builtin:birdhouse"]]) assert.deepEqual(pieces(keyed(w)), pieces(keyed(bare)), w);
+  assert.deepEqual(pieces("walnut nightstand"), pieces("nightstand"));
+  // A type keys straight to the drawing baked for a card of that engine type (types.json), curated or not.
+  assert.equal(drawingForType("jar-rack")?.src.split("/").pop()?.split(".")[0], "jarshelf");
+  assert.equal(drawingForType("soccer-goal"), null);
+  // typeTwins.json: data next to drawings.json. Each key is an undrawn log type, each target a drawn type, same pieces.
+  for (const [from, to] of Object.entries(TWINS as Record<string, string>)) {
+    assert.equal(typeKey(`builtin:${from}`), to, from);
+    assert.equal(drawingFor(from), null, `${from} has its own drawing`);
+    assert.ok(drawingForType(to), `${to} is not drawn`);
+    const card = liveBase.sections.flatMap((s) => s.cards).find((c) => c.buildType === to) ?? null;
+    const prompt = card?.examplePrompt ?? Object.entries(TYPES as Record<string, string>).find(([, t]) => t === to)![0];
+    const logged = live.rows.filter((r) => typeKey(r.resultKey) === to && r.resultKey.replace(/^[a-z]+:/, "").startsWith(from)).sort((a, b) => b.count - a.count)[0];
+    assert.ok(logged, `no live row for ${from}`);
+    assert.deepEqual(pieces(logged.prompt), pieces(prompt), `${from} ("${logged.prompt}") → ${to} ("${prompt}")`);
+  }
+  // Not a twin: a spice cabinet has a door and no jar lips, so it is not the Spice rack.
+  assert.notDeepEqual(pieces("spice cabinet"), pieces("spice rack 18 wide 24 high 4 deep"));
 });
