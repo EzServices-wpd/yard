@@ -43,7 +43,7 @@ export function slugPlan(name: string) {
 
 
 export { typedAxesTalk } from "./headerSize";
-import { coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
+import { NAME_SIZE_RE, coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
 
 const CRAFT_GLOSSARY = [
   { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them as they come." },
@@ -1182,7 +1182,7 @@ export function headerTitle(project: YardProject, opts: { features?: boolean } =
 
 /** The build's name without its bare typed size ("File cabinet 30" x 24" x 30"" → "File cabinet"). */
 export function headerName(project: YardProject): string {
-  return clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
+  return clean(project.name).replace(NAME_SIZE_RE, "").trim() || "Yard plan";
 }
 
 /** The one size in one order: `31 1/2" W × 16" D × 78" H`, axes nobody typed marked assumed. Header, bench, PDF. */
