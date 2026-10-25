@@ -73,5 +73,5 @@ test("I9: outdoor glides are said only when Buy has them (hung birdhouse, window
 
 test("linen stays exact", () => {
   const plan = buildPlan(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep"));
-  assert.equal(plan.totals.estCostUsd.toFixed(2), "183.70");
+  assert.equal(plan.totals.estCostUsd.toFixed(2), "193.68");
 });

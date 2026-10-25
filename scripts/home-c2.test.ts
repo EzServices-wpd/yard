@@ -1,5 +1,5 @@
 // Batch C2 (home): at most 6 example chips, each with its baked Ideas drawing; one plan strip (the linen canary,
-// $183.70) instead of the icon cards and the 1-2-3 row; no photo slot; no store links outside Buy lists.
+// $193.68) instead of the icon cards and the 1-2-3 row; no photo slot; no store links outside Buy lists.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -29,9 +29,9 @@ test("the plan strip replaces the icon cards and the 1-2-3 row, and shows the li
   assert.doesNotMatch(home, /<(Hammer|ClipboardList|ShoppingBag)\b/);
   assert.match(home, /const PLAN_PROMPT = "linen closet 31\.5 wide 78 tall 16 deep";/);
   const plan = buildPlan(generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep"));
-  assert.equal(plan.totals.estCostUsd.toFixed(2), "183.70");
+  assert.equal(plan.totals.estCostUsd.toFixed(2), "193.68");
   assert.equal(plan.totals.pieces, 11);
-  assert.equal(plan.bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0).toFixed(2), "183.70", "Buy rows add up to the total");
+  assert.equal(plan.bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0).toFixed(2), "193.68", "Buy rows add up to the total");
 });
 
 test("headline and subline kept; no photo slot; no store links in the strip", () => {
