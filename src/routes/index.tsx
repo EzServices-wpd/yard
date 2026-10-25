@@ -5,6 +5,7 @@ import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { drawerSpecs, drawersIn, setOpen, slide, type DrawerSpec } from "@/components/home/showcase-drawers";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { canonical } from "@/lib/canonical";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -19,6 +20,7 @@ import type { Showcase } from "@/lib/yard/homeShowcase";
 const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
+  head: () => canonical("/"),
   // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
   // C2: the plan strip (one real plan: the linen canary) and the chips' baked drawings come from the server too.
   loader: async () => ({ shows: await homeShows(), plan: await homePlan(), chipArt: await homeChipArt() }),
@@ -209,7 +211,7 @@ function LandingPage() {
           <Link to="/" className="flex min-h-11 items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav aria-label="Main" className="flex items-center gap-1">
             <Link to="/ideas" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
               Ideas
             </Link>

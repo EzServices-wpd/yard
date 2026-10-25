@@ -9,7 +9,7 @@ const plan = fs.readFileSync("src/routes/plans/$slug.tsx", "utf8");
 
 test("the nav names the workspace 'Workbench' on home and on every chrome page", () => {
   assert.match(chrome, /label: "Workbench"/);
-  const nav = home.slice(home.indexOf("<nav className=\"flex items-center gap-1\">"), home.indexOf("</nav>"));
+  const nav = home.slice(home.indexOf("<nav aria-label=\"Main\" className=\"flex items-center gap-1\">"), home.indexOf("</nav>"));
   assert.match(nav, />\s*Workbench\s*</);
   assert.doesNotMatch(nav, />\s*Bench\s*</);
 });

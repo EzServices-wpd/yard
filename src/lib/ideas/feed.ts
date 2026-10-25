@@ -4,7 +4,9 @@
  * Pure: no engine import (the drawings are baked by scripts/gen-idea-drawings.ts).
  */
 import { CURATED_IDEAS, IDEAS, IDEA_SECTIONS, type Idea } from "@/lib/yard/ideas";
-import { ideaSearchScore, ideaStem } from "@/lib/yard/ideaLibrary";
+import { ideaSearchScore, ideaStem, ideaTokens } from "@/lib/yard/ideaLibrary";
+import { PLANS, type PlanPage } from "@/lib/yard/plans";
+import type { TestFlags } from "./testFlags";
 import DRAWINGS from "./drawings.json";
 import TYPES from "./types.json";
 import { formatSize, type SolvedDims } from "./size";
@@ -156,14 +158,59 @@ export function searchPool(feed: IdeasFeed): IdeaCard[] {
   return [...onPage, ...IDEAS.filter((d) => !have.has(d.id)).map(fromIdea)];
 }
 
+/**
+ * Words visitors type that no card says (Growth's Ideas review, 10-25): each maps to words the cards or plans do say.
+ * The one alias table; scripts/ideas-quickwins.test.ts fails when an entry is no longer needed or points at nothing.
+ * "kid" lists the stocks and builds made for kids' rooms and crafts; it never claims a build is kid-safe.
+ */
+export const SEARCH_ALIASES: Record<string, string[]> = {
+  bookshelf: ["bookcase"],
+  kid: ["toy", "popsicle", "craft", "straw", "bunk"],
+  beginner: ["smallbuild"],
+  cheap: ["smallbuild"],
+};
+/** A small build, from the baked model: at most 12 cut parts and nothing over 24 inches. The "beginner"/"cheap" rule. */
+// ponytail: parts and size stand in for cost; when cards carry the engine's price, "cheap" reads that instead.
+export const SMALL_BUILD = { parts: 12, inches: 24 };
+const SMALL_TAG = "smallbuild";
+export function isSmallBuild(c: Pick<IdeaCard, "drawing">): boolean {
+  const d = c.drawing;
+  return !!d?.dims && d.parts <= SMALL_BUILD.parts && Math.max(d.dims.width, d.dims.height, d.dims.depth) <= SMALL_BUILD.inches;
+}
+
+/** The query, plus each way of reading it through SEARCH_ALIASES (plurals folded: "kids" reads as "kid"). */
+export function queryVariants(query: string): string[] {
+  let out = [""];
+  for (const t of query.trim().toLowerCase().split(/\s+/).filter(Boolean)) {
+    const alias = SEARCH_ALIASES[t] ?? SEARCH_ALIASES[t.replace(/ves$/, "f")] ?? SEARCH_ALIASES[t.replace(/s$/, "")] ?? [];
+    out = out.flatMap((v) => [t, ...alias].map((w) => `${v} ${w}`)).slice(0, 32);
+  }
+  return out.map((v) => v.trim()).filter(Boolean);
+}
+const bestScore = (idea: Parameters<typeof ideaSearchScore>[0], variants: string[]) => Math.max(-1, ...variants.map((v) => ideaSearchScore(idea, v)));
+
 export function searchCards(pool: IdeaCard[], query: string): IdeaCard[] {
-  const q = query.trim();
-  if (!q) return [];
+  const vs = queryVariants(query);
+  if (!vs.length) return [];
   return pool
-    .map((c, index) => ({ c, index, score: ideaSearchScore({ label: c.title, size: [c.size, c.typedSize].filter(Boolean).join(" "), blurb: c.blurb ?? "", section: c.section, stock: c.stock, prompt: c.examplePrompt }, q) }))
+    .map((c, index) => ({ c, index, score: bestScore({ label: c.title, size: [c.size, c.typedSize].filter(Boolean).join(" "), blurb: [c.blurb ?? "", isSmallBuild(c) ? SMALL_TAG : ""].join(" "), section: c.section, stock: c.stock, prompt: c.examplePrompt }, vs) }))
     .filter((h) => h.score >= 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((h) => h.c);
+}
+
+/** Free plan pages (/plans/<slug>) the query finds whose build no card in the pool already is (every word of the plan's
+ * build in a card's prompt): search reaches the toy chest, and the Bookcase card is not linked twice. */
+export function searchPlans(query: string, pool: IdeaCard[], plans: PlanPage[] = PLANS): PlanPage[] {
+  const vs = queryVariants(query);
+  const cards = pool.map((c) => new Set(ideaTokens(`${c.buildType.replace(/-/g, " ")} ${c.examplePrompt}`)));
+  const carded = (p: PlanPage) => cards.some((have) => ideaTokens(p.prompt).every((t) => have.has(t)));
+  return plans.filter((p) => !carded(p) && bestScore({ label: p.name, size: "", blurb: p.blurb, section: "", prompt: p.prompt }, vs) >= 0);
+}
+
+/** A build's own URL: the workbench with the prompt (and the page's test flags), so a card is a real link. */
+export function buildHref(prompt: string, flags: TestFlags = {}): string {
+  return `/workspace?${new URLSearchParams({ q: prompt.trim(), ...Object.fromEntries(Object.entries(flags).map(([k, v]) => [k, String(v)])) })}`;
 }
 
 function slugify(s: string) {
