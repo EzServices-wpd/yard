@@ -17,7 +17,6 @@ CSP = next(x["value"] for h in cfg["headers"] for x in h["headers"] if x["key"].
 origin = urlparse(BASE).netloc
 # Named, owner-decided exceptions (reported on every run, never silent). Anything else off-site fails.
 KNOWN = {
-    "https://grok.com/grok-app-builder/extensions.js": "Grok app-builder extensions script, injected into every page's <head> by scripts/grok-pwa-shared.mjs (platform integration; removing it is Ezra's call)",
 }
 fails, notes, seen = [], [], 0
 with sync_playwright() as p:
