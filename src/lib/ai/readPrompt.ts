@@ -1,6 +1,6 @@
 /**
- * AI prompt reader server function (I49). Ships OFF: it calls xAI only when the server has the key (XAI_API_KEY, added
- * by Ezra in Vercel), YARD_AI_READER=on (any other value is the kill switch) and the Upstash store. The key never
+ * AI prompt reader server function (I49). Ships OFF: it calls xAI only when the server has YARD_AI_READER=on (any other
+ * value is the kill switch), the existing server-side XAI_API_KEY, and the Upstash store. The key never
  * leaves the server: the only door is xaiFetch, which also applies the per-IP daily cap (YARD_DAILY_READER_CAP, 20).
  * The $1/day counter is Upstash (atomic, shared by every instance and region); Runtime Cache holds only the 30-day
  * result cache, keyed by the normalized prompt.
@@ -18,7 +18,7 @@ function serverDeps(): ReaderDeps {
     env: readerEnv(process.env, !!pipe),
     cacheGet: (k) => cacheGet<string>(k),
     cacheSet: (k, v, ttl) => cacheSet(k, v, ttl),
-    reserve: async (usd, cap, test) => !!pipe && reserveUsd(pipe, day, usd, cap, test),
+    reserve: async (usd, cap) => !!pipe && reserveUsd(pipe, day, usd, cap),
     settle: async (reserved, billed) => { if (pipe) await settleUsd(pipe, day, reserved, billed); },
     async call(body, signal) {
       const r = await xaiFetch("chat/completions", body, "reader", { signal });

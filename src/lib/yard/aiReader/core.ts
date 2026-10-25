@@ -33,21 +33,19 @@ const capUsd = (raw: string | undefined) => { const v = Number(raw ?? HARD_CAP_U
 export const readerEnv = (env: Record<string, string | undefined>, hasStore: boolean) => ({ on: env.YARD_AI_READER === "on" && hasStore, key: !!env.XAI_API_KEY, capUsd: capUsd(env.YARD_AI_READER_DAILY_USD) });
 
 /**
- * The persistent global counter: Upstash (the Ideas store's REST pipe), atomic INCRBYFLOAT on yard:reader:usd:<UTC day>,
- * EXPIRE 2 days. The worst case is added first; a total over the cap is taken back and refused. No reply → no call.
+ * The persistent global counter: Upstash (the Ideas store's REST pipe), one pipelined request of INCRBYFLOAT + EXPIRE
+ * 2 days on yard:reader:usd:<UTC day>, only for a call that will reach the model. The worst case is added first; a
+ * total over the cap is taken back and refused. No reply → no call. ?test=1 calls are told apart in the log line.
  */
 type Pipe = (cmds: (string | number)[][]) => Promise<unknown[] | null>;
-const TTL_S = 172_800;
 export const usdKey = (day: string) => `yard:reader:usd:${day}`;
-export async function reserveUsd(pipe: Pipe, day: string, usd: number, cap: number, test: boolean): Promise<boolean> {
+export async function reserveUsd(pipe: Pipe, day: string, usd: number, cap: number): Promise<boolean> {
   if (!(usd > 0 && usd <= cap)) return false;
-  const k = usdKey(day);
-  const n = (name: string) => [["INCR", `yard:reader:${name}:${day}`], ["EXPIRE", `yard:reader:${name}:${day}`, TTL_S]];
-  const out = await pipe([["INCRBYFLOAT", k, usd], ["EXPIRE", k, TTL_S], ...n("calls"), ...(test ? n("test") : [])]);
+  const out = await pipe([["INCRBYFLOAT", usdKey(day), usd], ["EXPIRE", usdKey(day), 172_800]]);
   const total = out?.[0] == null ? NaN : Number(out[0]);
   if (!Number.isFinite(total)) return false;
   if (total <= cap + 1e-9) return true;
-  await pipe([["INCRBYFLOAT", k, -usd]]);
+  await pipe([["INCRBYFLOAT", usdKey(day), -usd]]);
   return false;
 }
 export async function settleUsd(pipe: Pipe, day: string, reserved: number, billed: number): Promise<void> {
@@ -85,7 +83,7 @@ export type ReaderDeps = {
   cacheGet: (k: string) => Promise<string | undefined>;
   cacheSet: (k: string, v: string, ttlS: number) => Promise<void>;
   /** Persistent daily counter: reserve the worst case under the cap (false = cap hit), then settle at the billed price. */
-  reserve: (usd: number, capUsd: number, test: boolean) => Promise<boolean>;
+  reserve: (usd: number, capUsd: number) => Promise<boolean>;
   settle: (reservedUsd: number, billedUsd: number) => Promise<void>;
   /** The one network door (xaiFetch, with the per-IP cap). */
   call: (body: unknown, signal: AbortSignal) => Promise<{ ok: true; status: number; body: unknown } | { ok: false; error: string }>;
@@ -101,7 +99,7 @@ export async function readPrompt(prompt: string, test: boolean, d: ReaderDeps, t
   const fromCache = hit ? parseReply(prompt, { choices: [{ message: { content: hit } }] }) : null;
   if (fromCache) { d.log(`[ai-reader] cache ${tag}`); return { ok: true, spec: fromCache, cached: true }; }
   const worst = worstCaseUsd(prompt);
-  if (!(await d.reserve(worst, d.env.capUsd, test).catch(() => false))) { d.log(`[ai-reader] cap ${tag}`); return { ok: false, error: "daily reader budget reached", off: true }; }
+  if (!(await d.reserve(worst, d.env.capUsd).catch(() => false))) { d.log(`[ai-reader] cap ${tag}`); return { ok: false, error: "daily reader budget reached", off: true }; }
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {

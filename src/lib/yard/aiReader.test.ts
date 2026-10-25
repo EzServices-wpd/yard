@@ -65,20 +65,20 @@ test("I49 cap hit, model failure, malformed reply and timeout all fall back with
   assert.equal(plain.calls.length, 0, "words the parser reads never call");
 });
 
-test("I49 the persistent counter (Upstash INCRBYFLOAT) refuses the call that would pass $1, counts test calls, settles, and fails closed", async () => {
+test("I49 the persistent counter (Upstash INCRBYFLOAT + EXPIRE, 2 commands) refuses the call that would pass $1, settles, and fails closed", async () => {
   const kv = new Map<string, number>(); const sent: string[] = [];
-  const pipe = async (cmds: (string | number)[][]) => cmds.map(([c, k, v]) => { sent.push(`${c} ${k}`); if (c === "EXPIRE") return 1; kv.set(String(k), (kv.get(String(k)) ?? 0) + (c === "INCR" ? 1 : Number(v))); return String(kv.get(String(k))); });
+  const pipe = async (cmds: (string | number)[][]) => cmds.map(([c, k, v]) => { sent.push(`${c} ${k}`); if (c === "EXPIRE") return 1; kv.set(String(k), (kv.get(String(k)) ?? 0) + Number(v)); return String(kv.get(String(k))); });
   const day = "2026-10-24";
-  assert.equal(await reserveUsd(pipe, day, 2, 1, false), false, "one call over the cap never reserves");
-  assert.equal(await reserveUsd(pipe, day, 0.6, 1, true), true);
-  assert.equal(await reserveUsd(pipe, day, 0.6, 1, false), false, "over the cap: taken back and refused");
+  assert.equal(await reserveUsd(pipe, day, 2, 1), false, "one call over the cap never reserves");
+  assert.equal(sent.length, 0);
+  assert.equal(await reserveUsd(pipe, day, 0.6, 1), true);
+  assert.deepEqual(sent, [`INCRBYFLOAT ${usdKey(day)}`, `EXPIRE ${usdKey(day)}`]);
+  assert.equal(await reserveUsd(pipe, day, 0.6, 1), false, "over the cap: taken back and refused");
   assert.equal(kv.get(usdKey(day)), 0.6);
   await settleUsd(pipe, day, 0.6, 0.003);
-  assert.equal(await reserveUsd(pipe, day, 0.9, 1, false), true);
-  assert.deepEqual([+kv.get(usdKey(day))!.toFixed(6), kv.get(`yard:reader:test:${day}`)], [0.903, 1]);
-  assert.ok(sent.includes(`EXPIRE ${usdKey(day)}`));
-  assert.equal(await reserveUsd(async () => null, day, 0.01, 1, false), false, "store down → no reservation → parser");
-  assert.equal(await reserveUsd(async () => { throw new Error("down"); }, day, 0.01, 1, false).catch(() => false), false);
+  assert.equal(await reserveUsd(pipe, day, 0.9, 1), true);
+  assert.equal(+kv.get(usdKey(day))!.toFixed(6), 0.903);
+  assert.equal(await reserveUsd(async () => null, day, 0.01, 1), false, "store down → no reservation → parser");
   assert.ok(worstCaseUsd("bookcase 6 ft") > 0.0021, "the reserve is above a real uncached call");
 });
 
