@@ -30,7 +30,7 @@ export function costUsd(u: Usage): number {
 export const worstCaseUsd = (prompt: string) => Math.ceil((READER_SYSTEM.length + JSON.stringify(READER_SCHEMA).length + prompt.length + 64) / 3) * PRICE.in + MAX_TOKENS * PRICE.out;
 const capUsd = (raw: string | undefined) => { const v = Number(raw ?? HARD_CAP_USD); return Number.isFinite(v) ? Math.min(HARD_CAP_USD, Math.max(0, v)) : HARD_CAP_USD; };
 /** On only with YARD_AI_READER exactly "on" (anything else is the kill switch), the key, and the Upstash store for the counter. */
-export const readerEnv = (env: Record<string, string | undefined>, hasStore: boolean) => ({ on: env.YARD_AI_READER === "on" && hasStore, key: !!env.XAI_API_KEY, capUsd: capUsd(env.YARD_AI_READER_DAILY_USD) });
+export const readerEnv = (env: Record<string, string | undefined>, hasStore: boolean, hasKey: boolean) => ({ on: env.YARD_AI_READER === "on" && hasStore, key: hasKey, capUsd: capUsd(env.YARD_AI_READER_DAILY_USD) });
 
 /**
  * The persistent global counter: Upstash (the Ideas store's REST pipe), one pipelined request of INCRBYFLOAT + EXPIRE

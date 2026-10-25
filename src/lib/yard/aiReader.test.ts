@@ -29,12 +29,12 @@ const Q = "linen closet 30x18x72";
 
 test("I49 off by default: no key, no flag, a kill-switch value or no store → parser only, no call, no spend", async () => {
   for (const [env, db] of [[{}, true], [{ YARD_AI_READER: "on" }, true], [{ XAI_API_KEY: "k" }, true], [{ XAI_API_KEY: "k", YARD_AI_READER: "off" }, true], [{ XAI_API_KEY: "k", YARD_AI_READER: "true" }, true], [{ XAI_API_KEY: "k", YARD_AI_READER: "on" }, false]] as const) {
-    const m = mock({ env: readerEnv(env, db) });
+    const m = mock({ env: readerEnv(env, db, "XAI_API_KEY" in env) });
     const r = await readPrompt(Q, false, m.d);
     assert.deepEqual([r.ok, m.calls.length, m.spend.reserved], [false, 0, 0], JSON.stringify(env));
     assert.equal(chooseBuildPrompt(Q, null).buildPrompt, Q);
   }
-  assert.equal(readerEnv({ YARD_AI_READER_DAILY_USD: "5" }, true).capUsd, 1, "the env may lower the $1 cap, never raise it");
+  assert.equal(readerEnv({ YARD_AI_READER_DAILY_USD: "5" }, true, true).capUsd, 1, "the env may lower the $1 cap, never raise it");
 });
 
 test("I49 cap hit, model failure, malformed reply and timeout all fall back with no reading; cache hit makes no call", async () => {
