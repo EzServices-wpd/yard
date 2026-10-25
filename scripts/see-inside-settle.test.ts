@@ -1,9 +1,9 @@
 /**
  * Critic #140 rows 353 and 354 (See inside).
- * 353: reduced and full motion must land on the same pose. The solve is framed against the overlay cards; under full
- *   motion a card is still sliding/fading in when the idle solve starts, so the old driver solved against its
- *   mid-slide rect (or without it: opacity 0) and kept that solve, while reduced motion solved against the settled
- *   card. Rule: solve from the SETTLED cards (wait while one moves; re-solve when the settled cards differ from the
+ * 353: reduced and full motion must land on the same pose. The solve is framed against the overlay cards, and the old
+ *   driver kept whatever cards it saw when the solve started: on a phone See inside is tapped from the More tray, so
+ *   it solved with the tray open (laid out 8 px apart in the two runs) and kept that after the tray closed (probe of
+ *   the #141 build: dresser6 18 vs 16 rounds, nightstand 5 vs 4); a card still sliding in does the same. Rule: solve from the SETTLED cards (wait while one moves; re-solve when the settled cards differ from the
  *   ones the shown solve used). Checked with the real solver (explode-solver.ts) on a CPU ID buffer, for the
  *   6-drawer dresser and the nightstand at desk and phone sizes: every posed corner within 0.75 px.
  * 354: delete and undo keep the project id, so the solve key must carry the part list (count + ids).
