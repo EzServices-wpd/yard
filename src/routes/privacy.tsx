@@ -68,8 +68,8 @@ function PrivacyPage() {
             <p className="mt-2">
               Most of a plan — the model, cut list, and buy list — is worked out in your browser. When
               you ask for more detailed instructions or a rendered picture, the text of your build is
-              sent to xAI (the Grok API) to write that text or image. Fonts load from Google Fonts,
-              which sees your IP address like any web font request.
+              sent to xAI (the Grok API) to write that text or image. Fonts are served from our own site,
+              so no third party sees you when a page loads.
             </p>
           </section>
 
