@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { guillotineCuttable, type Rect } from "./guillotine-cuttable";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
-import { planSheetNest, BLADE_KERF } from "../src/lib/yard/nesting";
+import { planSheetNest, nestParts, BLADE_KERF } from "../src/lib/yard/nesting";
 
 const r = (x: number, y: number, width: number, height: number): Rect => ({ x, y, width, height });
 
@@ -24,7 +24,22 @@ test("checker: grid and strip layouts cut; a pinwheel does not; kerf gaps are en
   assert.equal(guillotineCuttable(touch, S, 0).ok, true);
   assert.equal(guillotineCuttable(touch, S, 0.125).ok, false);
   assert.equal(guillotineCuttable([r(0, 0, 47.875, 48), r(48, 0, 48, 48)], S, 0.125).ok, true);
-  assert.equal(guillotineCuttable([r(0, 0, 50, 48), r(48, 0, 48, 48)], S).ok, false, "overlap is reported");
+  // Each sanity branch is pinned by its reason; with it disabled these fall through to "no-through-cut".
+  const edge = guillotineCuttable([r(0, 0, 50, 48), r(48, 0, 48, 48)], S);
+  assert.equal(!edge.ok && edge.reason, "overlap", "edge overlap is reported");
+  const inner = guillotineCuttable([r(0, 0, 40, 40), r(10, 10, 10, 10)], S);
+  assert.equal(!inner.ok && inner.reason, "overlap", "a piece inside another is reported");
+  const off = guillotineCuttable([r(90, 0, 10, 10)], S);
+  assert.equal(!off.ok && off.reason, "off-sheet");
+});
+
+test("nestParts: a part 1/16\" wider than the one under it still leaves a full kerf before its neighbour", () => {
+  // B is 1/16" wider than A, and C is taller than A, so the only cut that frees C is the vertical one past B.
+  const p = (id: string, width: number, height: number) => ({ id, name: id, label: id, width, height, material: "ply", allowRotate: false });
+  const nest = nestParts([p("A", 40, 20), p("B", 40.0625, 10), p("C", 20, 40)]);
+  assert.equal(nest.totalSheets, 1);
+  assert.equal(nest.unplaced.length, 0);
+  for (const s of nest.sheets) assert.equal(guillotineCuttable(s.parts, s, BLADE_KERF).ok, true);
 });
 
 const P = JSON.parse(readFileSync("evals/prompts.json", "utf8"));
