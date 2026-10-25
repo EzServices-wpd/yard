@@ -7,6 +7,7 @@
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { closetShelfClearIn, MIN_HANG_ROOM_IN, SHELF_CLEAR_FLOOR_IN } from "./shelfClear";
+import { SPAN_TOL, spanFindings } from "./spanCheck";
 import { askedNoun } from "./tooSmall";
 import type { Panel, YardProject } from "./types";
 
@@ -24,6 +25,8 @@ export const LONG_HANG_LO = 64;
 export const LONG_HANG_HI = 70;
 /** Double-hang lower rod. */
 export const DOUBLE_HANG_IN = 42;
+/** Shortest box that takes a double-hang pair: the upper rod sits 8" under the top and at least 80" up. */
+export const DOUBLE_HANG_MIN_H_IN = 88;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
 export const ROD_DIA = 1.25;
@@ -38,7 +41,13 @@ export function sideHangFits(interiorIn: number): boolean {
 export function isClothesRodPrompt(lower: string): boolean {
   if (/\blinen\b|\btowel\b/.test(lower) && !/\bwardrobe\b/.test(lower)) return false;
   if (/\bwardrobe\b|\barmoire\b/.test(lower)) return true;
-  return /\bcloset\b/.test(lower) && /system|walk-?in|along the wall|wall of closets|\brod\b|\bhang\b|\brail\b/.test(lower);
+  // Plurals and "hanging" too: "closet with 2 rods" / "hanging rods" hang clothes (typedRodDemand reads rods? as well).
+  return /\bcloset\b/.test(lower) && /system|walk-?in|along the wall|wall of closets|\brods?\b|\bhang(?:s|ing)?\b|\brails?\b/.test(lower);
+}
+
+/** "2 rods", "two hanging rods": the person asked for a pair of rods (double hang). */
+export function twoRodsAsked(prompt: string): boolean {
+  return /\b(?:2|two)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods\b/i.test(prompt);
 }
 
 /** Default depth for a clothes-rod build, or null when this prompt is not one. */
@@ -52,7 +61,7 @@ export function clothesRodDefaultDepth(lower: string, program: string): number |
 /** Rod centerlines: one long-hang rod, or a double-hang pair when asked and the box is tall enough. */
 export function rodCenters(height: number, doubleHang: boolean): number[] {
   const cap = height - 8;
-  if (doubleHang && cap >= 80) {
+  if (doubleHang && height >= DOUBLE_HANG_MIN_H_IN) {
     const upper = Math.min(84, cap);
     if (upper >= DOUBLE_HANG_IN + 34) return [DOUBLE_HANG_IN, upper];
   }
@@ -67,9 +76,20 @@ export function rodSeatZ(boxDepth: number, backT = 0.25, dia = ROD_DIA): number 
   return center - dia / 2;
 }
 
-/** Inches from the top of the box down to the rod the builder stored. The step uses this, not a second guess. */
-export function rodDropIn(height: number, rodY: number): number {
-  return Math.round(height - rodY);
+/** Inches from the top of the hanging bay down to the rod the builder stored. The step uses this, not a second guess. */
+export function rodDropIn(bayTop: number, rodY: number): number {
+  return Math.round(bayTop - rodY);
+}
+
+/** Underside of the first part over this rod (the hat, a drawer-bay floor, or the top); the box height when none. */
+export function rodBayTop(rod: Panel, panels: Panel[], height: number): number {
+  const over = panels.filter(
+    (p) =>
+      (p.type === "shelf" || p.type === "bottom" || p.type === "top") &&
+      p.position.y >= rod.position.y + rod.size.height - 0.05 &&
+      Math.min(p.position.x + p.size.width, rod.position.x + rod.size.width) - Math.max(p.position.x, rod.position.x) > 1,
+  );
+  return over.length ? Math.min(...over.map((p) => p.position.y)) : height;
 }
 
 function hangTail(rodY: number): string {
@@ -311,6 +331,46 @@ function bearRaisedFloors(panels: Panel[]): boolean {
   return changed;
 }
 
+/** Even split of [x0, x1] into the fewest bays no wider than `limit`, as interior centers. */
+function evenStops(x0: number, x1: number, limit: number): number[] {
+  const n = Math.max(1, Math.ceil((x1 - x0 - BAY_EPS) / limit));
+  return Array.from({ length: n - 1 }, (_, i) => x0 + ((x1 - x0) * (i + 1)) / n);
+}
+
+/**
+ * A raised floor over a hanging bay (the drawer-bay floor) is held at its own span limit, the one I7 reads,
+ * not the 42" rod limit. Bay dividers go under the drawer-bank dividers that stand on the floor when those
+ * alone keep every run inside the limit; otherwise the floor is split evenly. Rods are then cut at them.
+ */
+function seatRaisedFloors(project: YardProject, panels: Panel[]): boolean {
+  let changed = false;
+  const rods = panels.filter(isHangingRod);
+  const floors = panels.filter(
+    (p) =>
+      p.type === "bottom" &&
+      p.position.y >= 0.3 &&
+      rods.some((r) => r.position.y < p.position.y && overlapLen(r.position.x, r.position.x + r.size.width, p.position.x, p.position.x + p.size.width) > 1),
+  );
+  for (const floor of floors) {
+    const finding = spanFindings({ ...project, panels }).find((f) => f.panelId === floor.id);
+    if (!finding) continue;
+    const limit = Math.min(ROD_BAY_MAX_IN, finding.allow * SPAN_TOL);
+    const x0 = floor.position.x;
+    const x1 = x0 + floor.size.width;
+    const onTop = floor.position.y + floor.size.height;
+    const bank = panels
+      .filter((q) => /drawer bay divider/i.test(q.name) && Math.abs(q.position.y - onTop) < 0.35)
+      .map((q) => q.position.x + q.size.width / 2)
+      .filter((x) => x > x0 + 1 && x < x1 - 1)
+      .sort((a, b) => a - b);
+    const edges = [x0, ...bank, x1];
+    const bankHolds = bank.length > 0 && edges.every((x, i) => i === 0 || x - edges[i - 1] <= limit + BAY_EPS);
+    const stops = bankHolds ? bank : evenStops(x0, x1, limit);
+    for (const at of stops) if (standBayDivider(panels, at, floor)) changed = true;
+  }
+  return changed;
+}
+
 /**
  * Every hanging bay is 42" or less, shelf or no shelf. Rods are cut at the dividers.
  * A raised floor (the drawer-bay floor) is borne by those dividers, not stabbed by them.
@@ -319,7 +379,8 @@ export function supportHangingBays(project: YardProject): YardProject {
   if (!project.panels.length || project.refused || !project.panels.some(isHangingRod)) return project;
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
   const wideRod = (p: Panel) => isHangingRod(p) && p.size.width > ROD_BAY_MAX_IN + BAY_EPS;
-  let changed = splitMatching(panels, wideRod);
+  let changed = seatRaisedFloors(project, panels);
+  if (splitMatching(panels, wideRod)) changed = true;
   for (let guard = 0; panels.some(wideRod) && guard < 6; guard++) {
     const rod = panels.find(wideRod)!;
     const n = Math.max(2, Math.ceil((rod.size.width - BAY_EPS) / ROD_BAY_MAX_IN));
@@ -350,7 +411,7 @@ function bayRodNote(rodY: number, at: string, count: number, above: "hat" | "she
 }
 
 /** Shelf and rod notes follow the bays actually built: a fixed hat is not an adjustable line, and each bay's rod is counted. */
-export function hangingTalk(project: YardProject): YardProject {
+export function hangingTalk(project: YardProject, prompt = ""): YardProject {
   if (!project.panels.length || project.refused) return project;
   const rods = project.panels.filter(isHangingRod);
   const rows = new Map<string, { y: number; fixed: boolean }>();
@@ -392,6 +453,11 @@ export function hangingTalk(project: YardProject): YardProject {
       changed = true;
       return next;
     });
+  }
+  // Two rods asked, one built (the box is under double-hang height): say so instead of dropping the second.
+  if (rods.length === 1 && twoRodsAsked(prompt)) {
+    notes.push(`You asked for 2 rods. One rod is built: a second rod for double hang needs the box at least ${DOUBLE_HANG_MIN_H_IN}" tall, and this one is ${inchFrac(project.overall.height)}".`);
+    changed = true;
   }
   return changed ? { ...project, notes } : project;
 }

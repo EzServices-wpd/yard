@@ -5,7 +5,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
 import { checkBuild } from "./invariants.ts";
-import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodDropIn, unsupportedFloorSpan } from "./hangingClearance.ts";
+import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodBayTop, rodDropIn, unsupportedFloorSpan } from "./hangingClearance.ts";
 import type { Panel } from "./types.ts";
 
 const PROBES: { id: string; prompt: string; shelves?: number }[] = JSON.parse(
@@ -122,8 +122,9 @@ it("the linen closet canary is unchanged, and a pantry does not grow a rod", () 
 it("the rod step uses the same drop as the rod in the model", () => {
   const p = generateFromPrompt("wardrobe");
   const rod = p.panels.find((x) => /hanging rod/i.test(x.name))!;
-  const drop = rodDropIn(p.overall.height, rod.position.y);
-  assert.equal(drop, 18);
+  // Row 394: measured from the hat over the rod (the top of the hanging bay), not the top of the box.
+  const drop = rodDropIn(rodBayTop(rod, p.panels, p.overall.height), rod.position.y);
+  assert.equal(drop, 9);
   const step = buildPlan(p).instructions.find((s) => /hanging rod/i.test(s.title));
   assert.match(step?.description ?? "", new RegExp(`about ${drop}" down`));
 });
@@ -317,4 +318,40 @@ it("every wardrobe probe clears the hanger rule", () => {
     if (probe.shelves != null && p.panels.length) assert.equal(shelfLines(p.panels), probe.shelves, probe.id);
   }
   assert.deepEqual(bad, []);
+});
+
+it("row 391: a typed shelf count of 13 or more is never cut to the hat; a typed 0 stays a default", () => {
+  for (const [q, n] of [["wardrobe with 13 shelves", 13], ["wardrobe with 20 shelves", 20], ["wardrobe 96 tall with 13 shelves", 13], ["wardrobe with a hanging rod and 13 shelves", 13], ["closet system with 15 shelves", 15]] as const) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.refused ?? null, null, q);
+    assert.equal(shelfLines(p.panels), n, q);
+  }
+  assert.match(headerTitle(generateFromPrompt("wardrobe with 13 shelves")), /· 13 shelves/);
+  assert.equal(shelfLines(generateFromPrompt("wardrobe with 0 shelves").panels), shelfLines(generateFromPrompt("wardrobe").panels));
+});
+
+it("row 392: plural or 'hanging' rods hang clothes; a shallow box with rods is refused; two rods asked and one built says so", () => {
+  for (const q of ["closet with 2 rods", "closet with rods", "closet with two rods", "closet with hanging rods", "closet organizer with rods"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(rodsOf(q).length >= 1, q);
+    assert.equal(p.overall.depth, 24, q);
+  }
+  assert.match(generateFromPrompt("closet with 2 rods").notes.join(" "), /You asked for 2 rods\. One rod is built/);
+  assert.equal(rodsOf("wardrobe 96 tall with 2 rods").length, 2);
+  const shallow = generateFromPrompt("closet with rods 16 deep");
+  assert.equal(shallow.panels.length, 0);
+  assert.match(shallow.refused ?? "", /needs at least 22" deep so clothes can hang/);
+});
+
+it("row 393: a wide drawer wardrobe carries the drawer-bay floor on bay dividers under the drawer bank, with no span over the limit", () => {
+  for (const q of ["wardrobe 76 wide with drawers", "wardrobe 80 wide with drawers", "wardrobe 82 wide with 3 drawers", "wardrobe 80 wide with 2 drawers"]) {
+    const p = generateFromPrompt(q);
+    const i7 = checkBuild(p, q, buildPlan(p)).filter((v) => v.id === "I7" && /Drawer bay bottom/.test(v.msg));
+    assert.deepEqual(i7, [], q);
+    const bays = p.panels.filter((x) => /^Bay divider \d+$/.test(x.name)).map((x) => x.position.x);
+    for (const d of p.panels.filter((x) => /drawer bay divider/i.test(x.name)).filter(() => !/2 drawers/.test(q))) {
+      assert.ok(bays.some((x) => Math.abs(x - d.position.x) < 0.05), `${q}: ${d.name} has no bay divider under it`);
+    }
+    for (const rod of rodsOf(q)) assert.ok(rod.size.width <= ROD_BAY_MAX_IN, q);
+  }
 });

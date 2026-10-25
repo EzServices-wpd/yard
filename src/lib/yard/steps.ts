@@ -60,12 +60,12 @@ import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
 import { backReachesTwoStuds, HINGE_ARM_CLEAR_IN, STUD_CENTER_IN } from "./fitted";
-import { rodDropIn } from "./hangingClearance";
+import { rodBayTop, rodDropIn } from "./hangingClearance";
 import { casterRise, modelFinishedDepth, modelProudNote } from "./modelSize";
 
 /** How far down the rod sits, taken from the rod the model placed. */
-function rodDropTalk(rods: Panel[], height: number): string {
-  const drops = [...new Set(rods.map((r) => rodDropIn(height, r.position.y)))].sort((a, b) => a - b);
+function rodDropTalk(rods: Panel[], panels: Panel[], height: number): string {
+  const drops = [...new Set(rods.map((r) => rodDropIn(rodBayTop(r, panels, height), r.position.y)))].sort((a, b) => a - b);
   if (drops.length === 1) return `about ${drops[0]}" down from the top of the hanging bay`;
   return `the upper about ${drops[0]}" down from the top of the hanging bay, the lower about ${drops[drops.length - 1]}" down`;
 }
@@ -2655,7 +2655,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: hangingRods.length === 1 ? "Seat the hanging rod" : `Seat ${hangingRods.length} hanging rods — one per bay`,
-      description: `${hangingRods.map(cutLine).join("; ")}. Seat each rod in closet-rod sockets on that bay's uprights or dividers, ${rodDropTalk(hangingRods, project.overall.height)}. A rod cannot pass through a divider.`,
+      description: `${hangingRods.map(cutLine).join("; ")}. Seat each rod in closet-rod sockets on that bay's uprights or dividers, ${rodDropTalk(hangingRods, project.panels, project.overall.height)}. A rod cannot pass through a divider.`,
       partsUsed: names(hangingRods),
     });
   }

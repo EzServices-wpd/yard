@@ -52,7 +52,7 @@ import {
   isShoeStorage, isOverToilet, isNoDrawersPrompt, isNoDoorsPrompt, spokenDrawerCount, typedDoorCount,
   spokenTierCount, spokenShelfCount, spokenArmCount, spokenBracketCount, spokenBinCount, spokenRungCount,
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
-  SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes,
+  SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes, shelfCountTyped,
 } from "./fittedShared";
 import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, typedRodDemand, typedShelfDemand } from "./shelfClear";
 import { lippedShelfYs } from "./shelfLips";
@@ -62,7 +62,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
-import { ROD_DIA, rodCenters, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote } from "./hangingClearance";
+import { ROD_DIA, rodCenters, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote, twoRodsAsked } from "./hangingClearance";
 import { buildSinkVanity } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
@@ -2869,7 +2869,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const hang = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
   // Side-to-side only when a hanger fits. A shallower box is refused later; it does not grow a fake pull-out.
   const sideOk = hang && sideHangFits(D - backT);
-  const doubleHang = sideOk && /\bdouble\s*(?:hang|rod)s?\b|\btwo\s+rods\b/i.test(prompt);
+  const doubleHang = sideOk && (/\bdouble\s*(?:hang|rod)s?\b/i.test(prompt) || twoRodsAsked(prompt));
   const centers = hang ? rodCenters(H, doubleHang) : [];
   const rodWant = centers.length ? centers[centers.length - 1] : null;
   // The rod hangs in the door or open section only: under a drawer section, with hanging room below it, else none.
@@ -2880,6 +2880,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   let omitRodForShelves = false;
   let rodLowered = false;
   const typedShelves = typedShelfDemand(prompt);
+  // Any count the person typed (13 and up too) is never trimmed; typedShelfDemand reads only 1-12.
+  const countTyped = typedShelves != null || shelfCountTyped(prompt);
   if (rodY != null && sideOk && typedShelves != null) {
     const plan = rodPlanForTypedShelves({
       rodY,
@@ -2908,8 +2910,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const need = forItem && !forItem.item.outdoor && !/\b(?:\d+|one|two|three|four|five|six)\s+(?:adjustable\s+|fixed\s+)?shel(?:f|ves)\b/i.test(prompt) ? forItem.item.clear : null;
   const zoneY0 = rodY != null ? rodY + ROD_DIA : (u.upperStart ?? shelfZone0);
   // Only the default count is trimmed, down to what keeps a closet gap above the rod.
-  // A typed count already has that gap, or the build is refused (shelfCountRefusal).
-  if (rodY != null && typedShelves == null) shelves = Math.min(shelves, shelvesThatFit(shelfZone1 - zoneY0, P));
+  // A typed count is built as typed, or the build is refused (shelfCountRefusal).
+  if (rodY != null && !countTyped) shelves = Math.min(shelves, shelvesThatFit(shelfZone1 - zoneY0, P));
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
     const y1 = shelfZone1;
@@ -3103,7 +3105,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     ...(rodYs.length
       ? [
           rodYs.length > 1
-            ? `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[rodYs.length - 1])}" up, with a second rod at ${Math.round(rodYs[0])}" for double hang, and shelves above.`
+            ? `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodYs[rodYs.length - 1])}" up, with a second rod at ${Math.round(rodYs[0])}" for double hang${shelfYs.length ? ", and shelves above" : ""}.`
             : singleRodNote(rodYs[0], rodLowered),
         ]
       : omitRodForShelves
@@ -3206,7 +3208,7 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
     fitted: {
       ...spec,
       name,
-      unit: { ...spec.unit, shelfCount: rodY != null && typedShelves == null ? shelves : spec.unit.shelfCount },
+      unit: { ...spec.unit, shelfCount: rodY != null && !countTyped ? shelves : spec.unit.shelfCount },
     },
     assumptions: {
       load: spec.program === "bookcase" || spec.program === "pantry" ? "heavy" : "medium",

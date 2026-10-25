@@ -51,7 +51,7 @@ import {
   spokenDrawerCount, typedDoorCount, spokenTierCount, spokenShelfCount, spokenArmCount,
   spokenBracketCount, spokenBinCount, spokenRungCount, spokenBottleCount, typedHeightInches,
   spokenSlotCount, spokenShelfThickness, spokenCubbyCount, shallowWallCabinetFace,
-  isKidsBookcase, KIDS_BOOKCASE_H, OPENING_SPACE, formChangeNotes, snapToBoardFace, boardFaceNote,
+  isKidsBookcase, KIDS_BOOKCASE_H, OPENING_SPACE, formChangeNotes, snapToBoardFace, boardFaceNote, SHELF_COUNT_DIGITS,
 } from "./fittedShared";
 import { inch16 } from "./fittedWine";
 
@@ -1028,7 +1028,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     ? Math.max(1, Math.min(12, spokenShelves))
     : pick(
     t,
-    /(\d+)\s*shel(?:f|ves|ving)/i,
+    SHELF_COUNT_DIGITS,
     program === "bookcase"
       ? 5
       : program === "closet"
