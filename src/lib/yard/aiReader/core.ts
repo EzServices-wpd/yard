@@ -22,12 +22,14 @@ export const readerRequest = (prompt: string) => ({
 });
 type Usage = { prompt_tokens: number; completion_tokens: number; prompt_tokens_details?: { cached_tokens?: number }; cost_in_usd_ticks?: number };
 const count = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : NaN);
-/** The billed price from usage; NaN (→ the caller bills the reserved worst case) when usage is missing, negative or not a number. Cached tokens never exceed the prompt's. */
+/** The billed price from usage; NaN (→ the caller bills the reserved worst case) when usage is missing, zero, negative or not a number. Cached tokens never exceed the prompt's. */
 export function costUsd(u: Usage): number {
-  if (typeof u.cost_in_usd_ticks === "number" && Number.isFinite(u.cost_in_usd_ticks)) return Math.max(0, u.cost_in_usd_ticks) / 1e10;
+  const ticks = u.cost_in_usd_ticks;
   const prompt = count(u.prompt_tokens), out = count(u.completion_tokens);
   const cached = Math.min(count(u.prompt_tokens_details?.cached_tokens ?? 0) || 0, prompt);
-  return (prompt - cached) * PRICE.in + cached * PRICE.cached + out * PRICE.out;
+  const usd = typeof ticks === "number" && Number.isFinite(ticks) ? ticks / 1e10 : (prompt - cached) * PRICE.in + cached * PRICE.cached + out * PRICE.out;
+  // A real call always costs something: zero or negative (ticks or tokens) bills the reserved worst case, so a refund can never leave the counter below 0 (row 480).
+  return usd > 0 ? usd : NaN;
 }
 /** Reserved before each call: chars/3 tokens in (above any tokenizer's count for this text), max_tokens out. */
 export const worstCaseUsd = (prompt: string) => Math.ceil((READER_SYSTEM.length + JSON.stringify(READER_SCHEMA).length + prompt.length + 64) / 3) * PRICE.in + MAX_TOKENS * PRICE.out;

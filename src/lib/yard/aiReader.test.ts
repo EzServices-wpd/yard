@@ -100,7 +100,9 @@ test("I49 per-IP rate limit: the reader bucket allows 20 calls a day per visitor
 });
 
 test("I49 r2: a bad usage figure never gives back more than the call reserved (row 454)", async () => {
-  assert.equal(costUsd({ prompt_tokens: 800, completion_tokens: 90, cost_in_usd_ticks: -5e10 }), 0);
+  // r4 (row 480): negative or zero ticks/tokens are not a price: NaN, so the caller bills the reserved worst case (was $0).
+  for (const u of [{ prompt_tokens: 800, completion_tokens: 90, cost_in_usd_ticks: -5e10 }, { prompt_tokens: 800, completion_tokens: 90, cost_in_usd_ticks: 0 }, { prompt_tokens: 0, completion_tokens: 0 }]) assert.ok(Number.isNaN(costUsd(u)), JSON.stringify(u));
+  assert.equal(costUsd({ prompt_tokens: 800, completion_tokens: 90, cost_in_usd_ticks: 2.5e7 }), 0.0025);
   assert.ok(costUsd({ prompt_tokens: 10, completion_tokens: 1, prompt_tokens_details: { cached_tokens: 1e7 } }) >= 0, "cached tokens are clamped to the prompt's");
   const kv = new Map<string, number>();
   const pipe = async (cmds: (string | number)[][]) => cmds.map(([c, k, v]) => { if (c === "EXPIRE") return 1; const n = (kv.get(String(k)) ?? 0) + Number(v); kv.set(String(k), n); return String(n); });
