@@ -25,9 +25,16 @@ const sixteenth = (n: number) => Math.round(n * 16) / 16;
 const NUMBER_WORD = /-|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|pair|dual|couple)\b/i;
 
 /** One measurement in feet or metric: the only quotes the reader may rewrite (a typed inch number is kept as typed). */
-const rewritable = (s: ReaderSize) => quoteUnit(s.quote) !== "in" && !/[x×*]|\bby\b/i.test(s.quote);
+const rewritable = (s: ReaderSize) => {
+  const q = s.quote.toLowerCase(), unit = quoteUnit(q), nums = q.match(/\d+(?:\.\d+)?(?:[\s-]+\d+\/\d+)?|\d+\/\d+/g) ?? [];
+  const metricUnits = new Set(q.match(/\d\s*(cm|mm|m)\b|centimet|millimet|met(?:er|re)/g)?.map((u) => u.replace(/^\d\s*/, "")) ?? []);
+  // One measurement only: one metric number in one unit, or feet (with at most its inches: 6 ft 2 in).
+  return unit !== "in" && !/[x×*,]|\bby\b/i.test(q) && (unit === "ft" ? nums.length <= 2 : nums.length === 1 && metricUnits.size <= 1);
+};
 const replaceOnce = (out: string, quote: string, to: string) => {
-  const i = out.toLowerCase().indexOf(quote.toLowerCase());
+  const lo = out.toLowerCase(), qo = quote.toLowerCase();
+  let i = lo.indexOf(qo);
+  while (i >= 0 && (/[a-z0-9.\/-]/.test(lo[i - 1] ?? " ") || /[a-z0-9.\/]/.test(lo[i + qo.length] ?? " "))) i = lo.indexOf(qo, i + 1);
   return i < 0 ? null : out.slice(0, i) + to + out.slice(i + quote.length);
 };
 
@@ -54,7 +61,7 @@ export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: Read
   for (const c of spec.counts) {
     if (c.confidence < MIN_CONFIDENCE || c.thing === "other" || c.thing === "pieces" || !NUMBER_WORD.test(c.quote)) continue;
     if (new RegExp(`\\b${c.n}\\s+${c.thing.replace(/s$/, "")}`, "i").test(c.quote)) continue;
-    const to = `${c.n} ${c.n === 1 ? c.thing.replace(/s$/, "") : c.thing}`;
+    const to = `${c.n} ${c.n === 1 ? (c.thing === "shelves" ? "shelf" : c.thing === "cubbies" ? "cubby" : c.thing.replace(/s$/, "")) : c.thing}`;
     const next = replaceOnce(out, c.quote, to);
     if (next === null) continue;
     out = next;

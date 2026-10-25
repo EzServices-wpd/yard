@@ -8,11 +8,27 @@
 import { AXES, COUNT_THINGS, OF, UNITS, type ReaderCount, type ReaderSize, type ReaderSpec } from "./spec";
 
 export const norm = (s: string) => s.toLowerCase().replace(/[“”″]/g, '"').replace(/[‘’′]/g, "'").replace(/\s+/g, " ").trim();
-const quoted = (prompt: string, q: unknown) => typeof q === "string" && q.trim().length > 0 && norm(prompt).includes(norm(q));
+/** Where the quote stands in the prompt as whole words (not inside "twenty-one" or "12 ft"), or -1. */
+export function quoteAt(prompt: string, q: string): number {
+  const P = norm(prompt), Q = norm(q);
+  if (!Q) return -1;
+  for (let i = P.indexOf(Q); i >= 0; i = P.indexOf(Q, i + 1)) {
+    const before = P[i - 1] ?? " ", after = P[i + Q.length] ?? " ";
+    if (!/[a-z0-9.\/-]/.test(before) && !/[a-z0-9.\/]/.test(after)) return i;
+  }
+  return -1;
+}
+const quoted = (prompt: string, q: unknown) => typeof q === "string" && q.trim().length > 0 && quoteAt(prompt, q) >= 0;
+/** The axis word typed right after the quote ("6 ft" + " tall"), if any: a size quoted without it keeps that axis. */
+const AXIS_AFTER = /^\s*(?:inches|inch|in|"|ft|feet|foot)?\s*(wide|width|deep|depth|tall|high|height|long|length)\b/;
+const nextAxisFits = (prompt: string, s: ReaderSize) => {
+  const i = quoteAt(prompt, s.quote); const m = norm(prompt).slice(i + norm(s.quote).length).match(AXIS_AFTER);
+  return !m || NAMED.find(([re]) => re.test(m[1]))![1].includes(s.axis);
+};
 const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, pair: 2, dual: 2, double: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const clamp01 = (x: unknown) => (typeof x === "number" && x >= 0 && x <= 1 ? x : 0);
 const AGE = /\b(?:year|yr|month)s?\b|\bold\b/i;
-const NAMED: [RegExp, string[]][] = [[/\b(?:wide|width)\b/i, ["W"]], [/\b(?:deep|depth)\b/i, ["D"]], [/\b(?:tall|high|height)\b/i, ["H"]], [/\b(?:long|length)\b/i, ["W", "D", "L"]]];
+const NAMED: [RegExp, string[]][] = [[/\b(?:wide|width)\b/i, ["W"]], [/\b(?:deep|depth)\b/i, ["D"]], [/\b(?:tall|high|height)\b/i, ["H"]], [/\b(?:long|length)\b/i, ["W", "L"]]];
 /** A quote that names one axis in words ("31.5 wide") is a size on that axis only. */
 const axisFits = (s: ReaderSize) => { const named = NAMED.filter(([re]) => re.test(s.quote)); return named.length !== 1 || named[0][1].includes(s.axis); };
 
@@ -58,7 +74,7 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
   for (const s of (Array.isArray(r.sizes) ? r.sizes : []) as ReaderSize[]) {
     const where = `size "${s?.quote}"`;
     if (s?.assumed !== false || !quoted(prompt, s.quote)) { dropped.push(`${where}: assumed or not in the request`); continue; }
-    if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
+    if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
     if (!sizeOnlyQuote(s.quote) || !UNIT_OK[quoteUnit(s.quote)].includes(s.unit)) { dropped.push(`${where}: holds a non-size word, or its unit is not the one typed`); continue; }
     const inches = Number(s.inches);
     if (!(inches > 0) || !inchCandidates(s.quote).some((c) => Math.abs(c - inches) <= 1 / 32)) { dropped.push(`${where}: ${s.inches}" is not a number in its quote`); continue; }
@@ -67,6 +83,8 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
   for (const c of (Array.isArray(r.counts) ? r.counts : []) as ReaderCount[]) {
     const where = `count "${c?.quote}"`;
     if (c?.assumed !== false || !quoted(prompt, c.quote) || !COUNT_THINGS.includes(c.thing) || !Number.isInteger(c.n)) { dropped.push(`${where}: unquoted, assumed or malformed`); continue; }
+    const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
+    if (/^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?)$/.test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
     if (typedCount(c.quote, c.thing) !== c.n) { dropped.push(`${where}: ${c.n} ${c.thing} is not typed next to its noun`); continue; }
     spec.counts.push({ thing: c.thing, n: c.n, quote: c.quote, confidence: clamp01(c.confidence), assumed: false });
   }
