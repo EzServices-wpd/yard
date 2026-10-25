@@ -20,7 +20,9 @@ export type SpanFinding = {
   suggestion: string;
 };
 
-const TOL = 1.1;
+/** A span passes up to this much over its allowed length (I7 reads the same tolerance). */
+export const SPAN_TOL = 1.1;
+const TOL = SPAN_TOL;
 /** How far a frame may hang below the deck above before it is in the sleeper. */
 const FRAME = 8;
 /** A shelf bay still has to hold something after an apron. */
