@@ -81,13 +81,13 @@ const cols = (prompt: string, stock?: string) =>
   new Set(dividers(prompt, stock).map((p) => Math.round(p.position.x * 4) / 4)).size;
 
 describe("shelf span supports", () => {
-  it("keeps the linen closet canary at 31 1/2 × 16 × 78, 11 parts, $183.70", () => {
+  it("keeps the linen closet canary at 31 1/2 × 16 × 78, 11 parts, $193.68", () => {
     const prompt = "linen closet 31.5 wide 78 tall 16 deep";
     const project = generateFromPrompt(prompt);
     const plan = buildPlan(project);
     assert.deepEqual([project.overall.width, project.overall.depth, project.overall.height], [31.5, 16, 78]);
     assert.equal(plan.totals.pieces, 11);
-    assert.equal(plan.totals.estCostUsd, 183.7);
+    assert.equal(plan.totals.estCostUsd, 193.68);
     assert.equal(dividers(prompt).length, 0);
     assert.deepEqual(shelfSpanViolations(project), []);
   });

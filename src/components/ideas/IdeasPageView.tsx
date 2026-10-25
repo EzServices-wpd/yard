@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { IdeaCard } from "./IdeaCard";
 import { IdeaHero } from "./IdeaHero";
-import { SECTION_SHOW, curatedFeed, heroCard, searchCards, searchPool, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import { SECTION_SHOW, curatedFeed, heroCard, searchCards, searchPool, showAllLabel, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
 import RECIPE_CARDS from "@/lib/ideas/recipes.json";
 import type { LearnedIdea } from "@/lib/yard/ideaLibrary";
 
@@ -97,21 +97,29 @@ function Section({ section, first, onBuild, onIntent, showCount }: { section: Id
   const [all, setAll] = useState(false);
   const cards = all ? section.cards : section.cards.slice(0, SECTION_SHOW);
   const more = section.cards.length - SECTION_SHOW;
+  // ponytail: Popular can have more cards than the feed sends (SECTION_MAX); the label says so instead of paging the rest.
+  const capped = section.total > section.cards.length;
+  const list = `ideas-${section.id}-list`;
+  const label = showAllLabel(section);
   return (
     <section className="mt-8 sm:mt-12" data-ideas-section={section.id} aria-labelledby={`ideas-${section.id}`}>
       <div className="flex min-h-11 items-center justify-between gap-3">
         <h2 id={`ideas-${section.id}`} className="font-display text-xl text-ink">{section.title}</h2>
         {more > 0 ? (
-          <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
-            {all ? "Show fewer" : `Show all ${section.cards.length}`}
+          <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} aria-controls={list} data-ideas-show-all={label} className="relative inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
+            {all ? "Show fewer" : label}
+            <span className="sr-only"> {section.title} ideas</span>
           </button>
         ) : null}
       </div>
+      {/* relative: the cards' sr-only size text is absolutely positioned, so without a positioned row it escapes the row's
+          scroll clip and widens the page (768: 1783px wide). */}
       <ul
+        id={list}
         className={
           all
             ? "mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4"
-            : "-mx-4 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0"
+            : "relative -mx-4 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0"
         }
       >
         {cards.map((c, i) => (
@@ -120,6 +128,7 @@ function Section({ section, first, onBuild, onIntent, showCount }: { section: Id
           </li>
         ))}
       </ul>
+      {all && capped ? <p className="mt-2 text-sm text-ink" data-ideas-top>The top {section.cards.length} of {section.total} are shown.</p> : null}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { isTestPage } from "./ideaLogGate";
 import { runId, sessionTest } from "../ideas/testSession";
-import { EMPTY_SNAPSHOT, safePrompt, type IdeasSnapshot } from "./ideaLog";
+import { safePrompt } from "./ideaLog";
 
 /** Fire-and-forget log of a build (R7): at idle, via sendBeacon; the server decides status. No xAI, no identity. */
 export function logIdea(prompt: string, failed = false): void {
@@ -19,9 +19,4 @@ export function logIdea(prompt: string, failed = false): void {
   };
   if ("requestIdleCallback" in window) window.requestIdleCallback(send, { timeout: 5000 });
   else setTimeout(send, 1500);
-}
-
-let cached: Promise<IdeasSnapshot> | null = null;
-export function loadSnapshot(): Promise<IdeasSnapshot> {
-  return (cached ??= fetch("/api/ideas-snapshot").then((r) => (r.ok ? (r.json() as Promise<IdeasSnapshot>) : EMPTY_SNAPSHOT)).catch(() => EMPTY_SNAPSHOT));
 }

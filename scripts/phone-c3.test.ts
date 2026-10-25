@@ -21,7 +21,7 @@ test("phone targets: the home prompt input keeps 48px in the column layout; Free
   for (const label of ["Open the 3D model", "Make it your size"]) assert.match(plan, new RegExp(`max-lg:min-h-11 max-lg:items-center">${label}`));
 });
 
-test("Made on Yard shows a non-chip idea instead of a second linen card: one linen price on home ($183.70 in the strip)", async () => {
+test("Made on Yard shows a non-chip idea instead of a second linen card: one linen price on home ($193.68 in the strip)", async () => {
   const { DREAMS } = await import("../src/lib/yard/promptDreams");
   const { showcaseFor } = await import("../src/lib/yard/homeShowcase");
   const chips = JSON.parse(home.match(/const CHIP_IDS = (\[[^\]]*\])/)![1]) as string[];

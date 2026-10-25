@@ -45,7 +45,7 @@ const STOCKS = [
 
 type StockId = (typeof STOCKS)[number]["id"];
 
-/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $183.70). */
+/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $193.68). */
 const PLAN_PROMPT = "linen closet 31.5 wide 78 tall 16 deep";
 
 /** Finished pieces. Each card opens that plan on the bench. The size is never typed here: the loader formats it from the engine. */
@@ -58,7 +58,7 @@ const PIECES = [
     caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
-    // C3: the linen closet already leads the plan strip ($183.70), so this card shows a different idea; one linen price on home.
+    // C3: the linen closet already leads the plan strip ($193.68), so this card shows a different idea; one linen price on home.
     id: "ldesk",
     label: DREAMS.find((d) => d.id === "ldesk")?.label ?? "L in the corner",
     note: "",
