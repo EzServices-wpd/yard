@@ -132,7 +132,7 @@ test("I49 r2: guard errors fail closed; the reply and a cached reply are validat
   poisoned.cache.set(await cacheKey(Q), JSON.stringify({ sizes: [S("W", 99, "99 wide")], counts: [] }));
   const hit = await readPrompt(Q, false, poisoned.d);
   assert.ok(hit.ok && hit.cached && hit.spec.sizes.length === 0, "a cached reply is validated again on read");
-  const { serverDeps } = await import("../ai/readPrompt");
+  const { serverDeps } = await import("../ai/readPrompt.server");
   for (let i = 0; i < 21; i++) await underDailyCap("reader", "unknown");
   assert.equal(await serverDeps().ipCapped(), true, "the server wiring checks the visitor's reader limit");
   assert.equal(await dailyCapReached("reader", "203.0.113.50", () => ({ get: async () => { throw new Error("runtime cache down"); } })), true, "a Runtime Cache error counts as capped (row 456)");
