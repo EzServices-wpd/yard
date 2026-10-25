@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { IdeaCard } from "./IdeaCard";
 import { IdeaHero } from "./IdeaHero";
-import { SECTION_SHOW, curatedFeed, heroCard, searchCards, searchPool, showAllLabel, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import { SECTION_SHOW, buildHref, curatedFeed, heroCard, searchCards, searchPlans, searchPool, showAllLabel, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import type { TestFlags } from "@/lib/ideas/testFlags";
 import RECIPE_CARDS from "@/lib/ideas/recipes.json";
 import type { LearnedIdea } from "@/lib/yard/ideaLibrary";
 
@@ -21,12 +22,15 @@ export function ideasFeed(): IdeasFeed {
  * section is one swipeable row, so the page is about 3 screens instead of 13.
  */
 type Build = (q: string, from?: HTMLElement | null) => void;
-export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ideasFeed() }: { incoming: string; learned: LearnedIdea[]; onBuild: Build; onIntent?: (q: string) => void; feed?: IdeasFeed }) {
+/** `flags`: the page URL's test flags, so every card's href carries them (same on the server and in the tab). */
+export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ideasFeed(), flags = {} }: { incoming: string; learned: LearnedIdea[]; onBuild: Build; onIntent?: (q: string) => void; feed?: IdeasFeed; flags?: TestFlags }) {
   const [query, setQuery] = useState(incoming);
   useEffect(() => setQuery(incoming), [incoming]);
   const q = query.trim();
   const pool = useMemo(() => searchPool(feed), [feed]);
   const hits = useMemo(() => searchCards(pool, q).slice(0, 24), [pool, q]);
+  const plans = useMemo(() => (q ? searchPlans(q, pool) : []), [q, pool]);
+  const flagQuery = new URLSearchParams(Object.entries(flags).map(([k, v]) => [k, String(v)])).toString();
   const hero = useMemo(() => heroCard(feed), [feed]);
   const root = useRef<HTMLElement>(null);
   // Drawings start in pencil only once JS can ink them (no-JS and SSR show wood).
@@ -77,23 +81,29 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
             <span className="truncate">Build “{q}” instead</span>
             <ArrowRight className="size-4 shrink-0" aria-hidden />
           </button>
+          {plans.length > 0 ? (
+            <p className="mt-3 flex flex-wrap items-center gap-x-1 text-sm text-ink" data-ideas-plans>
+              <span>Free plans:</span>
+              {plans.map((p) => <a key={p.slug} href={`/plans/${p.slug}${flagQuery ? `?${flagQuery}` : ""}`} className="inline-flex min-h-11 items-center px-1.5 underline underline-offset-2 lg:min-h-9">{p.name}</a>)}
+            </p>
+          ) : null}
           {hits.length > 0 ? (
             <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {hits.map((c, i) => <IdeaCard key={c.slug} card={c} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
+              {hits.map((c, i) => <IdeaCard key={c.slug} card={c} href={buildHref(c.examplePrompt, flags)} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
             </div>
           ) : null}
         </section>
       ) : (
         <>
-          {hero ? <IdeaHero card={hero} live={HERO_LIVE} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
-          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} />)}
+          {hero ? <IdeaHero card={hero} live={HERO_LIVE} href={buildHref(hero.examplePrompt, flags)} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
+          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} flags={flags} />)}
         </>
       )}
     </main>
   );
 }
 
-function Section({ section, first, onBuild, onIntent, showCount }: { section: IdeaSection; first: boolean; onBuild: Build; onIntent?: (q: string) => void; showCount: boolean }) {
+function Section({ section, first, onBuild, onIntent, showCount, flags }: { section: IdeaSection; first: boolean; onBuild: Build; onIntent?: (q: string) => void; showCount: boolean; flags: TestFlags }) {
   const [all, setAll] = useState(false);
   const cards = all ? section.cards : section.cards.slice(0, SECTION_SHOW);
   const more = section.cards.length - SECTION_SHOW;
@@ -124,7 +134,7 @@ function Section({ section, first, onBuild, onIntent, showCount }: { section: Id
       >
         {cards.map((c, i) => (
           <li key={c.slug} className={all ? "" : "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-auto"}>
-            <IdeaCard card={c} eager={first && i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={showCount} />
+            <IdeaCard card={c} href={buildHref(c.examplePrompt, flags)} eager={first && i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={showCount} />
           </li>
         ))}
       </ul>

@@ -46,7 +46,8 @@ with sync_playwright() as p:
                     if flag not in href.split("#")[0]:
                         fails.append(f"{path}?{flag} @{W}: {text!r} -> {href}")
                 print(f"{path}?{flag} @{W}: {len(links)} internal links, {sum(1 for h, _ in links if flag not in h)} missing the flag")
-        # Cards and chips are buttons that navigate(): the build URL keeps the flag too.
+        # Home cards and chips are buttons that navigate(); Ideas cards are links whose click runs the same navigate():
+        # the build URL keeps the flag too.
         if W == 1440:
             for path in ["/", "/ideas"]:
                 for flag in FLAGS:
@@ -54,7 +55,7 @@ with sync_playwright() as p:
                     page.goto(f"{U}{path}?{flag}", wait_until="networkidle")
                     page.wait_for_timeout(600)
                     # Home: a Made on Yard card. Ideas: the first card.
-                    page.locator("main button.yard-card" if path == "/" else "main button:has(svg), main button:has(img)").first.click()
+                    page.locator("main button.yard-card" if path == "/" else "main a[data-idea]").first.click()
                     try: page.wait_for_url("**/workspace**", timeout=8000)
                     except Exception: pass
                     ok = "/workspace" in page.url and flag in page.url
