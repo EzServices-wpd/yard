@@ -12,6 +12,7 @@ import { validateSpec } from "./aiReader/validate";
 import { chooseBuildPrompt, specToPrompt } from "./aiReader/rewrite";
 import { needsReader, reserveUsd, settleUsd, usdKey, readPrompt, readerEnv, worstCaseUsd, type ReaderDeps } from "./aiReader/core";
 import type { ReaderSpec } from "./aiReader/spec";
+import { underDailyCap } from "../ai/dailyCap.server";
 
 globalThis.fetch = (async () => { throw new Error("network is off in this test"); }) as typeof fetch;
 const S = (axis: string, inches: number, quote: string, of = "overall", unit = "none", confidence = 1) => ({ axis, value: inches, unit, inches, of, quote, confidence, assumed: false });
@@ -129,4 +130,14 @@ for (const [q, right, wrong] of CANARIES) {
 test("I49 the gate: the linen canary, cat tree, step stool and the pocket brief never reach the model", () => {
   for (const q of ["linen closet 31.5 wide 78 tall 16 deep", "cat tree", "step stool", POCKET_DREAM]) assert.equal(needsReader(q), false, q.slice(0, 40));
   for (const q of ["shoe rack by the door 36 inches", Q, "bookcase 90cm wide", "two-step kitchen stool", "deck box 4 ft"]) assert.equal(needsReader(q), true, q);
+});
+
+test("I49 per-IP rate limit: the reader bucket allows 20 calls a day per visitor, then refuses; a refused call gives back its reserve", async () => {
+  const seen: boolean[] = [];
+  for (let i = 0; i < 21; i++) seen.push(await underDailyCap("reader", "203.0.113.7"));
+  assert.deepEqual([seen.filter(Boolean).length, seen[20], await underDailyCap("reader", "203.0.113.8")], [20, false, true]);
+  const m = mock({ call: async () => ({ ok: false as const, error: "capped" }) });
+  assert.equal((await readPrompt(Q, false, m.d)).ok, false);
+  assert.equal(chooseBuildPrompt(Q, null).buildPrompt, Q, "rate-limited → the typed words build");
+  assert.deepEqual(m.spend.settled.map(([, b]) => b), [0], "nothing billed for a refused call");
 });
