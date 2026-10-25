@@ -74,7 +74,9 @@ export function withRodPairs(p: YardProject, prompt: string, rebuild: (q: string
   const rods = p.panels.filter(isHangingRod);
   if ((prog !== "wardrobe" && prog !== "closet") || !rods.length || rods.length >= rodsAsked(prompt)) return null;
   const paired = rebuild(`${prompt} double hang`);
-  return paired.panels.filter(isHangingRod).length > rods.length ? paired : null;
+  // The words "double hang" are ours here, not typed, so drop the row 450 "the count wins" note they would raise.
+  const notes = (paired.notes ?? []).filter((n) => !/ and double hang\. The count wins/.test(n));
+  return paired.panels.filter(isHangingRod).length > rods.length ? { ...paired, notes } : null;
 }
 
 /** Default depth for a clothes-rod build, or null when this prompt is not one. */
@@ -569,7 +571,7 @@ function fitRodCount(project: YardProject, prompt: string): YardProject {
           : `: ${n} rods need the box at least ${wideFor(n)}" wide`; // row 449
     notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"}. ${built} built${why}.`);
   }
-  if (drop.size && /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) // row 450: say which word won
+  if (drop.size && !pairBays && /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) // row 450: say which word won
     notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"} and double hang. The count wins: ${rods.length === 1 ? "one rod is" : `${rods.length} rods are`} built, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`);
   return drop.size || pairBays || notes.length !== (project.notes ?? []).length ? { ...project, panels, notes } : project;
 }

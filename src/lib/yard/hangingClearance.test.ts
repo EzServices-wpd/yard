@@ -431,6 +431,7 @@ it("row 446: a rod length is not a rod count; a singular rod counts only after 1
 it("row 450: a count next to a rod size is read; a typed count that drops a typed double hang says so", () => {
   assert.equal(rodsOf("closet with two 1 1/4 rods 96 tall").length, 2);
   assert.match(generateFromPrompt("closet 96 tall double hang 1 rod").notes.join(" "), /You asked for 1 rod and double hang/);
+  assert.doesNotMatch(generateFromPrompt("closet 48 wide 88 tall with 3 rods").notes.join(" "), /double hang\. The count wins/);
 });
 
 it("row 449: a box too narrow for the typed rods names the width, not the height", () => {
