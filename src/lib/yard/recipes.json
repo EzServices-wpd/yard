@@ -8639,6 +8639,144 @@
    ],
    "learned": true,
    "held": "Flagged by the learned-recipe checks: Left hinge 1: no catalogue item (hardware); Right hinge 1: no catalogue item (hardware); Lid stay 1: no catalogue item (hardware)"
+  },
+  {
+   "key": "stand",
+   "synonyms": [
+    "plant stand",
+    "tiered stand"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Tiered Plant Stand",
+   "size": {
+    "width": 20,
+    "height": 36,
+    "depth": 16
+   },
+   "feet": true,
+   "outdoor": false,
+   "wall": false,
+   "defining": [
+    "shelf"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Leg front left",
+     "box": [
+      0,
+      0,
+      0,
+      0.08,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg front right",
+     "box": [
+      0.92,
+      0,
+      0,
+      0.07999999999999996,
+      1,
+      0.1
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg back left",
+     "box": [
+      0,
+      0,
+      0.9,
+      0.08,
+      1,
+      0.09999999999999998
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Leg back right",
+     "box": [
+      0.92,
+      0,
+      0.9,
+      0.07999999999999996,
+      1,
+      0.09999999999999998
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "shelf",
+     "name": "Bottom shelf",
+     "box": [
+      0.08,
+      0.22,
+      0.1,
+      0.84,
+      0.03,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Leg front left",
+      "Leg front right",
+      "Leg back left",
+      "Leg back right"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Middle shelf",
+     "box": [
+      0.08,
+      0.5,
+      0.1,
+      0.84,
+      0.03,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Leg front left",
+      "Leg front right",
+      "Leg back left",
+      "Leg back right"
+     ]
+    },
+    {
+     "role": "shelf",
+     "name": "Top shelf",
+     "box": [
+      0.08,
+      0.78,
+      0.1,
+      0.84,
+      0.03,
+      0.8
+     ],
+     "kind": "panel",
+     "on": [
+      "Leg front left",
+      "Leg front right",
+      "Leg back left",
+      "Leg back right"
+     ]
+    }
+   ],
+   "notes": [
+    "Holds potted plants on three open tiers",
+    "Four corner legs carry the shelves",
+    "Typical indoor wooden plant stand"
+   ],
+   "learned": true
   }
  ]
 }
