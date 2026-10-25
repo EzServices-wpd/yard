@@ -214,5 +214,6 @@ test("I49 r4: each boundary and metric rule holds on its own (row 481)", () => {
   assert.equal(specToPrompt("rack 12 ft long 2 ft tall", spec([S("H", 24, "2 ft", "overall", "ft")])).prompt, "rack 12 ft long 24 tall", "the rewrite replaces the whole-word quote, never the '2 ft' inside '12 ft'");
   assert.equal(validateSpec("bookcase with one hundred and two shelves", { counts: [C4("shelves", 2, "two shelves")] }).spec.counts.length, 0, "a count after 'and' is part of a larger number");
   assert.equal(specToPrompt("nightstand 60 to 80 cm wide", spec([cm("W", 80, "60 to 80 cm wide")])).edits.length, 0, "two metric numbers in one quote are never rewritten");
+  assert.equal(validateSpec("bookcase 6 ft tall", { sizes: [S("W", 72, "6 ft", "overall", "ft")] }).spec.sizes.length, 0, "the axis word right after the quote must fit, even with no other axis typed");
   assert.equal(specToPrompt("shelf 50 cm or millimetres wide", spec([cm("W", 50, "50 cm or millimetres wide")])).edits.length, 0, "a quote naming two metric units is never rewritten");
 });
