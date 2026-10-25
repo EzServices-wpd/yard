@@ -58,9 +58,9 @@ export function rodsAsked(prompt: string): number {
   return !m ? 0 : /\d/.test(m[1]) ? parseInt(m[1], 10) : ROD_WORDS[m[1].toLowerCase()];
 }
 
-/** "2 rods", "two hanging rods": the person asked for more than one rod (double hang). */
+/** "2 rods", "two hanging rods": the person asked for a pair of rods (double hang). */
 export function twoRodsAsked(prompt: string): boolean {
-  return rodsAsked(prompt) >= 2;
+  return rodsAsked(prompt) === 2;
 }
 
 /** Default depth for a clothes-rod build, or null when this prompt is not one. */

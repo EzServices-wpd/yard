@@ -375,4 +375,7 @@ it("row 433: a typed rod count that does not fit is refused naming the height, n
   assert.match(three.refused ?? "", /for 3 rods, taller than a 4×8 sheet cuts\. A closet up to 96" tall holds 2\. Nothing is built at 84"\./);
   assert.equal(rodsOf("closet with 2 rods 88 tall").length, 2);
   assert.ok(rodsOf("closet 96 wide with 3 rods").length >= 3);
+  // The named height itself builds the count: two bays at 88" stack a pair in each.
+  assert.match(generateFromPrompt("closet 60 wide with 3 rods").refused ?? "", /needs at least 88" tall for 3 rods/);
+  assert.ok(rodsOf("closet 60 wide 88 tall with 3 rods").length >= 3);
 });

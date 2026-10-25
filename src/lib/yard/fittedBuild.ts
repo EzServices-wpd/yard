@@ -62,7 +62,7 @@ import {
   wineRackLayout, inch16, wineCapacityVoice, type WineRackLayout,
 } from "./fittedWine";
 import { detectProgram } from "./fittedDetect";
-import { ROD_DIA, rodCenters, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote, twoRodsAsked } from "./hangingClearance";
+import { ROD_DIA, rodCenters, rodsAsked, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote, twoRodsAsked } from "./hangingClearance";
 import { buildSinkVanity } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import { buildItemCrate } from "./realObjects";
@@ -2869,7 +2869,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   const hang = !!u.rod && (spec.program === "wardrobe" || spec.program === "closet");
   // Side-to-side only when a hanger fits. A shallower box is refused later; it does not grow a fake pull-out.
   const sideOk = hang && sideHangFits(D - backT);
-  const doubleHang = sideOk && (/\bdouble\s*(?:hang|rod)s?\b/i.test(prompt) || twoRodsAsked(prompt));
+  // More rods typed than bays ("3 rods" in two bays) stack a double-hang pair too (row 433).
+  const doubleHang = sideOk && (/\bdouble\s*(?:hang|rod)s?\b/i.test(prompt) || twoRodsAsked(prompt) || rodsAsked(prompt) > bayN);
   const centers = hang ? rodCenters(H, doubleHang) : [];
   const rodWant = centers.length ? centers[centers.length - 1] : null;
   // The rod hangs in the door or open section only: under a drawer section, with hanging room below it, else none.
