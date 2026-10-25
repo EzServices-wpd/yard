@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { POCKET_DREAM } from "./pocket";
 import { chooseBuildPrompt } from "./aiReader/rewrite";
 import { needsReader, reserveUsd, settleUsd, usdKey, readPrompt, readerEnv, worstCaseUsd, type ReaderDeps } from "./aiReader/core";
-import { underDailyCap } from "../ai/dailyCap.server";
+import { dailyCapReached, underDailyCap } from "../ai/dailyCap.server";
 
 globalThis.fetch = (async () => { throw new Error("network is off in this test"); }) as typeof fetch;
 const S = (axis: string, inches: number, quote: string, of = "overall", unit = "none", confidence = 1) => ({ axis, value: inches, unit, inches, of, quote, confidence, assumed: false });
@@ -19,7 +19,7 @@ function mock(over: Partial<ReaderDeps> = {}, body: unknown = reply({ sizes: [S(
   const d: ReaderDeps = {
     env: { on: true, key: true, capUsd: 1 },
     cacheGet: async (k) => cache.get(k), cacheSet: async (k, v) => { cache.set(k, v); },
-    reserve: async (usd) => { spend.reserved += usd; return true; }, settle: async (r, b) => { spend.settled.push([r, b]); },
+    ipCapped: async () => false, reserve: async (usd) => { spend.reserved += usd; return true; }, settle: async (r, b) => { spend.settled.push([r, b]); },
     call: async () => { calls.push("call"); return { ok: true, status: 200, body }; },
     log: (l) => logs.push(l), ...over,
   };
@@ -87,6 +87,9 @@ test("I49 per-IP rate limit: the reader bucket allows 20 calls a day per visitor
   const seen: boolean[] = [];
   for (let i = 0; i < 21; i++) seen.push(await underDailyCap("reader", "203.0.113.7"));
   assert.deepEqual([seen.filter(Boolean).length, seen[20], await underDailyCap("reader", "203.0.113.8")], [20, false, true]);
+  assert.deepEqual([await dailyCapReached("reader", "203.0.113.7"), await dailyCapReached("reader", "203.0.113.9")], [true, false]);
+  const capped = mock({ ipCapped: async () => true });
+  assert.deepEqual([(await readPrompt(Q, false, capped.d)).ok, capped.calls.length, capped.spend.reserved], [false, 0, 0], "a visitor past the limit costs no Upstash command and no call");
   const m = mock({ call: async () => ({ ok: false as const, error: "capped" }) });
   assert.equal((await readPrompt(Q, false, m.d)).ok, false);
   assert.equal(chooseBuildPrompt(Q, null).buildPrompt, Q, "rate-limited → the typed words build");

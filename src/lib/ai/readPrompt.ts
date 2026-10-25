@@ -6,7 +6,7 @@
  * result cache, keyed by the normalized prompt.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { cacheGet, cacheSet } from "./dailyCap.server";
+import { cacheGet, cacheSet, dailyCapReached } from "./dailyCap.server";
 import { xaiFetch } from "./xai.server";
 import { restPipe } from "@/lib/yard/ideaLog.server";
 import { readPrompt, readerEnv, reserveUsd, settleUsd, utcDay, type ReaderDeps } from "@/lib/yard/aiReader/core";
@@ -18,6 +18,7 @@ function serverDeps(): ReaderDeps {
     env: readerEnv(process.env, !!pipe),
     cacheGet: (k) => cacheGet<string>(k),
     cacheSet: (k, v, ttl) => cacheSet(k, v, ttl),
+    ipCapped: () => dailyCapReached("reader"),
     reserve: async (usd, cap) => !!pipe && reserveUsd(pipe, day, usd, cap),
     settle: async (reserved, billed) => { if (pipe) await settleUsd(pipe, day, reserved, billed); },
     async call(body, signal) {

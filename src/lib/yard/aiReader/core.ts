@@ -1,6 +1,6 @@
 /**
  * Network-free core of the AI prompt reader (I49). Every guard runs before any spend; every failure returns ok:false so
- * the typed words build exactly as today. Server wiring (key, Postgres counter, cache, per-IP cap): src/lib/ai/readPrompt.ts.
+ * the typed words build exactly as today. Server wiring (key, Upstash counter, cache, per-IP cap): src/lib/ai/readPrompt.ts.
  */
 import { READER_SCHEMA, READER_SYSTEM, type ReaderSpec } from "./spec";
 import { norm, validateSpec } from "./validate";
@@ -85,6 +85,8 @@ export type ReaderDeps = {
   env: { on: boolean; key: boolean; capUsd: number };
   cacheGet: (k: string) => Promise<string | undefined>;
   cacheSet: (k: string, v: string, ttlS: number) => Promise<void>;
+  /** Per-IP rate limit, read only, checked before the counter: a visitor past it costs no Upstash command. */
+  ipCapped: () => Promise<boolean>;
   /** Persistent daily counter: reserve the worst case under the cap (false = cap hit), then settle at the billed price. */
   reserve: (usd: number, capUsd: number) => Promise<boolean>;
   settle: (reservedUsd: number, billedUsd: number) => Promise<void>;
@@ -101,6 +103,7 @@ export async function readPrompt(prompt: string, test: boolean, d: ReaderDeps, t
   const hit = await d.cacheGet(ck).catch(() => undefined);
   const fromCache = hit ? parseReply(prompt, { choices: [{ message: { content: hit } }] }) : null;
   if (fromCache) { d.log(`[ai-reader] cache ${tag}`); return { ok: true, spec: fromCache, cached: true }; }
+  if (await d.ipCapped().catch(() => true)) { d.log(`[ai-reader] ip-cap ${tag}`); return { ok: false, error: "visitor reader limit reached", off: true }; }
   const worst = worstCaseUsd(prompt);
   if (!(await d.reserve(worst, d.env.capUsd).catch(() => false))) { d.log(`[ai-reader] cap ${tag}`); return { ok: false, error: "daily reader budget reached", off: true }; }
   const ctl = new AbortController();
