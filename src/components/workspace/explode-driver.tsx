@@ -121,7 +121,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
   }, [invalidate]);
 
   // A solver error or a slow solve never hangs the tab: it falls back to the plain explode and logs (row 105).
-  const fallback = () => plainExplode(project.panels, desk.current?.job?.key ?? base);
+  const fallback = (key: string) => () => plainExplode(project.panels, key);
   const onError = (e: unknown) => console.warn("[yard] See inside: explode solver stopped early (kept the solve so far, else the plain explode)", e);
 
   // Unmount: close whatever solve is still open.
@@ -142,7 +142,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       // A card still sliding in: solve once it has settled, never against where it is mid-slide (row 353).
       if (!j) { h = window.setTimeout(tick, 100); return; }
       if (j.done) return;
-      const r = runSlice(j, fallback, { maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS }, { onError });
+      const r = runSlice(j, fallback(j.key), { maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS }, { onError });
       if (r) { desk.current!.remember(j.key, r); return; }
       h = ric(tick);
     };
@@ -167,7 +167,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       settle();
       return;
     }
-    let cancel: (() => void) | undefined, t = 0, gone = false;
+    let cancel: (() => void) | undefined, running: unknown = null, t = 0, gone = false;
     const show = (s: ExplodeSolved) => {
       if (explodeClock.solved?.key !== s.key) {
         const prev = explodeClock.solved;
@@ -189,9 +189,12 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       const j = start(performance.now() - t0 > SETTLE_WAIT_MS);
       explodeClock.solving = true;
       if (!j) { t = window.setTimeout(ensure, 50); return; }
+      if (j === running && !j.done) return; // already being solved; it shows when it lands
+      // Another key: stop the old run first, so it can never land (or be cached) after this one.
+      cancel?.(); cancel = undefined; running = null;
       if (j.done) { show(j.done); return; }
-      cancel?.();
-      cancel = runJob(j, fallback, { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { desk.current!.remember(j.key, r); show(r); }, { onError });
+      running = j;
+      cancel = runJob(j, fallback(j.key), { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { running = null; desk.current!.remember(j.key, r); show(r); }, { onError });
     };
     ensure();
     // Cards that move after the solve: re-check once they have been still for a moment.
@@ -205,7 +208,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
         const c = cardsNow(gl.domElement);
         if (c.moving) return kick();
         if (explodeClock.solved && desk.current!.stale(explodeClock.solved.key, base, c)) ensure();
-        else if (!cancel || desk.current!.job?.done) explodeClock.solving = false;
+        else if (!running) explodeClock.solving = false;
       }, 120);
     };
     const ro = new ResizeObserver(kick);
