@@ -165,6 +165,9 @@ describe("shelf span supports", () => {
   it("leaves the hanging rod one piece and keeps the divider out of that bay", () => {
     const project = generateFromPrompt("wardrobe");
     assert.equal(project.panels.filter((p) => p.name === "Hanging rod").length, 1);
+    const shelves = project.panels.filter((p) => p.type === "shelf");
+    assert.equal(new Set(shelves.map((s) => s.position.y.toFixed(2))).size, 1);
+    assert.equal(shelves.length, 2);
     const rod = project.panels.find((p) => p.name === "Hanging rod")!;
     for (const div of project.panels.filter((p) => /^Center divider\b/.test(p.name))) {
       assert.equal(solidsOverlap(div, rod), false);

@@ -79,12 +79,15 @@ export function rodDropIn(height: number, rodY: number): number {
   return Math.round(height - rodY);
 }
 
+function hangTail(rodY: number): string {
+  if (rodY + 1e-6 >= LONG_HANG_LO) return ", so coats and shirts hang full length.";
+  if (rodY + 1e-6 >= MIN_HANG_ROOM_IN) return ", so shirts hang.";
+  return ".";
+}
+
 /** One rod's note. Full-length coats only in the long-hang band; a shirt hang says so; a shorter rod claims neither. */
 export function singleRodNote(rodY: number): string {
-  const base = `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it`;
-  if (rodY + 1e-6 >= LONG_HANG_LO) return `${base}, so coats and shirts hang full length.`;
-  if (rodY + 1e-6 >= MIN_HANG_ROOM_IN) return `${base}, so shirts hang.`;
-  return `${base}.`;
+  return `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up, with the shelves above it${hangTail(rodY)}`;
 }
 
 const ROD_NAME = /\bhanging rod\b|\bclothes rod\b/i;
@@ -389,12 +392,17 @@ export function supportHangingBays(project: YardProject): YardProject {
   return changed ? { ...project, panels } : project;
 }
 
-function bayRodNote(rodY: number, count: number, hat: boolean): string {
-  const above = hat ? "with the fixed hat shelf above it" : "with the shelves above it";
-  const base = `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up in each of ${count} bays, ${above}`;
-  if (rodY + 1e-6 >= LONG_HANG_LO) return `${base}, so coats and shirts hang full length.`;
-  if (rodY + 1e-6 >= MIN_HANG_ROOM_IN) return `${base}, so shirts hang.`;
-  return `${base}.`;
+/** What actually sits above this rod. Nothing above drops the shelves clause. */
+function rodAbove(rodY: number, rodH: number, lines: { y: number; fixed: boolean }[]): "hat" | "shelves" | "none" {
+  const over = lines.filter((line) => line.y >= rodY + rodH - 0.05);
+  if (!over.length) return "none";
+  return over.some((line) => line.fixed) ? "hat" : "shelves";
+}
+
+function bayRodNote(rodY: number, count: number, above: "hat" | "shelves" | "none"): string {
+  const where = count > 1 ? ` in each of ${count} bays` : "";
+  const over = above === "hat" ? ", with the fixed hat shelf above it" : above === "shelves" ? ", with the shelves above it" : "";
+  return `A 1 1/4" closet rod in two sockets runs side to side ${Math.round(rodY)}" up${where}${over}${hangTail(rodY)}`;
 }
 
 /** Shelf and rod notes follow the bays actually built: a fixed hat is not an adjustable line, and each bay's rod is counted. */
@@ -413,22 +421,28 @@ export function hangingTalk(project: YardProject): YardProject {
   const hats = lines.filter((line) => line.fixed);
   const hatY = hats.length ? Math.min(...hats.map((line) => line.y)) : null;
   const above = hatY == null ? [] : lines.filter((line) => !line.fixed && line.y > hatY + 0.05);
+  const piecesNear = (ys: number[]) => project.panels.filter((p) => p.type === "shelf" && ys.some((y) => Math.abs(p.position.y - y) < 0.05)).length;
   let changed = false;
   let notes = [...(project.notes ?? [])];
   if (hats.length) {
+    const hatPieces = piecesNear(hats.map((line) => line.y));
+    const abovePieces = piecesNear(above.map((line) => line.y));
+    const hatWord = hatPieces > 1 ? `${hatPieces} fixed hat shelf pieces over the rod` : "One fixed hat shelf over the rod";
+    const extra = abovePieces > above.length ? ` (${abovePieces} pieces)` : "";
     const shelf = above.length
-      ? `One fixed hat shelf over the rod, and ${above.length} adjustable shelf line${above.length === 1 ? "" : "s"} above it.`
-      : "One fixed hat shelf over the rod. No pinned shelf above the hat.";
+      ? `${hatWord}, and ${above.length} adjustable shelf line${above.length === 1 ? "" : "s"} above it${extra}.`
+      : `${hatWord}. No pinned shelf above the hat.`;
     notes = notes.map((note) => {
       if (!/\d+ adjustable shelf lines?\./.test(note)) return note;
       changed = true;
       return shelf;
     });
   }
-  if (rods.length > 1 && rods.every((rod) => Math.abs(rod.position.y - rods[0].position.y) < 0.6)) {
-    const next = bayRodNote(rods[0].position.y, rods.length, hats.length > 0);
+  if (rods.length && rods.every((rod) => Math.abs(rod.position.y - rods[0].position.y) < 0.6)) {
+    const next = bayRodNote(rods[0].position.y, rods.length, rodAbove(rods[0].position.y, rods[0].size.height, lines));
     notes = notes.map((note) => {
       if (!/closet rod in two sockets runs side to side/.test(note) || /second rod/.test(note)) return note;
+      if (note === next) return note;
       changed = true;
       return next;
     });
