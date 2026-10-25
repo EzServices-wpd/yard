@@ -376,7 +376,8 @@ it("row 433: a typed rod count that does not fit is refused naming the height, n
   assert.equal(rodsOf("closet with 2 rods 88 tall").length, 2);
   assert.equal(rodsOf("closet 96 wide with 3 rods").length, 3);
   // The named height itself builds exactly the count.
-  assert.match(generateFromPrompt("closet 60 wide with 3 rods").refused ?? "", /needs at least 88" tall for 3 rods/);
+  // Row 462: under 88" a 60" box splits into 3 bays, one rod each (every rod at least 18").
+  assert.equal(rodsOf("closet 60 wide with 3 rods").length, 3);
   assert.equal(rodsOf("closet 60 wide 88 tall with 3 rods").length, 3);
   assert.equal(rodsOf("closet 44 wide 88 tall with 3 rods").length, 3);
 });
@@ -460,4 +461,16 @@ it("row 463: a double hang that ends with more rods than typed does not say the 
   const notes = generateFromPrompt("closet 72 wide 96 tall double hang 2 rods").notes.join(" ");
   assert.doesNotMatch(notes, /The count wins/);
   assert.match(notes, /You asked for 2 rods and double hang\. There is no double-hang pair: each of the 3 bays gets one rod/);
+  assert.match(generateFromPrompt("closet 72 wide 96 tall double hang 1 rod").notes.join(" "), /You asked for 1 rod and double hang\./); // row 475
+});
+
+it("row 462: 62-68 wide under 88\" tall builds the typed 3 rods in 3 bays, as release did, not a refusal", () => {
+  for (const prog of ["closet", "wardrobe"]) for (let w = 62; w <= 68; w++) for (const h of [60, 72, 80]) {
+    const q = `${prog} ${w} wide ${h} tall with 3 rods`;
+    assert.equal(generateFromPrompt(q).refused, undefined, q);
+    const rods = rodsOf(q);
+    assert.equal(rods.length, 3, q);
+    assert.ok(Math.min(...rods.map((r) => r.size.width)) >= 18, q);
+  }
+  assert.match(generateFromPrompt("closet 40 wide 72 tall with 3 rods").refused ?? "", /needs at least 88" tall for 3 rods/);
 });

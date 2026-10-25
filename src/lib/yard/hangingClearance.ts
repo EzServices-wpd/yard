@@ -31,6 +31,8 @@ export const DOUBLE_HANG_MIN_H_IN = 88;
 const TIER_HANG_IN = 34;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
+/** Row 462: shortest rod a bay is split down to for a typed count (a single 18" closet section). */
+const MIN_BAY_ROD_IN = 18;
 export const ROD_DIA = 1.25;
 const BAY_EPS = 1 / 32;
 // One shelf-stack rule for the whole carcass family lives in shelfClear.ts (#142).
@@ -69,10 +71,18 @@ export function rodsAsked(prompt: string): number {
  * The bays are only known after the shelf-span and rod splits, so this reads the built rods, not a guess.
  */
 export function withRodPairs(p: YardProject, prompt: string, rebuild: (q: string) => YardProject): YardProject | null {
-  if (p.refused || p.overall.height < DOUBLE_HANG_MIN_H_IN || /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) return null;
+  if (p.refused || /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) return null;
   const prog = p.fitted?.program;
   const rods = p.panels.filter(isHangingRod);
-  if ((prog !== "wardrobe" && prog !== "closet") || !rods.length || rods.length >= rodsAsked(prompt)) return null;
+  const n = rodsAsked(prompt);
+  if ((prog !== "wardrobe" && prog !== "closet") || !rods.length || rods.length >= n) return null;
+  if (p.overall.height < DOUBLE_HANG_MIN_H_IN) {
+    // Row 462: too short for a double-hang pair: one rod in each of n bays, when every rod is still a usable hang.
+    if (/\b(?:bays?|sections?|dividers?)\b/i.test(prompt)) return null;
+    const bayed = rebuild(`${prompt} and ${n} bays`);
+    const br = bayed.panels.filter(isHangingRod);
+    return !bayed.refused && br.length === n && Math.min(...br.map((r) => r.size.width)) >= MIN_BAY_ROD_IN ? bayed : null;
+  }
   const paired = rebuild(`${prompt} double hang`);
   // The words "double hang" are ours here, not typed, so drop the row 450 "the count wins" note they would raise.
   const notes = (paired.notes ?? []).filter((n) => !/ and double hang\. The count wins/.test(n));
@@ -576,7 +586,7 @@ function fitRodCount(project: YardProject, prompt: string): YardProject {
     notes.push(
       rods.length === n
         ? `You asked for ${n} rod${n === 1 ? "" : "s"} and double hang. The count wins: ${n === 1 ? "one rod is" : `${n} rods are`} built, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`
-        : `You asked for ${n} rods and double hang. There is no double-hang pair: each of the ${keys.length} bays gets one rod, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`, // row 463
+        : `You asked for ${n} rod${n === 1 ? "" : "s"} and double hang. There is no double-hang pair: each of the ${keys.length} bays gets one rod, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`, // row 463
     );
   return drop.size || pairBays || notes.length !== (project.notes ?? []).length ? { ...project, panels, notes } : project;
 }
