@@ -17,7 +17,7 @@ const ACCURIDE_3832 =
 const KREG_K4 =
   "Kreg Pocket-Hole Jig K4 screw chart, https://www.kregtool.com/on/demandware.static/-/Library-Sites-RefArchSharedLibrary/default/dw7ad1d1da/manuals/K4PLUS_NA.pdf";
 const BLUM_CLIP =
-  "Blum CLIP top concealed hinge (35 mm cup), https://www.blum.com/us/en/products/hingesystems/";
+  "Blum CLIP top concealed hinge (35 mm cup), https://www.blum.com/us/en/products/hingesystems/overview/";
 const ADA =
   "2010 ADA Standards for Accessible Design, https://www.ada.gov/law-and-regs/design-standards/2010-stds/";
 
