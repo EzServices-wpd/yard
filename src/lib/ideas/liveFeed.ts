@@ -7,8 +7,10 @@ import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
 import { IDEAS } from "@/lib/yard/ideas";
 import TYPES from "./types.json";
 import { isHeldType } from "./held";
-import { drawingFor, sizeOf, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
+import { drawingForType, sizeOf, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 import { isLoggedTest } from "./testTraffic";
+import TWINS from "./typeTwins.json";
+import { NAMED_LUMBER_SPECIES } from "@/lib/yard/namedLumberSpecies";
 
 /** #56 merged (2026-10-16 12:24 ET): from then the log records no offline, x-yard-test or preview traffic. */
 export const TEST_CUTOFF = "2026-10-16T16:24:56Z";
@@ -43,13 +45,23 @@ export function isTestRow(r: Pick<SnapshotRow, "prompt" | "resultKey"> & { lastS
 /** Synonyms the engine names differently but a visitor sees as one build. */
 const ALIAS: Record<string, string> = { bookshelf: "bookcase", "raised-bed": "raised-garden-bed", "garden-bed": "raised-garden-bed", "planter-bo": "planter-box", "jewelry-bo": "jewelry-box" };
 
+/**
+ * Drawn twins (I-draw): a log type the engine keys apart from a curated card that builds the same parts
+ * ("pantry cabinet" and the Pantry card: uprights, back, top, bottom, shelves, door). Data next to drawings.json;
+ * scripts/ideas-live-feed.test.ts checks that each target is a drawn type and the engine builds the same pieces.
+ */
+const TWIN = TWINS as Record<string, string>;
+/** A named lumber species leading the key is the stock, not the object: "pine-toolbo" is a toolbox, "cedar-birdhouse" a birdhouse. */
+const SPECIES_LEAD = new RegExp(`^(?:${NAMED_LUMBER_SPECIES.map((s) => s.id).join("|")})-(?=[a-z])`);
+
 /** One build type per result key: "builtin:bookcase-36" / "recipe:bookshelf" → "bookcase". */
 export function typeKey(resultKey: string): string {
   // A leading stock size is not the object: "builtin:3-4-soccer-goal" (3/4 PVC) is a soccer goal, not type "3" (row 111).
-  let k = resultKey.replace(/^[a-z]+:/, "").replace(/^(?:\d+-)+(?=[a-z])/, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
+  let k = resultKey.replace(/^[a-z]+:/, "").replace(/^(?:\d+-)+(?=[a-z])/, "").replace(SPECIES_LEAD, "").replace(/-\d.*$/, "").replace(/-(?:along|to|wide|tall|long|for)(?:-.*)?$/, "");
   k = ALIAS[k] ?? k;
   // Quick win (e): the log's 40-char result keys cut "box" to "bo" ("Pine toolbo"): any key ending "bo" is a box.
   if (/bo$/.test(k) && !/(?:^|-)(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/.test(k)) k = `${k}x`;
+  k = TWIN[k] ?? k;
   return k || "thing";
 }
 
@@ -119,7 +131,10 @@ export function sortCards(cards: IdeaCard[]): IdeaCard[] {
   return cards.map((c, i) => ({ c, i })).sort((a, b) => b.c.count - a.c.count || (b.c.lastSeen ?? "").localeCompare(a.c.lastSeen ?? "") || a.i - b.i).map((x) => x.c);
 }
 
-function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>): IdeaCard {
+/** Draws a build type: the baked drawing of that type, or null (the card is then not shown). */
+export type DrawType = (type: string) => DrawingRef | null;
+
+function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>, draw: DrawType): IdeaCard {
   const top = [...g.rows].sort((a, b) => b.count - a.count)[0];
   const sizes = new Map<string, number>();
   for (const r of g.rows) sizes.set(r.size, (sizes.get(r.size) ?? 0) + r.count);
@@ -130,7 +145,7 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>):
   const c = curated.get(g.type);
   if (c) return { ...c, count: g.count, lastSeen: g.lastSeen, status: c.status === "checked" ? "checked" : "new", dims: c.dims ?? dimsOf(size) };
   const recipe = top.resultKey.startsWith("recipe:");
-  const drawing = drawingFor(g.type);
+  const drawing = draw(g.type);
   const logged = dimsOf(size);
   // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
@@ -170,7 +185,7 @@ export function pickHero(cards: IdeaCard[], now: Date): IdeaHero | null {
  * The feed: Popular (Trusted types by real count), Popular recently (built in the last 7 days), then the curated
  * sections. One card per build type across the page (first section wins). Not live, or no real rows → `base`.
  */
-export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(), cutoff = TEST_CUTOFF): IdeasFeed {
+export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(), cutoff = TEST_CUTOFF, draw: DrawType = drawingForType): IdeasFeed {
   const groups = groupRows(snap.rows, cutoff);
   if (!snap.live || !groups.length) return { ...base, live: false };
   const curated = new Map<string, IdeaCard>();
@@ -179,13 +194,14 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   // A held recipe (held.ts, the shared flag) never renders on Ideas, in Popular, Popular recently or a curated section.
   const graded = gradedTypes(base);
   const trusted = new Set(groups.filter((g) => g.trusted).map((g) => g.type));
-  const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type) && !isHeldType(g.type)).map((g) => cardFor(g, curated, graded));
+  const cards = groups.filter((g) => !GENERIC_TYPES.has(g.type) && !isHeldType(g.type)).map((g) => cardFor(g, curated, graded, draw));
   const since = new Date(now.getTime() - HERO_DAYS * DAY).toISOString();
   const used = new Set<string>();
   // Only a card a section actually renders is used (Critic row 111: Popular marked every Trusted card used, not just
   // the SECTION_MAX it shows, so low-count builds like the mail organizer and under-stairs shelves showed nowhere).
+  // I-draw: a card with no baked drawing of its own build is never shown (25 of 82 live cards were a grey title).
   const take = (id: string, title: string, list: IdeaCard[]): IdeaSection => {
-    const all = sortCards(list).filter((c) => !isJunkTitle(c.title) && !used.has(c.slug) && !used.has(c.buildType));
+    const all = sortCards(list).filter((c) => c.drawing && !isJunkTitle(c.title) && !used.has(c.slug) && !used.has(c.buildType));
     const shown = all.slice(0, SECTION_MAX);
     shown.forEach((c) => { used.add(c.slug); used.add(c.buildType); });
     return { id, title, order: 0, total: all.length, cards: shown.map((c) => ({ ...c, section: title })) };
@@ -233,6 +249,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
       if (GENERIC_TYPES.has(c.buildType)) out.push(`${c.slug}: generic fallback card`);
       if (isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`${c.slug}: held recipe on Ideas (${s.id})`);
       if (/bo$/.test(c.title) && !/(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/i.test(c.title)) out.push(`${c.slug}: cut-off title "${c.title}"`);
+      if (!c.drawing) out.push(`${c.slug}: no drawing in ${s.id}`);
       if (c.drawing && !/^\/ideas\/drawings\/[\w-]+\.[0-9a-f]+(?:\.\w+)?\.svg$/.test(c.drawing.src)) out.push(`${c.slug}: drawing ${c.drawing.src}`);
       for (const k of Object.keys(c)) if (/href|store|offer|affiliate|price|shop/i.test(k)) out.push(`${c.slug}: store field ${k}`);
     }
