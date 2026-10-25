@@ -11,6 +11,13 @@ import { specOf, type YardSpec } from "./spec";
 import { isBedLongWide, typedOffBy } from "./typedAxesRead";
 import type { YardProject } from "./types";
 
+/** A build's name without the bare size typed into it ("Linen 31 1/2" × 78" × 16"" → "Linen"): the size is said
+ * once, labelled W × D × H, by the surface that prints it (Critic row 132: no unlabelled W × H × D triple). */
+export const NAME_SIZE_RE = /\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/;
+export function bareName(name: string): string {
+  return name.replace(NAME_SIZE_RE, "").trim() || name;
+}
+
 /** The unit the plan talks about: a pocket build's unit, else the overall box. */
 function unitBox(project: YardProject) {
   return project.pocket?.unit
