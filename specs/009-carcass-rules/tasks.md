@@ -5,7 +5,7 @@ Format: `[ID] [P?] description — acceptance — size`. [P] = can run in parall
 ## Phase 0: gates (no code)
 - [ ] T001 Critic grades `specs/009-carcass-rules` r2 (spec, plan, acceptance, REVIEW) — PASS or edits — 0 lines
 - [ ] T002 Wait for #112 to merge into the release branch (#142 merged in 4e74ad3); merge release into the work branch (merge only) — merged — 0 lines
-- [x] T003 Critic added the "009" rows to `sets.py` (78 assertions): `bookcase 60 wide 30 tall with 8 shelves` (guard), `cabinet 48 wide with shelves` and `bookcase 60x30x8` (`min_level_pitch 7.75`), `cabinet 48 wide 30 tall with 4 shelves` and `bookcase with 13 shelves` (`levels_usable`), `nightstand 20 wide 24 tall with 3 shelves` (`levels_eq_or_refused`). Critic is adding `ends_supported` (FR-010) — Critic's call — 0 lines
+- [x] T003 Critic added the "009" rows to `sets.py` (88 assertions after r3): `bookcase 60 wide 30 tall with 8 shelves` (guard), `cabinet 48 wide with shelves` and `bookcase 60x30x8` (`min_level_pitch 7.75`), `cabinet 48 wide 30 tall with 4 shelves` and `bookcase with 13 shelves` (`levels_usable`), `nightstand 20 wide 24 tall with 3 shelves` (`levels_eq_or_refused`). Critic is adding `ends_supported` (FR-010) — Critic's call — 0 lines
 - [ ] T004 Copy the precheck's carcass prompts (158 probes + SHELF_COUNT + carcass REGRESSION/DRIFT/"009" prompts) to `evals/carcass-shelf-prompts.json` with the precheck date — file committed in PR 1 — ~1 file (data)
 
 ## Phase 1: PR 1 bookcase (≤ 400 lines) — 211, 13 shelves, 1/2" stock minimum; holds 300/304/307/317 and #142's refusals
@@ -29,9 +29,9 @@ Format: `[ID] [P?] description — acceptance — size`. [P] = can run in parall
 - [ ] T030 cabinet — asserted: default 3 at 6 3/8" → 2 with the note; `cabinet 48 wide 30 tall with 4 shelves` refuses with its minimum
 - [ ] T040 pantry — parity
 - [ ] T050 wardrobe — #112/#142 rows, rod default/typed rows, hat counted in N; 315(3); typed rod refuses at 97 3/4"; asserted: `wardrobe 72 tall with 12 shelves` and `wardrobe with 13 shelves` (row 361) → second-form refusal, up to 96" holds 11
-- [ ] T060 nightstand — asserted: `nightstand 20 wide 24 tall with 3 shelves` refuses with the zone-aware minimum
-- [ ] T070 dresser — asserted: `dresser with 3 shelves` refuses at the searched `minH` (not 50 1/2", which builds at 6 1/16"); the rebuild at it gives 3 at ≥ 7"
-- [ ] T080 vanity (knee path; desk canary watch) — asserted: `bathroom vanity 36 wide with 3 shelves` refuses with its minimum or builds 3 at ≥ 7"
+- [ ] T060 nightstand — asserted: `nightstand 20 wide 24 tall with 3 shelves` refuses with the zone-aware minimum (second form `needs more than 96" tall`, with K from the downward search, if the search passes 96"); proof: the refusal path, including those extra searches, stays under the 30 s parity budget, with the timing in the PR body
+- [ ] T070 dresser — asserted: `dresser with 3 shelves` refuses at the searched `minH` (not 50 1/2", which builds at 6 1/16"); the rebuild at it gives 3 at ≥ 7" (second form `needs more than 96" tall`, with K from the downward search, if the search passes 96"); proof: the refusal path, including those extra searches, stays under the 30 s parity budget, with the timing in the PR body
+- [ ] T080 vanity (knee path; desk canary watch) — asserted: `bathroom vanity 36 wide with 3 shelves` refuses with its minimum or builds 3 at ≥ 7" (second form `needs more than 96" tall`, with K from the downward search, if the search passes 96"); proof: the refusal path, including those extra searches, stays under the 30 s parity budget, with the timing in the PR body
 - [ ] T090 linen — builds byte-identical; asserted refusal noun "A linen closet needs …"; then delete the legacy generic shelf section (SC-004 grep)
 
 ## Every PR

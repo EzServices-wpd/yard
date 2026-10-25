@@ -37,9 +37,9 @@ export type ShelfRule = {
 
 Formulas (inches; `t` = stock thickness; `[y0, y1]` = zone bounds from the builder's existing variables; `n` = count):
 - **span** `S = y1 − y0`
-- **fit** `(S − n·t) / (n + 1) ≥ minClear` (minClear = #142's `CLOSET_SHELF_CLEAR_IN` 7"; the duplicate `SHELF_MIN_CLEAR = 7` in `fittedShared.ts` becomes a re-export of it). The 4" `SHELF_CLEAR_FLOOR_IN` is a guard on the constant only and is **never** used as a fallback clear. No row has `minClear < 7` unless a cited source says so; none in this spec do.
+- **fit** `S / (n + 1) − t ≥ minClear`: the smallest gap at even positions (the pitch `S / (n + 1)` less one thickness), not the average clear `(S − n·t) / (n + 1)`, which over-counts by one for some S (S = 23": the average form allows 2, but 2 at even pitch give 6 11/12") (minClear = #142's `CLOSET_SHELF_CLEAR_IN` 7"; the duplicate `SHELF_MIN_CLEAR = 7` in `fittedShared.ts` becomes a re-export of it). The 4" `SHELF_CLEAR_FLOOR_IN` is a guard on the constant only and is **never** used as a fallback clear. No row has `minClear < 7` unless a cited source says so; none in this spec do.
 - **positions (even)** `y_k = y0 + S·k / (n + 1)`, k = 1..n. Exactly today's arithmetic (`fittedBuild.ts:2908`), no new rounding in parity mode.
-- **largest default that fits** `n_fit = floor((S − minClear) / (minClear + t))`, clamped to `[0, default]` (`bookcase 60 wide 30 tall`: S = 28 1/2" → 2, at 8 3/4" clear; 3 would give 6 3/8"). When it shrinks, the header shows no count and the note names the numbers (spec US1-4): `{N} {shelf|shelves} fit at {H}" with 7" clear between them; a {noun} {MIN}" tall holds all {D}.`, or for 0, `This {H}" {noun} is an open box; a {noun} {MIN1}" tall holds 1 shelf with 7" clear, {MIN}" holds all {D}.`
+- **largest default that fits** `n_fit = floor(S / (minClear + t)) − 1`, clamped to `[0, default]` (`bookcase 60 wide 30 tall`: S = 28 1/2" → 2, at 8 3/4" clear; 3 would give 6 3/8"). When it shrinks, the header shows no count and the note names the numbers (spec US1-4): `{N} {shelf|shelves} fit at {H}" with 7" clear between them; a {noun} {MIN}" tall holds all {D}.`, or for 0, `This {H}" {noun} is an open box; a {noun} {MIN1}" tall holds 1 shelf with 7" clear, {MIN}" holds all {D}.`
 - **minimum height for a typed n** (one definition, used by every row): `minH(n, t)` is the **smallest H, in 1/16" steps,
   at which the builder's own zone at H gives the fit** for n levels. `stack(n, t) = (n + 1)·(t + 7)`.
   - Start value: `(H − S) + stack(n, t)` with `H − S` (everything outside the shelf zone: drawer bank, knee, hutch, rod and
@@ -48,6 +48,8 @@ Formulas (inches; `t` = stock thickness; `[y0, y1]` = zone bounds from the build
     not the minimum).
   - Search: step H up by 1/16" from the start, re-reading the zone from the builder's zone function at each H (zone only,
     no full build), until the fit holds or H passes the stock limit `MAX` (below). Bounded: at most (MAX − start)·16 zone reads.
+  - Assumption (row 370): the outside `H − S` never shrinks as H grows (it may grow, as the dresser's does). Then no H
+    below the start fits, so the first H the upward search finds is the minimum. The `minBuild` rebuild still proves the named H.
   - `closetShelfMinHeight(n, t)` = `(n + 1)·(t + 7) + 2t` stays the closed form of the no-zone case (S = H − 2t, which
     does not grow with H), so bookcase, linen, pantry and rod-less wardrobe refusals need no search.
   - `rodShelfMinHeight(n, t)` is the closed form of the typed-rod case (outside = 2t + 40" hang + 2" lift), used only when a rod was typed.
@@ -55,9 +57,12 @@ Formulas (inches; `t` = stock thickness; `[y0, y1]` = zone bounds from the build
   - **Stock limit**: if `minH(n, t)` is taller than the picked stock's longest part (`MAX` = 96" for a 4×8 sheet; the board
     length for lumber), it is not a usable minimum. The refusal takes FR-011's second form and names `K`, the largest
     count with `minH(K, t) ≤ MAX` (3/4" stock, no rod: 11 at 94 1/2"; 12 needs 102 1/4", 13 needs 110").
+  - Searched families (dresser, vanity, nightstand): the search stops at `MAX`, so a minimum above it is never known and
+    the second form says `needs more than {MAX}" tall` (closed-form families keep the number). `K` is found by a downward
+    search: n = N − 1, N − 2, … down to 0, each its own bounded upward search; the first n that fits by `MAX` is `K`.
   - `t` is the **picked stock's** thickness. `tooSmall.ts:132` passes the default 0.75 today. 8 shelves of 1/2" ply give 68 1/2", not 71 1/4"; that change is an asserted change in each family's PR (bookcase: PR 1).
   - Rounded **up** to 1/16". The `minBuild` rebuild at the named height decides: it must give n levels at ≥ 7" with no new invariant, or the row FAILs.
-  - The formula is **conservative** by 3/4" against the exact fit (`2t + (n + 1)·7 + n·t`). 10 shelves of 3/4" → 86 3/4", while the exact fit is 86". So a typed height between the two (e.g. `wardrobe 86 tall with 10 shelves`) refuses today; accepted and logged as P3, not "the minimum".
+  - With even positions the closed form is **exact**: it is the smallest H where `S / (n + 1) − t ≥ 7`. 10 shelves of 3/4" → 86 3/4"; at 86" even positions give 6 15/16" clear, so `wardrobe 86 tall with 10 shelves` refuses correctly.
 - **pieces per level** read after the span pass: the number of shelf panels at that level (1/16" rounding). The table does not re-derive dividers; `withShelfSpanSupports` stays the one span rule (row 307). A level may be split only **at** a divider that runs to the bottom (or top) below it; every piece is held at both ends (FR-010).
 - **sag rule held, unchanged**: ≤ 0.02" per foot of span (`shelfSpan.ts:50 SAG_PER_FT`), simply supported, creep ×1.5 for **every** stock (the house standard). `shelfSpan.ts:64 creepOf` gives plywood 1.0, not 1.5; logged by Critic (row 362), not this spec's to change.
 
