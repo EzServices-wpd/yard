@@ -126,6 +126,22 @@ export function logCardPrompt(type: string, dims: IdeaCard["dims"]): string {
   return dims ? `${t} ${dims.width} wide ${dims.height} tall ${dims.depth} deep` : t;
 }
 
+/** A /api/ideas-snapshot row: the engine's build type, title and logged W×D×H plus counts. No visitor's typed words. */
+export type PublicRow = { buildType: string; recipe: boolean; title: string; size: string; status: SnapshotRow["status"]; count: number; lastSeen: string };
+export type PublicSnapshot = { at: string; live: boolean; rows: PublicRow[]; popular: PublicRow[]; recent: PublicRow[] };
+
+/** Log rows as the public snapshot serves them: test traffic dropped as the feed drops it, titles as the cards title them. */
+export function publicRows(rows: SnapshotRow[], cutoff = TEST_CUTOFF): PublicRow[] {
+  return rows.filter((r) => !isTestRow(r, cutoff)).map((r) => {
+    const buildType = typeKey(r.resultKey);
+    return { buildType, recipe: r.resultKey.startsWith("recipe:"), title: titleOf(buildType), size: r.size, status: r.status, count: r.count, lastSeen: r.lastSeen! };
+  }).filter((r) => !isJunkTitle(r.title));
+}
+
+/** The privacy page: the Ideas library never keeps the words people typed, so the public snapshot never serves them. */
+export const publicSnapshot = (s: IdeasSnapshot): PublicSnapshot =>
+  ({ at: s.at, live: s.live, rows: publicRows(s.rows), popular: publicRows(s.popular), recent: publicRows(s.recent) });
+
 /** Count desc, then lastSeen desc (null last), then the source order. */
 export function sortCards(cards: IdeaCard[]): IdeaCard[] {
   return cards.map((c, i) => ({ c, i })).sort((a, b) => b.c.count - a.c.count || (b.c.lastSeen ?? "").localeCompare(a.c.lastSeen ?? "") || a.i - b.i).map((x) => x.c);
