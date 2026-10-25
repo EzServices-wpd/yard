@@ -374,6 +374,8 @@ export type YardProject = {
    * ("lemonade stand" → "table 48 wide 42 tall 24 deep"). The prompt box shows this, never the remap.
    */
   typedPrompt?: string;
+  /** The one spec object per prompt (spec.ts), built once at intake. */
+  spec?: import("./spec").YardSpec;
   /** Built as a stand-in primitive (table, shelf, box) for a noun no builder owns; the recipe lookup may replace it. */
   standIn?: boolean;
   /** A lookup-fallback block: drawn only, with no cut list, Buy, price or steps. */
@@ -499,11 +501,19 @@ export type BomLine = {
   offers?: ShopOffer[];
 };
 
+/** A Buy fastener line a step drives, by id, with how many of them the step drives. */
+export type FastenerUse = { id: string; qty: number };
+
 export type AssemblyStep = {
   step: number;
   title: string;
   description: string;
   partsUsed?: string[];
+  /**
+   * The Buy fastener lines this step drives, by id (fastenerId: the line's catalogId, else "buy:" + its name). It ties a
+   * Buy line to the step that installs it exactly, never by a word in the step text (Critic #127 row 291).
+   */
+  fastenersUsed?: FastenerUse[];
   tips?: string;
   imageDataUrl?: string;
 };

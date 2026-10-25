@@ -4,6 +4,7 @@
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
  */
+import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
 import { UNVERIFIED } from "./promptMain";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
@@ -712,6 +713,22 @@ function bearing(p: Panel, c: Panel): { a: "x" | "z"; got: number; need: number 
  * edge (held by end screws) is lengthened to run across the carrier's full width.
  */
 export function bearOnCarriers(recipe: Recipe, panels: Panel[]): void {
+  // A lower member that snapped taller lifts the rails in its footprint and leaves them 1/16" into the deck.
+  // The board sits on every rail it names, including one that runs along the board: the rail keeps its thickness and stops at the underside.
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (!part || !LOAD_ROLE.test(part.role ?? "") || !part.on?.length) continue;
+    const on = new Set(part.on);
+    for (const c of panels) {
+      if (c === p || !(on.has(c.name) || on.has(c.name.replace(/ \d+$/, "")))) continue;
+      const role = recipe.parts.find((q) => q.name === c.name || q.name === c.name.replace(/ \d+$/, ""))?.role ?? "";
+      if (!/rail|cleat|joist|apron|bearer|ledger|frame/i.test(`${role} ${c.name}`)) continue;
+      const bite = c.position.y + c.size.height - p.position.y;
+      const ox = Math.min(span(p, "x")[1], span(c, "x")[1]) - Math.max(span(p, "x")[0], span(c, "x")[0]);
+      const oz = Math.min(span(p, "z")[1], span(c, "z")[1]) - Math.max(span(p, "z")[0], span(c, "z")[0]);
+      if (bite > 1 / 32 && bite < 0.15 && ox > 0.05 && oz > 0.05) c.position = { ...c.position, y: c.position.y - bite };
+    }
+  }
   for (const p of panels) {
     for (const c of bearers(recipe, panels, p)) {
       const b = bearing(p, c);
@@ -1152,10 +1169,10 @@ type RowWords = { one: string; title: string; word: string; each: string; need: 
 const rodsOf = (w: RowWords, k: number) => `${k} ${k === 1 ? w.one : `${w.one}s`}`;
 /** A typed count that doesn't fit its typed side: nothing is built, and the card names the size it needs. */
 const refuseTyped = (w: RowWords, want: number, fits: number, at: number) =>
-  `${rodsOf(w, want)} ${want === 1 ? "doesn't" : "don't"} fit in ${inchFrac(at)}" ${w.word} (${w.each}). A ${want}-${w.one} ${w.title} needs ${inchFrac(w.need(want))}" ${w.word}. Nothing is built: make it ${inchFrac(w.need(want))}" ${w.word}${fits ? `, or ask for ${rodsOf(w, fits)}` : ""}.`;
+  `${rodsOf(w, want)} ${want === 1 ? "doesn't" : "don't"} fit in ${inchFrac(at)}" ${w.word} (${w.each}). ${withArticle(`${want}-${w.one} ${w.title}`, true)} needs ${inchFrac(w.need(want))}" ${w.word}. Nothing is built: make it ${inchFrac(w.need(want))}" ${w.word}${fits ? `, or ask for ${rodsOf(w, fits)}` : ""}.`;
 /** Not even one fits: nothing is built, and the card names the smallest size that takes one. */
 const refuseNone = (w: RowWords, full: number, at: number) =>
-  `${/^[aeiou]/i.test(w.title) ? "An" : "A"} ${w.title} needs at least ${inchFrac(w.need(1))}" ${w.word} for 1 ${w.one} (${w.each}). A full ${full}-${w.one} ${w.title} needs ${inchFrac(w.need(full))}". Nothing is built at ${inchFrac(at)}".`;
+  `${withArticle(w.title, true)} needs at least ${inchFrac(w.need(1))}" ${w.word} for 1 ${w.one} (${w.each}). A full ${full}-${w.one} ${w.title} needs ${inchFrac(w.need(full))}". Nothing is built at ${inchFrac(at)}".`;
 const eachWords = (floor: number, thinnest: number, rider?: string) => `each needs ${inchFrac(floor)}"${rider ? ` for ${inchFrac(thinnest)}" ${rider}s` : ""}`;
 
 /** What a counted row needs along its run, measured once on the recipe at its own size (I36). */
@@ -1331,10 +1348,15 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   const typedH = sizeOverride?.height ?? typedSize(prompt, recipe0).height;
   const r8 = (n: number) => Math.round(n * 8) / 8;
   const rowIn = Math.max(1.5, Math.min(SHARED_DRAWER_ROW_IN, recipe0.size.height * 0.5));
-  const secH = r8(typedH != null ? Math.min(count * rowIn, typedH * 0.6) : count * rowIn);
-  const built = buildRecipeBody(recipe0, prompt, materialOverride, typedH != null ? ({ ...(sizeOverride ?? {}), height: typedH - secH } as Size) : sizeOverride);
+  const secH0 = r8(typedH != null ? Math.min(count * rowIn, typedH * 0.6) : count * rowIn);
+  const built = buildRecipeBody(recipe0, prompt, materialOverride, typedH != null ? ({ ...(sizeOverride ?? {}), height: typedH - secH0 } as Size) : sizeOverride);
   const p = built.project;
   const body = p.panels;
+  // A body whose parts stop short of the height it was given (kept thicknesses, a recipe that doesn't fill its box)
+  // leaves the rest to the case: the whole build stands at the typed height, never short of it (row 296: 'jewelry box
+  // 12 wide 8 tall 8 deep with 3 drawers' stood 7 11/16" under a typed 8").
+  const bodyTop = Math.max(0, ...body.map((q) => q.position.y + q.size.height));
+  const secH = typedH != null && body.length && bodyTop < typedH - secH0 - 1 / 32 ? typedH - bodyTop : secH0;
   const minX = Math.min(...body.map((q) => q.position.x)), maxX = Math.max(...body.map((q) => q.position.x + q.size.width));
   const minZ = Math.min(...body.map((q) => q.position.z)), maxZ = Math.max(...body.map((q) => q.position.z + q.size.depth));
   const W = maxX - minX, D = maxZ - minZ;

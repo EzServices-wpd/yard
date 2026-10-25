@@ -11,6 +11,7 @@ import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/wo
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
+import { doorHingeLayout } from "@/lib/yard/hingedLeaf";
 import {
   BarPull,
   CoatHook,
@@ -75,6 +76,8 @@ export function PanelMesh({
   const pullDepth = useYard((s) => (wearsPull ? (isDrawer ? benchPullDepth(s.project.panels, panel) : d) : 0));
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
+  // Row 207: the door hinges Buy lists, from the one shared layout (cached per project, so the selector is stable).
+  const hingeCenters = useYard((s) => doorHingeLayout(s.project).get(panel.id));
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
   const hiddenInStep = hasStep && !inStep && (isDoor || !!hostDoor || isDrawer || isLid || !!leaf);
 
@@ -312,8 +315,8 @@ export function PanelMesh({
         {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
           <EdgeBand w={w} h={h} d={d} />
         )}
-        {opacity > 0.4 && (leaf ? leaf.role === "hinge" : isDoor) && (
-          <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
+        {opacity > 0.4 && hingeCenters && hingeCenters.length > 0 && (
+          <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} centers={hingeCenters} />
         )}
         {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />

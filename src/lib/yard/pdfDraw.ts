@@ -19,9 +19,10 @@ type V3 = { x: number; y: number; z: number };
 type Rim = { c: V3; u: V3; v: V3; back: V3 };
 /**
  * soft: one facet of a round wall (a hub, a collar, a wheel's rim). It is filled without its own edge lines, and
- * `sil` lists the only edges that are drawn: where the wall turns away from the viewer (its silhouette).
+ * `sil` lists the side edges that are drawn: where the wall turns away from the viewer (its silhouette). `rim` is the
+ * wall's edge along a cap the viewer cannot see (the far rim): no cap outline draws it, so the wall does (row 135).
  */
-type Face = { pts: V3[]; n: V3; holes?: V3[][]; rims?: Rim[]; soft?: boolean; sil?: [V3, V3][] };
+type Face = { pts: V3[]; n: V3; holes?: V3[][]; rims?: Rim[]; soft?: boolean; sil?: [V3, V3][]; rim?: [V3, V3][] };
 export type Tone = "hot" | "built" | "ghost";
 
 type Solid = {
@@ -128,6 +129,8 @@ function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = [], circles: HoleCirc
     return Math.hypot(e.x, e.y, e.z) < 1e-6 ? null : norm(scale3(cross(e, u), sign));
   });
   const seen = (n: V3 | null) => !!n && dot(n, VIEW) > 1e-4;
+  // A cap the viewer cannot see draws no outline, so the wall strokes that rim itself (the collar's left edge).
+  const cap0Hidden = !seen(scale3(capDir, -1)), cap1Hidden = !seen(capDir);
   for (let i = 0; i < ring0.length; i++) {
     const j = (i + 1) % ring0.length;
     const n = sideN[i];
@@ -139,6 +142,10 @@ function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = [], circles: HoleCirc
       face.sil = [
         ...(seen(prev) !== seen(n) ? [[ring0[i], ring1[i]] as [V3, V3]] : []),
         ...(seen(next) !== seen(n) ? [[ring0[j], ring1[j]] as [V3, V3]] : []),
+      ];
+      face.rim = [
+        ...(cap0Hidden ? [[ring0[i], ring0[j]] as [V3, V3]] : []),
+        ...(cap1Hidden ? [[ring1[i], ring1[j]] as [V3, V3]] : []),
       ];
     }
     faces.push(face);
@@ -329,7 +336,7 @@ function shift(s: Solid, d: V3): Solid {
       pts: f.pts.map((p) => add(p, d)),
       ...(f.holes ? { holes: f.holes.map((h) => h.map((p) => add(p, d))) } : {}),
       ...(f.rims ? { rims: f.rims.map((r) => ({ ...r, c: add(r.c, d), back: add(r.back, d) })) } : {}),
-      ...(f.soft ? { soft: true, sil: (f.sil ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]) } : {}),
+      ...(f.soft ? { soft: true, sil: (f.sil ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]), rim: (f.rim ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]) } : {}),
     })),
     min: add(s.min, d),
     max: add(s.max, d),
@@ -665,7 +672,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   const fitPts = (fitSolids.length ? fitSolids : solids).flatMap((s) =>
     s.stick ? [s.stick.a, s.stick.b] : s.faces.flatMap((f) => f.pts),
   );
-  const dimsOn = !!opts.dims && !project.instances.length;
+  // Nothing built (a refusal, an empty bench): no part to measure, so no dimension line says 0" (refusal surfaces).
+  const dimsOn = !!opts.dims && !project.instances.length && project.panels.length > 0;
   const bb = bounds(fitPts.length ? fitPts : [{ x: 0, y: 0, z: 0 }]);
   const span = Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z, 1);
   const off = span * 0.1;
@@ -698,6 +706,7 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   // Everything painted, in paint order, so a label can tell which of a part's paint is still showing.
   const painted: Paint[] = [];
   const grouped = doc as unknown as { beginGroup?: (a: Record<string, string>) => void; endGroup?: () => void };
+  const wallTone = new Map<Solid, V3 | null>();
   for (const sol of paintOrder(faceSolids(solids))) {
     const g = opts.partGroup && grouped.beginGroup ? opts.partGroup(sol.id) : null;
     if (g) grouped.beginGroup!(g);
@@ -727,6 +736,16 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
     doc.setLineWidth(c.lw);
     doc.setDrawColor(...c.edge);
     const screenPts: { x: number; y: number }[] = [];
+    // A round wall is one curved surface: one tone for all its facets (the mean of their normals), so it reads smooth
+    // instead of in faint bands, one per facet (row 135).
+    // The painter hands faces over one at a time (faceSolids), so the tone is the whole part's (`of`).
+    const whole = sol.of ?? sol;
+    let softN = wallTone.get(whole);
+    if (softN === undefined) {
+      const softVis = whole.faces.filter((f) => f.soft && dot(f.n, VIEW) > 1e-4);
+      softN = softVis.length ? norm(softVis.reduce((a, f) => add(a, f.n), { x: 0, y: 0, z: 0 })) : null;
+      wallTone.set(whole, softN);
+    }
     for (const f of vis) {
       const pts = f.pts.map(map);
       screenPts.push(...pts);
@@ -749,13 +768,14 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
         doc.fillStrokeEvenOdd();
       } else if (f.soft) {
         // A facet of a round wall: no seam lines (stroke in its own colour closes hairline gaps), silhouette only.
-        const fill = tone === "ghost" ? c.fill : shade(c.fill, f.n);
+        const fill = tone === "ghost" ? c.fill : shade(c.fill, softN ?? f.n);
+        doc.setFillColor(...fill);
         doc.setDrawColor(...fill);
         doc.setLineWidth(0.35);
         poly(doc, pts, "FD");
         doc.setDrawColor(...c.edge);
         doc.setLineWidth(c.lw);
-        for (const [a, b] of f.sil ?? []) {
+        for (const [a, b] of [...(f.sil ?? []), ...(f.rim ?? [])]) {
           const A = map(a), B = map(b);
           doc.line(A.x, A.y, B.x, B.y);
         }

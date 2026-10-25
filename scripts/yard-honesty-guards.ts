@@ -1,3 +1,4 @@
+import { shelfLineCount } from "../src/lib/yard/shelfSpan";
 import { planSolidBoards } from "../src/lib/yard/solidStock";
 import { placementIndex } from "../src/lib/yard/placeEveryPart";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
@@ -5168,7 +5169,8 @@ console.log("SOFT-TRUST OK", {
   const book = generateFromPrompt("bookcase 36 wide 12 deep 72 tall with three shelves");
   if (!/Bookcase/i.test(book.name)) failHonesty("b39 protect bookcase title", book.name);
   const bookShelves = book.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
-  if (bookShelves.length !== 3) failHonesty("b39 protect bookcase Shelf×3", bookShelves.length);
+  // Three shelf levels. 36" of 3/4" is past the 30" stock span, so each level is two bay pieces.
+  if (shelfLineCount(bookShelves) !== 3 || bookShelves.length !== 6) failHonesty("b39 protect bookcase Shelf×3", bookShelves.length);
   if (Math.abs(book.overall.width - 36) > 1.0 || Math.abs(book.overall.height - 72) > 2.0 || Math.abs(book.overall.depth - 12) > 1.0) {
     failHonesty("b39 protect bookcase envelope", book.overall);
   }
@@ -5467,11 +5469,11 @@ console.log("SOFT-TRUST OK", {
     const book = generateFromPrompt("house: bookshelf 36 wide 12 deep 72 tall five shelves");
     const bookPlan = buildPlan(book);
     const shelfPanels = book.panels.filter((p) => p.type === "shelf");
-    if (shelfPanels.length !== 5) {
+    if (shelfLineCount(shelfPanels) !== 5 || shelfPanels.length !== 10) {
       failVoice("shelfHeight bookcase shelf count ≠ 5", shelfPanels.map((p) => p.name));
     }
     const pinStep = bookPlan.instructions.find(
-      (s) => /Pin \d+ adjustable shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
+      (s) => /Pin \d+ (?:adjustable )?shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
     );
     if (!pinStep) failVoice("shelfHeight bookcase missing pin/glue shelf step", bookPlan.instructions.map((s) => s.title));
     const pinBlob = `${pinStep!.title} ${pinStep!.description}`;
@@ -7706,7 +7708,7 @@ console.log("STRANGER PLAN OK", {
     if (!c.quarter && !/diagonal/i.test(blob)) failHonesty(`corner steps missing diagonal cut ${c.prompt}`);
     if (c.quarter && !/arc/i.test(blob)) failHonesty(`corner steps missing arc cut ${c.prompt}`);
     if (!/both walls/i.test(blob) || !/stud/i.test(blob)) failHonesty(`corner steps missing screw into both walls / studs ${c.prompt}`);
-    if (/shelf pin|5 ?mm|Pin \d+ adjustable|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
+    if (/shelf pin|5 ?mm|Pin \d+ (?:adjustable shel|shelves \()|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
     if (!c.wall && !/Wall panel A/.test(blob)) failHonesty(`corner steps missing wall panels ${c.prompt}`);
   }
   // Protect: rectangle bookcase, bookcase placed in a corner with a typed width, floating shelf with brackets.
@@ -8381,6 +8383,13 @@ console.log("STRANGER PLAN OK", {
   ] as const) {
     const p = generateFromPrompt(prompt);
     if (!titleRe.test(p.name)) failHonesty("shelf-count-carcase sibling title", prompt, p.name);
+    if (p.refused) {
+      // 36" cannot hold 5 shelves at 7" clear. The shared minimum is 48" (closetShelfMinHeight).
+      if (!/kids bookcase/.test(prompt) || !/at least 48" tall for 5 shelves with 7" clear/.test(p.refused) || p.panels.length) {
+        failHonesty("shelf-count-carcase sibling refusal", prompt, p.refused, p.panels.length);
+      }
+      continue;
+    }
     if (Math.abs(p.overall.width - wantW) > 2 || Math.abs(p.overall.height - wantH) > 2) {
       failHonesty("shelf-count-carcase sibling envelope", prompt, p.overall);
     }
@@ -8388,8 +8397,11 @@ console.log("STRANGER PLAN OK", {
     if (wantD >= 12 && Math.abs(p.overall.depth - wantD) > 2) {
       failHonesty("shelf-count-carcase sibling depth", prompt, p.overall);
     }
-    const n = p.panels.filter((x) => /^Shelf\s+\d+/i.test(x.name) || x.type === "shelf").length;
+    const shelvesN = p.panels.filter((x) => /^Shelf\s+\d+/i.test(x.name) || x.type === "shelf");
+    const n = shelfLineCount(shelvesN);
     if (n !== wantN) failHonesty("shelf-count-carcase sibling Shelf×N", prompt, n, p.panels.map((x) => x.name));
+    const pieces = prompt.startsWith("bookcase 36") ? wantN * 2 : wantN;
+    if (shelvesN.length !== pieces) failHonesty("shelf-count-carcase sibling Shelf×N", prompt, shelvesN.length, p.panels.map((x) => x.name));
     if (p.panels.some((x) => /Stand post/i.test(x.name))) {
       failHonesty("shelf-count-carcase sibling not stand", prompt, p.panels.map((x) => x.name));
     }
