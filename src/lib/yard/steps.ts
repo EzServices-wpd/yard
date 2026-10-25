@@ -51,7 +51,7 @@ import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMoun
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
-import { isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
+import { adjustableShelfTalk, isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
@@ -1798,7 +1798,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     /wine/i.test(project.name) ||
     (/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase()));
   if (wineRack) {
-    const rails = panels.filter((p) => p.type === "rail" || /bottle rail/i.test(p.name));
+    const rails = panels.filter((p) => (p.type === "rail" || /bottle rail/i.test(p.name)) && !/^Front rail\b/.test(p.name));
     const dividers = panels.filter((p) => p.type === "divider");
     // Say the real bottle capacity up front (the same sentence as the notes).
     const capacity = (project.notes ?? []).join(" ").match(/Holds [^]*?(?=\s*Not a bookcase|$)/)?.[0]?.trim() ?? "";
@@ -2617,7 +2617,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
           }
         : {
             step: n++,
-            title: `Pin ${shelfLineCount(looseShelves)} adjustable shel${shelfLineCount(looseShelves) === 1 ? "f" : "ves"} — 4 pins each`,
+            title: `Pin ${adjustableShelfTalk(panels).phrase} — 4 pins each`,
             description: `${looseShelves.map(cutLine).join("; ")}. ${shelfHeights(looseShelves)} Drill 13/64" pin holes (a snug fit for 3/16" pins) in both uprights (and dividers if the bay is split) at those marked heights, 1¼" from the front, 1¼" apart — the standard shelf-pin spacing. Four pins per shelf${looseShelves.length === shelfLineCount(looseShelves) ? "" : " piece"} (${looseShelves.length * 4} pins total). Do not glue the shelves; the pins hold them so you can move them later.`,
             tips: "A pegboard jig or a shelf-pin jig beats measuring every hole twice.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...looseShelves]),
@@ -2633,10 +2633,11 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const railTalk = frontRails.length
       ? `Glue and screw ${frontRails.length === 1 ? "the front rail" : "each front rail"} on edge under the front of its shelf. `
       : "";
+    const hatShelf = fixedSpanShelves.length > 0 && panels.some((p) => /hanging rod/i.test(p.name));
     steps.push({
       step: n++,
       title: spanDividers.length ? (spanDividers.length === 1 ? "Set the center divider" : "Set the center dividers") : frontRails.length === 1 ? "Glue the front rail under the shelf" : "Glue the front rails under the shelves",
-      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? "Screw each fixed shelf to the uprights. " : ""}${shelfBearers.length ? "Screw each shelf bearer to the center divider beside it. " : ""}${railTalk}${spanDividers.length ? spanDividerTalk(project, spanDividers, panels) : ""}`.trim(),
+      description: `${[...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails].map(cutLine).join("; ")}. ${fixedSpanShelves.length ? `Screw each fixed shelf to the uprights${hatShelf ? ", including the hat shelf over the rod" : ""}. ` : ""}${shelfBearers.length ? "Screw each shelf bearer to the center divider beside it. " : ""}${railTalk}${spanDividers.length ? spanDividerTalk(project, spanDividers, panels) : ""}`.trim(),
       partsUsed: names([...fixedSpanShelves, ...spanCleats, ...spanDividers, ...shelfBearers, ...frontRails]),
     });
   }
