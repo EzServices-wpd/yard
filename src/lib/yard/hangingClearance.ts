@@ -27,6 +27,8 @@ export const LONG_HANG_HI = 70;
 export const DOUBLE_HANG_IN = 42;
 /** Shortest box that takes a double-hang pair: the upper rod sits 8" under the top and at least 80" up. */
 export const DOUBLE_HANG_MIN_H_IN = 88;
+/** Hang under each stacked rod: the upper rod of a pair sits at least this far over the lower one. */
+const TIER_HANG_IN = 34;
 /** A closet rod sags past this clear span, so a wide bay gets a divider. */
 export const ROD_BAY_MAX_IN = 42;
 export const ROD_DIA = 1.25;
@@ -42,12 +44,23 @@ export function isClothesRodPrompt(lower: string): boolean {
   if (/\blinen\b|\btowel\b/.test(lower) && !/\bwardrobe\b/.test(lower)) return false;
   if (/\bwardrobe\b|\barmoire\b/.test(lower)) return true;
   // Plurals and "hanging" too: "closet with 2 rods" / "hanging rods" hang clothes (typedRodDemand reads rods? as well).
-  return /\bcloset\b/.test(lower) && /system|walk-?in|along the wall|wall of closets|\brods?\b|\bhang(?:s|ing)?\b|\brails?\b/.test(lower);
+  // "hanging"/"rails" hang clothes only when they don't name another hung thing ("hanging baskets", "drawer rails").
+  const hangWord = /\bhanging\b(?!\s+(?!rods?\b|rails?\b|space\b|clothes\b|section\b|area\b|bar\b|and\b|with\b)[a-z])/.test(lower);
+  const railWord = /(?:^|\b(?:with|hanging|clothes|closet|\d+|two|and)\s+)rails?\b/.test(lower);
+  return /\bcloset\b/.test(lower) && (/system|walk-?in|along the wall|wall of closets|\brods?\b|\bhangs?\b/.test(lower) || hangWord || railWord);
 }
 
-/** "2 rods", "two hanging rods": the person asked for a pair of rods (double hang). */
+const ROD_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+
+/** Typed rod count: "3 rods", "two hanging rods". 0 when none is typed. */
+export function rodsAsked(prompt: string): number {
+  const m = prompt.match(/\b(\d+|two|three|four|five|six)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods\b/i);
+  return !m ? 0 : /\d/.test(m[1]) ? parseInt(m[1], 10) : ROD_WORDS[m[1].toLowerCase()];
+}
+
+/** "2 rods", "two hanging rods": the person asked for more than one rod (double hang). */
 export function twoRodsAsked(prompt: string): boolean {
-  return /\b(?:2|two)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods\b/i.test(prompt);
+  return rodsAsked(prompt) >= 2;
 }
 
 /** Default depth for a clothes-rod build, or null when this prompt is not one. */
@@ -63,7 +76,7 @@ export function rodCenters(height: number, doubleHang: boolean): number[] {
   const cap = height - 8;
   if (doubleHang && height >= DOUBLE_HANG_MIN_H_IN) {
     const upper = Math.min(84, cap);
-    if (upper >= DOUBLE_HANG_IN + 34) return [DOUBLE_HANG_IN, upper];
+    if (upper >= DOUBLE_HANG_IN + TIER_HANG_IN) return [DOUBLE_HANG_IN, upper];
   }
   if (cap >= LONG_HANG_LO) return [Math.min(LONG_HANG_HI, Math.max(LONG_HANG_LO, Math.min(LONG_HANG_IN, cap)))];
   // Too short for a 64" hang: the rod sits 8" under the top, not forced up into the ceiling.
@@ -145,12 +158,41 @@ export function hangingClearanceIssues(p: YardProject): string[] {
  */
 export function hangingDepthRefusal(p: YardProject, prompt: string): YardProject | null {
   if (p.refused || !p.panels.length) return null;
+  // Only a build that hangs clothes (the wardrobe/closet program) is refused for depth; a pantry or shoe rack is not.
+  const prog = (p as { fitted?: { program?: string } }).fitted?.program;
+  if (prog && prog !== "wardrobe" && prog !== "closet") return null;
   const lower = prompt.toLowerCase();
   if (!isClothesRodPrompt(lower) && clothesRodDefaultDepth(lower, "") == null) return null;
   if (sideHangFits(hangerInterior(p))) return null;
   const noun = askedNoun(p);
   const a = /^[aeio]/i.test(noun) ? "An" : "A";
   const why = `${a} ${noun.toLowerCase()} needs at least ${inchFrac(HANGER_MIN_DEPTH_IN)}" deep so clothes can hang (hangers need about ${HANGER_CLEAR_IN}" inside). Nothing is built at ${inchFrac(p.overall.depth)}".`;
+  return { ...p, name: noun, panels: [], instances: [], refused: why, cardNote: why, notes: [why] };
+}
+
+/**
+ * Row 433 (FR-004 count rule): a typed rod count the build does not hold is refused, never cut to one rod.
+ * Each bay stacks at most a double-hang pair, which needs DOUBLE_HANG_MIN_H_IN; a third tier is another TIER_HANG_IN of hang.
+ */
+export function rodCountRefusal(p: YardProject, prompt: string): YardProject | null {
+  if (p.refused || !p.panels.length) return null;
+  const prog = p.fitted?.program;
+  if (prog !== "wardrobe" && prog !== "closet") return null;
+  const n = rodsAsked(prompt);
+  const rods = p.panels.filter(isHangingRod);
+  if (n < 2 || !rods.length || rods.length >= n) return null;
+  const bays = new Set(rods.map((r) => r.position.x.toFixed(2))).size;
+  const tiers = Math.ceil(n / bays);
+  // Tall enough already (drawers under the rod, say): the hangingTalk note says one rod is built.
+  if (tiers <= 2 && p.overall.height >= DOUBLE_HANG_MIN_H_IN) return null;
+  const noun = askedNoun(p);
+  const a = /^[aeio]/i.test(noun) ? "An" : "A";
+  const minH = DOUBLE_HANG_MIN_H_IN + (tiers - 2) * TIER_HANG_IN;
+  const at = `Nothing is built at ${inchFrac(p.overall.height)}".`;
+  const why =
+    tiers <= 2
+      ? `${a} ${noun.toLowerCase()} needs at least ${minH}" tall for ${n} rods. ${at}`
+      : `${a} ${noun.toLowerCase()} needs at least ${minH}" tall for ${n} rods, taller than a 4×8 sheet cuts. ${a} ${noun.toLowerCase()} up to 96" tall holds ${bays * 2}. ${at}`;
   return { ...p, name: noun, panels: [], instances: [], refused: why, cardNote: why, notes: [why] };
 }
 

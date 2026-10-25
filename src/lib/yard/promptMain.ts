@@ -3,7 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
-import { hangingDepthRefusal, hangingTalk, supportHangingBays } from "./hangingClearance";
+import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -410,8 +410,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
     const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", rebuild) : null;
     const shelves = !small && idDepth === 1 ? shelfCountRefusal(raw, args[0] ?? "", rebuild) : null;
-    // A clothes rod in a box a hanger cannot use is refused, naming the depth that hangs.
-    const hung = idDepth === 1 ? hangingDepthRefusal(small ?? shelves ?? raw, args[0] ?? "") : null;
+    // A clothes rod in a box a hanger cannot use is refused, naming the depth that hangs; so is a typed rod count that does not fit (row 433).
+    const hung = idDepth === 1 ? hangingDepthRefusal(small ?? shelves ?? raw, args[0] ?? "") ?? rodCountRefusal(small ?? shelves ?? raw, args[0] ?? "") : null;
     const built0 = hung ?? small ?? shelves ?? raw;
     // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
     const typed = args[0] ?? "";

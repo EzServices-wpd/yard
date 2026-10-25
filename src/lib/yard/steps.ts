@@ -2654,7 +2654,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   if (hangingRods.length) {
     steps.push({
       step: n++,
-      title: hangingRods.length === 1 ? "Seat the hanging rod" : `Seat ${hangingRods.length} hanging rods — one per bay`,
+      title: hangingRods.length === 1 ? "Seat the hanging rod" : `Seat ${hangingRods.length} hanging rods${new Set(hangingRods.map((r) => r.position.x.toFixed(2))).size === hangingRods.length ? " — one per bay" : ""}`,
       description: `${hangingRods.map(cutLine).join("; ")}. Seat each rod in closet-rod sockets on that bay's uprights or dividers, ${rodDropTalk(hangingRods, project.panels, project.overall.height)}. A rod cannot pass through a divider.`,
       partsUsed: names(hangingRods),
     });

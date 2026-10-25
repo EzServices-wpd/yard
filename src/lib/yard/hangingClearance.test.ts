@@ -330,13 +330,12 @@ it("row 391: a typed shelf count of 13 or more is never cut to the hat; a typed 
   assert.equal(shelfLines(generateFromPrompt("wardrobe with 0 shelves").panels), shelfLines(generateFromPrompt("wardrobe").panels));
 });
 
-it("row 392: plural or 'hanging' rods hang clothes; a shallow box with rods is refused; two rods asked and one built says so", () => {
-  for (const q of ["closet with 2 rods", "closet with rods", "closet with two rods", "closet with hanging rods", "closet organizer with rods"]) {
+it("row 392: plural or 'hanging' rods hang clothes; a shallow box with rods is refused; two rods asked are built as a pair", () => {
+  for (const q of ["closet with 2 rods 88 tall", "closet with rods", "closet with two rods 96 tall", "closet with hanging rods", "closet organizer with rods"]) {
     const p = generateFromPrompt(q);
     assert.ok(rodsOf(q).length >= 1, q);
     assert.equal(p.overall.depth, 24, q);
   }
-  assert.match(generateFromPrompt("closet with 2 rods").notes.join(" "), /You asked for 2 rods\. One rod is built/);
   assert.equal(rodsOf("wardrobe 96 tall with 2 rods").length, 2);
   const shallow = generateFromPrompt("closet with rods 16 deep");
   assert.equal(shallow.panels.length, 0);
@@ -354,4 +353,26 @@ it("row 393: a wide drawer wardrobe carries the drawer-bay floor on bay dividers
     }
     for (const rod of rodsOf(q)) assert.ok(rod.size.width <= ROD_BAY_MAX_IN, q);
   }
+});
+
+it("row 432: 'hanging' or 'rails' naming another hung thing is not a clothes rod; only a wardrobe or closet build is refused for depth", () => {
+  for (const q of ["pantry closet 12 deep with hanging baskets", "pantry closet 16 deep with hanging baskets", "closet 14 deep with hanging shoe organizer", "closet 16 deep with drawer rails", "closet with hanging file rails 15 deep", "garage closet 18 deep with hanging tools"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(!p.refused && p.panels.length > 0, `${q}: ${p.refused}`);
+  }
+  assert.equal(rodsOf("closet 16 deep with drawer rails").length, 0);
+  for (const q of ["pantry closet with hanging baskets", "closet with hanging shoe organizer"]) assert.ok(generateFromPrompt(q).overall.depth < HANGER_MIN_DEPTH_IN, q);
+});
+
+it("row 433: a typed rod count that does not fit is refused naming the height, never cut to one rod", () => {
+  for (const q of ["closet with 2 rods", "closet with two rods", "closet with 2 rods 84 tall", "wardrobe with 2 rods"]) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.panels.length, 0, q);
+    assert.match(p.refused ?? "", /needs at least 88" tall for 2 rods\. Nothing is built at 84"\./, q);
+  }
+  const three = generateFromPrompt("closet with 3 rods");
+  assert.equal(three.panels.length, 0);
+  assert.match(three.refused ?? "", /for 3 rods, taller than a 4×8 sheet cuts\. A closet up to 96" tall holds 2\. Nothing is built at 84"\./);
+  assert.equal(rodsOf("closet with 2 rods 88 tall").length, 2);
+  assert.ok(rodsOf("closet 96 wide with 3 rods").length >= 3);
 });
