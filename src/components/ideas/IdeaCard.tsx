@@ -70,7 +70,7 @@ export function IdeaRow({ card, href, onOpen, onIntent }: { card: Card; href: st
       onTouchStart={onIntent}
       data-idea-row={card.slug}
       data-build-type={card.buildType}
-      className="group flex min-h-12 flex-col justify-center border-b border-rule py-2 text-left"
+      className="group flex h-full min-h-12 flex-col justify-center border-b border-rule py-2 text-left"
     >
       <span className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-display text-base leading-tight text-ink group-hover:underline">{card.title}</span>
