@@ -43,6 +43,14 @@ export type IdeasFeed = { at: string; live: boolean; countsLive: boolean; hero: 
 /** Cards a section shows before "Show all". */
 export const SECTION_SHOW = 8;
 
+/**
+ * The Show all control's words, from the section's own numbers: the count it opens, and the real total when the feed
+ * sent fewer (liveFeed sends the top SECTION_MAX and sets `total` to every card the section has).
+ */
+export function showAllLabel(s: Pick<IdeaSection, "cards" | "total">): string {
+  return s.total > s.cards.length ? `Show top ${s.cards.length} of ${s.total}` : `Show all ${s.cards.length}`;
+}
+
 type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string; dims?: SolvedDims }>;
 export function drawingFor(slug: string, manifest: Manifest = DRAWINGS as Manifest): DrawingRef | null {
   const m = manifest[slug];
