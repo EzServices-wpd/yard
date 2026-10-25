@@ -36,7 +36,8 @@ const PART_AFTER = /^\s*(?:\d|[,×*~–-]|(?:x|by|to)\b|x(?=\d))/;
 const partOfMeasurement = (prompt: string, q: string) => {
   const P = norm(prompt), i = quoteAt(prompt, q), rest = P.slice(i + norm(q).length);
   const axisEnds = /\b(?:wide|width|deep|depth|tall|high|height|long|length)$/.test(norm(q)) || AXIS_AFTER.test(rest); // "90cm wide 6 ft tall": a new size follows
-  return PART_BEFORE.test(P.slice(0, i)) || (!axisEnds && PART_AFTER.test(rest));
+  // A signed number ("-2 m tall") is not a size: drop it rather than lose the sign (row 482).
+  return /^[-−–~+]/.test(norm(q)) || PART_BEFORE.test(P.slice(0, i)) || (!axisEnds && PART_AFTER.test(rest));
 };
 /** Every axis word or letter typed for an axis ("30 wide", "width 30", "W 30"), outside this quote and its own axis word. */
 const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width)\b|\bw\s*[:=]?\s*\d/g, D: /\b(?:deep|depth)\b|\bd\s*[:=]?\s*\d/g, H: /\b(?:tall|high|height)\b|\bh\s*[:=]?\s*\d/g, L: /\b(?:long|length)\b|\bl\s*[:=]?\s*\d/g };

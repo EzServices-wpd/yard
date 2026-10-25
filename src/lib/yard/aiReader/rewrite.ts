@@ -65,10 +65,12 @@ export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: Read
     if (c.confidence < MIN_CONFIDENCE || c.thing === "other" || c.thing === "pieces" || !NUMBER_WORD.test(c.quote)) continue;
     if (new RegExp(`\\b${c.n}\\s+${c.thing.replace(/s$/, "")}`, "i").test(c.quote)) continue;
     const to = `${c.n} ${c.n === 1 ? (c.thing === "shelves" ? "shelf" : c.thing === "cubbies" ? "cubby" : c.thing.replace(/s$/, "")) : c.thing}`;
-    const next = replaceOnce(out, c.quote, to);
+    // "a pair of doors" → "2 doors", not "a 2 doors" (row 482).
+    const from = /^pair\b/i.test(c.quote) && replaceOnce(out, `a ${c.quote}`, to) !== null ? `a ${c.quote}` : c.quote;
+    const next = replaceOnce(out, from, to);
     if (next === null) continue;
     out = next;
-    edits.push({ from: c.quote, to });
+    edits.push({ from, to });
   }
   return { prompt: out.replace(/\s+/g, " ").trim(), edits, sizes: used };
 }
