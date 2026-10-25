@@ -33,9 +33,23 @@ test("row 292: tall freestanding casework and dressers buy one anti-tip kit and 
   }
 });
 
-test("row 292: a nightstand with a drawer gets the kit too; short open shelves, beds, islands and wall-hung units are not", () => {
-  assert.equal(kitAndStrap("nightstand").kits.length, 1);
-  for (const q of ["bunk bed", "kitchen island", "floating shelf 36 wide", "medicine cabinet", "over-toilet shelf", "coffee table", "shoe bench", "rolling bar cart painted black"]) {
+test("row 292 (F2057): drawer units 27\" and taller finished get the kit and one strap step by id; 26 3/4\" do not", () => {
+  for (const q of ["dresser 36 wide 27 tall", "nightstand 20 wide 27 tall 16 deep", "chest of drawers 27 tall"]) {
+    const { p, kits, straps } = kitAndStrap(q);
+    assert.equal(p.overall.height, 27, q);
+    assert.equal(kits.length, 1, q);
+    assert.deepEqual(straps.map((s) => s.fastenersUsed), [[{ id: ANTI_TIP_ID, qty: 1 }]], q);
+  }
+  for (const q of ["dresser 36 wide 26 3/4 tall", "nightstand 20 wide 26 3/4 tall 16 deep", "chest of drawers 26 3/4 tall", "nightstand"]) {
+    const { p, kits, straps } = kitAndStrap(q);
+    assert.ok(p.overall.height < 27, q);
+    assert.deepEqual([kits.length, straps.length], [0, 0], q);
+  }
+});
+
+test("row 292: short open shelves, beds, islands, desks, vanities, kitchen bases and wall-hung units are not", () => {
+  assert.equal(kitAndStrap("desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space").kits.length, 0);
+  for (const q of ["bunk bed", "kitchen island", "floating shelf 36 wide", "medicine cabinet", "over-toilet shelf", "coffee table", "shoe bench", "rolling bar cart painted black", "bathroom vanity 36 wide with drawers", "kitchen base cabinet 36 wide with drawers", "wall cabinet 30 wide with drawers"]) {
     const { kits, straps } = kitAndStrap(q);
     assert.deepEqual([kits.length, straps.length], [0, 0], q);
   }
