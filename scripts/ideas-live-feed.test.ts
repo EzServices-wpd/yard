@@ -131,16 +131,21 @@ test("types.json is current with the engine (re-run scripts/gen-idea-types.ts)",
 // from the engine's result (build type + logged W×D×H), never a visitor's prompt, typos and all.
 test("no typed prompt reaches the Ideas feed, the hero or the home 'Making now' strip", async () => {
   const { makingNow } = await import("../src/lib/ideas/liveFeed");
-  const typed = [
-    row("cardboard mailbox 8 wide 18 tall", "builtin:mailbox", 22, after(9), "Trusted", "8×8×18"),
-    row("pine 1x6 toolbx 18 lnog", "builtin:pine-toolbo", 4, after(10), "Trusted", "18×16×18"),
-    row("I need to fit a 3 foot shelf for my enterance hallway", "builtin:shelf", 1, after(11), "Trusted", "3.625×3.625×24"),
-  ];
-  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...typed] };
   const base = curatedFeed(RECIPES);
+  // Log-only types that DO render: a baked drawing of their engine type (types.json) and no curated card of their own,
+  // so the card is built from the log rows (cardFor's log branch), not copied from a curated card.
+  const curatedTypes = new Set(base.sections.flatMap((s) => s.cards.map((c) => c.buildType)));
+  const shown = [...new Set(Object.values(TYPES as Record<string, string>))].filter((t) => !curatedTypes.has(t) && drawingForType(t) && typeKey(`builtin:${t}`) === t);
+  assert.ok(shown.length >= 2, `need log-only drawn types, got ${shown}`);
+  // Typo prompts, newest in the log so they lead "Popular recently" and the strip.
+  const typed = shown.map((t, i) => row(`${t.replace(/-/g, " ")} wiht teh typo ${i} 24 wide`, `builtin:${t}`, 3, after(40 + i), "Trusted", "24×12×30"));
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...typed] };
   const f = liveFeed(snap, base, NOW);
+  const cards0 = f.sections.flatMap((s) => s.cards);
+  for (const t of shown) assert.ok(cards0.some((c) => c.buildType === t && c.count > 0 && c.drawing), `${t} is a shown, drawn log card`);
   const strip = makingNow(f);
   assert.ok(strip.length > 0, "the strip has rows on a live feed");
+  for (const t of shown) assert.ok(strip.some((it) => cards0.find((c) => c.slug === it.slug)?.buildType === t), `${t} is in the strip`);
   const json = JSON.stringify({ f, strip }).toLowerCase();
   for (const r of typed) assert.ok(!json.includes(r.prompt.toLowerCase()), `typed prompt leaked: "${r.prompt}"`);
   // Any example prompt that is not Yard's own (a curated or recipe card's) is never a logged prompt.
