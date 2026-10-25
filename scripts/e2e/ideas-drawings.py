@@ -3,13 +3,17 @@ I-draw on a built site: every card /ideas?test=1 shows paints its own baked draw
 to the end and opening every "Show all": no [data-idea-no-drawing] stand-in, and every card drawing <img> loaded
 (complete, naturalWidth > 0). A fresh browser has no kept plans, so the stand-in has no legitimate use here.
 
-  python3 scripts/e2e/ideas-drawings.py http://127.0.0.1:8091
-Exit 1 on any failure.
+  python3 scripts/e2e/ideas-drawings.py http://127.0.0.1:8091 [--trace-dir DIR]
+Exit 1 on any failure. One run, no retries (a failure is a finding, not a flake); a failing width saves a Playwright
+trace (screenshots + DOM snapshots) to DIR/ideas-drawings-<width>.zip for `npx playwright show-trace`.
 """
 import sys
 from playwright.sync_api import sync_playwright
 
-U = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://127.0.0.1:8091"
+args = [a for a in sys.argv[1:] if not a.startswith("--")]
+U = args[0].rstrip("/") if args else "http://127.0.0.1:8091"
+TRACE = sys.argv[sys.argv.index("--trace-dir") + 1] if "--trace-dir" in sys.argv else "/tmp"
+if TRACE in args: args.remove(TRACE)
 fails = []
 CARDS_JS = """() => { const imgs = [...document.querySelectorAll('main .idea-ink img.idea-wood')];
   return { blank: [...document.querySelectorAll('[data-idea-no-drawing]')].map(e => e.textContent.trim()),
@@ -19,6 +23,7 @@ with sync_playwright() as p:
     br = p.chromium.launch()
     for W, H in ((390, 844), (1440, 900)):
         ctx = br.new_context(viewport={"width": W, "height": H}, is_mobile=W < 500, has_touch=W < 500, extra_http_headers={"x-yard-test": "1"})
+        ctx.tracing.start(screenshots=True, snapshots=True)
         ctx.route("**/api/ideas-log*", lambda r: r.fulfill(status=204))
         page = ctx.new_page()
         page.goto(f"{U}/ideas?test=1", wait_until="networkidle")
@@ -35,6 +40,9 @@ with sync_playwright() as p:
         for t in r["blank"]: fails.append(f"{tag}: card {t!r} paints no drawing (data-idea-no-drawing)")
         for s in r["broken"]: fails.append(f"{tag}: drawing {s} did not load")
         print(f"{tag}: {r['imgs']} drawings, {len(r['blank'])} stand-ins, {len(r['broken'])} broken")
+        bad = not r["imgs"] or r["blank"] or r["broken"]
+        ctx.tracing.stop(path=f"{TRACE}/ideas-drawings-{W}.zip" if bad else None)
+        if bad: print(f"{tag}: trace {TRACE}/ideas-drawings-{W}.zip")
         ctx.close()
     br.close()
 for f in fails: print("FAIL", f)
