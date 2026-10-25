@@ -8777,6 +8777,167 @@
     "Typical indoor wooden plant stand"
    ],
    "learned": true
+  },
+  {
+   "key": "bookshelf",
+   "synonyms": [
+    "bookcase",
+    "shelving unit"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "Kids Room Bookshelf",
+   "size": {
+    "width": 36,
+    "height": 48,
+    "depth": 12
+   },
+   "feet": false,
+   "outdoor": false,
+   "wall": true,
+   "defining": [],
+   "parts": [
+    {
+     "role": "panel",
+     "name": "Left side",
+     "box": [
+      0,
+      0,
+      0,
+      0.05,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Right side",
+     "box": [
+      0.95,
+      0,
+      0,
+      0.05,
+      1,
+      1
+     ],
+     "kind": "panel"
+    },
+    {
+     "role": "panel",
+     "name": "Bottom",
+     "box": [
+      0.05,
+      0,
+      0,
+      0.9,
+      0.04,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Top",
+     "box": [
+      0.05,
+      0.96,
+      0,
+      0.9,
+      0.04,
+      1
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side"
+     ]
+    },
+    {
+     "role": "panel",
+     "name": "Back",
+     "box": [
+      0.05,
+      0.04,
+      0.95,
+      0.9,
+      0.92,
+      0.05
+     ],
+     "kind": "panel",
+     "on": [
+      "Left side",
+      "Right side",
+      "Bottom",
+      "Top"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Shelf1",
+     "box": [
+      0.05,
+      0.25,
+      0,
+      0.9,
+      0.03,
+      0.95
+     ],
+     "kind": "member",
+     "on": [
+      "Left side",
+      "Right side",
+      "Back"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Shelf2",
+     "box": [
+      0.05,
+      0.5,
+      0,
+      0.9,
+      0.03,
+      0.95
+     ],
+     "kind": "member",
+     "on": [
+      "Left side",
+      "Right side",
+      "Back"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Shelf3",
+     "box": [
+      0.05,
+      0.75,
+      0,
+      0.9,
+      0.03,
+      0.95
+     ],
+     "kind": "member",
+     "on": [
+      "Left side",
+      "Right side",
+      "Back"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Open front for easy access to books and toys",
+    "Sturdy pine construction typical for children's rooms",
+    "Wall-anchored for safety"
+   ],
+   "learned": true
   }
  ]
 }
