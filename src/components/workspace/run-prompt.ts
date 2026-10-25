@@ -21,6 +21,11 @@ import { isBareProductPrompt } from "@/lib/yard/productModel";
 import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
 import type { FittedSpec } from "@/lib/yard/types";
+import { readPromptSpec } from "@/lib/ai/readPrompt";
+import { chooseBuildPrompt } from "@/lib/yard/aiReader/rewrite";
+import { needsReader, READER_TIMEOUT_MS } from "@/lib/yard/aiReader/core";
+import { currentTestFlags } from "@/lib/ideas/testFlags";
+import { looksLikeFollowOn } from "@/lib/yard/promptHelpers";
 
 const HOUSE_HINT =
   /closet|desk|vanity|table|prep\s*table|folding\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b|workbench|pegboard|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|sorter|drying\s*rack|utility\s*shel|planter|outdoor\s*side\s*table|side\s*table/i;
@@ -353,6 +358,24 @@ export function latestPromptRun(): number {
   return latestRun;
 }
 
+/** Built with the reader off (YARD_AI_READER unset), no tab asks; the server saying off (no key, cap hit) stops this tab asking. */
+let readerOff = false;
+/**
+ * AI prompt reader (I49): only for words the regex parser cannot read, never offline/local test runs, never a
+ * follow-on edit to the bench. Off, failed, capped, late or a different object → the typed words build, as today.
+ */
+function readerWanted(typed: string, fresh: boolean | undefined): boolean {
+  if (readerOff || typeof window === "undefined" || import.meta.env.VITE_PUBLIC_AI_READER !== "on" || !needsReader(typed)) return false;
+  const f = currentTestFlags();
+  const bench = useYard.getState().project.prompt;
+  return !f.offline && !f.local && !(!fresh && bench.trim() && looksLikeFollowOn(typed, bench));
+}
+async function readerPrompt(typed: string, run: PromptRun): Promise<string> {
+  const r = await withDeadline(readPromptSpec({ data: { prompt: typed, test: !!currentTestFlags().test }, signal: run.signal }), READER_TIMEOUT_MS + 500, run.signal).catch(() => null);
+  if (r && !r.ok && r.off) readerOff = true;
+  return chooseBuildPrompt(typed, r && r.ok ? r.spec : null).buildPrompt;
+}
+
 /** Homepage ?q= and the bench prompt bar share this so house prompts never fall through to craft interpret. */
 const AI = { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn };
 
@@ -373,9 +396,14 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
   noteBuildingPrompt(raw);
   // Sizes and length bounded before any geometry: "bookshelf 9999 wide" or a pasted essay never freezes the tab.
   const bounded = boundPrompt(raw);
-  const prompt = bounded.prompt;
+  const typed = bounded.prompt;
   const { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn } = { ...AI, ...opts.ai };
-  if (!prompt) return;
+  if (!typed) return;
+  let prompt = typed;
+  if (readerWanted(typed, opts.fresh)) {
+    prompt = await readerPrompt(typed, run);
+    if (!run.live()) return;
+  }
 
   const generate = useYard.getState().generate;
   const makePlan = useYard.getState().makePlan;
@@ -390,6 +418,8 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
   // The bar builds exactly what the engine builds from the typed words: generateFromPrompt reads the
   // fitted brief itself when the prompt is a carcase, so a pre-parsed brief would only steal real classes.
   generate(prompt, undefined, undefined, { fresh: opts.fresh });
+  // The bar keeps showing the words typed, never the reader's rewrite (I35).
+  if (prompt !== typed) useYard.getState().setProject({ ...useYard.getState().project, typedPrompt: typed });
   if (bounded.note) {
     const p = useYard.getState().project;
     useYard.getState().setProject({ ...p, notes: [bounded.note, ...p.notes] });

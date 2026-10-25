@@ -1,0 +1,92 @@
+/**
+ * Spec → the words the engine reads, and which words build (I49). The engine reads words, not JSON, so only a
+ * measurement the regex path could misread is replaced by its axis-labelled fraction-inch form ("30x18x72" →
+ * "30 wide 18 deep 72 tall", "90cm wide" → "35 7/16 wide"); every other typed word stays. No edit → the identical
+ * prompt → the byte-identical build. Rules (classes, no keyword lists):
+ *  1. The reader may change a size or count, never the object: a rewrite that builds another kind, builder or
+ *     stand-in, or turns a build into a refusal, falls back to the typed words.
+ *  2. Every size the reader read is built (±1/8") or refused, never silently widened or dropped; else typed words.
+ *  3. A size the regex build already has keeps its words (whole feet ±3": a "3 foot" Eiffel at 37 3/8" is 3 feet).
+ *  4. Two different overall values on one axis settle nothing.
+ */
+import { generateFromPrompt } from "../promptMain";
+import { inchFrac } from "../inchText";
+import type { YardProject } from "../types";
+import type { ReaderSize, ReaderSpec } from "./spec";
+
+const WORD = { W: "wide", D: "deep", H: "tall", L: "long" } as const;
+const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width|w)\b/i, D: /\b(?:deep|depth|d)\b/i, H: /\b(?:tall|high|height|h)\b/i, L: /\b(?:long|length|l)\b/i };
+const MIN_CONFIDENCE = 0.7;
+const sixteenth = (n: number) => Math.round(n * 16) / 16;
+const NUMBER_WORD = /-|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|pair|dual|couple)\b/i;
+
+/** A quote the regex path already reads: one plain inch number (no ft/cm/mm/fraction/pair) named by its own axis word. */
+function alreadyPlain(s: ReaderSize): boolean {
+  if (/\d\s*\/\s*\d|['′]|\bft\b|feet|foot|cm\b|mm\b|[x×]|\bby\b/i.test(s.quote)) return false;
+  const nums = s.quote.match(/\d+(?:\.\d+)?/g) ?? [];
+  return nums.length === 1 && Math.abs(+nums[0] - s.inches) < 1 / 32 && AXIS_WORDS[s.axis].test(s.quote);
+}
+const replaceOnce = (out: string, quote: string, to: string) => {
+  const i = out.toLowerCase().indexOf(quote.toLowerCase());
+  return i < 0 ? null : out.slice(0, i) + to + out.slice(i + quote.length);
+};
+
+export type Edit = { from: string; to: string };
+export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: ReaderSize) => boolean = () => false): { prompt: string; edits: Edit[]; sizes: ReaderSize[] } {
+  const edits: Edit[] = [];
+  const used: ReaderSize[] = [];
+  const usable = spec.sizes.filter((s) => s.of === "overall" && s.confidence >= MIN_CONFIDENCE && s.axis in WORD);
+  const perAxis = new Map<string, Set<number>>();
+  for (const s of usable) perAxis.set(s.axis, (perAxis.get(s.axis) ?? new Set()).add(sixteenth(s.inches)));
+  const byQuote = new Map<string, ReaderSize[]>();
+  for (const s of usable) byQuote.set(s.quote, [...(byQuote.get(s.quote) ?? []), s]);
+  let out = prompt;
+  for (const [quote, sizes] of byQuote) {
+    if (sizes.every(alreadyPlain) || sizes.every(honored) || sizes.some((s) => (perAxis.get(s.axis)?.size ?? 0) > 1)) continue;
+    if (new Set(sizes.map((s) => s.axis)).size !== sizes.length) continue;
+    const to = sizes.map((s) => `${inchFrac(s.inches)} ${WORD[s.axis as keyof typeof WORD]}`).join(" ");
+    const next = replaceOnce(out, quote, to);
+    if (next === null) continue;
+    out = next;
+    edits.push({ from: quote, to });
+    used.push(...sizes);
+  }
+  // Counts typed as words or hyphen compounds ("two-step", "3-drawer") → "2 steps", "3 drawers"; the quote only.
+  for (const c of spec.counts) {
+    if (c.confidence < MIN_CONFIDENCE || c.thing === "other" || c.thing === "pieces" || !NUMBER_WORD.test(c.quote)) continue;
+    if (new RegExp(`\\b${c.n}\\s+${c.thing.replace(/s$/, "")}`, "i").test(c.quote)) continue;
+    const to = `${c.n} ${c.n === 1 ? c.thing.replace(/s$/, "") : c.thing}`;
+    const next = replaceOnce(out, c.quote, to);
+    if (next === null) continue;
+    out = next;
+    edits.push({ from: c.quote, to });
+  }
+  return { prompt: out.replace(/\s+/g, " ").trim(), edits, sizes: used };
+}
+
+/** The build already stands at this size, within the precision typed (whole feet ±3", else ±1/8"). */
+export function honoredBy(p: YardProject, s: ReaderSize): boolean {
+  const box = p.pocket?.unit ?? p.overall;
+  if (!box) return false;
+  const nums = s.quote.match(/\d+(?:\.\d+)?/g) ?? [];
+  const wholeFeet = nums.length === 1 && Number.isInteger(+nums[0]) && /\b(?:ft|feet|foot)\b|['′]/i.test(s.quote);
+  const tol = wholeFeet ? 3 : 0.125; // the precision of the typed words, never the model's unit label
+  const near = (v: number) => Math.abs(v - s.inches) <= tol;
+  return s.axis === "W" ? near(box.width) : s.axis === "D" ? near(box.depth) : s.axis === "H" ? near(box.height) : s.axis === "L" ? near(Math.max(box.width, box.depth)) : true;
+}
+
+export type Choice = { buildPrompt: string; used: boolean; edits: Edit[]; reason: string };
+const identity = (p: YardProject) => [p.kind, p.fitted?.program ?? "", p.pocket ? "pocket" : "", p.standIn ? "standIn" : "", p.unmatched ? "unmatched" : "", p.displayOnly ? "display" : "", (p.name ?? "").split(/[\s·]/)[0].toLowerCase()].join("|");
+
+export function chooseBuildPrompt(prompt: string, spec: ReaderSpec | null, gen: (q: string) => YardProject = (q) => generateFromPrompt(q)): Choice {
+  const keep = (reason: string, edits: Edit[] = []): Choice => ({ buildPrompt: prompt, used: false, edits, reason });
+  if (!spec) return keep("no reading (off, failed, capped or late): regex path");
+  const a = gen(prompt);
+  const { prompt: rewritten, edits, sizes } = specToPrompt(prompt, spec, (s) => honoredBy(a, s));
+  if (!edits.length || rewritten === prompt) return keep("the regex build already has every size read: no edit");
+  const b = gen(rewritten);
+  if (identity(a) !== identity(b)) return keep(`rewrite changes the object (${identity(a)} → ${identity(b)}): regex path`, edits);
+  if (b.refused && !a.refused) return keep("rewrite turns a build into a refusal: regex path", edits);
+  if (!b.refused && !sizes.every((s) => honoredBy(b, s))) return keep("rewrite does not build every size read: regex path", edits);
+  return { buildPrompt: rewritten, used: true, edits, reason: "reader rewrite builds the same object at the sizes typed" };
+}

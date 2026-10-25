@@ -6,7 +6,7 @@ import { getCache } from "@vercel/functions";
  * (shared across instances in a region; free). Off Vercel it falls back to this instance's memory.
  * ponytail: get-then-set is not atomic; a burst can overshoot by a call or two.
  */
-const CAPS = { ai: () => Number(process.env.YARD_DAILY_AI_CAP ?? 40), image: () => Number(process.env.YARD_DAILY_IMAGE_CAP ?? 3) };
+const CAPS = { ai: () => Number(process.env.YARD_DAILY_AI_CAP ?? 40), image: () => Number(process.env.YARD_DAILY_IMAGE_CAP ?? 3), reader: () => Number(process.env.YARD_DAILY_READER_CAP ?? 20) };
 export type CapBucket = keyof typeof CAPS;
 const local = new Map<string, unknown>();
 

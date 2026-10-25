@@ -110,7 +110,11 @@ export default defineConfig(({ command }) => ({
   },
   resolve: { tsconfigPaths: true },
   // The Amazon Associates tag for Buy links: YARD_AMAZON_TAG on Vercel (no tag when unset). Not a secret.
-  define: { "import.meta.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG": JSON.stringify(process.env.YARD_AMAZON_TAG || process.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG || "") },
+  // The AI prompt reader's on/off flag (YARD_AI_READER=on), so a tab with the reader off never asks the server. Not a secret; the key stays server-side.
+  define: {
+    "import.meta.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG": JSON.stringify(process.env.YARD_AMAZON_TAG || process.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG || ""),
+    "import.meta.env.VITE_PUBLIC_AI_READER": JSON.stringify(process.env.YARD_AI_READER === "on" ? "on" : ""),
+  },
   plugins: [
     pgliteBootstrapPlugin(),
     authPopupPlugin(),
