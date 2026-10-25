@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import { curatedFeed, drawingFor, drawingForType, type DrawingRef, type IdeasFeed } from "../src/lib/ideas/feed";
-import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
+import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, dimsOf, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, logCardPrompt, publicSnapshot, typeKey, type PublicRow, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
@@ -299,7 +299,30 @@ test("Popular lists only Trusted builds Critic graded (row 169): an engine-Trust
 });
 
 // I-draw (Chief 10-23, /workspace/ideas-review/REPORT.md): 25 of 82 live cards painted no image, a grey title stand-in.
-const live = LIVE_SNAP as unknown as IdeasSnapshot;
+// The fixture is the 10-23 live snapshot as /api/ideas-snapshot now serves it (publicSnapshot): no typed prompt, so the
+// feed's rows get an empty prompt and the engine key back from the build type. liveFeed never reads the prompt for a card.
+const PUB = LIVE_SNAP as unknown as PublicSnapshot;
+const snapRows = (rs: PublicRow[]): SnapshotRow[] => rs.map((r, i) => ({ key: `p${i}`, prompt: "", resultKey: `${r.recipe ? "recipe" : "builtin"}:${r.buildType}`, size: r.size, status: r.status, count: r.count, lastSeen: r.lastSeen }));
+const live: IdeasSnapshot = { ...PUB, rows: snapRows(PUB.rows), popular: snapRows(PUB.popular), recent: snapRows(PUB.recent) };
+
+test("privacy: /api/ideas-snapshot and its saved fixture carry engine build types, titles, sizes and counts, never typed words", () => {
+  const typed = ["my nan's 3 legged bird table", "shoe rack 30 wide"];
+  const raw: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row(typed[0], "builtin:bird-feeder", 3, after(5)), row(typed[1], "builtin:shoe-rack", 2, after(6))] };
+  const pub = publicSnapshot({ ...raw, popular: raw.rows, recent: raw.rows });
+  const KEYS = ["buildType", "count", "lastSeen", "recipe", "size", "status", "title"];
+  for (const snap of [pub, PUB]) {
+    for (const r of [...snap.rows, ...snap.popular, ...snap.recent]) assert.deepEqual(Object.keys(r).sort(), KEYS, JSON.stringify(r));
+    const body = JSON.stringify(snap).toLowerCase();
+    // Every typed prompt with a size in it (titles never carry digits) and the two above.
+    for (const t of [...typed, ...raw.rows.map((r) => r.prompt.toLowerCase()).filter((p) => /\d/.test(p))]) assert.ok(!body.includes(t), `"${t}" served`);
+  }
+  assert.ok(pub.rows.some((r) => r.buildType === "bird-feeder" && r.title === "Bird feeder"));
+  // Rows the feed skips (test traffic, failed and unknown nouns) are not served either: same rule, isTestRow.
+  assert.equal(pub.rows.length, raw.rows.filter((r) => !isTestRow(r)).length);
+  // The build type is a fixed point of typeKey, so the fixture's rows group exactly as the store's did.
+  for (const r of PUB.rows) assert.equal(typeKey(`builtin:${r.buildType}`), r.buildType);
+  assert.match(fs.readFileSync("src/routes/api/ideas-snapshot.ts", "utf8"), /Response\.json\(publicSnapshot\(snap\),/);
+});
 const liveBase = curatedFeed(RECIPES);
 const liveF = liveFeed(live, liveBase, new Date(live.at));
 
@@ -340,9 +363,8 @@ test("one log type per drawn build: a leading lumber species is the stock (pine 
   assert.equal(typeKey("builtin:walnut-spice-rack"), "spice-rack");
   assert.equal(typeKey("recipe:cedar-planter-bo"), "planter-box");
   assert.equal(typeKey("builtin:cedar"), "cedar");
-  // The live log's own prompts: the species-keyed row and the plain-keyed row of each type build the same pieces.
-  const keyed = (k: string) => live.rows.find((r) => r.resultKey === k)!.prompt;
-  for (const [w, bare] of [["builtin:pine-toolbo", "builtin:toolbo"], ["builtin:cedar-birdhouse", "builtin:birdhouse"]]) assert.deepEqual(pieces(keyed(w)), pieces(keyed(bare)), w);
+  // A species-keyed build and the plain build of each type build the same pieces (Yard's prompts; the fixture keeps no typed ones).
+  for (const [w, bare] of [["pine 1x6 toolbox 22 long", "1x6 toolbox 22 long"], ["cedar 1x6 birdhouse 8 wide 10 tall", "1x6 birdhouse 8 wide 10 tall"]]) assert.deepEqual(pieces(w), pieces(bare), w);
   assert.deepEqual(pieces("walnut nightstand"), pieces("nightstand"));
   // A type keys straight to the drawing baked for a card of that engine type (types.json), curated or not.
   assert.equal(drawingForType("jar-rack")?.src.split("/").pop()?.split(".")[0], "jarshelf");
@@ -354,9 +376,10 @@ test("one log type per drawn build: a leading lumber species is the stock (pine 
     assert.ok(drawingForType(to), `${to} is not drawn`);
     const card = liveBase.sections.flatMap((s) => s.cards).find((c) => c.buildType === to) ?? null;
     const prompt = card?.examplePrompt ?? Object.entries(TYPES as Record<string, string>).find(([, t]) => t === to)![0];
-    const logged = live.rows.filter((r) => typeKey(r.resultKey) === to && r.resultKey.replace(/^[a-z]+:/, "").startsWith(from)).sort((a, b) => b.count - a.count)[0];
-    assert.ok(logged, `no live row for ${from}`);
-    assert.deepEqual(pieces(logged.prompt), pieces(prompt), `${from} ("${logged.prompt}") → ${to} ("${prompt}")`);
+    // The twin key's own words at the twin card's logged size (the snapshot keeps no typed prompt to replay).
+    const size = PUB.rows.filter((r) => r.buildType === to).sort((a, b) => b.count - a.count)[0]?.size;
+    const twin = logCardPrompt(from, dimsOf(size ?? ""));
+    assert.deepEqual(pieces(twin), pieces(prompt), `${from} ("${twin}") → ${to} ("${prompt}")`);
   }
   // Not a twin: a spice cabinet has a door and no jar lips, so it is not the Spice rack.
   assert.notDeepEqual(pieces("spice cabinet"), pieces("spice rack 18 wide 24 high 4 deep"));
