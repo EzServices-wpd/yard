@@ -18,6 +18,10 @@ fails, seen = [], 0
 _row = lambda i, p, size: {"key": f"k{i}", "prompt": p, "size": size, "resultKey": f"builtin:x{i}", "status": "Trusted", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "at": "2026-10-17T12:00:00.000Z", "source": "live"}
 _rows = [_row(0, "bookshelf 36 wide 72 tall 12 deep", "36×12×72"), _row(1, "shoe rack 30 wide", "30×12×18"), _row(2, "nightstand 18 wide", "18×16×24")]
 SNAP = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "rows": _rows, "popular": _rows, "recent": _rows})
+# The ticker reads the live Ideas feed (/api/ideas): counted cards with an engine title, size and build prompt.
+_card = lambda i, t, q: {"slug": f"x{i}", "buildType": f"x{i}", "title": t, "size": "36 × 12 × 72 in", "sizeAria": "36 wide, 12 deep, 72 tall", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "examplePrompt": q}
+FEED = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "countsLive": True, "hero": None, "sections": [{"id": "recent", "title": "Popular recently", "order": 0, "total": 3,
+    "cards": [_card(0, "Bookcase", "bookcase 36 wide 72 tall 12 deep"), _card(1, "Shoe rack", "shoe rack 30 wide 18 tall 12 deep"), _card(2, "Nightstand", "nightstand 18 wide 24 tall 16 deep")]}]})
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -25,8 +29,9 @@ with sync_playwright() as p:
         ctx = b.new_context(viewport={"width": W, "height": H})
         # Test flags only: offline/local keep the page off the network; test=1 tags API calls. Block the store anyway.
         ctx.route("**/api/ideas-log*", lambda r: r.fulfill(status=204))
-        # A live snapshot so the Making-now ticker and Popular/Recent rows render their links too.
+        # A live snapshot and feed so the Making-now ticker and Popular/Recent rows render their links too.
         ctx.route("**/api/ideas-snapshot*", lambda r: r.fulfill(status=200, content_type="application/json", body=SNAP))
+        ctx.route(__import__("re").compile(r"/api/ideas(?:\?|$)"), lambda r: r.fulfill(status=200, content_type="application/json", body=FEED))
         page = ctx.new_page()
         for path in ["/", "/ideas"]:
             for flag in FLAGS:

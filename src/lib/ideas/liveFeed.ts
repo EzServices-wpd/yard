@@ -4,6 +4,8 @@
  * served by /api/ideas behind the CDN. Pure: no engine, no store. Deletes nothing: test rows are only skipped.
  */
 import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
+import { IDEAS } from "@/lib/yard/ideas";
+import TYPES from "./types.json";
 import { isHeldType } from "./held";
 import { drawingFor, sizeOf, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 import { isLoggedTest } from "./testTraffic";
@@ -96,6 +98,22 @@ export function groupRows(rows: SnapshotRow[], cutoff = TEST_CUTOFF): Group[] {
   return [...by.values()];
 }
 
+/** Yard's own prompt per engine build type (types.json maps each idea slug to its type); first idea wins. */
+const YARD_PROMPT = new Map<string, string>();
+for (const d of IDEAS) { const t = (TYPES as Record<string, string>)[d.id]; if (t && !YARD_PROMPT.has(t)) YARD_PROMPT.set(t, d.prompt); }
+
+/**
+ * What a log-only card builds when tapped: Yard's own prompt for that build type, else the engine's type and logged
+ * W×D×H ("mailbox 8 wide 18 tall 8 deep"). Never the words a visitor typed: the privacy page says the Ideas library
+ * never keeps them, so no feed field may carry them.
+ */
+export function logCardPrompt(type: string, dims: IdeaCard["dims"]): string {
+  const yard = YARD_PROMPT.get(type);
+  if (yard) return yard;
+  const t = type.replace(/-/g, " ");
+  return dims ? `${t} ${dims.width} wide ${dims.height} tall ${dims.depth} deep` : t;
+}
+
 /** Count desc, then lastSeen desc (null last), then the source order. */
 export function sortCards(cards: IdeaCard[]): IdeaCard[] {
   return cards.map((c, i) => ({ c, i })).sort((a, b) => b.c.count - a.c.count || (b.c.lastSeen ?? "").localeCompare(a.c.lastSeen ?? "") || a.i - b.i).map((x) => x.c);
@@ -116,9 +134,28 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>):
   const logged = dimsOf(size);
   // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
-    slug: g.type, buildType: g.type, title: titleOf(g.type), count: g.count, lastSeen: g.lastSeen, examplePrompt: top.prompt,
+    slug: g.type, buildType: g.type, title: titleOf(g.type), count: g.count, lastSeen: g.lastSeen, examplePrompt: logCardPrompt(g.type, logged),
     recipeKey: recipe ? g.type : null, dims: logged, ...sizeOf(drawing?.dims ?? logged), status, section: "Popular", drawing,
   };
+}
+
+/** Home "People are making right now" rows (MakingNow.tsx). `q` is what a tap builds. */
+export type MakingNowItem = { slug: string; title: string; size: string; sizeAria: string; q: string };
+export const MAKING_NOW_MAX = 12;
+
+/**
+ * The home strip: the live feed's counted, drawn cards, newest build first. Each row is a card's display title and engine
+ * size, so it carries no visitor's typed words (privacy page) and drops what the feed drops (test traffic, generic,
+ * held, junk titles). The fallback feed has no live rows → no strip.
+ */
+export function makingNow(feed: IdeasFeed, cap = MAKING_NOW_MAX): MakingNowItem[] {
+  if (!feed.live) return [];
+  return feed.sections.flatMap((s) => s.cards)
+    // A drawn card is a build Yard authored, so a tap builds what the row names (an undrawn log type's fallback prompt can drop its stock).
+    .filter((c) => c.count > 0 && c.lastSeen && c.drawing && !isJunkTitle(c.title))
+    .sort((a, b) => b.lastSeen!.localeCompare(a.lastSeen!))
+    .slice(0, cap)
+    .map((c) => ({ slug: c.slug, title: c.title, size: c.size, sizeAria: c.sizeAria, q: c.examplePrompt }));
 }
 
 /** Most-built checked idea over the last 7 days that is cheap to turn live on a phone, else null. */
