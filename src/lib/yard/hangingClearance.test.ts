@@ -289,7 +289,7 @@ it("no wardrobe rod or raised floor spans past 42 inches", () => {
   }
   const tall = generateFromPrompt("wardrobe 72 wide 96 tall").notes.join(" ");
   assert.match(tall, /fixed hat shelf/);
-  assert.match(tall, /1 adjustable shelf line above it/);
+  assert.match(tall, /1 fixed hat shelf over the rod and 1 adjustable \(3 pieces\)/);
   assert.match(tall, /in each of 3 bays/);
   assert.doesNotMatch(tall, /No pinned shelf above the hat/);
 });
