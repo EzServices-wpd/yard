@@ -441,7 +441,8 @@ export function supportHangingBays(project: YardProject): YardProject {
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
   const wideRod = (p: Panel) => isHangingRod(p) && p.size.width > ROD_BAY_MAX_IN + BAY_EPS;
   let changed = seatRaisedFloors(project, panels);
-  if (splitMatching(panels, wideRod)) changed = true;
+  // Row 461: a rod under 42" can still cross a center support the span check stood under the hat shelf; it never passes through one.
+  if (splitMatching(panels, isHangingRod)) changed = true;
   for (let guard = 0; panels.some(wideRod) && guard < 6; guard++) {
     const rod = panels.find(wideRod)!;
     const n = Math.max(2, Math.ceil((rod.size.width - BAY_EPS) / ROD_BAY_MAX_IN));
@@ -572,6 +573,10 @@ function fitRodCount(project: YardProject, prompt: string): YardProject {
     notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"}. ${built} built${why}.`);
   }
   if (drop.size && !pairBays && /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) // row 450: say which word won
-    notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"} and double hang. The count wins: ${rods.length === 1 ? "one rod is" : `${rods.length} rods are`} built, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`);
+    notes.push(
+      rods.length === n
+        ? `You asked for ${n} rod${n === 1 ? "" : "s"} and double hang. The count wins: ${n === 1 ? "one rod is" : `${n} rods are`} built, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`
+        : `You asked for ${n} rods and double hang. There is no double-hang pair: each of the ${keys.length} bays gets one rod, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`, // row 463
+    );
   return drop.size || pairBays || notes.length !== (project.notes ?? []).length ? { ...project, panels, notes } : project;
 }

@@ -434,7 +434,30 @@ it("row 450: a count next to a rod size is read; a typed count that drops a type
   assert.doesNotMatch(generateFromPrompt("closet 48 wide 88 tall with 3 rods").notes.join(" "), /double hang\. The count wins/);
 });
 
-it("row 449: a box too narrow for the typed rods names the width, not the height", () => {
-  const notes = generateFromPrompt("closet 40 wide 88 tall with 3 rods").notes.join(" ");
-  assert.match(notes, /You asked for 3 rods\. 2 rods are built: .*44" wide/);
+it("row 449: a 39-43 wide box builds the typed 3 or 4 rods exactly (the count is never cut)", () => {
+  for (const n of [3, 4]) for (const w of [39, 40, 43]) for (const h of [88, 96]) {
+    const q = `closet ${w} wide ${h} tall with ${n} rods`;
+    assert.equal(generateFromPrompt(q).refused, undefined, q);
+    assert.equal(rodsOf(q).length, n, q);
+  }
+});
+
+it("row 461: a hanging rod never runs through a center support (39-43 wide, 60-80 tall)", () => {
+  for (const q of ["wardrobe 40 wide 76 tall", "wardrobe 42 wide 60 tall", "closet 41 wide 72 tall with a rod", "wardrobe 43 wide 80 tall with a rod", "closet 40 wide 88 tall with 3 rods"]) {
+    const p = generateFromPrompt(q);
+    assert.deepEqual(checkBuild(p, q, buildPlan(p)).filter((v) => v.id === "I26").map((v) => v.msg), [], q);
+  }
+});
+
+it("row 461: '2 rods' at 80\" tall in a 39-43 wide box builds exactly 2, side by side, not a refusal", () => {
+  for (const q of ["closet 40 wide 80 tall with 2 rods", "wardrobe 42 wide 80 tall with 2 rods", "closet 39 wide 80 tall with 2 rods"]) {
+    assert.equal(generateFromPrompt(q).refused, undefined, q);
+    assert.equal(rodsOf(q).length, 2, q);
+  }
+});
+
+it("row 463: a double hang that ends with more rods than typed does not say the count won", () => {
+  const notes = generateFromPrompt("closet 72 wide 96 tall double hang 2 rods").notes.join(" ");
+  assert.doesNotMatch(notes, /The count wins/);
+  assert.match(notes, /You asked for 2 rods and double hang\. There is no double-hang pair: each of the 3 bays gets one rod/);
 });
