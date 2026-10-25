@@ -15,9 +15,6 @@ U = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://127.0.0.1:8091"
 FLAGS = ["test=1", "offline=1", "local=1"]
 LINKS_JS = """() => [...document.querySelectorAll('a[href]')].map(a => [a.getAttribute('href'), (a.innerText || a.getAttribute('aria-label') || '').trim().slice(0, 40)])"""
 fails, seen = [], 0
-_row = lambda i, p, size: {"key": f"k{i}", "prompt": p, "size": size, "resultKey": f"builtin:x{i}", "status": "Trusted", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "at": "2026-10-17T12:00:00.000Z", "source": "live"}
-_rows = [_row(0, "bookshelf 36 wide 72 tall 12 deep", "36×12×72"), _row(1, "shoe rack 30 wide", "30×12×18"), _row(2, "nightstand 18 wide", "18×16×24")]
-SNAP = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "rows": _rows, "popular": _rows, "recent": _rows})
 # The ticker reads the live Ideas feed (/api/ideas): counted cards with an engine title, size and build prompt.
 _card = lambda i, t, q: {"slug": f"x{i}", "buildType": f"x{i}", "title": t, "size": "36 × 12 × 72 in", "sizeAria": "36 wide, 12 deep, 72 tall", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "examplePrompt": q}
 FEED = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "countsLive": True, "hero": None, "sections": [{"id": "recent", "title": "Popular recently", "order": 0, "total": 3,
@@ -29,8 +26,7 @@ with sync_playwright() as p:
         ctx = b.new_context(viewport={"width": W, "height": H})
         # Test flags only: offline/local keep the page off the network; test=1 tags API calls. Block the store anyway.
         ctx.route("**/api/ideas-log*", lambda r: r.fulfill(status=204))
-        # A live snapshot and feed so the Making-now ticker and Popular/Recent rows render their links too.
-        ctx.route("**/api/ideas-snapshot*", lambda r: r.fulfill(status=200, content_type="application/json", body=SNAP))
+        # A live feed so the Making-now ticker renders its links too (no page code reads /api/ideas-snapshot any more).
         ctx.route(__import__("re").compile(r"/api/ideas(?:\?|$)"), lambda r: r.fulfill(status=200, content_type="application/json", body=FEED))
         page = ctx.new_page()
         for path in ["/", "/ideas"]:
@@ -39,7 +35,7 @@ with sync_playwright() as p:
                 page.wait_for_timeout(800)
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 page.wait_for_timeout(600)
-                for btn in page.get_by_role("button", name="Show all").all():
+                for btn in page.locator("[data-ideas-show-all][aria-expanded=false]").all():
                     try: btn.click(timeout=1500)
                     except Exception: pass
                 page.wait_for_timeout(300)

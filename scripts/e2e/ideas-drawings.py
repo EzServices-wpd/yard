@@ -27,7 +27,12 @@ with sync_playwright() as p:
         ctx.route("**/api/ideas-log*", lambda r: r.fulfill(status=204))
         page = ctx.new_page()
         page.goto(f"{U}/ideas?test=1", wait_until="networkidle")
-        page.evaluate("() => document.querySelectorAll(\"button[aria-expanded='false']\").forEach(b => b.textContent.startsWith('Show all') && b.click())")
+        page.evaluate("() => document.querySelectorAll(\"[data-ideas-show-all][aria-expanded='false']\").forEach(b => b.click())")
+        # Each Show all opens the number its label says ("Show all 12", "Show top 24 of 38"), and the list it controls.
+        for lab, n in page.evaluate("""() => [...document.querySelectorAll('[data-ideas-show-all]')].map(b => [b.dataset.ideasShowAll,
+            document.getElementById(b.getAttribute('aria-controls'))?.children.length ?? -1])"""):
+            m = __import__("re").match(r"Show (?:all|top) (\d+)", lab or "")
+            if not m or int(m.group(1)) != n: fails.append(f"/ideas?test=1 @{W}: {lab!r} opened {n} cards")
         # Lazy drawings load as they scroll in: walk the page, then force any left lazy to load.
         for _ in range(40):
             if page.evaluate("() => { window.scrollBy(0, innerHeight); return innerHeight + scrollY >= document.body.scrollHeight - 2; }"): break
