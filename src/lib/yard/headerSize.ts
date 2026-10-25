@@ -7,7 +7,16 @@ import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelS
 import { clean, frac } from "./pdfKit";
 import { drawnExtent } from "./pdfDraw";
 import { isUnitItem } from "./unitItems";
+import { specOf, type YardSpec } from "./spec";
+import { isBedLongWide, typedOffBy } from "./typedAxesRead";
 import type { YardProject } from "./types";
+
+/** A build's name without the bare size typed into it ("Linen 31 1/2" × 78" × 16"" → "Linen"): the size is said
+ * once, labelled W × D × H, by the surface that prints it (Critic row 132: no unlabelled W × H × D triple). */
+export const NAME_SIZE_RE = /\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/;
+export function bareName(name: string): string {
+  return name.replace(NAME_SIZE_RE, "").trim() || name;
+}
 
 /** The unit the plan talks about: a pocket build's unit, else the overall box. */
 function unitBox(project: YardProject) {
@@ -37,6 +46,9 @@ function shownSize(project: YardProject, assumed: Partial<Record<Axis, boolean>>
   const unit = body.length && body.length < project.panels.length ? { ...project, panels: body } : project;
   const box = !project.instances.length && project.panels.length ? drawnExtent(unit) : null;
   const ext: Record<Axis, number> | null = box ? { width: box.max.x - box.min.x, height: box.max.y - Math.min(0, box.min.y), depth: box.max.z - box.min.z } : null;
+  // A pocket build's size is its fitted unit on every axis: the drawn extent would fold the proud fronts into the depth
+  // the note already names (#109 B1: pocket vanity 17" deep, never 17 3/4").
+  if (project.pocket?.unit) return { width: o.width, height: o.height, depth: o.depth };
   const at = (a: Axis) => (assumed[a] && ext && ext[a] > 0 ? ext[a] : o[a]);
   // C11: a whole bought item's depth is its real piece, so it reads the model's finished depth too.
   const depth = assumed.depth && ext && ext.depth > 0 ? ext.depth : isUnitItem(project) ? modelFinishedDepth(project.panels, o.depth) : o.depth;
@@ -63,14 +75,13 @@ function shopInches(raw: string): number {
   return b ? part(a) + part(b) : part(a);
 }
 
-export function typedAxesTalk(project: YardProject, craft = false) {
+function notesAxes(project: YardProject) {
   // A pocket build's overall is the room pocket it stands in (walls + clearance) — the plan talks
   // about the unit you build, the same 38 × 102 × 17 the bench and the cover arrows show.
   const o = project.pocket?.unit
     ? { width: project.pocket.unit.width, height: project.pocket.unit.height, depth: project.pocket.unit.depth }
     : project.overall;
   const prompt = project.prompt ?? "";
-  const name = clean(project.name) || "Yard plan";
   const assumed: Partial<Record<Axis, boolean>> = {};
   const extra: string[] = [];
   const axisOf = (w: string): Axis => (/wide/i.test(w) ? "width" : /tall/i.test(w) ? "height" : "depth");
@@ -105,12 +116,53 @@ export function typedAxesTalk(project: YardProject, craft = false) {
     axes.forEach((a) => delete assumed[a]);
     extra.length = 0;
   }
+  // An edit in place reads its marks from the edited spec (spec.ts), never from notes the rebuild no longer carries: an
+  // axis set on the bench is the person's own value, every other axis keeps the mark it had (#109 B2).
+  // A restock rebuilds from the bench's unit, whose notes no longer say which axes were assumed (row 295, family
+  // sweep: 'dresser' restocked read '18" D (W, H assumed)', the fronts dropped): a bench rebuild reads the spec too.
+  const spec = project.spec;
+  if (spec && (spec.bench || axes.some((a) => spec.size[a].edited))) {
+    for (const a of axes) if (spec.size[a].assumed && !spec.size[a].edited) assumed[a] = true; else delete assumed[a];
+    return { assumed, extra, stock: false };
+  }
+  return { assumed, extra, stock };
+}
+
+/** The header, card, readout and steps' size talk (their own typed/assumed reading until each moves to the spec). */
+export function typedAxesTalk(project: YardProject, craft = false) {
+  return axesTalk(project, craft, notesAxes(project), false);
+}
+
+/**
+ * The PDF cover's size line, read from the project's one spec (spec.ts, I42): typed axes print plainly, assumed axes
+ * are marked assumed, and a typed size built differently says both.
+ */
+export function coverAxesTalk(project: YardProject, craft = false) {
+  const spec = specOf(project);
+  const assumed: Partial<Record<Axis, boolean>> = {};
+  for (const a of ["width", "height", "depth"] as Axis[]) if (spec.size[a].assumed) assumed[a] = true;
+  return axesTalk(project, craft, { assumed, extra: [...spec.parts], stock: spec.stock }, true, spec);
+}
+
+function axesTalk(project: YardProject, craft: boolean, read: ReturnType<typeof notesAxes>, sayTyped: boolean, spec?: YardSpec) {
+  const o = unitBox(project);
+  const name = clean(project.name) || "Yard plan";
+  const { assumed, extra, stock } = read;
+  const axes: Axis[] = ["width", "height", "depth"];
   const finished = modelFinishedDepth(project.panels, o.depth);
   // One size (headerSize): a typed axis is the typed number said back on every surface, the cover too (Chief walk
   // 21 Oct: filing typed 30 deep, header 30, PDF 30 3/4). Doors or fronts standing proud are the note, not the size.
-  // An assumed axis is the model's extent.
-  const shown = shownSize(project, assumed);
-  const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
+  // An assumed axis is the model's extent. The cover prints the title's and tags' own numbers (headerSize), so proud
+  // fronts are said once, in the note, never also folded into a depth (Critic #109 B1: vanity 17 3/4 beside 17).
+  const shown = shownSize(project, sayTyped ? notesAxes(project).assumed : assumed);
+  // A typed size built at another size says both, plainly: "48" wide (you typed 36")".
+  const bed = isBedLongWide(project.notes);
+  const saidBack = (a: Axis) => {
+    // An edited axis is the person's own bench value, never "you typed" the old one.
+    const t = !sayTyped || spec?.size[a].edited || bed || isUnitItem(project) ? null : typedOffBy(project.typedPrompt ?? project.prompt ?? "", a, [o[a], shown[a], finished]);
+    return `${frac(shown[a])} ${AXIS_WORD[a]}${t != null ? ` (you typed ${frac(t)})` : ""}`;
+  };
+  const typed = axes.filter((a) => !assumed[a]).map(saidBack);
   const guessed = axes.filter((a) => assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
   const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
   const assumedList = [...guessed, ...extra];

@@ -7,10 +7,11 @@ import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
-import { benchDrawerPull, benchPullDepth } from "@/components/workspace/drawerGroups";
+import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
+import { doorHingeLayout } from "@/lib/yard/hingedLeaf";
 import {
   BarPull,
   CoatHook,
@@ -68,10 +69,14 @@ export function PanelMesh({
   const isDrawer = panel.type === "drawer";
   // Operate: a drawer slides as one group (shared drawer id, or its front plus the parts under it); a lone box keeps
   // today's own-depth pull (drawerGroups).
-  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel));
-  const pullDepth = useYard((s) => (isDrawer ? benchPullDepth(s.project.panels, panel) : 0));
+  // Tap a drawer while Operate is on: it opens alone to ~2/3 so its cavity shows; otherwise the stack staggers.
+  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel, s.facesOpen ? s.selectedId : null));
+  const wearsPull = useYard((s) => benchWearsPull(s.project.panels, panel));
+  const pullDepth = useYard((s) => (wearsPull ? (isDrawer ? benchPullDepth(s.project.panels, panel) : d) : 0));
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
+  // Row 207: the door hinges Buy lists, from the one shared layout (cached per project, so the selector is stable).
+  const hingeCenters = useYard((s) => doorHingeLayout(s.project).get(panel.id));
   // Doors/drawers/lids outside the current step are hidden (after every hook runs — see below).
   const hiddenInStep = hasStep && !inStep && (isDoor || !!hostDoor || isDrawer || isLid || !!leaf);
 
@@ -304,13 +309,13 @@ export function PanelMesh({
         {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
           <EdgeBand w={w} h={h} d={d} />
         )}
-        {opacity > 0.4 && (leaf ? leaf.role === "hinge" : isDoor) && (
-          <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
+        {opacity > 0.4 && hingeCenters && hingeCenters.length > 0 && (
+          <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} centers={hingeCenters} />
         )}
         {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
         )}
-        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
+        {wearsPull && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
         {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}

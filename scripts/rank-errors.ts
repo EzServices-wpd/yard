@@ -1,8 +1,10 @@
 #!/usr/bin/env -S npx tsx
 /**
  * Nightly error ranking (free, no xAI, no store writes). Runs every invariant (I1–I14 per build, I16 overlaps)
- * over the eval set, every built-in idea and learned recipe, the seeded sizes, and the prompts in the live
- * Ideas snapshot (one read-only GET; skipped if offline). Writes a ranked Markdown report and always exits 0.
+ * over the eval set, every built-in idea and learned recipe, the seeded sizes, and the live Ideas snapshot's builds
+ * (one read-only GET; skipped if offline). The snapshot serves engine build types and sizes, never visitors' typed
+ * prompts, so each live build is rebuilt from the prompt its Ideas card builds (liveFeed logCardPrompt).
+ * Writes a ranked Markdown report and always exits 0.
  *   npm run rank-errors [-- --dir /path/dir] [-- --no-live]
  * Each run writes a dated copy (yard-errors-ranked-YYYY-MM-DD.md) plus yard-errors-ranked-latest.md; nothing is overwritten
  * except "latest". Live Ideas rows from Critic's probes ("critic probe") are not user ideas and are left out.
@@ -14,6 +16,7 @@ import { checkBuild, INVARIANT_CLASS, type InvariantId } from "../src/lib/yard/i
 import { overlaps } from "../src/lib/yard/overlaps.ts";
 import { offline } from "./eval-lib.ts";
 import { EVAL_PROMPTS, corpus, seededSizes } from "./invariants-corpus.ts";
+import { dimsOf, logCardPrompt } from "../src/lib/ideas/liveFeed.ts";
 
 const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : undefined; };
 const DIR = arg("--dir") ?? "/workspace/yard-errors";
@@ -53,11 +56,12 @@ async function liveIdeas(): Promise<{ prompts: string[]; note: string }> {
   if (process.argv.includes("--no-live")) return { prompts: [], note: "skipped (--no-live)" };
   try {
     const r = await fetch(SNAPSHOT, { signal: AbortSignal.timeout(10_000) });
-    const s = (await r.json()) as { live?: boolean; rows?: { prompt: string; source?: string; tags?: unknown }[] };
+    // Fetched JSON is untrusted: a row counts only with a string build type (liveFeed PublicRow).
+    const s = (await r.json()) as { live?: boolean; rows?: { buildType?: unknown; size?: unknown; source?: string; tags?: unknown }[] };
     const all = s.rows ?? [];
-    const kept = all.filter((x) => !isProbe(x));
-    const prompts = [...new Set(kept.map((x) => x.prompt).filter((p) => typeof p === "string"))];
-    return { prompts, note: `${prompts.length} prompts (live: ${s.live ? "yes" : "no"}; ${all.length - kept.length} critic probe rows dropped)` };
+    const kept = all.filter((x): x is typeof x & { buildType: string } => !isProbe(x) && typeof x.buildType === "string" && !!x.buildType);
+    const prompts = [...new Set(kept.map((x) => logCardPrompt(x.buildType, dimsOf(String(x.size ?? "")))))];
+    return { prompts, note: `${prompts.length} builds from ${kept.length} rows (live: ${s.live ? "yes" : "no"}; ${all.length - kept.length} probe or malformed rows dropped)` };
   } catch (e) {
     return { prompts: [], note: `unavailable (${String(e).slice(0, 60)})` };
   }

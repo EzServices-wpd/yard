@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { benchDrawerPull, benchPullDepth, drawerGroups, groupPull, legacyPull } from "../src/components/workspace/drawerGroups";
+import { benchDrawerPull, benchPullDepth, drawerGroups, groupPull, legacyPull, maxOpenPull, staggerPull } from "../src/components/workspace/drawerGroups";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
 
 type P = { id: string; type: string; name: string; position: { x: number; y: number; z: number }; size: { width: number; height: number; depth: number }; yaw?: number; drawerId?: string };
@@ -89,10 +89,65 @@ test("path 3: no group found: today's behaviour (a lone box pulls by its own dep
 
 test("the bench reads the groups: one pull per part from benchDrawerPull, today's own-depth rule only as the fallback", () => {
   const src = fs.readFileSync("src/components/workspace/stick-cloud.tsx", "utf8");
-  assert.match(src, /const drawerPull = useYard\(\(s\) => benchDrawerPull\(s\.project\.panels, panel\)\);/);
+  assert.match(src, /const drawerPull = useYard\(\(s\) => benchDrawerPull\(s\.project\.panels, panel, s\.facesOpen \? s\.selectedId : null\)\);/);
   assert.match(src, /\(isDoor \|\| !!hostDoor \|\| drawerPull != null \|\| isLid \|\| !!leaf\)/);
   assert.match(src, /groupPos = \[cx \* explode, cy, \(cz \+ drawerPull\) \* explode\];/);
   assert.match(src, /<CupPull w=\{w\} h=\{h\} d=\{pullDepth\} \/>/);
   assert.doesNotMatch(src, /d \* 0\.75/, "the own-depth rule lives only in drawerGroups.legacyPull");
   assert.doesNotMatch(fs.readFileSync("src/components/workspace/drawerGroups.ts", "utf8"), /\.(position|size)\.\w+\s*=[^=]/, "read-only: no part geometry is written");
+});
+
+test("Operate sees inside (Critic #84): stacked drawers stagger so each cavity shows; a tapped drawer opens alone to ~2/3", () => {
+  for (const q of ["3 drawer dresser", "walnut dresser 6 drawers", "nightstand with 2 drawers", "filing cabinet 2 drawers"]) {
+    const ps = generateFromPrompt(q).panels as P[];
+    const gs = drawerGroups(ps);
+    assert.ok(gs.length >= 2, q);
+    const cols = new Map<string, typeof gs>();
+    for (const g of gs) {
+      // Bottom drawer opens the full ~2/3; each one above one even step less, so every box shows past the one above.
+      assert.equal(g.open, staggerPull(g.pull, g.k, g.n), q);
+      assert.ok(g.pull >= (2 / 3) * g.depth - 1e-3 || g.pull === g.depth - 1, `${q}: full pull ~2/3`);
+      const key = `${g.n}:${Math.round(g.x0)}`;
+      cols.set(key, [...(cols.get(key) ?? []), g]);
+    }
+    for (const col of cols.values()) {
+      col.sort((a, b) => a.k - b.k);
+      assert.equal(col[0].open, col[0].pull, `${q}: bottom drawer opens fully`);
+      for (let i = 1; i < col.length; i++) {
+        assert.ok(col[i].y0 > col[i - 1].y0, `${q}: k counts up the column`);
+        // What shows of an open drawer's box past the drawer above it: never less than 2 1/2" (4+ stacks alternate).
+        if (col[i - 1].open > 0) assert.ok(col[i - 1].open - col[i].open >= 2.5, `${q}: ${col[i - 1].open} vs ${col[i].open}`);
+      }
+      if (col.length > 3) assert.ok(col.every((g) => g.open === (g.k % 2 ? 0 : g.pull)), `${q}: 4+ stack alternates`);
+    }
+    // Tap one drawer (any of its parts): it alone opens fully; every other drawer part stays shut (0).
+    const pick = gs[gs.length - 1];
+    for (const p of ps) {
+      const v = benchDrawerPull(ps, p, pick.ids[0]);
+      if (pick.ids.includes(p.id)) assert.equal(v, pick.pull, q);
+      else if (gs.some((g) => g.ids.includes(p.id))) assert.equal(v, 0, `${q}: ${p.name} stays shut`);
+    }
+    assert.equal(maxOpenPull(ps, pick.ids[0]), pick.pull);
+    // Tapping a non-drawer part keeps the stagger.
+    const shelf = ps.find((p) => !gs.some((g) => g.ids.includes(p.id)))!;
+    assert.equal(benchDrawerPull(ps, ps.find((p) => p.id === pick.ids[0])!, shelf.id), pick.open);
+  }
+});
+
+test("Operate cavity camera: the bench frames the open drawers and looks down into them from >= 40 degrees", () => {
+  const src = fs.readFileSync("src/components/workspace/canvas.tsx", "utf8");
+  assert.match(src, /maxOpenPull\(projectRef\.current\.panels, soloDrawer\)/);
+  assert.match(src, /cavity \? \{ \.\.\.base, elevationDeg: Math\.max\(base\.elevationDeg, 40\) \}/);
+});
+
+test("one pull per drawer, on its front (Critic #94: filing fronts had none; hollow boxes never wear four)", async () => {
+  const { benchWearsPull } = await import("../src/components/workspace/drawerGroups");
+  for (const q of ["filing cabinet 2 drawers", "3 drawer dresser", "nightstand with 2 drawers", "desk with drawers"]) {
+    const ps = generateFromPrompt(q).panels as P[];
+    for (const g of drawerGroups(ps)) {
+      const wearing = ps.filter((p) => g.ids.includes(p.id) && benchWearsPull(ps, p));
+      assert.equal(wearing.length, 1, `${q}: one pull per drawer`);
+      assert.match(wearing[0].name, /front/i, `${q}: the pull is on the front`);
+    }
+  }
 });

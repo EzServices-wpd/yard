@@ -11,6 +11,10 @@ import { CATALOG_LUMBER_BIND, namedLumberFromPrompt } from "./namedLumberSpecies
 import { typedExtents } from "./honesty";
 import { PET_ANIMAL, SMALL_PET } from "./fallbackPrimitive";
 import type { AssemblyStep, Panel, YardProject } from "./types";
+import { structural } from "./wallAnchorSteps";
+
+/** The outdoor floor frame's structural screws, carried by the step that drives them (Buy lists them from the notes). */
+const FRAME_SCREWS = structural(30);
 
 const r8 = (n: number) => Math.round(n * 8) / 8;
 const PLY = "plywood-3-4-4x8";
@@ -288,7 +292,7 @@ export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
     { title: "Confirm the footprint — do not cut yet", description: `${project.name}. ${inchFrac(o.width)}" wide × ${inchFrac(o.depth)}" deep × ${inchFrac(o.height)}" high. Freestanding on four legs. ${outdoor ? "Pick a level, well-drained spot; the legs stand on the ground." : "Set it on a level floor."}`, partsUsed: ["*"] },
     { title: "Cut every part to its mark", description: "Square every cut. Cut the floor's corner notches before it goes on. Sand the edges the animals touch.", partsUsed: ["*"] },
     outdoor
-      ? { title: "Stand the legs and screw the floor frame between them", description: `Stand the 4 legs at the corners. Fasten the front and back rims to the legs with three ${frameFix} at each end, then fit the two side rims and the middle joist between the rims, all tops level at the floor's underside. Use ${frameFix} at every frame joint. No #8 screws in the frame: they are too short through a 1 1/2" rim into a 4×4.`, partsUsed: [...names(/^Leg /), ...names(/^Floor (rim|joist)/)] }
+      ? { title: "Stand the legs and screw the floor frame between them", description: `Stand the 4 legs at the corners. Fasten the front and back rims to the legs with three ${frameFix} at each end, then fit the two side rims and the middle joist between the rims, all tops level at the floor's underside. Use ${frameFix} at every frame joint. No #8 screws in the frame: they are too short through a 1 1/2" rim into a 4×4. ${FRAME_SCREWS.qty} in all, 3 at each of the 10 rim and joist ends.`, partsUsed: [...names(/^Leg /), ...names(/^Floor (rim|joist)/)], fastenersUsed: [FRAME_SCREWS] }
       : { title: "Stand the 4 legs", description: "Stand the 4 legs at the corners, square to each other.", partsUsed: names(/^Leg /) },
     { title: outdoor ? "Lay the floor on the frame" : "Fit the floor between the legs", description: `Set the floor${outdoor ? " on the rims and the joist" : ""}, its notched corners around the legs. Screw it down${outdoor ? " into the frame every 8\"" : " to each leg"} with ${fix}.`, partsUsed: ["Floor"] },
     { title: "Stand the sides and the back on the floor", description: `Stand the left and right sides and the back on the floor, screwed to the legs and down through the floor, with ${fix}.`, partsUsed: [...names(/^(Left|Right) side$/), "Back"] },

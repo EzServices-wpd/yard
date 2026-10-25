@@ -170,10 +170,13 @@ function packSheet(
     } | null = null;
 
     for (const cand of candidates) {
-      // Part must fit the free rect; kerf is taken from the remnant, not beyond the sheet edge.
-      // (A 120" face on a 120" 4×10 is one factory-edge rip — kerf must not reject it.)
+      // Part must fit the free rect plus one kerf; the kerf is waived only against the factory sheet edge.
+      // (A 120" face on a 120" 4×10 is one factory-edge rip — kerf must not reject it.) A free rect's
+      // right or top edge is often an inner cut line, so filling it exactly would leave no saw gap.
       for (let i = 0; i < free.length; i++) {
-        if (!fits(free[i], cand.w, cand.h)) continue;
+        const kerfW = free[i].x + free[i].width >= sheetW - 1e-6 ? 0 : KERF;
+        const kerfH = free[i].y + free[i].height >= sheetH - 1e-6 ? 0 : KERF;
+        if (!fits(free[i], cand.w + kerfW, cand.h + kerfH)) continue;
         const consumeW = Math.min(cand.w + KERF, free[i].width);
         const consumeH = Math.min(cand.h + KERF, free[i].height);
         const s = score(free[i], consumeW, consumeH);

@@ -2,15 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
-import { curatedFeed, type IdeasFeed } from "../src/lib/ideas/feed";
-import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, feedViolations, groupRows, isJunkTitle, isTestRow, liveFeed, typeKey } from "../src/lib/ideas/liveFeed";
+import { curatedFeed, drawingFor, drawingForType, type DrawingRef, type IdeasFeed } from "../src/lib/ideas/feed";
+import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, dimsOf, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, logCardPrompt, publicSnapshot, typeKey, type PublicRow, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import TYPES from "../src/lib/ideas/types.json";
+import TWINS from "../src/lib/ideas/typeTwins.json";
+import LIVE_SNAP from "./fixtures/ideas-snapshot-2026-10-23.json";
+import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import type { IdeasSnapshot, SnapshotRow } from "../src/lib/yard/ideaLog";
 
 const NOW = new Date("2026-10-18T12:00:00Z");
+/** Tests about filtering, titles and grading (not drawings) give every log type a baked-looking drawing. */
+const drawAny = (t: string): DrawingRef => ({ src: `/ideas/drawings/${t}.0a.svg`, w: 480, h: 360, parts: 1, v: "0a" });
 const after = (h: number) => new Date(Date.parse(TEST_CUTOFF) + h * 3_600_000).toISOString();
 let n = 0;
 const row = (prompt: string, resultKey: string, count: number, lastSeen: string | null, status: SnapshotRow["status"] = "Trusted", size = "36×12×72"): SnapshotRow =>
@@ -73,7 +78,7 @@ test("Popular groups by build type with a curated title; linen and bookshelf app
 });
 
 test("Popular recently is the live log of the last 7 days; new types are 'new' with their own size", () => {
-  const recent = feed.sections.find((s) => s.id === "recent")!;
+  const recent = liveFeed(SNAP, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny).sections.find((s) => s.id === "recent")!;
   const cat = recent.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
   assert.deepEqual(cat.dims, { width: 24, depth: 24, height: 60 });
@@ -122,11 +127,44 @@ test("types.json is current with the engine (re-run scripts/gen-idea-types.ts)",
   assert.deepEqual(TYPES, ideaTypes());
 });
 
-test("home 'Making now' drops chained 'Then:' prompts (same isChained as the feed)", async () => {
-  const { isChained } = await import("../src/lib/ideas/liveFeed");
-  assert.ok(isChained("birdhouse. Then: 3/8 dowel"));
-  const fs = await import("fs");
-  assert.match(fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8"), /!isChained\(r\.prompt\)/);
+// Privacy page: the Ideas library never keeps the words people typed. The home strip and the Ideas feed show and rebuild
+// from the engine's result (build type + logged W×D×H), never a visitor's prompt, typos and all.
+test("no typed prompt reaches the Ideas feed, the hero or the home 'Making now' strip", async () => {
+  const { makingNow } = await import("../src/lib/ideas/liveFeed");
+  const base = curatedFeed(RECIPES);
+  // Log-only types that DO render: a baked drawing of their engine type (types.json) and no curated card of their own,
+  // so the card is built from the log rows (cardFor's log branch), not copied from a curated card.
+  const curatedTypes = new Set(base.sections.flatMap((s) => s.cards.map((c) => c.buildType)));
+  const shown = [...new Set(Object.values(TYPES as Record<string, string>))].filter((t) => !curatedTypes.has(t) && drawingForType(t) && typeKey(`builtin:${t}`) === t);
+  assert.ok(shown.length >= 2, `need log-only drawn types, got ${shown}`);
+  // Typo prompts, newest in the log so they lead "Popular recently" and the strip.
+  const typed = shown.map((t, i) => row(`${t.replace(/-/g, " ")} wiht teh typo ${i} 24 wide`, `builtin:${t}`, 3, after(40 + i), "Trusted", "24×12×30"));
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...typed] };
+  const f = liveFeed(snap, base, NOW);
+  const cards0 = f.sections.flatMap((s) => s.cards);
+  for (const t of shown) assert.ok(cards0.some((c) => c.buildType === t && c.count > 0 && c.drawing), `${t} is a shown, drawn log card`);
+  const strip = makingNow(f);
+  assert.ok(strip.length > 0, "the strip has rows on a live feed");
+  for (const t of shown) assert.ok(strip.some((it) => cards0.find((c) => c.slug === it.slug)?.buildType === t), `${t} is in the strip`);
+  const json = JSON.stringify({ f, strip }).toLowerCase();
+  for (const r of typed) assert.ok(!json.includes(r.prompt.toLowerCase()), `typed prompt leaked: "${r.prompt}"`);
+  // Any example prompt that is not Yard's own (a curated or recipe card's) is never a logged prompt.
+  const ours = new Set(base.sections.flatMap((s) => s.cards.map((c) => c.examplePrompt)));
+  const logged = new Set(snap.rows.map((r) => r.prompt));
+  for (const c of f.sections.flatMap((s) => s.cards)) if (!ours.has(c.examplePrompt)) assert.ok(!logged.has(c.examplePrompt), `${c.slug}: "${c.examplePrompt}"`);
+  if (f.hero && !ours.has(f.hero.examplePrompt)) assert.ok(!logged.has(f.hero.examplePrompt), f.hero.examplePrompt);
+  // Each strip row is a counted feed card: its display title and engine size, newest build first.
+  const cards = f.sections.flatMap((s) => s.cards);
+  for (const it of strip) {
+    const c = cards.find((x) => x.slug === it.slug)!;
+    assert.ok(c && c.count > 0 && c.lastSeen, it.slug);
+    assert.deepEqual([it.title, it.size, it.q], [c.title, c.size, c.examplePrompt]);
+  }
+  assert.deepEqual(strip.map((it) => cards.find((x) => x.slug === it.slug)!.lastSeen), [...strip.map((it) => cards.find((x) => x.slug === it.slug)!.lastSeen)].sort().reverse());
+  assert.deepEqual(makingNow(curatedFeed(RECIPES)), [], "no strip on the fallback feed");
+  // The strip renders only these items: it never reads the raw snapshot or a row's prompt.
+  const src = fs.readFileSync("src/components/ideas/MakingNow.tsx", "utf8");
+  assert.doesNotMatch(src, /ideas-snapshot|loadSnapshot|\.prompt\b/);
 });
 
 test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-yard-test flag, never a word in the prompt", () => {
@@ -136,12 +174,12 @@ test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-
   assert.ok(isTestRow(flagged));
   assert.ok(!isTestRow({ ...real[0], source: "live" }));
   const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, ...real, flagged] };
-  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny);
   const cards = f.sections.flatMap((s) => s.cards);
   const ttr = cards.find((c) => c.buildType === "test-tube-rack");
   assert.ok(ttr, "test tube rack is in the Ideas feed");
   assert.equal(ttr!.count, 11, "only the real row is counted; the test=1 row is not");
-  assert.equal(ttr!.examplePrompt, "test tube rack");
+  assert.equal(ttr!.examplePrompt, "test tube rack 36 wide 72 tall 12 deep", "built from the engine type and logged size, not the typed words");
   assert.deepEqual(feedViolations(f, snap), []);
   // The invariant still catches a counted card whose example is a logged test row.
   const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
@@ -150,14 +188,14 @@ test("'test tube rack' stays in the feed: test traffic is the logged test=1 / x-
 });
 
 test("quick win (e): cut-off box keys read as boxes, generic fallbacks never become cards, no blank cards", () => {
-  assert.equal(typeKey("builtin:pine-toolbo"), "pine-toolbox");
+  assert.equal(typeKey("builtin:toolbo"), "toolbox");
   assert.equal(typeKey("recipe:planter-bo"), "planter-box");
   assert.equal(typeKey("recipe:gumbo"), "gumbo");
-  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("storage", "builtin:storage-unit", 50, after(3)), row("pine toolbox", "builtin:pine-toolbo", 4, after(3))] };
-  const f = liveFeed(snap, curatedFeed(RECIPES), NOW);
+  const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("storage", "builtin:storage-unit", 50, after(3)), row("pine toolbox", "builtin:toolbo", 4, after(3))] };
+  const f = liveFeed(snap, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny);
   const all = f.sections.flatMap((s) => s.cards);
   assert.ok(!all.some((c) => c.buildType === "storage-unit"), "no Storage unit card");
-  assert.ok(all.some((c) => c.title === "Pine toolbox"), "Pine toolbox, not Pine toolbo");
+  assert.ok(all.some((c) => c.title === "Toolbox"), "Toolbox, not Toolbo");
   assert.deepEqual(feedViolations(f), []);
   const src = fs.readFileSync("src/components/ideas/IdeaDrawing.tsx", "utf8");
   assert.match(src, /data-idea-no-drawing/);
@@ -184,8 +222,13 @@ test("only rendered cards are used: a Trusted build past Popular's SECTION_MAX s
     ...SNAP,
     rows: [...busy, row("mail organizer", "builtin:mail-organizer", 2, after(30)), row("under stairs shelves", "builtin:under-stairs", 2, after(31))],
   };
-  const feed = liveFeed(snap, curatedFeed(), NOW);
-  assert.deepEqual(feedViolations(feed), []);
+  // Since row 169 Popular takes only types Critic graded, so the busy racks are graded here (checked cards in the base).
+  const cur = curatedFeed();
+  const proto = cur.sections[0].cards[0];
+  const gradedBusy = busy.map((r) => ({ ...proto, slug: typeKey(r.resultKey), buildType: typeKey(r.resultKey), title: `${r.prompt[0].toUpperCase()}${r.prompt.slice(1)}`, examplePrompt: r.prompt, drawing: drawAny(typeKey(r.resultKey)), status: "checked" as const }));
+  const base: IdeasFeed = { ...cur, sections: [...cur.sections, { id: "graded-racks", title: "Racks", order: cur.sections.length, total: gradedBusy.length, cards: gradedBusy }] };
+  const feed = liveFeed(snap, base, NOW, TEST_CUTOFF, drawAny);
+  assert.deepEqual(feedViolations(feed, undefined, gradedTypes(base)), []);
   const pop = feed.sections.find((s) => s.id === "popular")!;
   assert.equal(pop.cards.length, SECTION_MAX);
   const where = (t: string) => feed.sections.find((s) => s.cards.some((c) => c.buildType === t))?.id ?? null;
@@ -214,7 +257,7 @@ test("junk titles never render: the shared card-quality rule drops digit-only or
       row("3/4 PVC soccer goal 48 wide 36 tall", "builtin:3-4-soccer-goal", 3, after(8), "Trusted", "48×12×36"),
     ],
   };
-  const feed = liveFeed(snap, curatedFeed(), NOW);
+  const feed = liveFeed(snap, curatedFeed(), NOW, TEST_CUTOFF, drawAny);
   assert.deepEqual(feedViolations(feed), []);
   const cards = feed.sections.flatMap((s) => s.cards);
   assert.deepEqual(cards.filter((c) => isJunkTitle(c.title)).map((c) => c.title), []);
@@ -222,4 +265,127 @@ test("junk titles never render: the shared card-quality rule drops digit-only or
   // And the invariant names one if it ever gets through.
   const bad: IdeasFeed = { ...feed, sections: [{ ...feed.sections[0], cards: [{ ...feed.sections[0].cards[0], title: "3" }, ...feed.sections[0].cards.slice(1)] }] };
   assert.ok(feedViolations(bad).some((v) => /junk title "3"/.test(v)));
+});
+
+test("Popular lists only Trusted builds Critic graded (row 169): an engine-Trusted type nobody graded is never checked, on Popular or the hero", () => {
+  // Live 10-20: the cardboard dollhouse builds a sealed box and "shoe rack by the door" a prehung door, both logged
+  // Trusted (a built-in shape is Trusted by default). Both were on Popular; neither type is a graded (checked) card.
+  const snap: IdeasSnapshot = {
+    ...SNAP,
+    rows: [
+      ...SNAP.rows,
+      row("cardboard dollhouse 12 wide 16 tall", "builtin:dollhouse", 400, after(40), "Trusted", "12×16×16"),
+      row("shoe rack by the door 36 inches wide", "builtin:shoe-prehung-interior-36-80-door", 300, after(41), "Trusted", "48×8×98"),
+      row("shoe rack with cubbies", "builtin:shoe-rack", 2, after(42)),
+    ],
+  };
+  const base = curatedFeed(RECIPES);
+  const graded = gradedTypes(base);
+  assert.ok(!graded.has("dollhouse") && !graded.has("shoe-prehung-interior") && graded.has("shoe-rack") && graded.has("linen"));
+  const f = liveFeed(snap, base, NOW, TEST_CUTOFF, drawAny);
+  assert.deepEqual(feedViolations(f, undefined, graded), []);
+  const pop = f.sections.find((s) => s.id === "popular")!;
+  const popTypes = pop.cards.map((c) => c.buildType);
+  for (const t of ["dollhouse", "shoe-prehung-interior"]) assert.ok(!popTypes.includes(t), `${t} on Popular`);
+  assert.ok(popTypes.includes("shoe-rack") && popTypes.includes("linen"), "graded Trusted types stay on Popular");
+  for (const c of pop.cards) assert.ok(graded.has(c.buildType), `${c.slug} on Popular is not graded`);
+  // They still show as what they are: new builds in Popular recently, never checked; never the hero.
+  const all = f.sections.flatMap((s) => s.cards);
+  assert.equal(all.find((c) => c.buildType === "dollhouse")?.status, "new");
+  assert.ok(f.hero && graded.has(f.sections.flatMap((s) => s.cards).find((c) => c.slug === f.hero!.slug)!.buildType));
+  // A graded type whose builds are all Unverified in the log is not Popular either (Trusted AND graded).
+  const unv = liveFeed({ ...snap, rows: snap.rows.map((r) => (r.resultKey === "builtin:shoe-rack" ? { ...r, status: "Unverified" as const } : r)) }, base, NOW, TEST_CUTOFF, drawAny);
+  assert.ok(!unv.sections.find((s) => s.id === "popular")!.cards.some((c) => c.buildType === "shoe-rack"));
+  // The guard names an ungraded card on Popular or a counted checked card nobody graded.
+  const bad: IdeasFeed = JSON.parse(JSON.stringify(f));
+  const bp = bad.sections.find((s) => s.id === "popular")!;
+  bp.cards.push({ ...bp.cards[0], slug: "dollhouse", buildType: "dollhouse", title: "Dollhouse", examplePrompt: "cardboard dollhouse 12 wide 16 tall", count: 0 });
+  assert.ok(feedViolations(bad, undefined, graded).some((v) => /dollhouse: not graded by Critic, in popular/.test(v)));
+});
+
+// I-draw (Chief 10-23, /workspace/ideas-review/REPORT.md): 25 of 82 live cards painted no image, a grey title stand-in.
+// The fixture is the 10-23 live snapshot as /api/ideas-snapshot now serves it (publicSnapshot): no typed prompt, so the
+// feed's rows get an empty prompt and the engine key back from the build type. liveFeed never reads the prompt for a card.
+const PUB = LIVE_SNAP as unknown as PublicSnapshot;
+const snapRows = (rs: PublicRow[]): SnapshotRow[] => rs.map((r, i) => ({ key: `p${i}`, prompt: "", resultKey: `${r.recipe ? "recipe" : "builtin"}:${r.buildType}`, size: r.size, status: r.status, count: r.count, lastSeen: r.lastSeen }));
+const live: IdeasSnapshot = { ...PUB, rows: snapRows(PUB.rows), popular: snapRows(PUB.popular), recent: snapRows(PUB.recent) };
+
+test("privacy: /api/ideas-snapshot and its saved fixture carry engine build types, titles, sizes and counts, never typed words", () => {
+  const typed = ["my nan's 3 legged bird table", "shoe rack 30 wide"];
+  const raw: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row(typed[0], "builtin:bird-feeder", 3, after(5)), row(typed[1], "builtin:shoe-rack", 2, after(6))] };
+  const pub = publicSnapshot({ ...raw, popular: raw.rows, recent: raw.rows });
+  const KEYS = ["buildType", "count", "lastSeen", "recipe", "size", "status", "title"];
+  for (const snap of [pub, PUB]) {
+    for (const r of [...snap.rows, ...snap.popular, ...snap.recent]) assert.deepEqual(Object.keys(r).sort(), KEYS, JSON.stringify(r));
+    const body = JSON.stringify(snap).toLowerCase();
+    // Every typed prompt with a size in it (titles never carry digits) and the two above.
+    for (const t of [...typed, ...raw.rows.map((r) => r.prompt.toLowerCase()).filter((p) => /\d/.test(p))]) assert.ok(!body.includes(t), `"${t}" served`);
+  }
+  assert.ok(pub.rows.some((r) => r.buildType === "bird-feeder" && r.title === "Bird feeder"));
+  // Rows the feed skips (test traffic, failed and unknown nouns) are not served either: same rule, isTestRow.
+  assert.equal(pub.rows.length, raw.rows.filter((r) => !isTestRow(r)).length);
+  // The build type is a fixed point of typeKey, so the fixture's rows group exactly as the store's did.
+  for (const r of PUB.rows) assert.equal(typeKey(`builtin:${r.buildType}`), r.buildType);
+  assert.match(fs.readFileSync("src/routes/api/ideas-snapshot.ts", "utf8"), /Response\.json\(publicSnapshot\(snap\),/);
+});
+const liveBase = curatedFeed(RECIPES);
+const liveF = liveFeed(live, liveBase, new Date(live.at));
+
+test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the feed shows paints its own baked drawing", () => {
+  const cards = liveF.sections.flatMap((s) => s.cards.map((c) => ({ s: s.id, c })));
+  assert.ok(cards.length > 40, `only ${cards.length} cards`);
+  for (const { s, c } of cards) {
+    assert.ok(c.drawing, `${c.slug} in ${s} has no drawing`);
+    assert.ok(fs.existsSync(path.join("public", c.drawing!.src)), `${c.slug}: ${c.drawing!.src} is not baked`);
+  }
+  assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
+  // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
+  for (const t of ["soccer-goal", "rocket", "dollhouse", "cat-tree", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  // Row 168: "Corner shelf" shows once (the log's corner-shelf rows count on the drawn Corner shelf card), and no two cards share a title.
+  const titles = cards.map(({ c }) => c.title.toLowerCase());
+  assert.equal(titles.filter((t) => t === "corner shelf").length, 1);
+  assert.deepEqual(titles.filter((t, i) => titles.indexOf(t) !== i), []);
+  const corner = cards.find(({ c }) => c.slug === "corner")!.c;
+  assert.equal(corner.count, groupRows(live.rows).find((g) => g.type === "corner-bookshelf")!.count);
+});
+
+test("I-draw guard: feedViolations names a shown card with no drawing, by section", () => {
+  const bad: IdeasFeed = JSON.parse(JSON.stringify(liveF));
+  const r = bad.sections.find((s) => s.id === "recent")!;
+  r.cards[0] = { ...r.cards[0], drawing: null };
+  assert.ok(feedViolations(bad).includes(`${r.cards[0].slug}: no drawing in recent`), feedViolations(bad).join("\n"));
+  // And liveFeed itself never shows one: with no drawings at all, only curated (baked) cards are left.
+  const none = liveFeed(live, liveBase, new Date(live.at), TEST_CUTOFF, () => null);
+  for (const s of none.sections) for (const c of s.cards) assert.ok(c.drawing && liveBase.sections.some((b) => b.cards.some((x) => x.slug === c.slug)), `${c.slug} in ${s.id}`);
+  assert.deepEqual(feedViolations(none), []);
+});
+
+const pieces = (prompt: string) => [...new Set((generateFromPrompt(prompt) as { panels: { name: string }[] }).panels.map((p) => p.name.replace(/\s*\d+$|\s*\([^)]*\)$/g, "")))].sort();
+
+test("one log type per drawn build: a leading lumber species is the stock (pine toolbox = toolbox), and each drawn twin builds the same pieces", () => {
+  assert.equal(typeKey("builtin:pine-toolbo"), "toolbox");
+  assert.equal(typeKey("builtin:cedar-birdhouse"), "birdhouse");
+  assert.equal(typeKey("builtin:walnut-spice-rack"), "spice-rack");
+  assert.equal(typeKey("recipe:cedar-planter-bo"), "planter-box");
+  assert.equal(typeKey("builtin:cedar"), "cedar");
+  // A species-keyed build and the plain build of each type build the same pieces (Yard's prompts; the fixture keeps no typed ones).
+  for (const [w, bare] of [["pine 1x6 toolbox 22 long", "1x6 toolbox 22 long"], ["cedar 1x6 birdhouse 8 wide 10 tall", "1x6 birdhouse 8 wide 10 tall"]]) assert.deepEqual(pieces(w), pieces(bare), w);
+  assert.deepEqual(pieces("walnut nightstand"), pieces("nightstand"));
+  // A type keys straight to the drawing baked for a card of that engine type (types.json), curated or not.
+  assert.equal(drawingForType("jar-rack")?.src.split("/").pop()?.split(".")[0], "jarshelf");
+  assert.equal(drawingForType("soccer-goal"), null);
+  // typeTwins.json: data next to drawings.json. Each key is an undrawn log type, each target a drawn type, same pieces.
+  for (const [from, to] of Object.entries(TWINS as Record<string, string>)) {
+    assert.equal(typeKey(`builtin:${from}`), to, from);
+    assert.equal(drawingFor(from), null, `${from} has its own drawing`);
+    assert.ok(drawingForType(to), `${to} is not drawn`);
+    const card = liveBase.sections.flatMap((s) => s.cards).find((c) => c.buildType === to) ?? null;
+    const prompt = card?.examplePrompt ?? Object.entries(TYPES as Record<string, string>).find(([, t]) => t === to)![0];
+    // The twin key's own words at the twin card's logged size (the snapshot keeps no typed prompt to replay).
+    const size = PUB.rows.filter((r) => r.buildType === to).sort((a, b) => b.count - a.count)[0]?.size;
+    const twin = logCardPrompt(from, dimsOf(size ?? ""));
+    assert.deepEqual(pieces(twin), pieces(prompt), `${from} ("${twin}") → ${to} ("${prompt}")`);
+  }
+  // Not a twin: a spice cabinet has a door and no jar lips, so it is not the Spice rack.
+  assert.notDeepEqual(pieces("spice cabinet"), pieces("spice rack 18 wide 24 high 4 deep"));
 });

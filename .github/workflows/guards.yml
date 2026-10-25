@@ -5,6 +5,11 @@
 # The one skip list for known, pre-existing failures lives in scripts/guard-known-failures.ts:
 # every entry says why it is tolerated and who owns the fix. Delete an entry when its fix lands
 # (the guards print "STALE KNOWN" for entries that no longer fire).
+#
+# Three parts run in parallel: `checks` (typecheck, guard scripts, linen, .mjs, vite build), `unit`
+# (every scripts/*.test.ts and src/lib/yard/*.test.ts, split into shards by run-unit-tests.ts --shard;
+# invariants, hunter and the weekend canaries run there once), and `guards`, the one check branch protection
+# requires, which is green only when every part is.
 name: guards
 
 on:
@@ -13,14 +18,15 @@ on:
   pull_request:
 
 concurrency:
-  group: guards-${{ github.ref }}
-  # Keep every main run (one per push); only superseded PR runs are cancelled.
+  # A PR's newer push supersedes its older run (each PR has its own ref, so other PRs are never touched).
+  # A main push gets a group of its own commit, so no main run is ever cancelled or left pending.
+  group: guards-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  guards:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -89,16 +95,6 @@ jobs:
       - name: Learned recipes pass support, cut list vs Buy and wording (blocks recipe-bot auto-merge)
         run: npx tsx scripts/learned-recipe-check.ts
 
-      - name: Invariants I1-I14 + eval scoreboard (no xAI)
-        run: npx tsx --test scripts/invariants.test.ts
-
-      - name: Weekend canaries (Big Ben, Eiffel Tower, Brooklyn Bridge, trebuchet, submarine, water wheel)
-        run: npx tsx --test scripts/weekend-canaries.test.ts
-
-      - name: Unit tests (TypeScript, via tsx)
-        if: always()
-        run: npx tsx scripts/run-unit-tests.ts
-
       - name: Unit tests (.mjs)
         if: always()
         run: node --test 'scripts/**/*.test.mjs'
@@ -106,3 +102,41 @@ jobs:
       - name: Build (vite)
         if: always()
         run: node scripts/write-brand-assets.mjs && npx vite build
+
+  unit:
+    name: unit (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Includes invariants I1-I14 + eval scoreboard, the I37 hunter (known hits in evals/hunter-baseline.json)
+      # and the weekend canaries, which used to run a second time as their own steps.
+      # N comes from the matrix itself, so adding a shard can never leave files unrun.
+      - name: Unit tests (TypeScript, via tsx), shard ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: npx tsx scripts/run-unit-tests.ts --shard ${{ matrix.shard }}/${{ strategy.job-total }}
+
+  # The required check (branch protection asks for "guards"): green only when every job above passed.
+  guards:
+    needs: [checks, unit]
+    # Runs even when a part failed, so the required check reports red instead of "skipped"; a superseded run stays cancelled.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every guards job passed
+        run: |
+          echo 'checks: ${{ needs.checks.result }}  unit: ${{ needs.unit.result }}'
+          test '${{ needs.checks.result }}' = success && test '${{ needs.unit.result }}' = success

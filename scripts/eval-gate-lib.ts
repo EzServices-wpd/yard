@@ -124,6 +124,32 @@ const FEAT: [RegExp, RegExp][] = [
   [/outdoor/, /outdoor|exterior|cedar|treated|2x6|weather/], [/covered/, /roof|cover/], [/black/, /black|paint/],
 ];
 const COUNT: Record<string, RegExp> = { drawers: /^drawer front\b/i, doors: /\bdoor\b(?!\s*stop)/i, shelves: /^(?:adjustable |fixed |bottom |top |lower |middle )?shel(f|ves)\b(?!\s*pin)/i, steps: /\b(step|tread)\b/i, bins: /\bbin\b/i, legs: /\bleg\b/i, rods: /\brod\b/i, seats: /\bseat\b/i };
+
+/**
+ * Typed shelf count. Group by height inside each bay: two bays sharing a height are one level, and two
+ * pieces at one height in the same bay count separately (a duplicate, not a second level in another bay).
+ */
+export function shelfLevelCount(panels: { name: string; position?: { x: number; y: number }; size?: { width: number } }[]): number {
+  const hit = panels.filter((p) => COUNT.shelves.test(p.name) && p.position && p.size);
+  const rows = new Map<number, typeof hit>();
+  for (const p of hit) {
+    const y = Math.round(p.position!.y * 4) / 4;
+    const row = rows.get(y) ?? [];
+    row.push(p);
+    rows.set(y, row);
+  }
+  let n = 0;
+  for (const row of rows.values()) {
+    const parent = row.map((_, i) => i);
+    const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const xOverlap = (a: (typeof hit)[number], b: (typeof hit)[number]) => Math.min(a.position!.x + a.size!.width, b.position!.x + b.size!.width) - Math.max(a.position!.x, b.position!.x);
+    for (let i = 0; i < row.length; i++) for (let j = i + 1; j < row.length; j++) if (xOverlap(row[i], row[j]) > 1 / 32) parent[find(i)] = find(j);
+    const sizes = new Map<number, number>();
+    for (let i = 0; i < row.length; i++) sizes.set(find(i), (sizes.get(find(i)) ?? 0) + 1);
+    n += Math.max(...sizes.values());
+  }
+  return n;
+}
 const MAT: [RegExp, RegExp][] = [[/popsicle|craft/, /popsicle|craft stick/], [/pvc/, /pvc/], [/cardboard/, /cardboard/], [/walnut/, /walnut/], [/cedar/, /cedar/], [/2x4/, /2x4|2×4/], [/1x6/, /1x6|1×6/], [/plywood/, /plywood/],
   // Added to the port: the named-species words the engine sells (named lumber species, C16).
   [/\boak\b/, /\boak\b/], [/maple/, /maple/], [/\bpine\b/, /\bpine\b/], [/cherry/, /cherry/], [/birch/, /birch/], [/poplar/, /poplar/], [/redwood/, /redwood/], [/\bmdf\b/, /\bmdf\b/], [/bamboo/, /bamboo/]];
@@ -162,7 +188,9 @@ export function honor(E: Engine, s: Demands, p: any, plan: any, builtFrom: strin
   for (const c of s.counts) {
     const re = COUNT[c.thing];
     if (!re) continue;
+    // A typed shelf count is levels. The same height in two bays is one level; two pieces at that height in one bay are a duplicate.
     let n = names.filter((x) => re.test(x)).length;
+    if (c.thing === "shelves") n = shelfLevelCount(p.panels);
     // Drawer parts are not drawers: one drawer = one front ("Left drawer front 2"). Steps are treads when the model has treads.
     if (c.thing === "drawers") n = names.filter((x) => /\bdrawer front\b/i.test(x)).length;
     if (c.thing === "steps") { const t = names.filter((x) => /^(?:top )?tread\b/i.test(x)).length; if (t) n = t; }
