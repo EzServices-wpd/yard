@@ -112,7 +112,7 @@ it("the linen closet canary is unchanged, and a pantry does not grow a rod", () 
   assert.deepEqual([linen.overall.width, linen.overall.depth, linen.overall.height], [31.5, 16, 78]);
   const plan = buildPlan(linen);
   assert.equal(plan.totals.pieces, 11);
-  assert.equal(plan.totals.estCostUsd.toFixed(2), "183.70");
+  assert.equal(plan.totals.estCostUsd.toFixed(2), "193.68"); // #149 anti-tip kit (Ezra-approved, release 583efe86)
   assert.equal(linen.panels.filter((x) => /rod/i.test(x.name)).length, 0);
   const pantry = generateFromPrompt("pantry cabinet");
   assert.equal(pantry.overall.depth, 16);
@@ -413,4 +413,27 @@ it("row 440: when drawers take the lower tier, the one-rod note names the drawer
   const notes = generateFromPrompt("wardrobe 96 tall with drawers and 2 rods").notes.join(" ");
   assert.match(notes, /You asked for 2 rods\. One rod is built: the drawers leave room for one rod/);
   assert.doesNotMatch(notes, /needs the box at least 88/);
+});
+
+it("row 446: a rod length is not a rod count; a singular rod counts only after 1-6", () => {
+  const like = (q: string, twin: string) => {
+    const p = generateFromPrompt(q);
+    assert.ok(!p.refused, `${q}: ${p.refused}`);
+    assert.equal(rodsOf(q).length, rodsOf(twin).length, q);
+  };
+  like("closet with a 36 rod", "closet with a rod");
+  like("closet 24 rod", "closet 24 wide with a rod");
+  like("closet with 96 rod", "closet with a rod");
+  like("wardrobe with a 36 rod", "wardrobe with a rod");
+  assert.match(generateFromPrompt("closet with 2 rod").refused ?? "", /for 2 rods/);
+});
+
+it("row 450: a count next to a rod size is read; a typed count that drops a typed double hang says so", () => {
+  assert.equal(rodsOf("closet with two 1 1/4 rods 96 tall").length, 2);
+  assert.match(generateFromPrompt("closet 96 tall double hang 1 rod").notes.join(" "), /You asked for 1 rod and double hang/);
+});
+
+it("row 449: a box too narrow for the typed rods names the width, not the height", () => {
+  const notes = generateFromPrompt("closet 40 wide 88 tall with 3 rods").notes.join(" ");
+  assert.match(notes, /You asked for 3 rods\. 2 rods are built: .*44" wide/);
 });

@@ -55,8 +55,12 @@ const ROD_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, f
 
 /** Typed rod count: "3 rods", "two hanging rods", "1 rod". 0 when none is typed. A rod size ("1 1/4 rods", "1-1/4", "2.5") is not a count (row 439). */
 export function rodsAsked(prompt: string): number {
-  const m = prompt.match(/(?<![\d/.-])(?<!\d\s)\b(\d+|one|two|three|four|five|six)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods?\b(?![\d/.-])/i);
-  return !m ? 0 : /\d/.test(m[1]) ? parseInt(m[1], 10) : ROD_WORDS[m[1].toLowerCase()];
+  // A singular "rod" after a number past 6 ("a 36 rod", "closet 24 rod") is a rod length, not a count (row 446).
+  const m = prompt.match(/(?<![\d/.-])(?<!\d\s)\b(?:(\d+|one|two|three|four|five|six)\s+(?:hanging\s+|clothes\s+|closet\s+)?rods|([1-6]|one|two|three|four|five|six)\s+(?:hanging\s+|clothes\s+|closet\s+)?rod)\b(?![\d/.-])/i);
+  // Row 450: a count before a rod size ("two 1 1/4 rods", '2 1-1/4" rods'); a bare digit before a fraction is the size.
+  const z = m ? null : prompt.match(/(?<![\d/.-])\b(one|two|three|four|five|six|[1-6])\s+(\d+(?:[ -]\d+\/\d+)?|\d+\/\d+)(\s*(?:"|inch(?:es)?\b))?\s+(?:hanging\s+|clothes\s+|closet\s+)?rods\b/i);
+  const w = m ? m[1] ?? m[2] : z && (!/\d/.test(z[1]) || (z[3] && !/^\d+\/\d+$/.test(z[2]))) ? z[1] : "";
+  return !w ? 0 : /\d/.test(w) ? parseInt(w, 10) : ROD_WORDS[w.toLowerCase()];
 }
 
 /**
@@ -562,8 +566,10 @@ function fitRodCount(project: YardProject, prompt: string): YardProject {
         ? `, one in each of the ${keys.length} bays: a rod can't pass through a divider`
         : project.panels.some((p) => /drawer/i.test(p.name))
           ? `: the drawers leave room for one rod in each hanging bay, not a double-hang pair`
-          : `: there is room for one rod in each bay here, not a double-hang pair`;
+          : `: ${n} rods need the box at least ${wideFor(n)}" wide`; // row 449
     notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"}. ${built} built${why}.`);
   }
+  if (drop.size && /\bdouble\s*(?:hang|rod)s?\b/i.test(prompt)) // row 450: say which word won
+    notes.push(`You asked for ${n} rod${n === 1 ? "" : "s"} and double hang. The count wins: ${rods.length === 1 ? "one rod is" : `${rods.length} rods are`} built, ${Math.round(Math.max(...rods.map((r) => r.position.y)))}" up.`);
   return drop.size || pairBays || notes.length !== (project.notes ?? []).length ? { ...project, panels, notes } : project;
 }
