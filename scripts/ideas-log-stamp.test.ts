@@ -98,5 +98,5 @@ test("no visitor identity: the write and serve paths read no IP, user agent or c
   const strip = (f: string) => fs.readFileSync(f, "utf8").replace(/\/\/.*$|\/\*[\s\S]*?\*\//gm, "");
   for (const f of ["src/lib/yard/ideaLogHandler.ts", "src/lib/yard/ideaLog.server.ts", "src/routes/api/ideas-snapshot.ts", "src/routes/api/ideas-log.ts"])
     assert.doesNotMatch(strip(f), /user-?agent|x-forwarded|x-real-ip|cf-connecting|\bip\b|cookie/i, f);
-  assert.match(strip("src/routes/api/ideas-snapshot.ts"), /Response\.json\(snap,/, "serve path passes the stored snapshot through");
+  assert.match(strip("src/routes/api/ideas-snapshot.ts"), /Response\.json\(publicSnapshot\(snap\),/, "serve path passes the stored snapshot through publicSnapshot only (no typed prompts)");
 });

@@ -17,6 +17,10 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token: no job here writes to the repo.
+permissions:
+  contents: read
+
 concurrency:
   # A PR's newer push supersedes its older run (each PR has its own ref, so other PRs are never touched).
   # A main push gets a group of its own commit, so no main run is ever cancelled or left pending.

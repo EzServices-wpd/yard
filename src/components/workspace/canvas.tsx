@@ -1,14 +1,14 @@
 "use client";
 
 import { useCutFocus } from "@/components/workspace/cut-focus";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
 import * as THREE from "three";
 import { useYard } from "@/lib/yard/store";
 import { parseInch } from "@/lib/yard/inchText";
 import { hasHistoricProfile, historicStrokes, hullStrokes } from "@/lib/yard/ghost";
-import { benchModelBox, benchView, boxCorners, fitBench, type Rect } from "@/lib/yard/benchFrame";
+import { benchModelBox, benchView, boxCorners, fitBench } from "@/lib/yard/benchFrame";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import { isFrameRole, isSkinRole } from "@/lib/yard/joints";
 import type { BuildPlan, DetailLevel, Vec3, WorkMode, YardProject } from "@/lib/yard/types";
@@ -17,6 +17,11 @@ import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stic
 import { buildOrder } from "@/components/workspace/build-order";
 import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
+import { ExplodeTestHook } from "@/components/workspace/explode-hook";
+import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-layout";
+import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
+import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
+import { fitPoints } from "@/components/workspace/explode-frame";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 
 const HULL = "#8a8478";
@@ -233,8 +238,11 @@ export function WorkspaceCanvas() {
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 0.98,
         }}
-        frameloop="always"
-        dpr={[1, 1.75]}
+        // Render only while something moves: orbit, the reveal, the explode tween and the camera glide each
+        // ask for frames while they run (walking needs every frame).
+        frameloop={workMode === "walk" ? "always" : "demand"}
+        // Pixel ratio capped at 1.75 (1.5 on phones, below 820 px).
+        dpr={typeof window !== "undefined" && window.innerWidth < 820 ? [1, 1.5] : [1, 1.75]}
         style={{ display: "block", width: "100%", height: "100%" }}
         onCreated={({ camera: cam, gl, scene }) => {
           gl.setClearColor("#1a1612", 1);
@@ -297,25 +305,10 @@ export function WorkspaceCanvas() {
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
+        <ExplodeTestHook project={project} />
       </Canvas>
     </div>
   );
-}
-
-/** Canvas-relative rects of the UI cards floating over the bench (marked data-bench-overlay). */
-function overlayRects(canvas: HTMLCanvasElement): Rect[] {
-  const host = canvas.closest("[data-bench-host]") ?? canvas.parentElement?.parentElement?.parentElement;
-  if (!host) return [];
-  const c = canvas.getBoundingClientRect();
-  const out: Rect[] = [];
-  host.querySelectorAll<HTMLElement>("[data-bench-overlay]").forEach((el) => {
-    const r = el.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) return;
-    const st = window.getComputedStyle(el);
-    if (st.visibility === "hidden" || st.display === "none" || Number(st.opacity) === 0) return;
-    out.push({ left: r.left - c.left, top: r.top - c.top, right: r.right - c.left, bottom: r.bottom - c.top });
-  });
-  return out;
 }
 
 type Glide = {
@@ -324,8 +317,6 @@ type Glide = {
   t0: number;
   dur: number;
 };
-/** The camera glide's ease (ease-out cubic). */
-const easeGlide = (u: number) => 1 - (1 - u) ** 3;
 
 function CameraRig({
   project, preset, stepIds, locked, overlayKey,
@@ -341,6 +332,12 @@ function CameraRig({
   projectRef.current = project;
   const presetKey = `${preset}|${overlayKey.split("|").pop() ?? ""}`;
   const lastPresetKey = useRef(presetKey);
+  // See inside (item 2): the camera fits the EXPLODED box from 32° up and glides there with the parts.
+  const explode = useYard((s) => s.explode);
+  const staged = project.panels.length > 0;
+  const lastExplode = useRef(explode);
+  // A tap's solve can land a little after the tap (it runs in slices, at most 1.5 s): refit when it does.
+  const solvedV = useSyncExternalStore(subscribeSolved, solvedVersion, solvedVersion);
   const glide = useRef<Glide | null>(null);
   // Operate on a build with drawers: the cavity camera looks down into the open drawers (Critic #84).
   const facesOpen = useYard((s) => s.facesOpen);
@@ -348,7 +345,7 @@ function CameraRig({
   const cavityKey = `${facesOpen ? 1 : 0}|${soloDrawer ?? ""}`;
   const lastCavity = useRef(cavityKey);
   const fitRef = useRef<((glideMs?: number) => void) | null>(null);
-  const endGlide = () => { glide.current = null; };
+  const endGlide = () => { glide.current = null; explodeClock.cameraBusy = false; };
   // Turning, zooming or panning by hand: remember the angle so a rebuild keeps it.
   useEffect(() => {
     const orbit = controls as unknown as (THREE.EventDispatcher<{ start: object; end: object }> & { target?: THREE.Vector3 }) | null;
@@ -376,7 +373,7 @@ function CameraRig({
     if (!g) return;
     const cam = camera as THREE.PerspectiveCamera;
     const k = Math.min(1, (performance.now() - g.t0) / g.dur);
-    const e = easeGlide(k);
+    const e = easeParts(k);
     const tgt = g.from.tgt.clone().lerp(g.to.tgt, e);
     cam.position.copy(g.from.pos).lerp(g.to.pos, e);
     cam.near = g.to.near; cam.far = Math.max(cam.far, g.to.far);
@@ -397,6 +394,12 @@ function CameraRig({
     lastPresetKey.current = presetKey;
     const st = useYard.getState();
     const kept = !asked && st.orbited ? st.userView : null;
+    // See inside on, its solve still running: hold the camera; it glides when the solve lands (solvedV).
+    const ready = explodeClock.solved?.key.split("|")[0] === projectRef.current.id;
+    if (staged && explode && !ready) return;
+    // See inside toggled: glide to the new frame over the explode's own time (reduced motion: jump).
+    let toggled = staged && lastExplode.current !== explode;
+    lastExplode.current = explode;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const fit = (glideMs = 0) => {
       if (cancelled) return;
@@ -404,11 +407,16 @@ function CameraRig({
       const viewport = { w: size.width, h: size.height };
       if (viewport.w < 10 || viewport.h < 10) return;
       // One framing path for every build: the solved model's box, the free canvas, a 3/4 view.
+      // Exploded: the exploded box (every part's final pose, with the built box), so condition (d) of
+      // every-piece-visible holds by construction: all corners inside the free rect, none under the cards.
       const shut = benchModelBox(projectRef.current);
       // Operate with drawers open: frame the pulled-out drawers too and look down into them from >= 40°.
-      const pulled = useYard.getState().facesOpen ? maxOpenPull(projectRef.current.panels, soloDrawer) : 0;
+      const pulled = useYard.getState().facesOpen && !(staged && explode) ? maxOpenPull(projectRef.current.panels, soloDrawer) : 0;
       const cavity = pulled > 0 && drawerGroups(projectRef.current.panels).length > 0;
-      const box = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
+      const built = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
+      const solved = explodeClock.solved;
+      const exploded = staged && explode && !!solved && solved.key.split("|")[0] === projectRef.current.id;
+      const box = built;
       const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
@@ -420,9 +428,11 @@ function CameraRig({
             ? { azimuthDeg: faceX ? 0.01 : 90, elevationDeg: 8 }
             : preset === "top"
               ? { azimuthDeg: 0.01, elevationDeg: 89 }
-              : cavity ? { ...base, elevationDeg: Math.max(base.elevationDeg, 40) } : base;
+              : exploded ? explodeView() : cavity ? { ...base, elevationDeg: Math.max(base.elevationDeg, 40) } : base;
       const overlays = overlayRects(gl.domElement);
-      const frame = fitBench({ box, view, viewport, overlays, fovDeg: cam.fov });
+      // Exploded: fit every part's posed corners (and stick members, if any), not one big box: it fills the frame.
+      const points = exploded ? [...solved!.points, ...(projectRef.current.instances.length ? boxCorners(built) : [])] : null;
+      const frame = points ? fitPoints({ points, view, viewport, overlays, fovDeg: cam.fov }) : fitBench({ box, view, viewport, overlays, fovDeg: cam.fov });
       const tgt = new THREE.Vector3(...frame.target);
       const near = Math.max(0.1, frame.distance / 200), far = frame.distance * 30;
       const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void; minDistance?: number; maxDistance?: number } | null;
@@ -432,11 +442,13 @@ function CameraRig({
       if (glide.current) {
         // A refit while gliding (the cards settled): land on the new frame, same clock.
         glide.current.to = to;
-      } else if (glideMs > 0 && !reduced && cam.view?.enabled) {
+      } else if ((toggled || glideMs > 0) && !reduced && cam.view?.enabled) {
         glide.current = {
           from: { pos: cam.position.clone(), tgt: orbit?.target?.clone() ?? tgt.clone(), off: [cam.view.offsetX, cam.view.offsetY] },
-          to, t0: performance.now(), dur: glideMs,
+          to, t0: performance.now(), dur: toggled ? (explode ? EXPLODE_MS : CLOSE_MS) : glideMs,
         };
+        toggled = false;
+        explodeClock.cameraBusy = true;
       } else {
         cam.setViewOffset(viewport.w, viewport.h, frame.viewOffset.x, frame.viewOffset.y, viewport.w, viewport.h);
         cam.near = near;
@@ -468,7 +480,7 @@ function CameraRig({
         const v = new THREE.Vector3(x, y, z).project(probe);
         return { x: ((v.x + 1) / 2) * viewport.w, y: ((1 - v.y) / 2) * viewport.h };
       });
-      (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset, kept: !!kept };
+      (window as unknown as { __yardFrame?: unknown }).__yardFrame = { viewport, safe: frame.safe, overlays, corners: pts, view, preset, kept: !!kept, exploded };
       // The framed pose, for a reveal glide already running on this camera (see RevealCamera).
       const prev = (cam.userData.framed as FramedPose | undefined)?.v ?? 0;
       cam.userData.framed = { v: prev + 1, pos: to.pos.clone(), target: tgt.clone() } satisfies FramedPose;
@@ -493,11 +505,11 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, invalidate, cavityKey]);
-  // While Operate is on, the free stage follows the cards: opening or closing the tray (More) or a card resizing
-  // refits the model with a short glide (the window resizing refits via size), so it never sits under a card or
-  // shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).
-  const followsStage = facesOpen;
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV]);
+  // While See inside or Operate is on, the free stage follows the cards: opening or closing the
+  // tray (More) or a card resizing refits the model with a short glide (the window resizing refits via size), so it never sits
+  // under a card or shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).
+  const followsStage = (staged && explode) || facesOpen;
   useEffect(() => {
     if (!followsStage || locked) return;
     const host = gl.domElement.closest("[data-bench-host]");
@@ -737,11 +749,13 @@ function useStepReveal(project: YardProject, plan: BuildPlan | null | undefined,
 /** The pose CameraRig last framed on this camera (kept on the camera, so a remounted Canvas starts empty). */
 type FramedPose = { v: number; pos: THREE.Vector3; target: THREE.Vector3 };
 function RevealCamera() {
-  const { camera, controls } = useThree();
+  const { camera, controls, invalidate } = useThree();
   const pose = useRef<{ t0: number; end: number; v: number; from: THREE.Vector3; to: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   useFrame(() => {
     const r = revealState();
     const orbit = controls as unknown as { target?: THREE.Vector3; update?: () => void } | null;
+    // frameloop "demand": the reveal keeps frames coming while it runs, and one more to land its end pose.
+    if (r.active || pose.current) invalidate();
     if (!r.active) {
       if (pose.current) {
         // End on the latest framing (a fit can land after the last glide frame).
@@ -814,6 +828,10 @@ function BenchScene({
 }) {
   const assemble = useAssemble(project.panels.length > 0 && !pending);
   const explodeScale = explode ? 1.35 : assemble;
+  // See inside on a panel build is the staged unit explode (explode-driver.tsx): panels keep their built
+  // place here and the driver moves them. Stick builds keep the spread-out view.
+  const staged = project.panels.length > 0;
+  const panelScale = staged ? assemble : explodeScale;
   const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
@@ -863,19 +881,20 @@ function BenchScene({
             <PanelMesh
               key={panel.id}
               panel={panel}
-              explode={explodeScale}
+              explode={panelScale}
               selected={panel.id === selectedId}
               inStep={reveal ? false : focusOn ? cutFocus.has(panel.id) : stepIds.length ? stepIds.includes(panel.id) : false}
               hasStep={reveal ? !reveal.has(panel.id) : focusOn ? false : stepIds.length > 0}
               onSelect={() => onSelect(panel.id)}
               useShadows={useShadows}
-              facesOpen={facesOpen}
+              facesOpen={facesOpen && !(staged && explode)}
               showPinHoles={showPinHoles}
             />
           ))}
       {!pending && !reveal && project.panels.length > 0 && (
         <CarcaseJoins panels={project.panels} explode={explodeScale} />
       )}
+      {!pending && staged && <ExplodeDriver project={project} explode={explode} />}
       {workMode === "free" && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}

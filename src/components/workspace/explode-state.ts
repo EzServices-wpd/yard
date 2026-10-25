@@ -29,9 +29,25 @@ export const explodeClock = {
   solved: null as ExplodeSolved | null,
   /** The camera's own glide (CameraRig), so settled waits for it too. */
   cameraBusy: false,
+  /** A solve (or the check for cards that moved) is still running, so the shown pose may change (row 353). */
+  solving: false,
   /** When the last tween ended (ms, performance.now()). */
   endedAt: 0,
 };
+
+/** A new solve for the camera to frame (CameraRig refits when it lands; a tap's solve can land a little later). */
+let solvedV = 0;
+const solvedSubs = new Set<() => void>();
+export function setSolved(s: ExplodeSolved) {
+  explodeClock.solved = s;
+  solvedV++;
+  solvedSubs.forEach((f) => f());
+}
+export const solvedVersion = () => solvedV;
+export function subscribeSolved(f: () => void) {
+  solvedSubs.add(f);
+  return () => void solvedSubs.delete(f);
+}
 
 export function startTween(to: number, dur: number, now = performance.now()) {
   const c = explodeClock;
@@ -54,9 +70,9 @@ export function stepTween(now = performance.now()): boolean {
 
 export function explodeSettled(): boolean {
   const c = explodeClock;
-  return c.target === 1 && !c.tween && !c.cameraBusy && c.u === 1 && !!c.solved;
+  return c.target === 1 && !c.tween && !c.cameraBusy && !c.solving && c.u === 1 && !!c.solved;
 }
 
 export function resetExplodeClock() {
-  explodeClock.u = 0; explodeClock.target = 0; explodeClock.tween = null; explodeClock.solved = null; explodeClock.cameraBusy = false;
+  explodeClock.u = 0; explodeClock.target = 0; explodeClock.tween = null; explodeClock.solved = null; explodeClock.cameraBusy = false; explodeClock.solving = false;
 }

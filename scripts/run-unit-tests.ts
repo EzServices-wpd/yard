@@ -1,7 +1,8 @@
 /**
  * Runs every TypeScript unit test (src/lib/yard/*.test.ts, scripts/*.test.ts) under tsx and fails on
  * any failing test that is not in KNOWN_TEST_FAILURES (scripts/guard-known-failures.ts).
- * GUARD_STRICT=1 ignores the list. The .mjs tests run separately with `node --test`.
+ * GUARD_STRICT=1 ignores the list, and it never applies to invariants, hunter or weekend canaries (scripts/unit-known.ts).
+ * The .mjs tests run separately with `node --test`.
  * Files run UNIT_JOBS at a time (default: one per CPU); each file is still its own tsx process.
  *
  *   npx tsx scripts/run-unit-tests.ts                        every file
@@ -13,6 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { KNOWN_TEST_FAILURES } from "./guard-known-failures";
+import { isKnownTestFailure } from "./unit-known";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const allFiles = [
@@ -72,7 +74,7 @@ function report(file: string, r: Run) {
     .map((line) => line.match(/^(\s*)(not ok|ok) \d+ - (.*?)(?:\s+#.*)?$/))
     .filter((m): m is RegExpMatchArray => !!m)
     .map((m) => ({ indent: m[1].length, ok: m[2] === "ok", name: m[3].trim() }));
-  const isKnown = (name: string) => !strict && KNOWN_TEST_FAILURES.some((k) => k.file === file && k.test === name);
+  const isKnown = (name: string) => isKnownTestFailure(KNOWN_TEST_FAILURES, file, name, strict);
   const unknown: string[] = [];
   const known: string[] = [];
   rows.forEach((row, i) => {
