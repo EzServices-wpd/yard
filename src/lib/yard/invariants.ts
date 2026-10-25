@@ -685,6 +685,8 @@ export function i46(p: YardProject, plan: BuildPlan): Violation[] {
     const total = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
     if (carried.has(id)) {
       if (Number.isFinite(total) && carried.get(id) !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps carry ${carried.get(id)}`));
+      // A wall line sold by the piece (a kit, lags each): Buy's quantity is what the steps carry.
+      else if (tiedById(b) && /^(?:kit|each)$/i.test(b.unit) && carried.get(id) !== b.quantity) out.push(v("I46", `Buy lists ${b.quantity} ${b.name}; the steps carry ${carried.get(id)}`));
       continue;
     }
     if (tiedById(b) || anchorKind(b)) {
