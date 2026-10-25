@@ -70,18 +70,23 @@ function cpuGl() {
 const gl = cpuGl();
 const VIEWS = { desk: { w: 1280, h: 800 }, phone: { w: 390, h: 844 } } as const;
 type View = keyof typeof VIEWS;
-/** Settled cards (canvas px) and the same cards one frame into their slide-in under full motion. */
-function cards(view: View): { settled: Rect[]; sliding: Rect[] } {
-  const { w, h } = VIEWS[view];
-  const settled = view === "phone"
-    ? [{ left: 8, top: 8, right: w - 8, bottom: 64 }, { left: 0, top: h - 170, right: w, bottom: h }]
-    : [{ left: 16, top: 16, right: 380, bottom: 120 }, { left: w - 360, top: 16, right: w - 16, bottom: h - 16 }];
-  // Mid-slide: the bottom sheet / side dock still off its place (translate), the step card not yet shown (opacity 0).
-  const sliding = view === "phone"
-    ? [{ left: 0, top: h - 40, right: w, bottom: h + 130 }]
-    : [{ left: w - 60, top: 16, right: w + 284, bottom: h - 16 }];
-  return { settled, sliding };
-}
+const R = (left: number, top: number, right: number, bottom: number): Rect => ({ left, top, right, bottom });
+/**
+ * The cards each run sees, from a probe of the #141 build (row 353 evidence, canvas px). Phone: See inside is tapped
+ * from the More tray, so the solve starts with the tray open (dock, step pill, tools), laid out 8 px apart in the two
+ * runs (step pill top 730 vs 738), and the tray then closes (dock only). Desk: the side dock is still sliding in when
+ * the idle solve starts under full motion (the step card not shown yet: opacity 0).
+ */
+const RUNS: Record<View, { full: Cards[]; reduced: Cards[] }> = {
+  phone: {
+    full: [{ rects: [R(12, 494, 378, 832), R(13, 730, 377, 783), R(13, 783, 377, 835), R(13, 1010, 377, 1071)], moving: true }, { rects: [R(12, 640, 378, 832)], moving: false }],
+    reduced: [{ rects: [R(12, 494, 378, 832), R(13, 738, 377, 791), R(13, 791, 377, 843), R(13, 1018, 377, 1079)], moving: false }, { rects: [R(12, 640, 378, 832)], moving: false }],
+  },
+  desk: {
+    full: [{ rects: [R(1220, 16, 1564, 784)], moving: true }, { rects: [R(16, 16, 380, 120), R(920, 16, 1264, 784)], moving: false }],
+    reduced: [{ rects: [R(16, 16, 380, 120), R(920, 16, 1264, 784)], moving: false }],
+  },
+};
 
 function solve(desk: SolveDesk, base: string, c: Cards): ExplodeSolved | null {
   const j = desk.start(base, c);
@@ -92,8 +97,8 @@ function solve(desk: SolveDesk, base: string, c: Cards): ExplodeSolved | null {
 }
 
 /**
- * The driver's order of calls (explode-driver.tsx): idle ticks while the cards come in, then the tap, then the
- * cards-moved re-check while See inside is on. Returns the solve on screen at the end.
+ * The driver's order of calls (explode-driver.tsx): the idle/tap solve on the first sample that may solve, then the
+ * cards-moved re-check on each later sample while See inside is on. Returns the solve on screen at the end.
  */
 function seeInside(q: string, view: View, timeline: Cards[]): ExplodeSolved {
   const p = generateFromPrompt(q);
@@ -101,10 +106,10 @@ function seeInside(q: string, view: View, timeline: Cards[]): ExplodeSolved {
   const desk = new SolveDesk((key, overlays) => solveJob({ gl, panels: p.panels, key, viewport: { w, h }, overlays, view: EXPLODE_VIEW, fov: BENCH_FOV }), new Map());
   const base = `${buildKey(p.id, p.panels)}|${w}x${h}`;
   let shown: ExplodeSolved | null = null;
-  for (const c of timeline) if ((shown = solve(desk, base, c))) break; // idle: the first tick that may solve
-  const now = timeline[timeline.length - 1];
-  shown = solve(desk, base, now) ?? shown; // tap
-  if (shown && desk.stale(shown.key, base, now)) shown = solve(desk, base, now) ?? shown; // cards moved since
+  for (const c of timeline) {
+    if (!shown) shown = solve(desk, base, c);
+    else if (desk.stale(shown.key, base, c)) shown = solve(desk, base, c) ?? shown;
+  }
   return shown!;
 }
 
@@ -118,15 +123,21 @@ function projected(s: ExplodeSolved, view: View, settled: Rect[]): [number, numb
 for (const [slug, q] of [["dresser6", "6 drawer dresser"], ["nightstand", "nightstand with 2 drawers"]] as const) {
   for (const view of ["desk", "phone"] as const) {
     test(`row 353: ${slug} ${view}: reduced and full motion land on the same pose (<= 0.75 px)`, () => {
-      const { settled, sliding } = cards(view);
-      const full = seeInside(q, view, [{ rects: sliding, moving: true }, { rects: settled, moving: true }, { rects: settled, moving: false }]);
-      const reduced = seeInside(q, view, [{ rects: settled, moving: false }]);
-      const a = projected(full, view, settled), b = projected(reduced, view, settled);
-      assert.equal(a.length, b.length);
-      let d = 0;
-      for (let i = 0; i < a.length; i++) d = Math.max(d, Math.abs(a[i][0] - b[i][0]), Math.abs(a[i][1] - b[i][1]));
-      console.log(`${slug} ${view}: rounds full ${full.rounds} / reduced ${reduced.rounds}, max corner diff ${d.toFixed(2)} px`);
+      const runs = RUNS[view], settled = runs.full[runs.full.length - 1].rects;
+      // The pose straight from the settled cards: where both runs must end, whatever motion got them there.
+      const ref = seeInside(q, view, [{ rects: settled, moving: false }]);
+      const full = seeInside(q, view, runs.full), reduced = seeInside(q, view, runs.reduced);
+      const at = (s: ExplodeSolved) => projected(s, view, settled);
+      const gap = (a: [number, number][], b: [number, number][]) => {
+        assert.equal(a.length, b.length);
+        let d = 0;
+        for (let i = 0; i < a.length; i++) d = Math.max(d, Math.abs(a[i][0] - b[i][0]), Math.abs(a[i][1] - b[i][1]));
+        return d;
+      };
+      const d = gap(at(full), at(reduced)), dFull = gap(at(full), at(ref)), dRed = gap(at(reduced), at(ref));
+      console.log(`${slug} ${view}: rounds full ${full.rounds} / reduced ${reduced.rounds} / settled ${ref.rounds}; full vs reduced ${d.toFixed(2)} px, vs settled ${dFull.toFixed(2)} / ${dRed.toFixed(2)} px`);
       assert.ok(d <= 0.75, `${slug} ${view}: full motion lands ${d.toFixed(2)} px from reduced motion (rounds ${full.rounds} vs ${reduced.rounds})`);
+      assert.ok(Math.max(dFull, dRed) <= 0.75, `${slug} ${view}: the pose is not the settled cards' pose (full ${dFull.toFixed(2)} px, reduced ${dRed.toFixed(2)} px)`);
     });
   }
 }
