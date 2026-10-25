@@ -39,12 +39,15 @@ export const readerEnv = (env: Record<string, string | undefined>, hasStore: boo
  */
 type Pipe = (cmds: (string | number)[][]) => Promise<unknown[] | null>;
 export const usdKey = (day: string) => `yard:reader:usd:${day}`;
+/** Once this instance sees the cap reached, it stops asking Upstash for the day: spam past the cap costs no commands. */
+let fullDay = "";
 export async function reserveUsd(pipe: Pipe, day: string, usd: number, cap: number): Promise<boolean> {
-  if (!(usd > 0 && usd <= cap)) return false;
+  if (!(usd > 0 && usd <= cap) || fullDay === day) return false;
   const out = await pipe([["INCRBYFLOAT", usdKey(day), usd], ["EXPIRE", usdKey(day), 172_800]]);
   const total = out?.[0] == null ? NaN : Number(out[0]);
   if (!Number.isFinite(total)) return false;
   if (total <= cap + 1e-9) return true;
+  fullDay = day;
   await pipe([["INCRBYFLOAT", usdKey(day), -usd]]);
   return false;
 }

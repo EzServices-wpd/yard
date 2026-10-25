@@ -73,11 +73,14 @@ test("I49 the persistent counter (Upstash INCRBYFLOAT + EXPIRE, 2 commands) refu
   assert.equal(sent.length, 0);
   assert.equal(await reserveUsd(pipe, day, 0.6, 1), true);
   assert.deepEqual(sent, [`INCRBYFLOAT ${usdKey(day)}`, `EXPIRE ${usdKey(day)}`]);
-  assert.equal(await reserveUsd(pipe, day, 0.6, 1), false, "over the cap: taken back and refused");
-  assert.equal(kv.get(usdKey(day)), 0.6);
   await settleUsd(pipe, day, 0.6, 0.003);
   assert.equal(await reserveUsd(pipe, day, 0.9, 1), true);
   assert.equal(+kv.get(usdKey(day))!.toFixed(6), 0.903);
+  assert.equal(await reserveUsd(pipe, day, 0.6, 1), false, "over the cap: taken back and refused");
+  assert.equal(+kv.get(usdKey(day))!.toFixed(6), 0.903);
+  const n = sent.length;
+  assert.equal(await reserveUsd(pipe, day, 0.001, 1), false, "after the cap, this instance stops asking for the day");
+  assert.equal(sent.length, n, "no Upstash command once the day is full");
   assert.equal(await reserveUsd(async () => null, day, 0.01, 1), false, "store down → no reservation → parser");
   assert.ok(worstCaseUsd("bookcase 6 ft") > 0.0021, "the reserve is above a real uncached call");
 });
