@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type Ref, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { IdeaCard } from "./IdeaCard";
+import { IdeaCard, IdeaRow } from "./IdeaCard";
 import { IdeaHero } from "./IdeaHero";
-import { SECTION_SHOW, buildHref, curatedFeed, heroCard, searchCards, searchPlans, searchPool, showAllLabel, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import { ALL_SHOW, SECTION_SHOW, buildHref, curatedFeed, heroCard, searchCards, searchPlans, searchPool, showAllLabel, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
 import type { TestFlags } from "@/lib/ideas/testFlags";
 import RECIPE_CARDS from "@/lib/ideas/recipes.json";
 import type { LearnedIdea } from "@/lib/yard/ideaLibrary";
@@ -30,6 +30,8 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
   const pool = useMemo(() => searchPool(feed), [feed]);
   const hits = useMemo(() => searchCards(pool, q).slice(0, 24), [pool, q]);
   const plans = useMemo(() => (q ? searchPlans(q, pool) : []), [q, pool]);
+  // Drawn hits show first as cards, then hits with no drawing as rows; Enter opens the first one shown.
+  const drawn = hits.filter((c) => c.drawing), text = hits.filter((c) => !c.drawing);
   const flagQuery = new URLSearchParams(Object.entries(flags).map(([k, v]) => [k, String(v)])).toString();
   const hero = useMemo(() => heroCard(feed), [feed]);
   const root = useRef<HTMLElement>(null);
@@ -52,7 +54,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
         onSubmit={(e) => {
           e.preventDefault();
           if (!q) return;
-          onBuild(hits[0]?.examplePrompt ?? q);
+          onBuild((drawn[0] ?? text[0])?.examplePrompt ?? q);
         }}
       >
         <label className="block">
@@ -87,16 +89,19 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
               {plans.map((p) => <a key={p.slug} href={`/plans/${p.slug}${flagQuery ? `?${flagQuery}` : ""}`} className="inline-flex min-h-11 items-center px-1.5 underline underline-offset-2 lg:min-h-9">{p.name}</a>)}
             </p>
           ) : null}
-          {hits.length > 0 ? (
+          {drawn.length > 0 ? (
             <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {hits.map((c, i) => <IdeaCard key={c.slug} card={c} href={buildHref(c.examplePrompt, flags)} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
+              {drawn.map((c, i) => <IdeaCard key={c.slug} card={c} href={buildHref(c.examplePrompt, flags)} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
             </div>
           ) : null}
+          {/* Hits with no drawing yet are rows (title and size), never a blank picture. */}
+          {text.length > 0 ? <Rows cards={text} onBuild={onBuild} onIntent={onIntent} flags={flags} /> : null}
         </section>
       ) : (
         <>
           {hero ? <IdeaHero card={hero} live={HERO_LIVE} href={buildHref(hero.examplePrompt, flags)} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
           {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} flags={flags} />)}
+          {feed.all?.length ? <AllIdeas cards={feed.all} onBuild={onBuild} onIntent={onIntent} flags={flags} /> : null}
         </>
       )}
     </main>
@@ -139,6 +144,49 @@ function Section({ section, first, onBuild, onIntent, showCount, flags }: { sect
         ))}
       </ul>
       {all && capped ? <p className="mt-2 text-sm text-ink" data-ideas-top>The top {section.cards.length} of {section.total} are shown.</p> : null}
+    </section>
+  );
+}
+
+type RowsProps = { cards: Card[]; onBuild: Build; onIntent?: (q: string) => void; flags: TestFlags };
+function Rows({ cards, onBuild, onIntent, flags, id, listRef }: RowsProps & { id?: string; listRef?: Ref<HTMLUListElement> }) {
+  return (
+    <ul id={id} ref={listRef} className="mt-3 grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+      {cards.map((c) => (
+        <li key={c.slug}>
+          <IdeaRow card={c} href={buildHref(c.examplePrompt, flags)} onOpen={() => onBuild(c.examplePrompt)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Every build type once (the live feed's `all`), most built first, ALL_SHOW at a time. "Show more" adds rows below and
+ * moves focus to the first new one; nothing animates.
+ */
+function AllIdeas({ cards, ...rest }: RowsProps) {
+  const [n, setN] = useState(ALL_SHOW);
+  const list = useRef<HTMLUListElement>(null);
+  const from = useRef(-1);
+  useEffect(() => {
+    if (from.current >= 0) list.current?.querySelectorAll("a")[from.current]?.focus();
+    from.current = -1;
+  }, [n]);
+  const left = cards.length - n;
+  return (
+    <section className="mt-10 sm:mt-14" data-ideas-all aria-labelledby="ideas-all">
+      <h2 id="ideas-all" className="font-display text-xl text-ink">All ideas</h2>
+      <p className="mt-1 max-w-xl text-sm text-ink">Everything built with Yard, once each and most built first, then ideas nobody has built yet. Search above to narrow it.</p>
+      <Rows cards={cards.slice(0, n)} id="ideas-all-list" listRef={list} {...rest} />
+      <div className="mt-3 flex flex-wrap items-center gap-x-4">
+        <p className="text-sm text-ink" aria-live="polite" data-ideas-all-count>{`${Math.min(n, cards.length)} of ${cards.length} shown`}</p>
+        {left > 0 ? (
+          <button type="button" aria-controls="ideas-all-list" data-ideas-all-more onClick={() => { from.current = n; setN(n + ALL_SHOW); }} className="inline-flex min-h-11 items-center rounded-full bg-[var(--yard-fill)] px-4 text-sm text-ink hover:bg-rule/60 lg:min-h-9">
+            {`Show ${Math.min(ALL_SHOW, left)} more`}
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }
