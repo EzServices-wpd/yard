@@ -43,7 +43,7 @@ const sample = {};
 for (const [vlabel, v] of variants) {
   const unknown = await hit(`/api/zq${Math.random().toString(36).slice(2, 10)}`, v);
   sample[vlabel] = { status: unknown.status, bytes: unknown.bytes.length, headers: Object.fromEntries(unknown.headers) };
-  for (const p of ["/api/cron/retention", "/api/critic-review", "/api/critic-review?op=unreviewed"]) {
+  for (const p of ["/api/cron/retention", "/api/critic-review", "/api/critic-review?op=unreviewed", "/api/critic-review?op=snapshot"]) {
     for (const [alabel, a] of auths) {
       const got = await hit(p, { ...v, headers: { ...(v.headers ?? {}), ...(a ? { authorization: a } : {}) } });
       same(got, unknown, `${p} ${vlabel} ${alabel}`);
