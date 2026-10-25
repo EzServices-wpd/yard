@@ -69,7 +69,7 @@ test("row 295 family sweep: an untyped carcass restocked keeps every axis assume
   // These rebuild from the bench's unit, whose notes no longer say what was assumed: the header reads the spec.
   for (const [q, want] of [
     ["dresser", 'Dresser · 35 3/4" W × 18 1/2" D × 36" H (size assumed)'],
-    ["wardrobe", 'Wardrobe · 35 15/16" W × 16 1/2" D × 84" H (size assumed)'],
+    ["wardrobe", 'Wardrobe · 35 15/16" W × 24 1/2" D × 84" H (size assumed)'],
   ] as const) {
     const r = restock(q);
     assert.equal(r.title, want, q);

@@ -3,6 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
+import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -404,12 +405,16 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const raw = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
+    // Row 438: a typed rod count over the finished bays is built as double hang, trimmed to the count.
+    const raw = (idDepth === 1 ? withRodPairs(raw0, args[0] ?? "", (q) => withFeatureNotes(hollowDrawers(rebuild(q)), args[0])) : null) ?? raw0;
     const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", rebuild) : null;
     const shelves = !small && idDepth === 1 ? shelfCountRefusal(raw, args[0] ?? "", rebuild) : null;
-    const built0 = small ?? shelves ?? raw;
+    // A clothes rod in a box a hanger cannot use is refused, naming the depth that hangs; so is a typed rod count that does not fit (row 433).
+    const hung = idDepth === 1 ? hangingDepthRefusal(small ?? shelves ?? raw, args[0] ?? "") ?? rodCountRefusal(small ?? shelves ?? raw, args[0] ?? "") : null;
+    const built0 = hung ?? small ?? shelves ?? raw;
     // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
     const typed = args[0] ?? "";
     const built1 = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
@@ -674,7 +679,7 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A door style frames each front only after its slab size, reveal and position are final, so a style
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
-  const spanned = (p: YardProject) => separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]));
+  const spanned = (p: YardProject) => hangingTalk(supportHangingBays(separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]))), args[0]);
   return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(spanned(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0]))))))));
 }
 

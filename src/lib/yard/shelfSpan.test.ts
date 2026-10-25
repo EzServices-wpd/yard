@@ -166,6 +166,15 @@ describe("shelf span supports", () => {
     }
   });
 
+  it("row 342: a divider standing on the hat shelf never cuts it; each hat stays one piece with its front rail", () => {
+    for (const [q, n, w] of [["wardrobe", 1, 34.5], ["wardrobe 96 wide", 3, 31]] as const) {
+      const project = generateFromPrompt(q);
+      const hats = project.panels.filter((p) => p.type === "shelf" && /^Screwed fixed shelf/.test(p.cutNote ?? ""));
+      assert.deepEqual(hats.map((h) => h.size.width), Array(n).fill(w), q);
+      assert.equal(project.panels.filter((p) => /^Front rail\b/.test(p.name)).length, n, q);
+    }
+  });
+
   it("leaves the hanging rod one piece and keeps the divider out of that bay", () => {
     const project = generateFromPrompt("wardrobe");
     assert.equal(project.panels.filter((p) => p.name === "Hanging rod").length, 1);
@@ -385,7 +394,8 @@ describe("shelf span supports", () => {
   });
 
   it("counts pinned shelf pieces and lets I26 catch a 0.05 inch overlap", () => {
-    const wardrobe = generateFromPrompt("wardrobe");
+    // #112: an untyped wardrobe's 66" rod leaves room for the hat alone at 7" clear, so the typed 4 carries the pin talk.
+    const wardrobe = generateFromPrompt("wardrobe with 4 shelves");
     const pinned = wardrobe.panels.filter((p) => p.type === "shelf" && !isFixedSpanShelf(p));
     assert.equal(pinned.length, 6);
     const hat = "4 shelves: 1 fixed hat shelf over the rod and 3 adjustable (6 pieces)";
@@ -396,9 +406,9 @@ describe("shelf span supports", () => {
     assert.match(wardrobePlan.instructions.find((s) => /Pin /.test(s.title))?.title ?? "", /Pin 4 shelves: 1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
     assert.match(wardrobePlan.instructions.find((s) => /center divider/i.test(s.title))?.description ?? "", /hat shelf over the rod/);
     assert.match(wardrobePlan.bom.find((b) => /shelf pins/i.test(b.name))?.notes ?? "", /4 shelves: 1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
-    const drawers = generateFromPrompt("wardrobe with 2 drawers");
-    const div = drawers.panels.find((p) => p.name === "Center divider")!;
-    const shelf = drawers.panels.find((p) => p.name === "Shelf 1")!;
+    // #112's 'wardrobe with 2 drawers' builds no shelf over its rod; the typed 4 has a divider standing on Shelf 1.
+    const div = wardrobe.panels.find((p) => p.name === "Center divider")!;
+    const shelf = wardrobe.panels.find((p) => p.name === "Shelf 1")!;
     const yOverlap = Math.min(div.position.y + div.size.height, shelf.position.y + shelf.size.height) - Math.max(div.position.y, shelf.position.y);
     assert.ok(yOverlap <= 1 / 32);
     const bite = { ...div, position: { ...div.position, y: shelf.position.y + shelf.size.height - 0.05 } };
@@ -524,7 +534,7 @@ describe("shelf span supports", () => {
     assert.equal(sixTall.refused, undefined);
     assert.match(adjustableShelfTalk(sixTall.panels).phrase, /6 shelves: 1 fixed hat shelf over the rod and 5 adjustable \(10 pieces\)/);
     assert.match((sixTall.notes ?? []).join("\n"), /fixed hat shelf over the rod/);
-    const wide = generateFromPrompt("wardrobe 66 wide");
+    const wide = generateFromPrompt("wardrobe 66 wide with 4 shelves");
     const widePhrase = adjustableShelfTalk(wide.panels).phrase;
     assert.match(widePhrase, /fixed hat shelf over the rod/);
     const widePlan = buildPlan(wide);
