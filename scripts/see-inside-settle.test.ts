@@ -142,6 +142,27 @@ for (const [slug, q] of [["dresser6", "6 drawer dresser"], ["nightstand", "night
   }
 }
 
+test("row 353: a solve a time cap stopped early is run again to the end, so the pose never depends on device speed", () => {
+  const p = generateFromPrompt("6 drawer dresser");
+  const { w, h } = VIEWS.phone, cards = RUNS.phone.reduced[1];
+  const desk = new SolveDesk((key, overlays) => solveJob({ gl, panels: p.panels, key, viewport: { w, h }, overlays, view: EXPLODE_VIEW, fov: BENCH_FOV }), new Map());
+  const base = `${buildKey(p.id, p.panels)}|${w}x${h}`;
+  const j = desk.start(base, cards)!;
+  // A busy device: the 1.5 s cap lands after two rounds.
+  let t = 0;
+  const capped = runSlice(j, () => plainExplode([], j.key), { maxSteps: SOLVE_MAX_STEPS, deadlineAt: 2 }, { now: () => t++ })!;
+  const f = desk.fresh(j);
+  assert.notEqual(f, j);
+  assert.equal(f.key, j.key);
+  assert.equal(f.done, null, "never the capped result from the cache");
+  const full = solve(desk, base, cards)!;
+  const ref = seeInside("6 drawer dresser", "phone", [cards]);
+  assert.ok(capped.rounds < ref.rounds, `the cap stopped it early (${capped.rounds} of ${ref.rounds} rounds)`);
+  assert.equal(full.rounds, ref.rounds);
+  const a = projected(full, "phone", cards.rects), b = projected(ref, "phone", cards.rects);
+  for (let i = 0; i < a.length; i++) assert.ok(Math.abs(a[i][0] - b[i][0]) <= 0.75 && Math.abs(a[i][1] - b[i][1]) <= 0.75);
+});
+
 test("row 353: a card counts as moving only while a finite animation runs on it or a box around it", () => {
   const anim = (playState: string, endTime: number) => ({ playState, effect: { getComputedTiming: () => ({ endTime }) } });
   type N = { getAnimations: () => ReturnType<typeof anim>[]; parentElement: N | null };

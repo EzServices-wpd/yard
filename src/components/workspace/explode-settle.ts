@@ -49,7 +49,7 @@ export function cardsMoving(cards: Iterable<Node>, host: Node | null): boolean {
 }
 
 export type Cards = { rects: Rect[]; moving: boolean };
-export type SolveJobK = StepJob<ExplodeSolved> & { key: string };
+export type SolveJobK = StepJob<ExplodeSolved> & { key: string; overlays: Rect[] };
 /** Solves kept (build + viewport + cards each make a key): the oldest is dropped past this. */
 export const CACHE_MAX = 8;
 
@@ -73,10 +73,16 @@ export class SolveDesk {
     if (j && j.key === key && !(j.closed && !j.done)) return j;
     // Another build, size or set of cards: drop the old solve and free its meshes.
     if (j && !j.done) closeJob(j);
-    const next: SolveJobK = Object.assign(this.make(key, c.rects), { key });
+    const next: SolveJobK = Object.assign(this.make(key, c.rects), { key, overlays: c.rects });
     const hit = this.cache.get(key);
     if (hit) { next.done = hit; closeJob(next); }
     return (this.job = next);
+  }
+  /** A new run of the same solve (same key and cards), for one a time cap stopped early: never served from the cache. */
+  fresh(j: SolveJobK): SolveJobK {
+    if (this.job && this.job !== j && !this.job.done) closeJob(this.job);
+    this.cache.delete(j.key);
+    return (this.job = Object.assign(this.make(j.key, j.overlays), { key: j.key, overlays: j.overlays }));
   }
   /** The shown solve no longer matches the settled cards (or build, or size). */
   stale(shown: string | undefined, base: string, c: Cards): boolean {

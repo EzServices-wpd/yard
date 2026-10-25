@@ -169,7 +169,7 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
     }
     let cancel: (() => void) | undefined, running: unknown = null, t = 0, gone = false;
     const show = (s: ExplodeSolved) => {
-      if (explodeClock.solved?.key !== s.key) {
+      if (explodeClock.solved !== s) {
         const prev = explodeClock.solved;
         // A new build while See inside is on: start from the assembled pose.
         if (prev && prev.key.split("|")[0] !== s.key.split("|")[0]) explodeClock.u = 0;
@@ -194,7 +194,19 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       cancel?.(); cancel = undefined; running = null;
       if (j.done) { show(j.done); return; }
       running = j;
-      cancel = runJob(j, fallback(j.key), { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { running = null; desk.current!.remember(j.key, r); show(r); }, { onError });
+      let capped = false;
+      const noteCap = (e: unknown) => { if (e instanceof Error && e.message.endsWith("time cap")) capped = true; onError(e); };
+      cancel = runJob(j, fallback(j.key), { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => {
+        running = null;
+        if (!capped) { desk.current!.remember(j.key, r); show(r); return; }
+        // Time cap (a slow or busy device): show the solve so far now, then solve the same key again in slices with
+        // only the step cap and swap it in, so the pose you end on never depends on device speed (row 353).
+        show(r);
+        explodeClock.solving = true;
+        const f = desk.current!.fresh(j);
+        running = f;
+        cancel = runJob(f, fallback(f.key), { maxSteps: SOLVE_MAX_STEPS, deadlineMs: Infinity, sliceMs: SOLVE_SLICE_MS }, (r2) => { running = null; desk.current!.remember(f.key, r2); show(r2); }, { onError });
+      }, { onError: noteCap });
     };
     ensure();
     // Cards that move after the solve: re-check once they have been still for a moment.
