@@ -154,13 +154,17 @@ export function curatedFeed(recipes: { popular: RecipeLike[]; fresh: RecipeLike[
   return { at: "", live: false, countsLive: false, hero: null, sections: dedupe(sections) };
 }
 
-/** Every searchable card: the page's cards, every other All ideas type, then near-variants (search reaches every idea). */
+/**
+ * Every searchable card, one per build type like the page: the page's cards, every other All ideas type, then ideas of a
+ * type no card has yet. A near-variant of a type already carded never shows beside it ("bookshelf" found Bookcase and
+ * the corner shelf's "Too small for books" variant).
+ */
 export function searchPool(feed: IdeasFeed): IdeaCard[] {
   const onPage = feed.sections.flatMap((s) => s.cards);
   const types = new Set(onPage.map((c) => c.buildType));
   const cards = [...onPage, ...(feed.all ?? []).filter((c) => !types.has(c.buildType))];
-  const have = new Set(cards.map((c) => c.slug));
-  return [...cards, ...IDEAS.filter((d) => !have.has(d.id)).map(fromIdea)];
+  const have = new Set(cards.flatMap((c) => [c.slug, c.buildType]));
+  return [...cards, ...IDEAS.map(fromIdea).filter((c) => !have.has(c.slug) && !have.has(c.buildType) && !!have.add(c.buildType))];
 }
 
 /**

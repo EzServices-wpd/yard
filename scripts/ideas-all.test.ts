@@ -95,6 +95,12 @@ test("search reaches every listed type with the page's aliases; an undrawn hit i
   const pool = searchPool(feed);
   for (const [q, t] of [["soccer", "soccer-goal"], ["utility cabinet", "utility-cabinet"], ["bookshelf", "bookcase"], ["wardrobe", "wardrobe"]]) assert.equal(searchCards(pool, q)[0]?.buildType, t, q);
   assert.ok(!searchCards(pool, "utility").some((c) => c.buildType === "utility-cart"), "an Unverified-only type is not searchable");
+  // One card per build type in search too: the corner shelf's near-variant "Too small for books" never rides along.
+  for (const f of [feed, base]) {
+    const types = searchPool(f).map((c) => c.buildType);
+    assert.deepEqual(types.filter((t, i) => types.indexOf(t) !== i), [], "one search card per build type");
+    assert.ok(!searchCards(searchPool(f), "bookshelf").some((c) => c.title === "Too small for books"));
+  }
   const html = page(feed, "rocket");
   const res = html.slice(html.indexOf("data-ideas-results"));
   assert.match(res, /data-idea-row="rocket"/);
