@@ -33,6 +33,12 @@ test("row 292: tall freestanding casework and dressers buy one anti-tip kit and 
   }
 });
 
+test("row 292: the kit counts in the Buy pack total (linen 12 packs → 13)", () => {
+  const { pl } = kitAndStrap("linen closet 31.5 wide 78 tall 16 deep");
+  assert.equal(pl.totals.packs, 13);
+  assert.equal(pl.totals.estCostUsd.toFixed(2), "193.68");
+});
+
 test("row 292 (F2057): drawer units 27\" and taller finished get the kit and one strap step by id; 26 3/4\" do not", () => {
   for (const q of ["dresser 36 wide 27 tall", "nightstand 20 wide 27 tall 16 deep", "chest of drawers 27 tall"]) {
     const { p, kits, straps } = kitAndStrap(q);

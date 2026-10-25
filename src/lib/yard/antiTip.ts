@@ -57,5 +57,6 @@ export function withAntiTipKit(project: YardProject, plan: BuildPlan): BuildPlan
   if (!needsAntiTip(project)) return plan;
   if (plan.bom.some((b) => anchorKind(b))) return plan;
   if (plan.instructions.some((s) => STUD_STEP.test(s.title))) return plan;
-  return { ...plan, bom: [...plan.bom, { ...ANTI_TIP_ROW }] };
+  // The Buy pack count counts the kit like any other line (totals.packs is summed before this pass).
+  return { ...plan, bom: [...plan.bom, { ...ANTI_TIP_ROW }], totals: { ...plan.totals, packs: plan.totals.packs + ANTI_TIP_ROW.quantity } };
 }
