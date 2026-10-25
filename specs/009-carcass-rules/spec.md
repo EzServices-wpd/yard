@@ -2,8 +2,8 @@
 
 **Feature Branch**: `spec/009-carcass-rules` (spec only, no code)
 **Created**: 2026-10-24
-**Status**: r2 (Critic's BLOCK on 17cd1263 answered edit by edit; still no code)
-**Base**: `origin/release/2026-10-24` @ `1fd539d` (#142 merged in 4e74ad3; #112 still open)
+**Status**: r3 (Critic's BLOCKs on 17cd1263 and ea52fb2e answered edit by edit; still no code)
+**Base**: `origin/release/2026-10-24` @ `0a16920` (#142 merged in 4e74ad3; #112 still open; 1fd539d..0a16920 touches only `listings.ts` Buy titles)
 **Input**: Ezra's speed-up plan ("Yes to all", 2026-10-24 8:34 PM ET, relayed by Chief) and the SWE tool-adoption brief
 (team notes, not in the repo): "the carcass shelf rules become ONE data table read by ONE builder, spec first.
 Acceptance = the precheck carcass and shelf rows 242, 300, 304, 307, 314, 315."
@@ -59,8 +59,8 @@ named height is rebuilt by `probes/dump.mts` (`minBuild`) and must pass the same
 1. **Given** a typed count that fits at ≥ 7" clear, **when** built, **then** levels = typed count and every clear ≥ 7".
 2. **Given** a typed count that does not fit, **when** built, **then** refused with the one sentence of FR-011, naming `at least X" tall` (X rounded up to 1/16"), and the build at X passes scenario 1 with no new invariant.
 3. **Given** a typed 0 ("with 0 shelves", "no shelves"), **then** 0 shelf levels and no shelf count in the header.
-4. **Given** no typed count, **then** the family default; if the default does not fit at ≥ 7", the default shrinks to what fits and a positive note says so ("2 shelves fit with 7" between them; type a taller size for 3").
-5. **Given** any typed n ≥ 0 (13, 20, …), **then** there is no cap: it is built or refused by the same fit and minimum (13 shelves of 3/4" stock → at least 110").
+4. **Given** no typed count, **then** the family default; if the default does not fit at ≥ 7", the default shrinks to what fits (`n_fit`, plan.md §2), the header shows no shelf count, and the note names the numbers: `{N} {shelf|shelves} fit at {H}" with 7" clear between them; a {noun} {MIN}" tall holds all {D}.` When nothing fits: `This {H}" {noun} is an open box; a {noun} {MIN1}" tall holds 1 shelf with 7" clear, {MIN}" holds all {D}.` ({MIN} = the minimum for the default D, {MIN1} for 1.) `bookcase 60 wide 30 tall` → "2 shelves fit at 30" with 7" clear between them; a bookcase 48" tall holds all 5." `bookcase 60x30x8` → "This 8" bookcase is an open box; a bookcase 17" tall holds 1 shelf with 7" clear, 48" holds all 5." A note never says "type a taller size" without naming the height.
+5. **Given** any typed n ≥ 0 (13, 20, …), **then** there is no cap: it is built or refused by the same fit and minimum. If the minimum is taller than the picked stock's longest part (96" for a 4×8 sheet), the refusal names the most that fits instead (FR-011 second form): `bookcase with 13 shelves` → "A bookcase needs 110" tall for 13 shelves with 7" clear between them, taller than a 4×8 sheet cuts. A bookcase up to 96" tall holds 11. Nothing is built at 84"."
 6. **Given** a rod, **then** the rod rules of FR-005 hold: a typed rod is never dropped (refuse instead); a default rod is lowered to keep 40" of hang or dropped with its note; a typed N counts the hat (1 fixed hat + N−1 adjustable).
 
 ### User Story 2 — Every surface says the same shelf count (Priority: P1)
@@ -111,6 +111,7 @@ build that changed and why.
 - **FR-009** Positive wording and fractions only in every note and refusal.
 - **FR-010** Every shelf piece is held at both ends by a side, a divider, a cleat or pins in an upright, never by a joint over open space. A divider may stand on a fixed (hat) shelf only if that shelf is continuous under it and keeps its front rail (row 342; #112 r7's `standsOnShelf` must not become a table row). `pieces per level`, read after the span pass, may split a shelf only at a divider that runs to the bottom (or top) below it. Checked by I1/I7/I26 plus Critic's new `ends_supported` precheck assertion (I1/I7 stayed silent on row 342).
 - **FR-011** One refusal sentence for every shelf-count refusal: `{A|An} {noun} needs at least {MIN}" tall for {N} {shelf|shelves} with 7" clear between them{ and a hanging rod}. Nothing is built at {H}".` `{noun}` is the full asked noun ("linen closet", not "linen"); `{MIN}` is the zone-aware minimum (`closetShelfMinHeight(N, t)`, or `rodShelfMinHeight(N, t)` only when a rod was typed) with the picked stock's t, rounded up to 1/16"; `{H}` is the built height, typed or assumed. It never says "widened", "reduced", "only N fit" or "the size wins".
+  - **Second form, when `{MIN}` is taller than the picked stock's longest part `{MAX}`** (96" for a 4×8 sheet; the board length for lumber): `{A|An} {noun} needs {MIN}" tall for {N} {shelf|shelves} with 7" clear between them{ and a hanging rod}, taller than a {stock} cuts. {A|An} {noun} up to {MAX}" tall holds {K}. Nothing is built at {H}".` `{K}` is the largest count whose minimum is ≤ `{MAX}` (3/4" stock, no rod: 11, at 94 1/2"). A minimum over `{MAX}` is never named as buildable (YARD-SPEC: real-world sizes).
 
 ### Key entities
 - **ShelfRule** (table row): family, applies-when, zone, default count, count limits, spacing rule, min clear, kind, thickness source, on-short behavior, why, source.

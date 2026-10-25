@@ -9,15 +9,15 @@ Format: `[ID] [P?] description — acceptance — size`. [P] = can run in parall
 - [ ] T004 Copy the precheck's carcass prompts (158 probes + SHELF_COUNT + carcass REGRESSION/DRIFT/"009" prompts) to `evals/carcass-shelf-prompts.json` with the precheck date — file committed in PR 1 — ~1 file (data)
 
 ## Phase 1: PR 1 bookcase (≤ 400 lines) — 211, 13 shelves, 1/2" stock minimum; holds 300/304/307/317 and #142's refusals
-- [ ] T010 `carcassShelves.ts`: types, `CARCASS_SHELF_RULES` bookcase rows (`bookcase.default` `drives: false`), `planShelves` (fit, positions, refusal via the zone-aware minimum with the picked stock's t) — unit tests per formula (fit edge at exactly 7", 0, 13, fractions, 1/2" stock → 68 1/2" for 8, no max) — ~150
-- [ ] T011 Widen `shelfClear.ts typedShelfDemand` in place (no family gate; 0, "no shelves", eleven, any n; never a unit or axis word before "shelf"); only the bookcase rows read it in PR 1 — `bookcase with 0 shelves` → 0; `no shelves` → 0; `eleven shelves` → 11; `bookcase with 13 shelves` → 13; size phrases are never counts: `small 6 foot shelf` → none, `bookcase 12 inch shelves` → none, `bookcase 30 wide shelves` → none (`shelfSpan.test.ts:509` stays as is) — ~30
+- [ ] T010 `carcassShelves.ts`: types, `CARCASS_SHELF_RULES` bookcase rows (`bookcase.default` `drives: false`), `planShelves` (fit, positions, refusal via `minH` with the picked stock's t, the stock limit and the second refusal form) — unit tests per formula (fit edge at exactly 7", 0, 11 at 94 1/2" builds, 12/13 over 96" → second form with K = 11, fractions, 1/2" stock → 68 1/2" for 8, no max) — ~160
+- [ ] T011 Widen `shelfClear.ts typedShelfDemand` in place (no family gate; 0, "no shelves", eleven, any n; never a unit or axis word before "shelf"); the family gate and 1–12 range move to the callers (`tooSmall.ts:125`, `fittedBuild.ts:2877`) behind `WIDENED_SHELF_FAMILIES = ["bookcase"]`, so wardrobe/closet/pantry/linen keep today's result — `bookcase with 0 shelves` → 0; `no shelves` → 0; `eleven shelves` → 11; `bookcase with 13 shelves` → 13; size phrases are never counts: `small 6 foot shelf` → none, `bookcase 12 inch shelves` → none, `bookcase 30 wide shelves` → none (`shelfSpan.test.ts:509` stays as is) — ~30
 - [ ] T012 `buildFitted`: build `ShelfInput` from existing variables; bookcase places `plan.levels` — legacy path unchanged for other programs — ~40
-- [ ] T013 `carcassShelves.parity.test.ts` — non-bookcase prompts identical; bookcase prompts identical except the asserted changes: row 211, `bookcase with 13 shelves` → refuses at 110", the 1/2" ply refusal 71 1/4" → 68 1/2" — ~90
+- [ ] T013 `carcassShelves.parity.test.ts` — non-bookcase prompts identical; bookcase prompts identical except the asserted changes: row 211 (+ `60x30x8 with 0 shelves`), `bookcase with 13 shelves` → second-form refusal (110", holds 11, nothing built at 84"), the 1/2" ply 68 1/2" build — ~90
 - [ ] T014 graphify explain on head for every touched function → "Blast radius" in the PR body (local only)
 - [ ] T015 gstack-review; precheck on head (no FAIL; 211 and the 13-shelf row open → hold); eval gate + canaries under the heavy lock; ship note with the precheck table, "ponytail: what I didn't write", and the standing misses line
 
 ## Phase 1b: PR 1b bookcase default shrink (≤ 150 lines)
-- [ ] T016 `bookcase.default` `drives: true` — asserted: `bookcase 60 wide 30 tall` 5 at 4" → 3 with the note; `bookcase 60x30x8` 5 in 8" → 0 with the note — ~40
+- [ ] T016 `bookcase.default` `drives: true` — asserted: `bookcase 60 wide 30 tall` 5 at 4" → 2 at 8 3/4" with "2 shelves fit at 30" with 7" clear between them; a bookcase 48" tall holds all 5."; `bookcase 60x30x8` 5 in 8" → 0 with "This 8" bookcase is an open box; a bookcase 17" tall holds 1 shelf with 7" clear, 48" holds all 5."; no header count in either — ~40
 
 ## Phase 2: PR 2 read-back (≤ 400 lines) — 315(1), 336 residue
 - [ ] T020 `shelfPlanOf` (levels at 1/16", pieces per level, fixed/hat count) — tests on 1-bay, 2-bay, rod+hat builds — ~60
@@ -28,9 +28,9 @@ Format: `[ID] [P?] description — acceptance — size`. [P] = can run in parall
 ## Phase 3+: one family per PR (same T0x0–T0x5 shape as PR 1; each switches its callers to the widened reader)
 - [ ] T030 cabinet — asserted: default 3 at 6 3/8" → 2 with the note; `cabinet 48 wide 30 tall with 4 shelves` refuses with its minimum
 - [ ] T040 pantry — parity
-- [ ] T050 wardrobe — #112/#142 rows, rod default/typed rows, hat counted in N; 315(3); typed rod refuses at 97 3/4"
+- [ ] T050 wardrobe — #112/#142 rows, rod default/typed rows, hat counted in N; 315(3); typed rod refuses at 97 3/4"; asserted: `wardrobe 72 tall with 12 shelves` and `wardrobe with 13 shelves` (row 361) → second-form refusal, up to 96" holds 11
 - [ ] T060 nightstand — asserted: `nightstand 20 wide 24 tall with 3 shelves` refuses with the zone-aware minimum
-- [ ] T070 dresser — asserted: `dresser with 3 shelves` refuses at the height where the drawers plus 3 levels at 7" fit
+- [ ] T070 dresser — asserted: `dresser with 3 shelves` refuses at the searched `minH` (not 50 1/2", which builds at 6 1/16"); the rebuild at it gives 3 at ≥ 7"
 - [ ] T080 vanity (knee path; desk canary watch) — asserted: `bathroom vanity 36 wide with 3 shelves` refuses with its minimum or builds 3 at ≥ 7"
 - [ ] T090 linen — builds byte-identical; asserted refusal noun "A linen closet needs …"; then delete the legacy generic shelf section (SC-004 grep)
 

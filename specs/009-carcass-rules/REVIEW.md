@@ -4,6 +4,7 @@ Reviewer: SWE (self-review with the gstack-plan-review checklist), 2026-10-24 ~9
 Independent cold read by another in-house agent: not run (optional in the skill); Critic's grade is the independent read.
 Scope changes below are proposals; each needs Chief/Critic (and, for canaries, Ezra) to accept.
 **r2 (after Critic's BLOCK on 17cd1263):** D-2 and D-3 are decided by Critic (below); F-2, F-4 and F-5 are updated; F-17 to F-20 are Critic's findings, resolved in the spec.
+**r3 (after Critic's BLOCK on ea52fb2e):** F-21 to F-24 (B1–B4, rows 360–363) are resolved; D-5's assertions are quoted in acceptance.md.
 
 ## Step 0: premise and scope
 - **0A Premise.** Real problem: the same shelf decision is copied across ~10 places (spec.md "Why"), so each fix lands in one copy and another copy regresses (#114: 7 verdicts; row 304: 9 mentions). Target: one table + one builder + one read-back, so a shelf rule changes in one row. Cost of doing nothing: about 2.4 Critic rounds per shelf PR continue, and each round spends the shared usage pool. **Verdict: the plan hits the pain directly** (the copies), not a proxy.
@@ -18,7 +19,7 @@ Scope changes below are proposals; each needs Chief/Critic (and, for canaries, E
 | # | Section | Finding | Resolution in the spec |
 |---|---|---|---|
 | F-1 | Architecture | First draft started PR 1 on release-24 now. `gh pr diff` shows **#112 and #142 both rewrite `buildFitted` L2865–2903** (rod, `shelvesAsked`, `zoneY0`), the exact lines the table replaces. Starting now guarantees conflicts and two copies of each rule value. | Added a start gate: #112 and #142 merged before PR 1 (plan §5, tasks T002). |
-| F-2 | Code quality (ponytail) | First draft wrote its own minimum-height formula. #142 already adds `closetShelfMinHeight` (`(n+1)(t+7)+2t`, 3/4" conservative) used by #112 too. r2 (Critic): it undercounts the zone families (drawers, knee, rod), so "no new formula" cannot hold. | One zone-aware minimum `(H − S) + stack(n, t)` with the picked stock's t; `closetShelfMinHeight` is its no-zone case and `rodShelfMinHeight` its typed-rod case; `SHELF_MIN_CLEAR` becomes a re-export (plan §2, NOT-building #2). |
+| F-2 | Code quality (ponytail) | First draft wrote its own minimum-height formula. #142 already adds `closetShelfMinHeight` (`(n+1)(t+7)+2t`, 3/4" conservative) used by #112 too. r2 (Critic): it undercounts the zone families (drawers, knee, rod), so "no new formula" cannot hold. | One minimum definition (r3: smallest H where the builder's own zone fits, `(H − S) + stack(n, t)` as the start value) with the picked stock's t; `closetShelfMinHeight` is its no-zone closed form and `rodShelfMinHeight` its typed-rod closed form; `SHELF_MIN_CLEAR` becomes a re-export (plan §2, NOT-building #2). |
 | F-3 | Architecture | First draft's PR 1 claimed the bookcase usable-clear fix and multi-bay wording (317). #142 (merged in 4e74ad3) already does both (`… needs at least 71 1/4" tall for 8 shelves`, "5 shelves (10 adjustable pieces)"). | PR 1 claims only row 211 and holds the rest (plan §5, acceptance). |
 | F-4 | Error & rescue | Two refusal sentences for the same rule: #112 ends "Nothing is built.", #142 "Nothing is built at 36"." Rule 6 wants one honest form. | Decided by Critic: #142's sentence wins (spec FR-011). #112 r8 adopts it; no table PR changes the wording except the full noun ("linen closet", PR 9). **D-3.** |
 | F-5 | Edge cases | Five typed-shelf regexes disagree: `spokenShelfCount` (1–12, drops 0), `fittedBuild.ts:2681` (to "eight"), `:2901` (to "six"), `spec.ts COUNTED` (digits incl. 0, to "twelve", but reads sizes as counts on raw words), #142 `typedShelfDemand` (to "ten", 1–12, family-gated). Row 211 is this. | Decided by Critic: `typedShelfDemand` widened survives; the others delegate or are replaced per family PR (plan §3). **D-2.** |
@@ -36,13 +37,18 @@ Scope changes below are proposals; each needs Chief/Critic (and, for canaries, E
 | F-17 | Count rule (Critic) | The first draft's "parity" PRs for cabinet, dresser, nightstand and vanity would have locked in typed counts that are reduced, dropped or unchecked, and `count.max 12` gave 13+ no minimum. | Those PRs move them open → hold as asserted changes; no max (plan §2, §5; acceptance). |
 | F-18 | Contradiction (Critic) | PR 1 made `bookcase.default` drive while claiming only row 211 changes. | `bookcase.default` ships `drives: false` in PR 1 (today's code has no default-shrink path); PR 1b flips it with two asserted changes. |
 | F-19 | Structure (Critic, row 342) | Nothing said a shelf joint may not sit over open space; I1/I7 stayed silent on #112 r7's butt joint under a standing divider. | FR-010; acceptance rows; Critic adds `ends_supported`. |
+| F-21 | Numbers (Critic r2, B1/B2) | The `bookcase 60 wide 30 tall` default shrank to 3 (6 3/8" clear, fails 7"), and the notes named no height. | 5 → 2 at 8 3/4" (n_fit); both notes name the numbers and the header shows no count. |
+| F-22 | Real sizes (Critic r2, B3; row 360) | Minimums over 96" (12 → 102 1/4", 13 → 110") are named as buildable, but a 4×8 sheet can't cut them. | Stock limit plus FR-011 second form naming K (11). The 13-shelf row (PR 1) and the wardrobe 12/13 rows (PR 5, row 361) are asserted changes. |
+| F-23 | Formula (Critic r2, B4) | `(H − S) + stack` at the typed H undercounts when the outside grows with H (dresser 50 1/2" builds at 6 1/16"). | `minH` = smallest H in 1/16" steps where the builder's own zone fits; the formula is the start value; closed forms kept for the no-zone and rod cases. |
+| F-24 | Gate (Critic r2, row 363) | "Widened in place" while two callers already serve wardrobe/pantry/linen. | The gate moves to the callers behind `WIDENED_SHELF_FAMILIES`, which grows one family per PR (plan §3). |
 | F-20 | Rod (Critic) | The rod rules lived only in code; #112 r7 drops a typed rod. | Rod and hat rules written as table rows (FR-005, plan §2); #112 r8 must keep the tip's refusal at 97 3/4". |
 
 ## Error & rescue registry (new code paths)
 | Path | Can fail | Rescue | User sees |
 |---|---|---|---|
 | `planShelves` typed count doesn't fit | expected | `refused()` with the table's minimum | "nothing built", the minimum height; no size/price/PDF |
-| default count doesn't fit | expected | shrink to `n_fit`, note | the build, plus "N shelves fit with 7" between them; type a taller size for M" |
+| default count doesn't fit | expected | shrink to `n_fit`, note, no header count | the build, plus "{N} shelves fit at {H}" with 7" clear between them; a {noun} {MIN}" tall holds all {D}." (0: "This {H}" {noun} is an open box; a {noun} {MIN1}" tall holds 1 shelf with 7" clear, {MIN}" holds all {D}.") |
+| typed n's minimum is taller than the stock cuts | expected | FR-011 second form with K | "… taller than a 4×8 sheet cuts. A {noun} up to 96" tall holds {K}. Nothing is built at {H}"." |
 | zone empty (drawers fill) with typed shelves | expected | refuse, name height | as above |
 | zone empty, no typed shelves | expected | 0 levels, no header count | the build |
 | `shelfPlanOf` on a non-carcass build | none | returns the panel-derived count (same as `shelfLineCount` today) | unchanged |
@@ -53,7 +59,7 @@ Scope changes below are proposals; each needs Chief/Critic (and, for canaries, E
 2. **D-2 One typed-count reader** (decided by Critic): `shelfClear.ts typedShelfDemand`, widened in place, not `spec.ts COUNTED` (plan §3). T011 pins that size phrases are never counts.
 3. **D-3 One refusal sentence** (decided by Critic): `{A|An} {noun} needs at least {MIN}" tall for {N} {shelf|shelves} with 7" clear between them{ and a hanging rod}. Nothing is built at {H}".` (spec FR-011).
 4. **D-4 Start gate**: PR 1 waits for #112 to merge (#142 merged in 4e74ad3). Owner: Chief.
-5. **D-5 New precheck prompts**: Critic added six "009" rows (78 assertions) and is adding `ends_supported`. Still asked: the 1/2" ply refusal, `dresser with 3 shelves`, `bathroom vanity 36 wide with 3 shelves`, `bookcase 60 wide 30 tall` default. Owner: Critic.
+5. **D-5 New precheck prompts**: Critic added six "009" rows (78 assertions) and is adding `ends_supported`. Critic wrote the r2 D-5 rows (1/2" ply, dresser, vanity, `bookcase 60 wide 30 tall` default, header-count guards), and they are quoted in acceptance.md for Critic to paste into `sets.py`. Owner: Critic.
 
 ## NOT in scope
 Hinge/door/drawer rules; wine rack (row 314, #142); pocket vanity (`buildPocket`); sink vanity; corner unit; ladder, cubby,
