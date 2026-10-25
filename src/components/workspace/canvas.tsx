@@ -17,6 +17,7 @@ import { StickCloud, PanelMesh, CarcaseJoins } from "@/components/workspace/stic
 import { buildOrder } from "@/components/workspace/build-order";
 import { CALLOUT_MS, CAP_MS, WIRE_MS, easeCam, onRevealSkip, revealState, setReveal, staggerFor } from "@/components/workspace/reveal-clock";
 import { AutoCaptureRunner } from "@/components/workspace/auto-capture-runner";
+import { ExplodeTestHook } from "@/components/workspace/explode-hook";
 import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-layout";
 import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
@@ -304,6 +305,7 @@ export function WorkspaceCanvas() {
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
+        <ExplodeTestHook project={project} />
       </Canvas>
     </div>
   );
