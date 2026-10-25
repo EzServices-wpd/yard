@@ -639,16 +639,6 @@ function crosses(a: Panel, d: Panel): boolean {
   );
 }
 
-/** A center divider standing on a shelf still cuts that shelf into one piece per bay. The rod below stays one piece. */
-function standsOnShelf(shelf: Panel, d: Panel): boolean {
-  if (!/^Center divider\b/.test(d.name)) return false;
-  if (Math.abs(d.position.y - (shelf.position.y + shelf.size.height)) > 0.2) return false;
-  const mid = d.position.x + d.size.width / 2;
-  if (mid <= shelf.position.x + 1 || mid >= shelf.position.x + shelf.size.width - 1) return false;
-  const oz = overlap(shelf.position.z, shelf.position.z + shelf.size.depth, d.position.z, d.position.z + d.size.depth);
-  return oz > Math.min(shelf.size.depth, d.size.depth) * 0.5;
-}
-
 /** Each bay keeps its own shelf and, in a wardrobe, its own rod. The pieces meet the divider on a face. */
 function splitWide(panels: Panel[], dividers: Panel[]) {
   // Pieces meet the divider on a face. A gap here walks the cut off the 1/8" the cut list uses.
@@ -657,19 +647,14 @@ function splitWide(panels: Panel[], dividers: Panel[]) {
     const part = panels[i];
     const shelf = part.type === "shelf" && !part.outline;
     if (!shelf && !isHangingRod(part)) continue;
-    const hits = dividers
-      .map((d) => ({ d, through: crosses(part, d) }))
-      .filter((h) => h.through || (shelf && standsOnShelf(part, h.d)))
-      .sort((a, b) => a.d.position.x - b.d.position.x);
+    const hits = dividers.filter((d) => crosses(part, d)).sort((a, b) => a.position.x - b.position.x);
     if (!hits.length) continue;
     const pieces: { x: number; w: number }[] = [];
     let x = part.position.x;
     const end = x + part.size.width;
-    for (const { d, through } of hits) {
-      const cut = through ? d.position.x : d.position.x + d.size.width / 2;
-      const resume = through ? d.position.x + d.size.width : cut;
-      if (cut - x >= 1) pieces.push({ x, w: cut - x });
-      x = Math.max(x, resume);
+    for (const d of hits) {
+      if (d.position.x - gap - x >= 1) pieces.push({ x, w: d.position.x - gap - x });
+      x = Math.max(x, d.position.x + d.size.width + gap);
     }
     if (end - x >= 1) pieces.push({ x, w: end - x });
     if (pieces.length < 2) continue;

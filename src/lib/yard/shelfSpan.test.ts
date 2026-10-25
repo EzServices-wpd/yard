@@ -166,12 +166,18 @@ describe("shelf span supports", () => {
     }
   });
 
+  it("row 342: a divider standing on the hat shelf never cuts it; each hat stays one piece with its front rail", () => {
+    for (const [q, n, w] of [["wardrobe", 1, 34.5], ["wardrobe 96 wide", 3, 31]] as const) {
+      const project = generateFromPrompt(q);
+      const hats = project.panels.filter((p) => p.type === "shelf" && /^Screwed fixed shelf/.test(p.cutNote ?? ""));
+      assert.deepEqual(hats.map((h) => h.size.width), Array(n).fill(w), q);
+      assert.equal(project.panels.filter((p) => /^Front rail\b/.test(p.name)).length, n, q);
+    }
+  });
+
   it("leaves the hanging rod one piece and keeps the divider out of that bay", () => {
     const project = generateFromPrompt("wardrobe");
     assert.equal(project.panels.filter((p) => p.name === "Hanging rod").length, 1);
-    const shelves = project.panels.filter((p) => p.type === "shelf");
-    assert.equal(new Set(shelves.map((s) => s.position.y.toFixed(2))).size, 1);
-    assert.equal(shelves.length, 2);
     const rod = project.panels.find((p) => p.name === "Hanging rod")!;
     for (const div of project.panels.filter((p) => /^Center divider\b/.test(p.name))) {
       assert.equal(solidsOverlap(div, rod), false);

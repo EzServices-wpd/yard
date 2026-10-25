@@ -292,9 +292,6 @@ it("no wardrobe rod or raised floor spans past 42 inches", () => {
   assert.match(tall, /1 adjustable shelf line above it/);
   assert.match(tall, /in each of 3 bays/);
   assert.doesNotMatch(tall, /No pinned shelf above the hat/);
-  assert.match(generateFromPrompt("wardrobe").notes.join(" "), /2 fixed hat shelf pieces/);
-  assert.match(generateFromPrompt("wardrobe 48 wide").notes.join(" "), /2 fixed hat shelf pieces/);
-  assert.match(generateFromPrompt("wardrobe 72 wide").notes.join(" "), /3 fixed hat shelf pieces/);
 });
 
 it("a rod note does not claim shelves above the rod when nothing is there", () => {
@@ -308,9 +305,7 @@ it("a rod note does not claim shelves above the rod when nothing is there", () =
   const shelves = four.panels.filter((p) => p.type === "shelf");
   const lines = new Set(shelves.map((s) => s.position.y.toFixed(2))).size;
   assert.equal(lines, 4);
-  assert.equal(shelves.length, lines * 2);
-  assert.match(four.notes.join(" "), /2 fixed hat shelf pieces/);
-  assert.match(four.notes.join(" "), /3 adjustable shelf lines above it \(6 pieces\)/);
+  assert.match(four.notes.join(" "), /1 fixed hat shelf over the rod and 3 adjustable \(6 pieces\)/);
 });
 
 it("every wardrobe probe clears the hanger rule", () => {
