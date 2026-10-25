@@ -1,0 +1,12 @@
+{
+  "source": "sheet-stocks",
+  "note": "Builds that nest two sheet stocks (a stand's 1/2\" skirt and 3/4\" top). Each plywood Buy row buys the layout's sheets of its own stock (I50).",
+  "prompts": [
+    { "id": "sheet-stocks-lemonade", "prompt": "lemonade stand" },
+    { "id": "sheet-stocks-snack", "prompt": "snack stand" },
+    { "id": "sheet-stocks-farm", "prompt": "farm stand" },
+    { "id": "sheet-stocks-lemonade-60", "prompt": "lemonade stand 60 wide" },
+    { "id": "sheet-stocks-lemonade-72", "prompt": "lemonade stand 72 wide" },
+    { "id": "sheet-stocks-lemonade-48x84x36", "prompt": "lemonade stand 48 wide 84 tall 36 deep" }
+  ]
+}

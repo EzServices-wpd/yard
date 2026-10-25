@@ -606,6 +606,20 @@ export function nestSheetCounts(nest: NestResult | null): { on8: number; on10: n
   };
 }
 
+/** Sheet count per stock family (catalog id without its size, else the sheet's material) and size, in nest order. */
+export function nestSheetsByStock(nest: NestResult | null): { stock: string; on8: number; on10: number }[] {
+  const out = new Map<string, { stock: string; on8: number; on10: number }>();
+  for (const s of nest?.sheets ?? []) {
+    const id = String(s.parts[0]?.id ?? "").split("|")[0];
+    const stock = /^(?:plywood|mdf|chipboard|hardboard|osb)-.+-\d+x\d+$/.test(id) ? id.replace(/-\d+x\d+$/, "") : s.material;
+    const g = out.get(stock) ?? { stock, on8: 0, on10: 0 };
+    if (Math.max(s.width, s.height) <= 96 + 1e-6) g.on8++;
+    else g.on10++;
+    out.set(stock, g);
+  }
+  return [...out.values()];
+}
+
 export const SHEET_4X8 = DEFAULT_SHEET;
 export const SHEET_4X10 = SHEET_10;
 export const BLADE_KERF = KERF;
