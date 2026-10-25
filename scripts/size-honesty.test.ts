@@ -11,7 +11,8 @@ import { corpus } from "./invariants-corpus.ts";
  * I15 size honesty (F2 class, lemonade stand): the title, step 1 and the model say one depth.
  * - The header's D, step 1's "N\" deep" and the model's finished depth are equal (±1/8").
  * Builds whose doors or fronts stand proud (labelled in step 1) are exempt: that is the linen rule.
- * - Step 1 restates the title as written: no axis of the title is re-stamped to another number.
+ * - Step 1 restates the title as written, or its bare name (size said once, labelled W × D × H; row 132): no axis of
+ *   the title is re-stamped to another number.
  */
 const num = (s: string) => s.trim().split(/\s+/).reduce((t, p) => t + (p.includes("/") ? Number(p.split("/")[0]) / Number(p.split("/")[1]) : Number(p)), 0);
 const near = (a: number, b: number) => Math.abs(a - b) <= 0.13;
@@ -30,7 +31,9 @@ export function sizeHonesty(q: string): string[] {
   if (hd && !near(num(hd), md)) out.push(`header D ${hd}" vs model ${md}"`);
   if (sd && !near(num(sd), md)) out.push(`step 1 ${sd}" deep vs model ${md}"`);
   const base = p.name.replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "");
-  if (s1.startsWith(base) && /\d/.test(p.name) && !s1.startsWith(p.name)) out.push(`step 1 restates the title as "${s1.split(".")[0]}" (title "${p.name}")`);
+  // Step 1 names the build as titled, or by its bare name with the size said once, labelled (row 132): never a title
+  // with an axis re-stamped to another number.
+  if (s1.startsWith(base) && /\d/.test(p.name) && !s1.startsWith(p.name) && !s1.startsWith(`${base.trim()}. `)) out.push(`step 1 restates the title as "${s1.split(".")[0]}" (title "${p.name}")`);
   return out;
 }
 

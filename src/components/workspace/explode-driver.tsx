@@ -1,10 +1,12 @@
 "use client";
 /**
  * See inside, item 1: drives the staged unit explode on the bench.
- * - Solves the layout on idle once the build has settled (one solver slice per idle callback), cached per build
- *   and viewport. A tap before it finishes runs the rest one slice per task (the page keeps its frames) with a
- *   1.5 s wall deadline, then uses the solve so far. Every solve is a step-budget job: a new build, a new size or
- *   unmounting closes the old one, so its ID-pass meshes are always freed.
+ * - Solves the layout on idle once the build and the overlay cards have settled (one solver slice per idle
+ *   callback), cached per part list, viewport and settled cards (explode-settle.ts, rows 353/354). A tap before it
+ *   finishes runs the rest one slice per task (the page keeps its frames) with a 1.5 s wall deadline, then uses the
+ *   solve so far. Cards that settle somewhere else while See inside is on re-solve, so reduced and full motion end
+ *   on the same pose. Every solve is a step-budget job: a new key or unmounting closes the old one, so its ID-pass
+ *   meshes are always freed.
  * - Runs the one tween (1.2 s open, 0.7× to close) and moves every part's explode groups (transform only),
  *   invalidating frames only while something moves (frameloop "demand").
  * - Reduced motion: no tween, the same final pose, a 150 ms fade.
@@ -18,7 +20,8 @@ import { BENCH_FOV, type BenchView, type Rect } from "@/lib/yard/benchFrame";
 import { CLOSE_MS, EXPLODE_MS, EXPLODE_VIEW, REDUCED_FADE_MS, poseAt } from "@/components/workspace/explode-layout";
 import { explodeClock, setSolved, startTween, stepTween, type ExplodeSolved } from "@/components/workspace/explode-state";
 import { SOLVE_FINISH_MS, SOLVE_MAX_STEPS, SOLVE_SLICE_MS, plainExplode, solveJob } from "@/components/workspace/explode-solver";
-import { closeJob, runJob, runSlice, type StepJob } from "@/components/workspace/step-budget";
+import { runJob, runSlice } from "@/components/workspace/step-budget";
+import { SolveDesk, buildKey, cardsMoving, type Cards } from "@/components/workspace/explode-settle";
 import { revealState } from "@/components/workspace/reveal-clock";
 
 type Groups = { outer: THREE.Group | null; inner: THREE.Group | null };
@@ -90,45 +93,39 @@ export function explodeView(): BenchView {
   return st.orbited && st.userView ? st.userView : EXPLODE_VIEW;
 }
 
-type Job = StepJob<ExplodeSolved> & { key: string };
-const cache = new Map<string, ExplodeSolved>();
-/** Solves kept (a key is build + viewport size, so resizing makes new ones): oldest dropped past this. */
-const CACHE_MAX = 8;
-function remember(k: string, s: ExplodeSolved) {
-  cache.delete(k);
-  cache.set(k, s);
-  if (cache.size > CACHE_MAX) cache.delete([...cache.keys()][0]);
+/** The cards over the bench now, and whether any is still sliding or fading into place (row 353). */
+function cardsNow(canvas: HTMLCanvasElement): Cards {
+  const host = canvas.closest("[data-bench-host]");
+  const els = host ? host.querySelectorAll<HTMLElement>("[data-bench-overlay]") : [];
+  return { rects: overlayRects(canvas), moving: cardsMoving(els as Iterable<HTMLElement>, host as HTMLElement | null) };
 }
+/** Longest a tap waits for the cards to settle before it solves against them as they are. */
+const SETTLE_WAIT_MS = 1000;
 
 export function ExplodeDriver({ project, explode }: { project: YardProject; explode: boolean }) {
   const { gl, size, invalidate } = useThree();
-  const job = useRef<Job | null>(null);
-  const key = `${project.id}|${Math.round(size.width)}x${Math.round(size.height)}`;
+  // Row 354: the part list, not just the project id (delete and undo keep the id).
+  const base = `${buildKey(project.id, project.panels)}|${Math.round(size.width)}x${Math.round(size.height)}`;
   const staged = project.panels.length > 0;
+  const desk = useRef<SolveDesk | null>(null);
+  desk.current ??= new SolveDesk(() => { throw new Error("unset"); });
+  desk.current.make = (key, overlays) => solveJob({ gl, panels: project.panels, key, viewport: { w: size.width, h: size.height }, overlays, view: explodeView(), fov: BENCH_FOV });
+  const start = (force = false) => {
+    const c = cardsNow(gl.domElement);
+    return desk.current!.start(base, force ? { ...c, moving: false } : c);
+  };
 
   useEffect(() => {
     wake = () => invalidate();
     return () => { wake = null; };
   }, [invalidate]);
 
-  const start = (): Job => {
-    const j = job.current;
-    // The same build and size, still alive: keep it. A cancelled one (closed before it finished) starts again.
-    if (j && j.key === key && !(j.closed && !j.done)) return j;
-    // A new build or size: drop the old solve and free its meshes.
-    if (j && !j.done) closeJob(j);
-    const sj = solveJob({ gl, panels: project.panels, key, viewport: { w: size.width, h: size.height }, overlays: overlayRects(gl.domElement), view: explodeView(), fov: BENCH_FOV });
-    const next: Job = Object.assign(sj, { key });
-    const hit = cache.get(key);
-    if (hit) { next.done = hit; closeJob(next); }
-    return (job.current = next);
-  };
   // A solver error or a slow solve never hangs the tab: it falls back to the plain explode and logs (row 105).
-  const fallback = () => plainExplode(project.panels, key);
+  const fallback = (key: string) => () => plainExplode(project.panels, key);
   const onError = (e: unknown) => console.warn("[yard] See inside: explode solver stopped early (kept the solve so far, else the plain explode)", e);
 
   // Unmount: close whatever solve is still open.
-  useEffect(() => () => { const j = job.current; if (j && !j.done) closeJob(j); job.current = null; }, []);
+  useEffect(() => () => desk.current?.close(), []);
 
   // On idle, after the build has settled (its reveal done): one solver slice per idle callback.
   useEffect(() => {
@@ -142,47 +139,92 @@ export function ExplodeDriver({ project, explode }: { project: YardProject; expl
       if (cancelled) return;
       if (revealState().active || document.hidden) { h = window.setTimeout(tick, 400); return; }
       const j = start();
+      // A card still sliding in: solve once it has settled, never against where it is mid-slide (row 353).
+      if (!j) { h = window.setTimeout(tick, 100); return; }
       if (j.done) return;
-      const r = runSlice(j, fallback, { maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS }, { onError });
-      if (r) { remember(j.key, r); return; }
+      const r = runSlice(j, fallback(j.key), { maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS }, { onError });
+      if (r) { desk.current!.remember(j.key, r); return; }
       h = ric(tick);
     };
     h = window.setTimeout(tick, 1200);
     return () => { cancelled = true; window.clearTimeout(h); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, staged]);
+  }, [base, staged]);
 
-  // Toggle: solve if needed (the rest of it one slice per task, at most SOLVE_FINISH_MS), then tween (or, reduced
-  // motion, jump with a 150 ms fade).
+  // Toggle: once the cards have settled (at most SETTLE_WAIT_MS), solve if needed (the rest of it one slice per task,
+  // at most SOLVE_FINISH_MS), then tween (or, reduced motion, jump with a 150 ms fade). While on, a card that settles
+  // somewhere else (tray, step card, a late resize) re-solves against it (row 353).
   const was = useRef(false);
   useEffect(() => {
     if (!staged) return;
     const reduced = reducedMotion();
     const fade = () => gl.domElement.animate([{ opacity: 0 }, { opacity: 1 }], { duration: REDUCED_FADE_MS, easing: "ease-out" });
     const settle = () => { for (const [id, g] of registry) applyOne(id, g); invalidate(); };
-    if (explode) {
-      const show = (s: ExplodeSolved) => {
-        if (explodeClock.solved?.key !== s.key) {
-          // A new build (or size) while See inside is on: start from the assembled pose.
-          if (explodeClock.solved && explodeClock.solved.key.split("|")[0] !== s.key.split("|")[0]) explodeClock.u = 0;
-          setSolved(s);
-        }
-        startTween(1, reduced ? 0 : EXPLODE_MS);
-        if (reduced && !was.current) fade();
-        was.current = true;
-        settle();
-      };
-      const j = start();
-      if (j.done) { show(j.done); return; }
-      const cancel = runJob(j, fallback, { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { remember(j.key, r); show(r); }, { onError });
-      return cancel;
+    if (!explode) {
+      startTween(0, reduced ? 0 : CLOSE_MS);
+      if (reduced && was.current) fade();
+      was.current = false;
+      settle();
+      return;
     }
-    startTween(0, reduced ? 0 : CLOSE_MS);
-    if (reduced && was.current) fade();
-    was.current = false;
-    settle();
+    let cancel: (() => void) | undefined, running: unknown = null, t = 0, gone = false;
+    const show = (s: ExplodeSolved) => {
+      if (explodeClock.solved?.key !== s.key) {
+        const prev = explodeClock.solved;
+        // A new build while See inside is on: start from the assembled pose.
+        if (prev && prev.key.split("|")[0] !== s.key.split("|")[0]) explodeClock.u = 0;
+        // A re-solve after the explode has landed (the cards moved): a 150 ms fade, never a jump cut.
+        else if (prev && was.current && !explodeClock.tween) fade();
+        setSolved(s);
+      }
+      explodeClock.solving = false;
+      startTween(1, reduced ? 0 : EXPLODE_MS);
+      if (reduced && !was.current) fade();
+      was.current = true;
+      settle();
+    };
+    const t0 = performance.now();
+    const ensure = () => {
+      if (gone) return;
+      const j = start(performance.now() - t0 > SETTLE_WAIT_MS);
+      explodeClock.solving = true;
+      if (!j) { t = window.setTimeout(ensure, 50); return; }
+      if (j === running && !j.done) return; // already being solved; it shows when it lands
+      // Another key: stop the old run first, so it can never land (or be cached) after this one.
+      cancel?.(); cancel = undefined; running = null;
+      if (j.done) { show(j.done); return; }
+      running = j;
+      cancel = runJob(j, fallback(j.key), { maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS }, (r) => { running = null; desk.current!.remember(j.key, r); show(r); }, { onError });
+    };
+    ensure();
+    // Cards that move after the solve: re-check once they have been still for a moment.
+    const host = gl.domElement.closest("[data-bench-host]");
+    let k = 0;
+    const kick = () => {
+      window.clearTimeout(k);
+      explodeClock.solving = true;
+      k = window.setTimeout(() => {
+        if (gone) return;
+        const c = cardsNow(gl.domElement);
+        if (c.moving) return kick();
+        if (explodeClock.solved && desk.current!.stale(explodeClock.solved.key, base, c)) ensure();
+        else if (!running) explodeClock.solving = false;
+      }, 120);
+    };
+    const ro = new ResizeObserver(kick);
+    const mo = new MutationObserver(() => { host?.querySelectorAll("[data-bench-overlay]").forEach((el) => ro.observe(el)); kick(); });
+    if (host) {
+      host.querySelectorAll("[data-bench-overlay]").forEach((el) => ro.observe(el));
+      mo.observe(host, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "class"] });
+      host.addEventListener("transitionend", kick);
+      host.addEventListener("animationend", kick);
+    }
+    return () => {
+      gone = true; explodeClock.solving = false; cancel?.(); window.clearTimeout(t); window.clearTimeout(k); ro.disconnect(); mo.disconnect();
+      host?.removeEventListener("transitionend", kick); host?.removeEventListener("animationend", kick);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [explode, key, staged]);
+  }, [explode, base, staged]);
 
   useFrame(() => {
     const moving = stepTween();

@@ -7,9 +7,12 @@
  *   on the typed axis at which every part is real is found by rebuilding, and named.
  */
 import { getCatalogItem } from "./catalog";
+import { withArticle } from "./article";
 import { inchFrac } from "./inchText";
 import { canonicalMeasures, typedMeasures } from "./measureText";
 import { buildPlan } from "./report";
+import { closetShelfClearIn, closetShelfMinHeight, rodShelfMinHeight, typedRodDemand, typedShelfDemand } from "./shelfClear";
+import { shelfLevelLayout, shelfLevelsFit } from "./shelfSpan";
 import type { YardProject } from "./types";
 
 /** The least clear opening a carcass keeps between its two panels on any axis. */
@@ -18,7 +21,6 @@ export const MIN_INTERIOR_IN = 1;
 export const SMALL_TYPED_IN = 12;
 /** The largest size the search for a minimum tries (no builder needs more to hold its parts). */
 const SEARCH_MAX_IN = 120;
-
 type Axis = "width" | "depth" | "height";
 const WORD: Record<Axis, string> = { width: "wide", depth: "deep", height: "tall" };
 const AXIS_WORDS: Record<Axis, string> = { width: "wide", depth: "deep", height: "tall|high" };
@@ -66,11 +68,10 @@ export function withAxis(prompt: string, axis: Axis, to: number): string {
 }
 
 function refused(p: YardProject, why: string): YardProject {
-  return { ...p, name: askedNoun(p), panels: [], instances: [], refused: why, cardNote: why };
+  // Nothing is built, so no note about the parts it would have had ("Bead is 0\" across", I37 zero) rides along.
+  return { ...p, name: askedNoun(p), panels: [], instances: [], notes: [], refused: why, cardNote: why };
 }
 
-// "An abacus", "an end table"; a "you"-sounding u takes "a" ("a utility cabinet", "a unit").
-const article = (noun: string) => (/^(?:[aeio]|u(?!ni|s[aeiou]|ti|ku|r[aeiou]))/i.test(noun) ? "An" : "A");
 
 /**
  * The refusal for a build too small to hold its parts, or null when it builds. `rebuild` builds a prompt (the same
@@ -91,7 +92,7 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
       for (const a of ["width", "depth", "height"] as const) {
         const v = typed[a];
         if (v != null && v < min - 1e-6) {
-          return refused(p, `${article(lower)} ${lower} needs at least ${inchFrac(min)}" ${WORD[a]}: two ${inchFrac(t)}" panels and a ${inchFrac(MIN_INTERIOR_IN)}" opening between them. Nothing is built at ${inchFrac(v)}".`);
+          return refused(p, `${withArticle(lower, true)} needs at least ${inchFrac(min)}" ${WORD[a]}: two ${inchFrac(t)}" panels and a ${inchFrac(MIN_INTERIOR_IN)}" opening between them. Nothing is built at ${inchFrac(v)}".`);
         }
       }
     }
@@ -109,7 +110,29 @@ export function tooSmallRefusal(p: YardProject, prompt: string, rebuild: (prompt
     if (hi > SEARCH_MAX_IN * 16) continue;
     while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (ok(mid / 16)) hi = mid; else lo = mid; }
     const min = hi / 16;
-    return refused(p, `${article(lower)} ${lower} needs at least ${inchFrac(min)}" ${WORD[a]} for its parts to fit. Nothing is built at ${inchFrac(v)}".`);
+    return refused(p, `${withArticle(lower, true)} needs at least ${inchFrac(min)}" ${WORD[a]} for its parts to fit. Nothing is built at ${inchFrac(v)}".`);
   }
   return null;
+}
+
+/**
+ * A typed shelf count never shrinks. Each level keeps 7" clear. A rod is in the minimum only
+ * when one was typed. The height is closetShelfMinHeight, the same number #112 names.
+ */
+export function shelfCountRefusal(p: YardProject, prompt: string, _rebuild: (prompt: string) => YardProject): YardProject | null {
+  void _rebuild;
+  if (p.refused || !p.panels.length) return null;
+  const asked = typedShelfDemand(prompt);
+  if (asked == null || shelfLevelsFit(p.panels, asked)) return null;
+  // Corner shelves are named Triangle, not Shelf. This minimum is the even carcass stack only.
+  const layout = shelfLevelLayout(p.panels);
+  if (layout.levels === 0) return null;
+  const noun = askedNoun(p).toLowerCase();
+  const withRod = typedRodDemand(prompt);
+  const min = withRod ? rodShelfMinHeight(asked) : closetShelfMinHeight(asked);
+  // Already at least that tall: the miss is not this height, so the build stands.
+  if (p.overall.height + 1e-6 >= min) return null;
+  const word = asked === 1 ? "shelf" : "shelves";
+  const rod = withRod ? " and a hanging rod" : "";
+  return refused(p, `${withArticle(noun, true)} needs at least ${inchFrac(min)}" tall for ${asked} ${word} with ${inchFrac(closetShelfClearIn())}" clear between them${rod}. Nothing is built at ${inchFrac(p.overall.height)}".`);
 }

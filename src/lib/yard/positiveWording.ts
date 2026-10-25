@@ -47,7 +47,7 @@ const RULES: Rule[] = [
   [/\bso (the [\w ]+?|it|they) cannot slam(?: shut)?\b(?! on fingers)/gi, (_m, s) => `so ${s} ${verb(s, "closes", "close")} gently`],
   [/\bnever through openings or outside the silhouette\b/g, "inside the silhouette and clear of openings"],
   [/\bso (the [\w ]+?|it|they) cannot tip\b/gi, (_m, s) => `so ${s} ${verb(s, "stays", "stay")} upright`],
-  [/(?:,? or sit it on a counter and still lag it) so it cannot tip/gi, ", or sit it on a counter and still lag it so it stays upright"],
+  [/(,? or sit it on a counter and still screw it (?:into the studs with [^.]*?|to the wall through the back)) so it cannot tip/gi, "$1 so it stays upright"],
   // Studs.
   [/\bso it cannot hit two studs at\b/gi, "so it reaches only one stud at"],
   [/\bso it cannot take a screw in two studs\b/gi, "so it reaches only one stud"],

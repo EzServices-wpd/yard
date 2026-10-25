@@ -29,6 +29,8 @@ export const explodeClock = {
   solved: null as ExplodeSolved | null,
   /** The camera's own glide (CameraRig), so settled waits for it too. */
   cameraBusy: false,
+  /** A solve (or the check for cards that moved) is still running, so the shown pose may change (row 353). */
+  solving: false,
   /** When the last tween ended (ms, performance.now()). */
   endedAt: 0,
 };
@@ -68,9 +70,9 @@ export function stepTween(now = performance.now()): boolean {
 
 export function explodeSettled(): boolean {
   const c = explodeClock;
-  return c.target === 1 && !c.tween && !c.cameraBusy && c.u === 1 && !!c.solved;
+  return c.target === 1 && !c.tween && !c.cameraBusy && !c.solving && c.u === 1 && !!c.solved;
 }
 
 export function resetExplodeClock() {
-  explodeClock.u = 0; explodeClock.target = 0; explodeClock.tween = null; explodeClock.solved = null; explodeClock.cameraBusy = false;
+  explodeClock.u = 0; explodeClock.target = 0; explodeClock.tween = null; explodeClock.solved = null; explodeClock.cameraBusy = false; explodeClock.solving = false;
 }
