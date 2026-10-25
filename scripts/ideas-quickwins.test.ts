@@ -101,3 +101,18 @@ test("every nav landmark has a label, and the labels on one page differ", () => 
   // Ideas, plans, about, privacy, terms: SiteChrome's header and footer. Home: its own header, Free plans, SiteFooter.
   for (const set of [label("src/components/site/chrome.tsx"), [...label("src/routes/index.tsx"), "Footer"]]) assert.equal(new Set(set).size, set.length, String(set));
 });
+
+test("the empty line says 'No saved idea yet.' only when search found nothing at all, not above a plan link", () => {
+  const plan = page("toy chest");
+  assert.match(plan, /href="\/plans\/toy-chest"/);
+  assert.doesNotMatch(plan, /No saved idea yet/);
+  assert.match(page("zzqx"), /No saved idea yet\./);
+  assert.match(page("bookshelf"), /4 ideas\. Enter opens the first\./);
+});
+
+test("a typed build (?q=) is noindex,follow; the ?y= share link and the bare workbench stay indexable", async () => {
+  const { workbenchRobots } = await import("../src/lib/canonical");
+  assert.deepEqual(workbenchRobots({ q: "bookcase 36 wide" }), [{ name: "robots", content: "noindex,follow" }]);
+  for (const s of [{ y: "eyJwcm9tcHQiOiJ4In0" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "x" }, {}, { q: "  " }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
+  assert.match(SRC("src/routes/workspace.tsx"), /workbenchRobots\(/, "the route head (server HTML) carries it");
+});

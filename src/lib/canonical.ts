@@ -16,3 +16,9 @@ export function workbenchPath({ q, y }: { q?: string; y?: string }): string {
   if (q?.trim()) return `/workspace?${new URLSearchParams({ q: q.trim() })}`;
   return "/workspace";
 }
+
+/** A typed build (?q=) is the visitor's own words: never indexed (Chief, 10-25); its links still followed. A ?y= share link stays indexable. */
+// ponytail: meta only; an X-Robots-Tag header would also cover non-HTML fetches, not needed while /workspace is HTML.
+export function workbenchRobots({ q, y }: { q?: string; y?: string }): { name: string; content: string }[] {
+  return !y && q?.trim() ? [{ name: "robots", content: "noindex,follow" }] : [];
+}

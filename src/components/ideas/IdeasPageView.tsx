@@ -71,7 +71,10 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
 
       {q ? (
         <section className="mt-4" aria-live="polite" data-ideas-results>
-          <p className="text-sm text-ink">{hits.length === 0 ? "No saved idea yet." : hits.length === 1 ? "1 idea. Enter opens it." : `${hits.length} ideas. Enter opens the first.`}</p>
+          {/* Only a plan found: the plan link below is the result, so no "nothing found" line above it. */}
+          {hits.length === 0 && plans.length > 0 ? null : (
+            <p className="text-sm text-ink">{hits.length === 0 ? "No saved idea yet." : hits.length === 1 ? "1 idea. Enter opens it." : `${hits.length} ideas. Enter opens the first.`}</p>
+          )}
           <button
             type="button"
             onClick={() => onBuild(q)}
