@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
+import { readerBuildFlag } from "./src/lib/yard/aiReader/flag";
 
 function pgliteBootstrapPlugin(): Plugin {
   return {
@@ -113,7 +114,7 @@ export default defineConfig(({ command }) => ({
   // The AI prompt reader's on/off flag (YARD_AI_READER=on), so a tab with the reader off never asks the server. Not a secret; the key stays server-side.
   define: {
     "import.meta.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG": JSON.stringify(process.env.YARD_AMAZON_TAG || process.env.VITE_PUBLIC_AMAZON_ASSOCIATE_TAG || ""),
-    "import.meta.env.VITE_PUBLIC_AI_READER": JSON.stringify(process.env.YARD_AI_READER === "on" ? "on" : ""),
+    "import.meta.env.VITE_PUBLIC_AI_READER": JSON.stringify(readerBuildFlag(process.env.YARD_AI_READER)),
   },
   plugins: [
     pgliteBootstrapPlugin(),

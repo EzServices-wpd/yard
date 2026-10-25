@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { POCKET_DREAM } from "./pocket";
-import { typedCount, validateSpec } from "./aiReader/validate";
-import { chooseBuildPrompt, specToPrompt } from "./aiReader/rewrite";
+import { inchCandidates, quoteUnit, typedCount, validateSpec } from "./aiReader/validate";
+import { chooseBuildPrompt, honoredBy, specToPrompt } from "./aiReader/rewrite";
 import type { ReaderSpec } from "./aiReader/spec";
 
 globalThis.fetch = (async () => { throw new Error("network is off in this test"); }) as typeof fetch;
@@ -102,3 +102,40 @@ for (const [q, right, wrong] of CANARIES) {
     }
   });
 }
+
+/** Critic's r2 probes (#157 rows 465–468) plus the two holes found verifying fix-r3. */
+test("I49 r3: multi-number metric, comma triples, axis-less sub-quotes and substring counts never move a typed number (rows 465–468)", () => {
+  const typed: [string, unknown][] = [
+    ["bookcase 1 m 20 cm wide with two shelves", { sizes: [S("W", 20 / 2.54, "1 m 20 cm wide", "overall", "cm")] }],
+    ["bookcase 1 m 20 cm wide with two shelves", { sizes: [S("W", 20 / 2.54, "1 m 20 cm", "overall", "cm")] }],
+    ["nightstand 90cm wide 40cm deep", { sizes: [S("W", 40 / 2.54, "90cm wide 40cm deep", "overall", "cm")] }],
+    ["nightstand 90cm wide 40cm deep", { sizes: [S("W", 40 / 2.54, "90cm wide 40cm", "overall", "cm")] }],
+    ["linen closet 80,45,180 cm", { sizes: [S("W", 80 / 2.54, "80,45,180 cm", "overall", "cm")] }],
+    ["bookcase 6 ft tall 30 wide with two shelves", { sizes: [S("W", 72, "6 ft", "overall", "ft")] }],
+    ["bookcase 6 ft tall 30 wide with two shelves", { sizes: [S("H", 72, "6 ft tall 30 wide", "overall", "ft")] }],
+    ["linen closet 2 ft deep 30 wide 72 tall", { sizes: [S("H", 24, "2 ft", "overall", "ft")] }],
+    ["bench 4 ft long", { sizes: [S("D", 48, "4 ft", "overall", "ft")] }],
+    ["bookcase 4 ft 30 wide", { sizes: [S("W", 78, "4 ft 30", "overall", "ft")] }],
+    ["bookcase 4 ft 30 wide", { sizes: [S("W", 78, "4 ft 30 wide", "overall", "ft")] }],
+    ["bookcase with twenty-one shelves", { counts: [{ thing: "shelves", n: 1, quote: "one shelves", confidence: 1, assumed: false }] }],
+    ["dresser with thirty-two drawers", { counts: [{ thing: "drawers", n: 2, quote: "two drawers", confidence: 1, assumed: false }] }],
+    ["bookcase 12 ft wide", { sizes: [S("W", 24, "2 ft", "overall", "ft")] }],
+  ];
+  for (const [q, raw] of typed) {
+    const c = chooseBuildPrompt(q, validateSpec(q, { sizes: [], counts: [], ...(raw as object) }).spec);
+    assert.equal(c.buildPrompt, q, `${q}: ${c.reason} ${JSON.stringify(c.edits)}`);
+  }
+  assert.equal(specToPrompt("bookcase 1.8 m tall", spec([S("H", 180 / 2.54, "1.8 m", "overall", "m")])).prompt, "bookcase 70 7/8 tall", "the typed axis word stays, written once");
+  assert.equal(specToPrompt("shelf with one shelves", spec([], [{ thing: "shelves", n: 1, quote: "one shelves", confidence: 1, assumed: false }])).prompt, "shelf with 1 shelf", "singular is shelf, not shelve");
+  assert.equal(specToPrompt("bench 4 ft long", spec([S("W", 48, "4 ft", "overall", "ft")])).prompt, "bench 48 long", "long stays long when typed after the quote");
+});
+
+test("I49 r3: mm is mm, feet-inches only for feet, whole-feet tolerance is 3 inches (row 470)", () => {
+  assert.deepEqual([quoteUnit("900 mm"), quoteUnit("90cm"), quoteUnit("1.8 m"), quoteUnit("6 ft")], ["mm", "cm", "m", "ft"]);
+  assert.equal(validateSpec("bookcase 900 mm wide", { sizes: [S("W", 900 / 25.4, "900 mm wide", "overall", "mm")] }).spec.sizes.length, 1);
+  assert.equal(validateSpec("bookcase 900 mm wide", { sizes: [S("W", 900 / 2.54, "900 mm wide", "overall", "mm")] }).spec.sizes.length, 0, "a mm quote never reads as cm");
+  assert.ok(!inchCandidates("1 m 20 cm").some((c) => Math.abs(c - 32) < 1e-6) && inchCandidates("6 ft 2 in").includes(74), "feet-inches combine only for feet");
+  const at = (h: number) => ({ ...generateFromPrompt("bookcase"), overall: { width: 30, height: h, depth: 12 } }) as ReturnType<typeof generateFromPrompt>;
+  const foot3 = S("H", 36, "3 foot", "overall", "ft");
+  assert.deepEqual([honoredBy(at(38), foot3), honoredBy(at(40), foot3), honoredBy(at(50), foot3)], [true, false, false], "whole feet are ±3 inches");
+});

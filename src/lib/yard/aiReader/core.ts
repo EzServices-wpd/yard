@@ -21,13 +21,13 @@ export const readerRequest = (prompt: string) => ({
   response_format: { type: "json_schema", json_schema: READER_SCHEMA },
 });
 type Usage = { prompt_tokens: number; completion_tokens: number; prompt_tokens_details?: { cached_tokens?: number }; cost_in_usd_ticks?: number };
-const nonNeg = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0);
-/** The billed price from usage; never negative, and cached tokens never exceed the prompt's. */
+const count = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x >= 0 ? x : NaN);
+/** The billed price from usage; NaN (→ the caller bills the reserved worst case) when usage is missing, negative or not a number. Cached tokens never exceed the prompt's. */
 export function costUsd(u: Usage): number {
-  if (typeof u.cost_in_usd_ticks === "number" && Number.isFinite(u.cost_in_usd_ticks)) return nonNeg(u.cost_in_usd_ticks) / 1e10;
-  const prompt = nonNeg(u.prompt_tokens);
-  const cached = Math.min(nonNeg(u.prompt_tokens_details?.cached_tokens), prompt);
-  return (prompt - cached) * PRICE.in + cached * PRICE.cached + nonNeg(u.completion_tokens) * PRICE.out;
+  if (typeof u.cost_in_usd_ticks === "number" && Number.isFinite(u.cost_in_usd_ticks)) return Math.max(0, u.cost_in_usd_ticks) / 1e10;
+  const prompt = count(u.prompt_tokens), out = count(u.completion_tokens);
+  const cached = Math.min(count(u.prompt_tokens_details?.cached_tokens ?? 0) || 0, prompt);
+  return (prompt - cached) * PRICE.in + cached * PRICE.cached + out * PRICE.out;
 }
 /** Reserved before each call: chars/3 tokens in (above any tokenizer's count for this text), max_tokens out. */
 export const worstCaseUsd = (prompt: string) => Math.ceil((READER_SYSTEM.length + JSON.stringify(READER_SCHEMA).length + prompt.length + 64) / 3) * PRICE.in + MAX_TOKENS * PRICE.out;

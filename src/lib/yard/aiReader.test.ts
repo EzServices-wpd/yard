@@ -148,3 +148,18 @@ test("I49 r2: the browser asks only when the build-time flag is on (row 459)", a
     assert.deepEqual([readerWanted(Q, true, "on"), readerWanted(Q, true, ""), readerWanted(Q, true, undefined), readerWanted(Q, true, "ON")], [true, false, false, false]);
   } finally { g.window = had; }
 });
+
+test("I49 r3: usage that is not a number bills the worst case; a timeout keeps its reserve; a cache read error is a miss; the key is a full SHA-256 (rows 470, 471)", async () => {
+  assert.ok(Number.isNaN(costUsd({ prompt_tokens: "800" as unknown as number, completion_tokens: 90 })) && Number.isNaN(costUsd({ prompt_tokens: 800, completion_tokens: -1 })), "garbage usage is not $0");
+  const garbage = mock({}, { ...reply({ sizes: [], counts: [] }), usage: { prompt_tokens: "lots", completion_tokens: null } });
+  await readPrompt(Q, false, garbage.d);
+  assert.deepEqual(garbage.spend.settled.map(([r, b]) => b === r), [true], "non-numeric usage settles at the reserved worst case (fail closed)");
+  const slow = mock({ call: (_b, signal) => new Promise((_, no) => signal.addEventListener("abort", () => no(new Error("abort")))) });
+  assert.equal((await readPrompt(Q, false, slow.d, 20)).ok, false);
+  assert.deepEqual([slow.spend.reserved > 0, slow.spend.settled.length], [true, 0], "an aborted call may still bill: its worst case stays reserved");
+  const cacheErr = mock({ cacheGet: async () => { throw new Error("runtime cache down"); } });
+  assert.deepEqual([(await readPrompt(Q, false, cacheErr.d)).ok, cacheErr.calls.length], [true, 1], "a cache read error is a miss, never a served reading");
+  assert.match(await cacheKey(Q), /:[0-9a-f]{64}$/, "the whole SHA-256, not a short prefix");
+  const { readerBuildFlag } = await import("./aiReader/flag");
+  assert.deepEqual(["on", "ON", "true", "1", " on", "", undefined].map((v) => readerBuildFlag(v)), ["on", "", "", "", "", "", ""], "the browser flag is exactly 'on' or empty");
+});
