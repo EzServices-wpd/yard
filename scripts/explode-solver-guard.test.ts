@@ -67,9 +67,12 @@ test("the driver never steps a solve by hand: idle slices and the tap both go th
   const src = fs.readFileSync("src/components/workspace/explode-driver.tsx", "utf8");
   assert.doesNotMatch(src, /while\s*\(/, "no unbounded while in the driver");
   assert.doesNotMatch(src, /\.next\(\)/, "no raw next() in the driver");
-  assert.match(src, /runSlice\(j, fallback, \{ maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS \}/, "idle: one capped slice per callback");
-  assert.match(src, /runJob\(j, fallback, \{ maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS \}/, "tap: sliced, 1.5 s wall deadline");
-  assert.match(src, /return cancel;/, "toggling off (or a new build) cancels the tap's solve");
-  // A new build or size, and unmounting, close the old solve (its finally frees the ID-pass meshes).
-  assert.ok((src.match(/closeJob\(/g) ?? []).length >= 3);
+  assert.match(src, /runSlice\(j, fallback\(j\.key\), \{ maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS \}/, "idle: one capped slice per callback");
+  assert.match(src, /runJob\(j, fallback\(j\.key\), \{ maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS \}/, "tap: sliced, 1.5 s wall deadline");
+  assert.match(src, /return \(\) => \{\s*gone = true;[^}]*cancel\?\.\(\)/, "toggling off (or a new build) cancels the tap's solve");
+  // A new key (build, size, cards), and unmounting, close the old solve (its finally frees the ID-pass meshes):
+  // the driver's SolveDesk (explode-settle.ts) does the closing; the driver closes it on unmount.
+  const desk = fs.readFileSync("src/components/workspace/explode-settle.ts", "utf8");
+  assert.ok((desk.match(/closeJob\(/g) ?? []).length >= 3);
+  assert.match(src, /useEffect\(\(\) => \(\) => desk\.current\?\.close\(\), \[\]\)/, "unmount closes the open solve");
 });
