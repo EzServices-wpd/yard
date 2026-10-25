@@ -106,7 +106,7 @@ build that changed and why.
 
 Graph rebuilt 2026-10-24 ~9:05 PM ET. The brief's graph (`/workspace/graphify/yard`, built from `yard-src` = main
 @ 48460cc, Oct 23) **does not contain `shelfSpan.ts`'s callers** (#114 is in release-24, not main), so the callers below
-come from a second local graph of release-24 @ 408c2c1 (`/tmp/pack-yard-carcass/graphify-out/graph.json`). Raw output:
+come from a second local graph of release-24 @ 408c2c1 (kept locally at `/workspace/wt/carcass-graph-r24-408c2c1.json`). Raw output:
 `/workspace/wt/carcass-blast-r24.txt` and `carcass-blast-main.txt`. Callers ("←"), tests marked (t):
 
 | Builder / rule the table replaces or wraps | Callers |
