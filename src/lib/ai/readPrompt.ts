@@ -11,7 +11,8 @@ import { hasXaiKey, xaiFetch } from "./xai.server";
 import { restPipe } from "@/lib/yard/ideaLog.server";
 import { readPrompt, readerEnv, reserveUsd, settleUsd, utcDay, type ReaderDeps } from "@/lib/yard/aiReader/core";
 
-function serverDeps(): ReaderDeps {
+/** Exported for the wiring test (per-visitor limit and the counter are really wired). */
+export function serverDeps(): ReaderDeps {
   const day = utcDay();
   const pipe = restPipe();
   return {

@@ -4,7 +4,7 @@
  * Every field quotes the person's words verbatim (validate.ts); anything assumed is thrown away.
  */
 export const AXES = ["W", "D", "H", "L", "DIAM", "unknown"] as const;
-export const UNITS = ["in", "ft", "ft-in", "cm", "mm", "none"] as const;
+export const UNITS = ["in", "ft", "ft-in", "cm", "mm", "m", "none"] as const;
 export const OF = ["overall", "part", "product"] as const;
 export const COUNT_THINGS = ["drawers", "doors", "shelves", "rods", "steps", "bins", "legs", "seats", "tiers", "bays", "cubbies", "hooks", "pieces", "other"] as const;
 
@@ -37,7 +37,8 @@ Rules
 5. sizes: one entry per typed measurement.
    - axis: W (wide/width, or "long" on tables, benches, shelves and boxes), D (deep), H (tall/high), L (length of a long thing), DIAM, or "unknown".
    - Triples "30x18x72" / "30 by 18 by 72": W, D, H in typed order unless words name the axes. Pairs "60 by 80": W then D for beds, tables, boxes; W then H for upright storage, frames and windows.
-   - unit: in, ft, ft-in (6'2"), cm, mm, or none (bare number). inches: converted (ft x12, cm /2.54, mm /25.4); mixed fractions are exact ("24 1/2" = 24.5).
+   - unit: in, ft, ft-in (6'2"), cm, mm, m, or none (bare number): only the unit the words name. inches: converted (ft x12, cm /2.54, mm /25.4, m x39.37); a bare number is inches as typed; mixed fractions are exact ("24 1/2" = 24.5).
+   - quote: only the numbers, unit and axis words ("90cm wide"), never the object's name.
    - of: "overall" for the build's own box; "part" for a part ("24 inch knee space"); "product" for a bought item or the thing it holds ("36 by 48 window", "for a 65 inch TV"). Ages are never sizes.
-6. counts: only when a number (digit, number word, "pair" = 2, "two-step" = 2 steps, "3-drawer" = 3 drawers) is typed for that thing.
+6. counts: only when a number (digit, number word, "pair" = 2, "two-step" = 2 steps, "3-drawer" = 3 drawers) is typed right next to that thing; quote just the number and the noun ("two drawers").
 Output JSON only.`;

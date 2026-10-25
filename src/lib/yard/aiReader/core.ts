@@ -21,10 +21,13 @@ export const readerRequest = (prompt: string) => ({
   response_format: { type: "json_schema", json_schema: READER_SCHEMA },
 });
 type Usage = { prompt_tokens: number; completion_tokens: number; prompt_tokens_details?: { cached_tokens?: number }; cost_in_usd_ticks?: number };
+const nonNeg = (x: unknown) => (typeof x === "number" && Number.isFinite(x) && x > 0 ? x : 0);
+/** The billed price from usage; never negative, and cached tokens never exceed the prompt's. */
 export function costUsd(u: Usage): number {
-  if (typeof u.cost_in_usd_ticks === "number") return u.cost_in_usd_ticks / 1e10;
-  const cached = u.prompt_tokens_details?.cached_tokens ?? 0;
-  return (u.prompt_tokens - cached) * PRICE.in + cached * PRICE.cached + u.completion_tokens * PRICE.out;
+  if (typeof u.cost_in_usd_ticks === "number" && Number.isFinite(u.cost_in_usd_ticks)) return nonNeg(u.cost_in_usd_ticks) / 1e10;
+  const prompt = nonNeg(u.prompt_tokens);
+  const cached = Math.min(nonNeg(u.prompt_tokens_details?.cached_tokens), prompt);
+  return (prompt - cached) * PRICE.in + cached * PRICE.cached + nonNeg(u.completion_tokens) * PRICE.out;
 }
 /** Reserved before each call: chars/3 tokens in (above any tokenizer's count for this text), max_tokens out. */
 export const worstCaseUsd = (prompt: string) => Math.ceil((READER_SYSTEM.length + JSON.stringify(READER_SCHEMA).length + prompt.length + 64) / 3) * PRICE.in + MAX_TOKENS * PRICE.out;
@@ -51,8 +54,10 @@ export async function reserveUsd(pipe: Pipe, day: string, usd: number, cap: numb
   await pipe([["INCRBYFLOAT", usdKey(day), -usd]]);
   return false;
 }
+/** Settle to the billed price, clamped to [0, reserved]: a bad usage figure can never give back more than this call reserved. */
 export async function settleUsd(pipe: Pipe, day: string, reserved: number, billed: number): Promise<void> {
-  if (billed !== reserved) await pipe([["INCRBYFLOAT", usdKey(day), billed - reserved]]);
+  const b = Number.isFinite(billed) ? Math.min(Math.max(billed, 0), reserved) : reserved;
+  if (b !== reserved) await pipe([["INCRBYFLOAT", usdKey(day), b - reserved]]);
 }
 export const utcDay = () => new Date().toISOString().slice(0, 10);
 
@@ -79,6 +84,12 @@ export function needsReader(prompt: string): boolean {
 /** A short, non-reversible tag for logs: the counter and logs never carry the prompt itself. */
 export const promptTag = (p: string) => { let h = 0x811c9dc5; for (const ch of norm(p)) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0; return h.toString(16).padStart(8, "0"); };
 
+/** The 30-day cache key: a SHA-256 of the normalized prompt, never the prompt itself (Web Crypto, on the server). */
+export async function cacheKey(prompt: string): Promise<string> {
+  const h = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(norm(prompt)));
+  return `yard-reader:v2:${READER_MODEL}:${Array.from(new Uint8Array(h), (b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export type ReaderResult = { ok: true; spec: ReaderSpec; cached: boolean } | { ok: false; error: string; off?: true };
 export type ReaderDeps = {
   /** Enable flag (YARD_AI_READER=on; anything else is the kill switch), key present, today's cap. */
@@ -99,7 +110,7 @@ export async function readPrompt(prompt: string, test: boolean, d: ReaderDeps, t
   if (!d.env.on || !d.env.key) return { ok: false, error: "reader is off", off: true };
   if (!needsReader(prompt)) return { ok: false, error: "the parser reads these words: no call" };
   const tag = `tag=${promptTag(prompt)} test=${test ? 1 : 0}`;
-  const ck = `yard-reader:v1:${READER_MODEL}:${norm(prompt)}`;
+  const ck = await cacheKey(prompt);
   const hit = await d.cacheGet(ck).catch(() => undefined);
   const fromCache = hit ? parseReply(prompt, { choices: [{ message: { content: hit } }] }) : null;
   if (fromCache) { d.log(`[ai-reader] cache ${tag}`); return { ok: true, spec: fromCache, cached: true }; }
@@ -112,7 +123,8 @@ export async function readPrompt(prompt: string, test: boolean, d: ReaderDeps, t
     const r = await d.call(readerRequest(prompt), ctl.signal);
     if (!r.ok) { await d.settle(worst, 0).catch(() => {}); d.log(`[ai-reader] refused ${tag}`); return { ok: false, error: r.error }; }
     const usage = (r.body as { usage?: Usage } | null)?.usage;
-    const usd = usage ? costUsd(usage) : worst;
+    const billed = usage ? costUsd(usage) : worst;
+    const usd = Number.isFinite(billed) ? Math.min(Math.max(billed, 0), worst) : worst;
     await d.settle(worst, usd).catch(() => {});
     const spec = r.status === 200 ? parseReply(prompt, r.body) : null;
     d.log(`[ai-reader] call ${tag} status=${r.status} usd=${usd.toFixed(5)} ok=${!!spec}`);

@@ -364,8 +364,10 @@ let readerOff = false;
  * AI prompt reader (I49): only for words the regex parser cannot read, never offline/local test runs, never a
  * follow-on edit to the bench. Off, failed, capped, late or a different object → the typed words build, as today.
  */
-function readerWanted(typed: string, fresh: boolean | undefined): boolean {
-  if (readerOff || typeof window === "undefined" || typeof import.meta.env === "undefined" || import.meta.env.VITE_PUBLIC_AI_READER !== "on" || !needsReader(typed)) return false;
+/** The build-time flag (vite define from YARD_AI_READER): fixed at build, so turning the reader on needs a redeploy. */
+const builtFlag = (): string | undefined => (typeof import.meta.env === "undefined" ? undefined : import.meta.env.VITE_PUBLIC_AI_READER);
+export function readerWanted(typed: string, fresh: boolean | undefined, flag = builtFlag()): boolean {
+  if (readerOff || typeof window === "undefined" || flag !== "on" || !needsReader(typed)) return false;
   const f = currentTestFlags();
   const bench = useYard.getState().project.prompt;
   return !f.offline && !f.local && !(!fresh && bench.trim() && looksLikeFollowOn(typed, bench));

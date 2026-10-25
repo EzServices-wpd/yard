@@ -8,24 +8,24 @@
  *  2. Every size the reader read is built (±1/8") or refused, never silently widened or dropped; else typed words.
  *  3. A size the regex build already has keeps its words (whole feet ±3": a "3 foot" Eiffel at 37 3/8" is 3 feet).
  *  4. Two different overall values on one axis settle nothing.
+ *  5. A typed number is never rewritten: only one measurement in feet or metric (a unit the regex path may misread)
+ *     becomes inches. A bare or inch number, and every pair or triple ("30x18x72", "60 by 80"), keep the typed words,
+ *     so with the reader on or off a bare triple builds the same (what a bare triple means is row 457, Ezra's call).
+ *  6. A count edit only turns a number word next to its noun into digits ("two-step" → "2 steps"): never lower, never moved.
  */
 import { generateFromPrompt } from "../promptMain";
 import { inchFrac } from "../inchText";
 import type { YardProject } from "../types";
 import type { ReaderSize, ReaderSpec } from "./spec";
+import { quoteUnit } from "./validate";
 
 const WORD = { W: "wide", D: "deep", H: "tall", L: "long" } as const;
-const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width|w)\b/i, D: /\b(?:deep|depth|d)\b/i, H: /\b(?:tall|high|height|h)\b/i, L: /\b(?:long|length|l)\b/i };
 const MIN_CONFIDENCE = 0.7;
 const sixteenth = (n: number) => Math.round(n * 16) / 16;
 const NUMBER_WORD = /-|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|pair|dual|couple)\b/i;
 
-/** A quote the regex path already reads: one plain inch number (no ft/cm/mm/fraction/pair) named by its own axis word. */
-function alreadyPlain(s: ReaderSize): boolean {
-  if (/\d\s*\/\s*\d|['′]|\bft\b|feet|foot|cm\b|mm\b|[x×]|\bby\b/i.test(s.quote)) return false;
-  const nums = s.quote.match(/\d+(?:\.\d+)?/g) ?? [];
-  return nums.length === 1 && Math.abs(+nums[0] - s.inches) < 1 / 32 && AXIS_WORDS[s.axis].test(s.quote);
-}
+/** One measurement in feet or metric: the only quotes the reader may rewrite (a typed inch number is kept as typed). */
+const rewritable = (s: ReaderSize) => quoteUnit(s.quote) !== "in" && !/[x×*]|\bby\b/i.test(s.quote);
 const replaceOnce = (out: string, quote: string, to: string) => {
   const i = out.toLowerCase().indexOf(quote.toLowerCase());
   return i < 0 ? null : out.slice(0, i) + to + out.slice(i + quote.length);
@@ -42,8 +42,7 @@ export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: Read
   for (const s of usable) byQuote.set(s.quote, [...(byQuote.get(s.quote) ?? []), s]);
   let out = prompt;
   for (const [quote, sizes] of byQuote) {
-    if (sizes.every(alreadyPlain) || sizes.every(honored) || sizes.some((s) => (perAxis.get(s.axis)?.size ?? 0) > 1)) continue;
-    if (new Set(sizes.map((s) => s.axis)).size !== sizes.length) continue;
+    if (sizes.length !== 1 || !rewritable(sizes[0]) || honored(sizes[0]) || (perAxis.get(sizes[0].axis)?.size ?? 0) > 1) continue;
     const to = sizes.map((s) => `${inchFrac(s.inches)} ${WORD[s.axis as keyof typeof WORD]}`).join(" ");
     const next = replaceOnce(out, quote, to);
     if (next === null) continue;

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { POCKET_DREAM } from "./pocket";
-import { validateSpec } from "./aiReader/validate";
+import { typedCount, validateSpec } from "./aiReader/validate";
 import { chooseBuildPrompt, specToPrompt } from "./aiReader/rewrite";
 import type { ReaderSpec } from "./aiReader/spec";
 
@@ -27,7 +27,7 @@ test("I49 validator: unquoted, invented, assumed and age entries are dropped; fr
 });
 
 test("I49 rewrite: only misreadable measurements change, in fractions; a size the reader read is built or the typed words build", () => {
-  assert.equal(specToPrompt(Q, spec([S("W", 30, "30x18x72"), S("D", 18, "30x18x72"), S("H", 72, "30x18x72")])).prompt, "linen closet 30 wide 18 deep 72 tall");
+  assert.equal(specToPrompt(Q, spec([S("W", 30, "30x18x72"), S("D", 18, "30x18x72"), S("H", 72, "30x18x72")])).prompt, Q, "a bare triple is never rewritten (row 457)");
   assert.equal(specToPrompt("bookcase 90cm wide", spec([S("W", 90 / 2.54, "90cm wide", "overall", "cm")])).prompt, "bookcase 35 7/16 wide");
   const plain = "bookcase 30 wide 12 deep 72 tall";
   assert.equal(specToPrompt(plain, spec([S("W", 30, "30 wide"), S("D", 12, "12 deep"), S("H", 72, "72 tall")])).prompt, plain);
@@ -39,6 +39,49 @@ test("I49 rewrite: only misreadable measurements change, in fractions; a size th
   assert.match(chooseBuildPrompt("bookcase 90cm", spec([S("W", 90 / 2.54, "90cm", "overall", "cm")]), fake).reason, /changes the object/);
   const narrow = () => ({ ...generateFromPrompt("bookcase"), overall: { width: 20, height: 72, depth: 12 } }) as ReturnType<typeof generateFromPrompt>;
   assert.match(chooseBuildPrompt("bookcase 90cm", spec([S("W", 90 / 2.54, "90cm", "overall", "cm")]), narrow).reason, /every size/);
+});
+
+const C = (thing: string, n: number, quote: string) => ({ thing, n, quote, confidence: 1, assumed: false });
+/** Critic's mocked replies (#157 rows 451–453, 458): the reader never overrides, erases, lowers or moves what was typed. */
+test("I49 r2: a typed number is never overridden, erased, lowered or moved (rows 451, 452, 453, 458)", () => {
+  const typed: [string, unknown][] = [
+    [Q, { sizes: [S("W", 30 / 2.54, "30x18x72", "overall", "cm"), S("D", 18 / 2.54, "30x18x72", "overall", "cm"), S("H", 72 / 2.54, "30x18x72", "overall", "cm")], counts: [] }],
+    [Q, { sizes: [S("W", 30 / 2.54, "30x18x72"), S("D", 18 / 2.54, "30x18x72"), S("H", 72 / 2.54, "30x18x72")], counts: [] }],
+    ["linen closet 31.5 wide 78 tall 16 deep with two shelves", { sizes: [S("W", 31.5 / 2.54, "31.5 wide", "overall", "cm")], counts: [] }],
+    ["linen closet 31.5 wide 78 tall 16 deep with two shelves", { sizes: [S("W", 31.5 / 2.54, "31.5 wide")], counts: [] }],
+    ["bookcase 30x12x72", { sizes: [S("W", 30, "30x12x72"), S("D", 144, "30x12x72"), S("H", 72, "30x12x72")], counts: [] }],
+    ["bookcase 30 wide 12 deep 72 tall shelf 6", { sizes: [S("W", 72, "6", "overall", "ft")], counts: [] }],
+    [Q, { sizes: [S("W", 30, "30x18x72"), S("H", 72, "30x18x72")], counts: [] }],
+    [Q, { sizes: [S("W", 30, "closet 30x18x72"), S("D", 18, "closet 30x18x72"), S("H", 72, "closet 30x18x72")], counts: [] }],
+    ["nightstand with two drawers and 1 shelf", { sizes: [], counts: [C("drawers", 1, "two drawers and 1")] }],
+    ["two-drawer nightstand with a shelf", { sizes: [], counts: [C("drawers", 1, "two-drawer nightstand with a")] }],
+    ["3-drawer dresser 30 wide 18 deep 40 tall", { sizes: [], counts: [C("drawers", 30, "3-drawer dresser 30")] }],
+    ["two-step kitchen stool", { sizes: [], counts: [C("drawers", 2, "two-step")] }],
+    ["bookcase 30x12x72 with two shelves", { sizes: [], counts: [C("shelves", 1, "two shelves")] }],
+    ["nightstand with 1 shelf and two drawers", { sizes: [], counts: [C("drawers", 2, "1 shelf and two drawers")] }],
+    ["shoe rack by the door 36 inches", { sizes: [S("W", 36, "36 inches", "overall", "in")], counts: [] }],
+    ["desk 61cm knee space", { sizes: [S("W", 61 / 2.54, "61cm", "part", "cm")], counts: [] }],
+  ];
+  for (const [q, raw] of typed) {
+    const c = chooseBuildPrompt(q, validateSpec(q, raw).spec);
+    assert.equal(c.buildPrompt, q, `${q}: ${c.reason} ${JSON.stringify(c.edits)}`);
+  }
+  assert.equal(validateSpec("bookcase 90cm wide", { sizes: [S("W", 90, "90cm wide", "overall", "none")] }).spec.sizes.length, 0, "the unit must be the one typed");
+  for (const [q, s] of [["shoe rack 36 inches", S("W", 36, "36 inches", "overall", "in")], ["shelf 40", S("W", 40, "40")], ["bench 48 by 16", S("W", 48, "48 by 16")], ["shelf 2 ft by 3 ft", S("W", 24, "2 ft by 3 ft", "overall", "ft")]] as const) assert.equal(specToPrompt(q, spec([s])).edits.length, 0, `a bare or inch number, a pair or a triple is never rewritten: ${q}`);
+  assert.equal(validateSpec(Q, { sizes: [S("W", 30 / 2.54, "30x18x72"), S("D", 18 * 12, "30x18x72")] }).spec.sizes.length, 0, "a bare number converts by no unit");
+  assert.equal(validateSpec(Q, { sizes: [S("W", 30, "closet 30x18x72")] }).spec.sizes.length, 0, "a size quote holds no object noun");
+  assert.equal(validateSpec("shelf 6 ft wide", { sizes: [S("W", 72, "6 ft wide", "overall", "ft")] }).spec.sizes.length, 1);
+  assert.equal(validateSpec("shelf 6 ft wide", { sizes: [S("W", 72, "6 ft wide", "overall", "cm")] }).spec.sizes.length, 0, "the unit label must match the typed unit");
+  assert.deepEqual([typedCount("two drawers", "drawers"), typedCount("3-drawer", "drawers"), typedCount("pair of doors", "doors"), typedCount("two-step", "drawers"), typedCount("a shelf", "shelves"), typedCount("two drawers and 1", "drawers"), typedCount("1 shelf and two drawers", "drawers")], [2, 3, 2, null, null, null, null]);
+  assert.equal(chooseBuildPrompt("bookcase 6 ft tall", validateSpec("bookcase 6 ft tall", { sizes: [S("H", 72, "6 ft tall", "overall", "ft")] }).spec).buildPrompt, "bookcase 6 ft tall", "a size the parser already built keeps its words");
+});
+
+test("I49 r2: bad axis, unit or of values are dropped; a rewrite that turns a build into a refusal falls back", () => {
+  for (const bad of [{ ...S("W", 90 / 2.54, "90cm", "overall", "cm"), axis: "Q" }, { ...S("W", 90 / 2.54, "90cm", "overall", "cm"), of: "sideways" }, { ...S("W", 90 / 2.54, "90cm", "overall", "cm"), unit: "furlong" }]) assert.equal(validateSpec("bookcase 90cm", { sizes: [bad] }).spec.sizes.length, 0, JSON.stringify(bad));
+  const base = generateFromPrompt("bookcase");
+  const refuses = (q: string) => (q === "bookcase 90cm" ? base : { ...base, refused: "too narrow" }) as ReturnType<typeof generateFromPrompt>;
+  const c = chooseBuildPrompt("bookcase 90cm", spec([S("W", 90 / 2.54, "90cm", "overall", "cm")]), refuses);
+  assert.deepEqual([c.used, c.buildPrompt], [false, "bookcase 90cm"], c.reason);
 });
 
 const CANARIES: [string, ReaderSpec, ReaderSpec][] = [

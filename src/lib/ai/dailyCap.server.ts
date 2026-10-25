@@ -25,8 +25,10 @@ export async function underDailyCap(bucket: CapBucket = "ai", ip = visitorIp()):
   await cacheSet(key, n, 86_400);
   return n <= CAPS[bucket]();
 }
-/** Read-only: has this visitor already used the bucket's day? (Checked before any other paid or metered step.) */
-export const dailyCapReached = async (bucket: CapBucket, ip = visitorIp()) => (Number(await cacheGet(capKey(bucket, ip))) || 0) >= CAPS[bucket]();
+/** Read-only: has this visitor already used the bucket's day? (Checked before any other paid or metered step.) A Runtime Cache error counts as reached (closed, not per-instance memory). */
+export async function dailyCapReached(bucket: CapBucket, ip = visitorIp(), cache: () => Pick<ReturnType<typeof getCache>, "get"> = getCache): Promise<boolean> {
+  try { return (Number(await cache().get(capKey(bucket, ip))) || 0) >= CAPS[bucket](); } catch { return true; }
+}
 function visitorIp(): string {
   try {
     const h = getRequest()?.headers;
