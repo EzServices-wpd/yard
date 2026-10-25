@@ -474,3 +474,12 @@ it("row 462: 62-68 wide under 88\" tall builds the typed 3 rods in 3 bays, as re
   }
   assert.match(generateFromPrompt("closet 40 wide 72 tall with 3 rods").refused ?? "", /needs at least 88" tall for 3 rods/);
 });
+
+it("row 483: a rod rebuild keeps the typed prompt (prompt bar, PDF 'You asked for', feedback, saved plans), never the engine's 'and n bays' / 'double hang'", () => {
+  for (const q of ["closet 62 wide 80 tall with 3 rods", "wardrobe 64 wide 72 tall with 3 rods", "closet 60 wide with 3 rods", "closet 44 wide 96 tall with 3 rods"]) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.refused, undefined, q);
+    assert.equal(rodsOf(q).length, 3, q);
+    assert.equal(p.prompt, q, q);
+  }
+});

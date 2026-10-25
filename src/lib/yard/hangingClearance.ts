@@ -81,12 +81,13 @@ export function withRodPairs(p: YardProject, prompt: string, rebuild: (q: string
     if (/\b(?:bays?|sections?|dividers?)\b/i.test(prompt)) return null;
     const bayed = rebuild(`${prompt} and ${n} bays`);
     const br = bayed.panels.filter(isHangingRod);
-    return !bayed.refused && br.length === n && Math.min(...br.map((r) => r.size.width)) >= MIN_BAY_ROD_IN ? bayed : null;
+    // The words "and n bays" are ours, not typed: the build keeps the prompt it was given (prompt bar, PDF, feedback, saved plans).
+    return !bayed.refused && br.length === n && Math.min(...br.map((r) => r.size.width)) >= MIN_BAY_ROD_IN ? { ...bayed, prompt: p.prompt } : null;
   }
   const paired = rebuild(`${prompt} double hang`);
   // The words "double hang" are ours here, not typed, so drop the row 450 "the count wins" note they would raise.
   const notes = (paired.notes ?? []).filter((n) => !/ and double hang\. The count wins/.test(n));
-  return paired.panels.filter(isHangingRod).length > rods.length ? { ...paired, notes } : null;
+  return paired.panels.filter(isHangingRod).length > rods.length ? { ...paired, notes, prompt: p.prompt } : null;
 }
 
 /** Default depth for a clothes-rod build, or null when this prompt is not one. */
