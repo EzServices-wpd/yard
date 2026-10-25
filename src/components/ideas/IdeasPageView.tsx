@@ -107,11 +107,13 @@ function Section({ section, first, onBuild, onIntent, showCount }: { section: Id
           </button>
         ) : null}
       </div>
+      {/* relative: the cards' sr-only size text is absolutely positioned, so without a positioned row it escapes the row's
+          scroll clip and widens the page (768: 1783px wide). */}
       <ul
         className={
           all
             ? "mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4"
-            : "-mx-4 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0"
+            : "relative -mx-4 mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0"
         }
       >
         {cards.map((c, i) => (
