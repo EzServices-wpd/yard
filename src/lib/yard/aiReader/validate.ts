@@ -30,6 +30,22 @@ const nextAxisFits = (prompt: string, s: ReaderSize) => {
   const w = typedAxisAfter(prompt, s.quote);
   return !w || NAMED.find(([re]) => re.test(w))![1].includes(s.axis);
 };
+/** A quote that is only part of a typed measurement ("20 cm" of "1 m 20 cm", "8 m" of "1,8 m", "2 m" of "2 m x 60 cm", "4 ft" of "4 ft 30 wide"). */
+const PART_BEFORE = /(?:\d\s*(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|"|')?|[,×*~–-]|\b(?:x|by|to))\s*$/;
+const PART_AFTER = /^\s*(?:\d|[,×*~–-]|(?:x|by|to)\b|x(?=\d))/;
+const partOfMeasurement = (prompt: string, q: string) => {
+  const P = norm(prompt), i = quoteAt(prompt, q), rest = P.slice(i + norm(q).length);
+  const axisEnds = /\b(?:wide|width|deep|depth|tall|high|height|long|length)$/.test(norm(q)) || AXIS_AFTER.test(rest); // "90cm wide 6 ft tall": a new size follows
+  return PART_BEFORE.test(P.slice(0, i)) || (!axisEnds && PART_AFTER.test(rest));
+};
+/** Every axis word or letter typed for an axis ("30 wide", "width 30", "W 30"), outside this quote and its own axis word. */
+const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width)\b|\bw\s*[:=]?\s*\d/g, D: /\b(?:deep|depth)\b|\bd\s*[:=]?\s*\d/g, H: /\b(?:tall|high|height)\b|\bh\s*[:=]?\s*\d/g, L: /\b(?:long|length)\b|\bl\s*[:=]?\s*\d/g };
+const axisNamedElsewhere = (prompt: string, s: ReaderSize) => {
+  const P = norm(prompt), i = quoteAt(prompt, s.quote), end = i + norm(s.quote).length;
+  const after = P.slice(end).match(AXIS_AFTER)?.[0].length ?? 0;
+  const rest = P.slice(0, i) + " # " + P.slice(end + after);
+  return (rest.match(AXIS_WORDS[s.axis] ?? /$^/g) ?? []).length > 0;
+};
 const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, pair: 2, dual: 2, double: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const clamp01 = (x: unknown) => (typeof x === "number" && x >= 0 && x <= 1 ? x : 0);
 const AGE = /\b(?:year|yr|month)s?\b|\bold\b/i;
@@ -79,7 +95,7 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
   for (const s of (Array.isArray(r.sizes) ? r.sizes : []) as ReaderSize[]) {
     const where = `size "${s?.quote}"`;
     if (s?.assumed !== false || !quoted(prompt, s.quote)) { dropped.push(`${where}: assumed or not in the request`); continue; }
-    if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
+    if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s) || partOfMeasurement(prompt, s.quote) || axisNamedElsewhere(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
     if (!sizeOnlyQuote(s.quote) || !UNIT_OK[quoteUnit(s.quote)].includes(s.unit)) { dropped.push(`${where}: holds a non-size word, or its unit is not the one typed`); continue; }
     const inches = Number(s.inches);
     if (!(inches > 0) || !inchCandidates(s.quote).some((c) => Math.abs(c - inches) <= 1 / 32)) { dropped.push(`${where}: ${s.inches}" is not a number in its quote`); continue; }
@@ -90,6 +106,8 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
     if (c?.assumed !== false || !quoted(prompt, c.quote) || !COUNT_THINGS.includes(c.thing) || !Number.isInteger(c.n)) { dropped.push(`${where}: unquoted, assumed or malformed`); continue; }
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
     if (/^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?)$/.test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
+    const noun = NOUN[c.thing];
+    if (noun && (norm(prompt).match(new RegExp(`(?:^|[^a-z0-9])(?:\\d+|${Object.keys(WORDS).join("|")})(?:\\s+of)?[\\s-]+${noun}\\b`, "g")) ?? []).length > 1) { dropped.push(`${where}: another count of that thing is typed`); continue; }
     if (typedCount(c.quote, c.thing) !== c.n) { dropped.push(`${where}: ${c.n} ${c.thing} is not typed next to its noun`); continue; }
     spec.counts.push({ thing: c.thing, n: c.n, quote: c.quote, confidence: clamp01(c.confidence), assumed: false });
   }
