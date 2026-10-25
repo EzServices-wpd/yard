@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { POCKET_DREAM } from "./pocket";
-import { inchCandidates, quoteUnit, typedCount, validateSpec } from "./aiReader/validate";
+import { inchCandidates, quoteAt, quoteUnit, typedCount, validateSpec } from "./aiReader/validate";
 import { chooseBuildPrompt, honoredBy, specToPrompt } from "./aiReader/rewrite";
 import type { ReaderSpec } from "./aiReader/spec";
 
@@ -138,4 +138,12 @@ test("I49 r3: mm is mm, feet-inches only for feet, whole-feet tolerance is 3 inc
   const at = (h: number) => ({ ...generateFromPrompt("bookcase"), overall: { width: 30, height: h, depth: 12 } }) as ReturnType<typeof generateFromPrompt>;
   const foot3 = S("H", 36, "3 foot", "overall", "ft");
   assert.deepEqual([honoredBy(at(38), foot3), honoredBy(at(40), foot3), honoredBy(at(50), foot3)], [true, false, false], "whole feet are ±3 inches");
+});
+
+test("I49 r3: each layer holds on its own (quote words, axis after, long, two axis words, comma, larger numbers)", () => {
+  assert.deepEqual([quoteAt("bookcase with twenty-one shelves", "one shelves"), quoteAt("shelf 12 ft", "2 ft"), quoteAt("bookcase 6 ft tall", "6 ft")], [-1, -1, 9], "quotes match whole words only");
+  assert.equal(validateSpec("bookcase with twenty one shelves", { counts: [{ thing: "shelves", n: 1, quote: "one shelves", confidence: 1, assumed: false }] }).spec.counts.length, 0, "a count after a tens word is part of a larger number");
+  assert.equal(validateSpec("bookcase 6 ft tall 30 wide", { sizes: [S("W", 72, "6 ft", "overall", "ft")] }).spec.sizes.length, 0, "the axis word typed after the quote must fit");
+  assert.equal(validateSpec("bench 4 ft long", { sizes: [S("D", 48, "4 ft long", "overall", "ft")] }).spec.sizes.length, 0, "long is width or length, never depth");
+  for (const [q, s] of [["shelf 6 ft wide 8 deep", S("W", 80, "6 ft wide 8 deep", "overall", "ft")], ["bookcase 6 ft, 2 ft deep", S("H", 74, "6 ft, 2", "overall", "ft")], ["shelf 6x2 ft", S("W", 72, "6x2 ft", "overall", "ft")]] as const) assert.equal(specToPrompt(q, spec([s])).edits.length, 0, `two sizes in one quote are never rewritten: ${q}`);
 });
