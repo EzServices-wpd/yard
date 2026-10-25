@@ -62,3 +62,17 @@ for (const q of ["3 drawer dresser", "6 drawer dresser", "nightstand with 2 draw
     if (q === "pocket vanity" || q === "3 drawer dresser") assert.ok(L.tilt.ang > 0, `${q}: drawers can tip`);
   });
 }
+
+test("the driver never steps a solve by hand: idle slices and the tap both go through step-budget, and old solves are closed", () => {
+  const src = fs.readFileSync("src/components/workspace/explode-driver.tsx", "utf8");
+  assert.doesNotMatch(src, /while\s*\(/, "no unbounded while in the driver");
+  assert.doesNotMatch(src, /\.next\(\)/, "no raw next() in the driver");
+  assert.match(src, /runSlice\(j, fallback\(j\.key\), \{ maxSteps: SOLVE_MAX_STEPS, sliceMs: SOLVE_SLICE_MS \}/, "idle: one capped slice per callback");
+  assert.match(src, /runJob\(j, fallback\(j\.key\), \{ maxSteps: SOLVE_MAX_STEPS, deadlineMs: SOLVE_FINISH_MS, sliceMs: SOLVE_SLICE_MS \}/, "tap: sliced, 1.5 s wall deadline");
+  assert.match(src, /return \(\) => \{\s*gone = true;[^}]*cancel\?\.\(\)/, "toggling off (or a new build) cancels the tap's solve");
+  // A new key (build, size, cards), and unmounting, close the old solve (its finally frees the ID-pass meshes):
+  // the driver's SolveDesk (explode-settle.ts) does the closing; the driver closes it on unmount.
+  const desk = fs.readFileSync("src/components/workspace/explode-settle.ts", "utf8");
+  assert.ok((desk.match(/closeJob\(/g) ?? []).length >= 3);
+  assert.match(src, /useEffect\(\(\) => \(\) => desk\.current\?\.close\(\), \[\]\)/, "unmount closes the open solve");
+});

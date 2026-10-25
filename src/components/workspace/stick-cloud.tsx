@@ -20,6 +20,7 @@ import {
   EdgeBand,
   PinHoles,
 } from "@/components/workspace/panelHardware";
+import { useExplodeRefs } from "@/components/workspace/explode-driver";
 
 export { StickCloud } from "@/components/workspace/stickCloudCraft";
 export { CarcaseJoins } from "@/components/workspace/carcaseJoins";
@@ -239,11 +240,14 @@ export function PanelMesh({
   }, [panel.outline, panel.form, panel.strut, poly, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
+  // See inside: the staged explode moves these two groups (transform only, explode-driver.tsx).
+  const ex = useExplodeRefs(panel.id);
   if (hiddenInStep) return null;
 
   // Bought coat hooks: steel hook glyph, never a wood box the same color as the rail.
   if (isBoughtHardwareName(panel.name)) {
     return (
+      <group ref={ex.outer}><group ref={ex.inner}>
       <group position={groupPos} rotation={groupRot}>
         <group
           position={meshPos}
@@ -255,10 +259,12 @@ export function PanelMesh({
           <CoatHook w={w} h={h} d={d} />
         </group>
       </group>
+      </group></group>
     );
   }
 
   return (
+    <group ref={ex.outer}><group ref={ex.inner}>
     <group position={groupPos} rotation={groupRot}>
       <group position={meshPos}>
         <mesh
@@ -321,5 +327,6 @@ export function PanelMesh({
         )}
       </group>
     </group>
+    </group></group>
   );
 }
