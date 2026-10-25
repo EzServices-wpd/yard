@@ -1,9 +1,9 @@
 /**
  * See inside: what a solve is keyed on, and which cards it is framed against (Critic #140 rows 353, 354).
- * - Row 353: a solve is framed against the overlay cards, so it must use where they SETTLE, never where they are
- *   mid-slide (full motion) — else reduced and full motion land on different poses. A solve waits while a card (or a
- *   box around it) still moves, its key carries the cards to the pixel, and a card that settles somewhere else later
- *   makes the shown solve stale (the driver re-solves). So the final pose depends only on the build, the viewport,
+ * - Row 353: a solve is framed against the overlay cards, so it must use where they SETTLE, never a passing layout
+ *   (a card mid-slide, the phone's More tray still open at the tap) — else reduced and full motion land on
+ *   different poses. A solve waits while a card (or a box around it) still moves, its key carries the cards to the
+ *   pixel, and cards that settle somewhere else later make the shown solve stale (the driver re-solves). So the final pose depends only on the build, the viewport,
  *   the view and the settled cards, not on the motion that got there.
  * - Row 354: the build part of the key is the part list (count, ids, sizes, places), not just the project id, which
  *   delete and undo keep.
