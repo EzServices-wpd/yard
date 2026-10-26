@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { validateSpec } from "./aiReader/validate";
-import { chooseBuildPrompt } from "./aiReader/rewrite";
+import { chooseBuildPrompt, specToPrompt } from "./aiReader/rewrite";
 
 globalThis.fetch = (async () => { throw new Error("network is off in this test"); }) as typeof fetch;
 const QUOTES: [string, string, number][] = [["2 m", "m", 200 / 2.54], ["80 cm", "cm", 80 / 2.54], ["1.2 m", "m", 120 / 2.54], ["600 mm", "mm", 600 / 25.4], ["6 ft", "ft", 72]];
@@ -56,4 +56,36 @@ test("I49 r5 sweep: no generated context lets a reading move a typed number (onl
   if (holes.length) console.log(holes.join("\n"));
   assert.ok(tried > 5000, `tried ${tried}`);
   assert.deepEqual(holes.slice(0, 20), [], `${holes.length} holes of ${edited} edits in ${tried} readings`);
+});
+
+/** I49 r6 count-joiner sweep (row 505): a count word right after a number, unit, x/by/to/or/times/plus or a symbol. */
+const CPRE = ["", "30 wide ", "6 ft ", "6' ", "5 feet ", "4 foot ", "90 cm ", "1 m ", "72\" ", "2 x ", "2x ", "3 × ", "3 * ", "2 by ", "36 by ", "two to ", "two or ", "2 times ", "30 plus ", "30 & ", "30 – ", "30 + "];
+const COBJ: [string, string, string][] = [["bookcase", "shelves", "shelves"], ["dresser", "drawers", "drawers"], ["cabinet", "doors", "doors"]];
+const CWORD: [string, number][] = [["two", 2], ["three", 3], ["four", 4]];
+const C = (thing: string, n: number, quote: string) => ({ thing, n, quote, confidence: 1, assumed: false });
+const box = (q: string) => { const p = gen(q); return JSON.stringify(p.pocket?.unit ?? p.overall ?? null); };
+export function countSweep() {
+  const holes: string[] = [], valOnly: string[] = [], guardOnly: string[] = []; let tried = 0;
+  for (const pre of CPRE) for (const [obj, thing, noun] of COBJ) for (const [w, n] of CWORD) for (const read of [n, n - 1, n + 1]) {
+    const prompt = `${obj} ${pre}${w} ${noun}`, raw = { sizes: [], counts: [C(thing, read, `${w} ${noun}`)] };
+    tried++;
+    const legit = pre === "" || pre === "30 wide ";
+    // Both layers: anything but a legit context builds exactly the parser's build.
+    const both = chooseBuildPrompt(prompt, validateSpec(prompt, raw).spec, gen).buildPrompt;
+    if (!legit && both !== prompt && plan(both) !== plan(prompt)) holes.push(`${prompt} | ${read} -> ${both}`);
+    // Each layer alone never moves the box.
+    const v = validateSpec(prompt, raw).spec, vOnly = specToPrompt(prompt, v).prompt;
+    if (vOnly !== prompt && box(vOnly) !== box(prompt)) valOnly.push(`${prompt} | ${read} -> ${vOnly}`);
+    const gOnly = chooseBuildPrompt(prompt, raw as never, gen).buildPrompt;
+    if (gOnly !== prompt && box(gOnly) !== box(prompt)) guardOnly.push(`${prompt} | ${read} -> ${gOnly}`);
+  }
+  return { tried, holes, valOnly, guardOnly };
+}
+
+test("I49 r6 count-joiner sweep: a count after a number, unit or joiner never moves the box (each layer alone) and builds the parser's build", () => {
+  const { tried, holes, valOnly, guardOnly } = countSweep();
+  assert.ok(tried >= 500, `tried ${tried}`);
+  assert.deepEqual(holes.slice(0, 10), [], `${holes.length} holes`);
+  assert.deepEqual(valOnly.slice(0, 10), [], `validator alone: ${valOnly.length}`);
+  assert.deepEqual(guardOnly.slice(0, 10), [], `guard alone: ${guardOnly.length}`);
 });
