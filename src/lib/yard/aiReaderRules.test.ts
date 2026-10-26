@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { POCKET_DREAM } from "./pocket";
-import { inchCandidates, quoteAt, quoteUnit, typedCount, validateSpec } from "./aiReader/validate";
+import { inchCandidates, quoteAt, quoteUnit, soleSize, typedCount, validateSpec } from "./aiReader/validate";
 import { chooseBuildPrompt, honoredBy, specToPrompt } from "./aiReader/rewrite";
 import type { ReaderSpec } from "./aiReader/spec";
 
@@ -155,6 +155,12 @@ const holds = (cases: [string, unknown][], what: string) => {
   for (const [q, raw] of cases) {
     const v = validateSpec(q, raw).spec;
     assert.equal(v.sizes.length + v.counts.length, 0, `${what}: dropped: ${q} ${JSON.stringify(raw)}`);
+    // Pin each layer on its own so one cannot mask the other's mutants: the blacklist alone drops it ...
+    const b = validateSpec(q, raw, { allowList: false }).spec;
+    assert.equal(b.sizes.length + b.counts.length, 0, `${what}: blacklist alone drops: ${q} ${JSON.stringify(raw)}`);
+    // ... and the allow-list alone refuses every metric/feet size in it.
+    for (const sz of ((raw as { sizes?: { quote: string; axis: string }[] }).sizes ?? []))
+      if (["cm", "mm", "m", "ft"].includes(quoteUnit(sz.quote))) assert.equal(soleSize(q, sz as never), false, `${what}: allow-list alone refuses: ${q} "${sz.quote}" ${sz.axis}`);
     assert.equal(plan(viaReader(q, raw)), plan(q), `${what}: typed build: ${q}`);
   }
 };
@@ -270,4 +276,39 @@ test("I49 r5: Critic's new legit rewrites still happen (2 m tall first, (2 m) as
     ["cabinet 45 cm depth with two doors", { sizes: [cm("D", 45, "45 cm depth")] }, "cabinet 17 11/16 deep with two doors"],
   ];
   for (const [q, raw, want] of cases) assert.equal(viaReader(q, raw), want, q);
+});
+
+test("I49 r5 allow-list: a lone number+unit segment (optionally with its own axis word) is a sole size; legit rewrites survive", () => {
+  const ok: [string, ReturnType<typeof cm>][] = [
+    ["bookcase 1.8 m tall 30 wide", cm("H", 180, "1.8 m", "m")],
+    ["desk 0.5 m wide 40 cm deep", cm("W", 50, "0.5 m wide", "m")],
+    ["desk 0.5 m wide 40 cm deep", cm("D", 40, "40 cm deep")],
+    ["BOOKCASE 2 M TALL", cm("H", 200, "2 M TALL", "m")],
+    ["bookcase 2 m tall", cm("H", 200, "2 m tall", "m")],
+    ["bench 1.2 m long", cm("W", 120, "1.2 m long", "m")],
+    ["bookcase 2 m", cm("H", 200, "2 m", "m")],
+  ];
+  for (const [q, s] of ok) {
+    assert.equal(soleSize(q, s as never), true, `sole: ${q} "${s.quote}"`);
+    assert.equal(validateSpec(q, { sizes: [s], counts: [] }).spec.sizes.length, 1, `kept: ${q} "${s.quote}"`);
+  }
+  assert.equal(viaReader("bookcase 1.8 m tall 30 wide", { sizes: [cm("H", 180, "1.8 m", "m")] }), "bookcase 70 7/8 tall 30 wide");
+  assert.equal(viaReader("desk 0.5 m wide 40 cm deep", { sizes: [cm("W", 50, "0.5 m wide", "m"), cm("D", 40, "40 cm deep")] }), "desk 19 11/16 wide 15 3/4 deep");
+});
+
+test("I49 r5 allow-list: the sweep's blacklist holes (quote before a joiner and another number, or beside a clashing cue) never rewrite", () => {
+  const cases: [string, ReturnType<typeof cm>][] = [
+    ["bookcase 2 m & 40 cm with two shelves", cm("H", 200, "2 m", "m")],
+    ["bookcase 2 m and 20 cm wide with two shelves", cm("H", 200, "2 m", "m")],
+    ["bookcase 2 m or 90 cm with two shelves", cm("D", 200, "2 m", "m")],
+    ["bookcase 2 m / 90 cm with two shelves", cm("W", 200, "2 m", "m")],
+    ["shelf 80 cm; 40 cm wide", cm("D", 80, "80 cm")],
+    ["bookcase W 2 m tall with two shelves", cm("H", 200, "2 m tall", "m")],
+    ["bookcase width: 80 cm deep with two shelves", cm("D", 80, "80 cm deep")],
+  ];
+  for (const [q, s] of cases) {
+    assert.equal(soleSize(q, s as never), false, `not sole: ${q} "${s.quote}"`);
+    assert.equal(validateSpec(q, { sizes: [s], counts: [] }).spec.sizes.length, 0, `dropped: ${q} "${s.quote}"`);
+    assert.equal(plan(viaReader(q, { sizes: [s] })), plan(q), `typed build: ${q}`);
+  }
 });
