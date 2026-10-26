@@ -42,8 +42,14 @@ export function cardPayload(token: unknown): SharePayload | null {
 export function cardFacts(token: unknown): CardFacts | null {
   const payload = cardPayload(token);
   if (!payload) return null;
-  const project = replayShare(payload);
+  // The bench opens a link by building the words fresh and then setting the stock on that build (shell.tsx), and
+  // the permalink always names the stock it was built on: a stock or join other than the fresh build's own is a
+  // switch the card can't reproduce exactly (generateFromPrompt(words, stock) is the switch path, priced
+  // differently), so only the fresh build's own stock and join get a built card.
+  const project = replayShare({ ...payload, stockId: undefined, join: undefined });
   if (project.refused || project.displayOnly) return null;
+  if (payload.stockId != null && payload.stockId !== project.primaryMaterialId) return null;
+  if (payload.join != null && payload.join !== project.shopJoin) return null;
   // A noun the engine does not own goes to the learner on the bench (run-prompt.ts): no engine guess on a card.
   const prompt = payload.prompt.trim(), half = ignoredTypedWords(project, prompt).length > 0;
   if (!engineKeepsPrompt(prompt, project, half) && routesToLearner(prompt, project, half) && !looksLikePocket(prompt)) return null;

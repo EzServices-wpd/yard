@@ -10,6 +10,7 @@ const { encodeShare } = await import("../src/lib/yard/shareBuild");
 const { POCKET_DREAM } = await import("../src/lib/yard/pocket");
 const { usd } = await import("../src/lib/utils");
 const { cardFacts, cardPayload, cardSvg, CARD_W, CARD_H, MAX_TOKEN } = await import("../src/lib/og/card");
+const { cardFactsWithin } = await import("../src/lib/og/budget.server");
 
 const calls: string[] = [];
 const stub = (name: string) => (async () => { calls.push(name); return { ok: false }; }) as never;
@@ -53,5 +54,28 @@ describe("og card input", () => {
     const svg = cardSvg({ name: `<b>"&"</b>`, size: "1 W", parts: 1, price: "", drawing: "<svg></svg>" });
     assert.ok(!svg.includes("<b>") && svg.includes("&lt;b&gt;&quot;&amp;&quot;&lt;/b&gt;"));
     assert.ok(!/href|https?:\/\/(?!www\.w3\.org\/2000\/svg")/i.test(cardSvg(cardFacts(token("cat tree")))));
+  });
+});
+
+describe("og card is the link's build, within a time budget", () => {
+  it("a permalink naming the build's own stock prices like the bench; a switched stock gets the default card", async () => {
+    // build-info's permalink always carries the stock: the card must not take the stock-switch path for it.
+    calls.length = 0;
+    await runYardPrompt("cat tree", { fresh: true, ai });
+    const plan = useYard.getState().plan ?? useYard.getState().makePlan();
+    const own = cardFacts(encodeShare({ prompt: "cat tree", measure: {}, stockId: useYard.getState().project.primaryMaterialId }));
+    assert.equal(own?.price, `${usd(plan.totals.estCostUsd)} estimated`);
+    assert.equal(own?.parts, plan.totals.pieces);
+    const other = useYard.getState().project.primaryMaterialId === "plywood-1-2-4x8" ? "plywood-3-4-4x8" : "plywood-1-2-4x8";
+    assert.equal(cardFacts(encodeShare({ prompt: "cat tree", measure: {}, stockId: other })), null);
+  });
+  it("a build past the budget is the default card, never a held request; one card at a time", async () => {
+    const slow = await cardFactsWithin(token("deck 100 x 100 feet"), 300);
+    assert.deepEqual([slow.why, slow.facts], ["slow", null]);
+    const a = cardFactsWithin(token("cat tree")), b = cardFactsWithin(token("bookcase"));
+    assert.equal((await b).why, "busy");
+    const done = await a;
+    assert.equal(done.why, "ok");
+    assert.equal(done.facts?.price, "~$128.08 estimated");
   });
 });
