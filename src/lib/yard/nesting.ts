@@ -610,14 +610,33 @@ export function nestSheetCounts(nest: NestResult | null): { on8: number; on10: n
 export function nestSheetsByStock(nest: NestResult | null): { stock: string; on8: number; on10: number }[] {
   const out = new Map<string, { stock: string; on8: number; on10: number }>();
   for (const s of nest?.sheets ?? []) {
-    const id = String(s.parts[0]?.id ?? "").split("|")[0];
-    const stock = /^(?:plywood|mdf|chipboard|hardboard|osb)-.+-\d+x\d+$/.test(id) ? id.replace(/-\d+x\d+$/, "") : s.material;
+    const stock = sheetStockOf(s);
     const g = out.get(stock) ?? { stock, on8: 0, on10: 0 };
-    if (Math.max(s.width, s.height) <= 96 + 1e-6) g.on8++;
+    if (sheetSizeKey(s) === "4x8") g.on8++;
     else g.on10++;
     out.set(stock, g);
   }
   return [...out.values()];
+}
+
+/** A nest sheet's stock family: its first part's catalog id without the size, else the sheet's material. */
+function sheetStockOf(s: NestSheet): string {
+  const id = String(s.parts[0]?.id ?? "").split("|")[0];
+  return /^(?:plywood|mdf|chipboard|hardboard|osb)-.+-\d+x\d+$/.test(id) ? id.replace(/-\d+x\d+$/, "") : s.material;
+}
+
+function sheetSizeKey(s: NestSheet): "4x8" | "4x10" {
+  return Math.max(s.width, s.height) <= 96 + 1e-6 ? "4x8" : "4x10";
+}
+
+/**
+ * The Buy row's name for the stock a nest sheet is cut from (same stock and size key Buy counts by), so a sheet
+ * diagram names what the list buys ('15/32" BC exterior plywood 4×8', not the generic '1/2" Plywood 4x8').
+ * Null when no Buy row carries that stock and size; the caller keeps the sheet's own material.
+ */
+export function sheetBuyName(s: NestSheet, bom: readonly { name: string; catalogId?: string; unit?: string }[]): string | null {
+  const key = `${sheetStockOf(s)}-${sheetSizeKey(s)}`;
+  return bom.find((b) => b.catalogId === key && /^sheets?$/.test(b.unit ?? ""))?.name ?? null;
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;
