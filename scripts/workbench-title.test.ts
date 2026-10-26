@@ -26,3 +26,23 @@ test("a refused build's title names what was asked for and that nothing was buil
   assert.ok(p.refused && !p.panels.length);
   assert.equal(headerTitle(p), "Abacus · nothing built");
 });
+
+test("row 517: on a not-learned placeholder the header and the tab name the same typed object", async () => {
+  const shell = readFileSync(new URL("../src/components/workspace/shell.tsx", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../src/routes/workspace.tsx", import.meta.url), "utf8");
+  // Both cut the noun the same way: the words before the first comma or digit.
+  const cut = (src: string, re: RegExp) => src.match(re)?.[1];
+  const header = cut(shell, /project\.name\.split\((\/[^/]+\/)\)\[0\]\.trim\(\)/);
+  const tab = cut(route, /\.split\((\/[^/]+\/)\)\[0\]\.trim\(\)/);
+  assert.ok(header && tab, "both cut a noun");
+  assert.equal(header, tab, "header and tab use the same noun cut");
+  const { roughBlock } = await import("../src/lib/yard/recipeBuild");
+  for (const [q, want] of [["toolbox", "Toolbox"], ["toolbox 18x16x18", "Toolbox"], ["lattice tower 24.5 tall", "Lattice tower"]]) {
+    const name = roughBlock(q, generateFromPrompt(q)).name;
+    const noun = name.split(/[,\d]/)[0].trim();
+    assert.equal(noun, want, `${q}: header noun`);
+    const tabNoun = q.split(/[,\d]/)[0].trim();
+    assert.equal(tabNoun[0].toUpperCase() + tabNoun.slice(1), noun, `${q}: the tab (buildTitle) names the same object`);
+  }
+});
+
