@@ -22,6 +22,7 @@ import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-
 import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
+import { SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 
 const HULL = "#8a8478";
@@ -47,17 +48,17 @@ function StudioLights({
   const span = Math.max(W, H, D);
   const fitted = project.panels.length > 0;
   const camSpan = Math.max(span * 0.75, 36);
-  // Key light from front-left and high, a cool fill from the right, a warm rim from behind:
-  // front faces read bright, the side you see from the 3/4 camera sits a step darker, so
-  // shelves, dividers and edges separate instead of washing into one flat tone.
+  // Shop light (PR 16): a warm lamp low from front-left rakes across grain and cut edges, a cool fill from the
+  // right keeps whites and kraft neutral, a warm rim from behind separates the silhouette. Lights only.
+  const L = SHOP_LIGHT;
   return (
     <>
-      <ambientLight intensity={0.12} />
-      <hemisphereLight args={["#fff1dc", "#1a140e", fitted ? 0.3 : 0.4]} />
+      <ambientLight intensity={L.ambient} />
+      <hemisphereLight args={[L.hemi.sky, L.hemi.ground, fitted ? L.hemi.fitted : L.hemi.loose]} />
       <directionalLight
-        position={[-span * 0.62, Math.max(H * 1.35, 48), span * 0.95]}
-        intensity={fitted ? 2.1 : 1.8}
-        color="#fff3e0"
+        position={shopKeyPosition(span, H)}
+        intensity={fitted ? L.key.fitted : L.key.loose}
+        color={L.key.color}
         castShadow={useShadows}
         shadow-mapSize={fitted ? [2048, 2048] : [1024, 1024]}
         shadow-bias={-0.00018}
@@ -69,8 +70,8 @@ function StudioLights({
         shadow-camera-top={camSpan}
         shadow-camera-bottom={-camSpan}
       />
-      <directionalLight position={[span * 0.9, H * 0.5, span * 0.3]} intensity={fitted ? 0.42 : 0.34} color="#b4c6de" />
-      <directionalLight position={[span * 0.2, H * 0.9, -span * 0.9]} intensity={0.3} color="#ffd7a8" />
+      <directionalLight position={[span * 0.9, H * 0.5, span * 0.3]} intensity={fitted ? L.fill.fitted : L.fill.loose} color={L.fill.color} />
+      <directionalLight position={[span * 0.2, H * 0.9, -span * 0.9]} intensity={L.rim.intensity} color={L.rim.color} />
       <FootprintShadow project={project} />
     </>
   );
@@ -103,7 +104,7 @@ function FootprintShadow({ project }: { project: YardProject }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(box.minX + box.maxX) / 2, 0.02, (box.minZ + box.maxZ) / 2]} renderOrder={1}>
       <planeGeometry args={[w + pad * 2, d + pad * 2]} />
-      <meshBasicMaterial map={tex} transparent opacity={0.62} depthWrite={false} color="#000000" />
+      <meshBasicMaterial map={tex} transparent opacity={SHOP_LIGHT.contact} depthWrite={false} color="#000000" />
     </mesh>
   );
 }
