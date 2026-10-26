@@ -136,3 +136,19 @@ test("I51 (Critic #175): a saved sheet keeps the strip's grain when an earlier g
     assert.deepEqual(turned(q), [], q);
   }
 });
+
+test("freeGapSpot (#175 r2): a kerf below the spot too (a part ending just short of it)", () => {
+  const sheet = { width: 96, height: 48, parts: [{ x: 0, y: 0, width: 10, height: 10 }, { x: 20, y: 0, width: 10, height: 10.05 }] };
+  assert.deepEqual(freeGapSpot(sheet, 96, 5), { x: 0, y: 10.175 });
+});
+
+test("I51 (#175 r2): fires only when every strip on the sheet fits earlier gaps together, and only against earlier sheets", () => {
+  const A = { id: "A", name: "Upright", label: "A", x: 0, y: 0, width: 91.75, height: 48, rotated: false, material: "m" };
+  const F = { ...A, id: "F", name: "Side", label: "F", width: 96 };
+  const G = (i: number) => ({ id: `G-${i}`, name: "Kick strip", label: "G", x: 0, y: i * 4, width: 22.5, height: 3.5, rotated: false, material: "m" });
+  const sheet = (index: number, parts: (typeof A)[]) => ({ index, width: 96, height: 48, material: "m", parts, usedArea: 0, utilization: 0 });
+  const nest = (...sheets: ReturnType<typeof sheet>[]) => ({ sheets, unplaced: [], totalSheets: sheets.length, averageUtilization: 0 });
+  assert.equal(i51Gaps(nest(sheet(1, [A]), sheet(2, [G(0), G(1)]))).length, 2, "two turned strips stack in the 4 1/8\" gap");
+  assert.deepEqual(i51Gaps(nest(sheet(1, [A]), sheet(2, [G(0), G(1), G(2)]))), [], "the third does not fit, so the sheet is needed");
+  assert.deepEqual(i51Gaps(nest(sheet(1, [F]), sheet(2, [G(0)]), sheet(3, [A]))), [], "a later sheet's gap does not count");
+});
