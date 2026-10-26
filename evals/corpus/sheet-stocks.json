@@ -7,6 +7,8 @@
     { "id": "sheet-stocks-farm", "prompt": "farm stand" },
     { "id": "sheet-stocks-lemonade-60", "prompt": "lemonade stand 60 wide" },
     { "id": "sheet-stocks-lemonade-72", "prompt": "lemonade stand 72 wide" },
-    { "id": "sheet-stocks-lemonade-48x84x36", "prompt": "lemonade stand 48 wide 84 tall 36 deep" }
+    { "id": "sheet-stocks-lemonade-48x84x36", "prompt": "lemonade stand 48 wide 84 tall 36 deep" },
+    { "id": "sheet-stocks-lemonade-132", "prompt": "lemonade stand 132 wide" },
+    { "id": "sheet-stocks-lemonade-144", "prompt": "lemonade stand 144 wide" }
   ]
 }
