@@ -160,6 +160,16 @@ export const soleSize = (prompt: string, s: ReaderSize): boolean => {
   return !T.some((x, j) => (j !== own && x.k === "axis" && AXIS_TOKEN[x.t].includes(s.axis)) || letter(j));
 };
 const ALLOW_UNITS = new Set(["cm", "mm", "m", "ft"]);
+/** A word that ends the look-back before a count: a unit or joiner (COUNT_JOINED's words), an axis word, a number word or a
+ * count noun. Any other word ("every", "another", "my", "pine", "with") is skipped, because the count's digits still sit
+ * beside the number before it ("3 × every two shelves" reads 3 shelves in the parser, "3 × every 2 shelves" reads 2). */
+const LOOKBACK_STOP = new RegExp(String.raw`^(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|yards?|(?:centi|milli)?met(?:er|re)s?|x|by|to|or|times|plus|wide|width|deep|depth|tall|high|height|long|length|w|h|d|l|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|${Object.keys(WORDS).join("|")}|${Object.values(NOUN).join("|")})$`);
+/** The text before a count with every plain word just before it dropped (row 529 class, r7): what the digits would join. */
+const pastPlainWords = (before: string) => {
+  let t = before;
+  for (let m = t.match(/\b([a-z]+)\s*$/); m && !LOOKBACK_STOP.test(m[1]); m = t.match(/\b([a-z]+)\s*$/)) t = t.slice(0, m.index);
+  return t;
+};
 const COUNT_JOINED = new RegExp(String.raw`(?:\d\s*[x×*]?|\b(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|yards?|(?:centi|milli)?met(?:er|re)s?|x|by|to|or|times|plus)\.?|[×*~–—&\/+'"-])\s*$`);
 
 export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: boolean } = {}): { spec: ReaderSpec; dropped: string[] } {
@@ -182,7 +192,7 @@ export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: b
     // "2 x a pair of drawers": the rewrite drops the "a" ("2 x 2 drawers"), so what sits before the "a" is what the digits join (row 529).
     // The same for an article or quantifier between a joiner and the count ("3 × the two shelves", "1 m both two shelves").
     // ("one" needs no entry: it is a number word, so the prev-word rule below already drops "6 ft one two shelves".)
-    const before = norm(prompt).slice(0, quoteAt(prompt, c.quote)).replace(/\b(?:an?|the|both|each)\s*$/, "");
+    const before = pastPlainWords(norm(prompt).slice(0, quoteAt(prompt, c.quote)));
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
     if (new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`).test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
     // A number, unit, separator or range word just before the count ("6 ft two shelves", "2 x three drawers", "30 by two

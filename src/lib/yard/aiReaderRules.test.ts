@@ -494,3 +494,32 @@ test("I49 r7 mutation pins: a count edit never makes a refusal the size-only bui
   // K8: "2a" is a label, not "2" plus an article; the count after it reads.
   assert.equal(validateSpec("bookcase type 2a two shelves", { counts: [C4("shelves", 2, "two shelves")] }).spec.counts.length, 1, "word-bounded article strip");
 });
+
+// Critic r7 (row 534): any plain word between a number, unit or joiner and the count ("3 × every two shelves",
+// "2 x another pair of drawers", "3 x pine two shelves", "1 m about two shelves") leaves the count beside that number:
+// the parser reads it (3 × every two shelves builds 3 shelves reader-off, 2 with "2 shelves"), so the reader drops it.
+test("I49 r7 critic: a plain word between a joiner and the count is looked past, not only an/the/both/each (row 534)", () => {
+  const joined: [string, [string, number, string]][] = [
+    ["bookcase 3 × every two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 3 × all two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 3 × another two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 3 × only two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 3 x pine two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 1 m every two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 1 m about two shelves", ["shelves", 2, "two shelves"]],
+    ["dresser 2 x another pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["dresser 2 x an extra pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["dresser 2 x my pair of drawers", ["drawers", 2, "pair of drawers"]],
+  ];
+  for (const [q, [thing, n, quote]] of joined) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+  }
+  // Legit: the look-back stops at an axis word, a count noun or the object; these still read.
+  assert.equal(viaReader("bookcase 12 deep pine two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 12 deep pine 2 shelves");
+  assert.equal(viaReader("bookcase 3 bays each two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 3 bays each 2 shelves");
+  assert.equal(viaReader("cabinet 1 m wide with a pair of doors", { counts: [C4("doors", 2, "pair of doors")] }), "cabinet 1 m wide with 2 doors");
+  assert.equal(viaReader("bookcase with the two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with the 2 shelves");
+  assert.equal(viaReader("two bookcases with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "two bookcases with 4 shelves");
+});
