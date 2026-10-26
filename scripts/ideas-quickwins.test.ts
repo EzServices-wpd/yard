@@ -119,6 +119,6 @@ test("a typed build (?q=) and a ?y= share link (the sharer's prompt) are noindex
   assert.deepEqual(workbenchRobots({ q: "bookcase 36 wide" }), [{ name: "robots", content: "noindex,follow" }]);
   for (const s of [{ y: "eyJwcm9tcHQiOiJ4In0" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "x" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "  " }])
     assert.deepEqual(workbenchRobots(s), [{ name: "robots", content: "noindex,follow" }], JSON.stringify(s));
-  for (const s of [{}, { q: "  " }, { y: "" }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
+  for (const s of [{}, { q: "  " }, { y: "" }, { y: " " }, { y: " ", q: "  " }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
   assert.match(SRC("src/routes/workspace.tsx"), /workbenchRobots\(/, "the route head (server HTML) carries it");
 });
