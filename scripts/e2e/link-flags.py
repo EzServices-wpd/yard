@@ -15,10 +15,13 @@ U = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://127.0.0.1:8091"
 FLAGS = ["test=1", "offline=1", "local=1"]
 LINKS_JS = """() => [...document.querySelectorAll('a[href]')].map(a => [a.getAttribute('href'), (a.innerText || a.getAttribute('aria-label') || '').trim().slice(0, 40)])"""
 fails, seen = [], 0
-# The ticker reads the live Ideas feed (/api/ideas): counted cards with an engine title, size and build prompt.
+# The ticker reads the live Ideas feed (/api/ideas?view=strip): counted cards with an engine title, size and build prompt.
 _card = lambda i, t, q: {"slug": f"x{i}", "buildType": f"x{i}", "title": t, "size": "36 × 12 × 72 in", "sizeAria": "36 wide, 12 deep, 72 tall", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "examplePrompt": q}
 FEED = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "countsLive": True, "hero": None, "sections": [{"id": "recent", "title": "Popular recently", "order": 0, "total": 3,
     "cards": [_card(0, "Bookcase", "bookcase 36 wide 72 tall 12 deep"), _card(1, "Shoe rack", "shoe rack 30 wide 18 tall 12 deep"), _card(2, "Nightstand", "nightstand 18 wide 24 tall 16 deep")]}]})
+
+# The strip itself asks for ?view=strip: only the rows it renders (MakingNowItem: slug, title, size, sizeAria, q).
+STRIP = __import__("json").dumps({"rows": [{"slug": c["slug"], "title": c["title"], "size": c["size"], "sizeAria": c["sizeAria"], "q": c["examplePrompt"]} for c in __import__("json").loads(FEED)["sections"][0]["cards"]]})
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -27,7 +30,7 @@ with sync_playwright() as p:
         # Test flags only: offline/local keep the page off the network; test=1 tags API calls. Block the store anyway.
         ctx.route("**/api/ideas-log*", lambda r: r.fulfill(status=204))
         # A live feed so the Making-now ticker renders its links too (no page code reads /api/ideas-snapshot any more).
-        ctx.route(__import__("re").compile(r"/api/ideas(?:\?|$)"), lambda r: r.fulfill(status=200, content_type="application/json", body=FEED))
+        ctx.route(__import__("re").compile(r"/api/ideas(?:\?|$)"), lambda r: r.fulfill(status=200, content_type="application/json", body=STRIP if "view=strip" in r.request.url else FEED))
         page = ctx.new_page()
         for path in ["/", "/ideas"]:
             for flag in FLAGS:
