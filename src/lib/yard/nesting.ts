@@ -33,6 +33,8 @@ export interface PlacedPart {
   material: string;
   /** The 3D model part ids this sheet piece is cut for (same ids as CutLine.partIds and data-part). */
   partIds?: string[];
+  /** A kick strip turned 90° across its grain to fit an earlier sheet's offcut instead of opening a sheet (I51). */
+  crossGrain?: boolean;
 }
 
 export interface NestSheet {
@@ -217,6 +219,78 @@ function packSheet(
 }
 
 /**
+ * Where a w×h piece fits the empty area of a packed sheet (a kerf from every part; none at the factory edge), or null.
+ * Any spot can slide left and down until it touches the edge or a part's kerf, so only those corners are tried.
+ */
+export function freeGapSpot(
+  sheet: { width: number; height: number; parts: readonly { x: number; y: number; width: number; height: number }[] },
+  w: number,
+  h: number,
+): { x: number; y: number } | null {
+  if (w * h > sheet.width * sheet.height - sheet.parts.reduce((a, p) => a + p.width * p.height, 0) + 1e-6) return null;
+  const xs = [0, ...sheet.parts.map((p) => p.x + p.width + KERF)].sort((a, b) => a - b);
+  const ys = [0, ...sheet.parts.map((p) => p.y + p.height + KERF)].sort((a, b) => a - b);
+  const clear = (x: number, y: number) =>
+    sheet.parts.every(
+      (p) => x >= p.x + p.width + KERF - 1e-6 || p.x >= x + w + KERF - 1e-6 || y >= p.y + p.height + KERF - 1e-6 || p.y >= y + h + KERF - 1e-6,
+    );
+  for (const y of ys) {
+    for (const x of xs) {
+      if (x + w <= sheet.width + 1e-6 && y + h <= sheet.height + 1e-6 && clear(x, y)) return { x, y };
+    }
+  }
+  return null;
+}
+
+/** Trim strips whose grain does not show once fitted: the kick strip under a base, a toe kick, a plinth. */
+const TRIM_STRIP = /\b(?:kick strip|toe ?kick|plinth)\b/i;
+
+/**
+ * I51's class: a short, grain-locked trim strip (long side fits across a sheet, short side at most a quarter of it),
+ * the only part Yard turns across the grain, and only into an earlier sheet's free gap rather than buy a sheet for it.
+ */
+export function isTrimStrip(p: { name: string; width: number; height: number }): boolean {
+  const long = Math.max(p.width, p.height);
+  const short = Math.min(p.width, p.height);
+  return TRIM_STRIP.test(p.name) && long <= DEFAULT_SHEET.height && short / long <= 0.25;
+}
+
+/**
+ * Before a new sheet is opened, put each trim strip (isTrimStrip) that fits a free gap of an earlier sheet there, as
+ * cut, else turned 90° and flagged crossGrain. Every other part keeps the packer's sheets and its grain.
+ */
+function fillGaps(
+  sheets: { placed: PlacedPart[] }[],
+  parts: NestPart[],
+  order: PartOrder,
+  size: { width: number; height: number },
+): NestPart[] {
+  const left: NestPart[] = [];
+  for (const part of [...parts].sort(order)) {
+    if (!isTrimStrip(part)) {
+      left.push(part);
+      continue;
+    }
+    let done = false;
+    // As cut on any earlier sheet first; turned across the grain only when no earlier sheet takes it as cut.
+    for (const rotated of [false, true]) {
+      for (const sh of sheets) {
+        const w = rotated ? part.height : part.width;
+        const h = rotated ? part.width : part.height;
+        const spot = freeGapSpot({ ...size, parts: sh.placed }, w, h);
+        if (!spot) continue;
+        sh.placed.push({ id: part.id, name: part.name, label: part.label, ...spot, width: w, height: h, rotated, material: part.material, ...(rotated ? { crossGrain: true } : {}) });
+        done = true;
+        break;
+      }
+      if (done) break;
+    }
+    if (!done) left.push(part);
+  }
+  return left;
+}
+
+/**
  * Nest parts onto standard 4x8 sheets (96" x 48"), grouped by material.
  */
 export function nestParts(
@@ -237,11 +311,14 @@ export function nestParts(
   // Every material: try each part order × fit rule and keep the fewest sheets (then the
   // fullest early sheets), so Buy never asks for a sheet a better layout does not need.
   const sheetArea = sheetSize.width * sheetSize.height;
-  const packAll = (matParts: NestPart[], order: PartOrder, score: Scorer) => {
+  const packAll = (matParts: NestPart[], order: PartOrder, score: Scorer, gaps: boolean) => {
     const out: { placed: PlacedPart[] }[] = [];
     const lost: NestPart[] = [];
     let remaining = matParts;
     while (remaining.length > 0) {
+      // I51: no sheet is opened for a trim strip that fits a free gap of an earlier sheet.
+      if (gaps) remaining = fillGaps(out, remaining, order, sheetSize);
+      if (remaining.length === 0) break;
       const { placed, remaining: still } = packSheet(remaining, sheetSize.width, sheetSize.height, order, score);
       if (placed.length === 0) {
         // Cannot place any more on a full sheet — give up on these
@@ -256,12 +333,13 @@ export function nestParts(
   for (const [material, matParts] of byMaterial) {
     let best: ReturnType<typeof packAll> | null = null;
     let bestKey: number[] = [];
-    for (const order of ORDERS) {
+    // I51: a trim strip moves into an earlier sheet's gap only when that saves a sheet; on a tie the grain-kept layout wins.
+    for (const gaps of [false, true]) for (const order of ORDERS) {
       for (const score of SCORERS) {
-        const r = packAll(matParts, order, score);
-        // Fewest unplaced, then fewest sheets, then the emptiest last sheet (more usable offcut).
+        const r = packAll(matParts, order, score, gaps);
+        // Fewest unplaced, then fewest sheets, then no strip moved, then the emptiest last sheet (more usable offcut).
         const last = r.out.length ? r.out[r.out.length - 1].placed.reduce((s, p) => s + p.width * p.height, 0) : 0;
-        const key = [r.lost.length, r.out.length, last];
+        const key = [r.lost.length, r.out.length, gaps ? 1 : 0, last];
         const i = key.findIndex((v, k) => Math.abs(v - bestKey[k]) > 1e-6);
         const better = !best || (i >= 0 && key[i] < bestKey[i]);
         if (better) {
@@ -637,6 +715,19 @@ function sheetSizeKey(s: NestSheet): "4x8" | "4x10" {
 export function sheetBuyName(s: NestSheet, bom: readonly { name: string; catalogId?: string; unit?: string }[]): string | null {
   const key = `${sheetStockOf(s)}-${sheetSizeKey(s)}`;
   return bom.find((b) => b.catalogId === key && /^sheets?$/.test(b.unit ?? ""))?.name ?? null;
+}
+
+/** Cut lines with a piece the nest turned across the grain say so (I51), so the grain is never a surprise at the saw. */
+export function flagCrossGrain(cutList: CutLine[], nest: NestResult | null): CutLine[] {
+  const turned = new Map<string, number>();
+  for (const p of (nest?.sheets ?? []).flatMap((s) => s.parts)) if (p.crossGrain && p.label) turned.set(p.label, (turned.get(p.label) ?? 0) + 1);
+  return cutList.map((c) => {
+    const n = c.label ? turned.get(c.label) ?? 0 : 0;
+    if (!n) return c;
+    // When only some of a row's pieces are turned, say how many, so the rest are still cut with the grain.
+    const note = n < c.quantity ? `Cut ${n} of ${c.quantity} across the grain from a sheet offcut` : "Cut across the grain from a sheet offcut";
+    return { ...c, notes: c.notes ? `${c.notes}. ${note}` : note };
+  });
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;
