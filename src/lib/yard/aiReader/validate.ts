@@ -35,12 +35,14 @@ const UNIT_WORD = String.raw`(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|yards?|"|'|(
 // A number (and its unit) just before the quote, alone or joined by a separator or a joining word ("1 metre 20 cm",
 // "60 and 80 cm", "60—80 cm", "80 cm & 40 cm", "2 times 80 cm"), or a separator alone.
 const PART_BEFORE = new RegExp(String.raw`(?:\d\s*${UNIT_WORD}?\s*(?:[,×*~–—&;\/+-]|\b(?:x|by|to|and|or|plus|times)\b)?|[,×*~–—-]|\b(?:x|by|to))\s*$`);
+const ARITH_AFTER = /^\s*(?:minus|less|plus|[+−–-])\s*\d/;
 const PART_AFTER = /^\s*(?:\d|[,×*~–-]|(?:x|by|to)\b|x(?=\d))/;
 const partOfMeasurement = (prompt: string, q: string) => {
   const P = norm(prompt), i = quoteAt(prompt, q), rest = P.slice(i + norm(q).length);
   const axisEnds = /\b(?:wide|width|deep|depth|tall|high|height|long|length)$/.test(norm(q)) || AXIS_AFTER.test(rest); // "90cm wide 6 ft tall": a new size follows
   // A signed number ("-2 m tall") is not a size: drop it rather than lose the sign (row 482).
-  return /^[-−–~+]/.test(norm(q)) || PART_BEFORE.test(P.slice(0, i)) || (!axisEnds && PART_AFTER.test(rest));
+  // Arithmetic after it ("2 m tall minus 10 cm", "2 m + 10 cm"): the typed size is not the quote alone (row 509).
+  return /^[-−–~+]/.test(norm(q)) || PART_BEFORE.test(P.slice(0, i)) || (!axisEnds && PART_AFTER.test(rest)) || ARITH_AFTER.test(rest);
 };
 /** Every axis word or letter typed for an axis ("30 wide", "width 30", "W 30"), outside this quote and its own axis word. */
 const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width)\b|\bw\s*[:=]?\s*\d|\d\s*w\b/g, D: /\b(?:deep|depth)\b|\bd\s*[:=]?\s*\d|\d\s*d\b/g, H: /\b(?:tall|high|height)\b|\bh\s*[:=]?\s*\d|\d\s*h\b/g, L: /\b(?:long|length)\b|\bl\s*[:=]?\s*\d|\d\s*l\b/g };
@@ -113,7 +115,7 @@ const TOK = /\d+(?:\.\d+)?|[a-z]+|[^\sa-z\d]/g;
 const UNIT_TOKEN = /^(?:cm|mm|m|centimet(?:er|re)s?|millimet(?:er|re)s?|met(?:er|re)s?|ft|feet|foot|in|inch(?:es)?|"|'|″|′)$/;
 const AXIS_TOKEN: Record<string, string[]> = { wide: ["W"], width: ["W"], deep: ["D"], depth: ["D"], tall: ["H"], high: ["H"], height: ["H"], long: ["W", "L"], length: ["W", "L"] };
 const LETTER_AXIS: Record<string, string> = { w: "W", d: "D", h: "H", l: "L" };
-const RUN_WORD = /^(?:x|by|to|and|or|plus|times|between|of|at|is|from|about|approx|around|w|h|d|l|across|diameter|thick|thickness|front|back|side|wall|floor|ceiling)$/;
+const RUN_WORD = /^(?:x|by|to|and|or|plus|minus|less|times|between|of|at|is|from|about|approx|around|w|h|d|l|across|diameter|thick|thickness|front|back|side|wall|floor|ceiling)$/;
 type Tok = { t: string; at: number; end: number; k: "num" | "unit" | "axis" | "run" | "word" };
 const tokens = (p: string): Tok[] => [...p.matchAll(TOK)].map((m) => {
   const t = m[0];

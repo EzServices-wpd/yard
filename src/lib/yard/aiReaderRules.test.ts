@@ -364,3 +364,33 @@ test("I49 r6: a count word after a number, unit, separator or range word is drop
   assert.equal(viaReader("ten-drawer dresser", { counts: [C4("drawers", 10, "ten-drawer")] }), "10 drawers dresser");
   assert.equal(viaReader("bookcase 30 wide 72 tall 12 deep two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 wide 72 tall 12 deep 2 shelves");
 });
+
+test("I49 r6: the rest of row 505's table, the plain-fraction allow-list rule (row 508) and arithmetic after a size (row 509)", () => {
+  const joined: [string, [string, number, string]][] = [
+    ["bookcase 6 foot three shelves", ["shelves", 3, "three shelves"]],
+    ["cabinet 3 x two doors", ["doors", 2, "two doors"]],
+    ["bookcase 30 by two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 30 x two shelves", ["shelves", 2, "two shelves"]],
+    ["shoe rack 3 x two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 2 times two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 30 plus two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 90 cm two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 72\" two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 30 & two shelves", ["shelves", 2, "two shelves"]],
+  ];
+  for (const [q, [thing, n, quote]] of joined) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(plan(viaReader(q, raw)), plan(q), `typed build: ${q}`);
+  }
+  // A count after a plain word still reads (the joiner rule is not a blanket ban).
+  assert.equal(validateSpec("bookcase with two shelves", { counts: [C4("shelves", 2, "two shelves")] }).spec.counts.length, 1);
+  // Row 508: a plain fraction is one number to the allow-list.
+  assert.equal(soleSize("bookcase 1/2 m tall", cm("H", 50, "1/2 m tall", "m") as never), true);
+  // Row 509: arithmetic after a size keeps the typed words.
+  holds([
+    ["bookcase 2 m tall minus 10 cm", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+    ["bookcase 2 m tall + 10 cm", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+    ["bookcase 2 m tall less 10 cm", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+  ], "row 509");
+});
