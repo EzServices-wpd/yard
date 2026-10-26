@@ -114,9 +114,11 @@ test("the empty line says 'No saved idea yet.' only when search found nothing at
   assert.match(page("bookshelf"), new RegExp(`>${n} ideas\\. Enter opens the first\\.<`));
 });
 
-test("a typed build (?q=) is noindex,follow; the ?y= share link and the bare workbench stay indexable", async () => {
+test("a typed build (?q=) and a ?y= share link (the sharer's prompt) are noindex,follow; the bare workbench stays indexable", async () => {
   const { workbenchRobots } = await import("../src/lib/canonical");
   assert.deepEqual(workbenchRobots({ q: "bookcase 36 wide" }), [{ name: "robots", content: "noindex,follow" }]);
-  for (const s of [{ y: "eyJwcm9tcHQiOiJ4In0" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "x" }, {}, { q: "  " }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
+  for (const s of [{ y: "eyJwcm9tcHQiOiJ4In0" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "x" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "  " }])
+    assert.deepEqual(workbenchRobots(s), [{ name: "robots", content: "noindex,follow" }], JSON.stringify(s));
+  for (const s of [{}, { q: "  " }, { y: "" }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
   assert.match(SRC("src/routes/workspace.tsx"), /workbenchRobots\(/, "the route head (server HTML) carries it");
 });
