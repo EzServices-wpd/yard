@@ -170,12 +170,28 @@ function longAxis(p: Panel): "width" | "height" | "depth" {
 export function hangingClearanceIssues(p: YardProject): string[] {
   if (p.refused || !p.panels.length) return [];
   const rods = p.panels.filter((x) => ROD_NAME.test(x.name));
-  if (!rods.length) return [];
-  const out: string[] = [];
+  if (!rods.length) return rodTalkWithoutParts(p);
+  const out: string[] = rodTalkWithoutParts(p);
   const turned = rods.find((x) => longAxis(x) !== "width");
   if (turned) out.push(`${turned.name} does not run side to side across the width`);
   const interior = hangerInterior(p);
   if (!sideHangFits(interior)) out.push(`hanging rod in a ${inchFrac(interior)}" interior (hangers need about ${HANGER_CLEAR_IN}")`);
+  return out;
+}
+
+/** Notes that say a rod is built, or a hat shelf is (row 524 class: a cubby shelf's fixed shelves are no hat over a rod). */
+const ROD_CLAIM = /\bover the (?:clothes |hanging )?rod\b|\babove the rod\b|\brod in two sockets\b/i;
+const HAT_CLAIM = /\bhat shelf\b|\babove the hat\b/i;
+
+/** Notes name a rod or a hat shelf only when the build has it: a rod part, and a part named hat shelf or a screwed shelf over a rod. */
+export function rodTalkWithoutParts(p: Pick<YardProject, "panels" | "notes">): string[] {
+  const hasRod = p.panels.some((x) => ROD_NAME.test(x.name));
+  const hasHat = p.panels.some((x) => /\bhat shelf\b/i.test(x.name) || (hasRod && x.type === "shelf" && /^Screwed fixed shelf/.test(x.cutNote ?? "")));
+  const out: string[] = [];
+  for (const n of p.notes ?? []) {
+    if (!hasRod && ROD_CLAIM.test(n)) out.push(`note "${n.slice(0, 80)}" names a rod the build does not have`);
+    else if (!hasHat && HAT_CLAIM.test(n) && !/\bno (?:fixed )?hat\b/i.test(n)) out.push(`note "${n.slice(0, 80)}" names a hat shelf the build does not have`);
+  }
   return out;
 }
 
@@ -503,7 +519,8 @@ export function hangingTalk(input: YardProject, prompt = ""): YardProject {
   const piecesNear = (ys: number[]) => project.panels.filter((p) => p.type === "shelf" && ys.some((y) => Math.abs(p.position.y - y) < 0.05)).length;
   let changed = false;
   let notes = [...(project.notes ?? [])];
-  if (hats.length) {
+  // A screwed shelf is a hat only over a rod: a cubby shelf or wine rack with fixed shelves keeps its own shelf note.
+  if (hats.length && rods.length) {
     const hatPieces = piecesNear(hats.map((line) => line.y));
     const abovePieces = piecesNear(above.map((line) => line.y));
     const hatWord = hatPieces > 1 ? `${hatPieces} fixed hat shelf pieces over the rod` : "One fixed hat shelf over the rod";

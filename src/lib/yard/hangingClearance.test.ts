@@ -5,7 +5,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
 import { checkBuild } from "./invariants.ts";
-import { hangingClearanceIssues, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodBayTop, rodDropIn, unsupportedFloorSpan } from "./hangingClearance.ts";
+import { hangingClearanceIssues, rodTalkWithoutParts, HANGER_CLEAR_IN, HANGER_MIN_DEPTH_IN, CLOSET_SHELF_CLEAR_IN, SHELF_CLEAR_FLOOR_IN, ROD_BAY_MAX_IN, sideHangFits, hangerInterior, rodBayTop, rodDropIn, unsupportedFloorSpan } from "./hangingClearance.ts";
 import type { Panel } from "./types.ts";
 
 const PROBES: { id: string; prompt: string; shelves?: number }[] = JSON.parse(
@@ -481,5 +481,32 @@ it("row 483: a rod rebuild keeps the typed prompt (prompt bar, PDF 'You asked fo
     assert.equal(p.refused, undefined, q);
     assert.equal(rodsOf(q).length, 3, q);
     assert.equal(p.prompt, q, q);
+  }
+});
+
+it("no rod, no hat: fixed-shelf builds without a clothes rod never talk about a hat shelf or a rod (release-1026)", () => {
+  for (const q of ["wine cabinet", "cubby shelf", "cubby shelf 96 wide", "pine cubby shelf 128 wide", "cubby shelf 144 wide in 1/2 plywood"]) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.panels.filter((x) => /hanging rod|clothes rod/i.test(x.name)).length, 0, `${q} builds no rod`);
+    assert.ok(p.panels.some((x) => x.type === "shelf"), `${q} has shelves`);
+    for (const n of p.notes ?? []) assert.doesNotMatch(n, /hat shelf|over the rod|above the hat/i, `${q}: ${n}`);
+  }
+  const ward = generateFromPrompt("wardrobe with 4 shelves").notes.join(" ");
+  assert.match(ward, /fixed hat shelf over the rod/, "a wardrobe with a rod still names its hat");
+});
+
+it("row 524 class guard (I39): notes name a rod or a hat shelf only when the build has that part", () => {
+  const cubby = generateFromPrompt("cubby shelf 96 wide");
+  // The tip's false note, put back on the real rodless build: the guard names it.
+  const tipNote = { ...cubby, notes: [...(cubby.notes ?? []), "4 fixed hat shelf pieces over the rod. No pinned shelf above the hat."] };
+  assert.equal(rodTalkWithoutParts(tipNote).length, 1);
+  assert.ok(hangingClearanceIssues(tipNote).some((m) => /names a rod the build does not have/.test(m)));
+  const noHat = { ...cubby, notes: ["A hat shelf runs across the top."] };
+  assert.ok(rodTalkWithoutParts(noHat).some((m) => /names a hat shelf/.test(m)));
+  // Real builds, with and without a rod or a named hat shelf, say nothing false.
+  for (const q of ["wine cabinet", "cubby shelf", "cubby shelf 96 wide", "pine cubby shelf 168 inches wide", "coat rack", "hall tree", "coat bench", "wardrobe with 4 shelves", "closet 48 wide with 2 rods", "wardrobe 48 wide 80 tall 24 deep with a clothes rod and 2 doors"]) {
+    const p = generateFromPrompt(q);
+    assert.deepEqual(rodTalkWithoutParts(p), [], q);
+    assert.deepEqual(checkBuild(p, q).filter((x) => x.id === "I39" && /names a/.test(x.msg)), [], q);
   }
 });
