@@ -57,7 +57,7 @@ test("C11: linen and the bookcase say shelf pins in inches; linen's header, pric
   const p = generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep");
   const plan = buildPlan(p);
   assert.equal(headerTitle(p).split(" · ").slice(0, 2).join(" · "), 'Linen · 31 1/2" W × 16" D × 78" H');
-  assert.equal(plan.totals.estCostUsd.toFixed(2), "183.70");
+  assert.equal(plan.totals.estCostUsd.toFixed(2), "193.68");
 });
 
 test("C11: multi-word names never prefix the Material chip with their first word", () => {

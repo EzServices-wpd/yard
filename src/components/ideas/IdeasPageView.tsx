@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type Ref, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { IdeaCard } from "./IdeaCard";
+import { IdeaCard, IdeaRow } from "./IdeaCard";
 import { IdeaHero } from "./IdeaHero";
-import { SECTION_SHOW, curatedFeed, heroCard, searchCards, searchPool, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import { ALL_SHOW, SECTION_SHOW, buildHref, curatedFeed, heroCard, searchCards, searchPlans, searchPool, showAllLabel, type IdeaCard as Card, type IdeaSection, type IdeasFeed } from "@/lib/ideas/feed";
+import type { TestFlags } from "@/lib/ideas/testFlags";
 import RECIPE_CARDS from "@/lib/ideas/recipes.json";
 import type { LearnedIdea } from "@/lib/yard/ideaLibrary";
 
@@ -21,12 +22,17 @@ export function ideasFeed(): IdeasFeed {
  * section is one swipeable row, so the page is about 3 screens instead of 13.
  */
 type Build = (q: string, from?: HTMLElement | null) => void;
-export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ideasFeed() }: { incoming: string; learned: LearnedIdea[]; onBuild: Build; onIntent?: (q: string) => void; feed?: IdeasFeed }) {
+/** `flags`: the page URL's test flags, so every card's href carries them (same on the server and in the tab). */
+export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ideasFeed(), flags = {} }: { incoming: string; learned: LearnedIdea[]; onBuild: Build; onIntent?: (q: string) => void; feed?: IdeasFeed; flags?: TestFlags }) {
   const [query, setQuery] = useState(incoming);
   useEffect(() => setQuery(incoming), [incoming]);
   const q = query.trim();
   const pool = useMemo(() => searchPool(feed), [feed]);
   const hits = useMemo(() => searchCards(pool, q).slice(0, 24), [pool, q]);
+  const plans = useMemo(() => (q ? searchPlans(q, pool) : []), [q, pool]);
+  // Drawn hits show first as cards, then hits with no drawing as rows; Enter opens the first one shown.
+  const drawn = hits.filter((c) => c.drawing), text = hits.filter((c) => !c.drawing);
+  const flagQuery = new URLSearchParams(Object.entries(flags).map(([k, v]) => [k, String(v)])).toString();
   const hero = useMemo(() => heroCard(feed), [feed]);
   const root = useRef<HTMLElement>(null);
   // Drawings start in pencil only once JS can ink them (no-JS and SSR show wood).
@@ -48,7 +54,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
         onSubmit={(e) => {
           e.preventDefault();
           if (!q) return;
-          onBuild(hits[0]?.examplePrompt ?? q);
+          onBuild((drawn[0] ?? text[0])?.examplePrompt ?? q);
         }}
       >
         <label className="block">
@@ -67,7 +73,10 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
 
       {q ? (
         <section className="mt-4" aria-live="polite" data-ideas-results>
-          <p className="text-sm text-ink">{hits.length === 0 ? "No saved idea yet." : hits.length === 1 ? "1 idea. Enter opens it." : `${hits.length} ideas. Enter opens the first.`}</p>
+          {/* Only a plan found: the plan link below is the result, so no "nothing found" line above it. */}
+          {hits.length === 0 && plans.length > 0 ? null : (
+            <p className="text-sm text-ink">{hits.length === 0 ? "No saved idea yet." : hits.length === 1 ? "1 idea. Enter opens it." : `${hits.length} ideas. Enter opens the first.`}</p>
+          )}
           <button
             type="button"
             onClick={() => onBuild(q)}
@@ -77,39 +86,54 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
             <span className="truncate">Build “{q}” instead</span>
             <ArrowRight className="size-4 shrink-0" aria-hidden />
           </button>
-          {hits.length > 0 ? (
+          {plans.length > 0 ? (
+            <p className="mt-3 flex flex-wrap items-center gap-x-1 text-sm text-ink" data-ideas-plans>
+              <span>Free plans:</span>
+              {plans.map((p) => <a key={p.slug} href={`/plans/${p.slug}${flagQuery ? `?${flagQuery}` : ""}`} className="inline-flex min-h-11 items-center px-1.5 underline underline-offset-2 lg:min-h-9">{p.name}</a>)}
+            </p>
+          ) : null}
+          {drawn.length > 0 ? (
             <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {hits.map((c, i) => <IdeaCard key={c.slug} card={c} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
+              {drawn.map((c, i) => <IdeaCard key={c.slug} card={c} href={buildHref(c.examplePrompt, flags)} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
             </div>
           ) : null}
+          {/* Hits with no drawing yet are rows (title and size), never a blank picture. */}
+          {text.length > 0 ? <Rows cards={text} onBuild={onBuild} onIntent={onIntent} flags={flags} /> : null}
         </section>
       ) : (
         <>
-          {hero ? <IdeaHero card={hero} live={HERO_LIVE} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
-          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} />)}
+          {hero ? <IdeaHero card={hero} live={HERO_LIVE} href={buildHref(hero.examplePrompt, flags)} onBuild={() => onBuild(hero.examplePrompt)} /> : null}
+          {sections.map((s) => <Section key={s.id} section={s} first={false} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} flags={flags} />)}
+          {feed.all?.length ? <AllIdeas cards={feed.all} onBuild={onBuild} onIntent={onIntent} flags={flags} /> : null}
         </>
       )}
     </main>
   );
 }
 
-function Section({ section, first, onBuild, onIntent, showCount }: { section: IdeaSection; first: boolean; onBuild: Build; onIntent?: (q: string) => void; showCount: boolean }) {
+function Section({ section, first, onBuild, onIntent, showCount, flags }: { section: IdeaSection; first: boolean; onBuild: Build; onIntent?: (q: string) => void; showCount: boolean; flags: TestFlags }) {
   const [all, setAll] = useState(false);
   const cards = all ? section.cards : section.cards.slice(0, SECTION_SHOW);
   const more = section.cards.length - SECTION_SHOW;
+  // ponytail: Popular can have more cards than the feed sends (SECTION_MAX); the label says so instead of paging the rest.
+  const capped = section.total > section.cards.length;
+  const list = `ideas-${section.id}-list`;
+  const label = showAllLabel(section);
   return (
     <section className="mt-8 sm:mt-12" data-ideas-section={section.id} aria-labelledby={`ideas-${section.id}`}>
       <div className="flex min-h-11 items-center justify-between gap-3">
         <h2 id={`ideas-${section.id}`} className="font-display text-xl text-ink">{section.title}</h2>
         {more > 0 ? (
-          <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
-            {all ? "Show fewer" : `Show all ${section.cards.length}`}
+          <button type="button" onClick={() => setAll((v) => !v)} aria-expanded={all} aria-controls={list} data-ideas-show-all={label} className="relative inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
+            {all ? "Show fewer" : label}
+            <span className="sr-only"> {section.title} ideas</span>
           </button>
         ) : null}
       </div>
       {/* relative: the cards' sr-only size text is absolutely positioned, so without a positioned row it escapes the row's
           scroll clip and widens the page (768: 1783px wide). */}
       <ul
+        id={list}
         className={
           all
             ? "mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4"
@@ -118,10 +142,54 @@ function Section({ section, first, onBuild, onIntent, showCount }: { section: Id
       >
         {cards.map((c, i) => (
           <li key={c.slug} className={all ? "" : "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-auto"}>
-            <IdeaCard card={c} eager={first && i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={showCount} />
+            <IdeaCard card={c} href={buildHref(c.examplePrompt, flags)} eager={first && i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={showCount} />
           </li>
         ))}
       </ul>
+      {all && capped ? <p className="mt-2 text-sm text-ink" data-ideas-top>The top {section.cards.length} of {section.total} are shown.</p> : null}
+    </section>
+  );
+}
+
+type RowsProps = { cards: Card[]; onBuild: Build; onIntent?: (q: string) => void; flags: TestFlags };
+function Rows({ cards, onBuild, onIntent, flags, id, listRef }: RowsProps & { id?: string; listRef?: Ref<HTMLUListElement> }) {
+  return (
+    <ul id={id} ref={listRef} className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+      {cards.map((c) => (
+        <li key={c.slug}>
+          <IdeaRow card={c} href={buildHref(c.examplePrompt, flags)} onOpen={() => onBuild(c.examplePrompt)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Every build type once (the live feed's `all`), most built first, ALL_SHOW at a time. "Show more" adds rows below and
+ * moves focus to the first new one; nothing animates.
+ */
+function AllIdeas({ cards, ...rest }: RowsProps) {
+  const [n, setN] = useState(ALL_SHOW);
+  const list = useRef<HTMLUListElement>(null);
+  const from = useRef(-1);
+  useEffect(() => {
+    if (from.current >= 0) list.current?.querySelectorAll("a")[from.current]?.focus();
+    from.current = -1;
+  }, [n]);
+  const left = cards.length - n;
+  return (
+    <section className="mt-10 sm:mt-14" data-ideas-all aria-labelledby="ideas-all">
+      <h2 id="ideas-all" className="font-display text-xl text-ink">All ideas</h2>
+      <p className="mt-1 max-w-xl text-sm text-ink">Everything built with Yard, once each and most built first, then ideas nobody has built yet. Search above to narrow it.</p>
+      <Rows cards={cards.slice(0, n)} id="ideas-all-list" listRef={list} {...rest} />
+      <div className="mt-3 flex flex-wrap items-center gap-x-4">
+        <p className="text-sm text-ink" aria-live="polite" data-ideas-all-count>{`${Math.min(n, cards.length)} of ${cards.length} shown`}</p>
+        {left > 0 ? (
+          <button type="button" aria-controls="ideas-all-list" data-ideas-all-more onClick={() => { from.current = n; setN(n + ALL_SHOW); }} className="inline-flex min-h-11 items-center rounded-full bg-[var(--yard-fill)] px-4 text-sm text-ink hover:bg-rule/60 lg:min-h-9">
+            {`Show ${Math.min(ALL_SHOW, left)} more`}
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

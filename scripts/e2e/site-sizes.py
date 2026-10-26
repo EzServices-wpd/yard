@@ -33,7 +33,7 @@ def check(page, path, W):
     line = lambda: page.evaluate("() => { const h = document.querySelector('header.yard-head'); return h ? getComputedStyle(h, '::after').opacity : 'no yard-head'; }")
     if line() != "0": fails.append(f"{tag}: header line visible at the top")
     # Open every section so every card is in the DOM.
-    page.evaluate("() => document.querySelectorAll(\"button[aria-expanded='false']\").forEach(b => b.textContent.startsWith('Show all') && b.click())")
+    page.evaluate("() => document.querySelectorAll(\"[data-ideas-show-all][aria-expanded='false']\").forEach(b => b.click())")
     page.evaluate("() => window.scrollTo(0, 600)"); page.wait_for_timeout(500)
     if line() != "1": fails.append(f"{tag}: header line not shown once scrolled")
     sizes = page.eval_on_selector_all("[data-size]", "els => els.map(e => [e.getAttribute('data-size'), e.textContent])")

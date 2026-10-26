@@ -2,7 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
-import { curatedFeed, drawingFor, drawingForType, type DrawingRef, type IdeasFeed } from "../src/lib/ideas/feed";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { IdeasPageView } from "../src/components/ideas/IdeasPageView";
+import { SECTION_SHOW, curatedFeed, drawingFor, drawingForType, type DrawingRef, type IdeasFeed } from "../src/lib/ideas/feed";
 import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, dimsOf, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, logCardPrompt, publicSnapshot, typeKey, type PublicRow, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
 import { CANARIES } from "./weekend-canaries";
@@ -78,8 +81,11 @@ test("Popular groups by build type with a curated title; linen and bookshelf app
 });
 
 test("Popular recently is the live log of the last 7 days; new types are 'new' with their own size", () => {
-  const recent = liveFeed(SNAP, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny).sections.find((s) => s.id === "recent")!;
-  const cat = recent.cards.find((c) => c.slug === "cat-tree")!;
+  // Chief 10-25 (b): a type the log has only seen Unverified (SNAP's cat tree) shows nowhere; once one build is Trusted it does.
+  const recentOf = (snap: IdeasSnapshot) => liveFeed(snap, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny).sections.find((s) => s.id === "recent");
+  assert.ok(!recentOf(SNAP)?.cards.some((c) => c.slug === "cat-tree"), "Unverified-only cat tree in Popular recently");
+  const recent = recentOf({ ...SNAP, rows: SNAP.rows.map((r) => (r.resultKey === "recipe:cat-tree" ? { ...r, status: "Trusted" as const } : r)) });
+  const cat = recent!.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
   assert.deepEqual(cat.dims, { width: 24, depth: 24, height: 60 });
   assert.equal(cat.title, "Cat tree");
@@ -388,4 +394,21 @@ test("one log type per drawn build: a leading lumber species is the stock (pine 
   }
   // Not a twin: a spice cabinet has a door and no jar lips, so it is not the Spice rack.
   assert.notDeepEqual(pieces("spice cabinet"), pieces("spice rack 18 wide 24 high 4 deep"));
+});
+
+// SWE2-followups item 2: Popular said "Show all 24" with 38 in the section (it opened the 24 the feed sent).
+test("Show all says what it opens, from the section's own numbers, and names the real total when the feed sent fewer", () => {
+  const html = renderToStaticMarkup(createElement(IdeasPageView, { incoming: "", learned: [], onBuild: () => {}, feed: liveF }));
+  let capped = 0;
+  for (const s of liveF.sections) {
+    const btn = html.match(new RegExp(`<button[^>]*aria-controls="ideas-${s.id}-list"[^>]*>(.*?)</button>`))?.[0];
+    if (s.cards.length <= SECTION_SHOW) { assert.equal(btn, undefined, `${s.id}: ${s.cards.length} cards, no control`); continue; }
+    assert.ok(btn && html.includes(`id="ideas-${s.id}-list"`), `${s.id}: a button that controls its list`);
+    assert.match(btn, /type="button"/); assert.match(btn, /aria-expanded="false"/);
+    const text = btn.replace(/<[^>]+>/g, "");
+    const want = s.total > s.cards.length ? `Show top ${s.cards.length} of ${s.total}` : `Show all ${s.cards.length}`;
+    assert.equal(text, `${want} ${s.title} ideas`, s.id);
+    if (s.total > s.cards.length) capped++;
+  }
+  assert.ok(capped > 0, "the 10-23 snapshot has a section with more cards than the feed sends (Popular 38)");
 });

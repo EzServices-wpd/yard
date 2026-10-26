@@ -1,12 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { currentTestFlags } from "@/lib/ideas/testFlags";
 import { useEffect, useState } from "react";
-import type { IdeasFeed } from "@/lib/ideas/feed";
-import { makingNow, type MakingNowItem } from "@/lib/ideas/liveFeed";
+import type { MakingNowItem } from "@/lib/ideas/liveFeed";
 import { useOffscreen } from "@/hooks/use-offscreen";
 
 /**
- * "People are making right now" (R10–R12). Loads the Ideas feed (/api/ideas, CDN-cached) at idle, no engine import.
+ * "People are making right now" (R10–R12). Loads its rows (/api/ideas?view=strip, CDN-cached) at idle, no engine import.
  * Each row is a build's engine title and size, never the words a visitor typed (privacy page; makingNow in liveFeed).
  * Fixed-height slot from SSR (CLS 0): 44px on a phone so every link is a 44px target (row 57), 36px from sm.
  * CSS-only scroll (transform), paused on hover/focus/off-screen; prefers-reduced-motion shows a static list.
@@ -17,9 +16,9 @@ export function MakingNow() {
   useEffect(() => {
     let live = true;
     const go = () =>
-      void fetch("/api/ideas")
-        .then((r) => (r.ok ? (r.json() as Promise<IdeasFeed>) : null))
-        .then((f) => live && f && setRows(makingNow(f)))
+      void fetch("/api/ideas?view=strip")
+        .then((r) => (r.ok ? (r.json() as Promise<{ rows?: MakingNowItem[] }>) : null))
+        .then((f) => live && Array.isArray(f?.rows) && setRows(f.rows))
         .catch(() => {});
     const id = "requestIdleCallback" in window ? window.requestIdleCallback(go, { timeout: 6000 }) : setTimeout(go, 3000);
     return () => {

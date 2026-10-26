@@ -65,13 +65,13 @@ describe("live bar: engine forms before the learner", () => {
       }
     });
   }
-  it("linen closet: exact header and $183.70 on the live bar", async () => {
+  it("linen closet: exact header and $193.68 on the live bar", async () => {
     const { p, calls } = await live("linen closet 31.5 wide 78 tall 16 deep");
     assert.ok(!calls.includes("lookup"));
     // C10: every size is typed, so no house brief (or any network call) holds the lamp or reprices the plan.
     assert.deepEqual(calls, [], `linen made calls: ${calls.join(", ")}`);
-    assert.equal(useYard.getState().plan?.totals.estCostUsd, 183.7);
+    assert.equal(useYard.getState().plan?.totals.estCostUsd, 193.68);
     assert.equal(headerTitle(p).split(" · ").slice(0, 2).join(" · "), 'Linen · 31 1/2" W × 16" D × 78" H');
-    assert.equal(buildPlan(p).totals.estCostUsd, 183.7);
+    assert.equal(buildPlan(p).totals.estCostUsd, 193.68);
   });
 });

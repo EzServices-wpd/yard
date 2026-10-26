@@ -66,8 +66,14 @@ it("row 240: a re-stamped title never prints the size twice", () => {
     ["pantry 24.5 deep", 'Pantry 24 1/2" deep'],
     ["broom closet 72.5 tall", 'Broom closet 72 1/2" tall'],
     ["wardrobe 6ft 2 1/2in tall", 'Wardrobe 74 1/2" tall'],
-    ["wardrobe 15 1/2 deep", 'Wardrobe 15 1/2" deep'],
+    ["wardrobe 22 1/2 deep", 'Wardrobe 22 1/2" deep'],
   ] as const) assert.equal(generateFromPrompt(q).name, name, q);
+});
+
+it("a wardrobe under 22\" deep is refused, and the refusal names why", () => {
+  const p = generateFromPrompt("wardrobe 15 1/2 deep");
+  assert.equal(p.panels.length, 0);
+  assert.equal(p.refused, 'A wardrobe needs at least 22" deep so clothes can hang (hangers need about 20" inside). Nothing is built at 15 1/2".');
 });
 
 it("row 279: fractional sizes on any axis, in any typed form, are stripped once and stamped once", () => {

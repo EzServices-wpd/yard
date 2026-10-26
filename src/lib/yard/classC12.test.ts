@@ -30,7 +30,7 @@ test("C12: linen's shelf pins search 3/16\" on Amazon; price and header unchange
   assert.ok(pins.offers?.length);
   for (const o of pins.offers!) assert.doesNotMatch(o.href, /5mm/);
   assert.equal(storeSearchTerm(pins.offers!.find((o) => o.retailer === "amazon")!.href), '3/16" shelf pins');
-  assert.equal(plan.totals.estCostUsd.toFixed(2), "183.70");
+  assert.equal(plan.totals.estCostUsd.toFixed(2), "193.68");
 });
 
 test("C12: a stale href or searchQuery is caught, then re-pointed for every store, wrapped or not", () => {

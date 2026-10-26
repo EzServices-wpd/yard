@@ -5,6 +5,7 @@ import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { drawerSpecs, drawersIn, setOpen, slide, type DrawerSpec } from "@/components/home/showcase-drawers";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { canonical } from "@/lib/canonical";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -19,6 +20,7 @@ import type { Showcase } from "@/lib/yard/homeShowcase";
 const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
+  head: () => canonical("/"),
   // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
   // C2: the plan strip (one real plan: the linen canary) and the chips' baked drawings come from the server too.
   loader: async () => ({ shows: await homeShows(), plan: await homePlan(), chipArt: await homeChipArt() }),
@@ -45,7 +47,7 @@ const STOCKS = [
 
 type StockId = (typeof STOCKS)[number]["id"];
 
-/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $183.70). */
+/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $193.68). */
 const PLAN_PROMPT = "linen closet 31.5 wide 78 tall 16 deep";
 
 /** Finished pieces. Each card opens that plan on the bench. The size is never typed here: the loader formats it from the engine. */
@@ -58,7 +60,7 @@ const PIECES = [
     caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
-    // C3: the linen closet already leads the plan strip ($183.70), so this card shows a different idea; one linen price on home.
+    // C3: the linen closet already leads the plan strip ($193.68), so this card shows a different idea; one linen price on home.
     id: "ldesk",
     label: DREAMS.find((d) => d.id === "ldesk")?.label ?? "L in the corner",
     note: "",
@@ -209,7 +211,7 @@ function LandingPage() {
           <Link to="/" className="flex min-h-11 items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav aria-label="Main" className="flex items-center gap-1">
             <Link to="/ideas" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
               Ideas
             </Link>
