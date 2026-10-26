@@ -483,3 +483,14 @@ test("I49 r7: row 529's table, articles after a joiner, refused-or-built pins (b
   assert.equal(viaReader("bookcase with the two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with the 2 shelves");
   assert.equal(viaReader("cabinet with a pair of doors and a pair of drawers", { counts: [C4("doors", 2, "pair of doors"), C4("drawers", 2, "pair of drawers")] }), "cabinet with 2 doors and 2 drawers");
 });
+
+test("I49 r7 mutation pins: a count edit never makes a refusal the size-only build lifted (S3), and the article strip is word-bounded (K8)", () => {
+  // A mocked engine: the typed "2 m tall" is misread (2" tall, refused); the size edit builds; a count edit to 3 rods refuses again at the same box.
+  const H = 200 / 2.54;
+  const gen = (q: string) => ({ kind: "wardrobe", name: "Wardrobe", overall: { width: 36, height: /2 m tall/.test(q) ? 2 : H, depth: 24 }, refused: /2 m tall|\b3 rods\b/.test(q) ? "refused" : undefined, panels: [] }) as never;
+  const q = "wardrobe 2 m tall two rods";
+  assert.equal(chooseBuildPrompt(q, { sizes: [cm("H", 200, "2 m tall", "m")], counts: [C4("rods", 3, "two rods")] } as never, gen).buildPrompt, q, "a count edit never brings back a refusal");
+  assert.notEqual(chooseBuildPrompt(q, { sizes: [cm("H", 200, "2 m tall", "m")], counts: [] } as never, gen).buildPrompt, q, "the size edit alone still builds");
+  // K8: "2a" is a label, not "2" plus an article; the count after it reads.
+  assert.equal(validateSpec("bookcase type 2a two shelves", { counts: [C4("shelves", 2, "two shelves")] }).spec.counts.length, 1, "word-bounded article strip");
+});
