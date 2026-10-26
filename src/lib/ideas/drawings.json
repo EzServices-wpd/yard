@@ -822,5 +822,18 @@
    "depth": 22
   },
   "model": "/ideas/models/recipe-standing-desk-converter.b777e135.json"
+ },
+ "rocket": {
+  "v": "4df34406",
+  "w": 480,
+  "h": 360,
+  "parts": 417,
+  "bytes": 45922,
+  "dims": {
+   "width": 9.8,
+   "height": 28,
+   "depth": 9.8
+  },
+  "stock": "popsicle-standard"
  }
 }
