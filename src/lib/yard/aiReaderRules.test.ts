@@ -320,6 +320,13 @@ test("I49 r5 mutation pins: each layer rule alone (bare separator, letter axis t
     ["desk 30w with two drawers 2 m wide", { sizes: [cm("W", 200, "2 m wide", "m")] }],
     ["bookcase 70h with two shelves 2 m tall", { sizes: [cm("H", 200, "2 m tall", "m")] }],
     ["dresser model 7 two drawers", { counts: [C4("drawers", 2, "two drawers")] }],
+    ["shelf 30 wide by 2 m tall", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+    ["bookcase 11 1/2 m tall", { sizes: [cm("H", 50, "1/2 m tall", "m")] }],
+    ["shelf 30 wide – 2 m tall", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+    ["bookcase 72 (in) tall", { sizes: [S("W", 72, "72")] }],
+    ["bookcase 30 wide 2 m", { sizes: [cm("H", 200, "2 m", "m")] }],
+    ["bookcase depth of 2 m", { sizes: [cm("H", 200, "2 m", "m")] }],
+    ["bookcase 6 ft 4 in tall", { sizes: [S("H", 72, "6 ft", "overall", "ft")] }],
   ], "r5 pins");
   // rewrite.ts's own feet-inch rule, past the validator: 14 inches is not inches of a foot.
   const Q = "bookcase 6 ft 14 in tall with two shelves";
