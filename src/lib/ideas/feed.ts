@@ -40,10 +40,13 @@ export type IdeaCard = {
 };
 export type IdeaSection = { id: string; title: string; order: number; total: number; cards: IdeaCard[] };
 export type IdeaHero = { slug: string; examplePrompt: string; title: string; count: number };
-export type IdeasFeed = { at: string; live: boolean; countsLive: boolean; hero: IdeaHero | null; sections: IdeaSection[] };
+/** `all`: the live feed's whole catalog, one card per build type, drawn or not (liveFeed); absent on the fallback feed. */
+export type IdeasFeed = { at: string; live: boolean; countsLive: boolean; hero: IdeaHero | null; sections: IdeaSection[]; all?: IdeaCard[] };
 
 /** Cards a section shows before "Show all". */
 export const SECTION_SHOW = 8;
+/** All ideas rows shown at first, and added per "Show more". */
+export const ALL_SHOW = 24;
 
 /**
  * The Show all control's words, from the section's own numbers: the count it opens, and the real total when the feed
@@ -151,11 +154,17 @@ export function curatedFeed(recipes: { popular: RecipeLike[]; fresh: RecipeLike[
   return { at: "", live: false, countsLive: false, hero: null, sections: dedupe(sections) };
 }
 
-/** Every searchable card: the page's cards plus near-variants (search still reaches every idea). */
+/**
+ * Every searchable card, one per build type like the page: the page's cards, every other All ideas type, then ideas of a
+ * type no card has yet. A near-variant of a type already carded never shows beside it ("bookshelf" found Bookcase and
+ * the corner shelf's "Too small for books" variant).
+ */
 export function searchPool(feed: IdeasFeed): IdeaCard[] {
   const onPage = feed.sections.flatMap((s) => s.cards);
-  const have = new Set(onPage.map((c) => c.slug));
-  return [...onPage, ...IDEAS.filter((d) => !have.has(d.id)).map(fromIdea)];
+  const types = new Set(onPage.map((c) => c.buildType));
+  const cards = [...onPage, ...(feed.all ?? []).filter((c) => !types.has(c.buildType))];
+  const have = new Set(cards.flatMap((c) => [c.slug, c.buildType]));
+  return [...cards, ...IDEAS.map(fromIdea).filter((c) => !have.has(c.slug) && !have.has(c.buildType) && !!have.add(c.buildType))];
 }
 
 /**
