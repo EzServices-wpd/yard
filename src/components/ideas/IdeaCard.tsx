@@ -54,7 +54,8 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
 
 /**
  * A catalog row (All ideas, and a search hit with no drawing): the engine title and size as one link to its build, never
- * an empty picture box. A type Critic never graded says so.
+ * an empty picture box. A type Critic never graded says so. Rows part by space, and a fill tone on hover or focus; no
+ * divider line (taste-inspect "hairline"). No transition: the tone changes at once.
  */
 export function IdeaRow({ card, href, onOpen, onIntent }: { card: Card; href: string; onOpen: () => void; onIntent?: () => void }) {
   return (
@@ -70,7 +71,7 @@ export function IdeaRow({ card, href, onOpen, onIntent }: { card: Card; href: st
       onTouchStart={onIntent}
       data-idea-row={card.slug}
       data-build-type={card.buildType}
-      className="group flex h-full min-h-12 flex-col justify-center border-b border-rule py-2 text-left"
+      className="group -mx-2 flex h-full min-h-12 flex-col justify-center rounded-lg px-2 py-2 text-left hover:bg-[var(--yard-fill)] focus-visible:bg-[var(--yard-fill)]"
     >
       <span className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-display text-base leading-tight text-ink group-hover:underline">{card.title}</span>
