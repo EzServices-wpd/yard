@@ -548,8 +548,8 @@
 
 
 /*
- * Batch C1 (BATCH-C-PLAN.md 1A, 2B, 3A, 4B): the light site pages (home, Ideas, the shared chrome) only.
- * The dark workspace never carries .yard-site, so it is unchanged.
+ * Batch C1 (BATCH-C-PLAN.md 1A, 2B, 3A, 4B): the site pages (home, Ideas, plans, the shared chrome) only.
+ * The workspace never carries .yard-site; it takes the @theme tokens above.
  */
 .yard-site {
   /* Night shop: the site pages sit on the dark ground (ink 15.2:1, muted 7.6:1); fills are a raised dark (4B). */
