@@ -12,12 +12,12 @@ test("the linen header the workbench title must read", () => {
   assert.equal(headerTitle(generateFromPrompt(LINEN_PROMPT)), LINEN_HEADER);
 });
 
-test("shell renders headerTitle() alone with a build or a refusal, 'Workbench' only on an empty bench", () => {
+test("shell renders headerTitle() alone with a build or a refusal, the typed object on a not-learned placeholder (row 517), 'Workbench' only on an empty bench", () => {
   const src = readFileSync(new URL("../src/components/workspace/shell.tsx", import.meta.url), "utf8");
   const at = src.indexOf("data-yard-workbench-title");
   assert.ok(at > 0, "title element present");
   const el = src.slice(at, src.indexOf("</span>", at));
-  assert.match(el, /pieceCount > 0 \|\| project\.refused \? headerTitle\(project\) : "Workbench"/);
+  assert.match(el, /pieceCount > 0 \|\| project\.refused\s*\?\s*headerTitle\(project\)\s*:\s*project\.displayOnly[^?]*\?\s*`\$\{project\.name\.split\([^`]*\} · not learned yet`\s*:\s*"Workbench"/);
   assert.doesNotMatch(el, /Workbench ·/);
 });
 
