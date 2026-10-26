@@ -17,8 +17,11 @@ export function workbenchPath({ q, y }: { q?: string; y?: string }): string {
   return "/workspace";
 }
 
-/** A typed build (?q=) is the visitor's own words: never indexed (Chief, 10-25); its links still followed. A ?y= share link stays indexable. */
+/**
+ * A typed build (?q=) is the visitor's own words, and a ?y= share link carries the sharer's prompt: neither is indexed
+ * (Chief, 10-25; the sharer never agreed to indexing). Links still followed; the ?y= self canonical is unchanged.
+ */
 // ponytail: meta only; an X-Robots-Tag header would also cover non-HTML fetches, not needed while /workspace is HTML.
 export function workbenchRobots({ q, y }: { q?: string; y?: string }): { name: string; content: string }[] {
-  return !y && q?.trim() ? [{ name: "robots", content: "noindex,follow" }] : [];
+  return y || q?.trim() ? [{ name: "robots", content: "noindex,follow" }] : [];
 }
