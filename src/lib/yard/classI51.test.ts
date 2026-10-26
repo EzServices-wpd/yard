@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild, i51Gaps } from "./invariants";
-import { freeGapSpot, isTrimStrip, nestParts, type NestPart } from "./nesting";
+import { flagCrossGrain, freeGapSpot, isTrimStrip, nestParts, type NestPart } from "./nesting";
 
 const plan = (q: string) => buildPlan(generateFromPrompt(q));
 const part = (id: string, name: string, width: number, height: number): NestPart => ({ id, name, label: id, width, height, material: "3/4\" plywood", allowRotate: height / width > 0.25 });
@@ -28,9 +28,9 @@ test("I51 corpus: a kick strip that fits a gap as cut is moved as cut, not turne
   const p = generateFromPrompt(q);
   const pl = buildPlan(p);
   assert.deepEqual(checkBuild(p, q, pl).filter((x) => x.id === "I51"), [], "a strip on Sheet 1 is never measured against a later sheet's gap");
-  const [s1] = pl.sheetNest!.sheets!.sheets;
-  const kick = s1.parts.find((x) => x.name === "Kick strip");
-  assert.ok(kick, "kick strip on Sheet 1, not Sheet 2");
+  // Critic #175: no sheet is saved, so the grain-kept release layout stands (the strip stays on Sheet 2, as cut).
+  const kick = pl.sheetNest!.sheets!.sheets.flatMap((s) => s.parts).find((x) => x.name === "Kick strip");
+  assert.ok(kick, "kick strip placed");
   assert.deepEqual([kick!.width, kick!.height, kick!.rotated, !!kick!.crossGrain], [28.5, 3.5, false, false]);
   assert.equal(pl.cutList.some((c) => /across the grain/.test(c.notes ?? "")), false);
   assert.equal(pl.totals.estCostUsd.toFixed(2), "159.23");
@@ -103,4 +103,36 @@ test("I51 fires when a sheet is opened for a kick strip that fits an earlier she
   const pl = buildPlan(p);
   assert.equal(checkBuild(p, "kitchen base cabinet 24 wide", { ...pl, sheetNest: { sheets: bad, backer: null } }).filter((x) => x.id === "I51").length, 1);
   assert.equal(checkBuild(p, "kitchen base cabinet 24 wide", { ...pl, sheetNest: { sheets: null, backer: bad } }).filter((x) => x.id === "I51").length, 1, "backer nest checked too");
+});
+
+test("I51 (Critic #175): a strip is turned only when that saves a sheet; on a tie the grain-kept layout is used", () => {
+  for (const [q, usd] of [["sink base cabinet 51 wide", "428.38"], ["desk organizer", "356.99"], ["bathroom vanity 43 wide", "159.23"], ["kitchen island 48 long 22 deep 36 tall with slat shelf", "303.01"]] as const) {
+    assert.deepEqual(turned(q), [], q);
+    assert.equal(plan(q).totals.estCostUsd.toFixed(2), usd, q);
+    assert.equal(plan(q).cutList.some((c) => /across the grain/.test(c.notes ?? "")), false, q);
+  }
+  const tie = nestParts([part("A", "Upright", 91.75, 48), part("B", "Side", 96, 30), part("G", "Kick strip", 22.5, 3.5), part("H", "Kick strip", 22.5, 3.5)]);
+  assert.equal(tie.totalSheets, 2);
+  assert.ok(tie.sheets.flatMap((s) => s.parts).every((x) => !x.crossGrain), "two sheets either way: no strip turned");
+  assert.equal(nestParts([part("A", "Upright", 91.75, 48), part("G", "Kick strip", 22.5, 3.5)]).sheets[0].parts.find((x) => x.id === "G")?.crossGrain, true, "a saved sheet still turns the strip");
+});
+
+test("I51 (Critic #175): a row with only some pieces turned says how many", () => {
+  const nest = { sheets: [{ index: 1, width: 96, height: 48, material: "m", usedArea: 0, utilization: 0, parts: [
+    { id: "G-0", name: "Kick strip", label: "G", x: 0, y: 0, width: 3.5, height: 22.5, rotated: true, crossGrain: true, material: "m" },
+    { id: "G-1", name: "Kick strip", label: "G", x: 10, y: 0, width: 22.5, height: 3.5, rotated: false, material: "m" }] }], unplaced: [], totalSheets: 1, averageUtilization: 0 };
+  const [row] = flagCrossGrain([{ label: "G", name: "Kick strip", quantity: 2 } as never], nest as never);
+  assert.equal((row as { notes?: string }).notes, "Cut 1 of 2 across the grain from a sheet offcut");
+});
+
+test("freeGapSpot (Critic #175): a kerf to the left as well (a part ending just short of the spot)", () => {
+  const sheet = { width: 96, height: 48, parts: [{ x: 0, y: 0, width: 10, height: 10 }, { x: 0, y: 20, width: 10.05, height: 10 }] };
+  assert.deepEqual(freeGapSpot(sheet, 5, 48), { x: 10.175, y: 0 });
+});
+
+test("I51 (Critic #175): a saved sheet keeps the strip's grain when an earlier gap takes it as cut", () => {
+  for (const [q, usd] of [["kitchen base cabinet 49 wide", "170.98"], ["bathroom vanity 76 wide", "159.23"], ["sink base cabinet 88 wide", "491.79"]] as const) {
+    assert.equal(plan(q).totals.estCostUsd.toFixed(2), usd, q);
+    assert.deepEqual(turned(q), [], q);
+  }
 });

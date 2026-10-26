@@ -272,8 +272,9 @@ function fillGaps(
       continue;
     }
     let done = false;
-    for (const sh of sheets) {
-      for (const rotated of [false, true]) {
+    // As cut on any earlier sheet first; turned across the grain only when no earlier sheet takes it as cut.
+    for (const rotated of [false, true]) {
+      for (const sh of sheets) {
         const w = rotated ? part.height : part.width;
         const h = rotated ? part.width : part.height;
         const spot = freeGapSpot({ ...size, parts: sh.placed }, w, h);
@@ -310,13 +311,13 @@ export function nestParts(
   // Every material: try each part order × fit rule and keep the fewest sheets (then the
   // fullest early sheets), so Buy never asks for a sheet a better layout does not need.
   const sheetArea = sheetSize.width * sheetSize.height;
-  const packAll = (matParts: NestPart[], order: PartOrder, score: Scorer) => {
+  const packAll = (matParts: NestPart[], order: PartOrder, score: Scorer, gaps: boolean) => {
     const out: { placed: PlacedPart[] }[] = [];
     const lost: NestPart[] = [];
     let remaining = matParts;
     while (remaining.length > 0) {
       // I51: no sheet is opened for a trim strip that fits a free gap of an earlier sheet.
-      remaining = fillGaps(out, remaining, order, sheetSize);
+      if (gaps) remaining = fillGaps(out, remaining, order, sheetSize);
       if (remaining.length === 0) break;
       const { placed, remaining: still } = packSheet(remaining, sheetSize.width, sheetSize.height, order, score);
       if (placed.length === 0) {
@@ -332,12 +333,13 @@ export function nestParts(
   for (const [material, matParts] of byMaterial) {
     let best: ReturnType<typeof packAll> | null = null;
     let bestKey: number[] = [];
-    for (const order of ORDERS) {
+    // I51: a trim strip moves into an earlier sheet's gap only when that saves a sheet; on a tie the grain-kept layout wins.
+    for (const gaps of [false, true]) for (const order of ORDERS) {
       for (const score of SCORERS) {
-        const r = packAll(matParts, order, score);
-        // Fewest unplaced, then fewest sheets, then the emptiest last sheet (more usable offcut).
+        const r = packAll(matParts, order, score, gaps);
+        // Fewest unplaced, then fewest sheets, then no strip moved, then the emptiest last sheet (more usable offcut).
         const last = r.out.length ? r.out[r.out.length - 1].placed.reduce((s, p) => s + p.width * p.height, 0) : 0;
-        const key = [r.lost.length, r.out.length, last];
+        const key = [r.lost.length, r.out.length, gaps ? 1 : 0, last];
         const i = key.findIndex((v, k) => Math.abs(v - bestKey[k]) > 1e-6);
         const better = !best || (i >= 0 && key[i] < bestKey[i]);
         if (better) {
@@ -717,9 +719,15 @@ export function sheetBuyName(s: NestSheet, bom: readonly { name: string; catalog
 
 /** Cut lines with a piece the nest turned across the grain say so (I51), so the grain is never a surprise at the saw. */
 export function flagCrossGrain(cutList: CutLine[], nest: NestResult | null): CutLine[] {
-  const turned = new Set((nest?.sheets ?? []).flatMap((s) => s.parts.filter((p) => p.crossGrain).map((p) => p.label)));
-  const note = "Cut across the grain from a sheet offcut";
-  return cutList.map((c) => (c.label && turned.has(c.label) ? { ...c, notes: c.notes ? `${c.notes}. ${note}` : note } : c));
+  const turned = new Map<string, number>();
+  for (const p of (nest?.sheets ?? []).flatMap((s) => s.parts)) if (p.crossGrain && p.label) turned.set(p.label, (turned.get(p.label) ?? 0) + 1);
+  return cutList.map((c) => {
+    const n = c.label ? turned.get(c.label) ?? 0 : 0;
+    if (!n) return c;
+    // When only some of a row's pieces are turned, say how many, so the rest are still cut with the grain.
+    const note = n < c.quantity ? `Cut ${n} of ${c.quantity} across the grain from a sheet offcut` : "Cut across the grain from a sheet offcut";
+    return { ...c, notes: c.notes ? `${c.notes}. ${note}` : note };
+  });
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;

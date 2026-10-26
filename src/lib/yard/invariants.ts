@@ -684,11 +684,24 @@ export function i51Gaps(nest: NestResult | null | undefined): string[] {
   const out: string[] = [];
   const sheets = nest?.sheets ?? [];
   sheets.forEach((s, j) => {
-    for (const p of s.parts.filter(isTrimStrip)) {
-      const early = sheets.slice(0, j).find((e) => e.material === s.material && e.width === s.width && e.height === s.height &&
-        (freeGapSpot(e, p.width, p.height) || freeGapSpot(e, p.height, p.width)));
-      if (early) out.push(`${p.label ?? ""} ${p.name} ${p.width}x${p.height} opens Sheet ${s.index} though it fits a free gap on Sheet ${early.index}`.trim());
+    // Only a sheet opened for trim strips alone could have been saved, and only if all of them fit earlier gaps together.
+    if (!s.parts.length || !s.parts.every(isTrimStrip)) return;
+    const early = sheets.slice(0, j).filter((e) => e.material === s.material && e.width === s.width && e.height === s.height).map((e) => ({ ...e, parts: [...e.parts] }));
+    const spots: string[] = [];
+    for (const p of s.parts) {
+      let home: (typeof early)[number] | undefined;
+      for (const [w, h] of [[p.width, p.height], [p.height, p.width]]) {
+        home = early.find((e) => {
+          const at = freeGapSpot(e, w, h);
+          if (at) e.parts.push({ ...p, ...at, width: w, height: h });
+          return !!at;
+        });
+        if (home) break;
+      }
+      if (!home) return;
+      spots.push(`${p.label ?? ""} ${p.name} ${p.width}x${p.height} opens Sheet ${s.index} though it fits a free gap on Sheet ${home.index}`.trim());
     }
+    out.push(...spots);
   });
   return out;
 }
