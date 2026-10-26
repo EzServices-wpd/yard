@@ -89,3 +89,42 @@ test("I49 r6 count-joiner sweep: a count after a number, unit or joiner never mo
   assert.deepEqual(valOnly.slice(0, 10), [], `validator alone: ${valOnly.length}`);
   assert.deepEqual(guardOnly.slice(0, 10), [], `guard alone: ${guardOnly.length}`);
 });
+
+/** I49 r7 article/quantifier count sweep (row 529): an article or quantifier between a joiner and the count word ("2 x a pair of
+ * drawers", "3 × the two shelves"), quantifier counts ("a couple of", "one", "both"), more objects, and refused builds (" 1 deep"). */
+const APRE = ["", "30 wide ", "6 ft ", "1 m ", "72\" ", "2 x ", "3 × ", "36 by ", "two to ", "30 + "];
+const AOBJ: [string, string, string, string][] = [["bookcase", "shelves", "shelves", "shelf"], ["dresser", "drawers", "drawers", "drawer"], ["nightstand", "drawers", "drawers", "drawer"], ["wardrobe", "rods", "rods", "rod"]];
+const AFORMS = (noun: string, one: string): [string, string[], number][] => [
+  ...["a ", "an ", "the ", "both ", "each ", "one "].map((art): [string, string[], number] => [`${art}two ${noun}`, [`two ${noun}`, `${art}two ${noun}`], 2]),
+  [`a pair of ${noun}`, [`pair of ${noun}`, `a pair of ${noun}`], 2], [`a couple of ${noun}`, [`couple of ${noun}`, `a couple of ${noun}`], 2],
+  [`one ${one}`, [`one ${one}`], 1], [`both ${noun}`, [`both ${noun}`], 2],
+];
+const pmemo = new Map<string, string>();
+const planM = (q: string) => { let s = pmemo.get(q); if (s === undefined) pmemo.set(q, (s = plan(q))); return s; };
+/** Box and refused-or-built state: what the same-box guard holds still. */
+const state = (q: string) => { const p = gen(q); return JSON.stringify([p.pocket?.unit ?? p.overall ?? null, !!p.refused]); };
+export function articleSweep() {
+  const holes: string[] = [], valOnly: string[] = [], guardOnly: string[] = []; let tried = 0;
+  for (const tail of ["", " 1 deep"]) for (const pre of APRE) for (const [obj, thing, noun, one] of AOBJ) for (const [typed, quotes, n] of AFORMS(noun, one))
+    for (const quote of quotes) for (const read of [n, n - 1, n + 1].filter((x) => x > 0)) {
+      const prompt = `${obj} ${pre}${typed}${tail}`, raw = { sizes: [], counts: [C(thing, read, quote)] };
+      tried++;
+      const legit = pre === "" || pre === "30 wide ";
+      const both = chooseBuildPrompt(prompt, validateSpec(prompt, raw).spec, gen).buildPrompt;
+      if (!legit && both !== prompt && planM(both) !== planM(prompt)) holes.push(`${prompt} | ${quote}=${read} -> ${both}`);
+      // The guard alone never moves the box or flips refused/built; the validator alone never does outside a legit context.
+      const vOnly = specToPrompt(prompt, validateSpec(prompt, raw).spec).prompt;
+      if (!legit && vOnly !== prompt && state(vOnly) !== state(prompt)) valOnly.push(`${prompt} | ${quote}=${read} -> ${vOnly}`);
+      const gOnly = chooseBuildPrompt(prompt, raw as never, gen).buildPrompt;
+      if (gOnly !== prompt && state(gOnly) !== state(prompt)) guardOnly.push(`${prompt} | ${quote}=${read} -> ${gOnly}`);
+    }
+  return { tried, holes, valOnly, guardOnly };
+}
+
+test("I49 r7 article/quantifier count sweep: 'a pair of', 'the two', 'both' after a joiner, on built and refused builds, never moves the box or flips refused (row 529)", () => {
+  const { tried, holes, valOnly, guardOnly } = articleSweep();
+  assert.ok(tried >= 2000, `tried ${tried}`);
+  assert.deepEqual(holes.slice(0, 10), [], `${holes.length} holes`);
+  assert.deepEqual(valOnly.slice(0, 10), [], `validator alone: ${valOnly.length}`);
+  assert.deepEqual(guardOnly.slice(0, 10), [], `guard alone: ${guardOnly.length}`);
+});

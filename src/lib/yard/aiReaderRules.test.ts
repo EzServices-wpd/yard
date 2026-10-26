@@ -442,3 +442,44 @@ test("I49 r6 critic: 'a pair of' after a joiner is dropped, and a count edit nev
   // Legit: "a pair of" after a plain word still reads.
   assert.equal(viaReader("bookcase with a pair of shelves", { counts: [C4("shelves", 2, "pair of shelves")] }), "bookcase with 2 shelves");
 });
+
+// r7: the rest of Critic's row 529 table, an article or quantifier between a joiner and the count, the refused-or-built
+// pins for the same-box guard (both directions), and Critic's surviving mutants J11 ('ft.') and P7 (row 532).
+test("I49 r7: row 529's table, articles after a joiner, refused-or-built pins (both ways) and the J11/P7 pins (row 532)", () => {
+  const joined: [string, [string, number, string]][] = [
+    ["dresser 2 deep 3 x a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["bench 4 ft a pair of seats 1 deep", ["seats", 2, "pair of seats"]],
+    ["bookcase 2 deep 6 ft a pair of shelves", ["shelves", 2, "pair of shelves"]],
+    ["wardrobe 12 deep 6 ft a pair of rods", ["rods", 2, "pair of rods"]],
+    ["wardrobe 1 deep 6 ft a pair of rods", ["rods", 2, "pair of rods"]],
+    ["cabinet 2 x a pair of doors", ["doors", 2, "pair of doors"]],
+    ["wardrobe 36 by two rods", ["rods", 2, "two rods"]],
+    ["dresser 2 x a couple of drawers", ["drawers", 2, "couple of drawers"]],
+    ["bookcase 3 × the two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 1 m an two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 1 m both two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 1 m each two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 6 ft one two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 6 ft. two shelves", ["shelves", 2, "two shelves"]], // J11: a unit with its period
+  ];
+  for (const [q, [thing, n, quote]] of joined) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+  }
+  // The guard alone, past the validator: a box move on a built or refused build keeps the typed words. ("dresser 2 x a pair of
+  // drawers" → "2 x 2 drawers" moves no box, only the count: the validator is what drops that one.)
+  for (const [q, thing, quote] of [["bookcase 2 deep 6 ft a pair of shelves", "shelves", "pair of shelves"], ["wardrobe 12 deep 6 ft a pair of rods", "rods", "pair of rods"]] as const)
+    assert.equal(chooseBuildPrompt(q, { sizes: [], counts: [C4(thing, 2, quote) as never] }).buildPrompt, q, `guard alone: ${q}`);
+  // Refused-or-built, same box: a count edit never lifts a refusal ("wardrobe two rods" needs 88" tall; read as 1 it would
+  // build) and never makes one ("wardrobe a pair of rods" builds; "2 rods" refuses). A refusal that stays a refusal is fine.
+  assert.equal(chooseBuildPrompt("wardrobe two rods", { sizes: [], counts: [C4("rods", 1, "two rods") as never] }).buildPrompt, "wardrobe two rods", "refusal never lifted");
+  assert.equal(chooseBuildPrompt("wardrobe a pair of rods", { sizes: [], counts: [C4("rods", 2, "pair of rods") as never] }).buildPrompt, "wardrobe a pair of rods", "refusal never made");
+  assert.equal(chooseBuildPrompt("wardrobe two rods", { sizes: [], counts: [C4("rods", 2, "two rods") as never] }).buildPrompt, "wardrobe 2 rods", "refused stays refused");
+  // P7: a dash or 'plus' after a size with no number is not arithmetic; the blacklist alone keeps the size (the allow-list refuses it on its own).
+  for (const q of ["bookcase 2 m tall - pine", "bookcase 2 m tall plus doors"])
+    assert.equal(validateSpec(q, { sizes: [cm("H", 200, "2 m tall", "m")] }, { allowList: false }).spec.sizes.length, 1, `blacklist keeps: ${q}`);
+  // Legit: an article or quantifier after a plain word still reads.
+  assert.equal(viaReader("bookcase with the two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with the 2 shelves");
+  assert.equal(viaReader("cabinet with a pair of doors and a pair of drawers", { counts: [C4("doors", 2, "pair of doors"), C4("drawers", 2, "pair of drawers")] }), "cabinet with 2 doors and 2 drawers");
+});
