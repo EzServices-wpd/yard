@@ -479,7 +479,8 @@
   from { transform: rotateY(-30deg) translateY(10px) scale(0.92); opacity: 0.2; }
   to { transform: none; opacity: 1; }
 }
-.yard-alive-grid[data-in][data-offscreen] .yard-alive, .yard-alive-grid[data-in][data-offscreen] > *, [data-offscreen] .yard-making-list, [data-offscreen] .yp { animation-play-state: paused; }
+.yard-alive-grid[data-in][data-offscreen] .yard-alive, .yard-alive-grid[data-in][data-offscreen] > *, [data-offscreen] .yard-making-list, [data-offscreen] .yp,
+[data-offscreen] .yard-grain { animation-play-state: paused; } /* the hero grain (60s infinite) stops off screen too */
 
 /* Building overlay: real parts of a nearby known build drop in by step (transform/opacity only). */
 @media (prefers-reduced-motion: no-preference) {
