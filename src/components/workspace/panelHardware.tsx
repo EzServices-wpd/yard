@@ -1,23 +1,31 @@
 "use client";
 
 import * as THREE from "three";
+import { plyEdgeMap } from "@/components/workspace/shop-light";
 
 const BAND = "#c49a62";
 const STEEL = "#8c9096";
 const PULL = "#3e3832";
 const PIN = "#d4cdc4";
 
-export function EdgeBand({ w, h, d }: { w: number; h: number; d: number }) {
+export function EdgeBand({ w, h, d, plies = 0 }: { w: number; h: number; d: number; plies?: number }) {
   const face = w * h >= w * d && w * h >= h * d ? "xy" : w * d >= h * d ? "xz" : "yz";
   const t = Math.min(0.16, Math.min(w, h, d) * 0.28);
-  const mat = <meshStandardMaterial color={BAND} roughness={0.58} metalness={0.04} />;
+  // Shop light (PR 16): a plywood cut edge shows its plies. Same strips, only their material changes.
+  // `u`/`v` is the UV axis that crosses the panel thickness on each strip's edge face (BoxGeometry UVs).
+  const edge = (axis: "u" | "v") => {
+    const map = plyEdgeMap(plies, axis);
+    return map ? <meshStandardMaterial color="#ffffff" map={map} roughness={0.7} metalness={0} /> : <meshStandardMaterial color={BAND} roughness={0.58} metalness={0.04} />;
+  };
+  const mat = edge("v");
+  const matU = plies > 0 ? edge("u") : mat;
   if (face === "xy") {
     return (
       <group>
         <mesh position={[0, h / 2 - t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
         <mesh position={[0, -h / 2 + t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
-        <mesh position={[-w / 2 + t / 2, 0, 0]}>{mat}<boxGeometry args={[t, h - t * 2, d + 0.01]} /></mesh>
-        <mesh position={[w / 2 - t / 2, 0, 0]}>{mat}<boxGeometry args={[t, h - t * 2, d + 0.01]} /></mesh>
+        <mesh position={[-w / 2 + t / 2, 0, 0]}>{matU}<boxGeometry args={[t, h - t * 2, d + 0.01]} /></mesh>
+        <mesh position={[w / 2 - t / 2, 0, 0]}>{matU}<boxGeometry args={[t, h - t * 2, d + 0.01]} /></mesh>
       </group>
     );
   }
@@ -33,10 +41,10 @@ export function EdgeBand({ w, h, d }: { w: number; h: number; d: number }) {
   }
   return (
     <group>
-      <mesh position={[0, h / 2 - t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
-      <mesh position={[0, -h / 2 + t / 2, 0]}>{mat}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
-      <mesh position={[0, 0, d / 2 - t / 2]}>{mat}<boxGeometry args={[w + 0.01, h - t * 2, t]} /></mesh>
-      <mesh position={[0, 0, -d / 2 + t / 2]}>{mat}<boxGeometry args={[w + 0.01, h - t * 2, t]} /></mesh>
+      <mesh position={[0, h / 2 - t / 2, 0]}>{matU}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
+      <mesh position={[0, -h / 2 + t / 2, 0]}>{matU}<boxGeometry args={[w + 0.01, t, d + 0.01]} /></mesh>
+      <mesh position={[0, 0, d / 2 - t / 2]}>{matU}<boxGeometry args={[w + 0.01, h - t * 2, t]} /></mesh>
+      <mesh position={[0, 0, -d / 2 + t / 2]}>{matU}<boxGeometry args={[w + 0.01, h - t * 2, t]} /></mesh>
     </group>
   );
 }
