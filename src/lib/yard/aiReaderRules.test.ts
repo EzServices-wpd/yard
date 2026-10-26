@@ -335,3 +335,32 @@ test("I49 r5 mutation pins: each layer rule alone (bare separator, letter axis t
   assert.equal(soleSize("bookcase 6 ft 4 in tall with two shelves", S("H", 76, "6 ft 4 in tall", "overall", "ft-in") as never), true);
   assert.equal(specToPrompt("bookcase 6 ft 4 in tall with two shelves", spec([S("H", 76, "6 ft 4 in tall", "overall", "ft-in")])).prompt, "bookcase 76 tall with two shelves");
 });
+
+// r6 (Critic row 505): a count's digits must never join a number, unit or separator typed before it.
+test("I49 r6: a count word after a number, unit, separator or range word is dropped, and a count edit never moves a size (row 505)", () => {
+  const joined: [string, [string, number, string]][] = [
+    ["bookcase 6 ft two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 6' three shelves", ["shelves", 3, "three shelves"]],
+    ["bookcase 5 feet four shelves", ["shelves", 4, "four shelves"]],
+    ["bench 4 ft two seats", ["seats", 2, "two seats"]],
+    ["dresser 2 x three drawers", ["drawers", 3, "three drawers"]],
+    ["dresser 60 wide 2x three drawers", ["drawers", 3, "three drawers"]],
+    ["dresser 3 × four drawers", ["drawers", 4, "four drawers"]],
+    ["nightstand 2 by two drawers", ["drawers", 2, "two drawers"]],
+    ["cabinet 36 by two doors", ["doors", 2, "two doors"]],
+    ["bench 48 x two seats", ["seats", 2, "two seats"]],
+    ["toy organizer 3 x three bins", ["bins", 3, "three bins"]],
+    ["bookcase with two to three shelves", ["shelves", 3, "three shelves"]],
+    ["bookcase with two or three shelves", ["shelves", 3, "three shelves"]],
+  ];
+  for (const [q, [thing, n, quote]] of joined) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+    // The rewrite guard alone, past the validator: the count edit would move a size, so the typed words build (ranges move no size).
+    if (!/\b(?:to|or)\b/.test(q)) assert.equal(chooseBuildPrompt(q, { sizes: [], counts: [C4(thing, n, quote) as never] }).buildPrompt, q, `guard alone: ${q}`);
+  }
+  // Legit count edits still happen.
+  assert.equal(viaReader("ten-drawer dresser", { counts: [C4("drawers", 10, "ten-drawer")] }), "10 drawers dresser");
+  assert.equal(viaReader("bookcase 30 wide 72 tall 12 deep two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 wide 72 tall 12 deep 2 shelves");
+});

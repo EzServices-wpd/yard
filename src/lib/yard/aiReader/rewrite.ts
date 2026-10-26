@@ -99,5 +99,12 @@ export function chooseBuildPrompt(prompt: string, spec: ReaderSpec | null, gen: 
   if (identity(a) !== identity(b)) return keep(`rewrite changes the object (${identity(a)} → ${identity(b)}): regex path`, edits);
   if (b.refused && !a.refused) return keep("rewrite turns a build into a refusal: regex path", edits);
   if (!b.refused && !sizes.every((s) => honoredBy(b, s))) return keep("rewrite does not build every size read: regex path", edits);
+  // A count edit only turns a number word into digits: it never makes or moves a size ("6 ft two shelves" must not read
+  // "6 ft 2", "2 x three drawers" must not read 2" x 3"). The build with the count edits must stand at the build without them (row 505).
+  const sizeOnly = specToPrompt(prompt, { sizes: spec.sizes, counts: [] }, (s) => honoredBy(a, s)).prompt;
+  if (!b.refused && sizeOnly !== rewritten) {
+    const c = sizeOnly === prompt ? a : gen(sizeOnly), bx = b.pocket?.unit ?? b.overall, cx = c.pocket?.unit ?? c.overall;
+    if (!bx || !cx || bx.width !== cx.width || bx.height !== cx.height || bx.depth !== cx.depth) return keep("a count edit moves a size: regex path", edits);
+  }
   return { buildPrompt: rewritten, used: true, edits, reason: "reader rewrite builds the same object at the sizes typed" };
 }

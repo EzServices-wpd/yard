@@ -158,6 +158,7 @@ export const soleSize = (prompt: string, s: ReaderSize): boolean => {
   return !T.some((x, j) => (j !== own && x.k === "axis" && AXIS_TOKEN[x.t].includes(s.axis)) || letter(j));
 };
 const ALLOW_UNITS = new Set(["cm", "mm", "m", "ft"]);
+const COUNT_JOINED = new RegExp(String.raw`(?:\d\s*[x×*]?|\b(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|yards?|(?:centi|milli)?met(?:er|re)s?|x|by|to|or|times|plus)\.?|[×*~–—&\/+'"-])\s*$`);
 
 export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: boolean } = {}): { spec: ReaderSpec; dropped: string[] } {
   const dropped: string[] = [];
@@ -178,6 +179,9 @@ export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: b
     if (c?.assumed !== false || !quoted(prompt, c.quote) || !COUNT_THINGS.includes(c.thing) || !Number.isInteger(c.n)) { dropped.push(`${where}: unquoted, assumed or malformed`); continue; }
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
     if (new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`).test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
+    // A number, unit, separator or range word just before the count ("6 ft two shelves", "2 x three drawers", "30 by two
+    // shelves", "two to three shelves"): its digits would join that measurement or range (row 505), so the parser reads it.
+    if (COUNT_JOINED.test(norm(prompt).slice(0, quoteAt(prompt, c.quote)))) { dropped.push(`${where}: joined to a number, unit or separator before it`); continue; }
     const noun = NOUN[c.thing];
     // The noun typed twice ("six small drawers, the top two drawers", "drawers x6 ... two drawers", "a dozen drawers ... two drawers"): which number counts is the parser's call.
     if (noun && (norm(prompt).match(new RegExp(`\\b${noun}\\b`, "g")) ?? []).length > 1) { dropped.push(`${where}: that thing is typed more than once`); continue; }
