@@ -217,3 +217,57 @@ test("I49 r4: each boundary and metric rule holds on its own (row 481)", () => {
   assert.equal(validateSpec("bookcase 6 ft tall", { sizes: [S("W", 72, "6 ft", "overall", "ft")] }).spec.sizes.length, 0, "the axis word right after the quote must fit, even with no other axis typed");
   assert.equal(specToPrompt("shelf 50 cm or millimetres wide", spec([cm("W", 50, "50 cm or millimetres wide")])).edits.length, 0, "a quote naming two metric units is never rewritten");
 });
+
+// r5: Critic's r4 probes (rows 498, 499, 500). Each reply is dropped and the typed words build.
+test("I49 r5: a quote joined to another number by a unit or joining word never rewrites (row 498)", () => {
+  holds([
+    ["nightstand 1 metre 20 cm wide with two drawers", { sizes: [cm("W", 20, "20 cm wide")] }],
+    ["bookcase 1 meter 20 centimeters wide with two shelves", { sizes: [cm("W", 20, "20 centimeters wide")] }],
+    ["bookcase 1 m and 20 cm wide with two shelves", { sizes: [cm("W", 20, "20 cm wide")] }],
+    ["nightstand 60—80 cm wide with two drawers", { sizes: [cm("W", 80, "80 cm wide")] }],
+    ["nightstand between 60 and 80 cm wide with two drawers", { sizes: [cm("W", 80, "80 cm wide")] }],
+    ["nightstand 60 or 80 cm wide with two drawers", { sizes: [cm("W", 80, "80 cm wide")] }],
+    ["shelf 2 times 80 cm wide", { sizes: [cm("W", 80, "80 cm wide")] }],
+    ["bench 80 cm & 40 cm", { sizes: [cm("W", 40, "40 cm")] }],
+    // row 500 (Q18): a hyphen or en dash range, with or without spaces
+    ["nightstand 60-80 cm wide with two drawers", { sizes: [cm("W", 80, "80 cm wide")] }],
+    ["nightstand 60 - 80 cm wide with two drawers", { sizes: [cm("W", 80, "80 cm wide")] }],
+    ["nightstand 60–80 cm wide with two drawers", { sizes: [cm("W", 80, "80 cm wide")] }],
+  ], "498");
+});
+
+test("I49 r5: an axis typed beside the quote in other words wins over the reply (row 499)", () => {
+  holds([
+    ["bookcase 2 m (tall) with two shelves", { sizes: [cm("W", 200, "2 m", "m")] }],
+    ["bookcase height 2 m with two shelves", { sizes: [cm("W", 200, "2 m", "m")] }],
+    ["bookcase W 2 m with two shelves", { sizes: [cm("H", 200, "2 m", "m")] }],
+    ["bookcase 2 m H with two shelves", { sizes: [cm("W", 200, "2 m", "m")] }],
+    ["bookcase 1.8 m H, 30 W with two shelves", { sizes: [cm("W", 180, "1.8 m", "m")] }],
+    ["bookcase 60 cm front to back with two shelves", { sizes: [cm("W", 60, "60 cm")] }],
+    ["round table 1 m diameter", { sizes: [cm("H", 100, "1 m", "m")] }],
+  ], "499");
+});
+
+test("I49 r5: a count whose noun is typed twice is dropped, so no text-only edit (rows 499 text cases)", () => {
+  for (const [q, raw] of [
+    ["dresser with six small drawers, the top two drawers small, 1 m wide", { counts: [C4("drawers", 2, "two drawers")] }],
+    ["dresser with a dozen drawers, the top two drawers small, 1 m wide", { counts: [C4("drawers", 2, "two drawers")] }],
+    ["dresser 1 m wide, drawers: 6, the top two drawers small", { counts: [C4("drawers", 2, "two drawers")] }],
+    ["dresser 1 m wide with drawers x6, the top two drawers small", { counts: [C4("drawers", 2, "two drawers")] }],
+    ["dresser 1 m wide with 6 x drawers, the top two drawers small", { counts: [C4("drawers", 2, "two drawers")] }],
+    ["cabinet 1 m wide with three pair of doors", { counts: [C4("doors", 2, "pair of doors")] }],
+    ["wardrobe 2 m wide with two pair of doors", { counts: [C4("doors", 2, "pair of doors")] }],
+  ] as [string, unknown][]) {
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `the typed words, unedited: ${q}`);
+  }
+});
+
+test("I49 r5: Critic's new legit rewrites still happen (2 m tall first, (2 m) as H, 2 m high, 45 cm depth)", () => {
+  const cases: [string, unknown, string][] = [
+    ["2 m tall bookcase with two shelves", { sizes: [cm("H", 200, "2 m tall", "m")] }, "78 3/4 tall bookcase with two shelves"],
+    ["bookcase 2 m high with two shelves", { sizes: [cm("H", 200, "2 m high", "m")] }, "bookcase 78 3/4 tall with two shelves"],
+    ["cabinet 45 cm depth with two doors", { sizes: [cm("D", 45, "45 cm depth")] }, "cabinet 17 11/16 deep with two doors"],
+  ];
+  for (const [q, raw, want] of cases) assert.equal(viaReader(q, raw), want, q);
+});
