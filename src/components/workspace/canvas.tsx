@@ -22,12 +22,13 @@ import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-
 import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
+import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 
 const HULL = "#8a8478";
-const BENCH_BG = "#1a1612";
+const BENCH_BG = SHOP_GROUND.bg;
 /**
  * Fat lines (ghost opening, panel outlines) live on their own layer: the main camera sees them,
  * but the contact-shadow camera does not. Rendered with its depth material a line mesh becomes big
@@ -49,17 +50,17 @@ function StudioLights({
   const span = Math.max(W, H, D);
   const fitted = project.panels.length > 0;
   const camSpan = Math.max(span * 0.75, 36);
-  // Key light from front-left and high, a cool fill from the right, a warm rim from behind:
-  // front faces read bright, the side you see from the 3/4 camera sits a step darker, so
-  // shelves, dividers and edges separate instead of washing into one flat tone.
+  // Shop light (PR 16): a warm lamp low from front-left rakes across grain and cut edges, a cool fill from the
+  // right keeps whites and kraft neutral, a warm rim from behind separates the silhouette. Lights only.
+  const L = SHOP_LIGHT;
   return (
     <>
-      <ambientLight intensity={0.12} />
-      <hemisphereLight args={["#fff1dc", "#1a140e", fitted ? 0.3 : 0.4]} />
+      <ambientLight intensity={L.ambient} />
+      <hemisphereLight args={[L.hemi.sky, L.hemi.ground, fitted ? L.hemi.fitted : L.hemi.loose]} />
       <directionalLight
-        position={[-span * 0.62, Math.max(H * 1.35, 48), span * 0.95]}
-        intensity={fitted ? 2.1 : 1.8}
-        color="#fff3e0"
+        position={shopKeyPosition(span, H)}
+        intensity={fitted ? L.key.fitted : L.key.loose}
+        color={L.key.color}
         castShadow={useShadows}
         shadow-mapSize={fitted ? [2048, 2048] : [1024, 1024]}
         shadow-bias={-0.00018}
@@ -71,8 +72,8 @@ function StudioLights({
         shadow-camera-top={camSpan}
         shadow-camera-bottom={-camSpan}
       />
-      <directionalLight position={[span * 0.9, H * 0.5, span * 0.3]} intensity={fitted ? 0.42 : 0.34} color="#b4c6de" />
-      <directionalLight position={[span * 0.2, H * 0.9, -span * 0.9]} intensity={0.3} color="#ffd7a8" />
+      <directionalLight position={[span * 0.9, H * 0.5, span * 0.3]} intensity={fitted ? L.fill.fitted : L.fill.loose} color={L.fill.color} />
+      <directionalLight position={[span * 0.2, H * 0.9, -span * 0.9]} intensity={L.rim.intensity} color={L.rim.color} />
       <FootprintShadow project={project} />
     </>
   );
@@ -105,7 +106,7 @@ function FootprintShadow({ project }: { project: YardProject }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(box.minX + box.maxX) / 2, 0.02, (box.minZ + box.maxZ) / 2]} renderOrder={1}>
       <planeGeometry args={[w + pad * 2, d + pad * 2]} />
-      <meshBasicMaterial map={tex} transparent opacity={0.62} depthWrite={false} color="#000000" />
+      <meshBasicMaterial map={tex} transparent opacity={SHOP_LIGHT.contact} depthWrite={false} color="#000000" />
     </mesh>
   );
 }
@@ -251,16 +252,16 @@ export function WorkspaceCanvas() {
         dpr={typeof window !== "undefined" && window.innerWidth < 820 ? [1, 1.5] : [1, 1.75]}
         style={{ display: "block", width: "100%", height: "100%" }}
         onCreated={({ camera: cam, gl, scene }) => {
-          gl.setClearColor("#1a1612", 1);
+          gl.setClearColor(BENCH_BG, 1);
           gl.outputColorSpace = THREE.SRGBColorSpace;
-          scene.background = new THREE.Color("#1a1612");
+          scene.background = new THREE.Color(BENCH_BG);
           cam.lookAt(0, 14, 0);
           cam.layers.enable(LINE_LAYER);
           cam.layers.enable(PROP_LAYER);
         }}
         onPointerMissed={() => select(null)}
       >
-        <color attach="background" args={["#1a1612"]} />
+        <color attach="background" args={[BENCH_BG]} />
         {/* The HDR preset loads async and suspends; its own boundary keeps that from suspending (hiding) the whole workspace (F43). */}
         <Suspense fallback={null}>
           {/* Self-hosted (drei presets fetch from raw.githack.com at runtime): same CC0 Poly Haven file, public/hdri. */}
@@ -270,7 +271,7 @@ export function WorkspaceCanvas() {
         {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
           <planeGeometry args={[6000, 6000]} />
-          <meshStandardMaterial color="#231d17" roughness={0.95} metalness={0} />
+          <meshStandardMaterial color={SHOP_GROUND.floor} roughness={0.95} metalness={0} />
         </mesh>
         <RevealCamera />
         <BenchScene
@@ -296,7 +297,7 @@ export function WorkspaceCanvas() {
           plan={plan}
           stepping={activeStep != null}
         />
-        <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
+        <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor={SHOP_GROUND.gridCell} sectionSize={24} sectionThickness={0.5} sectionColor={SHOP_GROUND.gridSection} fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
         <OrbitControls
           makeDefault
           enabled={workMode !== "walk"}

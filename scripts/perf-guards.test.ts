@@ -29,3 +29,10 @@ test("F29 one tap: the stock merge preloads at idle, and the chip toggles on a p
   assert.ok(chip, "Material chip must toggle straight from onClick");
   assert.match(home, /function pickStock\(id: StockId\) \{\s*setStockId\(\(cur\) => \(cur === id \? null : id\)\);/);
 });
+
+test("the hero grain (60s infinite) pauses off screen like the other loops, and has a reduced-motion stop", () => {
+  const pause = css.match(/([^{}]*)\{\s*animation-play-state:\s*paused;\s*\}/g)?.find((r) => r.includes("[data-offscreen] .yard-making-list")) ?? "";
+  assert.match(pause, /\[data-offscreen\] \.yard-grain/, "grain is in the [data-offscreen] pause rule");
+  assert.match(home, /<section ref=\{heroRef\} data-offscreen=\{heroOff \|\| undefined\}[^>]*>\s*<svg className="yard-grain"/, "the hero that holds the grain sets data-offscreen");
+  assert.match(css, /prefers-reduced-motion[^{]*\{[^}]*\.yard-grain[^}]*animation:\s*none/);
+});

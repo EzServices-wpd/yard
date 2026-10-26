@@ -58,7 +58,7 @@ test("ungraded types are marked new and stay out of Popular and the hero; undraw
   assert.ok(feed.sections.find((s) => s.id === "popular")!.cards.every((c) => c.status === "checked"));
   assert.ok(feed.hero && graded.has(feed.hero.slug));
   const goal = all.find((c) => c.buildType === "soccer-goal")!;
-  assert.deepEqual([goal.title, goal.size, goal.drawing, goal.status, goal.examplePrompt], ["Soccer goal", "48 × 12 × 36 in", null, "new", "soccer goal 48 wide 36 tall 12 deep"]);
+  assert.deepEqual([goal.title, goal.size, goal.drawing, goal.status, goal.examplePrompt], ["Soccer goal", "48 × 12 × 36 in", null, "new", "soccer goal 48 wide 36 tall 12 deep from 3/4 PVC pipe"]);
 });
 
 test("a type's size is its most-built size; a tie goes to the newest", () => {
