@@ -43,7 +43,7 @@ export function IdeaDrawing({ drawing, title, eager = false }: { drawing: Drawin
         // Never for a feed card (I-draw: liveFeed shows only drawn cards, feedViolations and scripts/e2e/ideas-drawings.py
         // fail on one). Only a kept plan with no baked drawing lands here: its name, drawn in pencil.
         <div data-idea-no-drawing="1" className="absolute inset-0 grid place-items-center p-4 text-center">
-          <span className="font-display text-xl leading-tight text-[rgb(120,110,96)]">{title}</span>
+          <span className="font-display text-xl leading-tight text-ink-muted">{title}</span>
         </div>
       )}
     </div>

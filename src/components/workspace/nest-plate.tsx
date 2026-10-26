@@ -35,14 +35,14 @@ export function NestPlate({
   const label = `${backer ? '1/4" backer sheet' : "Sheet"} ${sheet.index}${of} · ${sheet.material || (backer ? '1/4" plywood' : '3/4" plywood')} · ${size} · ${usedPct}% used · 1/8" kerf`;
 
   return (
-    <figure className="overflow-hidden rounded-md border border-border bg-paper" data-yard-nest={backer ? `backer-${sheet.index}` : sheet.index}>
+    <figure className="yard-sheet overflow-hidden rounded-md border border-border bg-paper" data-yard-nest={backer ? `backer-${sheet.index}` : sheet.index}>
       <svg
         viewBox={`0 0 ${sw} ${sh}`}
         className="h-auto w-full"
         role="img"
         aria-label={label}
       >
-        <rect x={0} y={0} width={sw} height={sh} fill="#f3eee4" stroke="#a08c6e" strokeWidth={0.35} />
+        <rect x={0} y={0} width={sw} height={sh} className="fill-paper" stroke="#a08c6e" strokeWidth={0.35} />
         {Array.from({ length: Math.floor(sw / 12) - 1 }, (_, i) => (
           <line
             key={i}
@@ -90,9 +90,8 @@ export function NestPlate({
                 width={Math.max(0, p.width - 0.8)}
                 height={Math.max(0, p.height - 0.8)}
                 fill="none"
-                stroke="#c8641e"
                 strokeWidth={0.8}
-                className="yard-sheet-hl"
+                className="yard-sheet-hl stroke-mark"
                 style={{ opacity: on ? 1 : 0 }}
               />
               <text
@@ -103,7 +102,7 @@ export function NestPlate({
                 fontFamily="Newsreader, Times New Roman, serif"
                 fontWeight={600}
                 fontSize={fs}
-                fill="#1a1612"
+                className="fill-ink"
               >
                 {L.text}
               </text>
@@ -114,7 +113,7 @@ export function NestPlate({
                   textAnchor="middle"
                   fontFamily="ui-monospace, SF Mono, Menlo, monospace"
                   fontSize={Math.min(2.4, fs * 0.42)}
-                  fill="#6b6358"
+                  className="fill-ink-muted"
                 >
                   {L.dims}
                 </text>
@@ -126,7 +125,7 @@ export function NestPlate({
                   textAnchor="middle"
                   fontFamily="Newsreader, Times New Roman, serif"
                   fontSize={Math.min(2.2, fs * 0.38)}
-                  fill="#6b6358"
+                  className="fill-ink-muted"
                 >
                   {p.name}
                 </text>

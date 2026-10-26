@@ -516,8 +516,8 @@
 
 /* Reveal ruler: 1/16″-style ticks, every fourth one taller (pure background, no layout). */
 .yard-ruler {
-  background-image: repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.35) 0 1px, transparent 1px 10px),
-    repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.18) 0 1px, transparent 1px 2.5px);
+  background-image: repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 234 230) / 0.35) 0 1px, transparent 1px 10px),
+    repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 234 230) / 0.18) 0 1px, transparent 1px 2.5px);
   background-size: 100% 7px, 100% 3px;
   background-position: 0 0, 0 4px;
   background-repeat: no-repeat;
@@ -526,8 +526,8 @@
 /* Cut sheet ↔ cut list: one accent, 2 px-ish outline, 120 ms fade (opacity only). */
 .yard-sheet-hl { transition: opacity 120ms ease-out; pointer-events: none; }
 .yard-sheet-piece { transition: opacity 120ms ease-out; outline: none; }
-.yard-sheet-piece:focus-visible rect:first-child { stroke: #c8641e; stroke-width: 0.6; }
-.yard-cut-row[data-active] { background-color: rgb(200 100 30 / 0.14); box-shadow: inset 2px 0 0 #c8641e; }
+.yard-sheet-piece:focus-visible rect:first-child { stroke: var(--color-mark); stroke-width: 0.6; }
+.yard-cut-row[data-active] { background-color: color-mix(in oklab, var(--color-mark) 14%, transparent); box-shadow: inset 2px 0 0 var(--color-mark); }
 .yard-cut-row[data-done] td:not(:first-child) { opacity: 0.45; text-decoration: line-through; text-decoration-thickness: 1px; }
 
 /* Price reason pill: fades up once the build settles; still under reduced motion. */
