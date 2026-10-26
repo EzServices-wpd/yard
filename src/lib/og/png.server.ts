@@ -4,7 +4,7 @@
  * no network: the wasm and the fonts are bundled into the server function.
  */
 import { initWasm, Resvg } from "@resvg/resvg-wasm";
-import wasmData from "@resvg/resvg-wasm/index_bg.wasm?inline";
+import wasmData from "@resvg/resvg-wasm/index_bg.wasm?url&inline";
 import figtree400 from "./fonts/Figtree-400.ttf?inline";
 import figtree700 from "./fonts/Figtree-700.ttf?inline";
 
