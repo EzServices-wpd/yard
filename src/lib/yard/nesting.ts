@@ -33,6 +33,8 @@ export interface PlacedPart {
   material: string;
   /** The 3D model part ids this sheet piece is cut for (same ids as CutLine.partIds and data-part). */
   partIds?: string[];
+  /** A grain-locked strip turned 90° to fit an earlier sheet's offcut instead of opening a sheet (I51). */
+  crossGrain?: boolean;
 }
 
 export interface NestSheet {
@@ -217,6 +219,60 @@ function packSheet(
 }
 
 /**
+ * Where a w×h piece fits the empty area of a packed sheet (a kerf from every part; none at the factory edge), or null.
+ * Any spot can slide left and down until it touches the edge or a part's kerf, so only those corners are tried.
+ */
+export function freeGapSpot(
+  sheet: { width: number; height: number; parts: readonly { x: number; y: number; width: number; height: number }[] },
+  w: number,
+  h: number,
+): { x: number; y: number } | null {
+  if (w * h > sheet.width * sheet.height - sheet.parts.reduce((a, p) => a + p.width * p.height, 0) + 1e-6) return null;
+  const xs = [0, ...sheet.parts.map((p) => p.x + p.width + KERF)].sort((a, b) => a - b);
+  const ys = [0, ...sheet.parts.map((p) => p.y + p.height + KERF)].sort((a, b) => a - b);
+  const clear = (x: number, y: number) =>
+    sheet.parts.every(
+      (p) => x >= p.x + p.width + KERF - 1e-6 || p.x >= x + w + KERF - 1e-6 || y >= p.y + p.height + KERF - 1e-6 || p.y >= y + h + KERF - 1e-6,
+    );
+  for (const y of ys) {
+    for (const x of xs) {
+      if (x + w <= sheet.width + 1e-6 && y + h <= sheet.height + 1e-6 && clear(x, y)) return { x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * Before a new sheet is opened, put each part that fits a free gap of an earlier sheet there, as cut, else turned 90°.
+ * A grain-locked strip (allowRotate false) is turned only here, rather than buy a sheet for it, and is flagged crossGrain.
+ */
+function fillGaps(
+  sheets: { placed: PlacedPart[] }[],
+  parts: NestPart[],
+  order: PartOrder,
+  size: { width: number; height: number },
+): NestPart[] {
+  const left: NestPart[] = [];
+  for (const part of [...parts].sort(order)) {
+    let done = false;
+    for (const sh of sheets) {
+      for (const rotated of part.width === part.height ? [false] : [false, true]) {
+        const w = rotated ? part.height : part.width;
+        const h = rotated ? part.width : part.height;
+        const spot = freeGapSpot({ ...size, parts: sh.placed }, w, h);
+        if (!spot) continue;
+        sh.placed.push({ id: part.id, name: part.name, label: part.label, ...spot, width: w, height: h, rotated, material: part.material, ...(rotated && !part.allowRotate ? { crossGrain: true } : {}) });
+        done = true;
+        break;
+      }
+      if (done) break;
+    }
+    if (!done) left.push(part);
+  }
+  return left;
+}
+
+/**
  * Nest parts onto standard 4x8 sheets (96" x 48"), grouped by material.
  */
 export function nestParts(
@@ -242,6 +298,9 @@ export function nestParts(
     const lost: NestPart[] = [];
     let remaining = matParts;
     while (remaining.length > 0) {
+      // I51: no sheet is opened for a part that fits a free gap of an earlier sheet.
+      remaining = fillGaps(out, remaining, order, sheetSize);
+      if (remaining.length === 0) break;
       const { placed, remaining: still } = packSheet(remaining, sheetSize.width, sheetSize.height, order, score);
       if (placed.length === 0) {
         // Cannot place any more on a full sheet — give up on these
@@ -637,6 +696,13 @@ function sheetSizeKey(s: NestSheet): "4x8" | "4x10" {
 export function sheetBuyName(s: NestSheet, bom: readonly { name: string; catalogId?: string; unit?: string }[]): string | null {
   const key = `${sheetStockOf(s)}-${sheetSizeKey(s)}`;
   return bom.find((b) => b.catalogId === key && /^sheets?$/.test(b.unit ?? ""))?.name ?? null;
+}
+
+/** Cut lines with a piece the nest turned across the grain say so (I51), so the grain is never a surprise at the saw. */
+export function flagCrossGrain(cutList: CutLine[], nest: NestResult | null): CutLine[] {
+  const turned = new Set((nest?.sheets ?? []).flatMap((s) => s.parts.filter((p) => p.crossGrain).map((p) => p.label)));
+  const note = "Cut across the grain from a sheet offcut";
+  return cutList.map((c) => (c.label && turned.has(c.label) ? { ...c, notes: c.notes ? `${c.notes}. ${note}` : note } : c));
 }
 
 export const SHEET_4X8 = DEFAULT_SHEET;
