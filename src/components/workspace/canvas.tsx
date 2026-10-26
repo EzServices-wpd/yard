@@ -23,6 +23,8 @@ import { explodeClock, solvedVersion, subscribeSolved } from "@/components/works
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
+import { ScaleLayer } from "@/components/workspace/scale-ghost";
+import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 
 const HULL = "#8a8478";
 const BENCH_BG = "#1a1612";
@@ -142,7 +144,11 @@ function StepCapture() {
         if (view?.enabled) {
           cam.clearViewOffset();
         }
+        // Step photos show the build only: the scale figure and props stay off them (and off the PDF).
+        const propsSeen = cam.layers.isEnabled(PROP_LAYER);
+        cam.layers.disable(PROP_LAYER);
         gl.render(scene, camera);
+        if (propsSeen) cam.layers.enable(PROP_LAYER);
         const dataUrl = gl.domElement.toDataURL("image/jpeg", 0.92);
         if (view?.enabled) {
           cam.setViewOffset(view.fullWidth, view.fullHeight, view.offsetX, view.offsetY, view.width, view.height);
@@ -250,6 +256,7 @@ export function WorkspaceCanvas() {
           scene.background = new THREE.Color("#1a1612");
           cam.lookAt(0, 14, 0);
           cam.layers.enable(LINE_LAYER);
+          cam.layers.enable(PROP_LAYER);
         }}
         onPointerMissed={() => select(null)}
       >
@@ -302,6 +309,7 @@ export function WorkspaceCanvas() {
           target={[0, 6, 0]}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
+        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk"} />
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
@@ -345,6 +353,8 @@ function CameraRig({
   const cavityKey = `${facesOpen ? 1 : 0}|${soloDrawer ?? ""}`;
   const lastCavity = useRef(cavityKey);
   const fitRef = useRef<((glideMs?: number) => void) | null>(null);
+  // The scale figure stands beside the build: frame it too while it shows (never in See inside).
+  const figure = useScale().figure;
   const endGlide = () => { glide.current = null; explodeClock.cameraBusy = false; };
   // Turning, zooming or panning by hand: remember the angle so a rebuild keeps it.
   useEffect(() => {
@@ -416,7 +426,7 @@ function CameraRig({
       const built = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
       const solved = explodeClock.solved;
       const exploded = staged && explode && !!solved && solved.key.split("|")[0] === projectRef.current.id;
-      const box = built;
+      const box = exploded || stepIds.length || locked ? built : figureBox(built, figure);
       const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
@@ -505,7 +515,7 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length]);
   // While See inside or Operate is on, the free stage follows the cards: opening or closing the
   // tray (More) or a card resizing refits the model with a short glide (the window resizing refits via size), so it never sits
   // under a card or shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).

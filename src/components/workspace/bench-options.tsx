@@ -10,6 +10,7 @@ import { MeasureFields } from "./measure-overlay";
 import { YardsMenu } from "./yards-menu";
 import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
+import { FIGURES, setScale, useScale } from "./scale-props";
 import type { WorkMode } from "@/lib/yard/types";
 
 /** A refusal's material chip: it names that nothing was built and opens nothing (there is no stock to choose). */
@@ -127,6 +128,7 @@ export function BenchOptionsPanel({
   const plan = useYard((s) => s.plan);
   const { label: stockLabel, wire, offersStock } = useStockLabel();
   const [toolsShown] = useBenchToolsShown();
+  const scale = useScale();
 
   useEffect(() => {
     if (!open) return;
@@ -264,6 +266,19 @@ export function BenchOptionsPanel({
             <Row label="Move">
               <Seg items={modes.map((m) => ({ id: m.id, label: m.label }))} value={workMode} onChange={(v) => setWorkMode(v as WorkMode)} />
             </Row>
+          )}
+          {/* True scale (plan concept 8): a figure beside the build and props on its shelves; never parts. */}
+          <Row label="Scale">
+            <Seg
+              items={[{ id: "off", label: "Off" }, ...(["person", "kid"] as const).map((id) => ({ id, label: FIGURES[id].label }))]}
+              value={scale.figure}
+              onChange={(v) => setScale({ figure: v as typeof scale.figure })}
+            />
+          </Row>
+          {project.panels.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5" data-yard-scale-props>
+              <Toggle on={scale.props} onClick={() => setScale({ props: !scale.props })} label="Props" />
+            </div>
           )}
           <Row label="Camera">
             <Seg
