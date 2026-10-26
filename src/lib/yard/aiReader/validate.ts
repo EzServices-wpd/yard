@@ -179,11 +179,13 @@ export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: b
   for (const c of (Array.isArray(r.counts) ? r.counts : []) as ReaderCount[]) {
     const where = `count "${c?.quote}"`;
     if (c?.assumed !== false || !quoted(prompt, c.quote) || !COUNT_THINGS.includes(c.thing) || !Number.isInteger(c.n)) { dropped.push(`${where}: unquoted, assumed or malformed`); continue; }
+    // "2 x a pair of drawers": the rewrite drops the "a" ("2 x 2 drawers"), so what sits before the "a" is what the digits join (row 529).
+    const before = norm(prompt).slice(0, quoteAt(prompt, c.quote)).replace(/\ba\s*$/, "");
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
     if (new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`).test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
     // A number, unit, separator or range word just before the count ("6 ft two shelves", "2 x three drawers", "30 by two
     // shelves", "two to three shelves"): its digits would join that measurement or range (row 505), so the parser reads it.
-    if (COUNT_JOINED.test(norm(prompt).slice(0, quoteAt(prompt, c.quote)))) { dropped.push(`${where}: joined to a number, unit or separator before it`); continue; }
+    if (COUNT_JOINED.test(before)) { dropped.push(`${where}: joined to a number, unit or separator before it`); continue; }
     const noun = NOUN[c.thing];
     // The noun typed twice ("six small drawers, the top two drawers", "drawers x6 ... two drawers", "a dozen drawers ... two drawers"): which number counts is the parser's call.
     if (noun && (norm(prompt).match(new RegExp(`\\b${noun}\\b`, "g")) ?? []).length > 1) { dropped.push(`${where}: that thing is typed more than once`); continue; }

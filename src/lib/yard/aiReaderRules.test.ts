@@ -419,3 +419,26 @@ test("I49 r6 mutation pin: the same-box guard compares with the size-only build,
   assert.equal(viaReader("plant stand three tiers 1 m tall", { sizes: [cm("H", 100, "1 m tall", "m")], counts: [C4("tiers", 3, "three tiers")] }), "plant stand 3 tiers 39 3/8 tall");
   assert.equal(viaReader("dresser with nine drawers 1 m wide", { sizes: [cm("W", 100, "1 m wide", "m")], counts: [C4("drawers", 9, "nine drawers")] }), "dresser with 9 drawers 39 3/8 wide");
 });
+
+// Critic r6 row 529: "a pair of X" after a number, unit or joiner ("2 x a pair of drawers" → "2 x 2 drawers"), and a
+// count edit on a refused build (its box moves, or the refusal turns into a build).
+test("I49 r6 critic: 'a pair of' after a joiner is dropped, and a count edit never moves a refused box or lifts a refusal (row 529)", () => {
+  const joined: [string, [string, number, string]][] = [
+    ["dresser 2 x a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["nightstand 2 x a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["bookcase 2 x a pair of shelves", ["shelves", 2, "pair of shelves"]],
+    ["cabinet 36 x a pair of doors 30 tall", ["doors", 2, "pair of doors"]],
+    ["wardrobe 6 ft a pair of rods 1 deep", ["rods", 2, "pair of rods"]],
+    ["nightstand 1 deep 2 x a pair of drawers", ["drawers", 2, "pair of drawers"]],
+  ];
+  for (const [q, [thing, n, quote]] of joined) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+  }
+  // The guard alone, past the validator: refused builds keep their typed box, and a refusal is never lifted by a count edit.
+  for (const [q, thing, quote] of [["wardrobe 6 ft a pair of rods 1 deep", "rods", "pair of rods"], ["dresser 2 deep 3 x a pair of drawers", "drawers", "pair of drawers"], ["bench 4 ft a pair of seats 1 deep", "seats", "pair of seats"], ["nightstand 1 deep 2 x a pair of drawers", "drawers", "pair of drawers"], ["wardrobe 36 by two rods", "rods", "two rods"]] as const)
+    assert.equal(chooseBuildPrompt(q, { sizes: [], counts: [C4(thing, 2, quote) as never] }).buildPrompt, q, `guard alone: ${q}`);
+  // Legit: "a pair of" after a plain word still reads.
+  assert.equal(viaReader("bookcase with a pair of shelves", { counts: [C4("shelves", 2, "pair of shelves")] }), "bookcase with 2 shelves");
+});
