@@ -1,7 +1,8 @@
 """
 One canonical per page, in the server HTML: exactly one <link rel="canonical">, an absolute https URL that equals
 og:url, and for the workbench its own URL (the ?q= build, or the ?y= share link exactly), never "/".
-A typed build (?q=, user-typed words) is noindex,follow; every other page here, the ?y= share link included, has no noindex.
+A typed build (?q=, user-typed words) and a ?y= share link (the sharer's prompt) are noindex,follow, exactly one robots
+meta, also when both are set; every other page here has no noindex.
 The first page is the two-canonical /ideas the Growth review found.
 
   python3 scripts/e2e/canonical.py http://127.0.0.1:8091 [https://yard.wiki]
@@ -15,7 +16,7 @@ SITE = sys.argv[2].rstrip("/") if len(sys.argv) > 2 else "https://yard.wiki"
 Y = "eyJwcm9tcHQiOiJib29rY2FzZSAzNiB3aWRlIDcyIHRhbGwgMTIgZGVlcCJ9"
 PAGES = [("/ideas", "/ideas"), ("/", "/"), ("/plans/bookcase", "/plans/bookcase"), ("/about", "/about"), ("/terms", "/terms"),
          ("/privacy", "/privacy"), ("/workspace?q=bookcase+36+wide&test=1", "/workspace?q=bookcase+36+wide"), (f"/workspace?y={Y}", f"/workspace?y={Y}"),
-         ("/workspace", "/workspace")]
+         (f"/workspace?q=bookcase+36+wide&y={Y}", f"/workspace?y={Y}"), ("/workspace", "/workspace")]
 fails = []
 for path, own in PAGES:
     req = urllib.request.Request(U + path, headers={"x-yard-test": "1", "user-agent": "yard-e2e"})
@@ -24,7 +25,7 @@ for path, own in PAGES:
     canon = [H.unescape(m) for m in re.findall(r'<link[^>]*rel="canonical"[^>]*href="([^"]*)"', head)]
     og = [H.unescape(m) for m in re.findall(r'<meta[^>]*property="og:url"[^>]*content="([^"]*)"', head)]
     robots = re.findall(r'<meta[^>]*name="robots"[^>]*content="([^"]*)"', head)
-    want = ["noindex,follow"] if "?q=" in own else []
+    want = ["noindex,follow"] if "?q=" in own or "?y=" in own else []
     ok = len(canon) == 1 and canon == og and canon[0] == SITE + own and robots == want
     print(f"{'ok  ' if ok else 'FAIL'} {path}: canonical={canon} og:url={og} robots={robots}")
     if not ok: fails.append(path)
