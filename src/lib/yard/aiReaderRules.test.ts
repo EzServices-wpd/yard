@@ -394,3 +394,28 @@ test("I49 r6: the rest of row 505's table, the plain-fraction allow-list rule (r
     ["bookcase 2 m tall less 10 cm", { sizes: [cm("H", 200, "2 m tall", "m")] }],
   ], "row 509");
 });
+
+test("I49 r6 mutation pin: the same-box guard also holds when a size is edited in the same reading (G6)", () => {
+  const cases: [string, ReaderSpec][] = [
+    ["bookcase 2 m tall 30 by two shelves", { sizes: [cm("H", 200, "2 m tall", "m")], counts: [C4("shelves", 2, "two shelves")] } as never],
+    ["dresser 1 m wide 2 x three drawers", { sizes: [cm("W", 100, "1 m wide", "m")], counts: [C4("drawers", 3, "three drawers")] } as never],
+  ];
+  // The guard alone, past the validator: the count edit would move the box the size-only edit builds.
+  for (const [q, s] of cases) assert.equal(chooseBuildPrompt(q, s).buildPrompt, q, `guard alone: ${q}`);
+});
+
+test("I49 r6 mutation pin: the same-box guard compares the pocket unit when there is one, not the room box (G7)", () => {
+  // A mocked engine: the count edit leaves the pocket's room box alone but moves the unit built inside it.
+  const room = { width: 42.5, height: 104, depth: 28 };
+  const gen = (q: string) => ({ kind: "pocket", name: "Pocket vanity", overall: room, pocket: { unit: { width: /\b2 drawers\b/.test(q) ? 30 : 38, depth: 25.25, height: 102 } }, panels: [] }) as never;
+  const q = "pocket vanity with two drawers";
+  assert.equal(chooseBuildPrompt(q, { sizes: [], counts: [C4("drawers", 2, "two drawers")] } as never, gen).buildPrompt, q);
+  // The same mock with the unit unmoved lets the count edit through.
+  const still = (s: string) => ({ kind: "pocket", name: "Pocket vanity", overall: room, pocket: { unit: { width: 38, depth: 25.25, height: 102 } }, panels: [], q: s }) as never;
+  assert.equal(chooseBuildPrompt(q, { sizes: [], counts: [C4("drawers", 2, "two drawers")] } as never, still).buildPrompt, "pocket vanity with 2 drawers");
+});
+
+test("I49 r6 mutation pin: the same-box guard compares with the size-only build, so a legit size edit plus a count edit still reads (G5)", () => {
+  assert.equal(viaReader("plant stand three tiers 1 m tall", { sizes: [cm("H", 100, "1 m tall", "m")], counts: [C4("tiers", 3, "three tiers")] }), "plant stand 3 tiers 39 3/8 tall");
+  assert.equal(viaReader("dresser with nine drawers 1 m wide", { sizes: [cm("W", 100, "1 m wide", "m")], counts: [C4("drawers", 9, "nine drawers")] }), "dresser with 9 drawers 39 3/8 wide");
+});
