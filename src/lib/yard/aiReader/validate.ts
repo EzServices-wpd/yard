@@ -193,7 +193,12 @@ export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: b
     // joiner and the count leaves the count's digits beside that number, so the look-back skips plain words (rows 529, 534).
     const before = pastPlainWords(norm(prompt).slice(0, quoteAt(prompt, c.quote)));
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
-    if (new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`).test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
+    const numberWord = new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`);
+    if (numberWord.test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
+    // A number word with only plain words between it and the count ("six a pair of shelves", "ten every two shelves",
+    // "a pair of a pair of drawers"): the parser reads that number, so the count would replace a typed count (row 540).
+    // Digits there already drop below (COUNT_JOINED); this makes the word form drop the same way.
+    if (numberWord.test(before.trim().split(/[\s-]+/).pop() ?? "")) { dropped.push(`${where}: a typed number before it, only plain words between`); continue; }
     // A number, unit, separator or range word just before the count ("6 ft two shelves", "2 x three drawers", "30 by two
     // shelves", "two to three shelves"): its digits would join that measurement or range (row 505), so the parser reads it.
     if (COUNT_JOINED.test(before)) { dropped.push(`${where}: joined to a number, unit or separator before it`); continue; }

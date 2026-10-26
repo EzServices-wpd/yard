@@ -521,7 +521,8 @@ test("I49 r7 critic: a plain word between a joiner and the count is looked past,
   assert.equal(viaReader("bookcase 3 bays each two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 3 bays each 2 shelves");
   assert.equal(viaReader("cabinet 1 m wide with a pair of doors", { counts: [C4("doors", 2, "pair of doors")] }), "cabinet 1 m wide with 2 doors");
   assert.equal(viaReader("bookcase with the two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with the 2 shelves");
-  assert.equal(viaReader("two bookcases with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "two bookcases with 4 shelves");
+  // Row 540: a number word with only plain words before the count drops it (the parser reads "two ... four shelves" as 2 itself, row 541).
+  assert.equal(viaReader("two bookcases with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "two bookcases with four shelves");
 });
 
 // r8: the rest of Critic's row 534 list (every filler word after "3 ×", "1 m" and "2 x"), the material-after-a-number
@@ -562,11 +563,56 @@ test("I49 r8: each look-back stop class is pinned - a unit, an axis letter, a te
   // An axis letter ends the look-back like the axis word does, so the count after "36 w" reads (L6): 20 -> 16 pieces, as "36 wide 2 drawers".
   assert.equal(viaReader("dresser 36 w a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 36 w 2 drawers");
   assert.equal(viaReader("bookcase 30 w 72 h two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 w 72 h 2 shelves");
-  // A tens word is a number word: it ends the look-back, and the count's digits are not beside a digit (L7).
-  assert.equal(viaReader("bookcase 3 x forty pine two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 3 x forty pine 2 shelves");
-  assert.equal(viaReader("dresser 2 x twenty a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 2 x twenty 2 drawers");
-  // A number word ends it too (L8): "36 x 18 double a pair of" reads (20 -> 16 pieces). Skipping number words would also drop the
-  // "a pair of a pair of" residual, but at the cost of these honest reads.
-  assert.equal(viaReader("dresser 36 x 18 double a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 36 x 18 double 2 drawers");
-  assert.equal(viaReader("bookcase 1 m two of them with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "bookcase 1 m two of them with 4 shelves");
+  // A tens word is a number word: it ends the look-back, and a number word there drops the count like a digit does (L7, row 540).
+  assert.equal(viaReader("bookcase 3 x forty pine two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 3 x forty pine two shelves");
+  assert.equal(viaReader("dresser 2 x twenty a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 2 x twenty a pair of drawers");
+  assert.equal(validateSpec("bookcase thirty pine two shelves", { counts: [C4("shelves", 2, "two shelves")] }).spec.counts.length, 0, "tens word, no joiner");
+  // A number word ends it too (L8), and the count after it drops (row 540): the parser reads that number word.
+  assert.equal(viaReader("dresser 36 x 18 double a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 36 x 18 double a pair of drawers");
+  assert.equal(viaReader("bookcase 1 m two of them with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "bookcase 1 m two of them with four shelves");
+});
+
+// Critic r8 (row 540): a number word, then only plain words, then the count ("bookcase six a pair of shelves" builds 6 shelves
+// reader-off, 2 with "six 2 shelves"; "ten every two shelves" 10 -> 2). Digits there already drop ("6 every two shelves"); words drop the same.
+test("I49 r8 critic: a number word with only plain words before the count drops it, like a digit (row 540)", () => {
+  const cases: [string, [string, number, string]][] = [
+    ["bookcase six a pair of shelves", ["shelves", 2, "pair of shelves"]],
+    ["bookcase ten every two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase twelve a pair of shelves", ["shelves", 2, "pair of shelves"]],
+    ["bookcase twenty-two the two shelves", ["shelves", 2, "two shelves"]],
+    ["cabinet four every two doors", ["doors", 2, "two doors"]],
+    ["bookcase a dozen pine two shelves", ["shelves", 2, "two shelves"]],
+    ["dresser a pair of a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["dresser 2 x a pair of a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["two bookcases with four shelves", ["shelves", 4, "four shelves"]],
+  ];
+  for (const [q, [thing, n, quote]] of cases) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+  }
+  // Legit: no number word before the count, or a count noun or axis word ends the look-back first.
+  assert.equal(viaReader("bookcase 3 bays each two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 3 bays each 2 shelves");
+  assert.equal(viaReader("bookcase with only two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with only 2 shelves");
+  assert.equal(viaReader("dresser with another pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser with another 2 drawers");
+  assert.equal(viaReader("bookcase 30 wide oak with two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 wide oak with 2 shelves");
+  assert.equal(viaReader("dresser 36 w a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 36 w 2 drawers");
+});
+
+// Row 543 (Critic r8 mutants L3c-e, L4b): "m", "in"/"inch", "metres" and "x" end the look-back, so a count right after them
+// drops as joined to a measure ("m 2", "x 2"), after a number word ("six m two shelves" builds 6 reader-off) or a plain word.
+// The brief's typed-count cases are pinned here too (row 540: "six the two", "three or four more eleven drawers").
+test("I49 r9: units and 'x' end the look-back, and a number word before the count keeps the typed count (rows 540, 543)", () => {
+  const S = (q: string) => [q, ["shelves", 2, "two shelves"]] as [string, [string, number, string]];
+  const cases: [string, [string, number, string]][] = [
+    S("bookcase six m two shelves"), S("bookcase six in two shelves"), S("bookcase six inch two shelves"), S("bookcase two metres two shelves"), S("bookcase six x two shelves"),
+    S("bookcase oak m two shelves"), S("bookcase oak in two shelves"), S("bookcase oak inch two shelves"), S("bookcase oak metres two shelves"), S("bookcase pine x two shelves"),
+    S("bookcase six the two shelves"), ["bookcase six a pair of shelves", ["shelves", 2, "pair of shelves"]], ["dresser three or four more eleven drawers", ["drawers", 11, "eleven drawers"]],
+    ["bookcase three or four max five shelves", ["shelves", 5, "five shelves"]],
+  ];
+  for (const [q, [thing, n, quote]] of cases) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+  }
 });
