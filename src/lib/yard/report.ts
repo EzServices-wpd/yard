@@ -33,7 +33,8 @@ import { loadIssues, panelBomLines } from "./function";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, drawerPartStock, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
-import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, isLumberLegCut, type PlanSheetNest } from "./nesting";
+import { realObjectKind } from "./realObjects";
+import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, nestSheetsByStock, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
@@ -388,6 +389,21 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const sheets8 = counted.on8;
   const sheets10 = counted.on10;
   const unplaced = counted.unplaced;
+  // Two sheet stocks in the nest (a stand's 1/2" skirt and 3/4" top): one Buy row per stock and size, each with its own sheets.
+  const sheetStocks = nestSheetsByStock(nest.sheets);
+  // Every stock needs its own catalog sheet in each size it is laid out on (there is no 1/2" 4×10), else the single-row path.
+  // Ezra approved this for the selling-stand family only (PR #163); other two-stock layouts keep the single-row path until approved.
+  const mixedStock = realObjectKind(project.typedPrompt ?? project.prompt ?? "") === "stand" && sheetStocks.length > 1 && sheetStocks.every((g) => getCatalogItem(`${g.stock}-4x8`) && (!g.on10 || getCatalogItem(`${g.stock}-4x10`)));
+  const stockRows = (size: "4x8" | "4x10", tail: string): BuildPlan["bom"] =>
+    sheetStocks.flatMap((g) => {
+      const n = size === "4x8" ? g.on8 : g.on10;
+      const item = getCatalogItem(`${g.stock}-${size}`);
+      if (!n || !item) return [];
+      const species = speciesStockHonestyTalk(project.prompt ?? "", item.name);
+      const base = `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf${tail}`;
+      return [{ name: item.name, quantity: n, unit: n === 1 ? "sheet" : "sheets", catalogId: item.id, searchQuery: item.searchQuery ?? item.name, estimatedCost: (item.unitCostUsd ?? 38.43) * n, notes: species ? `${base} ${species}` : base }];
+    });
+  const tail8 = ` included.${cuts.some((c) => / · /.test(c.name)) ? " Some faces are splice segments — butt-join before assembly." : ""}${unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : ""}`;
 
   // A build made of one board stock (glue-ups and rips from that board). A frame of lumber under a
   // plywood deck is not: its plywood rides the sheet nest and its lumber goes through the linear packer.
@@ -575,7 +591,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           : "") +
         (unplaced.length ? ` ${unplaced.length} part(s) still oversize — do not buy until fixed.` : "");
       const species = speciesStockHonestyTalk(project.prompt ?? "", plyName);
-      bom.push({
+      if (mixedStock) bom.push(...stockRows("4x8", tail8));
+      else bom.push({
         name: plyName,
         quantity: nestSheetQty,
         unit: nestSheetQty === 1 ? "sheet" : "sheets",
@@ -597,6 +614,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
           `${honestNamedLumberBuyWoodNote({ qty: boardQty, legQty: legQtyForNote })} ` +
           `Cut the top/aprons from the plywood nest above; these boards are the named-species story (face/finish), not a silent 1×4 blank for a sheet-sized top.`,
       });
+    } else if (mixedStock && !isNamedLumberPrimary) {
+      bom.push(...stockRows("4x8", tail8));
     } else {
       const n = isNamedLumberPrimary
         ? honestBuyWoodQty(structuralQty)
@@ -667,7 +686,8 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       });
     }
   }
-  if (!buyNamedBoard && !solidNamedBuy && !boardPrimary && sheets10 > 0) {
+  if (!buyNamedBoard && !solidNamedBuy && !boardPrimary && sheets10 > 0 && mixedStock) bom.push(...stockRows("4x10", " · full-height faces that do not fit a 4×8."));
+  else if (!buyNamedBoard && !solidNamedBuy && !boardPrimary && sheets10 > 0) {
     bom.push({
       name: sheet10?.name ?? '3/4" plywood 4x10',
       quantity: sheets10,
