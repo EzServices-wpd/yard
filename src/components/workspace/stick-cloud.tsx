@@ -9,6 +9,7 @@ import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
+import { plyCount, shopLook } from "@/components/workspace/shop-light";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
 import { doorHingeLayout } from "@/lib/yard/hingedLeaf";
@@ -52,7 +53,7 @@ export function PanelMesh({
   const placeholder = useYard((s) => !!s.project.displayOnly);
   const partLook = panelRenderLook(prompt, panel);
   const item = getCatalogItem(partLook.catalogId) ?? getCatalogItem(panel.materialId);
-  const look = stockLook(item);
+  const look = shopLook(stockLook(item), item);
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
   // A mirror set into a door rides on that door: it shows on the door's face and swings with it.
   const hostDoor = useYard((s) => (panel.joints?.length ? s.project.panels.find((q) => q.type === "door" && panel.joints!.some((j) => j.with === q.id)) : undefined));
@@ -315,7 +316,7 @@ export function PanelMesh({
         {/* Rails/aprons: EdgeBand top strips sit flat under the top and read as
             scrambled bars on yawed 3-leg chords. Skip banding on rails + yawed members. */}
         {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
-          <EdgeBand w={w} h={h} d={d} />
+          <EdgeBand w={w} h={h} d={d} plies={placeholder || ghost ? 0 : plyCount(item, Math.min(w, h, d))} />
         )}
         {opacity > 0.4 && hingeCenters && hingeCenters.length > 0 && (
           <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} centers={hingeCenters} />
