@@ -140,12 +140,12 @@ const CHIP =
 /** The chip's drawing: fixed box (CLS 0), lazy, decorative (the label names it). */
 function ChipArt({ src }: { src?: string }) {
   return src ? (
-    <span className="size-9 shrink-0 overflow-hidden rounded-full bg-paper lg:size-7" aria-hidden>
+    <span className="yard-sheet size-9 shrink-0 overflow-hidden rounded-full bg-paper lg:size-7" aria-hidden>
       {/* The model sits small in its 4:3 sheet: zoom in (transform only, no layout). */}
       <img src={src} alt="" width={36} height={36} loading="lazy" decoding="async" className="h-full w-full scale-[1.7] object-cover" />
     </span>
   ) : (
-    <span className="size-9 shrink-0 rounded-full bg-paper lg:size-7" aria-hidden />
+    <span className="yard-sheet size-9 shrink-0 rounded-full bg-paper lg:size-7" aria-hidden />
   );
 }
 
@@ -358,7 +358,7 @@ function LandingPage() {
                 key={h.id}
                 type="button"
                 onClick={() => open(h.prompt)}
-                className="yard-card group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
+                className="yard-card yard-sheet group flex flex-col overflow-hidden rounded-xl border border-rule bg-[var(--yard-fill)] text-left transition-colors duration-150 hover:border-ink/30"
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                   {shows[h.id] ? (
@@ -536,7 +536,7 @@ function PlanStrip({ plan, art, onOpen }: { plan: HomePlan; art?: string; onOpen
         </div>
         <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_1.15fr_1fr]">
           <div>
-            <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-paper sm:aspect-[4/3]">
+            <div className="yard-sheet aspect-[16/10] w-full overflow-hidden rounded-xl bg-paper sm:aspect-[4/3]">
               {art ? <img src={art} alt={`Yard drawing of the linen closet, ${plan.sizeAria}`} width={480} height={360} loading="lazy" decoding="async" className="h-full w-full object-contain" /> : null}
             </div>
             <h3 className="mt-3 font-display text-lg text-ink">The size you typed</h3>
