@@ -7,16 +7,18 @@
   /* Palette B "Night shop" (Ezra 2026-10-26). Dark ground everywhere; paper/ink are the light sheet (plates, print). */
   --color-bg: #131518;
   --color-surface: #1c1f23;
-  --color-elevated: #25292e;
+  --color-elevated: #262a2f;
   --color-fg: #eceae6;
   --color-muted: #a2a8af;
   --color-faint: #73797f;
-  --color-border: #383d43;
+  --color-border: #2c3136;
   --color-accent: #eceae6;
   --color-accent-fg: #131518;
   --color-warn: #c4a574;
   --color-danger: #d4685a;
   --color-ok: #7d9a72;
+  /* Chalk blue marks measurements, part letters and progress only: never decoration, gradients or glows. */
+  --color-mark: #7cb2ff;
   --color-paper: #f3f3f0;
   --color-ink: #17191c;
   --color-ink-muted: #5c6168;
@@ -558,25 +560,20 @@
   --yard-fill: #1c1f23;
   color-scheme: dark;
 }
-/* A light sheet on the dark ground: drawings and cards that carry one (ink 15.8:1, muted 5.6:1). */
+/* The light sheet (plans, Ideas cards, drawings, print): ink 15.8:1, muted 5.6:1, mark 5.2:1. */
+:root { --yard-sheet: #f3f3f0; --yard-sheet-ink: #17191c; --yard-sheet-muted: #5c6168; --yard-sheet-rule: #d5d8dc; --yard-sheet-mark: #2a62c4; }
 .yard-sheet {
-  --color-paper: #f3f3f0;
-  --color-ink: #17191c;
-  --color-ink-muted: #5c6168;
-  --color-rule: #d5d8dc;
+  --color-paper: var(--yard-sheet);
+  --color-ink: var(--yard-sheet-ink);
+  --color-ink-muted: var(--yard-sheet-muted);
+  --color-rule: var(--yard-sheet-rule);
+  --color-mark: var(--yard-sheet-mark);
   --yard-fill: #ffffff;
   color-scheme: light;
 }
-/* Print stays light and ink-friendly. */
+/* Print stays light and ink-friendly: the site pages print on the sheet. */
 @media print {
-  .yard-site {
-    --color-paper: #ffffff;
-    --color-ink: #17191c;
-    --color-ink-muted: #5c6168;
-    --color-rule: #d5d8dc;
-    --yard-fill: #ffffff;
-    color-scheme: light;
-  }
+  .yard-site { --color-paper: #ffffff; --color-ink: var(--yard-sheet-ink); --color-ink-muted: var(--yard-sheet-muted); --color-rule: var(--yard-sheet-rule); --color-mark: var(--yard-sheet-mark); --yard-fill: #ffffff; color-scheme: light; }
 }
 /* 2B: mono is for measurements only. */
 .yard-measure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
