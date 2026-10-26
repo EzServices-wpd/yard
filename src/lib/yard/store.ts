@@ -303,7 +303,9 @@ export const useYard = create<YardState>((set, get) => ({
     // Re-typing a fallback noun ("lemonade stand" on a bench built as "table 48 wide …") rebuilds the
     // same primitive: the typed noun with the bench stock would skip the fallback and lose the build.
     // A saved or just-learned recipe always wins: the bench's fallback prompt (a closet under a learning block) never replaces it.
-    const retypedFallback = !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
+    // Row 517: never on a not-learned placeholder. Its bench prompt is the engine's discarded guess (a planter box under
+    // "toolbox"), so re-running the typed words there would silently price a different object.
+    const retypedFallback = !current.displayOnly && !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
     let used = !prompt.trim() || retypedFallback ? current.prompt : prompt;
     const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
     let mode: "auto" | "cut" | "whole" = get().cutMode;
@@ -353,7 +355,8 @@ export const useYard = create<YardState>((set, get) => ({
     // Keep prior stock for ". Then:" refinements, exact repeats, Measure restock,
     // or when the typed words name stock (hasExplicitStock / detectMaterial).
     if (!materialId) {
-      const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat);
+      // A placeholder's plywood is display only (roughBlock), never stock the visitor chose (row 517).
+      const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat && !current.displayOnly);
       if (keepPrior || hasExplicitStock(used)) {
         materialId = materialUnlessNamed(current.primaryMaterialId, used);
       }
