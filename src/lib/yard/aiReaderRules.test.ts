@@ -312,3 +312,19 @@ test("I49 r5 allow-list: the sweep's blacklist holes (quote before a joiner and 
     assert.equal(plan(viaReader(q, { sizes: [s] })), plan(q), `typed build: ${q}`);
   }
 });
+
+test("I49 r5 mutation pins: each layer rule alone (bare separator, letter axis typed elsewhere, a digit before a count, feet with 12+ inches)", () => {
+  holds([
+    ["bookcase ~2 m tall with two shelves", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+    ["desk W 30 with two drawers 2 m wide", { sizes: [cm("W", 200, "2 m wide", "m")] }],
+    ["desk 30w with two drawers 2 m wide", { sizes: [cm("W", 200, "2 m wide", "m")] }],
+    ["bookcase 70h with two shelves 2 m tall", { sizes: [cm("H", 200, "2 m tall", "m")] }],
+    ["dresser model 7 two drawers", { counts: [C4("drawers", 2, "two drawers")] }],
+  ], "r5 pins");
+  // rewrite.ts's own feet-inch rule, past the validator: 14 inches is not inches of a foot.
+  const Q = "bookcase 6 ft 14 in tall with two shelves";
+  assert.equal(specToPrompt(Q, spec([S("H", 86, "6 ft 14 in tall", "overall", "ft-in")])).prompt, Q);
+  assert.equal(soleSize(Q, S("H", 86, "6 ft 14 in tall", "overall", "ft-in") as never), false, "the allow-list alone: 14 in is not inches of a foot");
+  assert.equal(soleSize("bookcase 6 ft 4 in tall with two shelves", S("H", 76, "6 ft 4 in tall", "overall", "ft-in") as never), true);
+  assert.equal(specToPrompt("bookcase 6 ft 4 in tall with two shelves", spec([S("H", 76, "6 ft 4 in tall", "overall", "ft-in")])).prompt, "bookcase 76 tall with two shelves");
+});

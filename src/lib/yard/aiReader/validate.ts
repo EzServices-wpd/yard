@@ -112,6 +112,7 @@ export function typedCount(quote: string, thing: (typeof COUNT_THINGS)[number]):
 const TOK = /\d+(?:\.\d+)?|[a-z]+|[^\sa-z\d]/g;
 const UNIT_TOKEN = /^(?:cm|mm|m|centimet(?:er|re)s?|millimet(?:er|re)s?|met(?:er|re)s?|ft|feet|foot|in|inch(?:es)?|"|'|″|′)$/;
 const AXIS_TOKEN: Record<string, string[]> = { wide: ["W"], width: ["W"], deep: ["D"], depth: ["D"], tall: ["H"], high: ["H"], height: ["H"], long: ["W", "L"], length: ["W", "L"] };
+const LETTER_AXIS: Record<string, string> = { w: "W", d: "D", h: "H", l: "L" };
 const RUN_WORD = /^(?:x|by|to|and|or|plus|times|between|of|at|is|from|about|approx|around|w|h|d|l|across|diameter|thick|thickness|front|back|side|wall|floor|ceiling)$/;
 type Tok = { t: string; at: number; end: number; k: "num" | "unit" | "axis" | "run" | "word" };
 const tokens = (p: string): Tok[] => [...p.matchAll(TOK)].map((m) => {
@@ -151,9 +152,10 @@ export const soleSize = (prompt: string, s: ReaderSize): boolean => {
   const seg = segs.find(([x]) => x === qi);
   if (!seg || qe < (T[seg[1]].k === "axis" ? seg[1] - 1 : seg[1]) || qe > seg[1]) return false;
   if (T[seg[1]].k !== "axis" && segs.length !== 1) return false;
-  // The quote's axis is typed nowhere else.
+  // The quote's axis is typed nowhere else: not as a word, nor as a letter with its number ("W 30", "w=30", "30w").
   const own = T[seg[1]].k === "axis" ? seg[1] : -1;
-  return !T.some((x, j) => j !== own && x.k === "axis" && AXIS_TOKEN[x.t].includes(s.axis));
+  const letter = (j: number) => LETTER_AXIS[T[j].t] === s.axis && (T[j - 1]?.k === "num" || T[j + 1]?.k === "num" || (/^[:=]$/.test(T[j + 1]?.t ?? "") && T[j + 2]?.k === "num"));
+  return !T.some((x, j) => (j !== own && x.k === "axis" && AXIS_TOKEN[x.t].includes(s.axis)) || letter(j));
 };
 const ALLOW_UNITS = new Set(["cm", "mm", "m", "ft"]);
 
