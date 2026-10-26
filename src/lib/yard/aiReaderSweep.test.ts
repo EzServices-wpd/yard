@@ -128,3 +128,38 @@ test("I49 r7 article/quantifier count sweep: 'a pair of', 'the two', 'both' afte
   assert.deepEqual(valOnly.slice(0, 10), [], `validator alone: ${valOnly.length}`);
   assert.deepEqual(guardOnly.slice(0, 10), [], `guard alone: ${guardOnly.length}`);
 });
+
+/** I49 r8 filler-word sweep (row 534): every plain word class between a number, unit or joiner and the count. */
+const FILLERS: Record<string, string[]> = {
+  determiners: ["every", "all", "any", "some", "these", "those", "this", "that", "my", "your", "our", "their", "no"],
+  quantifiers: ["another", "other", "extra", "more", "several", "many", "few", "an extra", "a second", "another set of"],
+  adverbs: ["only", "exactly", "about", "roughly", "nearly", "just", "twice", "thrice", "also", "then", "really"],
+  materials: ["pine", "oak", "maple", "birch", "plywood", "walnut", "mdf", "solid oak"],
+  adjectives: ["small", "large", "short", "white", "sturdy", "open", "adjustable", "floating", "fixed", "nice big"],
+};
+const FPRE = ["", "30 wide ", "6 ft ", "1 m ", "2 x ", "3 × ", "3/4 ", "1.8 m "];
+export function fillerSweep() {
+  const holes: string[] = [], valOnly: string[] = [], guardOnly: string[] = []; let tried = 0;
+  for (const pre of FPRE) for (const [obj, thing, noun] of [["bookcase", "shelves", "shelves"], ["dresser", "drawers", "drawers"]] as const)
+    for (const fill of Object.values(FILLERS).flat()) for (const [typed, quote, n] of [[`two ${noun}`, `two ${noun}`, 2], [`a pair of ${noun}`, `pair of ${noun}`, 2]] as const)
+      for (const read of [n]) { // the honest reading: every row 534 failure was one
+        const prompt = `${obj} ${pre}${fill} ${typed}`, raw = { sizes: [], counts: [C(thing, read, quote)] };
+        tried++;
+        const legit = pre === "" || pre === "30 wide ";
+        const both = chooseBuildPrompt(prompt, validateSpec(prompt, raw).spec, gen).buildPrompt;
+        if (!legit && both !== prompt && planM(both) !== planM(prompt)) holes.push(`${prompt} | ${quote}=${read} -> ${both}`);
+        const vOnly = specToPrompt(prompt, validateSpec(prompt, raw).spec).prompt;
+        if (!legit && vOnly !== prompt && state(vOnly) !== state(prompt)) valOnly.push(`${prompt} | ${quote}=${read} -> ${vOnly}`);
+        const gOnly = chooseBuildPrompt(prompt, raw as never, gen).buildPrompt;
+        if (gOnly !== prompt && state(gOnly) !== state(prompt)) guardOnly.push(`${prompt} | ${quote}=${read} -> ${gOnly}`);
+      }
+  return { tried, holes, valOnly, guardOnly };
+}
+
+test("I49 r8 filler-word sweep: no determiner, quantifier, adverb, material or adjective between a number, unit or joiner and the count lets the count change the build (row 534)", () => {
+  const { tried, holes, valOnly, guardOnly } = fillerSweep();
+  assert.ok(tried >= 1500, `tried ${tried}`);
+  assert.deepEqual(holes.slice(0, 10), [], `${holes.length} holes`);
+  assert.deepEqual(valOnly.slice(0, 10), [], `validator alone: ${valOnly.length}`);
+  assert.deepEqual(guardOnly.slice(0, 10), [], `guard alone: ${guardOnly.length}`);
+});

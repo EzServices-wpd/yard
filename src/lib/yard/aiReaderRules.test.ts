@@ -523,3 +523,34 @@ test("I49 r7 critic: a plain word between a joiner and the count is looked past,
   assert.equal(viaReader("bookcase with the two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with the 2 shelves");
   assert.equal(viaReader("two bookcases with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "two bookcases with 4 shelves");
 });
+
+// r8: the rest of Critic's row 534 list (every filler word after "3 ×", "1 m" and "2 x"), the material-after-a-number
+// shapes the reader-off parser misreads (row 535: the reader falls back to it), the glued forms (row 536, K13) and more legit reads.
+test("I49 r8: every plain word between a number, unit or joiner and the count is looked past, glued forms too (rows 534, 536)", () => {
+  const W = ["every", "all", "any", "some", "another", "other", "these", "only", "exactly", "twice", "thrice", "about", "with", "pine", "oak", "my"];
+  const joined: [string, [string, number, string]][] = [
+    ...W.flatMap((w): [string, [string, number, string]][] => [[`bookcase 3 × ${w} two shelves`, ["shelves", 2, "two shelves"]], [`bookcase 1 m ${w} two shelves`, ["shelves", 2, "two shelves"]], [`dresser 2 x ${w} pair of drawers`, ["drawers", 2, "pair of drawers"]]]),
+    ["dresser 2 x a second pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["dresser 2x another pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["dresser 6 ft another pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["dresser 2 x oak a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["bookcase 3/4 pine two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 1 x 12 pine three shelves", ["shelves", 3, "three shelves"]],
+    ["bookcase 1.8 m pine three shelves", ["shelves", 3, "three shelves"]],
+    ["bookcase 36 pine a pair of shelves", ["shelves", 2, "pair of shelves"]],
+    // Glued: no space between the joiner and the filler word (Critic's K13).
+    ["dresser 2*a pair of drawers", ["drawers", 2, "pair of drawers"]],
+    ["bookcase 1 cm/the two shelves", ["shelves", 2, "two shelves"]],
+    ["bookcase 3 x-every two shelves", ["shelves", 2, "two shelves"]],
+  ];
+  for (const [q, [thing, n, quote]] of joined) {
+    const raw = { sizes: [], counts: [C4(thing, n, quote)] };
+    assert.equal(validateSpec(q, raw).spec.counts.length, 0, `dropped: ${q}`);
+    assert.equal(viaReader(q, raw), q, `typed words: ${q}`);
+  }
+  // Legit: filler words after a plain word, an axis word or a count noun still read.
+  assert.equal(viaReader("bookcase with only two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase with only 2 shelves");
+  assert.equal(viaReader("bookcase pine with exactly two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase pine with exactly 2 shelves");
+  assert.equal(viaReader("dresser with another pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser with another 2 drawers");
+  assert.equal(viaReader("bookcase 30 wide oak with two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 wide oak with 2 shelves");
+});
