@@ -38,7 +38,7 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
       onTouchStart={onIntent}
       data-idea={card.slug}
       data-build-type={card.buildType}
-      className="yard-paper group flex h-full min-h-11 w-full flex-col rounded-xl border border-rule bg-paper p-2.5 text-left hover:border-ink/35 sm:p-3"
+      className="yard-paper yard-sheet group flex h-full min-h-11 w-full flex-col rounded-xl border border-rule bg-paper p-2.5 text-left hover:border-ink/35 sm:p-3"
     >
       <IdeaDrawing drawing={card.drawing} title={card.title} eager={eager} />
       <span className="mt-2 flex items-baseline gap-2">

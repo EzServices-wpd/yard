@@ -34,7 +34,7 @@ import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, drawerPartStock, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
 import { realObjectKind } from "./realObjects";
-import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, nestSheetsByStock, isLumberLegCut, type PlanSheetNest } from "./nesting";
+import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, nestSheetsByStock, isLumberLegCut, flagCrossGrain, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
@@ -2015,8 +2015,9 @@ function buildPlanCore(project: YardProject): BuildPlan {
   // only sheet part is a chipboard backer stays a stick plan too (backer on Buy).
   const stickWithBacker = project.instances.length > 0 && project.panels.length > 0 && project.panels.every(isStickAccessorySheet);
   if (project.panels.length > 0 && !stickWithBacker) {
-    const cutList = closetCuts(project);
-    const sheetNest = planSheetNest(cutList);
+    const rawCuts = closetCuts(project);
+    const sheetNest = planSheetNest(rawCuts);
+    const cutList = flagCrossGrain(rawCuts, sheetNest.sheets);
     const bom = closetBom(project, cutList, sheetNest);
     const cost = bom.reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     const issues: FeasibilityIssue[] = [
