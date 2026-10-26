@@ -503,7 +503,8 @@ export function hangingTalk(input: YardProject, prompt = ""): YardProject {
   const piecesNear = (ys: number[]) => project.panels.filter((p) => p.type === "shelf" && ys.some((y) => Math.abs(p.position.y - y) < 0.05)).length;
   let changed = false;
   let notes = [...(project.notes ?? [])];
-  if (hats.length) {
+  // A screwed shelf is a hat only over a rod: a cubby shelf or wine rack with fixed shelves keeps its own shelf note.
+  if (hats.length && rods.length) {
     const hatPieces = piecesNear(hats.map((line) => line.y));
     const abovePieces = piecesNear(above.map((line) => line.y));
     const hatWord = hatPieces > 1 ? `${hatPieces} fixed hat shelf pieces over the rod` : "One fixed hat shelf over the rod";

@@ -483,3 +483,14 @@ it("row 483: a rod rebuild keeps the typed prompt (prompt bar, PDF 'You asked fo
     assert.equal(p.prompt, q, q);
   }
 });
+
+it("no rod, no hat: fixed-shelf builds without a clothes rod never talk about a hat shelf or a rod (release-1026)", () => {
+  for (const q of ["wine cabinet", "cubby shelf", "cubby shelf 96 wide", "pine cubby shelf 128 wide", "cubby shelf 144 wide in 1/2 plywood"]) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.panels.filter((x) => /hanging rod|clothes rod/i.test(x.name)).length, 0, `${q} builds no rod`);
+    assert.ok(p.panels.some((x) => x.type === "shelf"), `${q} has shelves`);
+    for (const n of p.notes ?? []) assert.doesNotMatch(n, /hat shelf|over the rod|above the hat/i, `${q}: ${n}`);
+  }
+  const ward = generateFromPrompt("wardrobe with 4 shelves").notes.join(" ");
+  assert.match(ward, /fixed hat shelf over the rod/, "a wardrobe with a rod still names its hat");
+});
