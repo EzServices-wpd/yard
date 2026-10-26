@@ -33,6 +33,7 @@ import { loadIssues, panelBomLines } from "./function";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, drawerPartStock, isBuyMirrorPanel, isSquareLumberStick, isFrameGlazing, isStickAccessorySheet, isBoughtHardwareName } from "./shopPlural";
 import { oddCutName } from "./oddShapes";
+import { realObjectKind } from "./realObjects";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, nestSheetsByStock, isLumberLegCut, type PlanSheetNest } from "./nesting";
 import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
@@ -390,11 +391,13 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
   const unplaced = counted.unplaced;
   // Two sheet stocks in the nest (a stand's 1/2" skirt and 3/4" top): one Buy row per stock and size, each with its own sheets.
   const sheetStocks = nestSheetsByStock(nest.sheets);
-  const mixedStock = sheetStocks.length > 1 && sheetStocks.every((g) => getCatalogItem(`${g.stock}-4x8`));
+  // Every stock needs its own catalog sheet in each size it is laid out on (there is no 1/2" 4×10), else the single-row path.
+  // Ezra approved this for the selling-stand family only (PR #163); other two-stock layouts keep the single-row path until approved.
+  const mixedStock = realObjectKind(project.typedPrompt ?? project.prompt ?? "") === "stand" && sheetStocks.length > 1 && sheetStocks.every((g) => getCatalogItem(`${g.stock}-4x8`) && (!g.on10 || getCatalogItem(`${g.stock}-4x10`)));
   const stockRows = (size: "4x8" | "4x10", tail: string): BuildPlan["bom"] =>
     sheetStocks.flatMap((g) => {
       const n = size === "4x8" ? g.on8 : g.on10;
-      const item = getCatalogItem(`${g.stock}-${size}`) ?? sheet10;
+      const item = getCatalogItem(`${g.stock}-${size}`);
       if (!n || !item) return [];
       const species = speciesStockHonestyTalk(project.prompt ?? "", item.name);
       const base = `From nest · ${n} sheet${n === 1 ? "" : "s"} · 1/8" kerf${tail}`;
