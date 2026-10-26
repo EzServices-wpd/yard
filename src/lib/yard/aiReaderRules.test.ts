@@ -554,3 +554,19 @@ test("I49 r8: every plain word between a number, unit or joiner and the count is
   assert.equal(viaReader("dresser with another pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser with another 2 drawers");
   assert.equal(viaReader("bookcase 30 wide oak with two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 wide oak with 2 shelves");
 });
+
+test("I49 r8: each look-back stop class is pinned - a unit, an axis letter, a tens word and a number word end the look-back (mutants L3, L6, L7, L8)", () => {
+  // A unit before the count drops it even after a number word: "six ft 2" reads as a measure (6 ft 2 in) (L3).
+  for (const q of ["bookcase six ft two shelves", "bookcase six feet pine two shelves"]) assert.equal(validateSpec(q, { counts: [C4("shelves", 2, "two shelves")] }).spec.counts.length, 0, q);
+  assert.equal(validateSpec("dresser three ft a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }).spec.counts.length, 0);
+  // An axis letter ends the look-back like the axis word does, so the count after "36 w" reads (L6): 20 -> 16 pieces, as "36 wide 2 drawers".
+  assert.equal(viaReader("dresser 36 w a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 36 w 2 drawers");
+  assert.equal(viaReader("bookcase 30 w 72 h two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 30 w 72 h 2 shelves");
+  // A tens word is a number word: it ends the look-back, and the count's digits are not beside a digit (L7).
+  assert.equal(viaReader("bookcase 3 x forty pine two shelves", { counts: [C4("shelves", 2, "two shelves")] }), "bookcase 3 x forty pine 2 shelves");
+  assert.equal(viaReader("dresser 2 x twenty a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 2 x twenty 2 drawers");
+  // A number word ends it too (L8): "36 x 18 double a pair of" reads (20 -> 16 pieces). Skipping number words would also drop the
+  // "a pair of a pair of" residual, but at the cost of these honest reads.
+  assert.equal(viaReader("dresser 36 x 18 double a pair of drawers", { counts: [C4("drawers", 2, "pair of drawers")] }), "dresser 36 x 18 double 2 drawers");
+  assert.equal(viaReader("bookcase 1 m two of them with four shelves", { counts: [C4("shelves", 4, "four shelves")] }), "bookcase 1 m two of them with 4 shelves");
+});
