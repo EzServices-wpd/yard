@@ -102,7 +102,62 @@ export function typedCount(quote: string, thing: (typeof COUNT_THINGS)[number]):
   return m ? (/\d/.test(m[1]) ? +m[1] : WORDS[m[1]]) : null;
 }
 
-export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; dropped: string[] } {
+/**
+ * The allow-list (r5): a metric or feet quote is used only when its measurement run is plain labelled sizes. A run is
+ * the stretch of numbers, units, axis words, punctuation and measurement words ("x", "and", "to", "W", "across"...)
+ * around the quote. It must split into segments `NUM [UNIT] [NUM in] AXIS`, with nothing else in it. The quote must
+ * be one whole segment, and an axis-less quote must be the whole run. Its axis must not be typed anywhere else. Any
+ * other phrasing (joiners, ranges, letters, parentheses, synonyms) is the parser's to read: no rewrite.
+ */
+const TOK = /\d+(?:\.\d+)?|[a-z]+|[^\sa-z\d]/g;
+const UNIT_TOKEN = /^(?:cm|mm|m|centimet(?:er|re)s?|millimet(?:er|re)s?|met(?:er|re)s?|ft|feet|foot|in|inch(?:es)?|"|'|″|′)$/;
+const AXIS_TOKEN: Record<string, string[]> = { wide: ["W"], width: ["W"], deep: ["D"], depth: ["D"], tall: ["H"], high: ["H"], height: ["H"], long: ["W", "L"], length: ["W", "L"] };
+const RUN_WORD = /^(?:x|by|to|and|or|plus|times|between|of|at|is|from|about|approx|around|w|h|d|l|across|diameter|thick|thickness|front|back|side|wall|floor|ceiling)$/;
+type Tok = { t: string; at: number; end: number; k: "num" | "unit" | "axis" | "run" | "word" };
+const tokens = (p: string): Tok[] => [...p.matchAll(TOK)].map((m) => {
+  const t = m[0];
+  const k = /^\d/.test(t) ? "num" : UNIT_TOKEN.test(t) ? "unit" : t in AXIS_TOKEN ? "axis" : /^[a-z]/.test(t) && !RUN_WORD.test(t) ? "word" : "run";
+  return { t, at: m.index!, end: m.index! + t.length, k };
+});
+export const soleSize = (prompt: string, s: ReaderSize): boolean => {
+  const P = norm(prompt), i = quoteAt(prompt, s.quote);
+  if (i < 0) return false;
+  const T = tokens(P), end = i + norm(s.quote).length;
+  const qi = T.findIndex((x) => x.at === i), qe = T.findIndex((x) => x.end === end);
+  if (qi < 0 || qe < qi) return false;
+  let a = qi, b = qe;
+  while (a > 0 && T[a - 1].k !== "word") a--;
+  while (b < T.length - 1 && T[b + 1].k !== "word") b++;
+  // Split the run into segments NUM [UNIT] [NUM in] [AXIS]; an axis word closes a segment.
+  const segs: [number, number][] = [];
+  // A number with its fraction: "11", "11 1/2", "1/2".
+  const num = (j: number) => {
+    if (j > b || T[j].k !== "num") return -1;
+    if (j + 3 <= b && T[j + 1].k === "num" && T[j + 2].t === "/" && T[j + 3].k === "num") return j + 4;
+    if (j + 2 <= b && T[j + 1].t === "/" && T[j + 2].k === "num") return j + 3;
+    return j + 1;
+  };
+  for (let j = a; j <= b; ) {
+    let k = num(j);
+    if (k < 0) return false;
+    if (k <= b && T[k].k === "unit") k++;
+    const inch = num(k);
+    if (inch > 0 && inch <= b && /^(?:ft|feet|foot|')$/.test(T[k - 1].t) && parseFloat(T[k].t) < 12 && /^(?:in|inch(?:es)?|"|″)$/.test(T[inch].t)) k = inch + 1;
+    if (k <= b && T[k].k === "axis") k++;
+    else if (k <= b) return false; // a second number, a joiner or punctuation before this size is closed
+    segs.push([j, k - 1]);
+    j = k;
+  }
+  const seg = segs.find(([x]) => x === qi);
+  if (!seg || qe < (T[seg[1]].k === "axis" ? seg[1] - 1 : seg[1]) || qe > seg[1]) return false;
+  if (T[seg[1]].k !== "axis" && segs.length !== 1) return false;
+  // The quote's axis is typed nowhere else.
+  const own = T[seg[1]].k === "axis" ? seg[1] : -1;
+  return !T.some((x, j) => j !== own && x.k === "axis" && AXIS_TOKEN[x.t].includes(s.axis));
+};
+const ALLOW_UNITS = new Set(["cm", "mm", "m", "ft"]);
+
+export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: boolean } = {}): { spec: ReaderSpec; dropped: string[] } {
   const dropped: string[] = [];
   const spec: ReaderSpec = { sizes: [], counts: [] };
   const r = (raw && typeof raw === "object" ? raw : {}) as { sizes?: unknown; counts?: unknown };
@@ -111,6 +166,7 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
     if (s?.assumed !== false || !quoted(prompt, s.quote)) { dropped.push(`${where}: assumed or not in the request`); continue; }
     if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s) || partOfMeasurement(prompt, s.quote) || axisNamedElsewhere(prompt, s) || axisCueBeside(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
     if (!sizeOnlyQuote(s.quote) || !UNIT_OK[quoteUnit(s.quote)].includes(s.unit)) { dropped.push(`${where}: holds a non-size word, or its unit is not the one typed`); continue; }
+    if (opts.allowList !== false && ALLOW_UNITS.has(quoteUnit(s.quote)) && !soleSize(prompt, s)) { dropped.push(`${where}: not one plain labelled size (the allow-list)`); continue; }
     const inches = Number(s.inches);
     if (!(inches > 0) || !inchCandidates(s.quote).some((c) => Math.abs(c - inches) <= 1 / 32)) { dropped.push(`${where}: ${s.inches}" is not a number in its quote`); continue; }
     spec.sizes.push({ axis: s.axis, value: Number(s.value), unit: s.unit, inches, of: s.of, quote: s.quote, confidence: clamp01(s.confidence), assumed: false });
