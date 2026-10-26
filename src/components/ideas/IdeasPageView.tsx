@@ -154,7 +154,7 @@ function Section({ section, first, onBuild, onIntent, showCount, flags }: { sect
 type RowsProps = { cards: Card[]; onBuild: Build; onIntent?: (q: string) => void; flags: TestFlags };
 function Rows({ cards, onBuild, onIntent, flags, id, listRef }: RowsProps & { id?: string; listRef?: Ref<HTMLUListElement> }) {
   return (
-    <ul id={id} ref={listRef} className="mt-3 grid gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+    <ul id={id} ref={listRef} className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((c) => (
         <li key={c.slug}>
           <IdeaRow card={c} href={buildHref(c.examplePrompt, flags)} onOpen={() => onBuild(c.examplePrompt)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} />

@@ -21,7 +21,9 @@ FEED = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True,
     "cards": [_card(0, "Bookcase", "bookcase 36 wide 72 tall 12 deep"), _card(1, "Shoe rack", "shoe rack 30 wide 18 tall 12 deep"), _card(2, "Nightstand", "nightstand 18 wide 24 tall 16 deep")]}]})
 
 # The strip itself asks for ?view=strip: only the rows it renders (MakingNowItem: slug, title, size, sizeAria, q).
-STRIP = __import__("json").dumps({"rows": [{"slug": c["slug"], "title": c["title"], "size": c["size"], "sizeAria": c["sizeAria"], "q": c["examplePrompt"]} for c in __import__("json").loads(FEED)["sections"][0]["cards"]]})
+# Twelve rows (MAKING_NOW_MAX) so the count check below proves the strip reads this response, not the full feed.
+_NAMES = ["Bookcase", "Shoe rack", "Nightstand", "Desk", "Bench", "Wine rack", "Toy chest", "Coat rack", "Planter", "Stool", "Crate", "Shelf"]
+STRIP = __import__("json").dumps({"rows": [{"slug": f"s{i}", "title": t, "size": "36 × 12 × 72 in", "sizeAria": "36 wide, 12 deep, 72 tall", "q": f"{t.lower()} 36 wide 72 tall 12 deep"} for i, t in enumerate(_NAMES)]})
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -42,6 +44,9 @@ with sync_playwright() as p:
                     try: btn.click(timeout=1500)
                     except Exception: pass
                 page.wait_for_timeout(300)
+                if path == "/":  # the strip renders one link per ?view=strip row (its duplicate copy is aria-hidden)
+                    strip = page.locator("[data-yard-making-now] li:not([aria-hidden]) a").count()
+                    if strip != 12: fails.append(f"/?{flag} @{W}: strip shows {strip} links from 12 ?view=strip rows")
                 links = [l for l in page.evaluate(LINKS_JS) if l[0].startswith("/") and not l[0].startswith("//")]
                 if not links: fails.append(f"{path}?{flag} @{W}: no internal links found")
                 seen += len(links)
