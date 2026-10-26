@@ -181,7 +181,8 @@ export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: b
     if (c?.assumed !== false || !quoted(prompt, c.quote) || !COUNT_THINGS.includes(c.thing) || !Number.isInteger(c.n)) { dropped.push(`${where}: unquoted, assumed or malformed`); continue; }
     // "2 x a pair of drawers": the rewrite drops the "a" ("2 x 2 drawers"), so what sits before the "a" is what the digits join (row 529).
     // The same for an article or quantifier between a joiner and the count ("3 × the two shelves", "1 m both two shelves").
-    const before = norm(prompt).slice(0, quoteAt(prompt, c.quote)).replace(/\b(?:an?|the|both|each|one)\s*$/, "");
+    // ("one" needs no entry: it is a number word, so the prev-word rule below already drops "6 ft one two shelves".)
+    const before = norm(prompt).slice(0, quoteAt(prompt, c.quote)).replace(/\b(?:an?|the|both|each)\s*$/, "");
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
     if (new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`).test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
     // A number, unit, separator or range word just before the count ("6 ft two shelves", "2 x three drawers", "30 by two
