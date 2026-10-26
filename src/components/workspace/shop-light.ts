@@ -20,6 +20,13 @@ export const SHOP_LIGHT = {
   contact: 0.7,
 } as const;
 
+/**
+ * Night shop ground for the 3D bench, so the canvas meets the workspace chrome with no seam: bg is the
+ * `--color-bg` value (#131518) from PR #172, the floor one step up (`--color-surface`), grid lines on `--color-border`.
+ * three.js can't read CSS variables, so these are the values, not new tokens. Colours only.
+ */
+export const SHOP_GROUND = { bg: "#131518", floor: "#1c1f23", gridCell: "#131518", gridSection: "#2c3136" } as const;
+
 /** Raking key position: lower and further to the side than a studio key. */
 export function shopKeyPosition(span: number, height: number): [number, number, number] {
   return [-span * 0.95, Math.max(height * 1.05, 40), span * 0.55];

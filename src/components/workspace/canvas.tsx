@@ -22,13 +22,13 @@ import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-
 import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
-import { SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
+import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 
 const HULL = "#8a8478";
-const BENCH_BG = "#1a1612";
+const BENCH_BG = SHOP_GROUND.bg;
 /**
  * Fat lines (ghost opening, panel outlines) live on their own layer: the main camera sees them,
  * but the contact-shadow camera does not. Rendered with its depth material a line mesh becomes big
@@ -252,16 +252,16 @@ export function WorkspaceCanvas() {
         dpr={typeof window !== "undefined" && window.innerWidth < 820 ? [1, 1.5] : [1, 1.75]}
         style={{ display: "block", width: "100%", height: "100%" }}
         onCreated={({ camera: cam, gl, scene }) => {
-          gl.setClearColor("#1a1612", 1);
+          gl.setClearColor(BENCH_BG, 1);
           gl.outputColorSpace = THREE.SRGBColorSpace;
-          scene.background = new THREE.Color("#1a1612");
+          scene.background = new THREE.Color(BENCH_BG);
           cam.lookAt(0, 14, 0);
           cam.layers.enable(LINE_LAYER);
           cam.layers.enable(PROP_LAYER);
         }}
         onPointerMissed={() => select(null)}
       >
-        <color attach="background" args={["#1a1612"]} />
+        <color attach="background" args={[BENCH_BG]} />
         {/* The HDR preset loads async and suspends; its own boundary keeps that from suspending (hiding) the whole workspace (F43). */}
         <Suspense fallback={null}>
           {/* Self-hosted (drei presets fetch from raw.githack.com at runtime): same CC0 Poly Haven file, public/hdri. */}
@@ -271,7 +271,7 @@ export function WorkspaceCanvas() {
         {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
           <planeGeometry args={[6000, 6000]} />
-          <meshStandardMaterial color="#231d17" roughness={0.95} metalness={0} />
+          <meshStandardMaterial color={SHOP_GROUND.floor} roughness={0.95} metalness={0} />
         </mesh>
         <RevealCamera />
         <BenchScene
@@ -297,7 +297,7 @@ export function WorkspaceCanvas() {
           plan={plan}
           stepping={activeStep != null}
         />
-        <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor="#1a1612" sectionSize={24} sectionThickness={0.5} sectionColor="#2a241e" fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
+        <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor={SHOP_GROUND.gridCell} sectionSize={24} sectionThickness={0.5} sectionColor={SHOP_GROUND.gridSection} fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
         <OrbitControls
           makeDefault
           enabled={workMode !== "walk"}

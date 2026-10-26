@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { SHOP_LIGHT, plyCount, shopLook } from "../src/components/workspace/shop-light";
+import { SHOP_GROUND, SHOP_LIGHT, plyCount, shopLook } from "../src/components/workspace/shop-light";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 
 const read = (p: string) => fs.readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -34,6 +34,13 @@ test("only wood and ply looks are retuned; kraft, PVC and metal keep their own c
 
 test("the light rig never uses the chalk-blue mark colour (Night shop B: marks only)", () => {
   assert.doesNotMatch(JSON.stringify(SHOP_LIGHT), /#7cb2ff|#2a62c4/i);
+});
+
+test("the bench ground is the Night shop ground from the palette tokens (no seam with the chrome)", () => {
+  const css = read("src/styles.css");
+  assert.match(css, new RegExp(`--color-bg:\\s*${SHOP_GROUND.bg}`, "i"));
+  assert.match(css, new RegExp(`--color-surface:\\s*${SHOP_GROUND.floor}`, "i"));
+  assert.doesNotMatch(read("src/components/workspace/canvas.tsx"), /#1a1612|#231d17/i);
 });
 
 test("materials only: shop-light builds no geometry, and the bench keeps demand frames and its DPR cap", () => {
