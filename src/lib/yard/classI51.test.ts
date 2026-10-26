@@ -1,34 +1,67 @@
-/** I51: no sheet is opened for a part that fits a free gap of an earlier sheet (kick strip alone on Sheet 2 of a 24" base). */
+/** I51: no sheet is opened for a trim strip (kick strip, toe kick, plinth) that fits a free gap of an earlier sheet. */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild, i51Gaps } from "./invariants";
-import { freeGapSpot, nestParts, type NestPart } from "./nesting";
+import { freeGapSpot, isTrimStrip, nestParts, type NestPart } from "./nesting";
 
 const plan = (q: string) => buildPlan(generateFromPrompt(q));
-const part = (id: string, width: number, height: number, allowRotate = height / width > 0.25): NestPart => ({ id, name: id, label: id, width, height, material: "3/4\" plywood", allowRotate });
+const part = (id: string, name: string, width: number, height: number): NestPart => ({ id, name, label: id, width, height, material: "3/4\" plywood", allowRotate: height / width > 0.25 });
+const turned = (q: string) => (plan(q).sheetNest?.sheets?.sheets ?? []).flatMap((s) => s.parts.filter((x) => x.crossGrain).map((x) => x.name));
 
-test("I51: 24\" kitchen base cabinet nests on one sheet, kick strip turned into the offcut and flagged, $98.83 (Ezra Oct 26)", () => {
+test("I51: 24\" kitchen base cabinet nests on one sheet, only the kick strip turned into the offcut and noted, $98.83 (Ezra Oct 26)", () => {
   const q = "kitchen base cabinet 24 wide";
   const p = generateFromPrompt(q);
   const pl = buildPlan(p);
   assert.equal(pl.sheetNest?.sheets?.totalSheets, 1);
   assert.equal(pl.totals.estCostUsd.toFixed(2), "98.83");
-  const kick = pl.sheetNest!.sheets!.sheets[0].parts.find((x) => /kick/i.test(x.name));
-  assert.ok(kick?.crossGrain && kick.rotated, "kick strip turned across the grain");
-  assert.match(pl.cutList.find((c) => /kick/i.test(c.name))?.notes ?? "", /across the grain/);
+  const parts = pl.sheetNest!.sheets!.sheets[0].parts;
+  assert.deepEqual(parts.filter((x) => x.crossGrain).map((x) => x.name), ["Kick strip"], "packer-turned top and shelf are not flagged");
+  assert.ok(parts.some((x) => x.rotated && !x.crossGrain), "the packer still turns square-ish panels without a flag");
+  assert.deepEqual(pl.cutList.filter((c) => /across the grain/.test(c.notes ?? "")).map((c) => c.name), ["Kick strip"]);
   assert.deepEqual(checkBuild(p, q, pl).filter((x) => x.id === "I51"), []);
 });
 
-test("I51 scope: linen $193.68 and pocket vanity $636.23 do not move, and only turned strips get the grain note", () => {
+test("I51 corpus: a kick strip that fits a gap as cut is moved as cut, not turned (kitchen base 30, price unchanged)", () => {
+  const q = "kitchen base cabinet 30 wide";
+  const p = generateFromPrompt(q);
+  const pl = buildPlan(p);
+  assert.deepEqual(checkBuild(p, q, pl).filter((x) => x.id === "I51"), [], "a strip on Sheet 1 is never measured against a later sheet's gap");
+  const [s1] = pl.sheetNest!.sheets!.sheets;
+  const kick = s1.parts.find((x) => x.name === "Kick strip");
+  assert.ok(kick, "kick strip on Sheet 1, not Sheet 2");
+  assert.deepEqual([kick!.width, kick!.height, kick!.rotated, !!kick!.crossGrain], [28.5, 3.5, false, false]);
+  assert.equal(pl.cutList.some((c) => /across the grain/.test(c.notes ?? "")), false);
+  assert.equal(pl.totals.estCostUsd.toFixed(2), "159.23");
+  // 42" base: the strip fits an earlier gap both as cut and turned; it must go as cut (grain kept, no note).
+  const wide = plan("kitchen base cabinet 42 wide");
+  const k42 = wide.sheetNest!.sheets!.sheets.flatMap((s) => s.parts).find((x) => x.name === "Kick strip")!;
+  assert.deepEqual([k42.rotated, !!k42.crossGrain], [false, false]);
+  assert.equal(wide.totals.estCostUsd.toFixed(2), "170.98");
+});
+
+test("I51 scope: drawer backs, aprons, bottoms and shelves keep their grain; canaries do not move", () => {
+  assert.deepEqual(turned("wardrobe 96 tall with drawers and 2 rods"), [], "drawer back is not a trim strip");
+  assert.equal(plan("wardrobe 96 tall with drawers and 2 rods").totals.estCostUsd.toFixed(2), "463.31");
+  for (const q of ["bench with a drawer", "wall cabinet 45 wide", "wall mounted wine rack", "filing cabinet 30x30x24 2 doors 2 drawers"]) assert.deepEqual(turned(q), [], q);
+  for (const q of ["sink base cabinet 53 wide", "tv stand 48 wide", "bathroom vanity 36 wide"]) assert.ok(turned(q).every((n) => /kick strip|toe ?kick|plinth/i.test(n)), q);
   assert.equal(plan("linen closet 31.5 wide 78 tall 16 deep").totals.estCostUsd.toFixed(2), "193.68");
   assert.equal(plan("pocket vanity").totals.estCostUsd.toFixed(2), "636.23");
   for (const q of ["linen closet 31.5 wide 78 tall 16 deep", "pocket vanity", "bookcase 36 wide"]) {
-    const pl = plan(q);
-    assert.equal(pl.sheetNest?.sheets?.sheets.some((s) => s.parts.some((x) => x.crossGrain)), false, q);
-    assert.equal(pl.cutList.some((c) => /across the grain/.test(c.notes ?? "")), false, q);
+    assert.deepEqual(turned(q), [], q);
+    assert.equal(plan(q).cutList.some((c) => /across the grain/.test(c.notes ?? "")), false, q);
   }
+});
+
+test("isTrimStrip: named trim, short enough to turn across a sheet, grain-locked", () => {
+  assert.ok(isTrimStrip({ name: "Kick strip", width: 22.5, height: 3.5 }));
+  assert.ok(isTrimStrip({ name: "Toekick", width: 34.5, height: 4 }));
+  assert.ok(isTrimStrip({ name: "Plinth", width: 3, height: 40 }));
+  assert.ok(!isTrimStrip({ name: "Kick strip", width: 58, height: 3.5 }), "too long to turn on a 48\" sheet");
+  assert.ok(!isTrimStrip({ name: "Kick strip", width: 12, height: 4 }), "not grain-locked");
+  assert.ok(!isTrimStrip({ name: "Drawer back", width: 22.5, height: 3.5 }));
+  assert.ok(!isTrimStrip({ name: "Kick support", width: 22.5, height: 3.5 }));
 });
 
 test("freeGapSpot: kerf to every part, none at the factory edge", () => {
@@ -45,33 +78,29 @@ test("freeGapSpot: kerf to every part, none at the factory edge", () => {
   assert.equal(freeGapSpot(high, 96, 9.8), null);
 });
 
-test("I51: a grain-locked strip goes in an earlier gap, turned only when it must be", () => {
-  const big = [part("A", 91.75, 48)];
-  const r = nestParts([...big, part("G", 22.5, 3.5)]);
+test("I51: a kick strip goes in a gap on any earlier sheet; a drawer back of the same size opens a sheet", () => {
+  const r = nestParts([part("A", "Upright", 91.75, 48), part("G", "Kick strip", 22.5, 3.5)]);
   assert.equal(r.totalSheets, 1);
   const g = r.sheets[0].parts.find((x) => x.id === "G")!;
   assert.deepEqual([g.x, g.y, g.width, g.height, g.rotated, g.crossGrain], [91.875, 0, 3.5, 22.5, true, true]);
-  const fits = nestParts([part("A", 96, 40), part("G", 22.5, 3.5), part("B", 96, 40)]);
-  for (const s of fits.sheets) for (const x of s.parts) assert.ok(!x.crossGrain, `${x.id} needs no turn`);
-  const later = nestParts([part("A", 96, 48), part("B", 91.75, 48), part("G", 22.5, 3.5)]);
+  const later = nestParts([part("A", "Side", 96, 48), part("B", "Upright", 91.75, 48), part("G", "Kick strip", 22.5, 3.5)]);
   assert.equal(later.totalSheets, 2, "a gap on any earlier sheet, not only the first");
   assert.ok(later.sheets[1].parts.some((x) => x.id === "G" && x.crossGrain));
+  const back = nestParts([part("A", "Upright", 91.75, 48), part("G", "Drawer back", 22.5, 3.5)]);
+  assert.equal(back.totalSheets, 2, "only trim strips are turned across the grain");
   assert.deepEqual(i51Gaps(r), []);
-  assert.deepEqual(i51Gaps(fits), []);
+  assert.deepEqual(i51Gaps(back), [], "I51 does not ask a drawer back to turn");
 });
 
-test("I51 fires when a sheet is opened for a part that fits an earlier sheet's gap (release shape), either turn", () => {
+test("I51 fires when a sheet is opened for a kick strip that fits an earlier sheet's gap (release shape), either turn", () => {
   const A = { id: "A", name: "Upright", label: "A", x: 0, y: 0, width: 91.75, height: 48, rotated: false, material: "m" };
   const G = { id: "G", name: "Kick strip", label: "G", x: 0, y: 0, width: 22.5, height: 3.5, rotated: false, material: "m" };
-  const sheet = (index: number, parts: (typeof A)[], material = "m", width = 96) => ({ index, width, height: 48, material, parts, usedArea: 0, utilization: 0 });
+  const sheet = (index: number, parts: (typeof A)[], material = "m") => ({ index, width: 96, height: 48, material, parts, usedArea: 0, utilization: 0 });
   const bad = { sheets: [sheet(1, [A]), sheet(2, [G])], unplaced: [], totalSheets: 2, averageUtilization: 0 };
   assert.deepEqual(i51Gaps(bad), ["G Kick strip 22.5x3.5 opens Sheet 2 though it fits a free gap on Sheet 1"]);
-  const other = { ...bad, sheets: [sheet(1, [A], "n"), sheet(2, [G])] };
-  assert.deepEqual(i51Gaps(other), [], "another stock's offcut does not count");
+  assert.deepEqual(i51Gaps({ ...bad, sheets: [sheet(1, [A], "n"), sheet(2, [G])] }), [], "another stock's offcut does not count");
   const p = generateFromPrompt("kitchen base cabinet 24 wide");
   const pl = buildPlan(p);
-  const hits = checkBuild(p, "kitchen base cabinet 24 wide", { ...pl, sheetNest: { sheets: bad, backer: null } }).filter((x) => x.id === "I51");
-  assert.equal(hits.length, 1);
-  const backer = checkBuild(p, "kitchen base cabinet 24 wide", { ...pl, sheetNest: { sheets: null, backer: bad } }).filter((x) => x.id === "I51");
-  assert.equal(backer.length, 1, "backer nest checked too");
+  assert.equal(checkBuild(p, "kitchen base cabinet 24 wide", { ...pl, sheetNest: { sheets: bad, backer: null } }).filter((x) => x.id === "I51").length, 1);
+  assert.equal(checkBuild(p, "kitchen base cabinet 24 wide", { ...pl, sheetNest: { sheets: null, backer: bad } }).filter((x) => x.id === "I51").length, 1, "backer nest checked too");
 });

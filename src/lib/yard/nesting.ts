@@ -33,7 +33,7 @@ export interface PlacedPart {
   material: string;
   /** The 3D model part ids this sheet piece is cut for (same ids as CutLine.partIds and data-part). */
   partIds?: string[];
-  /** A grain-locked strip turned 90° to fit an earlier sheet's offcut instead of opening a sheet (I51). */
+  /** A kick strip turned 90° across its grain to fit an earlier sheet's offcut instead of opening a sheet (I51). */
   crossGrain?: boolean;
 }
 
@@ -242,9 +242,22 @@ export function freeGapSpot(
   return null;
 }
 
+/** Trim strips whose grain does not show once fitted: the kick strip under a base, a toe kick, a plinth. */
+const TRIM_STRIP = /\b(?:kick strip|toe ?kick|plinth)\b/i;
+
 /**
- * Before a new sheet is opened, put each part that fits a free gap of an earlier sheet there, as cut, else turned 90°.
- * A grain-locked strip (allowRotate false) is turned only here, rather than buy a sheet for it, and is flagged crossGrain.
+ * I51's class: a short, grain-locked trim strip (long side fits across a sheet, short side at most a quarter of it),
+ * the only part Yard turns across the grain, and only into an earlier sheet's free gap rather than buy a sheet for it.
+ */
+export function isTrimStrip(p: { name: string; width: number; height: number }): boolean {
+  const long = Math.max(p.width, p.height);
+  const short = Math.min(p.width, p.height);
+  return TRIM_STRIP.test(p.name) && long <= DEFAULT_SHEET.height && short / long <= 0.25;
+}
+
+/**
+ * Before a new sheet is opened, put each trim strip (isTrimStrip) that fits a free gap of an earlier sheet there, as
+ * cut, else turned 90° and flagged crossGrain. Every other part keeps the packer's sheets and its grain.
  */
 function fillGaps(
   sheets: { placed: PlacedPart[] }[],
@@ -254,14 +267,18 @@ function fillGaps(
 ): NestPart[] {
   const left: NestPart[] = [];
   for (const part of [...parts].sort(order)) {
+    if (!isTrimStrip(part)) {
+      left.push(part);
+      continue;
+    }
     let done = false;
     for (const sh of sheets) {
-      for (const rotated of part.width === part.height ? [false] : [false, true]) {
+      for (const rotated of [false, true]) {
         const w = rotated ? part.height : part.width;
         const h = rotated ? part.width : part.height;
         const spot = freeGapSpot({ ...size, parts: sh.placed }, w, h);
         if (!spot) continue;
-        sh.placed.push({ id: part.id, name: part.name, label: part.label, ...spot, width: w, height: h, rotated, material: part.material, ...(rotated && !part.allowRotate ? { crossGrain: true } : {}) });
+        sh.placed.push({ id: part.id, name: part.name, label: part.label, ...spot, width: w, height: h, rotated, material: part.material, ...(rotated ? { crossGrain: true } : {}) });
         done = true;
         break;
       }
@@ -298,7 +315,7 @@ export function nestParts(
     const lost: NestPart[] = [];
     let remaining = matParts;
     while (remaining.length > 0) {
-      // I51: no sheet is opened for a part that fits a free gap of an earlier sheet.
+      // I51: no sheet is opened for a trim strip that fits a free gap of an earlier sheet.
       remaining = fillGaps(out, remaining, order, sheetSize);
       if (remaining.length === 0) break;
       const { placed, remaining: still } = packSheet(remaining, sheetSize.width, sheetSize.height, order, score);

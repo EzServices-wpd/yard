@@ -31,7 +31,7 @@ import { isUnitItem, unitItemAsk } from "./unitItems";
  * and failure class so the guards can ratchet (evals/invariants-baseline.json) and score (evals/score.json).
  */
 import { buildPlan } from "./report";
-import { freeGapSpot, nestSheetsByStock, type NestResult } from "./nesting";
+import { freeGapSpot, isTrimStrip, nestSheetsByStock, type NestResult } from "./nesting";
 import { supportsOf } from "./supportGraph";
 import { spanFindings, stampSpanOffer } from "./spanCheck";
 import { placementIndex } from "./placeEveryPart";
@@ -676,15 +676,15 @@ function i50(plan: BuildPlan): Violation[] {
 }
 
 /**
- * I51 (F7 no wasted sheet; kick-strip review, Oct 25): no sheet is opened for a part that fits a free gap of an earlier
- * sheet of the same stock and size, in either turn (a grain-locked strip turned across the grain counts). Structural and
- * backer nests. Graded by the eval gate, outside PER_BUILD so the eval score's max is unchanged.
+ * I51 (F7 no wasted sheet; kick-strip review, Oct 25): no sheet is opened for a trim strip (isTrimStrip: kick strip, toe
+ * kick, plinth) that fits a free gap of an earlier sheet of the same stock and size, as cut or turned. Other parts keep
+ * their grain, so they are not checked. Structural and backer nests. Graded by the eval gate, outside PER_BUILD so the eval score's max is unchanged.
  */
 export function i51Gaps(nest: NestResult | null | undefined): string[] {
   const out: string[] = [];
   const sheets = nest?.sheets ?? [];
   sheets.forEach((s, j) => {
-    for (const p of s.parts) {
+    for (const p of s.parts.filter(isTrimStrip)) {
       const early = sheets.slice(0, j).find((e) => e.material === s.material && e.width === s.width && e.height === s.height &&
         (freeGapSpot(e, p.width, p.height) || freeGapSpot(e, p.height, p.width)));
       if (early) out.push(`${p.label ?? ""} ${p.name} ${p.width}x${p.height} opens Sheet ${s.index} though it fits a free gap on Sheet ${early.index}`.trim());
