@@ -31,7 +31,10 @@ const nextAxisFits = (prompt: string, s: ReaderSize) => {
   return !w || NAMED.find(([re]) => re.test(w))![1].includes(s.axis);
 };
 /** A quote that is only part of a typed measurement ("20 cm" of "1 m 20 cm", "8 m" of "1,8 m", "2 m" of "2 m x 60 cm", "4 ft" of "4 ft 30 wide"). */
-const PART_BEFORE = /(?:\d\s*(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|"|')?|[,×*~–-]|\b(?:x|by|to))\s*$/;
+const UNIT_WORD = String.raw`(?:cm|mm|m|in|inch(?:es)?|ft|feet|foot|yards?|"|'|(?:centi|milli)?met(?:er|re)s?)`;
+// A number (and its unit) just before the quote, alone or joined by a separator or a joining word ("1 metre 20 cm",
+// "60 and 80 cm", "60—80 cm", "80 cm & 40 cm", "2 times 80 cm"), or a separator alone.
+const PART_BEFORE = new RegExp(String.raw`(?:\d\s*${UNIT_WORD}?\s*(?:[,×*~–—&;\/+-]|\b(?:x|by|to|and|or|plus|times)\b)?|[,×*~–—-]|\b(?:x|by|to))\s*$`);
 const PART_AFTER = /^\s*(?:\d|[,×*~–-]|(?:x|by|to)\b|x(?=\d))/;
 const partOfMeasurement = (prompt: string, q: string) => {
   const P = norm(prompt), i = quoteAt(prompt, q), rest = P.slice(i + norm(q).length);
@@ -40,12 +43,22 @@ const partOfMeasurement = (prompt: string, q: string) => {
   return /^[-−–~+]/.test(norm(q)) || PART_BEFORE.test(P.slice(0, i)) || (!axisEnds && PART_AFTER.test(rest));
 };
 /** Every axis word or letter typed for an axis ("30 wide", "width 30", "W 30"), outside this quote and its own axis word. */
-const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width)\b|\bw\s*[:=]?\s*\d/g, D: /\b(?:deep|depth)\b|\bd\s*[:=]?\s*\d/g, H: /\b(?:tall|high|height)\b|\bh\s*[:=]?\s*\d/g, L: /\b(?:long|length)\b|\bl\s*[:=]?\s*\d/g };
+const AXIS_WORDS: Record<string, RegExp> = { W: /\b(?:wide|width)\b|\bw\s*[:=]?\s*\d|\d\s*w\b/g, D: /\b(?:deep|depth)\b|\bd\s*[:=]?\s*\d|\d\s*d\b/g, H: /\b(?:tall|high|height)\b|\bh\s*[:=]?\s*\d|\d\s*h\b/g, L: /\b(?:long|length)\b|\bl\s*[:=]?\s*\d|\d\s*l\b/g };
 const axisNamedElsewhere = (prompt: string, s: ReaderSize) => {
   const P = norm(prompt), i = quoteAt(prompt, s.quote), end = i + norm(s.quote).length;
   const after = P.slice(end).match(AXIS_AFTER)?.[0].length ?? 0;
   const rest = P.slice(0, i) + " # " + P.slice(end + after);
   return (rest.match(AXIS_WORDS[s.axis] ?? /$^/g) ?? []).length > 0;
+};
+/** An axis-less quote ("2 m") with an axis typed right beside it in other words: before it ("height 2 m", "W: 2 m"), or after
+ * it past punctuation or as a letter or a synonym ("6 ft. tall", "2 m (tall)", "2 m H", "60 cm front to back", "1 m diameter"). */
+const CUE = String.raw`(?:\b(?:wide|width|deep|depth|tall|high|height|long|length|across|diameter|thick(?:ness)?|front to back|side to side)\b|\b[whdl]\b)`;
+const CUE_BEFORE = new RegExp(String.raw`${CUE}\s*(?:[:=]|\b(?:of|is|at)\b)?\s*$`);
+const CUE_AFTER = new RegExp(String.raw`^\s*[.,;:()\[\]–—-]*\s*(?:(?:inches|inch|in|"|ft|feet|foot)\b\.?\s*)?[.,;:()\[\]–—-]*\s*${CUE}`);
+const axisCueBeside = (prompt: string, s: ReaderSize) => {
+  if (NAMED.some(([re]) => re.test(s.quote)) || typedAxisAfter(prompt, s.quote)) return false;
+  const P = norm(prompt), i = quoteAt(prompt, s.quote);
+  return CUE_BEFORE.test(P.slice(0, i)) || CUE_AFTER.test(P.slice(i + norm(s.quote).length));
 };
 const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, pair: 2, dual: 2, double: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const clamp01 = (x: unknown) => (typeof x === "number" && x >= 0 && x <= 1 ? x : 0);
@@ -96,7 +109,7 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
   for (const s of (Array.isArray(r.sizes) ? r.sizes : []) as ReaderSize[]) {
     const where = `size "${s?.quote}"`;
     if (s?.assumed !== false || !quoted(prompt, s.quote)) { dropped.push(`${where}: assumed or not in the request`); continue; }
-    if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s) || partOfMeasurement(prompt, s.quote) || axisNamedElsewhere(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
+    if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s) || partOfMeasurement(prompt, s.quote) || axisNamedElsewhere(prompt, s) || axisCueBeside(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
     if (!sizeOnlyQuote(s.quote) || !UNIT_OK[quoteUnit(s.quote)].includes(s.unit)) { dropped.push(`${where}: holds a non-size word, or its unit is not the one typed`); continue; }
     const inches = Number(s.inches);
     if (!(inches > 0) || !inchCandidates(s.quote).some((c) => Math.abs(c - inches) <= 1 / 32)) { dropped.push(`${where}: ${s.inches}" is not a number in its quote`); continue; }
@@ -106,9 +119,10 @@ export function validateSpec(prompt: string, raw: unknown): { spec: ReaderSpec; 
     const where = `count "${c?.quote}"`;
     if (c?.assumed !== false || !quoted(prompt, c.quote) || !COUNT_THINGS.includes(c.thing) || !Number.isInteger(c.n)) { dropped.push(`${where}: unquoted, assumed or malformed`); continue; }
     const prev = norm(prompt).slice(0, quoteAt(prompt, c.quote)).trim().split(/[\s-]+/).pop() ?? "";
-    if (/^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?)$/.test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
+    if (new RegExp(String.raw`^(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dozen|and|\d+(?:\.\d+)?|${Object.keys(WORDS).join("|")})$`).test(prev)) { dropped.push(`${where}: part of a larger typed number`); continue; }
     const noun = NOUN[c.thing];
-    if (noun && (norm(prompt).match(new RegExp(`(?:^|[^a-z0-9])(?:\\d+|${Object.keys(WORDS).join("|")})(?:\\s+of)?[\\s-]+${noun}\\b`, "g")) ?? []).length > 1) { dropped.push(`${where}: another count of that thing is typed`); continue; }
+    // The noun typed twice ("six small drawers, the top two drawers", "drawers x6 ... two drawers", "a dozen drawers ... two drawers"): which number counts is the parser's call.
+    if (noun && (norm(prompt).match(new RegExp(`\\b${noun}\\b`, "g")) ?? []).length > 1) { dropped.push(`${where}: that thing is typed more than once`); continue; }
     if (typedCount(c.quote, c.thing) !== c.n) { dropped.push(`${where}: ${c.n} ${c.thing} is not typed next to its noun`); continue; }
     spec.counts.push({ thing: c.thing, n: c.n, quote: c.quote, confidence: clamp01(c.confidence), assumed: false });
   }
