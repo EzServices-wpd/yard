@@ -18,6 +18,7 @@ import { DecisionLine } from "@/components/workspace/decision-line";
 import { priceReason, type PriceReason } from "@/components/workspace/price-reason";
 import { MorphButton } from "@/components/workspace/morph-button";
 import { RevealStatus } from "@/components/workspace/reveal-status";
+import { BuildScrubber } from "@/components/workspace/build-scrubber";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
@@ -465,6 +466,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
           <RevealStatus />
+          <BuildScrubber />
           <LavaLamp key={lampKey} show={lampOn} prompt={initialPrompt ?? project.prompt} caption="Building" />
           {aiChip && (
             <p data-yard-ai-chip="1" className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/70 bg-surface/85 px-3 py-1 text-[11px] text-muted backdrop-blur">

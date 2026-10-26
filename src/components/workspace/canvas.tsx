@@ -25,6 +25,7 @@ import { fitPoints } from "@/components/workspace/explode-frame";
 import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
+import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components/workspace/build-scrub";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 
 const HULL = "#8a8478";
@@ -204,6 +205,7 @@ export function WorkspaceCanvas() {
   const detail = useYard((s) => s.detail);
   const viewNonce = useYard((s) => s.viewNonce);
   const pending = building || grokBusy;
+  const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
@@ -310,7 +312,7 @@ export function WorkspaceCanvas() {
           target={[0, 6, 0]}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
-        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk"} />
+        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
@@ -843,7 +845,12 @@ function BenchScene({
   // place here and the driver moves them. Stick builds keep the spread-out view.
   const staged = project.panels.length > 0;
   const panelScale = staged ? assemble : explodeScale;
-  const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  const stepReveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  // Watch it build (build-scrub.ts): the scrubber's position draws through the reveal's outline/wood path.
+  const scrub = useSyncExternalStore(subscribeScrub, scrubState, scrubState);
+  const track = useMemo(() => (scrub.open && !pending ? scrubTrack(project, plan) : null), [scrub.open, pending, project, plan]);
+  const scrubbed = useMemo(() => (track && !stepping ? scrubShown(track, scrub.k) : null), [track, stepping, scrub.k]);
+  const reveal = stepReveal ?? scrubbed;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;
