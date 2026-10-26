@@ -10,6 +10,7 @@ import { planOverviewSvg } from "@/lib/yard/planStepPicture";
 import { ignoredTypedWords } from "@/lib/yard/promptMain";
 import { engineKeepsPrompt, routesToLearner } from "@/lib/yard/formOwnership";
 import { looksLikePocket } from "@/lib/yard/pocket";
+import { benchSkipsAi } from "@/components/workspace/run-prompt";
 import { usd } from "@/lib/utils";
 
 export const CARD_W = 1200, CARD_H = 630;
@@ -53,6 +54,9 @@ export function cardFacts(token: unknown): CardFacts | null {
   // A noun the engine does not own goes to the learner on the bench (run-prompt.ts): no engine guess on a card.
   const prompt = payload.prompt.trim(), half = ignoredTypedWords(project, prompt).length > 0;
   if (!engineKeepsPrompt(prompt, project, half) && routesToLearner(prompt, project, half) && !looksLikePocket(prompt)) return null;
+  // The bench may ask the AI to reshape or reprice other words (reader, house brief, hint, interpret): the card is
+  // the engine's build, so only words the bench builds with no AI call get one (run-prompt.ts benchSkipsAi).
+  if (!benchSkipsAi(prompt, project)) return null;
   const plan = buildPlan(project);
   if (!(plan.totals.pieces > 0)) return null;
   const drawing = planOverviewSvg(project, LAYOUT, LAYOUT).svg;

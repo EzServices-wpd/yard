@@ -11,6 +11,8 @@ const { POCKET_DREAM } = await import("../src/lib/yard/pocket");
 const { usd } = await import("../src/lib/utils");
 const { cardFacts, cardPayload, cardSvg, CARD_W, CARD_H, MAX_TOKEN } = await import("../src/lib/og/card");
 const { cardFactsWithin } = await import("../src/lib/og/budget.server");
+const await_ShareBuild = await import("../src/lib/yard/shareBuild");
+const await_Pdf = await import("../src/lib/yard/pdf");
 
 const calls: string[] = [];
 const stub = (name: string) => (async () => { calls.push(name); return { ok: false }; }) as never;
@@ -78,4 +80,36 @@ describe("og card is the link's build, within a time budget", () => {
     assert.equal(done.why, "ok");
     assert.equal(done.facts?.price, "~$128.08 estimated");
   });
+});
+
+describe("og card = the build its permalink opens (Critic rows 561/562: the 13 shares that priced wrong)", () => {
+  const { permalink, decodeShare } = await_ShareBuild;
+  const { headerAxes, headerName } = await_Pdf;
+  const shares = ["cat tree", "coffee table 48 wide", "adirondack chair", "murphy bed", "chicken coop", "rolling cart for bar 24 wide", "hanging bird feeder",
+    "rustic x coffee table 52 long 27 wide 18 tall", "sewing table 48 long", "workbench 6 foot with a vise", "console table 48 long 11 deep 29 tall", "wall mounted desk 36 wide", "cribbage board"];
+  const bench = async (prompt: string) => {
+    await runYardPrompt(prompt, { fresh: true, ai });
+    const project = useYard.getState().project, plan = useYard.getState().plan ?? useYard.getState().makePlan();
+    return { name: headerName(project), size: headerAxes(project), parts: plan.totals.pieces, price: `${usd(plan.totals.estCostUsd)} estimated`, project };
+  };
+  for (const q of shares) {
+    it(q, async () => {
+      calls.length = 0;
+      const sharer = await bench(q);
+      const link = permalink(sharer.project);
+      assert.ok(link, "the bench offers a permalink");
+      const token = new URL(link).searchParams.get("y")!;
+      const card = cardFacts(token);
+      // The recipient's bench: a link with no edits opens as the fresh build of its words (shell.tsx).
+      calls.length = 0;
+      const opened = await bench(decodeShare(token)!.prompt);
+      // Words the bench sends to the AI (hint, interpret) may be reshaped live: those get the default card, never a guess.
+      if (calls.length) return assert.equal(card, null, `AI called (${calls.join()}): default card`);
+      assert.ok(card, "a built card");
+      const { name, size, parts, price } = card;
+      assert.deepEqual({ name, size, parts, price }, { name: opened.name, size: opened.size, parts: opened.parts, price: opened.price });
+      // Same words as the sharer typed: the card is also the sharer's own numbers.
+      if (decodeShare(token)!.prompt === q) assert.deepEqual({ parts, price }, { parts: sharer.parts, price: sharer.price });
+    });
+  }
 });
