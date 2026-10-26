@@ -107,7 +107,11 @@ test("the empty line says 'No saved idea yet.' only when search found nothing at
   assert.match(plan, /href="\/plans\/toy-chest"/);
   assert.doesNotMatch(plan, /No saved idea yet/);
   assert.match(page("zzqx"), /No saved idea yet\./);
-  assert.match(page("bookshelf"), /4 ideas\. Enter opens the first\./);
+  // The count line names the hits the page shows (#162: one card per build type, so "Too small for books" no longer
+  // rides along with the corner shelf; the number comes from the same pool, not a constant).
+  const n = searchCards(pool, "bookshelf").length;
+  assert.ok(n >= 2, `bookshelf: ${n} hits, the plural line needs 2+`);
+  assert.match(page("bookshelf"), new RegExp(`>${n} ideas\\. Enter opens the first\\.<`));
 });
 
 test("a typed build (?q=) is noindex,follow; the ?y= share link and the bare workbench stay indexable", async () => {
