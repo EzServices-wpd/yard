@@ -80,7 +80,7 @@ import { buildAccessRamp, buildPetEnclosure, buildScratchingPost, isPetEnclosure
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
-import { isOutdoorPrompt, withOutdoorNotes } from "./outdoor";
+import { isOutdoorPrompt, outdoorBuild, withOutdoorNotes } from "./outdoor";
 import { notesWithFinishedDepth } from "./modelSize";
 import { buildSpec } from "./spec";
 
@@ -478,7 +478,7 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   }
   const members0 = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
   // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
-  const members = isOutdoorPrompt(prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
+  const members = outdoorBuild(members0, prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,

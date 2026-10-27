@@ -165,7 +165,9 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
     `Each storey is ${f(c)}" floor to ceiling${doors ? (dividers === S ? `; the room divider in each storey has a ${f(dw)}" wide doorway` : `; every room divider has a ${f(dw)}" wide doorway`) : ""}. The side walls run in one piece from the base to the eaves, and the gable-shaped back wall${cut.length ? ` with ${cut.length} window${cut.length === 1 ? "" : "s"}` : ""} squares the house.`,
   );
   const lab = label.toLowerCase(), said = new Set<string>();
-  if (doll) notes.push(`Sized for 11 1/2" fashion dolls like Barbie (1:6 scale): each storey is ${f(c)}" floor to ceiling.`);
+  // A fashion doll stands 11 1/2": a typed height whose storeys are lower says so and names the height that fits one.
+  if (doll && c >= 12 - 1e-9) notes.push(`Sized for 11 1/2" fashion dolls like Barbie (1:6 scale): each storey is ${f(c)}" floor to ceiling.`);
+  else if (doll) { let h = Math.ceil(H * 8) / 8; while (h <= 96 && fit(W, h).clear(S) < 12 - 1e-9) h += 1 / 8; notes.push(`Each storey is ${f(c)}" floor to ceiling, short of the 12" an 11 1/2" fashion doll like Barbie needs${h <= 96 ? `; type ${f(h)}" tall for ${S === 1 ? "one storey" : `${S} storeys`} she stands up in` : ""}.`); }
   const sheet = lower.match(SHEETLESS)?.[1];
   if (sheet) notes.push(`${/^(?:mdf|osb)$/.test(sheet) ? sheet.toUpperCase() : sheet[0].toUpperCase() + sheet.slice(1)} isn't on the stock list, so this ${lab} is cut from ${item.name}, the sheet dollhouse kits use.`);
   if (OUTDOOR.test(lower)) notes.push(`You asked for an outdoor ${lab}; this one is built for indoors, in interior plywood with an open front, so keep it under cover.`);

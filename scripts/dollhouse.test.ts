@@ -174,3 +174,17 @@ test("every variant prices every Buy line and passes the invariants; outdoor wor
   // Craft stock keeps its own build, and its outdoor words still switch on the exterior package.
   assert.equal(plyDollhouse("outdoor popsicle stick dollhouse"), false);
 });
+
+test("an outdoor ask on the old (board/craft) dollhouse path keeps its exterior package; a fashion-doll note never claims a storey too low for the doll", () => {
+  for (const q of ["outdoor oak dollhouse", "outdoor pine dollhouse", "outdoor cedar dollhouse"]) {
+    const p = build(q), plan = offline(() => buildPlan(p));
+    assert.notEqual(p.shape?.classId, "dollhouse", q);
+    assert.ok(plan.bom.some((b) => b.catalogId === "outdoor-finish"), `${q}: exterior finish on Buy`);
+    assert.ok(plan.bom.some((b) => /exterior|stainless/i.test(b.name) && /screw/i.test(b.name)), `${q}: exterior screws`);
+  }
+  for (const q of ["outdoor dollhouse", "dollhouse with a porch"]) assert.ok(!offline(() => buildPlan(build(q))).bom.some((b) => b.catalogId === "outdoor-finish"), q);
+  const low = build("barbie dollhouse 24 wide 30 tall 12 deep");
+  assert.ok(!low.notes.some((n) => /^Sized for 11 1\/2"/.test(n)), "no 'sized for' claim at 8 1/4\" storeys");
+  assert.ok(low.notes.some((n) => /short of the 12" .* type [\d /]+" tall/.test(n)));
+  assert.ok(build("barbie dollhouse").notes.some((n) => /^Sized for 11 1\/2"/.test(n)));
+});
