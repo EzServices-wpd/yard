@@ -61,6 +61,9 @@ test("typed size is built exactly; typed storeys are built; the storey word is r
   const p = build("dollhouse 24 wide 30 tall 12 deep");
   assert.deepEqual(p.overall, { width: 24, height: 30, depth: 12 });
   assert.ok(!p.notes.some((n) => /^Assumed/.test(n)));
+  // One typed axis: the others keep the dollhouse's own 12" deep and 30" tall.
+  assert.deepEqual(build("dollhouse 20 wide").overall, { width: 20, height: 30, depth: 12 });
+  assert.deepEqual(build("dollhouse 30x14x36").overall, { width: 30, height: 36, depth: 14 });
   const card = build("dollhouse 12 wide 16 tall 12.375 deep");
   assert.deepEqual(card.overall, { width: 12, height: 16, depth: 12.375 });
   assert.deepEqual(dollhouseIssues(card), []);
@@ -109,7 +112,7 @@ test("sizes it can't hold are refused or said plainly, never dropped", () => {
 });
 
 test("only the dollhouse moved: a dollhouse bed and a craft-stock dollhouse keep their own builds", () => {
-  assert.notEqual(build("dollhouse bed").shape?.classId, "dollhouse");
+  for (const q of ["dollhouse bed", "dollhouse furniture", "dollhouse storage box"]) assert.notEqual(build(q).shape?.classId, "dollhouse", q);
   assert.match(build("cardboard dollhouse").primaryMaterialId, /cardboard/);
   assert.notEqual(build("popsicle stick dollhouse").shape?.classId, "dollhouse");
 });
