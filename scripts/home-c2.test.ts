@@ -36,7 +36,8 @@ test("the plan strip replaces the icon cards and the 1-2-3 row, and shows the li
 
 test("headline and subline kept; no photo slot; no store links in the strip", () => {
   assert.match(home, /\["Think", "it", "up\."\], \["Yard", "works", "it", "out\."\]/);
-  assert.match(home, /One model\. Every cut, part and step\./);
+  assert.match(home, /Plywood or popsicle sticks, PVC or cardboard\. One real model\. Every part, cut and step\./);
+  assert.doesNotMatch(home, /One model\. Every cut, part and step\./, "the old subline is gone (PR 3)");
   assert.doesNotMatch(home, /\.(jpe?g|webp|avif|mp4|webm)\b/, "no photo or video yet (5B waits for a real build)");
   const strip = home.slice(home.indexOf("function PlanStrip("));
   assert.doesNotMatch(strip, /href|offers|affiliate|retailer/, "the strip carries no store links");
