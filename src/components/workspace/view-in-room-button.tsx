@@ -74,7 +74,7 @@ export function ViewInRoomButton() {
     if (view.disabled) return;
     setBusy(true);
     setFailed(null);
-    // No await before tapRun: the WebXR session is requested inside the tap.
+    // Nothing is awaited before tapRun: the WebXR session is requested inside the tap.
     const msg = await openAr(() => tapRun(lib.current, built.current, mode, project.name));
     // Over the cap on the real file: the chip stays refused with that reason, not a one-off error.
     if (msg && msg !== FAILED) setPrep((p) => ({ size: p?.size ?? null, refused: msg }));

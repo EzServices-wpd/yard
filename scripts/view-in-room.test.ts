@@ -8,8 +8,9 @@ import path from "node:path";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
-import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMode, inchText, openAr, prepareAr, sizeLine, tooBig } from "../src/components/workspace/view-in-room";
-import { INCH_M, arGlb, arModel, arStats, openQuickLook, quickLookHref } from "../src/components/workspace/view-in-room-ar";
+import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMoved, chipView, tapRun, arMode, inchText, openAr, prepareAr, sizeLine, tooBig } from "../src/components/workspace/view-in-room";
+import { INCH_M, arBuild, arGlb, arModel, arStats, openQuickLook, quickLookHref } from "../src/components/workspace/view-in-room-ar";
+import { setScrub } from "../src/components/workspace/build-scrub";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 import { toPrimitive } from "../src/lib/yard/geometry";
 import { applyMemberPose, flatBarGeometry } from "../src/components/workspace/stick-helpers";
@@ -127,8 +128,8 @@ test("instanced sticks are baked one by one at their own place and tint, then jo
 });
 
 /** The 3 ft Eiffel as the bench draws it: the craft cloud's flat-bar stick at each member's own pose. */
-function eiffelBench() {
-  const project = generateFromPrompt("3 ft popsicle stick eiffel tower");
+function eiffelBench(prompt = "3 ft popsicle stick eiffel tower") {
+  const project = generateFromPrompt(prompt);
   const item = getCatalogItem(project.instances[0].catalogId)!;
   const inst = new THREE.InstancedMesh(flatBarGeometry(), new THREE.MeshStandardMaterial({ color: "#e0b86a" }), project.instances.length);
   const d = new THREE.Object3D();
@@ -162,16 +163,109 @@ test("3 ft Eiffel: the export measures what the bench draws (14 3/8 W × 14 3/8 
   assert.equal(project.overall.width, 15.2, "the plan's number is the engine's own extent, wider than the drawn sticks");
 });
 
-test("3 ft Eiffel: refused with a named reason (about 20 MB, cap 8 MB); the estimate tracks the real USDZ", async () => {
-  const { g } = eiffelBench();
-  const ar = arModel(g);
-  const st = arStats(ar);
+const realUsdz = async (m: THREE.Group) => {
   const { USDZExporter } = await import("three/examples/jsm/exporters/USDZExporter.js");
-  const real = (await new USDZExporter().parseAsync(ar, { quickLookCompatible: true })).byteLength;
-  assert.ok(Math.abs(st.bytes - real) / real < 0.15, `estimate ${st.bytes} vs real ${real}`);
-  const prep = await prepareAr(async () => st);
-  assert.equal(prep.size, `14 3/8" W × 14 3/8" D × 37 1/4" H`);
-  assert.match(prep.refused ?? "", /^This build is too detailed to open in AR \(about (19|20|21) MB; phones handle up to 8 MB\)\./);
+  return new USDZExporter().parseAsync(m, { quickLookCompatible: true });
+};
+const MB = (b: number) => +(b / 1048576).toFixed(2);
+
+for (const [label, prompt, sticks] of [["2 ft Eiffel (canary)", "eiffel tower", 446], ["3 ft Eiffel", "3 ft popsicle stick eiffel tower", 784]] as const) {
+  test(`${label}: AR gets plain box sticks at the same poses, same box; the real file fits the cap`, async () => {
+    const { g } = eiffelBench(prompt);
+    const rounded = arModel(g), box = arModel(g, { boxSticks: true });
+    assert.equal((box.children[0] as THREE.Mesh).userData.yardMembers, sticks);
+    assert.equal(box.userData.boxSticks, true);
+    assert.equal((box.children[0] as THREE.Mesh).geometry.attributes.position.count, sticks * 24, "24 vertices a stick");
+    // Same stick sizes and poses: only the sharp corners of a box (vs the bench's rounded ends) reach a little further.
+    const a = sizeOf(rounded), b = sizeOf(box);
+    for (const k of ["x", "y", "z"] as const) assert.ok(b[k] >= a[k] - 1e-9 && b[k] - a[k] < 0.006, `${k}: ${b[k]} vs ${a[k]} (under 6 mm)`);
+    console.log(`# ${label}: rounded ${(a.x / INCH_M).toFixed(2)} x ${(a.z / INCH_M).toFixed(2)} x ${(a.y / INCH_M).toFixed(2)} in, box ${(b.x / INCH_M).toFixed(2)} x ${(b.z / INCH_M).toFixed(2)} x ${(b.y / INCH_M).toFixed(2)} in`);
+    // Every stick's pose is the bench's: instance by instance the box's centre and axes are the rounded stick's.
+    const rb = new THREE.Box3(), bb = new THREE.Box3();
+    const rm = rounded.children[0] as THREE.Mesh, bm = box.children[0] as THREE.Mesh;
+    rm.geometry.computeBoundingBox(); bm.geometry.computeBoundingBox();
+    rb.copy(rm.geometry.boundingBox!); bb.copy(bm.geometry.boundingBox!);
+    const rc = rb.getCenter(new THREE.Vector3()), bc = bb.getCenter(new THREE.Vector3());
+    assert.ok(rc.distanceTo(bc) < 0.002, "same centre");
+    assert.equal(((box.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial).color.getHexString(), new THREE.Color("#e0b86a").getHexString(), "same wood tone");
+    const before = (await realUsdz(rounded)).byteLength, after = (await realUsdz(box)).byteLength;
+    console.log(`# ${label}: USDZ rounded ${MB(before)} MB -> box ${MB(after)} MB (cap ${MB(AR_CAP_BYTES)} MB)`);
+    assert.ok(before > AR_CAP_BYTES, "rounded sticks would be refused");
+    assert.ok(after < AR_CAP_BYTES, "box sticks open");
+    const built = await arBuild(g, AR_CAP_BYTES, realUsdz);
+    assert.equal(built.boxSticks, true);
+    assert.deepEqual(built.inches, arStats(rounded).inches, "the size line is the bench's");
+    const prep = await prepareAr(async () => built);
+    assert.equal(prep.refused, null, "not refused");
+    assert.match(chipView({ mode: "quicklook", parts: sticks, moved: false, busy: false, prep, failed: null })!.note, /Sticks show as plain bars in AR\./);
+  });
+}
+
+test("refusal is the REAL file size: a huge estimate with a small real file opens; a real file over the cap is refused by name", async () => {
+  const { model } = benchLike("linen closet 31.5 wide 78 tall 16 deep");
+  // Far under the cap: passed on the estimate, nothing exported.
+  let exported = 0;
+  const fake = (n: number) => async () => (exported++, new Uint8Array(n));
+  const far = await arBuild(model, AR_CAP_BYTES, fake(1));
+  assert.equal(far.real, false);
+  assert.equal(exported, 0);
+  // Estimate near or over a tight cap: exported for real and judged on its length.
+  const cap = arStats(arModel(model)).bytes; // the estimate sits right at this cap
+  const small = await arBuild(model, cap, fake(1000));
+  assert.equal(small.real, true);
+  assert.equal(small.bytes, 1000);
+  assert.equal((await prepareAr(async () => small)).refused, null, "the estimate never refuses");
+  const big = await arBuild(model, cap, async () => new Uint8Array(AR_CAP_BYTES + 1));
+  assert.equal(big.real, true);
+  assert.match((await prepareAr(async () => big)).refused ?? "", /^This build is too detailed to open in AR \(about 8 MB; phones handle up to 8 MB\)\./);
+  assert.equal((await prepareAr(async () => ({ inches: [1, 1, 1], bytes: AR_CAP_BYTES * 3, parts: 0, real: false }))).refused, null, "an estimate alone is never a refusal");
+});
+
+test("every other build: the same bounding box as before (no box swap), not refused", async () => {
+  for (const prompt of ["linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide 72 tall 12 deep", "pocket vanity", "cat tree", "step stool", "desk 60 wide"]) {
+    const { model } = benchLike(prompt);
+    const before = sizeOf(arModel(model));
+    const built = await arBuild(model, AR_CAP_BYTES, realUsdz);
+    const after = sizeOf(built.model);
+    close(after.x, before.x, 1e-9, `${prompt} W`); close(after.y, before.y, 1e-9, `${prompt} H`); close(after.z, before.z, 1e-9, `${prompt} D`);
+    assert.equal(built.boxSticks, false, prompt);
+    assert.equal((await prepareAr(async () => built)).refused, null, prompt);
+  }
+});
+
+test("Watch it build open: arMoved, the chip is disabled with its reason, prepare and the tap refuse", async () => {
+  const yard = { explode: false, activeStep: null, facesOpen: false };
+  setScrub({ open: true });
+  try {
+    assert.equal(arMoved(yard), true);
+    const view = chipView({ mode: "webxr", parts: 11, moved: arMoved(yard), busy: false, prep: { size: "x", refused: null }, failed: null })!;
+    assert.equal(view.disabled, true);
+    assert.equal(view.note, NOT_WHOLE);
+    assert.equal(view.kind, "moved");
+    assert.deepEqual(await prepareAr(async () => ({ inches: [1, 1, 1], bytes: 1, parts: 11 }), 11), { size: null, refused: NOT_WHOLE });
+    let opened = false;
+    const lib = { openQuickLook: async () => ((opened = true), 1), startWebXR: async () => void (opened = true) };
+    assert.equal(await openAr(() => tapRun(lib, { model: {}, file: null }, "webxr", "x")), FAILED);
+    assert.equal(opened, false, "never opened half-built");
+  } finally {
+    setScrub({ open: false });
+  }
+  assert.equal(arMoved(yard), false);
+});
+
+test("the tap requests the WebXR session with no await before it (user activation kept)", async () => {
+  let sync = false;
+  const lib = { openQuickLook: async () => 1, startWebXR: async () => void (sync = true) };
+  const p = openAr(() => tapRun(lib, { model: {}, file: null }, "webxr", "x"));
+  assert.equal(sync, true, "startWebXR ran in the same turn as the tap");
+  assert.equal(await p, null);
+  const button = read("src/components/workspace/view-in-room-button.tsx");
+  const handler = button.slice(button.indexOf("const open = async () => {"), button.indexOf("openAr(", button.indexOf("const open = async () => {")));
+  assert.doesNotMatch(handler.replace(/const msg = await $/, ""), /\bawait\b/, "nothing awaited in the tap before openAr");
+  assert.match(button, /openAr\(\(\) => tapRun\(/, "the tap goes straight to tapRun");
+  const heavy = read("src/components/workspace/view-in-room-ar.ts");
+  const xr = heavy.slice(heavy.indexOf("export async function startWebXR"));
+  assert.equal(xr.search(/\bawait\b/), xr.search(/await xr\s*\.requestSession/), "requestSession is the first await in startWebXR");
 });
 
 test("normal builds are not refused: linen, bookcase, pocket vanity well under the cap", async () => {
@@ -297,7 +391,8 @@ test("source guards: exporters load on tap; the figure and props stay outside th
   const light = read("src/components/workspace/view-in-room.ts");
   const button = read("src/components/workspace/view-in-room-button.tsx");
   const heavy = read("src/components/workspace/view-in-room-ar.ts");
-  assert.doesNotMatch(light, /^import (?!type)/m, "the bench-side module has no runtime imports");
+  assert.doesNotMatch(light, /^import (?!type).*from "three"/m, "the bench-side module has no runtime three import");
+  assert.doesNotMatch(light, /^import .*view-in-room-ar/m, "nor the lazy half");
   assert.doesNotMatch(button, /^import .*view-in-room-ar/m, "the heavy half is a dynamic import only");
   assert.match(heavy, /await import\("three\/examples\/jsm\/exporters\/USDZExporter\.js"\)/);
   assert.doesNotMatch(heavy, /^import .*exporters/m);
@@ -307,10 +402,14 @@ test("source guards: exporters load on tap; the figure and props stay outside th
   const bench = canvas.slice(canvas.indexOf("function BenchScene("));
   assert.match(bench, /<group ref=\{setArRoot\}>/, "the AR root is BenchScene's group");
   assert.doesNotMatch(bench, /ScaleLayer/, "the scale figure and props are not inside it");
-  assert.match(button, /if \(!mode \|\| parts === 0\) return null;/, "no AR reported: no chip at all");
-  assert.match(button, /scrubState\(\)\.open/, "Watch it build open: the chip waits");
-  assert.match(button, /s\.explode \|\| s\.activeStep != null \|\| s\.facesOpen/, "See inside, a step, open doors: the chip waits");
-  assert.match(button, /const note = moved \? NOT_WHOLE/, "and says why, as text under it");
+  assert.match(button, /if \(!view \|\| !mode\) return null;/, "no AR reported: no chip at all");
+  assert.equal(chipView({ mode: null, parts: 9, moved: false, busy: false, prep: null, failed: null }), null);
+  assert.equal(chipView({ mode: "webxr", parts: 0, moved: false, busy: false, prep: null, failed: null }), null);
+  assert.match(button, /useSyncExternalStore\(subscribeMoved, \(\) => arMoved\(\)/, "the chip's moved state is arMoved (Watch it build, See inside, a step, open doors)");
+  assert.match(button, /subscribeScrub\(f\), b = useYard\.subscribe\(f\)/, "and re-reads on both stores");
+  for (const k of [{ explode: true, activeStep: null, facesOpen: false }, { explode: false, activeStep: 2, facesOpen: false }, { explode: false, activeStep: null, facesOpen: true }]) assert.equal(arMoved(k, { open: false } as never), true);
+  assert.match(light, /const note = v\.moved \? NOT_WHOLE/, "and says why, as text under it");
+  assert.match(button, /\{view\.note\}/, "the note is rendered");
   assert.doesNotMatch(light + heavy + button, /uses Scene Viewer/, "Android is WebXR");
   assert.doesNotMatch(light + heavy + button, /console\.(error|warn|log)/, "failures are lines under the chip, not console output");
 });

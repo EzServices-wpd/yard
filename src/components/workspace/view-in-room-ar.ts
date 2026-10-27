@@ -162,7 +162,7 @@ const FAST = 0.6;
 export type ArBuilt = { model: THREE.Group; file: Uint8Array | null; bytes: number; real: boolean; boxSticks: boolean; inches: [number, number, number]; parts: number };
 
 /**
- * What AR will get, and its REAL file size. Rounded sticks first; if their estimate is clearly over the cap,
+ * What AR will get, and its REAL file size. The size line is the bench's (rounded sticks') measured size. Rounded sticks first; if their estimate is clearly over the cap,
  * plain box sticks (same poses). A build is passed on the estimate alone only when it is far under the cap;
  * anything nearer is exported for real (USDZ, the file Quick Look opens; Android gets the same model) and
  * judged on its byte length, so a refusal is always the real number.
@@ -170,11 +170,13 @@ export type ArBuilt = { model: THREE.Group; file: Uint8Array | null; bytes: numb
 export async function arBuild(root: THREE.Object3D, cap: number, exportFile: (m: THREE.Group) => Promise<Uint8Array> = usdz): Promise<ArBuilt> {
   const tries: boolean[] = [false, true];
   let last: ArBuilt | null = null;
+  let inches: [number, number, number] | null = null; // always the bench's (rounded) size: box corners add ~2 mm
   for (const boxSticks of tries) {
     const model = arModel(root, { boxSticks });
     if (boxSticks && !model.userData.boxSticks) break; // no rounded sticks to swap: the first try stands
     const st = arStats(model);
-    const base = { model, boxSticks: !!model.userData.boxSticks, inches: st.inches, parts: st.parts };
+    inches ??= st.inches;
+    const base = { model, boxSticks: !!model.userData.boxSticks, inches, parts: st.parts };
     if (st.bytes <= cap * FAST) return { ...base, file: null, bytes: st.bytes, real: false };
     // Clearly over even allowing for the estimate's error: go straight to box sticks (no wasted export).
     if (!boxSticks && st.bytes > cap * 1.3) {
