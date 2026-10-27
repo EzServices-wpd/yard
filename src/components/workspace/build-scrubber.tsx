@@ -28,7 +28,7 @@ export function BuildScrubber() {
   const setExplode = useYard((s) => s.setExplode);
   const walking = useYard((s) => s.workMode === "walk");
   const revealing = useSyncExternalStore(subscribeReveal, () => revealState().active, () => false);
-  const { open, k } = useSyncExternalStore(subscribeScrub, scrubState, scrubState);
+  const { open, k, rec } = useSyncExternalStore(subscribeScrub, scrubState, scrubState);
   const track = useMemo(() => (pending ? null : scrubTrack(project, plan)), [project, plan, pending]);
   const [playing, setPlaying] = useState(false);
   const n = track?.positions ?? 0;
@@ -59,7 +59,7 @@ export function BuildScrubber() {
     return () => window.clearInterval(t);
   }, [playing, open, n]);
 
-  if (!usable) return null;
+  if (!usable || rec) return null;
   const go = (v: number) => { setPlaying(false); setScrub({ k: Math.max(1, Math.min(n, v)) }); };
 
   if (!open) {
