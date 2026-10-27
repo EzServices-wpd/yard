@@ -81,7 +81,7 @@ test("privacy: no word a visitor typed reaches All ideas", () => {
 // 12a (Ezra via Chief 10-26): the flat All ideas list is no longer the page; each group's See all is that list, in place.
 test("the page: no flat list; every listed type is one link in its group (card or See all row), never an empty picture box", () => {
   const html = page(feed);
-  assert.ok(!/id="ideas-all"|>All ideas</.test(html), "no flat All ideas section");
+  assert.doesNotMatch(html, /id="ideas-all"|>All ideas</, "no flat All ideas section");
   const groups = groupCards(all);
   const reach = groups.flatMap((g) => { const v = groupView(g.cards, true, Infinity); return [...v.top, ...v.rows]; });
   assert.deepEqual(reach.map((c) => c.slug).sort(), all.map((c) => c.slug).sort(), "each listed type reachable once");
@@ -89,13 +89,14 @@ test("the page: no flat list; every listed type is one link in its group (card o
   const labels = [...html.matchAll(/data-ideas-show-all="See all (\d+)"/g)].reduce((n, m) => n + Number(m[1]), 0);
   assert.equal(labels, 100);
   for (const [, href] of html.matchAll(/<a href="([^"]+)"[^>]*data-idea="/g)) assert.match(href, /^\/workspace\?q=/);
-  assert.ok(!html.includes("data-idea-no-drawing"), "a card always has its drawing");
+  assert.doesNotMatch(html, /data-idea-no-drawing/, "a card always has its drawing");
   // An undrawn type is a row once See all opens, title, New mark and size kept (the flat list's row).
   const toys = renderToStaticMarkup(createElement(IdeaRow, { card: all.find((c) => c.buildType === "soccer-goal")!, href: "/workspace?q=x", onOpen: () => {} }));
   assert.match(toys, /data-idea-row="soccer-goal"[^>]*>.*?Soccer goal.*?New, not checked yet.*?48 × 12 × 36 in/);
   assert.equal(ALL_SHOW, 24);
   // The fallback feed (store down) groups its sections the same way, with no rows until a See all opens.
-  assert.ok(page(base).includes('data-ideas-group="furniture"') && !page(base).includes("data-idea-row="));
+  assert.match(page(base), /data-ideas-group="furniture"/);
+  assert.doesNotMatch(page(base), /data-idea-row=/);
 });
 
 test("search reaches every listed type with the page's aliases; an undrawn hit is a row, not a blank card", () => {
