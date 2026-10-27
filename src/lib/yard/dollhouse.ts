@@ -65,7 +65,9 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
   const lower = prompt.toLowerCase(), doll = FASHION.test(lower);
   const W = typed.width ?? (doll ? 36 : 24), D = typed.depth ?? (doll ? 14 : 12), H = typed.height ?? (doll ? 48 : 30);
   // The title keeps the typed spelling ("doll house" → "Doll house").
-  const label = /\bdoll\s+house/i.test(prompt) ? "Doll house" : "Dollhouse";
+  // The title keeps the typed head noun ("Doll house", "Dreamhouse", "Dream house").
+  const head = prompt.toLowerCase().match(/\b(doll\s+house|dream\s*-?\s*house)s?\b/)?.[1].replace(/\s+/g, " ");
+  const label = head ? head[0].toUpperCase() + head.slice(1) : "Dollhouse";
   const base = { classId: "dollhouse" as const, subject: "dollhouse", label, kind: "house" as const, sized: true };
   const asked = typedStoreys(prompt);
   // Roof: 45° unless that would take over 2/5 of the height; 1" eave overhang along the slope, inside the typed width.
@@ -170,7 +172,9 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
   else if (doll) { let h = Math.ceil(H * 8) / 8; while (h <= 96 && fit(W, h).clear(S) < 12 - 1e-9) h += 1 / 8; notes.push(`Each storey is ${f(c)}" floor to ceiling, short of the 12" an 11 1/2" fashion doll like Barbie needs${h <= 96 ? `; type ${f(h)}" tall for ${S === 1 ? "one storey" : `${S} storeys`} she stands up in` : ""}.`); }
   const sheet = lower.match(SHEETLESS)?.[1];
   if (sheet) notes.push(`${/^(?:mdf|osb)$/.test(sheet) ? sheet.toUpperCase() : sheet[0].toUpperCase() + sheet.slice(1)} isn't on the stock list, so this ${lab} is cut from ${item.name}, the sheet dollhouse kits use.`);
-  if (OUTDOOR.test(lower)) notes.push(`You asked for an outdoor ${lab}; this one is built for indoors, in interior plywood with an open front, so keep it under cover.`);
+  // The note names the place typed ("for the back yard"), so every word of the ask is answered.
+  const place = lower.match(OUTDOOR)?.[0].replace(/\s+/g, " ");
+  if (place) notes.push(`You asked for ${/^(?:outdoors?|outside|exterior)$/.test(place) ? `an outdoor ${lab}` : `a ${lab} for the ${place}`}; this one is built for indoors, in interior plywood with an open front, so keep it under cover.`);
   for (const [, a, w] of lower.matchAll(EXTRAS)) if (!said.has(w) && said.add(w)) {
     const many = MASS.test(w) || /s$/.test(w);
     if (/^flat/.test(w)) { notes.push(`You asked for a flat roof; this ${lab} has a ${deg}° gable roof instead.`); continue; }

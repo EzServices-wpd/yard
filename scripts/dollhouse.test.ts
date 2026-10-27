@@ -197,3 +197,23 @@ test("an outdoor ask on the old (board/craft) dollhouse path keeps its exterior 
   assert.ok(low.notes.some((n) => /short of the 12" .* type [\d /]+" tall/.test(n)));
   assert.ok(build("barbie dollhouse").notes.some((n) => /^Sized for 11 1\/2"/.test(n)));
 });
+
+test("every typed plywood thickness is read or said: 'ply' is plywood, an off-list thickness is named, a place word is answered", () => {
+  const notes = (q: string) => build(q).notes.join(" ");
+  const t = (q: string) => build(q).primaryMaterialId;
+  assert.equal(t("dollhouse 3/4 ply"), "plywood-3-4-4x8");
+  assert.equal(t("dollhouse 1/2 ply"), "plywood-1-2-4x8");
+  assert.match(notes("dollhouse 1/4 ply"), /1\/4" Plywood .* stays 1\/2" Plywood/);
+  assert.equal(t("dollhouse 1/8 plywood"), "plywood-1-2-4x8");
+  assert.match(notes("dollhouse 1/8 plywood"), /1\/8" plywood isn't on the stock list, so this dollhouse is cut from 1\/2" Plywood/);
+  // The title keeps the typed head noun (I24): "barbie dreamhouse" is a Dreamhouse.
+  for (const q of ["barbie dreamhouse", "barbie dream house"]) {
+    const p = build(q);
+    assert.deepEqual(offline(() => checkBuild(p, q, buildPlan(p))).filter((v) => v.id === "I24"), [], q);
+  }
+  for (const q of ["back yard dollhouse", "dollhouse for my back yard", "garden dollhouse"]) {
+    const p = build(q);
+    assert.deepEqual(ignoredTypedWords(p, q), [], q);
+    assert.match(p.notes.join(" "), /built for indoors/, q);
+  }
+});

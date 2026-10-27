@@ -1350,11 +1350,21 @@ function generateRaw(
   // A dollhouse is the real open-front house in sheet stock; a switch to a stock it can't use keeps the house and says so.
   if (!formOverride && !opts.fittedOverride && isDollhouse(prompt)) {
     // A W x D x H size is never a stock ("36x14x40" holds "4x4").
-    const bare = prompt.replace(/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?/g, " ");
-    const stock = dollhouseStock(bare, materialOverride);
+    // "ply" is plywood: the head-noun reader takes "dollhouse 3/4 ply" as a dollhouse, so the stock reader does too.
+    const bare = prompt.replace(/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?/g, " ").replace(/\bply\b/gi, "plywood");
+    // A typed plywood thickness the house isn't cut in (1/8", 5/8") is said, never swapped silently; thinner than
+    // 1/2" builds in 1/2", like 1/4".
+    const tm = materialOverride ? null : bare.toLowerCase().match(/(\d+\s*\/\s*\d+|\d*\.\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
+    const tIn = tm ? (tm[1].includes("/") ? Number(tm[1].split("/")[0]) / Number(tm[1].split("/")[1]) : Number(tm[1])) : NaN;
+    const typedSheet = dollhouseStock(bare, materialOverride);
+    const stock = typedSheet && tIn < 0.5 ? getCatalogItem("plywood-1-2-4x8") ?? typedSheet : typedSheet;
     const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
     const ask = materialOverride ?? typedStockId(bare);
-    if (built) return ask && ask !== stock.id ? refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`) : built;
+    const askT = ask ? getCatalogItem(ask)?.dims?.thickness : undefined;
+    if (built && ask && ask !== stock.id && !(Number.isFinite(tIn) && Math.abs((askT ?? tIn) - tIn) > 1e-3)) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
+    if (built && Number.isFinite(tIn) && Math.abs(tIn - (stock.dims?.thickness ?? tIn)) > 1e-3)
+      return { ...built, notes: [...(built.notes ?? []), `${tm![1].replace(/\s+/g, "")}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
+    if (built) return built;
   }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
   // at the typed height. A craft or toy stock pick stays on its craft path.
