@@ -152,3 +152,12 @@ test("I51 (#175 r2): fires only when every strip on the sheet fits earlier gaps 
   assert.deepEqual(i51Gaps(nest(sheet(1, [A]), sheet(2, [G(0), G(1), G(2)]))), [], "the third does not fit, so the sheet is needed");
   assert.deepEqual(i51Gaps(nest(sheet(1, [F]), sheet(2, [G(0)]), sheet(3, [A]))), [], "a later sheet's gap does not count");
 });
+
+test("I51 (Critic #175 r2): a row with every piece turned gets the plain note; the 30\" base strip stays on Sheet 2 as cut", () => {
+  const pl = plan("kitchen base cabinet 24 wide");
+  assert.deepEqual(pl.cutList.filter((c) => /across the grain/.test(c.notes ?? "")).map((c) => c.notes), ["Cut across the grain from a sheet offcut"]);
+  const desk = plan("desk 84 wide");
+  assert.deepEqual(desk.cutList.filter((c) => /across the grain/.test(c.notes ?? "")).map((c) => [c.quantity, c.notes]), [[2, "Cut across the grain from a sheet offcut"]]);
+  const s = plan("kitchen base cabinet 30 wide").sheetNest!.sheets!.sheets;
+  assert.deepEqual(s.filter((x) => x.parts.some((p) => p.name === "Kick strip")).map((x) => x.index), [2]);
+});
