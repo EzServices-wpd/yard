@@ -1,6 +1,7 @@
 "use client";
 
 import { useCutFocus } from "@/components/workspace/cut-focus";
+import { setArRoot } from "@/components/workspace/view-in-room";
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
@@ -869,7 +870,7 @@ function BenchScene({
   const cutFocus = useCutFocus();
   const focusOn = !reveal && cutFocus.size > 0;
   return (
-    <group>
+    <group ref={setArRoot}>
       {showHull && <GhostLines strokes={hull} color={HULL} alpha={[MARK_ALPHA.ghostMain, MARK_ALPHA.ghostFine]} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
