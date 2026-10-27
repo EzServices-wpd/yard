@@ -29,7 +29,8 @@ test("every idea card is a real link to its own build URL, test flags included",
       const card = pool.find((c) => c.slug === slug)!;
       assert.equal(href, `/workspace?${new URLSearchParams({ q: card.examplePrompt })}${tail}`, slug);
     }
-    if (!q) assert.match(html, /<a href="\/workspace\?q=[^"]+"[^>]*data-ideas-hero-build/, "the hero's Build this is a link too");
+    // 12a: the featured row replaced the hero; its cards are links like every other (checked above), Eiffel first.
+    if (!q) assert.match(html, /data-ideas-featured[^>]*>.*?<a href="\/workspace\?q=[^"]+"[^>]*data-idea="eiffel"/, "the featured row leads with a link");
   }
 });
 
@@ -119,6 +120,6 @@ test("a typed build (?q=) and a ?y= share link (the sharer's prompt) are noindex
   assert.deepEqual(workbenchRobots({ q: "bookcase 36 wide" }), [{ name: "robots", content: "noindex,follow" }]);
   for (const s of [{ y: "eyJwcm9tcHQiOiJ4In0" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "x" }, { y: "eyJwcm9tcHQiOiJ4In0", q: "  " }])
     assert.deepEqual(workbenchRobots(s), [{ name: "robots", content: "noindex,follow" }], JSON.stringify(s));
-  for (const s of [{}, { q: "  " }, { y: "" }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
+  for (const s of [{}, { q: "  " }, { y: "" }, { y: " " }, { y: " ", q: "  " }]) assert.deepEqual(workbenchRobots(s), [], JSON.stringify(s));
   assert.match(SRC("src/routes/workspace.tsx"), /workbenchRobots\(/, "the route head (server HTML) carries it");
 });

@@ -10,6 +10,7 @@ import { isHeldType } from "./held";
 import { drawingForType, sizeOf, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 import { isLoggedTest } from "./testTraffic";
 import TWINS from "./typeTwins.json";
+import LOG_PROMPTS from "./logPrompts.json";
 import { NAMED_LUMBER_SPECIES } from "@/lib/yard/namedLumberSpecies";
 
 /** #56 merged (2026-10-16 12:24 ET): from then the log records no offline, x-yard-test or preview traffic. */
@@ -125,12 +126,19 @@ const YARD_PROMPT = new Map<string, string>();
 for (const d of IDEAS) { const t = (TYPES as Record<string, string>)[d.id]; if (t && !YARD_PROMPT.has(t)) YARD_PROMPT.set(t, d.prompt); }
 
 /**
- * What a log-only card builds when tapped: Yard's own prompt for that build type, else the engine's type and logged
- * W×D×H ("mailbox 8 wide 18 tall 8 deep"). Never the words a visitor typed: the privacy page says the Ideas library
- * never keeps them, so no feed field may carry them.
+ * Log types whose type-and-logged-size prompt builds the wrong thing (Chief 10-26: "soccer goal 48 wide 36 tall 12 deep"
+ * built a generic Storage unit, the Brooklyn bridge 7194 parts at 1731 in): Yard's own prompt and the engine's W×D×H for
+ * it. scripts/ideas-tap-prompts.test.ts builds every card's prompt and checks these dims.
+ */
+export const LOG_PROMPT = LOG_PROMPTS as Record<string, { prompt: string; dims: NonNullable<IdeaCard["dims"]> }>;
+
+/**
+ * What a log-only card builds when tapped: Yard's own prompt for that build type (an idea's, else LOG_PROMPT's), else the
+ * engine's type and logged W×D×H ("mailbox 8 wide 18 tall 8 deep"). Never the words a visitor typed: the privacy page
+ * says the Ideas library never keeps them, so no feed field may carry them.
  */
 export function logCardPrompt(type: string, dims: IdeaCard["dims"]): string {
-  const yard = YARD_PROMPT.get(type);
+  const yard = YARD_PROMPT.get(type) ?? LOG_PROMPT[type]?.prompt;
   if (yard) return yard;
   const t = type.replace(/-/g, " ");
   return dims ? `${t} ${dims.width} wide ${dims.height} tall ${dims.depth} deep` : t;
@@ -178,7 +186,7 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>, 
   if (c) return { ...c, count: g.count, lastSeen: g.lastSeen, status: c.status === "checked" ? "checked" : "new", dims: c.dims ?? dimsOf(size) };
   const recipe = top.resultKey.startsWith("recipe:");
   const drawing = draw(g.type);
-  const logged = dimsOf(size);
+  const logged = LOG_PROMPT[g.type]?.dims ?? dimsOf(size);
   // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
     slug: g.type, buildType: g.type, title: titleOf(g.type), count: g.count, lastSeen: g.lastSeen, examplePrompt: logCardPrompt(g.type, logged),

@@ -5,6 +5,7 @@ import path from "path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { IdeasPageView } from "../src/components/ideas/IdeasPageView";
+import { groupCards, groupOf } from "../src/lib/ideas/groups";
 import { SECTION_SHOW, curatedFeed, drawingFor, drawingForType, type DrawingRef, type IdeasFeed } from "../src/lib/ideas/feed";
 import { MIN_TITLE_LETTERS, SECTION_MAX, TEST_CUTOFF, TEST_PROMPTS, dimsOf, feedViolations, gradedTypes, groupRows, isJunkTitle, isTestRow, liveFeed, logCardPrompt, publicSnapshot, typeKey, type PublicRow, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import { ideaTypes } from "./gen-idea-types";
@@ -12,6 +13,7 @@ import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import TYPES from "../src/lib/ideas/types.json";
 import TWINS from "../src/lib/ideas/typeTwins.json";
+import DRAWINGS from "../src/lib/ideas/drawings.json";
 import LIVE_SNAP from "./fixtures/ideas-snapshot-2026-10-23.json";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import type { IdeasSnapshot, SnapshotRow } from "../src/lib/yard/ideaLog";
@@ -87,7 +89,8 @@ test("Popular recently is the live log of the last 7 days; new types are 'new' w
   const recent = recentOf({ ...SNAP, rows: SNAP.rows.map((r) => (r.resultKey === "recipe:cat-tree" ? { ...r, status: "Trusted" as const } : r)) });
   const cat = recent!.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
-  assert.deepEqual(cat.dims, { width: 24, depth: 24, height: 60 });
+  // Its own size: the logged 24×24×60 built a Storage unit, so the tap is LOG_PROMPT's "cat tree" and the size that build's (10-26).
+  assert.deepEqual(cat.dims, { width: 20, depth: 20, height: 48 });
   assert.equal(cat.title, "Cat tree");
   assert.equal(cat.recipeKey, "cat-tree");
 });
@@ -346,7 +349,16 @@ test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the fe
   }
   assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
   // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
-  for (const t of ["soccer-goal", "rocket", "dollhouse", "cat-tree", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  for (const t of ["soccer-goal", "dollhouse", "brooklyn-bridge", "windmill", "barn", "empire-state-building", "space-needle", "firewood-unit", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  // Log types baked under their type from the prompt each card builds on tap (gen-idea-drawings LOG_TYPES), with the build's stock.
+  assert.equal(cards.find(({ c }) => c.buildType === "rocket")?.c.examplePrompt, "rocket 9.875 wide 28 tall 9.875 deep");
+  assert.equal(cards.find(({ c }) => c.buildType === "lighthouse")?.c.examplePrompt, "2 foot lighthouse from popsicle sticks");
+  for (const t of ["rocket", "lighthouse", "cat-tree", "viking-ship"]) {
+    const c = cards.find(({ c }) => c.buildType === t)?.c;
+    assert.ok(c, `${t} card shows`);
+    assert.match(c!.drawing!.src, new RegExp(`^/ideas/drawings/${t}\\.[0-9a-f]{8}\\.svg$`), t);
+    assert.equal((DRAWINGS as Record<string, { stock?: string }>)[t].stock, generateFromPrompt(c!.examplePrompt).primaryMaterialId, t);
+  }
   // Row 168: "Corner shelf" shows once (the log's corner-shelf rows count on the drawn Corner shelf card), and no two cards share a title.
   const titles = cards.map(({ c }) => c.title.toLowerCase());
   assert.equal(titles.filter((t) => t === "corner shelf").length, 1);
@@ -397,18 +409,21 @@ test("one log type per drawn build: a leading lumber species is the stock (pine 
 });
 
 // SWE2-followups item 2: Popular said "Show all 24" with 38 in the section (it opened the 24 the feed sent).
-test("Show all says what it opens, from the section's own numbers, and names the real total when the feed sent fewer", () => {
+// 12a: the page groups the whole catalog (feed.all) by kind, so a group's See all names every card it has, none capped.
+test("See all says what it opens: the group's whole count from the catalog, on a button that controls its rows", () => {
   const html = renderToStaticMarkup(createElement(IdeasPageView, { incoming: "", learned: [], onBuild: () => {}, feed: liveF }));
-  let capped = 0;
-  for (const s of liveF.sections) {
-    const btn = html.match(new RegExp(`<button[^>]*aria-controls="ideas-${s.id}-list"[^>]*>(.*?)</button>`))?.[0];
-    if (s.cards.length <= SECTION_SHOW) { assert.equal(btn, undefined, `${s.id}: ${s.cards.length} cards, no control`); continue; }
-    assert.ok(btn && html.includes(`id="ideas-${s.id}-list"`), `${s.id}: a button that controls its list`);
+  const groups = groupCards(liveF.all ?? []);
+  assert.ok(groups.length >= 5);
+  let open = 0;
+  for (const g of groups) {
+    const btn = html.match(new RegExp(`<button[^>]*aria-controls="ideas-${g.id}-all"[^>]*>(.*?)</button>`))?.[0];
+    const drawn = g.cards.filter((c) => c.drawing).length;
+    if (!drawn || g.cards.length <= Math.min(drawn, SECTION_SHOW)) { assert.equal(btn, undefined, `${g.id}: nothing more to open`); continue; }
+    assert.ok(btn, `${g.id}: a See all button`);
     assert.match(btn, /type="button"/); assert.match(btn, /aria-expanded="false"/);
-    const text = btn.replace(/<[^>]+>/g, "");
-    const want = s.total > s.cards.length ? `Show top ${s.cards.length} of ${s.total}` : `Show all ${s.cards.length}`;
-    assert.equal(text, `${want} ${s.title} ideas`, s.id);
-    if (s.total > s.cards.length) capped++;
+    const n = (liveF.all ?? []).filter((c) => groupOf(c.buildType) === g.id).length;
+    assert.equal(btn.replace(/<[^>]+>/g, ""), `See all ${n} ${g.title}`, g.id);
+    open++;
   }
-  assert.ok(capped > 0, "the 10-23 snapshot has a section with more cards than the feed sends (Popular 38)");
+  assert.ok(open >= 3, "the 10-23 snapshot has groups with more than their cards");
 });

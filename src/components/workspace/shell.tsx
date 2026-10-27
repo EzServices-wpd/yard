@@ -173,7 +173,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         try {
           const live = await runYardPrompt(prompt, { fresh: true });
           // A newer prompt typed while the link's build was still looking up owns the bench now.
-          if (shared && live) {
+          // A link with no edits (the build-info permalink, a ?y= of the bare words) opens as the fresh build, the
+          // same build its link card prices (lib/og/card.ts); re-applying an empty Measure draft re-sized and re-priced it.
+          const fresh = useYard.getState().project;
+          const edits = Object.keys(shared?.measure ?? {}).length > 0 || (shared?.stockId != null && shared.stockId !== fresh.primaryMaterialId) || (shared?.join != null && shared.join !== fresh.shopJoin) || shared?.shelves != null || shared?.cubbies != null || shared?.drawers != null;
+          if (shared && live && edits) {
             useYard.getState().setMeasure(shared.measure);
             let next = useYard.getState().project;
             if (shared.stockId || shared.join) next = { ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId, shopJoin: (shared.join as never) ?? next.shopJoin };
@@ -320,8 +324,12 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           </Link>
           <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
             {/* With a build, the title is the plan's header itself (same as the PDF); a refused build names what was asked
-                for and says nothing was built; "Workbench" only on an empty bench. */}
-            {pieceCount > 0 || project.refused ? headerTitle(project) : "Workbench"}
+                for and says nothing was built; a not-learned placeholder names the typed object; "Workbench" only on an empty bench. */}
+            {pieceCount > 0 || project.refused
+              ? headerTitle(project)
+              : project.displayOnly // the typed object, as the tab names it (route buildTitle's noun): never "Workbench"
+                ? `${project.name.split(/[,\d]/)[0].trim() || project.name} · not learned yet`
+                : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">

@@ -822,5 +822,58 @@
    "depth": 22
   },
   "model": "/ideas/models/recipe-standing-desk-converter.b777e135.json"
+ },
+ "rocket": {
+  "v": "4df34406",
+  "w": 480,
+  "h": 360,
+  "parts": 417,
+  "bytes": 45922,
+  "dims": {
+   "width": 9.8,
+   "height": 28,
+   "depth": 9.8
+  },
+  "stock": "popsicle-standard"
+ },
+ "lighthouse": {
+  "v": "0b9fec6e",
+  "w": 480,
+  "h": 360,
+  "parts": 307,
+  "bytes": 37832,
+  "dims": {
+   "width": 8,
+   "height": 24.5,
+   "depth": 8
+  },
+  "stock": "popsicle-standard"
+ },
+ "cat-tree": {
+  "v": "242b5c61",
+  "w": 480,
+  "h": 360,
+  "parts": 20,
+  "bytes": 6565,
+  "dims": {
+   "width": 20,
+   "height": 48,
+   "depth": 20
+  },
+  "stock": "plywood-3-4-4x8",
+  "model": "/ideas/models/cat-tree.5980afc7.json"
+ },
+ "viking-ship": {
+  "v": "f0578449",
+  "w": 480,
+  "h": 360,
+  "parts": 85,
+  "bytes": 10808,
+  "dims": {
+   "width": 23.1,
+   "height": 15.5,
+   "depth": 8
+  },
+  "stock": "popsicle-standard"
  }
 }

@@ -23,6 +23,15 @@ test("I50: lemonade stand buys 15/32\" exterior x2 and 23/32\" exterior x1, $235
   assert.equal(plan.totals.estCostUsd, 235.48);
 });
 
+test("I50: wide stands (124-192\" band) buy each stock's own sheet count, past 4 sheets of a stock (row 502)", () => {
+  for (const [q, half, three, usd] of [["lemonade stand 132 wide", 6, 2, 520.58], ["lemonade stand 144 wide", 8, 2, 606.14]] as const) {
+    const plan = buildPlan(generateFromPrompt(q));
+    const sheets = plan.bom.filter((b) => /^plywood-/.test(b.catalogId ?? "")).map((b) => `${b.name} x${b.quantity}`);
+    assert.deepEqual(sheets, [`15/32" BC exterior plywood 4×8 x${half}`, `23/32" BC exterior plywood 4×8 x${three}`], q);
+    assert.equal(plan.totals.estCostUsd, usd, q);
+  }
+});
+
 test("I50: single-stock builds stay clean", () => {
   for (const q of ["bookcase 36 wide", "linen closet 31.5 wide 78 tall 16 deep", "wardrobe 48 wide 84 tall"]) assert.deepEqual(hits(q, ["I50"]), [], q);
 });

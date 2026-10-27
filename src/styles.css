@@ -4,22 +4,25 @@
 @font-face { font-family: "Newsreader Fallback"; src: local("Times New Roman"), local("Tinos"), local("Times"); size-adjust: 106.17%; ascent-override: 69.23%; descent-override: 24.96%; line-gap-override: 0%; }
 
 @theme {
-  --color-bg: #12100e;
-  --color-surface: #1c1916;
-  --color-elevated: #26211c;
-  --color-fg: #f2ebe1;
-  --color-muted: #9a9084;
-  --color-faint: #6e675e;
-  --color-border: #3a342c;
-  --color-accent: #f2ebe1;
-  --color-accent-fg: #161310;
+  /* Palette B "Night shop" (Ezra 2026-10-26). Dark ground everywhere; paper/ink are the light sheet (plates, print). */
+  --color-bg: #131518;
+  --color-surface: #1c1f23;
+  --color-elevated: #262a2f;
+  --color-fg: #eceae6;
+  --color-muted: #a2a8af;
+  --color-faint: #8c9299;
+  --color-border: #2c3136;
+  --color-accent: #eceae6;
+  --color-accent-fg: #131518;
   --color-warn: #c4a574;
-  --color-danger: #c45c4a;
+  --color-danger: #d4685a;
   --color-ok: #7d9a72;
-  --color-paper: #f3eee4;
-  --color-ink: #1a1612;
-  --color-ink-muted: #6b6358;
-  --color-rule: #d8d0c2;
+  /* Chalk blue marks measurements, part letters and progress only: never decoration, gradients or glows. */
+  --color-mark: #7cb2ff;
+  --color-paper: #f3f3f0;
+  --color-ink: #17191c;
+  --color-ink-muted: #5c6168;
+  --color-rule: #d5d8dc;
   --font-display: "Newsreader", "Newsreader Fallback", "Times New Roman", serif;
   --font-sans: "Figtree", "Figtree Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -479,7 +482,8 @@
   from { transform: rotateY(-30deg) translateY(10px) scale(0.92); opacity: 0.2; }
   to { transform: none; opacity: 1; }
 }
-.yard-alive-grid[data-in][data-offscreen] .yard-alive, .yard-alive-grid[data-in][data-offscreen] > *, [data-offscreen] .yard-making-list, [data-offscreen] .yp { animation-play-state: paused; }
+.yard-alive-grid[data-in][data-offscreen] .yard-alive, .yard-alive-grid[data-in][data-offscreen] > *, [data-offscreen] .yard-making-list, [data-offscreen] .yp,
+[data-offscreen] .yard-grain { animation-play-state: paused; } /* the hero grain (60s infinite) stops off screen too */
 
 /* Building overlay: real parts of a nearby known build drop in by step (transform/opacity only). */
 @media (prefers-reduced-motion: no-preference) {
@@ -513,8 +517,8 @@
 
 /* Reveal ruler: 1/16″-style ticks, every fourth one taller (pure background, no layout). */
 .yard-ruler {
-  background-image: repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.35) 0 1px, transparent 1px 10px),
-    repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 228 214) / 0.18) 0 1px, transparent 1px 2.5px);
+  background-image: repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 234 230) / 0.35) 0 1px, transparent 1px 10px),
+    repeating-linear-gradient(90deg, rgb(var(--fg-rgb, 236 234 230) / 0.18) 0 1px, transparent 1px 2.5px);
   background-size: 100% 7px, 100% 3px;
   background-position: 0 0, 0 4px;
   background-repeat: no-repeat;
@@ -523,8 +527,8 @@
 /* Cut sheet ↔ cut list: one accent, 2 px-ish outline, 120 ms fade (opacity only). */
 .yard-sheet-hl { transition: opacity 120ms ease-out; pointer-events: none; }
 .yard-sheet-piece { transition: opacity 120ms ease-out; outline: none; }
-.yard-sheet-piece:focus-visible rect:first-child { stroke: #c8641e; stroke-width: 0.6; }
-.yard-cut-row[data-active] { background-color: rgb(200 100 30 / 0.14); box-shadow: inset 2px 0 0 #c8641e; }
+.yard-sheet-piece:focus-visible rect:first-child { stroke: var(--color-mark); stroke-width: 0.6; }
+.yard-cut-row[data-active] { background-color: color-mix(in oklab, var(--color-mark) 14%, transparent); box-shadow: inset 2px 0 0 var(--color-mark); }
 .yard-cut-row[data-done] td:not(:first-child) { opacity: 0.45; text-decoration: line-through; text-decoration-thickness: 1px; }
 
 /* Price reason pill: fades up once the build settles; still under reduced motion. */
@@ -545,14 +549,32 @@
 
 
 /*
- * Batch C1 (BATCH-C-PLAN.md 1A, 2B, 3A, 4B): the light site pages (home, Ideas, the shared chrome) only.
- * The dark workspace never carries .yard-site, so it is unchanged.
+ * Batch C1 (BATCH-C-PLAN.md 1A, 2B, 3A, 4B): the site pages (home, Ideas, plans, the shared chrome) only.
+ * The workspace never carries .yard-site; it takes the @theme tokens above.
  */
 .yard-site {
-  /* 3A: cooler pale-plywood bone; body ink on it is 15.1:1 (muted side notes 5.0:1). Baked drawings keep rgb(247,244,238). */
-  --color-paper: #eeebe4;
-  /* 4B: a lighter fill instead of an outline for step cards, feature cards and the prompt box. */
-  --yard-fill: #f7f6f2;
+  /* Night shop: the site pages sit on the dark ground (ink 15.2:1, muted 7.6:1); fills are a raised dark (4B). */
+  --color-paper: #131518;
+  --color-ink: #eceae6;
+  --color-ink-muted: #a2a8af;
+  --color-rule: #2c3136;
+  --yard-fill: #1c1f23;
+  color-scheme: dark;
+}
+/* The light sheet (plans, Ideas cards, drawings, print): ink 15.8:1, muted 5.6:1, mark 5.2:1. */
+:root { --yard-sheet: #f3f3f0; --yard-sheet-ink: #17191c; --yard-sheet-muted: #5c6168; --yard-sheet-rule: #d5d8dc; --yard-sheet-mark: #2a62c4; }
+.yard-sheet {
+  --color-paper: var(--yard-sheet);
+  --color-ink: var(--yard-sheet-ink);
+  --color-ink-muted: var(--yard-sheet-muted);
+  --color-rule: var(--yard-sheet-rule);
+  --color-mark: var(--yard-sheet-mark);
+  --yard-fill: #ffffff;
+  color-scheme: light;
+}
+/* Print stays light and ink-friendly: the site pages print on the sheet. */
+@media print {
+  .yard-site { --color-paper: #ffffff; --color-ink: var(--yard-sheet-ink); --color-ink-muted: var(--yard-sheet-muted); --color-rule: var(--yard-sheet-rule); --color-mark: var(--yard-sheet-mark); --yard-fill: #ffffff; color-scheme: light; }
 }
 /* 2B: mono is for measurements only. */
 .yard-measure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
