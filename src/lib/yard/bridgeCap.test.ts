@@ -11,6 +11,7 @@ import { buildPlan } from "./report.ts";
 import { i36, i52 } from "./invariants.ts";
 import { checkParts, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling.ts";
 import { suspensionRatioRefusal } from "./formLandmarks.ts";
+import { cutsToSpans, inspectWeekendHonesty } from "./weekendStockHonesty.ts";
 import { finishGraph } from "./connect.ts";
 import { getCatalogItem } from "./catalog.ts";
 
@@ -202,4 +203,29 @@ it("long craft stock (12\" skewers) in a stick graph is cut to its spans: Buy co
   // Popsicle landmarks keep their whole-stick contract (4 1/2" sticks): Brooklyn is still 802 whole sticks.
   const bk = buildPlan(generateFromPrompt("brooklyn bridge from popsicle sticks")).bom.find((x) => /popsicle/.test(x.catalogId ?? ""))!;
   assert.match(bk.unit, /\(802 sticks used\)/);
+});
+
+it("GUARD CHANGE: only long craft stock (over 8\") in a stick graph is cut to span; short craft stock stays whole", () => {
+  for (const q of ["bridge from bamboo skewers", "skewer tower"]) {
+    const p = generateFromPrompt(q);
+    const pl = buildPlan(p);
+    assert.equal(pl.partsKind, "cut", q);
+    assert.deepEqual(inspectWeekendHonesty(p, pl).issues, [], q);
+    assert.ok(!p.notes.some((n) => /used whole|Do not cut/i.test(n)), q);
+  }
+  assert.equal(cutsToSpans(generateFromPrompt("skewer tower"), getCatalogItem("bamboo-skewer-12")!), true);
+  // Short craft stock keeps the whole-stick rule: a cut piece fails, and the 4 1/2" and 6" sticks are never cut to span.
+  for (const q of ["brooklyn bridge from popsicle sticks", "4 foot lattice tower from jumbo craft sticks", "toothpick tower"]) {
+    const p = generateFromPrompt(q);
+    const item = getCatalogItem(p.primaryMaterialId)!;
+    assert.equal(cutsToSpans(p, item), false, q);
+    const k = p.instances.findIndex((i) => i.catalogId === item.id);
+    const cut = { ...p, instances: p.instances.map((i, j) => (j === k ? { ...i, cutLength: 1 } : i)) };
+    assert.ok(inspectWeekendHonesty(cut, buildPlan(p)).issues.some((x) => x.guard === "whole"), q);
+  }
+  // A long-stock piece cut longer than one stick still fails.
+  const t = generateFromPrompt("skewer tower");
+  const k = t.instances.findIndex((i) => i.cutLength != null);
+  const long = { ...t, instances: t.instances.map((i, j) => (j === k ? { ...i, cutLength: 13 } : i)) };
+  assert.ok(inspectWeekendHonesty(long, buildPlan(t)).issues.some((x) => x.guard === "whole"));
 });
