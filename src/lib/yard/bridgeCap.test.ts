@@ -13,7 +13,8 @@ import { checkParts, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "
 import { suspensionRatioRefusal } from "./formLandmarks.ts";
 import { cutsToSpans, inspectWeekendHonesty } from "./weekendStockHonesty.ts";
 import { finishGraph } from "./connect.ts";
-import { getCatalogItem } from "./catalog.ts";
+import { CATALOG_BY_ID, getCatalogItem } from "./catalog.ts";
+import { isWholeStock, toPrimitive } from "./geometry.ts";
 
 const sticks = (q: string) => buildPlan(generateFromPrompt(q)).bom.find((b) => /popsicle|toothpick/.test(b.catalogId ?? ""))!;
 
@@ -223,9 +224,14 @@ it("GUARD CHANGE: only long craft stock (over 8\") in a stick graph is cut to sp
     const cut = { ...p, instances: p.instances.map((i, j) => (j === k ? { ...i, cutLength: 1 } : i)) };
     assert.ok(inspectWeekendHonesty(cut, buildPlan(p)).issues.some((x) => x.guard === "whole"), q);
   }
+  // Narrow: no other whole stock over 8" (any category) is cut to span, and long craft stock is cut only in a stick graph.
+  const graph = (id: string) => ({ instances: [{ catalogId: id, from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 1, z: 0 } }] }) as never;
+  const long = [...Object.values(CATALOG_BY_ID), getCatalogItem("piece-pipe-cleaner")!, getCatalogItem("piece-shoelace")!].filter((c) => isWholeStock(c) && toPrimitive(c).length > 8);
+  assert.deepEqual(long.filter((c) => cutsToSpans(graph(c.id), c)).map((c) => c.id).sort(), ["bamboo-skewer-12", "popsicle-giant"]);
+  assert.equal(cutsToSpans({ instances: [{ catalogId: "bamboo-skewer-12" }] } as never, getCatalogItem("bamboo-skewer-12")!), false);
   // A long-stock piece cut longer than one stick still fails.
   const t = generateFromPrompt("skewer tower");
   const k = t.instances.findIndex((i) => i.cutLength != null);
-  const long = { ...t, instances: t.instances.map((i, j) => (j === k ? { ...i, cutLength: 13 } : i)) };
-  assert.ok(inspectWeekendHonesty(long, buildPlan(t)).issues.some((x) => x.guard === "whole"));
+  const over = { ...t, instances: t.instances.map((i, j) => (j === k ? { ...i, cutLength: 13 } : i)) };
+  assert.ok(inspectWeekendHonesty(over, buildPlan(t)).issues.some((x) => x.guard === "whole"));
 });

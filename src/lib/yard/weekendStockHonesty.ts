@@ -630,10 +630,10 @@ function joinForbidden(item: CatalogItem, name: string): boolean {
 /**
  * GUARD CHANGE (row 612): craft stock over 8" that a builder snips (12" bamboo skewers, giant 12" craft sticks) is cut
  * to its spans when it is a stick graph, so Buy counts sticks by cut yield. Shorter craft stock (popsicle, mini, jumbo,
- * toothpicks) and straws keep the whole-stick rule.
+ * toothpicks), straws, and long pieces that are not snipped (pipe cleaners, shoelaces: canCut false) keep the whole-stick rule.
  */
 export function cutsToSpans(project: YardProject, item: CatalogItem): boolean {
-  return item.category === "craft_wood" && toPrimitive(item).length > 8 && project.instances.some((i) => i.catalogId === item.id && !!i.from);
+  return item.category === "craft_wood" && item.canCut === true && toPrimitive(item).length > 8 && project.instances.some((i) => i.catalogId === item.id && !!i.from);
 }
 
 export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | null): WeekendReport {
