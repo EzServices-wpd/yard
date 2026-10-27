@@ -432,7 +432,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } catch (e) {
     if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
-    return partsRefusal(args);
+    return partsRefusal(args, e);
   } finally {
     idDepth--;
   }
@@ -442,7 +442,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
  * Over the part ceiling (partCeiling.ts): nothing is built, and the note names the largest size that builds: the typed
  * size words scaled down, or, for a bench edit or follow-on ("make it taller") that sent a size, that W x D x H.
  */
-function partsRefusal(args: Parameters<typeof generateRaw>): YardProject {
+function partsRefusal(args: Parameters<typeof generateRaw>, err?: TooManyParts): YardProject {
   const [prompt = "", mat, form, o] = args;
   let stock: string | undefined;
   const builds = (q: string, opts = o) => {
@@ -470,7 +470,9 @@ function partsRefusal(args: Parameters<typeof generateRaw>): YardProject {
     fit = k == null ? null : said(down(ov, k));
   } else {
     typed = scaledSizes(prompt, 1)?.words;
-    fit = largestBuilding(prompt, (q) => builds(q));
+    // No size typed: the default build is over the ceiling, so name the tallest typed height that builds.
+    const asked = typed ? prompt : `${prompt} ${inchFrac(err?.height && err.height > 1 ? Math.ceil(err.height) : 1200)}" tall`;
+    fit = largestBuilding(asked, (q) => builds(q));
   }
   const item = getCatalogItem(stock ?? mat ?? "") ?? detectMaterial(prompt);
   const name = (subjectFromPrompt(prompt) || "this build").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -708,7 +710,9 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   const rebuild = (box: Box3) => fitWeekendSize(built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: box }]), args[0], box, undefined, undefined, true);
   const natural = () => {
     const bare = stripEnvelopeWords(args[0]);
-    return bare && bare !== args[0] ? built([bare, args[1], args[2], args[3]]) : null;
+    if (!bare || bare === args[0]) return null;
+    // The no-size build only lends its proportions: over the part ceiling it lends none, and the typed build stands.
+    try { return built([bare, args[1], args[2], args[3]]); } catch (e) { if (e instanceof TooManyParts) return null; throw e; }
   };
   const sized = addFigureBookend(fitWeekendSize(project, args[0], override, override ? undefined : rebuild, natural), args[0]);
   const tabled0 = honorTableTriple(sized, args[0]);

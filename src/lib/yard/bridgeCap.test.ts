@@ -172,3 +172,32 @@ it("the ratio check reads feet lengths in inches and leaves bench sizes alone; t
   assert.equal(largestScale((k) => k <= 0.49), 0.48828125);
   assert.equal(largestScale((k) => k <= 0.0003), 0.00029754638671875);
 });
+
+it("a no-size probe over the ceiling never refuses a typed size that builds, and a no-size refusal names a height that builds", () => {
+  // The bare 'pyramid from toothpicks' is 8393 parts; the typed 12" one is 2723 and builds (the tip built it too).
+  const typed = generateFromPrompt('toothpick pyramid 12" tall');
+  assert.equal(typed.refused, undefined);
+  assert.equal(typed.instances.length + typed.panels.length, 2723);
+  const bare = generateFromPrompt("pyramid from toothpicks");
+  assert.ok(bare.refused, "the 8393-part default is over the ceiling");
+  assert.deepEqual(i36(bare, "pyramid from toothpicks"), []);
+  const h = bare.refused!.match(/It builds up to ([\d /]+)" tall/)![1];
+  const named = generateFromPrompt(`pyramid from toothpicks ${h}" tall`);
+  assert.equal(named.refused, undefined, `${h}" tall builds`);
+  assert.ok(named.instances.length <= MAX_PARTS);
+  assert.ok(generateFromPrompt('pyramid from toothpicks 25" tall').refused, 'and 25" does not');
+});
+
+it("long craft stock (12\" skewers) in a stick graph is cut to its spans: Buy counts skewers, not pieces", () => {
+  const p = generateFromPrompt("skewer tower");
+  const b = buildPlan(p).bom.find((x) => x.catalogId === "bamboo-skewer-12")!;
+  const used = Number(b.unit.match(/\((\d+) skewers used\)/)![1]);
+  // 880 spans, 1350" of skewer in all: at least 113 whole 12" skewers, far fewer than 880.
+  const total = p.instances.reduce((s, i) => s + (i.from && i.to ? Math.hypot(i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z) : 0), 0);
+  assert.ok(used >= Math.ceil(total / 12) && used < 200, `${used} skewers for ${Math.round(total)}"`);
+  assert.equal(b.quantity, Math.ceil(used / 100));
+  assert.deepEqual(i52(buildPlan(p)), []);
+  // Popsicle landmarks keep their whole-stick contract (4 1/2" sticks): Brooklyn is still 802 whole sticks.
+  const bk = buildPlan(generateFromPrompt("brooklyn bridge from popsicle sticks")).bom.find((x) => /popsicle/.test(x.catalogId ?? ""))!;
+  assert.match(bk.unit, /\(802 sticks used\)/);
+});

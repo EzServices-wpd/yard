@@ -1116,7 +1116,9 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     // Animals in long craft stock (12" skewers) are drawn at each part's true length too (a skewer is longer than a snout).
     const S0 = Math.max(0.5, toPrimitive(item).length);
     const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame" || project.shape?.classId === "blocks" || (project.shape?.classId === "quadruped" && S0 > 8);
-    if (isWholeStock(item) && (project.kind === "tower" || exactCut || project.shape?.classId === "small-house")) {
+    // Long craft stock (12" skewers) in a stick graph: a span well under one skewer is cut from one, not a whole skewer each (row 598).
+    const longLattice = S0 > 8 && item.category === "craft_wood" && project.instances.some((i) => i.catalogId === item.id && !!i.from);
+    if (isWholeStock(item) && (project.kind === "tower" || exactCut || longLattice || project.shape?.classId === "small-house")) {
       const S = S0;
       let cut = 0;
       instances = instances.map((i) => {

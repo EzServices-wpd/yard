@@ -738,7 +738,7 @@ export function toProject(
 ): YardProject {
   const list = instances;
   // Over the part ceiling the build is refused (partCeiling.ts), never cut short.
-  checkParts(list.length);
+  checkParts(list.length, () => Math.max(0, ...list.map((i) => (i.to && i.from ? Math.max(i.from.y, i.to.y) : i.position.y))));
   if (list.length > 1500) {
     notes = [...notes, `${list.length} pieces. Orbit may hitch on a phone — that is expected, not a cap.`];
   }
