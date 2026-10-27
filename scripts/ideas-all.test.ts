@@ -8,6 +8,8 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { IdeasPageView } from "../src/components/ideas/IdeasPageView";
+import { IdeaRow } from "../src/components/ideas/IdeaCard";
+import { groupCards, groupView } from "../src/lib/ideas/groups";
 import { ALL_SHOW, curatedFeed, searchCards, searchPool, type IdeasFeed } from "../src/lib/ideas/feed";
 import { GENERIC_TYPES, feedViolations, gradedTypes, liveFeed, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import { isHeldType } from "../src/lib/ideas/held";
@@ -76,19 +78,25 @@ test("privacy: no word a visitor typed reaches All ideas", () => {
   for (const t of typed) assert.ok(!body.includes(t) && !body.includes(t.split(" ").slice(1, 3).join(" ")), t);
 });
 
-test("the page: All ideas is a list of links, ALL_SHOW at first, a native Show more, no empty picture box", () => {
+// 12a (Ezra via Chief 10-26): the flat All ideas list is no longer the page; each group's See all is that list, in place.
+test("the page: no flat list; every listed type is one link in its group (card or See all row), never an empty picture box", () => {
   const html = page(feed);
-  const sec = html.slice(html.indexOf("data-ideas-all"));
-  assert.match(sec, /<h2 id="ideas-all"[^>]*>All ideas<\/h2>/);
-  const links = [...sec.matchAll(/<a href="([^"]+)"[^>]*data-idea-row="([^"]+)"/g)];
-  assert.equal(links.length, ALL_SHOW);
-  for (const [, href] of links) assert.match(href, /^\/workspace\?q=/);
-  assert.ok(!/<img|data-idea-no-drawing/.test(sec), "rows carry no picture box");
-  assert.match(sec, /data-idea-row="soccer-goal"[^>]*>.*?Soccer goal.*?New, not checked yet.*?48 × 12 × 36 in/);
-  assert.match(sec, /<button type="button" aria-controls="ideas-all-list" data-ideas-all-more="true"[^>]*>Show 24 more<\/button>/);
-  assert.match(sec, /24 of 100 shown/);
-  // The fallback feed (store down) has no catalog to show.
-  assert.ok(!page(base).includes("data-ideas-all"));
+  assert.doesNotMatch(html, /id="ideas-all"|>All ideas</, "no flat All ideas section");
+  const groups = groupCards(all);
+  const reach = groups.flatMap((g) => { const v = groupView(g.cards, true, Infinity); return [...v.top, ...v.rows]; });
+  assert.deepEqual(reach.map((c) => c.slug).sort(), all.map((c) => c.slug).sort(), "each listed type reachable once");
+  // The labels add up to the catalog: 100 on 10-25, as the flat list said ("24 of 100 shown").
+  const labels = [...html.matchAll(/data-ideas-show-all="See all (\d+)"/g)].reduce((n, m) => n + Number(m[1]), 0);
+  assert.equal(labels, 100);
+  for (const [, href] of html.matchAll(/<a href="([^"]+)"[^>]*data-idea="/g)) assert.match(href, /^\/workspace\?q=/);
+  assert.doesNotMatch(html, /data-idea-no-drawing/, "a card always has its drawing");
+  // An undrawn type is a row once See all opens, title, New mark and size kept (the flat list's row).
+  const toys = renderToStaticMarkup(createElement(IdeaRow, { card: all.find((c) => c.buildType === "soccer-goal")!, href: "/workspace?q=x", onOpen: () => {} }));
+  assert.match(toys, /data-idea-row="soccer-goal"[^>]*>.*?Soccer goal.*?New, not checked yet.*?48 × 12 × 36 in/);
+  assert.equal(ALL_SHOW, 24);
+  // The fallback feed (store down) groups its sections the same way, with no rows until a See all opens.
+  assert.match(page(base), /data-ideas-group="furniture"/);
+  assert.doesNotMatch(page(base), /data-idea-row=/);
 });
 
 test("search reaches every listed type with the page's aliases; an undrawn hit is a row, not a blank card", () => {

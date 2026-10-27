@@ -28,11 +28,11 @@ with sync_playwright() as p:
         page = ctx.new_page()
         page.goto(f"{U}/ideas?test=1", wait_until="networkidle")
         page.evaluate("() => document.querySelectorAll(\"[data-ideas-show-all][aria-expanded='false']\").forEach(b => b.click())")
-        # Each Show all opens the number its label says ("Show all 12", "Show top 24 of 38"), and the list it controls.
-        for lab, n in page.evaluate("""() => [...document.querySelectorAll('[data-ideas-show-all]')].map(b => [b.dataset.ideasShowAll,
-            document.getElementById(b.getAttribute('aria-controls'))?.children.length ?? -1])"""):
-            m = __import__("re").match(r"Show (?:all|top) (\d+)", lab or "")
-            if not m or int(m.group(1)) != n: fails.append(f"/ideas?test=1 @{W}: {lab!r} opened {n} cards")
+        # Each group's See all N opens its rows in place, and its count line says "x of N shown" (12a: 24 rows at a time).
+        for lab, cnt in page.evaluate("""() => [...document.querySelectorAll('[data-ideas-show-all]')].map(b => [b.dataset.ideasShowAll,
+            document.getElementById(b.getAttribute('aria-controls'))?.querySelector('[data-ideas-all-count]')?.textContent ?? ''])"""):
+            m = __import__("re").match(r"See all (\d+)", lab or "")
+            if not m or not cnt.endswith(f" of {m.group(1)} shown"): fails.append(f"/ideas?test=1 @{W}: {lab!r} opened {cnt!r}")
         # Lazy drawings load as they scroll in: walk the page, then force any left lazy to load.
         for _ in range(40):
             if page.evaluate("() => { window.scrollBy(0, innerHeight); return innerHeight + scrollY >= document.body.scrollHeight - 2; }"): break
