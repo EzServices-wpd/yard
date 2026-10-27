@@ -6,6 +6,7 @@
  */
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
+import { typedMeasures } from "./measureText";
 import type { CatalogItem, Panel, YardProject } from "./types";
 import type { TemplateBuild } from "./formTemplates";
 
@@ -16,7 +17,8 @@ const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, double: 2, th
 
 /** The head noun is a dollhouse ("two story dollhouse", "doll house from plywood"), never a dollhouse bed. */
 export function isDollhouse(prompt: string): boolean {
-  const head = prompt.toLowerCase().split(/\s+(?:with|for|from|having|made|out\s+of|in)\s+/)[0].replace(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:wide|tall|high|deep|long)?|\b(?:x|by)\b/g, " ").trim();
+  const head = prompt.toLowerCase().split(/\s+(?:with|for|from|having|made|out\s+of|in)\s+/)[0]
+    .replace(/[\d./]+\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:[x×]|by|wide|tall|high|deep|long)?/g, " ").replace(/\s+/g, " ").trim();
   return /\bdoll\s*-?\s*houses?$/.test(head);
 }
 
@@ -24,6 +26,12 @@ export function isDollhouse(prompt: string): boolean {
 export function typedStoreys(prompt: string): number | null {
   const m = prompt.toLowerCase().match(/\b(one|single|two|double|three|triple|four|[1-4])[\s-]*(?:stor(?:e?ys?|ies)|levels?|floors?)\b/);
   return m ? (WORDS[m[1]] ?? Number(m[1])) : null;
+}
+
+/** Only the axes the prompt types (axis words or a W x D x H string); the rest take the dollhouse's own defaults. */
+export function dollhouseTyped(prompt: string): { width?: number; height?: number; depth?: number } {
+  const m = typedMeasures(prompt);
+  return { width: m.width ?? m.tuple?.[0], depth: m.depth ?? m.tuple?.[1], height: m.height ?? m.tuple?.[2] };
 }
 
 const r16 = (n: number) => Math.round(n * 16) / 16;
