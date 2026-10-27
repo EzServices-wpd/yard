@@ -47,7 +47,7 @@ it("Buy follows the sticks: 1211 sticks are two 1000-packs, 5849 toothpicks are 
   assert.equal(one.unit, "pack of 1000 (784 sticks used)");
 });
 
-it("I52 flags a pack line that buys fewer pieces than it uses, on the line or its best listing", () => {
+it("I52 flags a pack line that buys fewer or more packs than its pieces need, on the line or its best listing", () => {
   const offer = { retailer: "amazon", label: "Amazon", title: "x", href: "x", packQty: 1000, packPrice: 14.98, unitPrice: 0.01, packsNeeded: 1, lineTotal: 14.98, best: true };
   const line = { name: "Sticks", quantity: 2, unit: "packs of 1000 (1211 sticks used)", searchQuery: "s", offers: [offer] };
   const plan = (b: object) => ({ bom: [b] }) as never;
@@ -55,6 +55,9 @@ it("I52 flags a pack line that buys fewer pieces than it uses, on the line or it
   assert.equal(i52(plan({ ...line, quantity: 1, offers: [{ ...offer, packsNeeded: 2 }] })).length, 1);
   assert.equal(i52(plan({ ...line, offers: [{ ...offer, packsNeeded: 2 }] })).length, 0);
   assert.equal(i52(plan({ ...line, unit: "packs of 1000 (2000 sticks used)", offers: [{ ...offer, packsNeeded: 2 }] })).length, 0);
+  // Over-buy is flagged too: 3 packs of 1000 for 1,211 used, or a best listing of 3 × 1000.
+  assert.deepEqual(i52(plan({ ...line, quantity: 3, offers: [{ ...offer, packsNeeded: 2 }] })).map((v) => v.msg), ["Sticks: 3 packs of 1000 (1211 sticks used) buys more packs than 1211 need"]);
+  assert.deepEqual(i52(plan({ ...line, offers: [{ ...offer, packsNeeded: 3 }] })).map((v) => v.msg), ["Sticks: best listing sells 3 × 1000, more packs than 1211 need"]);
   // A sheet line counts the parts cut from it: 48 pieces nest on one sheet of a 5-pack.
   assert.equal(i52(plan({ name: "Cardboard", quantity: 1, unit: "pack of 5 (48 pieces used)", catalogId: "cardboard-corrugated-sheet", searchQuery: "c" })).length, 0);
 });

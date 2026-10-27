@@ -711,7 +711,8 @@ function i51(plan: BuildPlan): Violation[] {
 
 /**
  * I52 (F7 price follows parts; bridge-cap): a Buy line of whole stock sold in packs (sticks, toothpicks, straws) buys
- * packs for every piece it says it uses ("2 packs of 1000 (1211 sticks used)"), and so does its best listing. Sheet
+ * exactly the packs its pieces need, ceil(used / pack): no fewer and no more ("2 packs of 1000 (1211 sticks used)"),
+ * and so does its best listing. Sheet
  * lines are not checked (their count is parts cut, nested by the sheet). Graded by the eval gate, outside PER_BUILD.
  */
 export function i52(plan: BuildPlan): Violation[] {
@@ -721,9 +722,12 @@ export function i52(plan: BuildPlan): Violation[] {
     // Sheet lines count the parts cut from the sheets, not the sheets bought.
     if (!m || getCatalogItem(b.catalogId ?? "")?.formFactor === "sheet") continue;
     const used = Number(m[2]);
-    if (b.quantity * Number(m[1]) < used) out.push(`${b.name}: ${b.quantity} ${b.unit} buys fewer than ${used}`);
+    const need = (pack: number) => Math.ceil(used / pack);
+    if (b.quantity < need(Number(m[1]))) out.push(`${b.name}: ${b.quantity} ${b.unit} buys fewer than ${used}`);
+    if (b.quantity > need(Number(m[1]))) out.push(`${b.name}: ${b.quantity} ${b.unit} buys more packs than ${used} need`);
     const best = (b.offers ?? []).find((o) => o.best);
-    if (best && best.packQty > 1 && best.packsNeeded * best.packQty < used) out.push(`${b.name}: best listing sells ${best.packsNeeded} × ${best.packQty} for ${used} used`);
+    if (best && best.packQty > 1 && best.packsNeeded < need(best.packQty)) out.push(`${b.name}: best listing sells ${best.packsNeeded} × ${best.packQty} for ${used} used`);
+    if (best && best.packQty > 1 && best.packsNeeded > need(best.packQty)) out.push(`${b.name}: best listing sells ${best.packsNeeded} × ${best.packQty}, more packs than ${used} need`);
   }
   return out.map((m) => v("I52", m));
 }
