@@ -93,7 +93,9 @@ test("the guard catches the 10-26 class: generic, runaway and stand-in taps", ()
   const card = (slug: string, title: string, examplePrompt: string) => ({ slug, title, examplePrompt });
   assert.match(wrongBuild(card("soccer-goal", "Soccer goal", "soccer goal 48 wide 36 tall 12 deep"))!, /generic "Storage unit/);
   assert.match(wrongBuild(card("lighthouse", "Lighthouse", "lighthouse 8 wide 12 tall 8 deep"))!, /generic "Storage unit/);
-  assert.match(wrongBuild(card("brooklyn-bridge", "Brooklyn bridge", "brooklyn bridge 138.5 wide 11.5 tall 6 deep"))!, /^\d+ parts at 17\d\d/);
+  // The 10-26 runaway (1731 5/8" wide) builds its typed 138 1/2" now (bridge cap); a typed tower height still runs past 240".
+  assert.equal(wrongBuild(card("brooklyn-bridge", "Brooklyn bridge", "brooklyn bridge 138.5 wide 11.5 tall 6 deep")), null);
+  assert.match(wrongBuild(card("brooklyn-bridge", "Brooklyn bridge", "brooklyn bridge 20 tall"))!, /^\d+ parts at 250\.9×/);
   assert.match(wrongBuild(card("firewood-unit", "Firewood unit", "firewood unit"))!, /unmatched body/);
   assert.match(wrongBuild(card("toolbox", "Toolbox", "toolbox 18 wide 18 tall 16 deep"))!, /stand-in/);
   assert.match(wrongBuild(card("bookcase", "Dresser", "bookcase 36 wide 72 tall 12 deep"))!, /is not a Dresser/);
