@@ -93,8 +93,8 @@ export function BuildScrubber() {
       onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}
     >
       <p className="truncate px-2 pt-0.5 text-xs text-muted" aria-hidden>
-        <span className="font-mono text-faint" data-yard-scrub-counter>{scrubCounter(track!, k)}</span>{" "}
-        <span className="text-fg">{scrubBeat(track!, k).title}</span>
+        <span className="font-mono text-faint" data-yard-scrub-counter>{scrubCounter(track!, k)}</span>
+        <span className="ms-2 text-fg">{scrubBeat(track!, k).title}</span>
       </p>
       <div className="flex items-center gap-0.5">
         <button
