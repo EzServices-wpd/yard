@@ -225,7 +225,17 @@ test("every typed plywood thickness is read or said: 'ply' is plywood, an off-li
   assert.doesNotMatch(notes("dollhouse 1 1/4 plywood"), /1\/4" Plywood 4×8 can't/);
   assert.equal(t("dollhouse 1 1/8 inch plywood"), "plywood-3-4-4x8");
   assert.match(notes("dollhouse 3 1/2 plywood"), /3 1\/2" plywood isn't on the stock list/);
-  for (const q of ["dollhouse 2 plywood", "dollhouse 21 inch plywood", "dollhouse 12 inch plywood", "dollhouse 36 inch tall plywood"]) assert.doesNotMatch(notes(q), /stock list/, q);
+  for (const q of ["dollhouse 2 plywood", "2 story dollhouse plywood", "dollhouse 36 inch tall plywood"]) assert.doesNotMatch(notes(q), /stock list/, q);
+  // Any whole inch count with its unit is a typed thickness, not only 1 or 2 (row 626): "3 inch plywood" is said, never swapped silently.
+  for (const s of ["plywood", "ply"]) for (const u of [" inch", "\"", " in"]) {
+    const q = `dollhouse 3${u} ${s}`;
+    assert.equal(t(q), "plywood-3-4-4x8", q);
+    assert.match(notes(q), /3" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/, q);
+    assert.equal(build(q, "plywood-1-2-4x8").primaryMaterialId, "plywood-1-2-4x8", q);
+    assert.doesNotMatch(build(q, "plywood-1-2-4x8").notes.join(" "), /3" plywood/, q);
+    for (const sw of ["plywood-1-4-4x8", "popsicle-standard", "lumber-2x4-8"]) assert.match(build(q, sw).notes.join(" "), /stays 3\/4" Plywood/, `${q} ${sw}`);
+  }
+  for (const n of ["12", "21", "36"]) assert.match(notes(`dollhouse ${n} inch plywood`), new RegExp(`(?<!\\d)${n}" plywood isn't on the stock list`), n);
   assert.match(notes("dollhouse 1.5 plywood"), /1 1\/2" plywood isn't/);
   assert.match(notes("dollhouse 15/32 plywood"), /15\/32" plywood isn't/);
   for (const sw of ["plywood-1-4-4x8", "popsicle-standard", "lumber-2x4-8"]) {

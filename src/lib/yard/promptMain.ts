@@ -1356,8 +1356,8 @@ function generateRaw(
     // sheet; one not on the list (1/8", 5/8") is said, never swapped silently, and thinner than 1/2" builds in 1/2",
     // like 1/4". A picker switch to 1/2" or 3/4" wins; any other switch keeps the typed sheet and says so.
     // A mixed number is one thickness ("1 1/2" is 1.5, "3 1/2" is 3.5, I35), never its fraction alone; a whole inch count is a thickness
-    // only with its unit ("1 inch", "1\"", "1 in"): a bare "2" is a count, and "21 inch" is never "1 inch".
-    const tm = bare.toLowerCase().match(/(?<![\d./])(\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d*\.\d+|[12](?=\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)))\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
+    // only with its unit ("1 inch", "3\"", "12 in"), whatever its size: a bare "2" is a count, and "21 inch" is never "1 inch".
+    const tm = bare.toLowerCase().match(/(?<![\d./])(\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d*\.\d+|\d+(?=\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)))\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
     const tIn = tm ? num(tm[1].replace(/\s*\/\s*/g, "/")) : NaN;
     const typed = Number.isFinite(tIn);
