@@ -34,7 +34,9 @@ const f = (n: number) => inchFrac(r16(n));
 export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width?: number; height?: number; depth?: number }): TemplateBuild {
   const T = item.dims.thickness ?? item.dims.height ?? 0.5;
   const W = typed.width ?? 24, D = typed.depth ?? 12, H = typed.height ?? 30;
-  const base = { classId: "dollhouse" as const, subject: "dollhouse", label: "Dollhouse", kind: "house" as const, sized: true };
+  // The title keeps the typed spelling ("doll house" → "Doll house").
+  const label = /\bdoll\s+house/i.test(prompt) ? "Doll house" : "Dollhouse";
+  const base = { classId: "dollhouse" as const, subject: "dollhouse", label, kind: "house" as const, sized: true };
   const asked = typedStoreys(prompt);
   // Roof: 45° unless that would take over 2/5 of the height; 1" eave overhang along the slope, inside the typed width.
   const fit = (w: number, h: number) => {
@@ -82,7 +84,7 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
   }
   // Back wall: the gable end. A window centred in each room of each storey, a round window in the attic gable.
   const cut: NonNullable<Panel["cutouts"]> = [];
-  const ww = r16(Math.min(4, ((rooms === 2 ? Wb - 3 * T : Wb - 2 * T) / rooms) * 0.4)), wh = r16(Math.min(5, c * 0.45));
+  const ww = r16(Math.min(3, ((rooms === 2 ? Wb - 3 * T : Wb - 2 * T) / rooms) * 0.35)), wh = r16(Math.min(4.5, c * 0.5));
   if (ww >= 1.5 && wh >= 1.5) for (let k = 0; k < S; k++) for (let j = 0; j < rooms; j++) {
     const cx = rooms === 2 ? (j ? (half + T / 2 + Wb - T) / 2 : (T + half - T / 2) / 2) : half;
     cut.push({ id: `dh-win-${k}-${j}`, x: r16(cx - ww / 2), y: r16(bottoms[k] + T + c * 0.3), width: ww, height: wh, label: "Window" });
@@ -106,7 +108,7 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
   }
   const rm = rooms === 2 ? " of two rooms each" : "";
   notes.unshift(
-    `Dollhouse in ${item.name}: ${S === 1 ? "one storey" : `${S} storeys`}${rm} and an attic under a ${deg}° gable roof, open at the front so every room can be played in.`,
+    `${label} in ${item.name}: ${S === 1 ? "one storey" : `${S} storeys`}${rm} and an attic under a ${deg}° gable roof, open at the front so every room can be played in.`,
     `Each storey is ${f(c)}" floor to ceiling${doors ? `; the room divider in each storey has a ${f(dw)}" wide doorway` : ""}. The side walls run in one piece from the base to the eaves, and the gable-shaped back wall${cut.length ? ` with ${cut.length} windows` : ""} squares the house.`,
   );
   return { ...base, panels, notes, params: { storeys: S, rooms, doors, windows: cut.length, width: W, depth: D, height: H, eave: He, ridge: Hr, pitchDeg: deg, clear: c, thickness: T } };

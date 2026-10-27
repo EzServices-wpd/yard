@@ -36,7 +36,9 @@ export function builderNameWords(p: YardProject, prompt: string): string[] {
 
 /** Everything the builder owns: kind, family, fitted program, its own name, and its kind's plain nouns. */
 export function builderOwnText(p: YardProject, prompt: string): string {
-  return [p.kind, p.fitted?.family ?? "", p.fitted?.program ?? "", ...builderNameWords(p, prompt), KIND_NOUNS[p.kind] ?? ""].join(" ").toLowerCase();
+  // A dollhouse reads its storey count ("two story" is its default two storeys, read, not ignored).
+  const storeys = p.shape?.classId === "dollhouse" ? "story stories storey storeys level levels floor floors" : "";
+  return [p.kind, p.fitted?.family ?? "", p.fitted?.program ?? "", ...builderNameWords(p, prompt), KIND_NOUNS[p.kind] ?? "", storeys].join(" ").toLowerCase();
 }
 
 /** The builder's own (non-echo) name carries the typed head noun: "Train engine" for "a steam train". */
