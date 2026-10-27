@@ -54,6 +54,8 @@ it("I52 flags a pack line that buys fewer pieces than it uses, on the line or it
   assert.equal(i52(plan({ ...line, quantity: 1, offers: [{ ...offer, packsNeeded: 2 }] })).length, 1);
   assert.equal(i52(plan({ ...line, offers: [{ ...offer, packsNeeded: 2 }] })).length, 0);
   assert.equal(i52(plan({ ...line, unit: "packs of 1000 (2000 sticks used)", offers: [{ ...offer, packsNeeded: 2 }] })).length, 0);
+  // A sheet line counts the parts cut from it: 48 pieces nest on one sheet of a 5-pack.
+  assert.equal(i52(plan({ name: "Cardboard", quantity: 1, unit: "pack of 5 (48 pieces used)", catalogId: "cardboard-corrugated-sheet", searchQuery: "c" })).length, 0);
 });
 
 it("the ceiling is 8,000 parts: 8,000 builds, 8,001 stops", () => {

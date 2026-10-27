@@ -710,14 +710,16 @@ function i51(plan: BuildPlan): Violation[] {
 }
 
 /**
- * I52 (F7 price follows parts; bridge-cap): a Buy line sold in packs buys packs for every piece it says it uses
- * ("2 packs of 1000 (1211 sticks used)"), and so does its best listing. Graded by the eval gate, outside PER_BUILD.
+ * I52 (F7 price follows parts; bridge-cap): a Buy line of whole stock sold in packs (sticks, toothpicks, straws) buys
+ * packs for every piece it says it uses ("2 packs of 1000 (1211 sticks used)"), and so does its best listing. Sheet
+ * lines are not checked (their count is parts cut, nested by the sheet). Graded by the eval gate, outside PER_BUILD.
  */
 export function i52(plan: BuildPlan): Violation[] {
   const out: string[] = [];
   for (const b of plan.bom) {
     const m = b.unit.match(/\bpacks? of (\d+)\s*\((\d+) [a-z ]*used\)/i);
-    if (!m) continue;
+    // Sheet lines count the parts cut from the sheets, not the sheets bought.
+    if (!m || getCatalogItem(b.catalogId ?? "")?.formFactor === "sheet") continue;
     const used = Number(m[2]);
     if (b.quantity * Number(m[1]) < used) out.push(`${b.name}: ${b.quantity} ${b.unit} buys fewer than ${used}`);
     const best = (b.offers ?? []).find((o) => o.best);
