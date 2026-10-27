@@ -1345,7 +1345,8 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
     // fall through to searchOffers with BOM name + estimatedCost.
     const canPriceFromCatalog = Boolean(id && (hasListings || item));
     const prim = item ? toPrimitive(item) : undefined;
-    const packMatch = line.unit.match(/pack of (\d+)/i);
+    // "13 packs of 100" is 1,300 pieces: the plural is matched too, or a 1,000-count listing would sell 13 sticks' worth.
+    const packMatch = line.unit.match(/\bpacks? of (\d+)/i);
     const pieces = packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
     // #8 screw Buy lines name the length; match listings by that length (1", 1-1/4", 2-1/2").
     const screwLen = /#8|wood screw/i.test(line.name)
