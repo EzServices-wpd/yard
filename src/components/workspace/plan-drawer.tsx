@@ -369,7 +369,7 @@ function PlanBody({
                                     checked={done}
                                     onChange={() => toggleTick(L)}
                                     aria-label={`${L}, ${c.name}: cut`}
-                                    className="size-4 accent-[#c8641e]"
+                                    className="size-4 accent-mark"
                                   />
                                 </label>
                               )}

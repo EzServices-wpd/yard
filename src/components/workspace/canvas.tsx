@@ -26,8 +26,9 @@ import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
+import { STAGE } from "@/components/workspace/stage-palette";
 
-const HULL = "#8a8478";
+const HULL = STAGE.ghost;
 const BENCH_BG = SHOP_GROUND.bg;
 /**
  * Fat lines (ghost opening, panel outlines) live on their own layer: the main camera sees them,
@@ -564,7 +565,7 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
   return (
     <group>
       {pts.map((p, i) => (
-        <Line key={i} points={p} color="#c4b49a" lineWidth={1} transparent opacity={0.38} depthWrite={false} layers={LINE_LAYER} />
+        <Line key={i} points={p} color={STAGE.mark} lineWidth={1} transparent opacity={0.38} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );
