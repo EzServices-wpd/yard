@@ -111,9 +111,10 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
       ) : (
         <>
           {stocks.length > 0 ? (
-            <div role="group" aria-label="Show builds by stock" className="mt-4 flex flex-wrap gap-2" data-ideas-stocks>
+            // One row that swipes below lg: its height never depends on how the chip words wrap once the font loads (CLS).
+            <div role="group" aria-label="Show builds by stock" className="relative -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:px-0" data-ideas-stocks>
               {[null, ...stocks].map((s) => (
-                <button key={s ?? "all"} type="button" aria-pressed={stock === s} onClick={() => setStock(s)} data-ideas-stock={s ?? "all"} className={`${CHIP} ${chipTone(stock === s)}`}>
+                <button key={s ?? "all"} type="button" aria-pressed={stock === s} onClick={() => setStock(s)} data-ideas-stock={s ?? "all"} className={`${CHIP} shrink-0 ${chipTone(stock === s)}`}>
                   {s ?? "All stock"}
                 </button>
               ))}
