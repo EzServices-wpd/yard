@@ -9,7 +9,8 @@ import { it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { i36, i52 } from "./invariants.ts";
-import { checkParts, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling.ts";
+import { checkParts, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling.ts";
+import { suspensionRatioRefusal } from "./formLandmarks.ts";
 import { finishGraph } from "./connect.ts";
 import { getCatalogItem } from "./catalog.ts";
 
@@ -160,4 +161,14 @@ it("Buy buys listing packs for the pieces used, not for catalog packs rounded up
   // A sheet line's "(48 pieces used)" counts parts cut from the sheets: one 5-pack of sheets holds them, not ten.
   const board = buildPlan(generateFromPrompt("cardboard castle")).bom.find((b) => /\(48 pieces used\)/.test(b.unit))!;
   assert.deepEqual(board.offers!.map((o) => o.packsNeeded), board.offers!.map(() => 1));
+});
+
+it("the ratio check reads feet lengths in inches and leaves bench sizes alone; the size search halves far and narrows 6 steps", () => {
+  // 10 feet long is 120": 9 5/8" towers, so 10" tall agrees and builds.
+  assert.equal(suspensionRatioRefusal("brooklyn bridge 10 feet long 10 inches tall"), null);
+  // A bench edit or follow-on sends its own size, which the bridge fits; the typed words are not re-judged.
+  const p = generateFromPrompt("brooklyn bridge 48 wide 30 tall", undefined, undefined, { sizeOverride: { width: 48, depth: 5, height: 4 } });
+  assert.equal(p.refused, undefined);
+  assert.equal(largestScale((k) => k <= 0.49), 0.48828125);
+  assert.equal(largestScale((k) => k <= 0.0003), 0.00029754638671875);
 });
