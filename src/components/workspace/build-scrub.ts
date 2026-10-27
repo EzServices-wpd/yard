@@ -8,9 +8,8 @@ import { buildOrder } from "./build-order";
  * the scale figure and props (#176) are not parts, so they are never in a beat or a count.
  */
 export type ScrubBeat = { step: number; title: string };
-/** final: the plan's last step. The end position is the finished build, so it reads that step (9 of 9), not
- * the last step that placed a part (doors at 7 of 9 would read as unfinished). */
-export type ScrubTrack = { at: Map<string, number>; ids: string[]; beats: ScrubBeat[]; total: number; final: ScrubBeat };
+/** final: the plan's last step; the end position reads it. positions: slider stops (beats, plus one when the final step adds nothing). */
+export type ScrubTrack = { at: Map<string, number>; ids: string[]; beats: ScrubBeat[]; total: number; final: ScrubBeat; positions: number };
 
 export function scrubTrack(project: YardProject, plan: Pick<BuildPlan, "instructions" | "cutList"> | null | undefined): ScrubTrack | null {
   if (!plan?.instructions.length) return null;
@@ -19,7 +18,11 @@ export function scrubTrack(project: YardProject, plan: Pick<BuildPlan, "instruct
   const ids = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)].filter((id) => at.has(id));
   const beats = steps.map((s) => ({ step: plan.instructions[s].step, title: plan.instructions[s].title }));
   const last = plan.instructions[plan.instructions.length - 1];
-  return { at, ids, beats, total: plan.instructions.length, final: { step: last.step, title: last.title } };
+  const final = { step: last.step, title: last.title };
+  // Every step that adds parts keeps its own position (linen doors at 7 of 9). When the plan's last step adds
+  // nothing, one extra position at the end reads it (9 of 9) over the same finished frame.
+  const positions = beats.length + (beats[beats.length - 1].step === final.step ? 0 : 1);
+  return { at, ids, beats, total: plan.instructions.length, final, positions };
 }
 
 /**
@@ -27,7 +30,7 @@ export function scrubTrack(project: YardProject, plan: Pick<BuildPlan, "instruct
  * build and returns null, so it renders through the very same path as the default finished frame.
  */
 export function scrubShown(track: ScrubTrack, k: number): Set<string> | null {
-  if (k >= track.beats.length) return null;
+  if (k >= track.beats.length) return null; // the last part-adding position already shows the whole build
   return new Set(track.ids.filter((id) => track.at.get(id)! < k));
 }
 
@@ -40,12 +43,12 @@ export function scrubLabel(track: ScrubTrack, k: number): string {
   return `${scrubCounter(track, k)}: ${scrubBeat(track, k).title}`;
 }
 /**
- * The plan step position k names. Every position but the last is the step that made its change on the
- * bench (steps that change nothing there are not positions of their own); the last is the plan's final
- * step, because the finished build is what it shows. The title is always that same step's own title.
+ * The plan step position k names. Every step that adds parts is a position of its own and is named by its
+ * own number; when the plan ends on a step that adds nothing, the extra last position names that final step
+ * (9 of 9) over the same finished frame. The title is always that same step's own title.
  */
 export function scrubBeat(track: ScrubTrack, k: number): ScrubBeat {
-  if (k >= track.beats.length) return track.final;
+  if (k > track.beats.length) return track.final;
   return track.beats[Math.max(1, k) - 1];
 }
 

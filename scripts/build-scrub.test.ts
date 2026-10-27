@@ -32,7 +32,7 @@ for (const prompt of FINAL_CASES) {
     const plan = buildPlan(project);
     const track = scrubTrack(project, plan)!;
     const N = plan.instructions.length;
-    const n = track.beats.length;
+    const n = track.positions;
     const last = plan.instructions[N - 1];
     assert.equal(last.step, N, "the plan numbers its steps 1..N");
     assert.equal(scrubCounter(track, n), `Step ${N} of ${N}`, "a finished build reads N of N");
@@ -40,6 +40,8 @@ for (const prompt of FINAL_CASES) {
     assert.equal(scrubShown(track, n), null, "and the end is still the default finished frame");
     const nums = Array.from({ length: n }, (_, i) => scrubBeat(track, i + 1).step);
     for (let i = 1; i < n; i++) assert.ok(nums[i] > nums[i - 1], `step numbers rise: ${nums.join(",")}`);
+    assert.deepEqual(nums.slice(0, track.beats.length), track.beats.map((b) => b.step), "every part-adding step keeps its own position (never dropped)");
+    assert.equal(n, track.beats.length + (track.beats[track.beats.length - 1].step === N ? 0 : 1), "one extra stop only when the final step adds nothing");
     assert.ok(nums.every((x) => x >= 1 && x <= N), "never past N");
     for (let k = 1; k <= n; k++) {
       const b = scrubBeat(track, k);
@@ -70,11 +72,11 @@ for (const c of CASES) {
     assert.match(scrubLabel(track, 1), new RegExp(`^Step ${nums[0]} of ${plan.instructions.length}: `));
     // The visible counter is the plan's numbers, the same words the screen reader hears first.
     const N = plan.instructions.length;
-    for (let k = 1; k < track.beats.length; k++) {
+    for (let k = 1; k <= track.beats.length; k++) {
       assert.equal(scrubCounter(track, k), `Step ${track.beats[k - 1].step} of ${N}`, "a middle position names the step that made its change");
       assert.ok(scrubLabel(track, k).startsWith(`${scrubCounter(track, k)}: `), "counter and aria-valuetext agree");
     }
-    assert.ok(scrubLabel(track, track.beats.length).startsWith(`${scrubCounter(track, track.beats.length)}: `));
+    assert.ok(scrubLabel(track, track.positions).startsWith(`${scrubCounter(track, track.positions)}: `));
     for (const id of track.ids) assert.ok(track.at.get(id)! < track.beats.length, `${id} lands on a real beat`);
   });
 
