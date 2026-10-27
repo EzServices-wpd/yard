@@ -88,7 +88,8 @@ test("Popular recently is the live log of the last 7 days; new types are 'new' w
   const recent = recentOf({ ...SNAP, rows: SNAP.rows.map((r) => (r.resultKey === "recipe:cat-tree" ? { ...r, status: "Trusted" as const } : r)) });
   const cat = recent!.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
-  assert.deepEqual(cat.dims, { width: 24, depth: 24, height: 60 });
+  // Its own size: the logged 24×24×60 built a Storage unit, so the tap is LOG_PROMPT's "cat tree" and the size that build's (10-26).
+  assert.deepEqual(cat.dims, { width: 20, depth: 20, height: 48 });
   assert.equal(cat.title, "Cat tree");
   assert.equal(cat.recipeKey, "cat-tree");
 });

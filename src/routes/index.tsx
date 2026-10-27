@@ -246,8 +246,8 @@ function LandingPage() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink sm:text-lg">
-            One model. Every cut, part and step.
+          <p className="mt-5 max-w-xl text-balance text-base leading-relaxed text-ink sm:text-lg">
+            Plywood or popsicle sticks, PVC or cardboard. One real model. Every part, cut and step.
           </p>
           <p className="mt-1 text-base italic text-ink">{TAGLINE}</p>
 
