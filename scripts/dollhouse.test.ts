@@ -179,6 +179,7 @@ test("every variant prices every Buy line and passes the invariants; outdoor wor
   assert.deepEqual(build("barbie dream house").overall, { width: 36, height: 48, depth: 14 });
   assert.match(notes("dollhouse with a flat roof"), /You asked for a flat roof; this dollhouse has a 45° gable roof instead\./);
   assert.match(notes("dollhouse with a fence and a yard"), /a fence; .* without one.*a yard; .* without one/);
+  assert.doesNotMatch(notes("dollhouse for my back yard"), /a yard;/);
   // Craft stock keeps its own build, and its outdoor words still switch on the exterior package.
   assert.equal(plyDollhouse("outdoor popsicle stick dollhouse"), false);
 });
