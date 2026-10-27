@@ -13,7 +13,8 @@ describe("home 'Made on Yard' cards are live Yard output", () => {
   });
   it("keeps the headline and subline", () => {
     assert.match(home, /\["Think", "it", "up\."\], \["Yard", "works", "it", "out\."\]/);
-    assert.match(home, /One model\. Every cut, part and step\./);
+    assert.match(home, /Plywood or popsicle sticks, PVC or cardboard\. One real model\. Every part, cut and step\./);
+    assert.doesNotMatch(home, /One model\. Every cut, part and step\./, "the old subline is gone (PR 3)");
   });
   it("size copy is honest about doors standing proud", () => {
     assert.doesNotMatch(home, /you get a 31 1\/2 × 78 × 16 build/);

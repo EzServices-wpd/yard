@@ -12,6 +12,7 @@ import { CANARIES } from "./weekend-canaries";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import TYPES from "../src/lib/ideas/types.json";
 import TWINS from "../src/lib/ideas/typeTwins.json";
+import DRAWINGS from "../src/lib/ideas/drawings.json";
 import LIVE_SNAP from "./fixtures/ideas-snapshot-2026-10-23.json";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import type { IdeasSnapshot, SnapshotRow } from "../src/lib/yard/ideaLog";
@@ -87,7 +88,8 @@ test("Popular recently is the live log of the last 7 days; new types are 'new' w
   const recent = recentOf({ ...SNAP, rows: SNAP.rows.map((r) => (r.resultKey === "recipe:cat-tree" ? { ...r, status: "Trusted" as const } : r)) });
   const cat = recent!.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
-  assert.deepEqual(cat.dims, { width: 24, depth: 24, height: 60 });
+  // Its own size: the logged 24×24×60 built a Storage unit, so the tap is LOG_PROMPT's "cat tree" and the size that build's (10-26).
+  assert.deepEqual(cat.dims, { width: 20, depth: 20, height: 48 });
   assert.equal(cat.title, "Cat tree");
   assert.equal(cat.recipeKey, "cat-tree");
 });
@@ -346,7 +348,13 @@ test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the fe
   }
   assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
   // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
-  for (const t of ["soccer-goal", "rocket", "dollhouse", "cat-tree", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  for (const t of ["soccer-goal", "dollhouse", "lighthouse", "brooklyn-bridge", "cat-tree", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  // The rocket is baked under its type from the prompt its card builds on tap (gen-idea-drawings LOG_TYPES), with the build's stock.
+  const rocket = cards.find(({ c }) => c.buildType === "rocket")?.c;
+  assert.ok(rocket, "the rocket card shows");
+  assert.equal(rocket!.examplePrompt, "rocket 9.875 wide 28 tall 9.875 deep");
+  assert.match(rocket!.drawing!.src, /^\/ideas\/drawings\/rocket\.[0-9a-f]{8}\.svg$/);
+  assert.equal((DRAWINGS as Record<string, { stock?: string }>).rocket.stock, generateFromPrompt(rocket!.examplePrompt).primaryMaterialId);
   // Row 168: "Corner shelf" shows once (the log's corner-shelf rows count on the drawn Corner shelf card), and no two cards share a title.
   const titles = cards.map(({ c }) => c.title.toLowerCase());
   assert.equal(titles.filter((t) => t === "corner shelf").length, 1);
