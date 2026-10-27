@@ -33,7 +33,8 @@ test("a bare dollhouse is the real house: walls, two storeys with doorways, an a
   for (const d of p.panels.filter((x) => x.name === "Room divider")) {
     const ys = d.polygon!.pts.map((q) => q[1]);
     assert.equal(ys.filter((y) => y === 0).length, 4, "doorway notch");
-    assert.ok(Math.max(...ys.filter((y) => y > 0 && y < d.size.height)) < d.size.height - 1);
+    const top = d.polygon!.pts[2][1];
+    assert.ok(top >= 2 && top <= d.size.height - 1, `doorway ${top} of ${d.size.height}: a lintel stays above it`);
   }
   assert.equal(back.cutouts?.length, 4);
   assert.equal(back.polygon!.holes?.length, 1, "round attic window");
@@ -47,6 +48,9 @@ test("the plan: every part cut and used in a step, steps in build order, one she
   const at = (re: RegExp) => plan.instructions.findIndex((s) => re.test(s.title));
   const order = [/side walls to the base/, /Build up the storeys/, /back wall/, /roof panels/].map(at);
   assert.ok(order.every((i, k) => i > 0 && (k === 0 || i > order[k - 1])), `order ${order}`);
+  // After the cut step, each part is first used in its own step, in build order: walls on the base, storeys, the back, the roof last.
+  const first = (n: string) => plan.instructions.findIndex((s, i) => i > 0 && s.partsUsed?.includes(n));
+  assert.deepEqual(["Side wall", "Room divider", "Back wall", "Roof panel"].map(first), order);
   assert.deepEqual(plan.bom.filter((b) => /plywood/i.test(b.name)).map((b) => [b.catalogId, b.quantity]), [["plywood-1-2-4x8", 1]]);
   assert.ok(plan.bom.some((b) => /screws/.test(b.name)) && !plan.bom.some((b) => /shelf pins/.test(b.name)));
   const text = [...p.notes, ...plan.instructions.map((s) => s.description), ...plan.cutList.map((c) => c.notes ?? "")].join(" ");
@@ -85,6 +89,11 @@ test("a stock switch keeps the form: same parts, same size, every panel in the n
   const pop = build("dollhouse", "popsicle-standard");
   assert.equal(shape(pop), TWO);
   assert.ok(pop.notes.some((n) => /Popsicle Stick can't build this dollhouse, so it stays 1\/2" Plywood/.test(n)));
+  // 1/4" plywood is too thin to screw: the house stays 1/2" and names the sheets it takes.
+  const thin = build("dollhouse from 1/4 plywood");
+  assert.equal(shape(thin), TWO);
+  assert.ok(thin.panels.every((x) => x.materialId === "plywood-1-2-4x8"));
+  assert.ok(thin.notes.some((n) => /^1\/4" Plywood .* stays 1\/2" Plywood .* Pick 1\/2" or 3\/4" plywood to switch it\.$/.test(n)));
 });
 
 test("sizes it can't hold are refused or said plainly, never dropped", () => {

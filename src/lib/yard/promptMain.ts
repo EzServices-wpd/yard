@@ -301,11 +301,11 @@ function typedStockId(prompt: string): string | undefined {
 }
 
 /** Stock switch: a stock the build can't use is refused in plain words, never ignored silently. */
-function refuseUnusedStock(project: YardProject, ask?: string, force = false): YardProject {
+function refuseUnusedStock(project: YardProject, ask?: string, force = false, pick?: string): YardProject {
   const item = ask && getCatalogItem(ask);
   if (!item || (!force && (/^lumber-/.test(item.id) || (project.panels ?? []).some((p) => p.materialId === ask)))) return project;
   const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
-  const note = `${item.name} can't build this ${project.name.toLowerCase().replace(/\s+\d.*$/, "")}, so it stays ${kept} at the same size. Pick ${force ? "a sheet stock" : "a lumber stock"} to switch it.`;
+  const note = `${item.name} can't build this ${project.name.toLowerCase().replace(/\s+\d.*$/, "")}, so it stays ${kept} at the same size. Pick ${pick ?? (force ? "a sheet stock" : "a lumber stock")} to switch it.`;
   return { ...project, notes: [...(project.notes ?? []), note] };
 }
 
@@ -1352,7 +1352,7 @@ function generateRaw(
     const stock = dollhouseStock(prompt, materialOverride);
     const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
     const ask = materialOverride ?? typedStockId(prompt);
-    if (built) return ask && ask !== stock.id ? refuseUnusedStock(built, ask, true) : built;
+    if (built) return ask && ask !== stock.id ? refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`) : built;
   }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
   // at the typed height. A craft or toy stock pick stays on its craft path.
