@@ -10,6 +10,8 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { i36, i52 } from "./invariants.ts";
 import { checkParts, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling.ts";
+import { finishGraph } from "./connect.ts";
+import { getCatalogItem } from "./catalog.ts";
 
 const sticks = (q: string) => buildPlan(generateFromPrompt(q)).bom.find((b) => /popsicle|toothpick/.test(b.catalogId ?? ""))!;
 
@@ -60,6 +62,15 @@ it("the ceiling is 8,000 parts: 8,000 builds, 8,001 stops", () => {
   assert.throws(() => checkParts(8001), TooManyParts);
 });
 
+it("a stick graph already far over the ceiling stops before the weld and prune passes", () => {
+  const stick = getCatalogItem("popsicle-standard")!;
+  const graph = (feet: number) => ({ id: "g", name: "g", envelope: { width: 1, height: feet * 12, depth: 1 }, materialId: stick.id, assumptions: [], notes: [], structureClass: "generic" as const,
+    nodes: [{ id: "a", position: { x: 0, y: 0, z: 0 } }, { id: "b", position: { x: 0, y: feet * 12, z: 0 } }], edges: [{ id: "e", from: "a", to: "b", join: "glue" as const }] });
+  // 6,000 ft of 4 1/2" sticks is 16,000 sticks: still over 8,000 if a third of the graph were pruned away.
+  assert.throws(() => finishGraph(graph(6000) as never, stick, "tower"), TooManyParts);
+  assert.doesNotThrow(() => finishGraph(graph(10) as never, stick, "tower"));
+});
+
 it("a 100 ft popsicle Eiffel Tower is refused fast and names 13 foot, the largest that builds", () => {
   const t0 = Date.now();
   const p = generateFromPrompt("100 foot Eiffel Tower from popsicle sticks");
@@ -85,6 +96,7 @@ it("scaledSizes scales typed sizes, rounds down in the unit typed, and leaves st
   assert.deepEqual(scaledSizes("brooklyn bridge 138.5 wide 11.5 tall", 0.5)?.words, ["69 1/4 wide", "5 3/4 tall"]);
   assert.deepEqual(scaledSizes("brooklyn bridge 138.5 wide", 0.3)?.words, ["41 1/2 wide"]);
   assert.equal(scaledSizes("100 foot eiffel tower", 0.13)?.prompt, "13 foot eiffel tower");
+  assert.equal(scaledSizes("100 foot eiffel tower", 0.139)?.prompt, "13 foot eiffel tower");
   assert.equal(scaledSizes("2x4 bench 48 x 18 x 16", 0.5)?.prompt, "2x4 bench 24 x 9 x 8");
   assert.equal(scaledSizes("castle from toothpicks", 0.5), null);
 });

@@ -52,12 +52,12 @@ export function fitSuspensionTo(spec: SuspensionSpec) {
     const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : bare ? parseFloat(bare[1]) : 0;
     const tall = /tall|high|height/.test(lower);
     // A number bound to an axis word is that axis: "138 1/2 wide 11 1/2 tall" is 138 1/2" long, never 138 1/2" tall.
-    // Length wins over height (the ratio is fixed); a typed depth is kept.
+    // Length wins over height: the ratio is fixed.
     const t = typedMeasures(prompt);
     // Landmark default: no number builds the signature feature (the towers) at a readable height and
     // derives the length from the real ratio — the ratio is never distorted to fit a bench.
     const h = t.width ? t.width / spec.lOverH : t.height ? t.height : tall && n ? n : n ? n / spec.lOverH : LANDMARK_READABLE_IN;
-    return { width: h * spec.lOverH, height: h, depth: t.depth ?? Math.max(4, Math.min(h * 0.45, 14)) };
+    return { width: h * spec.lOverH, height: h, depth: Math.max(4, Math.min(h * 0.45, 14)) };
   };
 }
 
