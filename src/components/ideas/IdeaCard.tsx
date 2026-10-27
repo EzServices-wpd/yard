@@ -45,7 +45,6 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
         <span className="font-display text-base leading-tight text-ink group-hover:underline sm:text-lg">{card.title}</span>
         {card.status === "new" ? <span className="shrink-0 text-[13px] text-ink-muted">New</span> : null}
       </span>
-      {card.drawing?.parts ? <span className="yard-num mt-0.5 text-sm text-ink" data-parts={card.drawing.parts}>{card.drawing.parts} parts</span> : null}
       <CardSize card={card} className="mt-0.5 line-clamp-2" />
       {card.blurb ? <span className="mt-1.5 line-clamp-2 hidden text-sm leading-snug text-ink sm:block">{card.blurb}</span> : null}
       {showCount && card.count > 0 ? <span className="yard-num mt-1 text-[13px] text-ink-muted">Built {card.count}×</span> : null}

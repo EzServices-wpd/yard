@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { IdeasPageView } from "../src/components/ideas/IdeasPageView";
-import { ALL_SHOW, SECTION_SHOW, curatedFeed, type IdeasFeed } from "../src/lib/ideas/feed";
+import { ALL_SHOW, SECTION_SHOW, curatedFeed, drawingForType, type IdeasFeed } from "../src/lib/ideas/feed";
 import { FEATURED, GROUPS, groupCards, groupOf, groupView, stockOf, withStock } from "../src/lib/ideas/groups";
 import { liveFeed, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import RECIPES from "../src/lib/ideas/recipes.json";
@@ -58,6 +58,10 @@ test("featured: Chief's five, checked and drawn, first drawing eager and every o
   assert.ok(!/id="ideas-all"|>All ideas</.test(html), "the flat list is gone");
   assert.ok(!/data-ideas-hero|\/ideas\/models\//.test(html), "no 3D model file on the page");
   assert.ok(!/\$\s?\d|price/i.test(html.replace(/<[^>]+>/g, " ")), "no price on Ideas");
+  // Critic 2 (#186, 10-27): the baked drawing.parts disagreed with the card's own build on 11 of 56 cards (bookcase 10 vs
+  // 16), so cards print no part count. Follow-up: re-bake drawings.json and test parts == the engine's pieces per card.
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, " "), /\d+ parts\b/);
+  assert.doesNotMatch(html, /data-parts=/);
 });
 
 test("groups: a heading each, in order, content-visibility, See all says the group's whole count and controls its rows", () => {
@@ -80,7 +84,9 @@ test("groups: a heading each, in order, content-visibility, See all says the gro
 test("See all opens in place: SECTION_SHOW drawn cards, then the rest as rows ALL_SHOW at a time", () => {
   const furniture = groupCards(all).find((g) => g.id === "furniture")!.cards;
   const drawn = furniture.filter((c) => c.drawing).length;
-  assert.deepEqual([furniture.length, drawn], [58, 40]);
+  // 58 furniture types on 10-25; how many are drawn follows the manifest (cat tree drawn 10-27), at least SECTION_SHOW.
+  assert.deepEqual([furniture.length, drawn], [58, furniture.filter((c) => drawingForType(c.buildType)).length]);
+  assert.ok(drawn >= SECTION_SHOW);
   const shut = groupView(furniture, false, ALL_SHOW);
   assert.deepEqual([shut.top.length, shut.rows.length, shut.button, shut.label], [SECTION_SHOW, 0, true, "See all 58"]);
   assert.ok(shut.top.every((c) => c.drawing), "cards are drawn; undrawn types wait in the rows");
@@ -88,9 +94,13 @@ test("See all opens in place: SECTION_SHOW drawn cards, then the rest as rows AL
   assert.deepEqual([open.rows.length, open.left, open.shown], [ALL_SHOW, 58 - SECTION_SHOW - ALL_SHOW, SECTION_SHOW + ALL_SHOW]);
   const more = groupView(furniture, true, 3 * ALL_SHOW);
   assert.deepEqual([more.rows.length, more.left, more.shown], [58 - SECTION_SHOW, 0, 58]);
-  // Toys: 11 types; abacus, catapult and (Yard Design, 10-26) rocket are drawn, so 3 cards and 8 rows, undrawn ones New.
-  const toys = groupView(groupCards(all).find((g) => g.id === "toys")!.cards, true, ALL_SHOW);
-  assert.deepEqual([toys.top.map((c) => c.buildType).sort(), toys.rows.length], [["abacus", "catapult", "rocket"], 8]);
+  // Toys: 11 types. Yard Design keeps drawing more (rocket, viking ship on 10-26/27), so the cards are exactly the toys the
+  // drawings manifest has (drawingForType, read here, not the page) and the rest are rows; abacus and catapult always draw.
+  const toyCards = groupCards(all).find((g) => g.id === "toys")!.cards;
+  const drawnToys = toyCards.filter((c) => drawingForType(c.buildType)).map((c) => c.buildType).sort();
+  const toys = groupView(toyCards, true, ALL_SHOW);
+  assert.ok(drawnToys.includes("abacus") && drawnToys.includes("catapult"));
+  assert.deepEqual([toys.top.map((c) => c.buildType).sort(), toys.rows.length], [drawnToys, 11 - drawnToys.length]);
   assert.ok(toys.rows.some((c) => c.buildType === "soccer-goal" && c.status === "new"));
 });
 
