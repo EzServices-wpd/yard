@@ -13,7 +13,8 @@ import type { TemplateBuild } from "./formTemplates";
 /** The least floor-to-ceiling height a storey keeps (a 1:24 room); a room divider needs a room this wide each side. */
 export const MIN_STOREY_IN = 3;
 const MIN_ROOM_IN = 4;
-const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, double: 2, three: 3, triple: 3, four: 4 };
+const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, double: 2, three: 3, triple: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+const NUM = "(one|single|two|double|three|triple|four|five|six|seven|eight|nine|ten|eleven|twelve|\\d+)";
 
 /** The head noun is a dollhouse ("two story dollhouse", "doll house from plywood"), never a dollhouse bed. */
 export function isDollhouse(prompt: string): boolean {
@@ -24,7 +25,14 @@ export function isDollhouse(prompt: string): boolean {
 
 /** A typed storey count ("two story", "3-storey", "2 floors"), else null. */
 export function typedStoreys(prompt: string): number | null {
-  const m = prompt.toLowerCase().match(/\b(one|single|two|double|three|triple|four|[1-4])[\s-]*(?:stor(?:e?ys?|ies)|levels?|floors?)\b/);
+  // Any typed count is read (never only 1-4): a count the house can't hold is refused, not shrunk.
+  const m = prompt.toLowerCase().match(new RegExp(`\\b${NUM}[\\s-]*(?:stor(?:e?ys?|ies)|levels?|floors?)\\b`));
+  return m ? (WORDS[m[1]] ?? Number(m[1])) : null;
+}
+
+/** A typed room count ("with 6 rooms", "three-room"), else null. */
+export function typedRooms(prompt: string): number | null {
+  const m = prompt.toLowerCase().match(new RegExp(`\\b${NUM}[\\s-]*rooms?\\b`));
   return m ? (WORDS[m[1]] ?? Number(m[1])) : null;
 }
 
@@ -54,23 +62,43 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
     return { p, exX, exY, Wb, rise, lift, He, clear: (s: number) => (He - (s + 1) * T) / s };
   };
   const g = fit(W, H);
-  const minH = (s: number) => { let h = Math.ceil(H * 8) / 8; while (h < 96 && fit(W, h).clear(s) < MIN_STOREY_IN - 1e-9) h += 1 / 8; return h; };
+  // The least height for s storeys, or null when even a 96" house can't hold them.
+  const minH = (s: number): number | null => { let h = Math.ceil(H * 8) / 8; while (h <= 96 && fit(W, h).clear(s) < MIN_STOREY_IN - 1e-9) h += 1 / 8; return h <= 96 ? h : null; };
+  const maxS = (h: number) => { let s = 0; while (fit(W, h).clear(s + 1) >= MIN_STOREY_IN - 1e-9) s++; return s; };
   const no = (why: string): TemplateBuild => ({ ...base, panels: [], params: {}, notes: [], refused: why });
   if (W > 96 || H > 96 || D > 48) return no(`A dollhouse needs every wall to fit a 4×8 sheet: at most 96" wide, 96" tall and 48" deep. Nothing is built at ${f(W)}" × ${f(D)}" × ${f(H)}".`);
   if (g.Wb - 2 * T < MIN_STOREY_IN || D - T < MIN_STOREY_IN) {
     const ax = g.Wb - 2 * T < MIN_STOREY_IN ? `${f(MIN_STOREY_IN + 2 * T + 2 * g.exX)}" wide` : `${f(MIN_STOREY_IN + T)}" deep`;
     return no(`A dollhouse needs at least ${ax} for a ${f(MIN_STOREY_IN)}" room inside its ${f(T)}" walls. Nothing is built at ${f(W)}" × ${f(D)}".`);
   }
+  if (asked !== null && asked < 1) return no(`A dollhouse has at least one storey, ${f(minH(1) ?? H)}" tall at ${f(W)}" wide. Nothing is built at ${asked} storeys.`);
   let S = asked ?? 2;
   const notes: string[] = [];
   if (g.clear(S) < MIN_STOREY_IN) {
-    if (asked || g.clear(1) < MIN_STOREY_IN) return no(`A ${S === 1 ? "one" : S}-storey dollhouse needs at least ${f(minH(S))}" tall for ${f(MIN_STOREY_IN)}" rooms under its roof. Nothing is built at ${f(H)}".`);
-    notes.push(`At ${f(H)}" tall the house has room for one storey; type ${f(minH(2))}" tall for two.`);
+    const need = minH(S);
+    if (asked && need === null) return no(`A ${S}-storey dollhouse doesn't fit: at ${f(W)}" wide, at most ${maxS(96)} storeys fit under the roof of a 96" tall house (${maxS(H)} at ${f(H)}"). Nothing is built at ${S} storeys.`);
+    if (asked || g.clear(1) < MIN_STOREY_IN) return no(`A ${S === 1 ? "one" : S}-storey dollhouse needs at least ${f(need ?? minH(1) ?? 96)}" tall for ${f(MIN_STOREY_IN)}" rooms under its roof. Nothing is built at ${f(H)}".`);
+    notes.push(`At ${f(H)}" tall the house has room for one storey; type ${f(minH(2) ?? 96)}" tall for two.`);
     S = 1;
+  }
+  // Rooms: a typed count is spread over the storeys (extra rooms low); untyped, two per storey where they fit.
+  const n = typedRooms(prompt);
+  const roomW = (r: number, wb: number) => (wb - 2 * T - (r - 1) * T) / r;
+  if (n !== null && n < 1) return no(`A dollhouse has at least one room, ${f(W)}" wide. Nothing is built at ${n} rooms.`);
+  if (n !== null && n < S) {
+    if (asked) return no(`A ${S}-storey dollhouse has a room on every storey. Nothing is built with ${n} room${n === 1 ? "" : "s"}: type ${n} or fewer storeys, or ${S} rooms or more.`);
+    notes.push(`${n} room${n === 1 ? "" : "s"} typed, so the house is ${n === 1 ? "one storey" : `${n} storeys`} (one room each).`);
+    S = n;
+  }
+  const per = n === null ? Array.from({ length: S }, () => (roomW(2, g.Wb) >= MIN_ROOM_IN ? 2 : 1)) : Array.from({ length: S }, (_, k) => Math.floor(n / S) + (k < n % S ? 1 : 0));
+  const most = Math.max(...per);
+  if (roomW(most, g.Wb) < MIN_ROOM_IN - 1e-9) {
+    let w = Math.ceil(W * 8) / 8; while (w <= 96 && roomW(most, fit(w, H).Wb) < MIN_ROOM_IN - 1e-9) w += 1 / 8;
+    return no(w <= 96 ? `${most} rooms side by side need at least ${f(w)}" wide for ${f(MIN_ROOM_IN)}" rooms. Nothing is built at ${f(W)}" with ${n} rooms.` : `${n} rooms don't fit in ${S} storeys of a dollhouse at most 96" wide. Nothing is built.`);
   }
   const { p, exX, exY, Wb, rise, lift, He } = g;
   const c = g.clear(S), X0 = exX, Hr = He + rise, half = Wb / 2, deg = Math.round((p * 180) / Math.PI);
-  const rooms = (Wb - 3 * T) / 2 >= MIN_ROOM_IN ? 2 : 1;
+  const rooms = most;
   const panels: Panel[] = [];
   const mk = (type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, extra: Partial<Panel> = {}): Panel =>
     ({ id: createId("dh"), type, name, position: { x: r16(x), y: r16(y), z: r16(z) }, size: { width: r16(w), height: r16(h), depth: r16(d) }, materialId: item.id, ...extra });
@@ -83,24 +111,26 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
   // Room dividers: one per storey, a doorway notched up from the bottom edge, centred along the depth.
   const dw = r16(Math.min(3, (D - T) * 0.4));
   let doors = 0;
-  if (rooms === 2) for (let k = 0; k < S; k++) {
+  let dividers = 0;
+  for (let k = 0; k < S; k++) for (let j = 1; j < per[k]; j++) {
     const y0 = bottoms[k] + T, h = r16(bottoms[k + 1] - y0), dh = r16(Math.min(h * 0.75, h - 1)), z0 = r16((D - T - dw) / 2);
     const door = dw >= 1.5 && dh >= 2;
     doors += door ? 1 : 0;
+    dividers++;
     const pts: [number, number][] = door ? [[0, 0], [z0, 0], [z0, dh], [z0 + dw, dh], [z0 + dw, 0], [r16(D - T), 0], [r16(D - T), h], [0, h]] : [[0, 0], [r16(D - T), 0], [r16(D - T), h], [0, h]];
-    panels.push(mk("divider", "Room divider", X0 + half - T / 2, y0, T, T, h, D - T, { polygon: { plane: "zy", pts }, ...(door ? { cutNote: `Jigsaw a ${f(dw)}" wide × ${f(dh)}" tall doorway up from the bottom edge, centred along its depth.` } : {}) }));
+    panels.push(mk("divider", "Room divider", X0 + T + j * roomW(per[k], Wb) + (j - 1) * T, y0, T, T, h, D - T, { polygon: { plane: "zy", pts }, ...(door ? { cutNote: `Jigsaw a ${f(dw)}" wide × ${f(dh)}" tall doorway up from the bottom edge, centred along its depth.` } : {}) }));
   }
   // Back wall: the gable end. A window centred in each room of each storey, a round window in the attic gable.
   const cut: NonNullable<Panel["cutouts"]> = [];
-  const ww = r16(Math.min(3, ((rooms === 2 ? Wb - 3 * T : Wb - 2 * T) / rooms) * 0.35)), wh = r16(Math.min(4.5, c * 0.5));
-  if (ww >= 1.5 && wh >= 1.5) for (let k = 0; k < S; k++) for (let j = 0; j < rooms; j++) {
-    const cx = rooms === 2 ? (j ? (half + T / 2 + Wb - T) / 2 : (T + half - T / 2) / 2) : half;
+  const ww = r16(Math.min(3, roomW(rooms, Wb) * 0.35)), wh = r16(Math.min(4.5, c * 0.5));
+  if (ww >= 1.5 && wh >= 1.5) for (let k = 0; k < S; k++) for (let j = 0; j < per[k]; j++) {
+    const rw = roomW(per[k], Wb), cx = T + (j + 0.5) * rw + j * T;
     cut.push({ id: `dh-win-${k}-${j}`, x: r16(cx - ww / 2), y: r16(bottoms[k] + T + c * 0.3), width: ww, height: wh, label: "Window" });
   }
   const ar = r16(Math.min(1.5, rise * 0.2));
   const attic = ar >= 0.5 ? [{ x: r16(half), y: r16(He + rise * 0.4), r: ar }] : [];
   const gable: [number, number][] = [[0, 0], [r16(Wb), 0], [r16(Wb), r16(He)], [r16(half), r16(Hr)], [0, r16(He)]];
-  const holes = `${cut.length ? ` Cut the ${cut.length} windows ${f(ww)}" × ${f(wh)}" (drill a 3/8" hole inside each corner and jigsaw between).` : ""}${attic.length ? ` Drill the ${f(2 * ar)}" round attic window centred ${f(attic[0].y)}" up.` : ""}`;
+  const holes = `${cut.length ? ` Cut the ${cut.length} window${cut.length === 1 ? "" : "s"} ${f(ww)}" × ${f(wh)}" (drill a 3/8" hole inside each corner and jigsaw between).` : ""}${attic.length ? ` Drill the ${f(2 * ar)}" round attic window centred ${f(attic[0].y)}" up.` : ""}`;
   panels.push(mk("back", "Back wall", X0, 0, 0, Wb, Hr, T, { polygon: { plane: "xy", pts: gable, holes: attic }, ...(cut.length ? { cutouts: cut } : {}), cutNote: `Gable end: ${f(Wb)}" wide, ${f(He)}" to the eaves, ${deg}° to a peak at ${f(Hr)}".${holes}` }));
   // Roof: two panels on the gable slopes, meeting over the peak, the eave 1" past each side wall; the ridge is at H.
   const slope = Math.hypot(half, rise) + Math.hypot(exX, exY);
@@ -114,19 +144,20 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
       cutNote: `Roof panel ${f(slope)}" down the slope × ${f(D)}" long; bevel the ridge and eave edges ${deg}° so they stand plumb.`,
     }));
   }
-  const rm = rooms === 2 ? " of two rooms each" : "";
+  const same = per.every((r) => r === per[0]);
+  const rm = same ? (per[0] === 1 ? "" : ` of ${per[0] === 2 ? "two" : per[0]} rooms each`) : ` with ${per.reduce((a, b) => a + b, 0)} rooms (${per.join(", ")} from the bottom up)`;
   notes.unshift(
     `${label} in ${item.name}: ${S === 1 ? "one storey" : `${S} storeys`}${rm} and an attic under a ${deg}° gable roof, open at the front so every room can be played in.`,
-    `Each storey is ${f(c)}" floor to ceiling${doors ? `; the room divider in each storey has a ${f(dw)}" wide doorway` : ""}. The side walls run in one piece from the base to the eaves, and the gable-shaped back wall${cut.length ? ` with ${cut.length} windows` : ""} squares the house.`,
+    `Each storey is ${f(c)}" floor to ceiling${doors ? (dividers === S ? `; the room divider in each storey has a ${f(dw)}" wide doorway` : `; every room divider has a ${f(dw)}" wide doorway`) : ""}. The side walls run in one piece from the base to the eaves, and the gable-shaped back wall${cut.length ? ` with ${cut.length} window${cut.length === 1 ? "" : "s"}` : ""} squares the house.`,
   );
-  return { ...base, panels, notes, params: { storeys: S, rooms, doors, windows: cut.length, width: W, depth: D, height: H, eave: He, ridge: Hr, pitchDeg: deg, clear: c, thickness: T } };
+  return { ...base, panels, notes, params: { storeys: S, rooms, dividers, doors, windows: cut.length, width: W, depth: D, height: H, eave: He, ridge: Hr, pitchDeg: deg, clear: c, thickness: T } };
 }
 
 /** Read a built dollhouse back: every part there, the front open, a pitched roof, a floor per storey, a doorway per divider. */
 export function dollhouseIssues(project: YardProject): { code: string; detail: string }[] {
   const P = project.shape?.params ?? {}, S = Number(P.storeys ?? 0), ps = project.panels, out: { code: string; detail: string }[] = [];
   const n = (name: string) => ps.filter((q) => q.name === name).length;
-  const need: [string, number][] = [["Base floor", 1], ["Side wall", 2], ["Back wall", 1], ["Attic floor", 1], ["Roof panel", 2], ["Upper floor", S - 1], ["Room divider", P.rooms === 2 ? S : 0]];
+  const need: [string, number][] = [["Base floor", 1], ["Side wall", 2], ["Back wall", 1], ["Attic floor", 1], ["Roof panel", 2], ["Upper floor", S - 1], ["Room divider", Number(P.dividers ?? (P.rooms === 2 ? S : 0))]];
   for (const [name, k] of need) if (n(name) !== k) out.push({ code: "missing-part", detail: `${name}: ${n(name)} of ${k}` });
   const { width: W, depth: D } = project.overall;
   for (const q of ps) if (q.size.depth <= 1 && q.position.z > D / 2 && q.size.width > W / 2 && q.size.height > 2 && !/roof/i.test(q.name)) out.push({ code: "front", detail: `${q.name} closes the front` });

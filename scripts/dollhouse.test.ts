@@ -127,3 +127,20 @@ test("the guard reads a broken dollhouse back: a closed front, a missing roof, f
   const shut = p.panels.map((x) => (x.name === "Room divider" ? { ...x, polygon: { plane: "zy" as const, pts: [[0, 0], [11.5, 0], [11.5, 8], [0, 8]] as [number, number][] } } : x));
   assert.match(JSON.stringify(dollhouseIssues({ ...p, panels: shut })), /no doorway/);
 });
+
+test("count rule: any typed storey or room count is built as typed or refused with a usable minimum, never shrunk", () => {
+  for (const [q, s] of [["5 story dollhouse", 5], ["8 story dollhouse 96 tall", 8], ["ten story dollhouse 96 tall", 10]] as const) {
+    const p = build(q);
+    if (p.refused) assert.match(p.refused, /at least [\d /]+" tall|\d+ storeys fit/, q);
+    else { assert.equal(p.shape?.params?.storeys, s, q); assert.equal(count(p, "Upper floor"), s - 1, q); assert.deepEqual(dollhouseIssues(p), [], q); }
+  }
+  assert.match(build("10 story dollhouse").refused ?? "", /needs at least 47 1\/2" tall/);
+  assert.match(build("30 story dollhouse 96 tall").refused ?? "", /at most \d+ storeys fit/);
+  const six = build("dollhouse with 6 rooms");
+  assert.equal(count(six, "Room divider"), 4);
+  assert.equal(six.panels.find((x) => x.name === "Back wall")!.cutouts?.length, 6, "a window per room");
+  assert.deepEqual(dollhouseIssues(six), []);
+  assert.equal(count(build("dollhouse with 5 rooms"), "Room divider"), 3);
+  assert.match(build("dollhouse 12 wide with 6 rooms").refused ?? "", /at least 15 1\/2" wide/);
+  assert.match(build("two story dollhouse with 1 room").refused ?? "", /1 or fewer storeys/);
+});
