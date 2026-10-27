@@ -1349,9 +1349,11 @@ function generateRaw(
   }
   // A dollhouse is the real open-front house in sheet stock; a switch to a stock it can't use keeps the house and says so.
   if (!formOverride && !opts.fittedOverride && isDollhouse(prompt)) {
-    const stock = dollhouseStock(prompt, materialOverride);
+    // A W x D x H size is never a stock ("36x14x40" holds "4x4").
+    const bare = prompt.replace(/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?/g, " ");
+    const stock = dollhouseStock(bare, materialOverride);
     const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
-    const ask = materialOverride ?? typedStockId(prompt);
+    const ask = materialOverride ?? typedStockId(bare);
     if (built) return ask && ask !== stock.id ? refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`) : built;
   }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads

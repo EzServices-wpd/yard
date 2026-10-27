@@ -7,7 +7,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt, ignoredTypedWords } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
-import { dollhouseIssues } from "../src/lib/yard/dollhouse";
+import { dollhouseIssues, plyDollhouse } from "../src/lib/yard/dollhouse";
+import { checkBuild } from "../src/lib/yard/invariants";
 import { offline } from "./eval-gate-lib";
 import type { YardProject } from "../src/lib/yard/types";
 
@@ -143,4 +144,31 @@ test("count rule: any typed storey or room count is built as typed or refused wi
   assert.equal(count(build("dollhouse with 5 rooms"), "Room divider"), 3);
   assert.match(build("dollhouse 12 wide with 6 rooms").refused ?? "", /at least 15 1\/2" wide/);
   assert.match(build("two story dollhouse with 1 room").refused ?? "", /1 or fewer storeys/);
+});
+
+test("every variant prices every Buy line and passes the invariants; outdoor words keep the indoor plywood form; unbuilt features are named", () => {
+  const variants = ["dollhouse", "dollhouse from plywood", "dollhouse from 1/4 plywood", "dollhouse with a porch", "outdoor dollhouse", "garden dollhouse", "mdf dollhouse", "barbie dollhouse", "dollhouse with stairs", "dollhouse with a chimney and a garage", "dollhouse 2 floors", "dollhouse kit 1:12 scale", "three story dollhouse", "dollhouse 36x14x40"];
+  for (const q of variants) {
+    const p = build(q);
+    const plan = offline(() => buildPlan(p));
+    assert.equal(p.shape?.classId, "dollhouse", q);
+    assert.equal(plyDollhouse(q), true, q);
+    assert.deepEqual(plan.bom.filter((b) => !((b.estimatedCost ?? 0) > 0)).map((b) => b.name), [], `${q}: unpriced Buy line`);
+    assert.deepEqual(offline(() => checkBuild(p, q, plan)).map((v) => v.id), [], q);
+    assert.ok(p.panels.every((x) => /^plywood-(?:1-2|3-4)-/.test(x.materialId)), `${q}: a panel left the plywood form`);
+    assert.equal(shape(p).replace(/Upper floor:\d|Room divider:\d/g, ""), TWO.replace(/Upper floor:\d|Room divider:\d/g, ""), q);
+  }
+  const notes = (q: string) => build(q).notes.join(" ");
+  assert.match(notes("dollhouse with a porch"), /You asked for a porch; this dollhouse is built without one for now\./);
+  assert.ok(!/exterior/i.test(notes("dollhouse with a porch")));
+  assert.match(notes("outdoor dollhouse"), /built for indoors, in interior plywood .* keep it under cover/);
+  assert.match(notes("dollhouse with stairs"), /You asked for stairs; this dollhouse is built without them for now\./);
+  assert.match(notes("dollhouse with a chimney and a garage"), /a chimney; .* without one.*a garage; .* without one/);
+  assert.match(notes("mdf dollhouse"), /^.*MDF isn't on the stock list, so this dollhouse is cut from 1\/2" Plywood/);
+  const barbie = build("barbie dollhouse");
+  assert.deepEqual(barbie.overall, { width: 36, height: 48, depth: 14 });
+  assert.ok(Number(barbie.shape?.params?.clear) >= 12, "a fashion doll stands in each storey");
+  assert.equal(build("dollhouse 2 floors").shape?.params?.storeys, 2);
+  // Craft stock keeps its own build, and its outdoor words still switch on the exterior package.
+  assert.equal(plyDollhouse("outdoor popsicle stick dollhouse"), false);
 });
