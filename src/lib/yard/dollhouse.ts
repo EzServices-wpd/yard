@@ -16,12 +16,25 @@ const MIN_ROOM_IN = 4;
 const WORDS: Record<string, number> = { one: 1, single: 1, two: 2, double: 2, three: 3, triple: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const NUM = "(one|single|two|double|three|triple|four|five|six|seven|eight|nine|ten|eleven|twelve|\\d+)";
 
-/** The head noun is a dollhouse ("two story dollhouse", "doll house from plywood"), never a dollhouse bed. */
+/** The head noun is a dollhouse ("two story dollhouse", "dollhouse 2 floors", "dollhouse kit 1:12 scale"), never a dollhouse bed. */
 export function isDollhouse(prompt: string): boolean {
   const head = prompt.toLowerCase().split(/\s+(?:with|for|from|having|made|out\s+of|in)\s+/)[0]
+    .replace(new RegExp(`\\b${NUM}[\\s-]*(?:stor(?:e?ys?|ies)|levels?|floors?|rooms?)\\b|\\b(?:1\\s*[:/]\\s*\\d+\\s+)?scale\\b|\\bkits?\\b`, "g"), " ")
     .replace(/[\d./]+\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:[x×]|by|wide|tall|high|deep|long)?/g, " ").replace(/\s+/g, " ").trim();
   return /\bdoll\s*-?\s*houses?$/.test(head);
 }
+
+/** Stock the dollhouse route leaves to its own builds (row 583: everything else builds the house in plywood). */
+const CRAFT = /popsicle|craft\s*sticks?|\bsticks?\b|cardboard|card\s*board|foam|balsa|lumber|\b2\s*x\s*\d|pvc|lego|paper|straws?|toothpicks?|dowels?|skewers?/;
+/** The plywood dollhouse: built for indoors, so outdoor words never switch on the exterior package (row 580). */
+export const plyDollhouse = (prompt: string) => isDollhouse(prompt) && !CRAFT.test(prompt.toLowerCase());
+/** Features often typed on a dollhouse that this one doesn't build; each is named in a note (row 581). */
+const EXTRAS = /\b(?:(an?|the)\s+)?(stairs|staircases?|stairways?|chimneys?|garages?|porch(?:es)?|balcon(?:y|ies)|elevators?|furniture|shutters|shingles|wallpaper|lights|lighting|fireplaces?|pools?)\b/g;
+const MASS = /^(?:furniture|wallpaper|lighting|shingles|shutters|lights|stairs)$/;
+const SHEETLESS = /\b(mdf|hardboard|particle\s*board|osb|melamine)\b/;
+const OUTDOOR = /\b(?:outdoors?|outside|garden|patio|backyard|back\s*yard|exterior)\b/;
+/** Fashion dolls (11 1/2", 1:6) need 12"+ storeys: the house is sized for them unless a size is typed. */
+const FASHION = /\bbarbies?\b|\bfashion\s+dolls?\b|\b1\s*[:/]\s*6\b/;
 
 /** A typed storey count ("two story", "3-storey", "2 floors"), else null. */
 export function typedStoreys(prompt: string): number | null {
@@ -49,7 +62,8 @@ const f = (n: number) => inchFrac(r16(n));
 
 export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width?: number; height?: number; depth?: number }): TemplateBuild {
   const T = item.dims.thickness ?? item.dims.height ?? 0.5;
-  const W = typed.width ?? 24, D = typed.depth ?? 12, H = typed.height ?? 30;
+  const lower = prompt.toLowerCase(), doll = FASHION.test(lower);
+  const W = typed.width ?? (doll ? 36 : 24), D = typed.depth ?? (doll ? 14 : 12), H = typed.height ?? (doll ? 48 : 30);
   // The title keeps the typed spelling ("doll house" → "Doll house").
   const label = /\bdoll\s+house/i.test(prompt) ? "Doll house" : "Dollhouse";
   const base = { classId: "dollhouse" as const, subject: "dollhouse", label, kind: "house" as const, sized: true };
@@ -150,6 +164,15 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
     `${label} in ${item.name}: ${S === 1 ? "one storey" : `${S} storeys`}${rm} and an attic under a ${deg}° gable roof, open at the front so every room can be played in.`,
     `Each storey is ${f(c)}" floor to ceiling${doors ? (dividers === S ? `; the room divider in each storey has a ${f(dw)}" wide doorway` : `; every room divider has a ${f(dw)}" wide doorway`) : ""}. The side walls run in one piece from the base to the eaves, and the gable-shaped back wall${cut.length ? ` with ${cut.length} window${cut.length === 1 ? "" : "s"}` : ""} squares the house.`,
   );
+  const lab = label.toLowerCase(), said = new Set<string>();
+  if (doll) notes.push(`Sized for 11 1/2" fashion dolls like Barbie (1:6 scale): each storey is ${f(c)}" floor to ceiling.`);
+  const sheet = lower.match(SHEETLESS)?.[1];
+  if (sheet) notes.push(`${/^(?:mdf|osb)$/.test(sheet) ? sheet.toUpperCase() : sheet[0].toUpperCase() + sheet.slice(1)} isn't on the stock list, so this ${lab} is cut from ${item.name}, the sheet dollhouse kits use.`);
+  if (OUTDOOR.test(lower)) notes.push(`You asked for an outdoor ${lab}; this one is built for indoors, in interior plywood with an open front, so keep it under cover.`);
+  for (const [, a, w] of lower.matchAll(EXTRAS)) if (!said.has(w) && said.add(w)) {
+    const many = MASS.test(w) || /s$/.test(w);
+    notes.push(`You asked for ${a ? `${a} ` : many ? "" : /^[aeiou]/.test(w) ? "an " : "a "}${w}; this ${lab} is built without ${many ? (/s$/.test(w) ? "them" : "it") : "one"} for now.`);
+  }
   return { ...base, panels, notes, params: { storeys: S, rooms, dividers, doors, windows: cut.length, width: W, depth: D, height: H, eave: He, ridge: Hr, pitchDeg: deg, clear: c, thickness: T } };
 }
 
@@ -177,5 +200,5 @@ export const DOLLHOUSE_STEPS = [
   { match: /^(Side wall|Base floor)$/, title: "Glue and screw the side walls to the base floor", why: "The base floor sits between the side walls, flush at the bottom and the front. Predrill so the plywood edges stay whole." },
   { match: /^(Room divider|Upper floor|Attic floor)$/, title: "Build up the storeys: a room divider, then the floor above it", why: "Stand each storey's divider at the middle of the floor below, doorway at the bottom, then lay the next floor on it and screw through the side walls into its ends. The attic floor finishes flush with the tops of the side walls." },
   { match: /^Back wall$/, title: "Glue and screw the back wall over the back edges", why: "The gable-shaped back covers the back edges of the side walls and every floor and squares the house; the front stays open for play." },
-  { match: /^Roof panel$/, title: "Fit the two roof panels on the gable slopes", why: "They meet at the ridge over the back wall's peak and overhang each side wall at the eaves. Glue and screw them into the back wall and the side-wall tops." },
+  { match: /^Roof panel$/, title: "Fit the two roof panels on the gable slopes", why: "They meet at the ridge over the back wall's peak, rest on the outer edge of each side-wall top and overhang it at the eaves. Glue and screw each panel into the back wall's sloped edge, and glue it along the side-wall tops." },
 ];

@@ -9,6 +9,7 @@ import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 import { decorateBom } from "./listings";
 import { getCatalogItem } from "./catalog";
 import { contactBuild, materialSwaps } from "./materialForUse";
+import { plyDollhouse } from "./dollhouse";
 
 /** Deck as a place: "for the deck", "on my deck", "deck box", "deck chair". A skateboard deck is a board. */
 const DECK_PLACE =
@@ -22,6 +23,8 @@ const OUTDOOR_NOUN = /\b(?:bat|bird|wren|bluebird|martin)\s*-?\s*(?:houses?|box(
 export function isOutdoorPrompt(prompt: string | undefined | null): boolean {
   const lower = (prompt ?? "").toLowerCase();
   if (!lower.trim()) return false;
+  // A plywood dollhouse is an indoor toy: a porch is one of its features, and "outdoor" gets a keep-it-covered note.
+  if (plyDollhouse(lower)) return false;
   // Door / window framing carries its own exterior flashing rules.
   if (/\b(?:exterior|entry|front)\s+doors?\b|\bwindow\b|rough opening/.test(lower)) return false;
   if (/\bskate\s*board\s+deck|\bdeck\s+of\s+cards|\bcard\s+deck|\btape\s+deck/.test(lower) && !OUTDOOR_WORDS.test(lower)) return false;
