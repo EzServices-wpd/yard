@@ -215,6 +215,9 @@ test("every typed plywood thickness is read or said: 'ply' is plywood, an off-li
   assert.doesNotMatch(notes("dollhouse 0.5 plywood"), /stock list/);
   assert.match(notes("dollhouse .25 plywood"), /1\/4" Plywood .* stays 1\/2" Plywood/);
   assert.match(notes("dollhouse .625 plywood"), /5\/8" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/);
+  for (const q of ["dollhouse 1 inch plywood", "dollhouse 1\" ply", "dollhouse 1 in plywood"]) assert.match(notes(q), /1" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/, q);
+  assert.match(notes("dollhouse 1 1/8 inch plywood"), /1 1\/8" plywood isn't on the stock list/);
+  assert.doesNotMatch(notes("2 story dollhouse plywood"), /stock list/);
   for (const sw of ["plywood-1-4-4x8", "popsicle-standard", "lumber-2x4-8"]) {
     const p = build("dollhouse 1/8 plywood", sw);
     assert.equal(p.primaryMaterialId, "plywood-1-2-4x8", sw);

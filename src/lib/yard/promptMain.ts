@@ -1355,8 +1355,10 @@ function generateRaw(
     // The typed thickness is read as a number ("3/4", "0.5", ".25"): a 4×8 plywood of that thickness is the typed
     // sheet; one not on the list (1/8", 5/8") is said, never swapped silently, and thinner than 1/2" builds in 1/2",
     // like 1/4". A picker switch to 1/2" or 3/4" wins; any other switch keeps the typed sheet and says so.
-    const tm = bare.toLowerCase().match(/(\d+\s*\/\s*\d+|\d*\.\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
-    const tIn = tm ? (tm[1].includes("/") ? Number(tm[1].split("/")[0]) / Number(tm[1].split("/")[1]) : Number(tm[1])) : NaN;
+    // A whole or mixed inch count is a thickness only with its unit ("1 inch", "1\"", "1 1/8 in"): a bare "2" is a count.
+    const tm = bare.toLowerCase().match(/(?<![\d./])(\d+\s+\d+\s*\/\s*\d+(?=\s*(?:"|-?\s*in(?:ch(?:es)?)?\b))|\d+\s*\/\s*\d+|\d*\.\d+|[12](?=\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)))\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
+    const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
+    const tIn = tm ? num(tm[1].replace(/\s*\/\s*/g, "/")) : NaN;
     const typed = Number.isFinite(tIn);
     const listed = typed ? FORGE_CATALOG.find((i) => /^plywood-.*-4x8$/.test(i.id) && Math.abs((i.dims?.thickness ?? -1) - tIn) < 1e-3) : undefined;
     const fits = (i?: CatalogItem | null) => (i && /^plywood-(?:1-2|3-4)-/.test(i.id) ? i : null);
@@ -1366,7 +1368,7 @@ function generateRaw(
     const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
     const ask = materialOverride ?? (typed ? listed?.id : typedStockId(bare));
     if (built && ask && ask !== stock.id) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
-    const said = tm?.[1].includes("/") ? tm[1].replace(/\s+/g, "") : (() => { const n = Math.round(tIn * 16), g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(n, 16); return n % 16 ? `${n / k}/${16 / k}` : `${n / 16}`; })();
+    const said = tm?.[1].includes("/") ? tm[1].replace(/\s*\/\s*/g, "/").trim() : (() => { const n = Math.round(tIn * 16), g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(n, 16); return n % 16 ? `${n / k}/${16 / k}` : `${n / 16}`; })();
     if (built && !materialOverride && typed && !listed)
       return { ...built, notes: [...(built.notes ?? []), `${said}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
     if (built) return built;
