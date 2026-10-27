@@ -28,6 +28,7 @@ import { ScaleLayer } from "@/components/workspace/scale-ghost";
 import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components/workspace/build-scrub";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 import { STAGE } from "@/components/workspace/stage-palette";
+import { measureBoxStrokes } from "@/components/workspace/measure-box";
 
 const HULL = STAGE.ghost;
 const BENCH_BG = SHOP_GROUND.bg;
@@ -558,15 +559,7 @@ function GhostLines({ strokes, color }: { strokes: ReturnType<typeof hullStrokes
 }
 
 function MeasureGhost({ width, height, depth }: { width: number; height: number; depth: number }) {
-  const hx = width / 2, hz = depth / 2;
-  const pts: [number, number, number][][] = [
-    [[-hx, 0, -hz], [hx, 0, -hz], [hx, 0, hz], [-hx, 0, hz], [-hx, 0, -hz]],
-    [[-hx, height, -hz], [hx, height, -hz], [hx, height, hz], [-hx, height, -hz], [-hx, height, -hz]],
-    [[-hx, 0, -hz], [-hx, height, -hz]],
-    [[hx, 0, -hz], [hx, height, -hz]],
-    [[hx, 0, hz], [hx, height, hz]],
-    [[-hx, 0, hz], [-hx, height, hz]],
-  ];
+  const pts = measureBoxStrokes(width, height, depth);
   return (
     <group>
       {pts.map((p, i) => (
