@@ -88,9 +88,9 @@ test("See all opens in place: SECTION_SHOW drawn cards, then the rest as rows AL
   assert.deepEqual([open.rows.length, open.left, open.shown], [ALL_SHOW, 58 - SECTION_SHOW - ALL_SHOW, SECTION_SHOW + ALL_SHOW]);
   const more = groupView(furniture, true, 3 * ALL_SHOW);
   assert.deepEqual([more.rows.length, more.left, more.shown], [58 - SECTION_SHOW, 0, 58]);
-  // Toys: 2 drawn of 11, so 2 cards and 9 rows, each undrawn one New.
+  // Toys: 11 types; abacus, catapult and (Yard Design, 10-26) rocket are drawn, so 3 cards and 8 rows, undrawn ones New.
   const toys = groupView(groupCards(all).find((g) => g.id === "toys")!.cards, true, ALL_SHOW);
-  assert.deepEqual([toys.top.length, toys.rows.length], [2, 9]);
+  assert.deepEqual([toys.top.map((c) => c.buildType).sort(), toys.rows.length], [["abacus", "catapult", "rocket"], 8]);
   assert.ok(toys.rows.some((c) => c.buildType === "soccer-goal" && c.status === "new"));
 });
 
