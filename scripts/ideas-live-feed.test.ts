@@ -348,13 +348,16 @@ test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the fe
   }
   assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
   // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
-  for (const t of ["soccer-goal", "dollhouse", "lighthouse", "brooklyn-bridge", "cat-tree", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
-  // The rocket is baked under its type from the prompt its card builds on tap (gen-idea-drawings LOG_TYPES), with the build's stock.
-  const rocket = cards.find(({ c }) => c.buildType === "rocket")?.c;
-  assert.ok(rocket, "the rocket card shows");
-  assert.equal(rocket!.examplePrompt, "rocket 9.875 wide 28 tall 9.875 deep");
-  assert.match(rocket!.drawing!.src, /^\/ideas\/drawings\/rocket\.[0-9a-f]{8}\.svg$/);
-  assert.equal((DRAWINGS as Record<string, { stock?: string }>).rocket.stock, generateFromPrompt(rocket!.examplePrompt).primaryMaterialId);
+  for (const t of ["soccer-goal", "dollhouse", "brooklyn-bridge", "windmill", "barn", "empire-state-building", "firewood-unit", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  // Log types baked under their type from the prompt each card builds on tap (gen-idea-drawings LOG_TYPES), with the build's stock.
+  assert.equal(cards.find(({ c }) => c.buildType === "rocket")?.c.examplePrompt, "rocket 9.875 wide 28 tall 9.875 deep");
+  assert.equal(cards.find(({ c }) => c.buildType === "lighthouse")?.c.examplePrompt, "2 foot lighthouse from popsicle sticks");
+  for (const t of ["rocket", "lighthouse", "cat-tree", "viking-ship", "space-needle"]) {
+    const c = cards.find(({ c }) => c.buildType === t)?.c;
+    assert.ok(c, `${t} card shows`);
+    assert.match(c!.drawing!.src, new RegExp(`^/ideas/drawings/${t}\\.[0-9a-f]{8}\\.svg$`), t);
+    assert.equal((DRAWINGS as Record<string, { stock?: string }>)[t].stock, generateFromPrompt(c!.examplePrompt).primaryMaterialId, t);
+  }
   // Row 168: "Corner shelf" shows once (the log's corner-shelf rows count on the drawn Corner shelf card), and no two cards share a title.
   const titles = cards.map(({ c }) => c.title.toLowerCase());
   assert.equal(titles.filter((t) => t === "corner shelf").length, 1);
