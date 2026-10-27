@@ -37,8 +37,8 @@ test("All ideas lists every Trusted, unheld, non-generic build type exactly once
   const curatedOnly = all.filter((c) => !trusted.has(c.buildType));
   for (const c of curatedOnly) assert.equal(c.count, 0, `${c.slug} has builds but no Trusted row`);
   assert.equal(all.length, want.length + curatedOnly.length);
-  // 10-25: 85 logged types (45 with no drawing yet) and 15 curated ideas with no build: 100 rows vs 54 cards in the sections.
-  assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length], [85, 45, 15]);
+  // 10-25: 85 logged types (44 with no drawing yet; the rocket is baked) and 15 curated ideas with no build: 100 rows vs 54 cards in the sections.
+  assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length], [85, 44, 15]);
   assert.deepEqual(feedViolations(feed, snap, gradedTypes(base)), []);
 });
 
@@ -108,8 +108,13 @@ test("search reaches every listed type with the page's aliases; an undrawn hit i
     assert.deepEqual(types.filter((t, i) => types.indexOf(t) !== i), [], "one search card per build type");
     assert.ok(!searchCards(searchPool(f), "bookshelf").some((c) => c.title === "Too small for books"));
   }
-  const html = page(feed, "rocket");
+  const html = page(feed, "soccer goal");
   const res = html.slice(html.indexOf("data-ideas-results"));
-  assert.match(res, /data-idea-row="rocket"/);
+  assert.match(res, /data-idea-row="soccer-goal"/);
   assert.ok(!res.includes("data-idea-no-drawing"));
+  // A drawn log type (the baked rocket) is a card with its own drawing, not a row.
+  const hit = page(feed, "rocket");
+  const card = hit.slice(hit.indexOf("data-ideas-results"));
+  assert.match(card, /data-idea="rocket"[^>]*>.*?<img src="\/ideas\/drawings\/rocket\.[0-9a-f]{8}\.svg"/);
+  assert.ok(!card.includes('data-idea-row="rocket"'));
 });
