@@ -5,7 +5,8 @@ import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
 import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
-import { largestBuilding, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
+import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
+import { suspensionRatioRefusal } from "./formLandmarks";
 import { withArticle } from "./article";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
@@ -407,6 +408,9 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   const typedAtIntake = args[0] ?? "";
   idDepth++;
   try {
+    // A fixed-ratio bridge typed with a length and a height that disagree is refused, naming both sizes that build.
+    const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
+    if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
     const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
@@ -428,19 +432,48 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } catch (e) {
     if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
-    return partsRefusal(typedAtIntake, (q) => generateFromPrompt(q, ...(args.slice(1) as [])));
+    return partsRefusal(args);
   } finally {
     idDepth--;
   }
 }
 
-/** Over the part ceiling (partCeiling.ts): nothing is built, and the note names the largest typed size that builds. */
-function partsRefusal(prompt: string, rebuild: (q: string) => YardProject): YardProject {
-  const item = detectMaterial(prompt);
+/**
+ * Over the part ceiling (partCeiling.ts): nothing is built, and the note names the largest size that builds: the typed
+ * size words scaled down, or, for a bench edit or follow-on ("make it taller") that sent a size, that W x D x H.
+ */
+function partsRefusal(args: Parameters<typeof generateRaw>): YardProject {
+  const [prompt = "", mat, form, o] = args;
+  let stock: string | undefined;
+  const builds = (q: string, opts = o) => {
+    try {
+      const p = generateFromPrompt(q, mat, form, opts);
+      if (p.refused) return false;
+      stock ??= p.primaryMaterialId;
+      return true;
+    } catch (x) {
+      if (x instanceof TooManyParts) return false;
+      throw x;
+    }
+  };
+  const ov = o?.sizeOverride;
+  const down = (b: { width: number; height: number; depth: number }, k: number) => {
+    const f = (n: number) => Math.max(1 / 16, Math.floor(n * k * 16 + 1e-6) / 16);
+    return { width: f(b.width), height: f(b.height), depth: f(b.depth) };
+  };
+  const said = (b: { width: number; height: number; depth: number }) => [`${inchFrac(b.width)}" wide`, `${inchFrac(b.depth)}" deep`, `${inchFrac(b.height)}" tall`];
+  let typed: string[] | undefined;
+  let fit: string[] | null;
+  if (ov) {
+    typed = said(ov);
+    const k = largestScale((k) => builds(prompt, { ...o, sizeOverride: down(ov, k) }));
+    fit = k == null ? null : said(down(ov, k));
+  } else {
+    typed = scaledSizes(prompt, 1)?.words;
+    fit = largestBuilding(prompt, (q) => builds(q));
+  }
+  const item = getCatalogItem(stock ?? mat ?? "") ?? detectMaterial(prompt);
   const name = (subjectFromPrompt(prompt) || "this build").replace(/\b\w/g, (c) => c.toUpperCase());
-  const builds = (q: string) => { try { const p = rebuild(q); return !p.refused; } catch (x) { if (x instanceof TooManyParts) return false; throw x; } };
-  const typed = scaledSizes(prompt, 1)?.words;
-  const fit = largestBuilding(prompt, builds);
   const sized = typed ? ` at ${typed.join(", ")}` : "";
   const why = `Yard builds up to ${MAX_PARTS.toLocaleString("en-US")} parts in one plan, and ${withArticle(name)} in ${item.name.replace(/\s*\(.*?\)/g, "").toLowerCase().replace(/s?$/, "s")}${sized} needs more, so nothing is built. ${fit ? `It builds up to ${fit.join(", ")}: type ${fit.join(", ")} or smaller.` : "Type a smaller size to build it."}`;
   return { ...emptyProject(), name, prompt, kind: "custom", primaryMaterialId: item.id, refused: why, cardNote: why };

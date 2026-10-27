@@ -416,7 +416,7 @@ export function i36(p: YardProject, prompt: string): Violation[] {
   const out: string[] = [];
   if (p.refused) {
     if (p.panels.length) out.push(`refused but still built ${p.panels.length} parts`);
-    if (!/\d[\d /]*" (?:wide|tall|deep)|\d+ or fewer|builds up to \d/.test(p.refused)) out.push(`the refusal names no size or count that would build: "${p.refused}"`);
+    if (!/\d[\d /]*" (?:wide|tall|deep)|\d+ or fewer|\bIt builds up to \d/.test(p.refused)) out.push(`the refusal names no size or count that would build: "${p.refused}"`);
     return out.map((m) => v("I36", m));
   }
   if (p.cardNote && /built [\d /]+" with \d+\.$|built [\d /]+" without them/.test(p.cardNote)) out.push(`card note reads unclearly: "${p.cardNote}"`);

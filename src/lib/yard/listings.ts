@@ -1347,7 +1347,10 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
     const prim = item ? toPrimitive(item) : undefined;
     // "13 packs of 100" is 1,300 pieces: the plural is matched too, or a 1,000-count listing would sell 13 sticks' worth.
     const packMatch = line.unit.match(/\bpacks? of (\d+)/i);
-    const pieces = packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
+    // A whole-stock line says how many pieces it uses ("7 packs of 250 (1570 pieces used)"): the listing buys for those,
+    // not for the catalog packs rounded up (1,750 would be 3 × 800 where 2 × 800 holds 1,570). Sheet lines count parts cut.
+    const usedMatch = item?.formFactor === "sheet" ? null : line.unit.match(/\((\d+) [a-z ]*used\)/i);
+    const pieces = usedMatch ? parseInt(usedMatch[1], 10) : packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
     // #8 screw Buy lines name the length; match listings by that length (1", 1-1/4", 2-1/2").
     const screwLen = /#8|wood screw/i.test(line.name)
       ? (() => {

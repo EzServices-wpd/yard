@@ -43,20 +43,29 @@ export function scaledSizes(prompt: string, k: number): { prompt: string; words:
 }
 
 /**
- * The largest scale of the typed sizes that builds under the ceiling: halve until one builds, then narrow it down.
+ * The largest scale k (0 < k < 1) at which `builds(k)` holds: halve until one builds (down to 1/4096, so a 1,000 ft
+ * ask still finds its size), then narrow it down. Null only when nothing builds at any scale.
+ */
+export function largestScale(builds: (k: number) => boolean, steps = 6): number | null {
+  let lo = 0, hi = 1;
+  for (let k = 0.5; k >= 1 / 4096; k /= 2) {
+    if (builds(k)) { lo = k; break; }
+    hi = k;
+  }
+  if (!lo) return null;
+  for (let i = 0; i < steps; i++) {
+    const mid = (lo + hi) / 2;
+    if (builds(mid)) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+
+/**
+ * The largest scale of the typed sizes that builds under the ceiling, as the size words to type.
  * `builds` builds a prompt and says whether it stays under the ceiling.
  */
 export function largestBuilding(prompt: string, builds: (prompt: string) => boolean): string[] | null {
   if (scaledSizes(prompt, 1) == null) return null;
-  let lo = 0, hi = 1;
-  for (let k = 0.5; k >= 1 / 64; k /= 2) {
-    if (builds(scaledSizes(prompt, k)!.prompt)) { lo = k; break; }
-    hi = k;
-  }
-  if (!lo) return null;
-  for (let i = 0; i < 4; i++) {
-    const mid = (lo + hi) / 2;
-    if (builds(scaledSizes(prompt, mid)!.prompt)) lo = mid; else hi = mid;
-  }
-  return scaledSizes(prompt, lo)!.words;
+  const k = largestScale((k) => builds(scaledSizes(prompt, k)!.prompt));
+  return k == null ? null : scaledSizes(prompt, k)!.words;
 }

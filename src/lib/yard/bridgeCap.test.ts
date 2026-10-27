@@ -21,7 +21,8 @@ it("a typed width on a suspension bridge is its length, never its tower height",
   assert.ok(p.overall.height <= 12, `height ${p.overall.height}`);
   assert.ok(p.overall.depth >= 6 && p.overall.depth <= 7.5, `typed depth 6 kept, got ${p.overall.depth}`);
   assert.ok(p.instances.length < 1000, `${p.instances.length} sticks`);
-  const g = generateFromPrompt("golden gate bridge 200 wide 15 tall from popsicle sticks");
+  // 200" long with 15" towers is not a Golden Gate (its towers are 23 1/8"): that pair is refused below, naming both.
+  const g = generateFromPrompt("golden gate bridge 200 wide from popsicle sticks");
   assert.ok(g.overall.width >= 200 && g.overall.width <= 203, `golden gate width ${g.overall.width}`);
 });
 
@@ -101,4 +102,56 @@ it("scaledSizes scales typed sizes, rounds down in the unit typed, and leaves st
   assert.equal(scaledSizes("100 foot eiffel tower", 0.139)?.prompt, "13 foot eiffel tower");
   assert.equal(scaledSizes("2x4 bench 48 x 18 x 16", 0.5)?.prompt, "2x4 bench 24 x 9 x 8");
   assert.equal(scaledSizes("castle from toothpicks", 0.5), null);
+});
+
+it("a ceiling refusal always names a size that builds: 1,000 ft asks, and bench or follow-on sizes", () => {
+  for (const q of ["1000 foot Eiffel Tower from popsicle sticks", "1000 foot castle from toothpicks", "500 foot castle from toothpicks"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(p.refused && /It builds up to \d+ (?:foot|ft): type/.test(p.refused), `${q}: ${p.refused}`);
+    assert.deepEqual(i36(p, q), []);
+    const fit = p.refused!.match(/type (\d+) (foot|ft) or smaller/)!;
+    const ok = generateFromPrompt(q.replace(/^\d+ (?:foot|ft)/, `${fit[1]} ${fit[2]}`));
+    assert.ok(!ok.refused, `${fit[1]} ${fit[2]} builds`);
+  }
+  // "make it taller" after a 13 ft tower sends a size: the refusal names that size scaled down, never the typed 13 foot.
+  const a = generateFromPrompt("13 foot Eiffel Tower from popsicle sticks");
+  const ov = { ...a.overall, height: a.overall.height * 1.18 };
+  const p = generateFromPrompt("13 foot Eiffel Tower from popsicle sticks. Then: make it taller", a.primaryMaterialId, undefined, { sizeOverride: ov });
+  assert.ok(p.refused && !/at 13 foot/.test(p.refused) && /It builds up to [\d /]+" wide, [\d /]+" deep, [\d /]+" tall: type/.test(p.refused), p.refused);
+  assert.deepEqual(i36(p, "x"), []);
+  const m = p.refused!.match(/It builds up to ([\d /]+)" wide, ([\d /]+)" deep, ([\d /]+)" tall/)!;
+  const num = (s: string) => s.trim().split(" ").reduce((t, x) => t + (x.includes("/") ? Number(x.split("/")[0]) / Number(x.split("/")[1]) : Number(x)), 0);
+  const b = generateFromPrompt("13 foot Eiffel Tower from popsicle sticks. Then: make it taller", a.primaryMaterialId, undefined, { sizeOverride: { width: num(m[1]), depth: num(m[2]), height: num(m[3]) } });
+  assert.ok(!b.refused, "the named bench size builds");
+  // The default landmark stock is named, not the empty project's wire frame.
+  assert.doesNotMatch(generateFromPrompt("eiffel tower 30 foot").refused!, /wire frame/);
+});
+
+it("I36 is not satisfied by the ceiling's own 'Yard builds up to 8,000 parts' words", () => {
+  const p = { refused: "Yard builds up to 8,000 parts in one plan, and a Castle in wooden toothpicks at 1000 foot needs more, so nothing is built. Type a smaller size to build it.", panels: [] } as never;
+  assert.equal(i36(p, "1000 foot castle from toothpicks").length, 1);
+});
+
+it("a typed length and a typed height that disagree on a fixed-ratio bridge are refused, naming both, never one dropped", () => {
+  for (const q of ["brooklyn bridge 48 wide 30 tall", "brooklyn bridge 100 long 10 tall", "brooklyn bridge 10 feet wide 2 feet tall", "golden gate bridge 200 wide 15 tall from popsicle sticks", "tower bridge 48 wide 30 tall", "suspension bridge 120 wide 10 tall from popsicle sticks"]) {
+    const p = generateFromPrompt(q);
+    assert.ok(p.refused && p.instances.length === 0, `${q} refused`);
+    assert.match(p.refused!, /can't be both [\d /]+" long and [\d /]+" tall.*Type [\d /]+" wide for .* or [\d /]+" tall for a/);
+    assert.deepEqual(i36(p, q), []);
+  }
+  // Agreeing sizes (within 10%) build at the typed length, as the PR has it.
+  const ok = generateFromPrompt("brooklyn bridge 138.5 wide 11.5 tall 6 deep");
+  assert.ok(!ok.refused && ok.instances.length === 801);
+  const ok2 = generateFromPrompt("brooklyn bridge 100 long 8 tall");
+  assert.ok(!ok2.refused && ok2.overall.width >= 99 && ok2.overall.width <= 101);
+});
+
+it("Buy buys listing packs for the pieces used, not for catalog packs rounded up", () => {
+  // 1570 toothpicks: two 800-packs hold them (7 catalog packs of 250 = 1,750 would round to three).
+  const t = sticks("toothpick tower");
+  assert.match(t.unit, /\(1570 /);
+  assert.equal(t.quantity, 2);
+  const e = sticks("eiffel tower from toothpicks 3 ft");
+  const used = Number(e.unit.match(/\((\d+) /)![1]);
+  assert.equal(e.quantity, Math.ceil(used / 800));
 });
