@@ -704,8 +704,18 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;
   };
-  const project = built(args);
   const override = args[3]?.sizeOverride;
+  let project: YardProject;
+  try {
+    project = built(args);
+  } catch (e) {
+    // A whole-stick module ignores a bare typed size ('toothpick pyramid 12"'), and its default can be over the part
+    // ceiling when the typed size is not: build at the typed size, as the fit below would have.
+    const box = e instanceof TooManyParts && !override ? e.box : undefined;
+    const want = box && typedEnvelope(args[0], box);
+    if (!box || !want || !misses(box, want)) throw e;
+    project = built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: typedTarget(want, box) }]);
+  }
   // A size the builder missed: rebuild at the typed envelope (module counts follow), then fit.
   const rebuild = (box: Box3) => fitWeekendSize(built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: box }]), args[0], box, undefined, undefined, true);
   const natural = () => {
@@ -1031,15 +1041,21 @@ function fitWeekendSize(
   const nat = whole ? natural?.() : null;
   const base = nat && nat.kind === project.kind && nat.overall.width > 0.2 ? nat.overall : project.overall;
   const typedAxes = AXES.filter((a) => want[a] != null);
-  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
-  const r2 = (n: number) => Math.round(n * 16) / 16;
-  const target: Box3 = { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
+  const target = typedTarget(want, base);
   const proportionsOff = whole && typedAxes.length < 3 && misses(project.overall, target, 0.25);
   if (!misses(project.overall, want) && !proportionsOff) return project;
   if (!whole) return scaleToBox(project, target);
   const r = rebuild?.(target);
   const pick = r && missBy(r.overall, want) <= missBy(project.overall, want) + 1e-6 ? r : project;
   return misses(pick.overall, want) ? realSizeNote(pick, want) : pick;
+}
+
+/** The typed axes, and the untyped ones scaled from `base` by the typed ones (to 1/16"). */
+function typedTarget(want: Partial<Box3>, base: Box3): Box3 {
+  const typedAxes = AXES.filter((a) => want[a] != null);
+  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
+  const r2 = (n: number) => Math.round(n * 16) / 16;
+  return { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
 }
 
 /** Parts already inside the typed box — envelope padding is not a reason to shrink them. */

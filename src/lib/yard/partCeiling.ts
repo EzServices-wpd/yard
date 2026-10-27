@@ -10,15 +10,16 @@ import { canonicalMeasures } from "./measureText";
 export const MAX_PARTS = 8000;
 
 export class TooManyParts extends Error {
-  /** `height`: the top of the parts built so far, when known, so a refusal with no typed size can name a height. */
-  constructor(readonly parts: number, readonly height?: number) {
+  /** `height`: the top of the parts built so far, when known, so a refusal with no typed size can name a height.
+   * `box`: their extent, so a builder that ignored a typed size can be rebuilt at it (promptMain engineCore). */
+  constructor(readonly parts: number, readonly height?: number, readonly box?: { width: number; height: number; depth: number }) {
     super(`More than ${MAX_PARTS} parts`);
   }
 }
 
 /** Throws TooManyParts when `parts` is over the ceiling. */
-export function checkParts(parts: number, height?: () => number): void {
-  if (parts > MAX_PARTS) throw new TooManyParts(parts, height?.());
+export function checkParts(parts: number, height?: () => number, box?: () => { width: number; height: number; depth: number }): void {
+  if (parts > MAX_PARTS) throw new TooManyParts(parts, height?.(), box?.());
 }
 
 const N = String.raw`\d+(?:\.\d+)?`;

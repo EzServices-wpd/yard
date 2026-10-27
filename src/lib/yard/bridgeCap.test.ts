@@ -235,3 +235,16 @@ it("GUARD CHANGE: only long craft stock (over 8\") in a stick graph is cut to sp
   const over = { ...t, instances: t.instances.map((i, j) => (j === k ? { ...i, cutLength: 13 } : i)) };
   assert.ok(inspectWeekendHonesty(over, buildPlan(t)).issues.some((x) => x.guard === "whole"));
 });
+
+it("a bare typed size a whole-stick module ignores is built at that size when the no-size default is over the ceiling", () => {
+  // 'pyramid from toothpicks' is 8393 parts; a bare 12" (no axis word) is 2723 and builds, as '12" tall' does.
+  for (const q of ['toothpick pyramid 12"', 'pyramid from toothpicks 6"', 'toothpick pyramid 18"']) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.refused, undefined, q);
+    assert.ok(p.instances.length <= MAX_PARTS);
+  }
+  // Over the ceiling at the typed size it still refuses, and names a size that builds.
+  const big = generateFromPrompt('toothpick pyramid 48"');
+  assert.ok(big.refused);
+  assert.deepEqual(i36(big, 'toothpick pyramid 48"'), []);
+});
