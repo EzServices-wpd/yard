@@ -63,7 +63,7 @@ test("a finished clip and a cancelled one both stop every capture track", async 
 test("the sheet drops the clip button and says why when recording fails, with no console error", () => {
   const btn = read("share-button.tsx");
   assert.match(btn, /catch \{[^}]*setFailed\(true\);/, "the failure is caught (no unhandled rejection)");
-  assert.match(btn, /clip=\{type && track && !failed \?/);
+  assert.match(btn, /clip=\{type && track \? \(failed \? null : /);
   assert.match(btn, /clipNote=\{failed \? CLIP_FAILED : null\}/);
   assert.equal(CLIP_FAILED, "Couldn't record a clip on this device. Share the image instead.");
 });

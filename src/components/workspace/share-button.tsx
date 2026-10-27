@@ -109,7 +109,7 @@ export function ShareButton() {
             onShareLink={() => void navigator.share(text).catch(() => {})}
             onStill={() => void still()}
             ms={ms}
-            clip={type && track && !failed ? (clip ? "ready" : "idle") : null}
+            clip={type && track ? (failed ? null : clip ? "ready" : "idle") : null}
             clipNote={failed ? CLIP_FAILED : null}
             copyFailed={COPY_FAILED}
             onCopy={() => copyText(navigator.clipboard, url ?? "")}
