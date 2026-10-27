@@ -58,7 +58,8 @@ export function PanelMesh({
   // A mirror set into a door rides on that door: it shows on the door's face and swings with it.
   const hostDoor = useYard((s) => (panel.joints?.length ? s.project.panels.find((q) => q.type === "door" && panel.joints!.some((j) => j.with === q.id)) : undefined));
   const mirror = panel.type === "mirror";
-  // Step view: this step's parts get chalk-blue edges and a small neutral lift (STEP_GLOW, kept low so the wood stays near its real tone);
+  // Step view: this step's parts get chalk-blue edges and a faint warm-tan lift (BENCH_INK.stepGlow #c4a574 at STEP_GLOW 0.1, which keeps
+  // the wood's saturation; see shop-light.ts);
   // everything else steps back to a faint ghost so the lit parts read at a glance.
   const ghost = hasStep && !inStep;
   const opacity = ghost ? 0.16 : glass && !mirror ? 0.42 : 1;
