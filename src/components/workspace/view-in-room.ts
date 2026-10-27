@@ -1,8 +1,8 @@
 /**
  * View in your room (PR 14b, plan concept 8): the light half, loaded with the bench. It holds a pointer to
- * the bench's model group, the AR feature test and the Quick Look link. The exporters and the WebXR session
- * live in view-in-room-ar.ts and load only on tap (it imports nothing from here, so the bench chunk keeps
- * this module and the lazy chunk stays its own). Nothing leaves the device: the model is built here and
+ * the bench's model group, the AR feature test, the size cap and every message the chip shows. The model
+ * copy and the WebXR session live in view-in-room-ar.ts (loaded when the chip shows on an AR phone; it imports
+ * nothing from here, so it stays its own chunk); the exporters load only on tap. Nothing leaves the device: the model is built here and
  * handed to the phone's own viewer as a blob URL, and the camera feed never reaches the page.
  */
 import type { Object3D } from "three";
@@ -35,4 +35,55 @@ export async function arMode(env: ArEnv): Promise<ArMode | null> {
 export function browserArEnv(): ArEnv {
   if (typeof window === "undefined") return {};
   return { document, xr: (navigator as Navigator & { xr?: XrLike }).xr ?? null, secure: window.isSecureContext };
+}
+
+/**
+ * The cap on what AR is handed: about 8 MB for the model file (Quick Look's USDZ; on Android the same
+ * measure of the model in memory). Phones open files this size in a second or two; past it Quick Look can
+ * take many seconds or drop the file, so the chip refuses with the reason instead.
+ */
+export const AR_CAP_BYTES = 8 * 1024 * 1024;
+export const mb = (bytes: number) => Math.max(1, Math.round(bytes / (1024 * 1024)));
+
+/** Inches as the app writes them, to the nearest 1/8: 14 3/8", 78". */
+export function inchText(n: number): string {
+  const e = Math.round(n * 8);
+  const whole = Math.floor(e / 8), r = e % 8;
+  if (!r) return `${whole}"`;
+  const g = r % 4 === 0 ? 4 : r % 2 === 0 ? 2 : 1;
+  return `${whole ? `${whole} ` : ""}${r / g}/${8 / g}"`;
+}
+
+/** The export's own measured size (the piece as the bench draws it), W × D × H. */
+export const sizeLine = (w: number, d: number, h: number) => `${inchText(w)} W × ${inchText(d)} D × ${inchText(h)} H`;
+
+export const tooBig = (bytes: number) =>
+  `This build is too detailed to open in AR (about ${mb(bytes)} MB; phones handle up to ${mb(AR_CAP_BYTES)} MB). It still builds and measures the same here.`;
+export const FAILED = "AR didn't open on this phone. Nothing was sent. Try again, or try another phone.";
+
+/** What the lazy half reports for a model: its measured size in inches and its file size. */
+export type ArStats = { inches: [number, number, number]; bytes: number };
+/** The chip's line under it: the size it will stand at, or why it can't. */
+export type ArPrep = { size: string | null; refused: string | null };
+
+/** Never throws: a failed measure refuses with the plain message rather than leaving the chip silent. */
+export async function prepareAr(measure: () => Promise<ArStats | null>): Promise<ArPrep> {
+  try {
+    const s = await measure();
+    if (!s) return { size: null, refused: FAILED };
+    const size = sizeLine(...s.inches);
+    return { size, refused: s.bytes > AR_CAP_BYTES ? tooBig(s.bytes) : null };
+  } catch {
+    return { size: null, refused: FAILED };
+  }
+}
+
+/** Run the open; null when AR opened, else the message to show. Never throws. */
+export async function openAr(run: () => Promise<number | void>): Promise<string | null> {
+  try {
+    const bytes = await run();
+    return typeof bytes === "number" && bytes > AR_CAP_BYTES ? tooBig(bytes) : null;
+  } catch {
+    return FAILED;
+  }
 }
