@@ -25,7 +25,7 @@ import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
-import { getCatalogItem } from "./catalog";
+import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
 import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
@@ -1352,18 +1352,23 @@ function generateRaw(
     // A W x D x H size is never a stock ("36x14x40" holds "4x4").
     // "ply" is plywood: the head-noun reader takes "dollhouse 3/4 ply" as a dollhouse, so the stock reader does too.
     const bare = prompt.replace(/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?/g, " ").replace(/\bply\b/gi, "plywood");
-    // A typed plywood thickness the house isn't cut in (1/8", 5/8") is said, never swapped silently; thinner than
-    // 1/2" builds in 1/2", like 1/4".
-    const tm = materialOverride ? null : bare.toLowerCase().match(/(\d+\s*\/\s*\d+|\d*\.\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
+    // The typed thickness is read as a number ("3/4", "0.5", ".25"): a 4×8 plywood of that thickness is the typed
+    // sheet; one not on the list (1/8", 5/8") is said, never swapped silently, and thinner than 1/2" builds in 1/2",
+    // like 1/4". A picker switch to 1/2" or 3/4" wins; any other switch keeps the typed sheet and says so.
+    const tm = bare.toLowerCase().match(/(\d+\s*\/\s*\d+|\d*\.\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
     const tIn = tm ? (tm[1].includes("/") ? Number(tm[1].split("/")[0]) / Number(tm[1].split("/")[1]) : Number(tm[1])) : NaN;
-    const typedSheet = dollhouseStock(bare, materialOverride);
-    const stock = typedSheet && tIn < 0.5 ? getCatalogItem("plywood-1-2-4x8") ?? typedSheet : typedSheet;
+    const typed = Number.isFinite(tIn);
+    const listed = typed ? FORGE_CATALOG.find((i) => /^plywood-.*-4x8$/.test(i.id) && Math.abs((i.dims?.thickness ?? -1) - tIn) < 1e-3) : undefined;
+    const fits = (i?: CatalogItem | null) => (i && /^plywood-(?:1-2|3-4)-/.test(i.id) ? i : null);
+    const route = dollhouseStock(bare, materialOverride);
+    const typedSheet = typed ? fits(listed) ?? getCatalogItem(tIn < 0.5 ? "plywood-1-2-4x8" : "plywood-3-4-4x8") ?? null : dollhouseStock(bare);
+    const stock = route && (fits(materialOverride ? getCatalogItem(materialOverride) : null) ?? typedSheet);
     const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
-    const ask = materialOverride ?? typedStockId(bare);
-    const askT = ask ? getCatalogItem(ask)?.dims?.thickness : undefined;
-    if (built && ask && ask !== stock.id && !(Number.isFinite(tIn) && Math.abs((askT ?? tIn) - tIn) > 1e-3)) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
-    if (built && Number.isFinite(tIn) && Math.abs(tIn - (stock.dims?.thickness ?? tIn)) > 1e-3)
-      return { ...built, notes: [...(built.notes ?? []), `${tm![1].replace(/\s+/g, "")}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
+    const ask = materialOverride ?? (typed ? listed?.id : typedStockId(bare));
+    if (built && ask && ask !== stock.id) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
+    const said = tm?.[1].includes("/") ? tm[1].replace(/\s+/g, "") : (() => { const n = Math.round(tIn * 16), g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(n, 16); return n % 16 ? `${n / k}/${16 / k}` : `${n / 16}`; })();
+    if (built && !materialOverride && typed && !listed)
+      return { ...built, notes: [...(built.notes ?? []), `${said}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
     if (built) return built;
   }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
