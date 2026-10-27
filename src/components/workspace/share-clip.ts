@@ -100,22 +100,33 @@ export function drawClipFrame(ctx: CanvasRenderingContext2D, gl: HTMLCanvasEleme
 }
 
 const frame = () => new Promise<number>((r) => requestAnimationFrame(r));
+/** The recorder could not be made or started on this device: the sheet says so and drops the clip button. */
+export class ClipFailed extends Error {}
+/** Plain words for the sheet (Ezra approves copy). */
+export const CLIP_FAILED = "Couldn't record a clip on this device. Share the image instead.";
+export const COPY_FAILED = "Couldn't copy. Select the link below to copy it.";
+/** Copy the link; true only once the clipboard has taken it (no clipboard, a refusal or a throw: false). */
+export async function copyText(clipboard: { writeText?: (t: string) => Promise<void> } | undefined, text: string): Promise<boolean> {
+  try { await clipboard!.writeText!(text); return true; } catch { return false; }
+}
+/** When the sheet closes, focus goes back to Share unless the person has already moved it elsewhere (a field, a tab). */
+export function refocusShare(active: { closest?: (s: string) => unknown } | null, body: unknown): boolean {
+  return !active || active === body || !!active.closest?.("[data-yard-share=open]");
+}
 /**
  * Record the 6 s clip off the bench canvas (preserveDrawingBuffer is on, so its last frame can be drawn).
  * The Watch it build bar stays hidden (rec), the scale figure and props are off while scrubbing, and when it
- * ends (or is cancelled) the scrub closes and the turn clears, so the bench is back on its own finished frame.
+ * ends (or is cancelled or fails) the scrub closes, the turn clears and every capture track stops, so the bench is
+ * back on its own finished frame and nothing keeps capturing. A recorder that can't be made or started: ClipFailed.
  */
-export async function recordClip(gl: HTMLCanvasElement, track: ScrubTrack, name: string, type: string, o: { onTick?: (ms: number) => void; cancelled?: () => boolean } = {}): Promise<Blob | null> {
+export async function recordClip(gl: HTMLCanvasElement, track: ScrubTrack, name: string, type: string, o: { onTick?: (ms: number) => void; cancelled?: () => boolean; Recorder?: typeof MediaRecorder } = {}): Promise<Blob | null> {
   const out = sized(gl);
   const ctx = out.getContext("2d")!;
   // Frames go in by hand (captureStream(0) + requestFrame) right after each draw, so the first and last frames are
   // exactly the ones drawn at 0 and 6 s, whatever the device's frame rate.
   const stream = out.captureStream(0);
   const track0 = stream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
-  const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6_000_000 });
   const chunks: Blob[] = [];
-  rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-  const done = new Promise<void>((r) => { rec.onstop = () => r(); });
   const draw = (ms: number) => {
     const k = clipK(ms, track.positions);
     if (scrubState().k !== k) setScrub({ k });
@@ -124,10 +135,14 @@ export async function recordClip(gl: HTMLCanvasElement, track: ScrubTrack, name:
     track0.requestFrame?.();
   };
   try {
+    let rec: MediaRecorder;
+    try { rec = new (o.Recorder ?? MediaRecorder)(stream, { mimeType: type, videoBitsPerSecond: 6_000_000 }); } catch { throw new ClipFailed(); }
+    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    const done = new Promise<void>((r) => { rec.onstop = () => r(); });
     setScrub({ open: true, rec: true, k: 1 });
     // The fit refits for the scrub (0, 60 and 450 ms): start on the settled frame.
     for (let t0 = performance.now(); performance.now() - t0 < 650; ) await frame();
-    rec.start();
+    try { rec.start(); } catch { throw new ClipFailed(); }
     const t0 = performance.now();
     for (;;) {
       const ms = Math.min(CLIP_MS, performance.now() - t0);
@@ -144,8 +159,23 @@ export async function recordClip(gl: HTMLCanvasElement, track: ScrubTrack, name:
     await done;
     return new Blob(chunks, { type: type.split(";")[0] });
   } finally {
+    stream.getTracks().forEach((t) => t.stop());
     stop();
   }
+}
+/**
+ * The clip has no cards over it, so it is framed centred: while the turn runs, the live camera's card shift (its
+ * view offset) is set aside, and it is put back when the turn clears. The bench fit itself is never changed.
+ */
+type ViewCam = { view: { enabled: boolean; fullWidth: number; fullHeight: number; offsetX: number; offsetY: number; width: number; height: number } | null; clearViewOffset(): void; setViewOffset(fw: number, fh: number, x: number, y: number, w: number, h: number): void };
+export function clipCentre(cam: ViewCam, turning: boolean, saved: ViewCam["view"]): ViewCam["view"] {
+  if (turning) {
+    if (cam.view?.enabled) { saved = { ...cam.view }; cam.clearViewOffset(); }
+    return saved;
+  }
+  // A refit while the turn ran has already set its own shift: keep that one.
+  if (saved && !cam.view?.enabled) cam.setViewOffset(saved.fullWidth, saved.fullHeight, saved.offsetX, saved.offsetY, saved.width, saved.height);
+  return null;
 }
 const stop = () => { setShare({ turn: null }); setScrub({ open: false, rec: false, k: 0 }); };
 const sized = (gl: HTMLCanvasElement) => {

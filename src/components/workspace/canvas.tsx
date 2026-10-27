@@ -30,7 +30,7 @@ import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 import { STAGE } from "@/components/workspace/stage-palette";
 import { measureBoxStrokes } from "@/components/workspace/measure-box";
-import { shareState, subscribeShare } from "@/components/workspace/share-clip";
+import { clipCentre, shareState, subscribeShare } from "@/components/workspace/share-clip";
 
 const HULL = STAGE.ghost;
 const BENCH_BG = SHOP_GROUND.bg;
@@ -331,17 +331,20 @@ export function WorkspaceCanvas() {
 
 /**
  * The share clip's one slow turn (share-clip.ts): while it records, the camera circles the orbit target from
- * where it stood; when the turn clears, the camera goes back to exactly that pose. Idle, it does nothing.
+ * where it stood, centred in the frame (the clip has no cards, so the card shift is set aside); when the turn
+ * clears, the camera goes back to exactly that pose and shift. Idle, it does nothing.
  */
 function ClipTurn() {
   const { camera, controls, invalidate } = useThree();
   const from = useRef<THREE.Vector3 | null>(null);
+  const shift = useRef<THREE.PerspectiveCamera["view"]>(null);
   useEffect(() => subscribeShare(() => invalidate()), [invalidate]);
   useFrame(() => {
     const turn = shareState().turn;
     const target = (controls as unknown as { target?: THREE.Vector3 } | null)?.target;
     if (!target || (turn == null && !from.current)) return;
     if (!from.current) from.current = camera.position.clone();
+    shift.current = clipCentre(camera as THREE.PerspectiveCamera, turn != null, shift.current);
     camera.position.copy(target).add(from.current.clone().sub(target).applyAxisAngle(UP_Y, turn ?? 0));
     camera.lookAt(target);
     if (turn == null) from.current = null;

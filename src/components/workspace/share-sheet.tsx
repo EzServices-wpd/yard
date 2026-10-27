@@ -18,11 +18,18 @@ export type ShareSheetProps = {
   canShare: boolean; onShareLink: () => void; onStill: () => void;
   /** ms recorded so far (null when not recording); clip: null when this device can't record (or reduced motion). */
   ms: number | null; clip: "idle" | "ready" | null; onRecord: () => void; onShareClip: () => void;
+  /** Why there is no clip button (the recorder failed here), and the line shown when a copy fails. */
+  clipNote: string | null; copyFailed: string;
+  /** Resolves true only once the clipboard has the link. */
+  onCopy: () => Promise<boolean>;
+  /** The sheet has closed: focus goes back to the Share button. */
+  onClosed: () => void;
 };
 
 /** The share sheet (vaul, plan L516): presentational only; share-button.tsx owns the link, the still and the clip. */
 export default function ShareSheet(p: ShareSheetProps) {
-  const [copied, setCopied] = useState(false);
+  const [copy, setCopy] = useState<"" | "copied" | "failed">("");
+  const copied = copy === "copied";
   const recording = p.ms != null;
   return (
     <Drawer.Root open={p.open} onOpenChange={p.onOpenChange} modal={false} container={p.host}>
@@ -30,6 +37,7 @@ export default function ShareSheet(p: ShareSheetProps) {
         <Drawer.Content
           data-yard-share="open"
           data-bench-overlay={p.card ? "share" : undefined}
+          onCloseAutoFocus={(e) => { e.preventDefault(); p.onClosed(); }}
           aria-describedby="yard-share-desc"
           className="absolute inset-x-0 bottom-0 z-30 mx-auto w-full max-w-md rounded-t-xl border border-b-0 border-border bg-surface px-4 pb-4 pt-2 text-fg shadow-lg outline-none sm:bottom-3 sm:w-[min(28rem,calc(100%-1.5rem))] sm:rounded-xl sm:border-b"
         >
@@ -44,7 +52,7 @@ export default function ShareSheet(p: ShareSheetProps) {
           <div className="mt-3 grid grid-cols-2 gap-2">
             {p.canShare && <button type="button" className={BTN} onClick={p.onShareLink}><Icon d={ICON.share} />Share link</button>}
             {p.url && (
-              <button type="button" className={BTN} data-yard-share-copy={copied ? "copied" : ""} onClick={() => { void navigator.clipboard?.writeText(p.url!); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }}>
+              <button type="button" className={BTN} data-yard-share-copy={copy} onClick={async () => { const ok = await p.onCopy(); setCopy(ok ? "copied" : "failed"); if (ok) window.setTimeout(() => setCopy(""), 2000); }}>
                 <span className="relative grid size-4 place-items-center" aria-hidden>
                   <Icon d={ICON.link} className={`col-start-1 row-start-1 transition-[opacity,transform] duration-200 ${copied ? "scale-50 opacity-0" : ""}`} />
                   <Icon d={ICON.check} className={`col-start-1 row-start-1 text-mark transition-[opacity,transform] duration-200 ${copied ? "" : "scale-50 opacity-0"}`} />
@@ -62,6 +70,10 @@ export default function ShareSheet(p: ShareSheetProps) {
               </button>
             )}
           </div>
+          {copy === "failed" && p.url && (
+            <p role="status" className="mt-2 text-xs text-muted">{p.copyFailed}<span data-yard-share-url className="mt-1 block select-all break-all text-fg">{p.url}</span></p>
+          )}
+          {p.clipNote && <p role="status" data-yard-share-clip-note className="mt-2 text-xs text-muted">{p.clipNote}</p>}
           <p className="mt-2 text-[11px] text-faint">Made on this device. Nothing is uploaded.</p>
         </Drawer.Content>
       </Drawer.Portal>
