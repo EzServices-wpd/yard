@@ -156,12 +156,13 @@ function zoomed(svg: string, k: number) {
  * Log-only build types (no curated card): the feed draws them by type key (drawingForType), so each is baked under its
  * type from the prompt the card builds on tap (logCardPrompt: logPrompts.json, else the type at its logged size).
  * Not baked (judged by eye, 10-26): soccer-goal (a bare box frame), brooklyn-bridge (no towers above the deck),
- * windmill (broken sails), barn (a braced crate, no roof), empire-state-building (a cone, no setbacks), firewood-unit
- * (builds a firewood-rack); dollhouse, toolbox, bike rack, White House, mailbox post and sailboat still build wrong.
+ * windmill (broken sails), barn (a braced crate, no roof), empire-state-building (a cone, no setbacks), space-needle
+ * (straight tapered legs, no waist), firewood-unit (builds a firewood-rack); dollhouse, toolbox, bike rack, White House,
+ * mailbox post and sailboat still build wrong.
  */
 export const LOG_TYPES: Record<string, string> = {
   rocket: logCardPrompt("rocket", { width: 9.875, depth: 9.875, height: 28 }),
-  ...Object.fromEntries(["lighthouse", "cat-tree", "viking-ship", "space-needle"].map((t) => [t, logCardPrompt(t, null)])),
+  ...Object.fromEntries(["lighthouse", "cat-tree", "viking-ship"].map((t) => [t, logCardPrompt(t, null)])),
 };
 
 const cards = [
