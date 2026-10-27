@@ -9,7 +9,7 @@ import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
-import { BENCH_INK, plyCount, shopLook } from "@/components/workspace/shop-light";
+import { BENCH_INK, STEP_GLOW, plyCount, shopLook } from "@/components/workspace/shop-light";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
 import { doorHingeLayout } from "@/lib/yard/hingedLeaf";
@@ -58,12 +58,12 @@ export function PanelMesh({
   // A mirror set into a door rides on that door: it shows on the door's face and swings with it.
   const hostDoor = useYard((s) => (panel.joints?.length ? s.project.panels.find((q) => q.type === "door" && panel.joints!.some((j) => j.with === q.id)) : undefined));
   const mirror = panel.type === "mirror";
-  // Step view: this step's parts keep their real wood tone with a neutral lift and chalk-blue edges;
+  // Step view: this step's parts get chalk-blue edges and a small neutral lift (STEP_GLOW, kept low so the wood stays near its real tone);
   // everything else steps back to a faint ghost so the lit parts read at a glance.
   const ghost = hasStep && !inStep;
   const opacity = ghost ? 0.16 : glass && !mirror ? 0.42 : 1;
   const color = placeholder ? "#9a9a9a" : ghost ? "#8a7c68" : mirror ? "#d3dce2" : partLook.color(!!look.map);
-  const glow = inStep ? 0.22 : selected ? 0.14 : 0;
+  const glow = inStep ? STEP_GLOW.step : selected ? STEP_GLOW.selected : 0;
   const edgeColor = inStep ? BENCH_INK.stepEdge : ghost ? "#6b5d4a" : "#2a1d11";
   const { width: w, height: h, depth: d } = panel.size;
 
