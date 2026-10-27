@@ -68,6 +68,7 @@ import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildRealObject, realObjectKind } from "./realObjects";
+import { isDollhouse } from "./dollhouse";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
 import { positiveSentence } from "./positiveWording";
 import { purposeOf, titleWithPurpose } from "./purpose";
@@ -133,6 +134,14 @@ function requestedStock(prompt: string, materialOverride?: string): CatalogItem 
   // A named board section is the member stock even without "from". The species default is not a section.
   if (named.category === "lumber" && named.formFactor === "board" && named.id !== CATALOG_LUMBER_BIND) return named;
   return null;
+}
+
+/** A dollhouse's sheet: a typed or switched plywood, else 1/2" plywood (what dollhouse kits use); a craft or board ask keeps its own build. */
+function dollhouseStock(prompt: string, materialOverride?: string): CatalogItem | null {
+  const typed = hasExplicitStock(prompt) ? detectMaterial(prompt) : null;
+  if (typed && !/^plywood-/.test(typed.id)) return null;
+  const asked = materialOverride ? getCatalogItem(materialOverride) : undefined;
+  return (asked && /^plywood-/.test(asked.id) ? asked : null) ?? typed ?? getCatalogItem("plywood-1-2-4x8") ?? null;
 }
 
 function carcaseKind(item: CatalogItem | null): "board" | "sheet" | null {
@@ -1335,6 +1344,12 @@ function generateRaw(
     const unitItem = buildUnitItem(prompt);
     if (unitItem) return unitItem;
   }
+  // A dollhouse is the real open-front house in sheet stock; a switch to a stock it can't use keeps the house and says so.
+  if (!formOverride && !opts.fittedOverride && isDollhouse(prompt)) {
+    const stock = dollhouseStock(prompt, materialOverride);
+    const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
+    if (built) return materialOverride && materialOverride !== stock.id ? refuseUnusedStock(built, materialOverride, true) : built;
+  }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
   // at the typed height. A craft or toy stock pick stays on its craft path.
   {
@@ -1635,6 +1650,7 @@ function buildTemplateProject(
   const typed = opts.sizeOverride ?? (raw ? { width: said(raw.width), height: said(raw.height), depth: said(raw.depth) } : {});
   const built: TemplateBuild | null = buildTemplate(id, prompt, item, typed, whole);
   if (!built) return null;
+  if (built.refused) return { ...emptyProject(), name: built.label, prompt, refused: built.refused, cardNote: built.refused };
   let project: YardProject;
   if (built.segs) {
     const join = (item.preferredJoins && item.preferredJoins[0]) || "glue";
