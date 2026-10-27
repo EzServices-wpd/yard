@@ -157,4 +157,7 @@ it("Buy buys listing packs for the pieces used, not for catalog packs rounded up
   const e = sticks("eiffel tower from toothpicks 3 ft");
   const used = Number(e.unit.match(/\((\d+) /)![1]);
   assert.equal(e.quantity, Math.ceil(used / 800));
+  // A sheet line's "(48 pieces used)" counts parts cut from the sheets: one 5-pack of sheets holds them, not ten.
+  const board = buildPlan(generateFromPrompt("cardboard castle")).bom.find((b) => /\(48 pieces used\)/.test(b.unit))!;
+  assert.deepEqual(board.offers!.map((o) => o.packsNeeded), board.offers!.map(() => 1));
 });
