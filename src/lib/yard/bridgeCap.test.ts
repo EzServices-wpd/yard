@@ -184,6 +184,8 @@ it("a no-size probe over the ceiling never refuses a typed size that builds, and
   const h = bare.refused!.match(/It builds up to ([\d /]+)" tall/)![1];
   const named = generateFromPrompt(`pyramid from toothpicks ${h}" tall`);
   assert.equal(named.refused, undefined, `${h}" tall builds`);
+  // It names close to the largest (24 3/4" refuses), not a token small size.
+  assert.ok(parseInt(h, 10) >= 22, `${h}" is near the largest`);
   assert.ok(named.instances.length <= MAX_PARTS);
   assert.ok(generateFromPrompt('pyramid from toothpicks 25" tall').refused, 'and 25" does not');
 });
