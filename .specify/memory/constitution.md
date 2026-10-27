@@ -26,7 +26,7 @@ Shortest working diff after tracing the real flow. Reuse existing helpers. No un
 
 - North star: type what you want → choose material → honest instructions + buy/cut lists.
 - Affiliate / store links appear on the **Buy list only** (plus a one-click “Buy this list” Amazon cart). Never in the material/stock picker. Lumber and plywood sheets may keep local store links.
-- Headline: “Think it up. Yard works it out.” Subline: “Plywood or popsicle sticks, PVC or cardboard. One real model. Every part, cut and step.” No cut diagram on the home start screen.
+- Headline: “Think it up. Yard works it out.” Subline: “Plywood or popsicle sticks, PVC or cardboard. One real model. Every part, cut and step.” Eyebrow: “Free plans for anything you can build”. Tagline: “Measured from a real 3D model, not a picture. Every cut checked.” No cut diagram on the home start screen.
 - Public contact: hello@yard.wiki on About/Privacy.
 - Geometry stays deterministic; LLM voice does not overwrite locked named form recipes.
 - Do not scrape copyrighted plan books; do not train on DIY instruction PDFs.
