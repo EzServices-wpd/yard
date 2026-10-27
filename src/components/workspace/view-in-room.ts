@@ -1,7 +1,8 @@
 /**
  * View in your room (PR 14b, plan concept 8): the light half, loaded with the bench. It holds a pointer to
  * the bench's model group, the AR feature test and the Quick Look link. The exporters and the WebXR session
- * live in view-in-room-ar.ts and load only on tap. Nothing leaves the device: the model is built here and
+ * live in view-in-room-ar.ts and load only on tap (it imports nothing from here, so the bench chunk keeps
+ * this module and the lazy chunk stays its own). Nothing leaves the device: the model is built here and
  * handed to the phone's own viewer as a blob URL, and the camera feed never reaches the page.
  */
 import type { Object3D } from "three";
@@ -35,11 +36,3 @@ export function browserArEnv(): ArEnv {
   if (typeof window === "undefined") return {};
   return { document, xr: (navigator as Navigator & { xr?: XrLike }).xr ?? null, secure: window.isSecureContext };
 }
-
-/** Quick Look link: fixed scale (no pinch to resize), so the piece always stands at its true size. */
-export function quickLookHref(blobUrl: string): string {
-  return `${blobUrl.split("#")[0]}#allowsContentScaling=0`;
-}
-
-/** Plan inches to AR metres. */
-export const INCH_M = 0.0254;

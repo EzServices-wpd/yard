@@ -8,8 +8,8 @@ import path from "node:path";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
-import { INCH_M, arMode, quickLookHref } from "../src/components/workspace/view-in-room";
-import { arGlb, arModel } from "../src/components/workspace/view-in-room-ar";
+import { arMode } from "../src/components/workspace/view-in-room";
+import { INCH_M, arGlb, arModel, quickLookHref } from "../src/components/workspace/view-in-room-ar";
 import { PROP_LAYER } from "../src/components/workspace/scale-props";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
@@ -161,6 +161,7 @@ test("source guards: exporters load on tap; the figure and props stay outside th
   assert.doesNotMatch(button, /^import .*view-in-room-ar/m, "the heavy half is a dynamic import only");
   assert.match(heavy, /await import\("three\/examples\/jsm\/exporters\/USDZExporter\.js"\)/);
   assert.doesNotMatch(heavy, /^import .*exporters/m);
+  assert.doesNotMatch(heavy, /from "\.\/view-in-room"/, "the lazy half imports nothing from the bench half (its own chunk)");
   assert.doesNotMatch(heavy + button, /\bset(?:Project|Plan|Explode|Scale)\b|buy|affiliate/i, "AR never writes the project, plan or Buy list");
   const canvas = read("src/components/workspace/canvas.tsx");
   const bench = canvas.slice(canvas.indexOf("function BenchScene("));

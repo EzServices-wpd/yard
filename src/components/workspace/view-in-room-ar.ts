@@ -5,7 +5,14 @@
  * click targets and the step glow are left behind, so the piece in your room is the piece on the bench.
  */
 import * as THREE from "three";
-import { INCH_M, quickLookHref } from "./view-in-room";
+
+/** Plan inches to AR metres. */
+export const INCH_M = 0.0254;
+
+/** Quick Look link: fixed scale (no pinch to resize), so the piece always stands at its true size. */
+export function quickLookHref(blobUrl: string): string {
+  return `${blobUrl.split("#")[0]}#allowsContentScaling=0`;
+}
 
 type AnyLine = { isLine?: boolean; isLineSegments?: boolean; isLine2?: boolean; isLineSegments2?: boolean; isPoints?: boolean };
 const isLine = (o: THREE.Object3D) => {
