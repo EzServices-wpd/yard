@@ -28,10 +28,16 @@ export function scrubShown(track: ScrubTrack, k: number): Set<string> | null {
   return new Set(track.ids.filter((id) => track.at.get(id)! < k));
 }
 
+/** The plan's own step numbers for position k: "Step 4 of 9" (the visible counter and the start of the label). */
+export function scrubCounter(track: ScrubTrack, k: number): string {
+  return `Step ${scrubBeat(track, k).step} of ${track.total}`;
+}
 /** What a screen reader hears for position k: "Step 4 of 9: Fit the shelves". */
 export function scrubLabel(track: ScrubTrack, k: number): string {
-  const b = track.beats[Math.max(1, Math.min(track.beats.length, k)) - 1];
-  return `Step ${b.step} of ${track.total}: ${b.title}`;
+  return `${scrubCounter(track, k)}: ${scrubBeat(track, k).title}`;
+}
+export function scrubBeat(track: ScrubTrack, k: number): ScrubBeat {
+  return track.beats[Math.max(1, Math.min(track.beats.length, k)) - 1];
 }
 
 /** Play: one beat every 700 ms, the whole run held to about 8 s on a long build (never under 250 ms a beat). */

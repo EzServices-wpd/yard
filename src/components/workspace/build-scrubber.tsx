@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { ChevronLeft, ChevronRight, Pause, Play, X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { revealState, subscribeReveal } from "./reveal-clock";
-import { playGap, scrubLabel, scrubState, scrubTrack, setScrub, subscribeScrub } from "./build-scrub";
+import { playGap, scrubBeat, scrubCounter, scrubLabel, scrubState, scrubTrack, setScrub, subscribeScrub } from "./build-scrub";
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const BTN = "grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-elevated hover:text-fg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-30";
@@ -14,7 +14,9 @@ const BTN = "grid size-11 shrink-0 place-items-center rounded-full text-muted ho
  * slider (or arrow keys, Home, End) to walk the plan's steps; parts done so far show in wood, the
  * rest as outlines. Play steps through on its own, only when pressed (and pauses off screen or in a
  * background tab); with reduced motion it opens on the finished build and moves only when asked.
- * Closing it, or reaching the last step, shows the same finished frame as before it opened.
+ * Closing it, or reaching the last step, shows the same finished frame as before it opened. The closed
+ * button is not a bench card (no data-bench-overlay), so the default framing is release's exactly; only
+ * the open bar is one, and the camera refits around it while it is open.
  */
 export function BuildScrubber() {
   const project = useYard((s) => s.project);
@@ -65,7 +67,6 @@ export function BuildScrubber() {
       <button
         type="button"
         data-yard-scrub="closed"
-        data-bench-overlay="scrub"
         onClick={() => {
           setActiveStep(null);
           setExplode(false);
@@ -92,8 +93,8 @@ export function BuildScrubber() {
       onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}
     >
       <p className="truncate px-2 pt-0.5 text-xs text-muted" aria-hidden>
-        <span className="font-mono text-faint">{String(k).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>{" "}
-        <span className="text-fg">{label.replace(/^Step \d+ of \d+: /, "")}</span>
+        <span className="font-mono text-faint" data-yard-scrub-counter>{scrubCounter(track!, k)}</span>{" "}
+        <span className="text-fg">{scrubBeat(track!, k).title}</span>
       </p>
       <div className="flex items-center gap-0.5">
         <button

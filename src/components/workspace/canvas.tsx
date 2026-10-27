@@ -314,7 +314,8 @@ export function WorkspaceCanvas() {
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
         <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
+        {/* The open Watch it build bar is a card the fit avoids (refit on open and close); the closed button is not. */}
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
         <ExplodeTestHook project={project} />
@@ -331,13 +332,15 @@ type Glide = {
 };
 
 function CameraRig({
-  project, preset, stepIds, locked, overlayKey,
+  project, preset, stepIds, locked, overlayKey, scrubbing = false,
 }: {
   project: YardProject;
   preset: "iso" | "front" | "side" | "top";
   stepIds: string[];
   locked: boolean;
   overlayKey: string;
+  /** Watch it build is open: the scale figure is hidden, so the fit leaves it out (model stays centred). */
+  scrubbing?: boolean;
 }) {
   const { camera, controls, gl, size, scene, invalidate } = useThree();
   const projectRef = useRef(project);
@@ -430,7 +433,7 @@ function CameraRig({
       const built = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
       const solved = explodeClock.solved;
       const exploded = staged && explode && !!solved && solved.key.split("|")[0] === projectRef.current.id;
-      const box = exploded || stepIds.length || locked ? built : figureBox(built, figure);
+      const box = exploded || stepIds.length || locked || scrubbing ? built : figureBox(built, figure);
       const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
@@ -519,7 +522,7 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length, scrubbing]);
   // While See inside or Operate is on, the free stage follows the cards: opening or closing the
   // tray (More) or a card resizing refits the model with a short glide (the window resizing refits via size), so it never sits
   // under a card or shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).

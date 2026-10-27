@@ -8,7 +8,7 @@ import path from "node:path";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
 import { buildOrder } from "../src/components/workspace/build-order";
-import { playGap, scrubLabel, scrubShown, scrubState, scrubTrack, setScrub, subscribeScrub } from "../src/components/workspace/build-scrub";
+import { playGap, scrubCounter, scrubLabel, scrubShown, scrubState, scrubTrack, setScrub, subscribeScrub } from "../src/components/workspace/build-scrub";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const read = (f: string) => fs.readFileSync(path.join(root, f), "utf8");
@@ -40,6 +40,11 @@ for (const c of CASES) {
     assert.equal(new Set(nums).size, nums.length, "no step twice");
     for (const b of track.beats) assert.equal(b.title, plan.instructions.find((s) => s.step === b.step)!.title, "the label is the plan's own step title");
     assert.match(scrubLabel(track, 1), new RegExp(`^Step ${nums[0]} of ${plan.instructions.length}: `));
+    // The visible counter is the plan's numbers, the same words the screen reader hears first.
+    for (let k = 1; k <= track.beats.length; k++) {
+      assert.equal(scrubCounter(track, k), `Step ${track.beats[k - 1].step} of ${plan.instructions.length}`);
+      assert.ok(scrubLabel(track, k).startsWith(`${scrubCounter(track, k)}: `), "counter and aria-valuetext agree");
+    }
     for (const id of track.ids) assert.ok(track.at.get(id)! < track.beats.length, `${id} lands on a real beat`);
   });
 
@@ -115,4 +120,18 @@ test("wiring: order is consumed, not re-derived; props hide while scrubbing; red
   assert.match(ui, /type="range"[\s\S]*aria-valuetext=\{label\}/, "a native slider: arrows, Home, End, with the step named");
   assert.match(ui, /document\.hidden \|\| !seen\.current/, "play pauses off screen");
   assert.doesNotMatch(ui, /useYard\(\(s\) => s\.(setProject|patchProject|setPlan)/, "the scrubber writes no project or plan");
+});
+
+test("framing: the closed button is not a bench card (default fit = no scrubber), only the open bar is", () => {
+  const ui = read("src/components/workspace/build-scrubber.tsx");
+  const closed = ui.slice(ui.indexOf("if (!open) {"), ui.indexOf("const label = scrubLabel"));
+  assert.match(closed, /data-yard-scrub="closed"/);
+  assert.doesNotMatch(closed, /data-bench-overlay/, "the closed button never enters overlayRects, so the closed framing is release's");
+  const bar = ui.slice(ui.indexOf("const label = scrubLabel"));
+  assert.match(bar, /data-bench-overlay="scrub"/, "the open bar is a card the fit avoids");
+  assert.match(bar, /data-yard-scrub-counter>\{scrubCounter\(track!, k\)\}/, "the visible counter is the plan step, not beats");
+  assert.doesNotMatch(bar, /padStart/, "no 01 / 05 beat counter");
+  const canvas = read("src/components/workspace/canvas.tsx");
+  assert.match(canvas, /overlayKey=\{`\$\{measureOpen \? 1 : 0\}\$\{activeStep \?\? ""\}\$\{scrubbing \? "s" : ""\}\|\$\{viewNonce\}`\}/, "closed: the same overlay key as release; open: a refit");
+  assert.match(canvas, /locked \|\| scrubbing \? built : figureBox\(built, figure\)/, "the hidden figure is left out of the fit while scrubbing");
 });
