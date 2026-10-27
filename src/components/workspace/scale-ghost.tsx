@@ -6,10 +6,11 @@ import { Line } from "@react-three/drei";
 import * as THREE from "three";
 import { benchModelBox } from "@/lib/yard/benchFrame";
 import type { YardProject } from "@/lib/yard/types";
+import { BENCH_INK } from "./shop-light";
 import { FIGURES, FIGURE_GAP, PROP_LAYER, propSpots, useScale, type PropSpot } from "./scale-props";
 
-/** The bench's existing warm ink (canvas.tsx HIST): reads on today's bench and on Night shop B. */
-const INK = "#d7cbb6";
+/** The bench ink (Night shop --color-fg, same as canvas.tsx HIST). Prop colours below are the objects' own materials. */
+const INK = BENCH_INK.ink;
 const FADE_MS = 240;
 /** Right half of a standing figure, x and y as fractions of its height, neck to feet (mirrored for the left). */
 const BODY: [number, number][] = [

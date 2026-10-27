@@ -22,11 +22,13 @@ import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-
 import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
-import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
+import { BENCH_INK, MARK_ALPHA, SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
+import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components/workspace/build-scrub";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 import { STAGE } from "@/components/workspace/stage-palette";
+import { measureBoxStrokes } from "@/components/workspace/measure-box";
 
 const HULL = STAGE.ghost;
 const BENCH_BG = SHOP_GROUND.bg;
@@ -36,7 +38,7 @@ const BENCH_BG = SHOP_GROUND.bg;
  * solid quads, which drew a hard dark square on the floor.
  */
 export const LINE_LAYER = 1;
-const HIST = "#d7cbb6";
+const HIST = BENCH_INK.ink;
 
 function StudioLights({
   project,
@@ -107,7 +109,7 @@ function FootprintShadow({ project }: { project: YardProject }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(box.minX + box.maxX) / 2, 0.02, (box.minZ + box.maxZ) / 2]} renderOrder={1}>
       <planeGeometry args={[w + pad * 2, d + pad * 2]} />
-      <meshBasicMaterial map={tex} transparent opacity={SHOP_LIGHT.contact} depthWrite={false} color="#000000" />
+      <meshBasicMaterial map={tex} transparent opacity={SHOP_LIGHT.contact} depthWrite={false} color={BENCH_INK.contact} />
     </mesh>
   );
 }
@@ -205,6 +207,7 @@ export function WorkspaceCanvas() {
   const detail = useYard((s) => s.detail);
   const viewNonce = useYard((s) => s.viewNonce);
   const pending = building || grokBusy;
+  const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
@@ -311,8 +314,9 @@ export function WorkspaceCanvas() {
           target={[0, 6, 0]}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
-        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk"} />
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
+        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
+        {/* The open Watch it build bar is a card the fit avoids (refit on open and close); the closed button is not. */}
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
         <ExplodeTestHook project={project} />
@@ -329,13 +333,15 @@ type Glide = {
 };
 
 function CameraRig({
-  project, preset, stepIds, locked, overlayKey,
+  project, preset, stepIds, locked, overlayKey, scrubbing = false,
 }: {
   project: YardProject;
   preset: "iso" | "front" | "side" | "top";
   stepIds: string[];
   locked: boolean;
   overlayKey: string;
+  /** Watch it build is open: the scale figure is hidden, so the fit leaves it out (model stays centred). */
+  scrubbing?: boolean;
 }) {
   const { camera, controls, gl, size, scene, invalidate } = useThree();
   const projectRef = useRef(project);
@@ -428,7 +434,7 @@ function CameraRig({
       const built = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
       const solved = explodeClock.solved;
       const exploded = staged && explode && !!solved && solved.key.split("|")[0] === projectRef.current.id;
-      const box = exploded || stepIds.length || locked ? built : figureBox(built, figure);
+      const box = exploded || stepIds.length || locked || scrubbing ? built : figureBox(built, figure);
       const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
@@ -517,7 +523,7 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length, scrubbing]);
   // While See inside or Operate is on, the free stage follows the cards: opening or closing the
   // tray (More) or a card resizing refits the model with a short glide (the window resizing refits via size), so it never sits
   // under a card or shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).
@@ -542,30 +548,22 @@ function CameraRig({
   return null;
 }
 
-function GhostLines({ strokes, color }: { strokes: ReturnType<typeof hullStrokes>; color: string }) {
+function GhostLines({ strokes, color, alpha = [0.18, 0.08] }: { strokes: ReturnType<typeof hullStrokes>; color: string; alpha?: [number, number] }) {
   return (
     <group>
       {strokes.map((s, i) => (
-        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.1 : 0.7} transparent opacity={s.weight === "main" ? 0.18 : 0.08} depthWrite={false} layers={LINE_LAYER} />
+        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.1 : 0.7} transparent opacity={s.weight === "main" ? alpha[0] : alpha[1]} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );
 }
 
 function MeasureGhost({ width, height, depth }: { width: number; height: number; depth: number }) {
-  const hx = width / 2, hz = depth / 2;
-  const pts: [number, number, number][][] = [
-    [[-hx, 0, -hz], [hx, 0, -hz], [hx, 0, hz], [-hx, 0, hz], [-hx, 0, -hz]],
-    [[-hx, height, -hz], [hx, height, -hz], [hx, height, hz], [-hx, height, -hz], [-hx, height, -hz]],
-    [[-hx, 0, -hz], [-hx, height, -hz]],
-    [[hx, 0, -hz], [hx, height, -hz]],
-    [[hx, 0, hz], [hx, height, hz]],
-    [[-hx, 0, hz], [-hx, height, hz]],
-  ];
+  const pts = measureBoxStrokes(width, height, depth);
   return (
     <group>
       {pts.map((p, i) => (
-        <Line key={i} points={p} color={STAGE.mark} lineWidth={1} transparent opacity={0.38} depthWrite={false} layers={LINE_LAYER} />
+        <Line key={i} points={p} color={STAGE.mark} lineWidth={1} transparent opacity={MARK_ALPHA.measure} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );
@@ -844,7 +842,12 @@ function BenchScene({
   // place here and the driver moves them. Stick builds keep the spread-out view.
   const staged = project.panels.length > 0;
   const panelScale = staged ? assemble : explodeScale;
-  const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  const stepReveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  // Watch it build (build-scrub.ts): the scrubber's position draws through the reveal's outline/wood path.
+  const scrub = useSyncExternalStore(subscribeScrub, scrubState, scrubState);
+  const track = useMemo(() => (scrub.open && !pending ? scrubTrack(project, plan) : null), [scrub.open, pending, project, plan]);
+  const scrubbed = useMemo(() => (track && !stepping ? scrubShown(track, scrub.k) : null), [track, stepping, scrub.k]);
+  const reveal = stepReveal ?? scrubbed;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;
@@ -867,7 +870,7 @@ function BenchScene({
   const focusOn = !reveal && cutFocus.size > 0;
   return (
     <group>
-      {showHull && <GhostLines strokes={hull} color={HULL} />}
+      {showHull && <GhostLines strokes={hull} color={HULL} alpha={[MARK_ALPHA.ghostMain, MARK_ALPHA.ghostFine]} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
