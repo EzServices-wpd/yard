@@ -16,7 +16,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import type { YardProject } from "../src/lib/yard/types";
 import { drawnDims } from "../src/lib/ideas/size";
-import { typeKey } from "../src/lib/ideas/liveFeed";
+import { logCardPrompt, typeKey } from "../src/lib/ideas/liveFeed";
 import { nameBase } from "./gen-idea-types";
 
 export const DRAW_W = 480, DRAW_H = 360;
@@ -154,11 +154,16 @@ function zoomed(svg: string, k: number) {
 
 /**
  * Log-only build types (no curated card): the feed draws them by type key (drawingForType), so each is baked under its
- * type from the prompt the card builds on tap (logCardPrompt at the logged size), never from a nicer prompt.
- * Not baked: soccer-goal and lighthouse (that prompt builds a generic storage unit), dollhouse (a stand-in plywood box),
- * brooklyn-bridge (7194 parts, 1731" wide for a typed 138 1/2"). They stay undrawn, so the feed leaves them off.
+ * type from the prompt the card builds on tap (logCardPrompt: logPrompts.json, else the type at its logged size).
+ * Not baked (judged by eye, 10-26): soccer-goal (a bare box frame), brooklyn-bridge (no towers above the deck),
+ * windmill (broken sails), barn (a braced crate, no roof), empire-state-building (a cone, no setbacks), space-needle
+ * (straight tapered legs, no waist), firewood-unit (builds a firewood-rack); dollhouse, toolbox, bike rack, White House,
+ * mailbox post and sailboat still build wrong.
  */
-export const LOG_TYPES: Record<string, string> = { rocket: "rocket 9.875 wide 28 tall 9.875 deep" };
+export const LOG_TYPES: Record<string, string> = {
+  rocket: logCardPrompt("rocket", { width: 9.875, depth: 9.875, height: 28 }),
+  ...Object.fromEntries(["lighthouse", "cat-tree", "viking-ship"].map((t) => [t, logCardPrompt(t, null)])),
+};
 
 const cards = [
   ...IDEAS.map((d) => ({ slug: d.id, prompt: d.prompt })),

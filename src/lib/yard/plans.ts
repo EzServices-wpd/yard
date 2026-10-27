@@ -1,5 +1,5 @@
 /** Static plan pages (/plans/<slug>): built-in builds only, each drawn live by the engine. No engine import here. */
-export const TAGLINE = "Built from a real model, not a picture. Every cut measured.";
+export const TAGLINE = "Measured from a real 3D model, not a picture. Every cut checked.";
 
 export type PlanPage = { slug: string; name: string; prompt: string; blurb: string; faqs: [string, string][] };
 

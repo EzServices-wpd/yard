@@ -173,7 +173,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         try {
           const live = await runYardPrompt(prompt, { fresh: true });
           // A newer prompt typed while the link's build was still looking up owns the bench now.
-          if (shared && live) {
+          // A link with no edits (the build-info permalink, a ?y= of the bare words) opens as the fresh build, the
+          // same build its link card prices (lib/og/card.ts); re-applying an empty Measure draft re-sized and re-priced it.
+          const fresh = useYard.getState().project;
+          const edits = Object.keys(shared?.measure ?? {}).length > 0 || (shared?.stockId != null && shared.stockId !== fresh.primaryMaterialId) || (shared?.join != null && shared.join !== fresh.shopJoin) || shared?.shelves != null || shared?.cubbies != null || shared?.drawers != null;
+          if (shared && live && edits) {
             useYard.getState().setMeasure(shared.measure);
             let next = useYard.getState().project;
             if (shared.stockId || shared.join) next = { ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId, shopJoin: (shared.join as never) ?? next.shopJoin };

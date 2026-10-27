@@ -20,7 +20,7 @@ import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import { isBareProductPrompt } from "@/lib/yard/productModel";
 import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
-import type { FittedSpec } from "@/lib/yard/types";
+import type { FittedSpec, YardProject } from "@/lib/yard/types";
 import { readPromptSpec } from "@/lib/ai/readPrompt";
 import { chooseBuildPrompt } from "@/lib/yard/aiReader/rewrite";
 import { needsReader, READER_TIMEOUT_MS } from "@/lib/yard/aiReader/core";
@@ -394,6 +394,44 @@ export async function runYardPrompt(raw: string, opts: RunOpts = {}): Promise<bo
   return run.live();
 }
 
+/** Whether the bench skips the hint/interpret/house-brief calls for these words (they could only reshape a locked build). */
+function llmGate(prompt: string, next: YardProject, parsed: ReturnType<typeof parseBrief> | null, half: boolean) {
+  // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
+  const wonky =
+    !!next.pocket ||
+    looksLikePocket(prompt) ||
+    (parsed?.walls != null &&
+      ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
+  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
+  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
+  const weak = half;
+  const houseLike =
+    !weak &&
+    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
+  const skipLlm =
+    // C10: a house prompt with every size typed (the linen canary) keeps the engine's build and price: the brief
+    // could only re-guess typed sizes and reprice the plan ($183.70 → ~$202.67) after an ~11s lamp.
+    (houseLike && typedSizeComplete(parsed)) ||
+    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
+    // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
+    !!findRecipe(prompt) ||
+    // Cost leak: an engine-owned shape (Big Ben, trebuchet, submarine) is locked, so the hint (Wikidata/Wikipedia)
+    // and interpret (Wikidata/Wikipedia + xAI chat) server calls could never change it. Skip them.
+    engineKeepsPrompt(prompt, next, half);
+  return { houseLike, skipLlm };
+}
+
+/**
+ * The words build on the bench with no AI call that could reshape or reprice them: no reader rewrite, no learner,
+ * no house brief, hint or interpret. Only such a build gets its own share card (lib/og/card.ts): the card is the
+ * engine's build, so it equals the page only when the page is the engine's build too.
+ */
+export function benchSkipsAi(prompt: string, next: YardProject, flag = builtFlag()): boolean {
+  if (flag === "on" && needsReader(prompt)) return false;
+  const parsed = detectWeekendMech(prompt) || wantsMediaTipHold(prompt) ? null : parseBrief(prompt);
+  return llmGate(prompt, next, parsed, ignoredTypedWords(next, prompt).length > 0).skipLlm;
+}
+
 async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
   noteBuildingPrompt(raw);
   // Sizes and length bounded before any geometry: "bookshelf 9999 wide" or a pasted essay never freezes the tab.
@@ -451,28 +489,8 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
     return { ...b, notes: [roughNote(b.name, why ?? []), ...(b.notes ?? [])] };
   };
   if (learn) useYard.getState().setProject({ ...roughBlock(prompt, next), notes: [`Yard is learning the ${prompt.toLowerCase()}: the real parts come next.`] });
-  // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
-  const wonky =
-    !!next.pocket ||
-    looksLikePocket(prompt) ||
-    (parsed?.walls != null &&
-      ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
-  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
-  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
   const weak = half;
-  const houseLike =
-    !weak &&
-    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
-  const skipLlm =
-    // C10: a house prompt with every size typed (the linen canary) keeps the engine's build and price: the brief
-    // could only re-guess typed sizes and reprice the plan ($183.70 → ~$202.67) after an ~11s lamp.
-    (houseLike && typedSizeComplete(parsed)) ||
-    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
-    // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
-    !!findRecipe(prompt) ||
-    // Cost leak: an engine-owned shape (Big Ben, trebuchet, submarine) is locked, so the hint (Wikidata/Wikipedia)
-    // and interpret (Wikidata/Wikipedia + xAI chat) server calls could never change it. Skip them.
-    engineKeepsPrompt(prompt, next, half);
+  const { houseLike, skipLlm } = llmGate(prompt, next, parsed, half);
   if (skipLlm && !learn) {
     revealBench();
     makePlan();
