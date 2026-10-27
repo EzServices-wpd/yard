@@ -7,7 +7,7 @@ import { headerAxes, headerName } from "@/lib/yard/pdf";
 import { permalink } from "@/lib/yard/shareBuild";
 import { revealState, subscribeReveal } from "./reveal-clock";
 import { scrubTrack } from "./build-scrub";
-import { clipType, fileRoute, recordClip, setShare, shareFileName, shareText, shareToken, stillImage } from "./share-clip";
+import { CLIP_FAILED, COPY_FAILED, clipType, copyText, fileRoute, recordClip, refocusShare, setShare, shareFileName, shareText, shareToken, stillImage } from "./share-clip";
 
 // The sheet (vaul) loads on the first Share tap only, and takes everything it shows as props: 0 KB on first paint.
 const ShareSheet = lazy(() => import("./share-sheet"));
@@ -41,6 +41,8 @@ export function ShareButton() {
   const [framed, setFramed] = useState(false);
   const [ms, setMs] = useState<number | null>(null);
   const [clip, setClip] = useState<Blob | null>(null);
+  const [failed, setFailed] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
   const closed = useRef(true);
   closed.current = !open;
   const name = headerName(project);
@@ -66,6 +68,9 @@ export function ShareButton() {
     setClip(null); setMs(0); setShare({ open: false });
     try {
       setClip(await recordClip(gl, track, name, type, { onTick: setMs, cancelled: () => closed.current }));
+    } catch {
+      // The recorder could not be made or started here: say so plainly and drop the clip button (no console error).
+      setFailed(true);
     } finally {
       setMs(null);
       if (!closed.current) setShare({ open: true });
@@ -80,6 +85,7 @@ export function ShareButton() {
     <>
       <button
         type="button"
+        ref={button}
         data-yard-share="closed"
         aria-label="Share this build"
         aria-haspopup="dialog"
@@ -103,7 +109,11 @@ export function ShareButton() {
             onShareLink={() => void navigator.share(text).catch(() => {})}
             onStill={() => void still()}
             ms={ms}
-            clip={type && track ? (clip ? "ready" : "idle") : null}
+            clip={type && track && !failed ? (clip ? "ready" : "idle") : null}
+            clipNote={failed ? CLIP_FAILED : null}
+            copyFailed={COPY_FAILED}
+            onCopy={() => copyText(navigator.clipboard, url ?? "")}
+            onClosed={() => { if (refocusShare(document.activeElement, document.body)) button.current?.focus({ preventScroll: true }); }}
             onRecord={() => void record()}
             onShareClip={() => clip && void sendFile(clip, shareFileName(name, clip.type.includes("mp4") ? "mp4" : "webm"), text)}
           />
