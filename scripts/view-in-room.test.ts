@@ -8,7 +8,7 @@ import path from "node:path";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
-import { AR_CAP_BYTES, FAILED, arMode, inchText, openAr, prepareAr, sizeLine, tooBig } from "../src/components/workspace/view-in-room";
+import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMode, inchText, openAr, prepareAr, sizeLine, tooBig } from "../src/components/workspace/view-in-room";
 import { INCH_M, arGlb, arModel, arStats, openQuickLook, quickLookHref } from "../src/components/workspace/view-in-room-ar";
 import { getCatalogItem } from "../src/lib/yard/catalog";
 import { toPrimitive } from "../src/lib/yard/geometry";
@@ -231,12 +231,56 @@ test("GLB round trip: GLTFLoader reads back every part and the same size in metr
   close(b.x, ew * INCH_M, 1e-5, "38 in"); close(b.y, eh * INCH_M, 1e-5, "102 in"); close(b.z, ed * INCH_M, 1e-5, "17.75 in");
 });
 
+test("floor and centre from a raised, offset bench: feet land on y = 0, footprint centred", () => {
+  const { model } = benchLike("linen closet 31.5 wide 78 tall 16 deep");
+  const lifted = new THREE.Group();
+  lifted.position.set(120, 9.5, -40);
+  lifted.rotation.y = 0;
+  lifted.add(model);
+  const box = new THREE.Box3().setFromObject(arModel(lifted));
+  close(box.min.y, 0, 1e-9, "feet on the floor, not 9.5 in up");
+  close((box.min.x + box.max.x) / 2, 0, 1e-6, "centred x");
+  close((box.min.z + box.max.z) / 2, 0, 1e-6, "centred z");
+  close(box.max.y, 78 * INCH_M, 1e-6, "78 in tall");
+});
+
+test("a part the bench is ghosting (step or Watch it build, 0.16) goes fully opaque; real glass stays glass", () => {
+  const g = new THREE.Group();
+  const ghostMat = new THREE.MeshStandardMaterial({ color: "#cbab6e", transparent: true, opacity: 0.16 });
+  const ghost = new THREE.Mesh(new THREE.BoxGeometry(10, 1, 10), ghostMat);
+  ghost.userData = { yardPart: "sh-1", yardGhost: true };
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 0.25), new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.42 }));
+  glass.userData = { yardPart: "gl-1", yardGhost: false };
+  g.add(ghost, glass);
+  const [a, b] = arModel(g).children.map((c) => (c as THREE.Mesh).material as THREE.MeshStandardMaterial);
+  assert.equal(a.opacity, 1);
+  assert.equal(a.transparent, false);
+  assert.equal(b.opacity, 0.42, "glass keeps its see-through");
+});
+
+test("half-built (Watch it build hid later parts): refused with the plain reason, never exported", async () => {
+  const { project, model } = benchLike("linen closet 31.5 wide 78 tall 16 deep");
+  model.children.filter((c) => c.children[0]?.userData?.yardPart && /do-/.test(c.children[0].userData.yardPart)).forEach((c) => (c.visible = false));
+  const st = arStats(arModel(model));
+  assert.equal(st.parts, 9, "the two doors are hidden");
+  assert.deepEqual(await prepareAr(async () => st, project.panels.length), { size: null, refused: NOT_WHOLE });
+  assert.match(NOT_WHOLE, /Watch it build/);
+  const whole = arStats(arModel(benchLike("linen closet 31.5 wide 78 tall 16 deep").model));
+  assert.equal((await prepareAr(async () => whole, 11)).refused, null);
+});
+
 test("feature test: Quick Look, then WebXR, else nothing; never throws", async () => {
   const doc = (ar: boolean | "throw") => ({ createElement: () => ({ relList: { supports: (t: string) => { if (ar === "throw") throw new Error("x"); return ar && t === "ar"; } } }) });
   const xr = (v: boolean | "reject") => ({ isSessionSupported: async () => { if (v === "reject") throw new Error("SecurityError"); return v; } });
-  assert.equal(await arMode({ document: doc(true), xr: xr(true) }), "quicklook");
+  const iphone = { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile/15E148 Safari/604.1" };
+  const macSafari = { ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Version/17.5 Safari/605.1.15", platform: "MacIntel", touch: 0 };
+  const ipadDesktop = { ...macSafari, touch: 5 };
+  assert.equal(await arMode({ document: doc(true), xr: xr(true), ...iphone }), "quicklook");
+  assert.equal(await arMode({ document: doc(true), ...ipadDesktop }), "quicklook", "iPad asking for the desktop site");
+  assert.equal(await arMode({ document: doc(true), ...macSafari }), null, "desktop Mac Safari answers rel=ar but has no AR: no chip");
+  assert.equal(await arMode({ document: doc(true), xr: xr(false) }), null, "rel=ar without an iOS device: no chip");
   assert.equal(await arMode({ document: doc(false), xr: xr(true), secure: true }), "webxr");
-  assert.equal(await arMode({ document: doc("throw"), xr: xr(true) }), "webxr");
+  assert.equal(await arMode({ document: doc("throw"), xr: xr(true), ...iphone }), "webxr");
   assert.equal(await arMode({ document: doc(false), xr: xr(false) }), null, "desktop Chrome: no AR");
   assert.equal(await arMode({ document: doc(false), xr: xr("reject") }), null, "a rejecting test is no AR");
   assert.equal(await arMode({ document: doc(false), xr: xr(true), secure: false }), null, "http: no WebXR");
@@ -264,6 +308,10 @@ test("source guards: exporters load on tap; the figure and props stay outside th
   assert.match(bench, /<group ref=\{setArRoot\}>/, "the AR root is BenchScene's group");
   assert.doesNotMatch(bench, /ScaleLayer/, "the scale figure and props are not inside it");
   assert.match(button, /if \(!mode \|\| parts === 0\) return null;/, "no AR reported: no chip at all");
+  assert.match(button, /scrubState\(\)\.open/, "Watch it build open: the chip waits");
+  assert.match(button, /s\.explode \|\| s\.activeStep != null \|\| s\.facesOpen/, "See inside, a step, open doors: the chip waits");
+  assert.match(button, /const note = moved \? NOT_WHOLE/, "and says why, as text under it");
+  assert.doesNotMatch(light + heavy + button, /uses Scene Viewer/, "Android is WebXR");
   assert.doesNotMatch(light + heavy + button, /console\.(error|warn|log)/, "failures are lines under the chip, not console output");
 });
 
