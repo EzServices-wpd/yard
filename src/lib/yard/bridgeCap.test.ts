@@ -248,3 +248,22 @@ it("a bare typed size a whole-stick module ignores is built at that size when th
   assert.ok(big.refused);
   assert.deepEqual(i36(big, 'toothpick pyramid 48"'), []);
 });
+
+it("long craft stock cut to its spans still honors a bare typed size, as the whole-stick build did (row 622)", () => {
+  // Release built these at the typed size; cut-to-span must not turn the bare size into the 24" default.
+  for (const [q, h] of [['tower from skewers 12"', 12.5], ['tower from skewers 36"', 36.5], ['eiffel tower from giant craft sticks 18"', 18.5], ['skewer tower 18"', 18.5]] as const) {
+    const p = generateFromPrompt(q);
+    assert.equal(p.refused, undefined, q);
+    assert.ok(Math.abs(p.overall.height - h) <= 0.6, `${q}: ${p.overall.height}`);
+    assert.ok(p.instances.some((i) => i.cutLength != null), `${q} is still cut to span`);
+    assert.deepEqual(i52(buildPlan(p)), []);
+  }
+});
+
+it("the over-ceiling rebuild puts a bare size on the axis the fit would (U5: the box's axes are not interchangeable)", () => {
+  // 'toothpick pyramid 36"' rebuilds from the 37 3/4" × 24" default: 36" goes on its long (width) axis and builds.
+  const p = generateFromPrompt('toothpick pyramid 36"');
+  assert.equal(p.refused, undefined);
+  assert.ok(Math.abs(p.overall.width - 36) <= 1.5 && p.overall.height < 30, JSON.stringify(p.overall));
+  assert.equal(generateFromPrompt('toothpick pyramid 18"').instances.length, 2723);
+});

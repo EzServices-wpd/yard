@@ -44,7 +44,7 @@ import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, det
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
+import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, engineOwnsForm, isLockedForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
@@ -984,7 +984,8 @@ function wholeStickBuild(project: YardProject): boolean {
   const item = getCatalogItem(project.primaryMaterialId);
   if (!item || !isWholeStock(item)) return false;
   const own = project.instances.filter((i) => i.catalogId === project.primaryMaterialId);
-  return own.length > 0 && own.every((i) => i.cutLength == null);
+  // Long craft stock cut to its spans (12" skewers, giant sticks) is still a stick module that reads no bare size (row 622).
+  return own.length > 0 && (own.every((i) => i.cutLength == null) || cutsToSpans(project, item));
 }
 
 const misses = (o: Box3, want: Partial<Box3>, slack = 0.04) =>
