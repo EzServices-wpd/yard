@@ -442,7 +442,7 @@ function partsRefusal(prompt: string, rebuild: (q: string) => YardProject): Yard
   const typed = scaledSizes(prompt, 1)?.words;
   const fit = largestBuilding(prompt, builds);
   const sized = typed ? ` at ${typed.join(", ")}` : "";
-  const why = `Yard builds up to ${MAX_PARTS.toLocaleString("en-US")} parts in one plan, and ${withArticle(name)} in ${item.name.toLowerCase().replace(/s?$/, "s")}${sized} needs more, so nothing is built. ${fit ? `It builds up to ${fit.join(", ")}: type ${fit.join(", ")} or smaller.` : "Type a smaller size to build it."}`;
+  const why = `Yard builds up to ${MAX_PARTS.toLocaleString("en-US")} parts in one plan, and ${withArticle(name)} in ${item.name.replace(/\s*\(.*?\)/g, "").toLowerCase().replace(/s?$/, "s")}${sized} needs more, so nothing is built. ${fit ? `It builds up to ${fit.join(", ")}: type ${fit.join(", ")} or smaller.` : "Type a smaller size to build it."}`;
   return { ...emptyProject(), name, prompt, kind: "custom", primaryMaterialId: item.id, refused: why, cardNote: why };
 }
 
