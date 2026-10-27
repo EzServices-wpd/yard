@@ -218,6 +218,16 @@ test("every typed plywood thickness is read or said: 'ply' is plywood, an off-li
   for (const q of ["dollhouse 1 inch plywood", "dollhouse 1\" ply", "dollhouse 1 in plywood"]) assert.match(notes(q), /1" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/, q);
   assert.match(notes("dollhouse 1 1/8 inch plywood"), /1 1\/8" plywood isn't on the stock list/);
   assert.doesNotMatch(notes("2 story dollhouse plywood"), /stock list/);
+  // A mixed number is one thickness, with or without its unit; a larger number is never read as its last digit.
+  assert.equal(t("dollhouse 1 1/2 plywood"), "plywood-3-4-4x8");
+  assert.match(notes("dollhouse 1 1/2 plywood"), /1 1\/2" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/);
+  assert.match(notes("dollhouse 1 1/4 plywood"), /1 1\/4" plywood isn't on the stock list/);
+  assert.doesNotMatch(notes("dollhouse 1 1/4 plywood"), /1\/4" Plywood 4×8 can't/);
+  assert.equal(t("dollhouse 1 1/8 inch plywood"), "plywood-3-4-4x8");
+  assert.match(notes("dollhouse 3 1/2 plywood"), /3 1\/2" plywood isn't on the stock list/);
+  for (const q of ["dollhouse 2 plywood", "dollhouse 21 inch plywood", "dollhouse 12 inch plywood", "dollhouse 36 inch tall plywood"]) assert.doesNotMatch(notes(q), /stock list/, q);
+  assert.match(notes("dollhouse 1.5 plywood"), /1 1\/2" plywood isn't/);
+  assert.match(notes("dollhouse 15/32 plywood"), /15\/32" plywood isn't/);
   for (const sw of ["plywood-1-4-4x8", "popsicle-standard", "lumber-2x4-8"]) {
     const p = build("dollhouse 1/8 plywood", sw);
     assert.equal(p.primaryMaterialId, "plywood-1-2-4x8", sw);
