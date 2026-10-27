@@ -5,6 +5,8 @@ import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
 import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
+import { largestBuilding, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
+import { withArticle } from "./article";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
@@ -402,6 +404,7 @@ let idDepth = 0;
  */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   if (idDepth === 0) seedIds(args);
+  const typedAtIntake = args[0] ?? "";
   idDepth++;
   try {
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
@@ -423,9 +426,24 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
     const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+  } catch (e) {
+    if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
+    return partsRefusal(typedAtIntake, (q) => generateFromPrompt(q, ...(args.slice(1) as [])));
   } finally {
     idDepth--;
   }
+}
+
+/** Over the part ceiling (partCeiling.ts): nothing is built, and the note names the largest typed size that builds. */
+function partsRefusal(prompt: string, rebuild: (q: string) => YardProject): YardProject {
+  const item = detectMaterial(prompt);
+  const name = (subjectFromPrompt(prompt) || "this build").replace(/\b\w/g, (c) => c.toUpperCase());
+  const builds = (q: string) => { try { const p = rebuild(q); return !p.refused; } catch (x) { if (x instanceof TooManyParts) return false; throw x; } };
+  const typed = scaledSizes(prompt, 1)?.words;
+  const fit = largestBuilding(prompt, builds);
+  const sized = typed ? ` at ${typed.join(", ")}` : "";
+  const why = `Yard builds up to ${MAX_PARTS.toLocaleString("en-US")} parts in one plan, and ${withArticle(name)} in ${item.name.toLowerCase().replace(/s?$/, "s")}${sized} needs more, so nothing is built. ${fit ? `It builds up to ${fit.join(", ")}: type ${fit.join(", ")} or smaller.` : "Type a smaller size to build it."}`;
+  return { ...emptyProject(), name, prompt, kind: "custom", primaryMaterialId: item.id, refused: why, cardNote: why };
 }
 
 function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
