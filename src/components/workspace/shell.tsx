@@ -19,6 +19,7 @@ import { priceReason, type PriceReason } from "@/components/workspace/price-reas
 import { MorphButton } from "@/components/workspace/morph-button";
 import { RevealStatus } from "@/components/workspace/reveal-status";
 import { BuildScrubber } from "@/components/workspace/build-scrubber";
+import { ShareButton } from "@/components/workspace/share-button";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
@@ -471,6 +472,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           <WorkspaceCanvas />
           <RevealStatus />
           <BuildScrubber />
+          <ShareButton />
           <LavaLamp key={lampKey} show={lampOn} prompt={initialPrompt ?? project.prompt} caption="Building" />
           {aiChip && (
             <p data-yard-ai-chip="1" className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/70 bg-surface/85 px-3 py-1 text-[11px] text-muted backdrop-blur">
