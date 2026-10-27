@@ -6,11 +6,13 @@
  * will stand at, or why AR can't open it (too detailed, over the cap). Exporters load on tap. Every failure
  * is a plain line under the chip, never a console error.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useYard } from "@/lib/yard/store";
-import { AR_CAP_BYTES, FAILED, arMode, arRoot, browserArEnv, openAr, prepareAr, type ArMode, type ArPrep } from "./view-in-room";
+import { scrubState, subscribeScrub } from "./build-scrub";
+import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMode, arRoot, browserArEnv, openAr, prepareAr, type ArMode, type ArPrep } from "./view-in-room";
 
 const lazy = () => import("./view-in-room-ar");
+type ArLib = Awaited<ReturnType<typeof lazy>>;
 
 export function ViewInRoomButton() {
   const [mode, setMode] = useState<ArMode | null>(null);
@@ -19,8 +21,11 @@ export function ViewInRoomButton() {
   const [failed, setFailed] = useState<string | null>(null);
   const project = useYard((s) => s.project);
   const parts = project.panels.length + project.instances.length;
-  // See inside or a step card moves or dims parts: AR waits for the built piece.
-  const moved = useYard((s) => s.explode || s.activeStep != null);
+  // See inside, a step card, Watch it build or open doors move, hide or dim parts: AR waits for the built piece.
+  const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
+  const moved = useYard((s) => s.explode || s.activeStep != null || s.facesOpen) || scrubbing;
+  // The lazy half, kept once measured, so a tap starts the WebXR session without awaiting an import.
+  const lib = useRef<ArLib | null>(null);
   useEffect(() => {
     let live = true;
     void arMode(browserArEnv()).then((m) => live && setMode(m));
@@ -46,9 +51,9 @@ export function ViewInRoomButton() {
         void prepareAr(async () => {
           const root = arRoot();
           if (!root) return null;
-          const ar = await lazy();
+          const ar = (lib.current ??= await lazy());
           return ar.arStats(ar.arModel(root));
-        }).then((p) => live && setPrep(p));
+        }, project.panels.length).then((p) => live && setPrep(p));
       }),
     );
     return () => {
@@ -64,7 +69,7 @@ export function ViewInRoomButton() {
     setBusy(true);
     setFailed(null);
     const msg = await openAr(async () => {
-      const ar = await lazy();
+      const ar = lib.current ?? (lib.current = await lazy());
       const model = ar.arModel(root);
       if (mode === "quicklook") return ar.openQuickLook(model, project.name, AR_CAP_BYTES);
       await ar.startWebXR(model, () => undefined);
@@ -74,7 +79,7 @@ export function ViewInRoomButton() {
     else setFailed(msg);
     setBusy(false);
   };
-  const note = failed ?? refused ?? (prep?.size ? `Stands ${prep.size} in your room, at true size.` : "Measuring…");
+  const note = moved ? NOT_WHOLE : failed ?? refused ?? (prep?.size ? `Stands ${prep.size} in your room, at true size.` : "Measuring…");
   return (
     <div className="mt-2 flex flex-col items-start gap-1.5">
       <button
@@ -87,7 +92,7 @@ export function ViewInRoomButton() {
       >
         {busy ? "Opening…" : "View in your room"}
       </button>
-      <p id="yard-ar-note" data-yard-ar-note={failed ? "failed" : refused ? "refused" : prep ? "size" : "measuring"} role="status" className="max-w-[18rem] text-[11px] leading-snug text-muted">
+      <p id="yard-ar-note" data-yard-ar-note={moved ? "moved" : failed ? "failed" : refused ? "refused" : prep ? "size" : "measuring"} role="status" className="max-w-[18rem] text-[11px] leading-snug text-muted">
         {note}
       </p>
     </div>

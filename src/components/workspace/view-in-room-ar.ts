@@ -28,9 +28,13 @@ function partOf(o: THREE.Object3D): string | null {
   return null;
 }
 
-/** The surface as built: colour, grain, roughness and glass kept; the step glow dropped (real tone, not the cue). */
-function arMaterial(src: THREE.Material, tint: THREE.Color | null, cache: Map<string, THREE.MeshStandardMaterial>) {
-  const key = `${src.uuid}|${tint?.getHexString() ?? ""}`;
+/**
+ * The surface as built: colour, grain, roughness and glass kept; the step glow dropped (real tone, not the
+ * cue). A part the bench is ghosting (a step or Watch it build dims it to 0.16) goes at full opacity: only
+ * real glass stays see-through.
+ */
+function arMaterial(src: THREE.Material, tint: THREE.Color | null, cache: Map<string, THREE.MeshStandardMaterial>, ghost = false) {
+  const key = `${src.uuid}|${tint?.getHexString() ?? ""}|${ghost ? 1 : 0}`;
   let m = cache.get(key);
   if (m) return m;
   const s = src as THREE.MeshStandardMaterial;
@@ -41,8 +45,8 @@ function arMaterial(src: THREE.Material, tint: THREE.Color | null, cache: Map<st
     map: drawable ? s.map : null,
     roughness: s.roughness ?? 0.8,
     metalness: s.metalness ?? 0,
-    transparent: s.transparent && s.opacity < 1,
-    opacity: s.opacity ?? 1,
+    transparent: !ghost && s.transparent && s.opacity < 1,
+    opacity: ghost ? 1 : s.opacity ?? 1,
     side: s.side,
   });
   cache.set(key, m);
@@ -66,13 +70,15 @@ export function arModel(root: THREE.Object3D): THREE.Group {
   const tint = new THREE.Color();
   const m4 = new THREE.Matrix4();
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, world: THREE.Matrix4, part: string | null) => {
-    const mesh = new THREE.Mesh(geo.clone().applyMatrix4(world), arMaterial(mat, null, cache));
+    const mesh = new THREE.Mesh(geo.clone().applyMatrix4(world), arMaterial(mat, null, cache, !!part && ghosted));
     mesh.name = part ? `part:${part}` : "detail";
     if (part) mesh.userData.yardPart = part;
     out.add(mesh);
   };
+  let ghosted = false;
   const walk = (o: THREE.Object3D) => {
     if (!o.visible || o.userData?.yardScale || isLine(o)) return;
+    ghosted = !!o.userData?.yardGhost;
     const mesh = o as THREE.Mesh;
     const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     if (mesh.isMesh && mesh.geometry && mat && mat.visible !== false && mesh.layers.isEnabled(0)) {
@@ -113,19 +119,21 @@ const USD_VERTEX = 88, USD_INDEX = 12, USD_TEXTURE = 64 * 1024;
  * and the file it makes: Quick Look's USDZ estimated from its vertex and index counts (within about 10% of
  * the real export; a tap still checks the real bytes).
  */
-export function arStats(model: THREE.Group): { inches: [number, number, number]; bytes: number } {
+export function arStats(model: THREE.Group): { inches: [number, number, number]; bytes: number; parts: number } {
   const s = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).divideScalar(INCH_M);
   let bytes = 0;
   const maps = new Set<string>();
+  const parts = new Set<string>();
   model.traverse((o) => {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
+    if (o.userData.yardPart) parts.add(o.userData.yardPart as string);
     const n = m.geometry.attributes.position.count;
     bytes += n * USD_VERTEX + (m.geometry.index?.count ?? n) * USD_INDEX;
     const map = (m.material as THREE.MeshStandardMaterial).map;
     if (map) maps.add(map.uuid);
   });
-  return { inches: [s.x, s.z, s.y], bytes: bytes + maps.size * USD_TEXTURE };
+  return { inches: [s.x, s.z, s.y], bytes: bytes + maps.size * USD_TEXTURE, parts: parts.size };
 }
 
 /**
@@ -154,7 +162,8 @@ export async function arGlb(model: THREE.Group): Promise<ArrayBuffer> {
 }
 
 /**
- * Android: an immersive-ar session with hit-test. A ring follows the floor; a tap stands the piece there at
+ * Android (Chrome with ARCore; WebXR, not Scene Viewer): an immersive-ar session with hit-test. The session
+ * is requested before anything else awaits, so it stays inside the tap's user activation. A ring follows the floor; a tap stands the piece there at
  * true size; a second tap moves it. Close (or the system back) ends it. Camera frames stay with the browser.
  */
 export async function startWebXR(model: THREE.Group, onEnd: () => void) {

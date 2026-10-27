@@ -14,12 +14,26 @@ export const arRoot = () => modelRoot;
 
 export type ArMode = "quicklook" | "webxr";
 type XrLike = { isSessionSupported?: (mode: string) => Promise<boolean> };
-type ArEnv = { document?: { createElement(tag: "a"): { relList?: { supports?(t: string): boolean } } }; xr?: XrLike | null; secure?: boolean };
+type ArEnv = {
+  document?: { createElement(tag: "a"): { relList?: { supports?(t: string): boolean } } };
+  xr?: XrLike | null;
+  secure?: boolean;
+  /** navigator.userAgent, navigator.platform, navigator.maxTouchPoints (for the iOS gate). */
+  ua?: string;
+  platform?: string;
+  touch?: number;
+};
 
-/** iOS Quick Look first (the a rel="ar" test), then WebXR immersive-ar (Android Chrome), else none. Never throws. */
+/** iPhone, iPad or iPod, or an iPad asking for the desktop site (MacIntel with touch), the model-viewer test. */
+export const isIOS = (env: ArEnv) => /iPad|iPhone|iPod/.test(env.ua ?? "") || (env.platform === "MacIntel" && (env.touch ?? 0) > 1);
+
+/**
+ * iOS Quick Look first (a rel="ar" supported AND an iOS device: desktop Mac Safari also answers the rel test
+ * but has no AR), then WebXR immersive-ar (Android Chrome with ARCore), else none. Never throws.
+ */
 export async function arMode(env: ArEnv): Promise<ArMode | null> {
   try {
-    if (env.document?.createElement("a").relList?.supports?.("ar")) return "quicklook";
+    if (isIOS(env) && env.document?.createElement("a").relList?.supports?.("ar")) return "quicklook";
   } catch {
     /* an old relList: no Quick Look */
   }
@@ -34,7 +48,8 @@ export async function arMode(env: ArEnv): Promise<ArMode | null> {
 /** The browser's own environment for arMode (none on the server). */
 export function browserArEnv(): ArEnv {
   if (typeof window === "undefined") return {};
-  return { document, xr: (navigator as Navigator & { xr?: XrLike }).xr ?? null, secure: window.isSecureContext };
+  const nav = navigator as Navigator & { xr?: XrLike };
+  return { document, xr: nav.xr ?? null, secure: window.isSecureContext, ua: nav.userAgent, platform: nav.platform, touch: nav.maxTouchPoints };
 }
 
 /**
@@ -59,18 +74,24 @@ export const sizeLine = (w: number, d: number, h: number) => `${inchText(w)} W Ã
 
 export const tooBig = (bytes: number) =>
   `This build is too detailed to open in AR (about ${mb(bytes)} MB; phones handle up to ${mb(AR_CAP_BYTES)} MB). It still builds and measures the same here.`;
+/** Shown (as text, under the chip) while the bench isn't showing the whole built piece. */
+export const NOT_WHOLE = "Close Watch it build, See inside, the step card or the open doors first, so the whole piece goes to your room.";
 export const FAILED = "AR didn't open on this phone. Nothing was sent. Try again, or try another phone.";
 
 /** What the lazy half reports for a model: its measured size in inches and its file size. */
-export type ArStats = { inches: [number, number, number]; bytes: number };
+export type ArStats = { inches: [number, number, number]; bytes: number; parts: number };
 /** The chip's line under it: the size it will stand at, or why it can't. */
 export type ArPrep = { size: string | null; refused: string | null };
 
-/** Never throws: a failed measure refuses with the plain message rather than leaving the chip silent. */
-export async function prepareAr(measure: () => Promise<ArStats | null>): Promise<ArPrep> {
+/**
+ * Never throws: a failed measure refuses with the plain message rather than leaving the chip silent. A model
+ * with fewer parts than the plan (a reveal or step hid some) is refused too: AR only gets the whole piece.
+ */
+export async function prepareAr(measure: () => Promise<ArStats | null>, planParts = 0): Promise<ArPrep> {
   try {
     const s = await measure();
     if (!s) return { size: null, refused: FAILED };
+    if (s.parts < planParts) return { size: null, refused: NOT_WHOLE };
     const size = sizeLine(...s.inches);
     return { size, refused: s.bytes > AR_CAP_BYTES ? tooBig(s.bytes) : null };
   } catch {
