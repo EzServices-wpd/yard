@@ -31,7 +31,7 @@ export function BuildScrubber() {
   const { open, k } = useSyncExternalStore(subscribeScrub, scrubState, scrubState);
   const track = useMemo(() => (pending ? null : scrubTrack(project, plan)), [project, plan, pending]);
   const [playing, setPlaying] = useState(false);
-  const n = track?.beats.length ?? 0;
+  const n = track?.positions ?? 0;
   const usable = !!track && !walking && !revealing;
 
   // Anything else taking the bench (a step view, See inside, a rebuild, walking) closes the scrubber.

@@ -10,7 +10,8 @@ import type { CatalogItem } from "@/lib/yard/types";
 
 export const SHOP_LIGHT = {
   ambient: 0.1,
-  hemi: { sky: "#ffe9cc", ground: "#14110d", fitted: 0.28, loose: 0.36 },
+  /** Ground bounce on the Night shop ground (SHOP_GROUND.bg), not a warm brown. */
+  hemi: { sky: "#ffe9cc", ground: "#131518", fitted: 0.28, loose: 0.36 },
   /** Warm shop lamp, low and from the side so it rakes across grain and edges. */
   key: { color: "#ffdcae", fitted: 2.3, loose: 2.0 },
   /** Cool fill: balances the warm key so whites (PVC, paint) and kraft stay neutral. */
@@ -26,6 +27,32 @@ export const SHOP_LIGHT = {
  * three.js can't read CSS variables, so these are the values, not new tokens. Colours only.
  */
 export const SHOP_GROUND = { bg: "#131518", floor: "#1c1f23", gridCell: "#131518", gridSection: "#2c3136" } as const;
+
+/**
+ * Bench inks and marks on Night shop B (scripts/bench-colors.test.ts keeps each equal to its src/styles.css token).
+ * Part materials and scale props keep their own real-world colours; these are the bench's drawn marks only.
+ */
+export const BENCH_INK = {
+  ink: "#eceae6", // --color-fg: Form (historic) ghost lines and the scale figure
+  stepEdge: "#7cb2ff", // --color-mark: edges of the current build step (chalk blue marks progress)
+  stepGlow: "#c4a574", // --color-warn's warm tan as a wood-tone lift (not a warning): lifts the step's parts without greying the wood
+  contact: "#000000", // the footprint shadow: absence of light, neutral on the cool ground (not a palette colour)
+} as const;
+
+/**
+ * Emissive intensity of BENCH_INK.stepGlow on the current build step's parts. A neutral (white) emissive greys the wood:
+ * --color-fg at 0.22 washed linen's lit faces from #bb9d67 (HSL saturation 0.38) to #ccbca2 (0.30), cat tree's from
+ * #c9a76a (0.47) to #d6c4a6 (0.37). A warm tan at 0.1 lifts them a little and keeps their saturation (measured on
+ * rendered pixels, PR #188). The step mainly reads through its chalk-blue edges and the faint ghost on every other part.
+ * scripts/bench-colors.test.ts keeps the step lift at or below 0.1.
+ */
+export const STEP_GLOW = { step: 0.1, selected: 0.14 } as const;
+
+/** The floor as rendered under the warm key (sampled from the 1440 linen bench), lighter than its --color-surface base. */
+export const SHOP_LIT_FLOOR = "#2f2c29";
+
+/** Mark line opacities: each reaches 3:1 on the bench bg, floor and lit floor (WCAG 1.4.11, non-text indicators). */
+export const MARK_ALPHA = { measure: 0.6, ghostMain: 0.8, ghostFine: 0.75 } as const;
 
 /** Raking key position: lower and further to the side than a studio key. */
 export function shopKeyPosition(span: number, height: number): [number, number, number] {

@@ -8,7 +8,7 @@ import path from "node:path";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
 import { buildOrder } from "../src/components/workspace/build-order";
-import { playGap, scrubCounter, scrubLabel, scrubShown, scrubState, scrubTrack, setScrub, subscribeScrub } from "../src/components/workspace/build-scrub";
+import { playGap, scrubBeat, scrubCounter, scrubLabel, scrubShown, scrubState, scrubTrack, setScrub, subscribeScrub } from "../src/components/workspace/build-scrub";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const read = (f: string) => fs.readFileSync(path.join(root, f), "utf8");
@@ -20,6 +20,36 @@ const deepFreeze = <T,>(o: T): T => {
   }
   return o;
 };
+const FINAL_CASES = [
+  "linen closet 31.5 wide 78 tall 16 deep",
+  "bookcase 36 wide 72 tall 12 deep",
+  "pocket vanity",
+  "3 ft popsicle stick eiffel tower",
+];
+for (const prompt of FINAL_CASES) {
+  test(`${prompt}: the end position reads the plan's final step (N of N); the others never pass it`, () => {
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const track = scrubTrack(project, plan)!;
+    const N = plan.instructions.length;
+    const n = track.positions;
+    const last = plan.instructions[N - 1];
+    assert.equal(last.step, N, "the plan numbers its steps 1..N");
+    assert.equal(scrubCounter(track, n), `Step ${N} of ${N}`, "a finished build reads N of N");
+    assert.equal(scrubLabel(track, n), `Step ${N} of ${N}: ${last.title}`, "aria-valuetext names the final step by its own title");
+    assert.equal(scrubShown(track, n), null, "and the end is still the default finished frame");
+    const nums = Array.from({ length: n }, (_, i) => scrubBeat(track, i + 1).step);
+    for (let i = 1; i < n; i++) assert.ok(nums[i] > nums[i - 1], `step numbers rise: ${nums.join(",")}`);
+    assert.deepEqual(nums.slice(0, track.beats.length), track.beats.map((b) => b.step), "every part-adding step keeps its own position (never dropped)");
+    assert.equal(n, track.beats.length + (track.beats[track.beats.length - 1].step === N ? 0 : 1), "one extra stop only when the final step adds nothing");
+    assert.ok(nums.every((x) => x >= 1 && x <= N), "never past N");
+    for (let k = 1; k <= n; k++) {
+      const b = scrubBeat(track, k);
+      assert.equal(b.title, plan.instructions.find((s) => s.step === b.step)!.title, `position ${k} names step ${b.step} by its own title`);
+    }
+  });
+}
+
 const CASES = [
   { prompt: "linen closet 31.5 wide 78 tall 16 deep", pieces: 11 },
   { prompt: "bookshelf 36 wide 72 tall 12 deep" },
@@ -41,10 +71,12 @@ for (const c of CASES) {
     for (const b of track.beats) assert.equal(b.title, plan.instructions.find((s) => s.step === b.step)!.title, "the label is the plan's own step title");
     assert.match(scrubLabel(track, 1), new RegExp(`^Step ${nums[0]} of ${plan.instructions.length}: `));
     // The visible counter is the plan's numbers, the same words the screen reader hears first.
+    const N = plan.instructions.length;
     for (let k = 1; k <= track.beats.length; k++) {
-      assert.equal(scrubCounter(track, k), `Step ${track.beats[k - 1].step} of ${plan.instructions.length}`);
+      assert.equal(scrubCounter(track, k), `Step ${track.beats[k - 1].step} of ${N}`, "a middle position names the step that made its change");
       assert.ok(scrubLabel(track, k).startsWith(`${scrubCounter(track, k)}: `), "counter and aria-valuetext agree");
     }
+    assert.ok(scrubLabel(track, track.positions).startsWith(`${scrubCounter(track, track.positions)}: `));
     for (const id of track.ids) assert.ok(track.at.get(id)! < track.beats.length, `${id} lands on a real beat`);
   });
 

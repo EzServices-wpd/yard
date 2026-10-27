@@ -22,7 +22,7 @@ import { CLOSE_MS, EXPLODE_MS, easeParts } from "@/components/workspace/explode-
 import { explodeClock, solvedVersion, subscribeSolved } from "@/components/workspace/explode-state";
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
-import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
+import { BENCH_INK, MARK_ALPHA, SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
 import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components/workspace/build-scrub";
@@ -38,7 +38,7 @@ const BENCH_BG = SHOP_GROUND.bg;
  * solid quads, which drew a hard dark square on the floor.
  */
 export const LINE_LAYER = 1;
-const HIST = "#d7cbb6";
+const HIST = BENCH_INK.ink;
 
 function StudioLights({
   project,
@@ -109,7 +109,7 @@ function FootprintShadow({ project }: { project: YardProject }) {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(box.minX + box.maxX) / 2, 0.02, (box.minZ + box.maxZ) / 2]} renderOrder={1}>
       <planeGeometry args={[w + pad * 2, d + pad * 2]} />
-      <meshBasicMaterial map={tex} transparent opacity={SHOP_LIGHT.contact} depthWrite={false} color="#000000" />
+      <meshBasicMaterial map={tex} transparent opacity={SHOP_LIGHT.contact} depthWrite={false} color={BENCH_INK.contact} />
     </mesh>
   );
 }
@@ -548,11 +548,11 @@ function CameraRig({
   return null;
 }
 
-function GhostLines({ strokes, color }: { strokes: ReturnType<typeof hullStrokes>; color: string }) {
+function GhostLines({ strokes, color, alpha = [0.18, 0.08] }: { strokes: ReturnType<typeof hullStrokes>; color: string; alpha?: [number, number] }) {
   return (
     <group>
       {strokes.map((s, i) => (
-        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.1 : 0.7} transparent opacity={s.weight === "main" ? 0.18 : 0.08} depthWrite={false} layers={LINE_LAYER} />
+        <Line key={`${color}-${i}`} points={s.points} color={color} lineWidth={s.weight === "main" ? 1.1 : 0.7} transparent opacity={s.weight === "main" ? alpha[0] : alpha[1]} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );
@@ -563,7 +563,7 @@ function MeasureGhost({ width, height, depth }: { width: number; height: number;
   return (
     <group>
       {pts.map((p, i) => (
-        <Line key={i} points={p} color={STAGE.mark} lineWidth={1} transparent opacity={0.38} depthWrite={false} layers={LINE_LAYER} />
+        <Line key={i} points={p} color={STAGE.mark} lineWidth={1} transparent opacity={MARK_ALPHA.measure} depthWrite={false} layers={LINE_LAYER} />
       ))}
     </group>
   );
@@ -870,7 +870,7 @@ function BenchScene({
   const focusOn = !reveal && cutFocus.size > 0;
   return (
     <group>
-      {showHull && <GhostLines strokes={hull} color={HULL} />}
+      {showHull && <GhostLines strokes={hull} color={HULL} alpha={[MARK_ALPHA.ghostMain, MARK_ALPHA.ghostFine]} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
