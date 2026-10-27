@@ -17,6 +17,7 @@ it("a typed width on a suspension bridge is its length, never its tower height",
   const p = generateFromPrompt("brooklyn bridge 138.5 wide 11.5 tall 6 deep");
   assert.ok(p.overall.width >= 138.5 && p.overall.width <= 141, `width ${p.overall.width}`);
   assert.ok(p.overall.height <= 12, `height ${p.overall.height}`);
+  assert.ok(p.overall.depth >= 6 && p.overall.depth <= 7.5, `typed depth 6 kept, got ${p.overall.depth}`);
   assert.ok(p.instances.length < 1000, `${p.instances.length} sticks`);
   const g = generateFromPrompt("golden gate bridge 200 wide 15 tall from popsicle sticks");
   assert.ok(g.overall.width >= 200 && g.overall.width <= 203, `golden gate width ${g.overall.width}`);
@@ -82,6 +83,7 @@ it("a runaway toothpick castle is refused, not a stack overflow, and is never cu
 
 it("scaledSizes scales typed sizes, rounds down in the unit typed, and leaves stock sizes alone", () => {
   assert.deepEqual(scaledSizes("brooklyn bridge 138.5 wide 11.5 tall", 0.5)?.words, ["69 1/4 wide", "5 3/4 tall"]);
+  assert.deepEqual(scaledSizes("brooklyn bridge 138.5 wide", 0.3)?.words, ["41 1/2 wide"]);
   assert.equal(scaledSizes("100 foot eiffel tower", 0.13)?.prompt, "13 foot eiffel tower");
   assert.equal(scaledSizes("2x4 bench 48 x 18 x 16", 0.5)?.prompt, "2x4 bench 24 x 9 x 8");
   assert.equal(scaledSizes("castle from toothpicks", 0.5), null);
