@@ -206,6 +206,10 @@ test("every typed plywood thickness is read or said: 'ply' is plywood, an off-li
   assert.match(notes("dollhouse 1/4 ply"), /1\/4" Plywood .* stays 1\/2" Plywood/);
   assert.equal(t("dollhouse 1/8 plywood"), "plywood-1-2-4x8");
   assert.match(notes("dollhouse 1/8 plywood"), /1\/8" plywood isn't on the stock list, so this dollhouse is cut from 1\/2" Plywood/);
+  // A picker switch wins over the typed thickness: the house is cut in the picked sheet, with no off-list note.
+  const picked = build("dollhouse 1/8 plywood", "plywood-3-4-4x8");
+  assert.equal(picked.primaryMaterialId, "plywood-3-4-4x8");
+  assert.ok(!picked.notes.some((n) => /1\/8"/.test(n)));
   // The title keeps the typed head noun (I24): "barbie dreamhouse" is a Dreamhouse.
   for (const q of ["barbie dreamhouse", "barbie dream house"]) {
     const p = build(q);
