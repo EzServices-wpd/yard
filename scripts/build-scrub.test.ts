@@ -167,3 +167,15 @@ test("framing: the closed button is not a bench card (default fit = no scrubber)
   assert.match(canvas, /overlayKey=\{`\$\{measureOpen \? 1 : 0\}\$\{activeStep \?\? ""\}\$\{scrubbing \? "s" : ""\}\|\$\{viewNonce\}`\}/, "closed: the same overlay key as release; open: a refit");
   assert.match(canvas, /locked \|\| scrubbing \? built : figureBox\(built, figure\)/, "the hidden figure is left out of the fit while scrubbing");
 });
+
+test("slider length: the range runs 1..track.positions (the extra final-step stop included), never 1..beats.length", () => {
+  // A build whose final step adds no parts has one more stop than part-adding beats; a slider sized by
+  // beats.length would end a step early ("Step 7 of 9" on a finished linen closet).
+  const linen = scrubTrack(generateFromPrompt(FINAL_CASES[0]), buildPlan(generateFromPrompt(FINAL_CASES[0])))!;
+  assert.equal(linen.positions, linen.beats.length + 1, "linen: the final step adds nothing, so positions = beats + 1");
+  const ui = read("src/components/workspace/build-scrubber.tsx");
+  assert.match(ui, /const n = track\?\.positions \?\? 0;/, "n is the track's positions");
+  const range = ui.slice(ui.indexOf('type="range"'), ui.indexOf("data-yard-scrub-slider"));
+  assert.match(range, /min=\{1\}\s*max=\{n\}/, "the slider runs 1..n");
+  assert.doesNotMatch(ui, /beats\.length/, "the scrubber UI never sizes anything by beats.length");
+});
