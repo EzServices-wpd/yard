@@ -25,6 +25,7 @@ import { fitPoints } from "@/components/workspace/explode-frame";
 import { SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
+import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components/workspace/build-scrub";
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 import { STAGE } from "@/components/workspace/stage-palette";
 
@@ -205,6 +206,7 @@ export function WorkspaceCanvas() {
   const detail = useYard((s) => s.detail);
   const viewNonce = useYard((s) => s.viewNonce);
   const pending = building || grokBusy;
+  const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
@@ -311,8 +313,9 @@ export function WorkspaceCanvas() {
           target={[0, 6, 0]}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
-        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk"} />
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}|${viewNonce}`} />
+        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
+        {/* The open Watch it build bar is a card the fit avoids (refit on open and close); the closed button is not. */}
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}|${viewNonce}`} />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
         <ExplodeTestHook project={project} />
@@ -329,13 +332,15 @@ type Glide = {
 };
 
 function CameraRig({
-  project, preset, stepIds, locked, overlayKey,
+  project, preset, stepIds, locked, overlayKey, scrubbing = false,
 }: {
   project: YardProject;
   preset: "iso" | "front" | "side" | "top";
   stepIds: string[];
   locked: boolean;
   overlayKey: string;
+  /** Watch it build is open: the scale figure is hidden, so the fit leaves it out (model stays centred). */
+  scrubbing?: boolean;
 }) {
   const { camera, controls, gl, size, scene, invalidate } = useThree();
   const projectRef = useRef(project);
@@ -428,7 +433,7 @@ function CameraRig({
       const built = cavity ? { ...shut, maxZ: shut.maxZ + pulled } : shut;
       const solved = explodeClock.solved;
       const exploded = staged && explode && !!solved && solved.key.split("|")[0] === projectRef.current.id;
-      const box = exploded || stepIds.length || locked ? built : figureBox(built, figure);
+      const box = exploded || stepIds.length || locked || scrubbing ? built : figureBox(built, figure);
       const base = benchView(projectRef.current, shut);
       // A shape-template animal faces +x: its front is the face, its side is the profile.
       const faceX = projectRef.current.shape?.classId === "quadruped";
@@ -517,7 +522,7 @@ function CameraRig({
       window.clearTimeout(t2);
     };
     // stepIds drive the step card (an overlay), so re-fit when the step changes.
-  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length]);
+  }, [preset, presetKey, project.id, project.panels, project.instances.length, project.overall, stepIds.join("|"), camera, controls, locked, size.width, size.height, gl, scene, overlayKey, explode, staged, invalidate, cavityKey, solvedV, figure, stepIds.length, scrubbing]);
   // While See inside or Operate is on, the free stage follows the cards: opening or closing the
   // tray (More) or a card resizing refits the model with a short glide (the window resizing refits via size), so it never sits
   // under a card or shrinks into a corner (Critic #98 row 106: Operate was fitted with the tray open, then stuck).
@@ -844,7 +849,12 @@ function BenchScene({
   // place here and the driver moves them. Stick builds keep the spread-out view.
   const staged = project.panels.length > 0;
   const panelScale = staged ? assemble : explodeScale;
-  const reveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  const stepReveal = useStepReveal(project, plan, project.panels.length + project.instances.length > 0 && !pending, stepping);
+  // Watch it build (build-scrub.ts): the scrubber's position draws through the reveal's outline/wood path.
+  const scrub = useSyncExternalStore(subscribeScrub, scrubState, scrubState);
+  const track = useMemo(() => (scrub.open && !pending ? scrubTrack(project, plan) : null), [scrub.open, pending, project, plan]);
+  const scrubbed = useMemo(() => (track && !stepping ? scrubShown(track, scrub.k) : null), [track, stepping, scrub.k]);
+  const reveal = stepReveal ?? scrubbed;
   const hull = useMemo(() => (showHull ? hullStrokes(project) : []), [showHull, project]);
   const historic = useMemo(() => (showHistoric ? historicStrokes(project) : []), [showHistoric, project]);
   const mw = parseInch(measure.width) || 0;
