@@ -8,7 +8,9 @@ import { buildOrder } from "./build-order";
  * the scale figure and props (#176) are not parts, so they are never in a beat or a count.
  */
 export type ScrubBeat = { step: number; title: string };
-export type ScrubTrack = { at: Map<string, number>; ids: string[]; beats: ScrubBeat[]; total: number };
+/** final: the plan's last step. The end position is the finished build, so it reads that step (9 of 9), not
+ * the last step that placed a part (doors at 7 of 9 would read as unfinished). */
+export type ScrubTrack = { at: Map<string, number>; ids: string[]; beats: ScrubBeat[]; total: number; final: ScrubBeat };
 
 export function scrubTrack(project: YardProject, plan: Pick<BuildPlan, "instructions" | "cutList"> | null | undefined): ScrubTrack | null {
   if (!plan?.instructions.length) return null;
@@ -16,7 +18,8 @@ export function scrubTrack(project: YardProject, plan: Pick<BuildPlan, "instruct
   if (n < 2 || stale) return null;
   const ids = [...project.panels.map((p) => p.id), ...project.instances.map((i) => i.id)].filter((id) => at.has(id));
   const beats = steps.map((s) => ({ step: plan.instructions[s].step, title: plan.instructions[s].title }));
-  return { at, ids, beats, total: plan.instructions.length };
+  const last = plan.instructions[plan.instructions.length - 1];
+  return { at, ids, beats, total: plan.instructions.length, final: { step: last.step, title: last.title } };
 }
 
 /**
@@ -36,8 +39,14 @@ export function scrubCounter(track: ScrubTrack, k: number): string {
 export function scrubLabel(track: ScrubTrack, k: number): string {
   return `${scrubCounter(track, k)}: ${scrubBeat(track, k).title}`;
 }
+/**
+ * The plan step position k names. Every position but the last is the step that made its change on the
+ * bench (steps that change nothing there are not positions of their own); the last is the plan's final
+ * step, because the finished build is what it shows. The title is always that same step's own title.
+ */
 export function scrubBeat(track: ScrubTrack, k: number): ScrubBeat {
-  return track.beats[Math.max(1, Math.min(track.beats.length, k)) - 1];
+  if (k >= track.beats.length) return track.final;
+  return track.beats[Math.max(1, k) - 1];
 }
 
 /** Play: one beat every 700 ms, the whole run held to about 8 s on a long build (never under 250 ms a beat). */
