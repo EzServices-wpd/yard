@@ -58,7 +58,8 @@ export function playGap(beats: number) {
 }
 
 /** Shared state: the DOM scrubber writes it, the WebGL bench reads it (no React context crosses the Canvas). */
-export type ScrubState = { open: boolean; k: number };
+/** rec: the 6 s share clip (share-clip.ts) is driving it, so the bar stays hidden (it is not in the clip or the fit). */
+export type ScrubState = { open: boolean; k: number; rec?: boolean };
 let state: ScrubState = { open: false, k: 0 };
 const subs = new Set<() => void>();
 export const scrubState = () => state;
