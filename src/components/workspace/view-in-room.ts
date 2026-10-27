@@ -6,6 +6,8 @@
  * handed to the phone's own viewer as a blob URL, and the camera feed never reaches the page.
  */
 import type { Object3D } from "three";
+import { useYard } from "@/lib/yard/store";
+import { scrubState } from "./build-scrub";
 
 /** The bench's model group (BenchScene), set by its ref. The scale figure and props are not inside it. */
 let modelRoot: Object3D | null = null;
@@ -79,9 +81,25 @@ export const NOT_WHOLE = "Close Watch it build, See inside, the step card or the
 export const FAILED = "AR didn't open on this phone. Nothing was sent. Try again, or try another phone.";
 
 /** What the lazy half reports for a model: its measured size in inches and its file size. */
-export type ArStats = { inches: [number, number, number]; bytes: number; parts: number };
+/** real: bytes is the real file's length (else the estimate, only ever used to pass far under the cap). */
+export type ArStats = { inches: [number, number, number]; bytes: number; parts: number; real?: boolean; boxSticks?: boolean };
 /** The chip's line under it: the size it will stand at, or why it can't. */
-export type ArPrep = { size: string | null; refused: string | null };
+export type ArPrep = { size: string | null; refused: string | null; boxSticks?: boolean };
+
+/** The bench isn't showing the whole built piece: See inside, a step card, open doors or Watch it build. */
+export function arMoved(s: { explode: boolean; activeStep: number | null; facesOpen: boolean } = useYard.getState(), scrub = scrubState()): boolean {
+  return s.explode || s.activeStep != null || s.facesOpen || scrub.open;
+}
+
+/** What the chip shows: hidden (no AR), its label, whether it can be tapped, and the line under it. */
+export function chipView(v: { mode: ArMode | null; parts: number; moved: boolean; busy: boolean; prep: ArPrep | null; failed: string | null }) {
+  if (!v.mode || v.parts === 0) return null;
+  const refused = v.prep?.refused ?? null;
+  const size = v.prep?.size ? `Stands ${v.prep.size} in your room, at true size.${v.prep.boxSticks ? " Sticks show as plain bars in AR." : ""}` : null;
+  const note = v.moved ? NOT_WHOLE : v.failed ?? refused ?? size ?? "Measuring…";
+  const kind = v.moved ? "moved" : v.failed ? "failed" : refused ? "refused" : v.prep ? "size" : "measuring";
+  return { label: v.busy ? "Opening…" : "View in your room", disabled: v.moved || v.busy || !v.prep || !!refused, note, kind };
+}
 
 /**
  * Never throws: a failed measure refuses with the plain message rather than leaving the chip silent. A model
@@ -91,9 +109,10 @@ export async function prepareAr(measure: () => Promise<ArStats | null>, planPart
   try {
     const s = await measure();
     if (!s) return { size: null, refused: FAILED };
-    if (s.parts < planParts) return { size: null, refused: NOT_WHOLE };
+    if (arMoved() || s.parts < planParts) return { size: null, refused: NOT_WHOLE };
     const size = sizeLine(...s.inches);
-    return { size, refused: s.bytes > AR_CAP_BYTES ? tooBig(s.bytes) : null };
+    // Only a real file's length refuses; an estimate never does.
+    return { size, refused: s.real && s.bytes > AR_CAP_BYTES ? tooBig(s.bytes) : null, boxSticks: !!s.boxSticks };
   } catch {
     return { size: null, refused: FAILED };
   }
@@ -107,4 +126,21 @@ export async function openAr(run: () => Promise<number | void>): Promise<string 
   } catch {
     return FAILED;
   }
+}
+
+/** The lazy half as the tap uses it (kept once the chip has measured). */
+export type TapLib<M> = {
+  openQuickLook(model: M, name: string, cap: number, made?: Uint8Array | null): Promise<number>;
+  startWebXR(model: M, onEnd: () => void): Promise<void>;
+};
+/**
+ * The tap. With the lazy half and the built model already in hand it runs with NO await before the session
+ * request, so Android's WebXR keeps the tap's user activation (Chrome drops it after an await that yields
+ * too long). Without them (measure not done) it says so instead of opening late.
+ */
+export function tapRun<M>(lib: TapLib<M> | null, built: { model: M; file: Uint8Array | null } | null, mode: ArMode, name: string): Promise<number | void> {
+  if (arMoved()) return Promise.reject(new Error("not whole"));
+  if (!lib || !built) return Promise.reject(new Error("not measured"));
+  if (mode === "quicklook") return lib.openQuickLook(built.model, name, AR_CAP_BYTES, built.file);
+  return lib.startWebXR(built.model, () => undefined);
 }

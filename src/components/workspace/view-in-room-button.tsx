@@ -8,11 +8,16 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useYard } from "@/lib/yard/store";
-import { scrubState, subscribeScrub } from "./build-scrub";
-import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMode, arRoot, browserArEnv, openAr, prepareAr, type ArMode, type ArPrep } from "./view-in-room";
+import { subscribeScrub } from "./build-scrub";
+import { AR_CAP_BYTES, FAILED, arMode, arMoved, arRoot, browserArEnv, chipView, openAr, prepareAr, tapRun, type ArMode, type ArPrep } from "./view-in-room";
 
 const lazy = () => import("./view-in-room-ar");
 type ArLib = Awaited<ReturnType<typeof lazy>>;
+type Built = Awaited<ReturnType<ArLib["arBuild"]>>;
+const subscribeMoved = (f: () => void) => {
+  const a = subscribeScrub(f), b = useYard.subscribe(f);
+  return () => (a(), b());
+};
 
 export function ViewInRoomButton() {
   const [mode, setMode] = useState<ArMode | null>(null);
@@ -22,10 +27,10 @@ export function ViewInRoomButton() {
   const project = useYard((s) => s.project);
   const parts = project.panels.length + project.instances.length;
   // See inside, a step card, Watch it build or open doors move, hide or dim parts: AR waits for the built piece.
-  const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
-  const moved = useYard((s) => s.explode || s.activeStep != null || s.facesOpen) || scrubbing;
+  const moved = useSyncExternalStore(subscribeMoved, () => arMoved(), () => false);
   // The lazy half, kept once measured, so a tap starts the WebXR session without awaiting an import.
   const lib = useRef<ArLib | null>(null);
+  const built = useRef<Built | null>(null);
   useEffect(() => {
     let live = true;
     void arMode(browserArEnv()).then((m) => live && setMode(m));
@@ -46,13 +51,15 @@ export function ViewInRoomButton() {
     let live = true;
     setPrep(null);
     setFailed(null);
+    built.current = null;
     const raf = requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         void prepareAr(async () => {
           const root = arRoot();
           if (!root) return null;
           const ar = (lib.current ??= await lazy());
-          return ar.arStats(ar.arModel(root));
+          built.current = await ar.arBuild(root, AR_CAP_BYTES);
+          return built.current;
         }, project.panels.length).then((p) => live && setPrep(p));
       }),
     );
@@ -61,39 +68,33 @@ export function ViewInRoomButton() {
       cancelAnimationFrame(raf);
     };
   }, [mode, parts, moved, project]);
-  if (!mode || parts === 0) return null;
-  const refused = prep?.refused ?? null;
+  const view = chipView({ mode, parts, moved, busy, prep, failed });
+  if (!view || !mode) return null;
   const open = async () => {
-    const root = arRoot();
-    if (!root || busy || refused) return;
+    if (view.disabled) return;
     setBusy(true);
     setFailed(null);
-    const msg = await openAr(async () => {
-      const ar = lib.current ?? (lib.current = await lazy());
-      const model = ar.arModel(root);
-      if (mode === "quicklook") return ar.openQuickLook(model, project.name, AR_CAP_BYTES);
-      await ar.startWebXR(model, () => undefined);
-    });
+    // No await before tapRun: the WebXR session is requested inside the tap.
+    const msg = await openAr(() => tapRun(lib.current, built.current, mode, project.name));
     // Over the cap on the real file: the chip stays refused with that reason, not a one-off error.
     if (msg && msg !== FAILED) setPrep((p) => ({ size: p?.size ?? null, refused: msg }));
     else setFailed(msg);
     setBusy(false);
   };
-  const note = moved ? NOT_WHOLE : failed ?? refused ?? (prep?.size ? `Stands ${prep.size} in your room, at true size.` : "Measuring…");
   return (
     <div className="mt-2 flex flex-col items-start gap-1.5">
       <button
         type="button"
         data-yard-ar={mode}
         onClick={() => void open()}
-        disabled={moved || busy || !prep || !!refused}
+        disabled={view.disabled}
         aria-describedby="yard-ar-note"
         className="min-h-11 rounded-md border border-border px-3 text-xs text-fg hover:bg-elevated disabled:opacity-50"
       >
-        {busy ? "Opening…" : "View in your room"}
+        {view.label}
       </button>
-      <p id="yard-ar-note" data-yard-ar-note={moved ? "moved" : failed ? "failed" : refused ? "refused" : prep ? "size" : "measuring"} role="status" className="max-w-[18rem] text-[11px] leading-snug text-muted">
-        {note}
+      <p id="yard-ar-note" data-yard-ar-note={view.kind} role="status" className="max-w-[18rem] text-[11px] leading-snug text-muted">
+        {view.note}
       </p>
     </div>
   );

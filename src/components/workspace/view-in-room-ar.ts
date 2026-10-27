@@ -60,7 +60,20 @@ function arMaterial(src: THREE.Material, tint: THREE.Color | null, cache: Map<st
  * 784-stick Eiffel is one light mesh, not 784 copies of a 468-vertex stick.
  * Leaves out lines, hidden click planes, anything off layer 0 (props) or under the scale layer.
  */
-export function arModel(root: THREE.Object3D): THREE.Group {
+/**
+ * The bench's rounded craft stick (stick-helpers flatBarGeometry: a unit ExtrudeGeometry, 468 vertices) is
+ * the only instanced extrude on the bench. AR can swap it for a plain unit box (24 vertices, indexed): the
+ * same instance matrix gives the same length, width, thickness, place and turn, only the rounded ends go.
+ */
+function isRoundedStick(g: THREE.BufferGeometry) {
+  if (g.type !== "ExtrudeGeometry") return false;
+  g.computeBoundingBox();
+  const s = g.boundingBox!.getSize(new THREE.Vector3());
+  return Math.abs(s.x - 1) < 1e-3 && Math.abs(s.y - 1) < 1e-3 && Math.abs(s.z - 1) < 1e-3;
+}
+let unitBox: THREE.BufferGeometry | null = null;
+
+export function arModel(root: THREE.Object3D, opts: { boxSticks?: boolean } = {}): THREE.Group {
   root.updateMatrixWorld(true);
   const out = new THREE.Group();
   out.name = "yard-ar-model";
@@ -85,7 +98,11 @@ export function arModel(root: THREE.Object3D): THREE.Group {
       const inst = o as THREE.InstancedMesh;
       if (inst.isInstancedMesh) {
         let geo = indexed.get(inst.geometry.uuid);
-        if (!geo) indexed.set(inst.geometry.uuid, (geo = inst.geometry.index ? inst.geometry : mergeVertices(inst.geometry)));
+        if (!geo) {
+          geo = opts.boxSticks && isRoundedStick(inst.geometry) ? (unitBox ??= new THREE.BoxGeometry(1, 1, 1)) : inst.geometry.index ? inst.geometry : mergeVertices(inst.geometry);
+          indexed.set(inst.geometry.uuid, geo);
+          if (geo === unitBox) out.userData.boxSticks = true;
+        }
         for (let i = 0; i < inst.count; i++) {
           inst.getMatrixAt(i, m4);
           if (inst.instanceColor) inst.getColorAt(i, tint);
@@ -136,13 +153,51 @@ export function arStats(model: THREE.Group): { inches: [number, number, number];
   return { inches: [s.x, s.z, s.y], bytes: bytes + maps.size * USD_TEXTURE, parts: parts.size };
 }
 
+const usdz = async (model: THREE.Group) => {
+  const { USDZExporter } = await import("three/examples/jsm/exporters/USDZExporter.js");
+  return new USDZExporter().parseAsync(model, { quickLookCompatible: true, maxTextureSize: 512 });
+};
+/** The estimate only ever passes a build without exporting when it is far under the cap (it is within ~15%). */
+const FAST = 0.6;
+export type ArBuilt = { model: THREE.Group; file: Uint8Array | null; bytes: number; real: boolean; boxSticks: boolean; inches: [number, number, number]; parts: number };
+
+/**
+ * What AR will get, and its REAL file size. Rounded sticks first; if their estimate is clearly over the cap,
+ * plain box sticks (same poses). A build is passed on the estimate alone only when it is far under the cap;
+ * anything nearer is exported for real (USDZ, the file Quick Look opens; Android gets the same model) and
+ * judged on its byte length, so a refusal is always the real number.
+ */
+export async function arBuild(root: THREE.Object3D, cap: number, exportFile: (m: THREE.Group) => Promise<Uint8Array> = usdz): Promise<ArBuilt> {
+  const tries: boolean[] = [false, true];
+  let last: ArBuilt | null = null;
+  for (const boxSticks of tries) {
+    const model = arModel(root, { boxSticks });
+    if (boxSticks && !model.userData.boxSticks) break; // no rounded sticks to swap: the first try stands
+    const st = arStats(model);
+    const base = { model, boxSticks: !!model.userData.boxSticks, inches: st.inches, parts: st.parts };
+    if (st.bytes <= cap * FAST) return { ...base, file: null, bytes: st.bytes, real: false };
+    // Clearly over even allowing for the estimate's error: go straight to box sticks (no wasted export).
+    if (!boxSticks && st.bytes > cap * 1.3) {
+      last = { ...base, file: null, bytes: st.bytes, real: false };
+      continue;
+    }
+    const file = await exportFile(model);
+    last = { ...base, file, bytes: file.byteLength, real: true };
+    if (file.byteLength <= cap) return last;
+  }
+  if (last && !last.real) {
+    const file = await exportFile(last.model);
+    last = { ...last, file, bytes: file.byteLength, real: true };
+  }
+  return last!;
+}
+
 /**
  * iOS: USDZ in memory, opened in Quick Look at fixed scale through an a rel="ar" link (blob URL, never
  * uploaded). Over the cap it is not opened; the real byte count comes back either way.
  */
-export async function openQuickLook(model: THREE.Group, name: string, cap: number): Promise<number> {
-  const { USDZExporter } = await import("three/examples/jsm/exporters/USDZExporter.js");
-  const bytes = await new USDZExporter().parseAsync(model, { quickLookCompatible: true, maxTextureSize: 512 });
+export async function openQuickLook(model: THREE.Group, name: string, cap: number, made?: Uint8Array | null): Promise<number> {
+  const bytes = made ?? (await usdz(model));
   if (bytes.byteLength > cap) return bytes.byteLength;
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "model/vnd.usdz+zip" }));
   const a = document.createElement("a");
