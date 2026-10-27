@@ -19,9 +19,9 @@ const NUM = "(one|single|two|double|three|triple|four|five|six|seven|eight|nine|
 /** The head noun is a dollhouse ("two story dollhouse", "dollhouse 2 floors", "dollhouse kit 1:12 scale"), never a dollhouse bed. */
 export function isDollhouse(prompt: string): boolean {
   const head = prompt.toLowerCase().split(/\s+(?:with|for|from|having|made|out\s+of|in)\s+/)[0]
-    .replace(new RegExp(`\\b${NUM}[\\s-]*(?:stor(?:e?ys?|ies)|levels?|floors?|rooms?)\\b|\\b(?:1\\s*[:/]\\s*\\d+\\s+)?scale\\b|\\bkits?\\b`, "g"), " ")
+    .replace(new RegExp(`\\b${NUM}[\\s-]*(?:stor(?:e?ys?|ies)|levels?|floors?|rooms?)\\b|\\b(?:1\\s*[:/]\\s*\\d+\\s+)?scale\\b|\\bkits?\\b|\\b(?:plywood|ply|mdf|hardboard|osb)\\b`, "g"), " ")
     .replace(/[\d./]+\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:[x×]|by|wide|tall|high|deep|long)?/g, " ").replace(/\s+/g, " ").trim();
-  return /\bdoll\s*-?\s*houses?$/.test(head);
+  return /\bdoll\s*-?\s*houses?$|\bbarbie\s+dream\s*-?\s*houses?$/.test(head);
 }
 
 /** Stock the dollhouse route leaves to its own builds (row 583: everything else builds the house in plywood). */
@@ -29,7 +29,7 @@ const CRAFT = /popsicle|craft\s*sticks?|\bsticks?\b|cardboard|card\s*board|foam|
 /** The plywood dollhouse: built for indoors, so outdoor words never switch on the exterior package (row 580). */
 export const plyDollhouse = (prompt: string) => isDollhouse(prompt) && !CRAFT.test(prompt.toLowerCase());
 /** Features often typed on a dollhouse that this one doesn't build; each is named in a note (row 581). */
-const EXTRAS = /\b(?:(an?|the)\s+)?(stairs|staircases?|stairways?|chimneys?|garages?|porch(?:es)?|balcon(?:y|ies)|elevators?|furniture|shutters|shingles|wallpaper|lights|lighting|fireplaces?|pools?)\b/g;
+const EXTRAS = /\b(?:(an?|the)\s+)?(stairs|staircases?|stairways?|chimneys?|garages?|porch(?:es)?|balcon(?:y|ies)|elevators?|furniture|shutters|shingles|wallpaper|lights|lighting|fireplaces?|pools?|flat\s+roofs?|fences?|(?<!back\s)yards?)\b/g;
 const MASS = /^(?:furniture|wallpaper|lighting|shingles|shutters|lights|stairs)$/;
 const SHEETLESS = /\b(mdf|hardboard|particle\s*board|osb|melamine)\b/;
 const OUTDOOR = /\b(?:outdoors?|outside|garden|patio|backyard|back\s*yard|exterior)\b/;
@@ -173,6 +173,7 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
   if (OUTDOOR.test(lower)) notes.push(`You asked for an outdoor ${lab}; this one is built for indoors, in interior plywood with an open front, so keep it under cover.`);
   for (const [, a, w] of lower.matchAll(EXTRAS)) if (!said.has(w) && said.add(w)) {
     const many = MASS.test(w) || /s$/.test(w);
+    if (/^flat/.test(w)) { notes.push(`You asked for a flat roof; this ${lab} has a ${deg}° gable roof instead.`); continue; }
     notes.push(`You asked for ${a ? `${a} ` : many ? "" : /^[aeiou]/.test(w) ? "an " : "a "}${w}; this ${lab} is built without ${many ? (/s$/.test(w) ? "them" : "it") : "one"} for now.`);
   }
   return { ...base, panels, notes, params: { storeys: S, rooms, dividers, doors, windows: cut.length, width: W, depth: D, height: H, eave: He, ridge: Hr, pitchDeg: deg, clear: c, thickness: T } };

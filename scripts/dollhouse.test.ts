@@ -138,6 +138,8 @@ test("count rule: any typed storey or room count is built as typed or refused wi
     else { assert.equal(p.shape?.params?.storeys, s, q); assert.equal(count(p, "Upper floor"), s - 1, q); assert.deepEqual(dollhouseIssues(p), [], q); }
   }
   assert.match(build("10 story dollhouse").refused ?? "", /needs at least 47 1\/2" tall/);
+  // Spelled counts past ten are read too (row 594).
+  for (const [q, n] of [["eleven story dollhouse 96 tall", 11], ["twelve story dollhouse 96 tall", 12]] as const) assert.equal(build(q).shape?.params?.storeys, n, q);
   assert.match(build("30 story dollhouse 96 tall").refused ?? "", /at most \d+ storeys fit/);
   const six = build("dollhouse with 6 rooms");
   assert.equal(count(six, "Room divider"), 4);
@@ -171,6 +173,12 @@ test("every variant prices every Buy line and passes the invariants; outdoor wor
   assert.deepEqual(barbie.overall, { width: 36, height: 48, depth: 14 });
   assert.ok(Number(barbie.shape?.params?.clear) >= 12, "a fashion doll stands in each storey");
   assert.equal(build("dollhouse 2 floors").shape?.params?.storeys, 2);
+  // Row 590: a stock typed without "from" and Barbie's dream house take the house; row 591: each unbuilt ask is named.
+  assert.match(notes("dollhouse 1/4 plywood"), /1\/4" Plywood .* stays 1\/2" Plywood/);
+  assert.equal(build("barbie dream house").shape?.params?.storeys, 2);
+  assert.deepEqual(build("barbie dream house").overall, { width: 36, height: 48, depth: 14 });
+  assert.match(notes("dollhouse with a flat roof"), /You asked for a flat roof; this dollhouse has a 45° gable roof instead\./);
+  assert.match(notes("dollhouse with a fence and a yard"), /a fence; .* without one.*a yard; .* without one/);
   // Craft stock keeps its own build, and its outdoor words still switch on the exterior package.
   assert.equal(plyDollhouse("outdoor popsicle stick dollhouse"), false);
 });
