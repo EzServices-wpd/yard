@@ -8,8 +8,11 @@ import path from "node:path";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
-import { arMode } from "../src/components/workspace/view-in-room";
-import { INCH_M, arGlb, arModel, quickLookHref } from "../src/components/workspace/view-in-room-ar";
+import { AR_CAP_BYTES, FAILED, arMode, inchText, openAr, prepareAr, sizeLine, tooBig } from "../src/components/workspace/view-in-room";
+import { INCH_M, arGlb, arModel, arStats, openQuickLook, quickLookHref } from "../src/components/workspace/view-in-room-ar";
+import { getCatalogItem } from "../src/lib/yard/catalog";
+import { toPrimitive } from "../src/lib/yard/geometry";
+import { applyMemberPose, flatBarGeometry } from "../src/components/workspace/stick-helpers";
 import { PROP_LAYER } from "../src/components/workspace/scale-props";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
@@ -104,20 +107,113 @@ test("wood keeps its real tone: colour and roughness carried, the step glow drop
   assert.equal(m.emissive.getHex(), 0, "no glow");
 });
 
-test("instanced sticks expand one by one at their own place and tint", () => {
+test("instanced sticks are baked one by one at their own place and tint, then joined into one indexed mesh", () => {
   const g = new THREE.Group();
   const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(0.375, 0.0625, 4.5), new THREE.MeshStandardMaterial({ color: "#ffffff" }), 3);
-  inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   [0, 10, 20].forEach((x, i) => {
     inst.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, 0, 0));
     inst.setColorAt(i, new THREE.Color("#e2c99a"));
   });
   g.add(inst);
   const ar = arModel(g);
-  assert.equal(ar.children.length, 3);
-  assert.ok(ar.children.every((c) => c.name === "member"));
+  assert.equal(ar.children.length, 1);
+  const m = ar.children[0] as THREE.Mesh;
+  assert.equal(m.name, "members");
+  assert.equal(m.userData.yardMembers, 3);
+  assert.ok(m.geometry.index, "indexed");
+  assert.equal(m.geometry.attributes.position.count, 3 * 24);
   close(sizeOf(ar).x, (20 + 0.375) * INCH_M, 1e-6, "span in metres");
-  assert.equal(((ar.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial).color.getHexString(), new THREE.Color("#e2c99a").getHexString());
+  assert.equal((m.material as THREE.MeshStandardMaterial).color.getHexString(), new THREE.Color("#e2c99a").getHexString());
+});
+
+/** The 3 ft Eiffel as the bench draws it: the craft cloud's flat-bar stick at each member's own pose. */
+function eiffelBench() {
+  const project = generateFromPrompt("3 ft popsicle stick eiffel tower");
+  const item = getCatalogItem(project.instances[0].catalogId)!;
+  const inst = new THREE.InstancedMesh(flatBarGeometry(), new THREE.MeshStandardMaterial({ color: "#e0b86a" }), project.instances.length);
+  const d = new THREE.Object3D();
+  project.instances.forEach((i, k) => {
+    applyMemberPose(d, i, toPrimitive(item, i.cutLength), false, 1, i.position, i.rotation, project.overall, true, false);
+    d.updateMatrix();
+    inst.setMatrixAt(k, d.matrix);
+  });
+  const g = new THREE.Group();
+  g.add(inst);
+  return { project, g, inst };
+}
+
+test("3 ft Eiffel: the export measures what the bench draws (14 3/8 W × 14 3/8 D × 37 1/4 H), not the plan's padded 15.2 × 37.4", () => {
+  const { project, g, inst } = eiffelBench();
+  // The bench's own vertices, each stick at its instance pose (exact, not the per-instance bounding boxes).
+  const box = new THREE.Box3(), v = new THREE.Vector3(), m = new THREE.Matrix4(), pos = inst.geometry.attributes.position;
+  for (let i = 0; i < inst.count; i++) {
+    inst.getMatrixAt(i, m);
+    for (let k = 0; k < pos.count; k++) box.expandByPoint(v.fromBufferAttribute(pos, k).applyMatrix4(m));
+  }
+  const bench = box.getSize(new THREE.Vector3());
+  const ar = arModel(g);
+  assert.equal((ar.children[0] as THREE.Mesh).userData.yardMembers, 784, "all 784 sticks");
+  const s = sizeOf(ar);
+  close(s.x / INCH_M, bench.x, 1e-3, "W = bench");
+  close(s.y / INCH_M, bench.y, 1e-3, "H = bench");
+  close(s.z / INCH_M, bench.z, 1e-3, "D = bench");
+  const st = arStats(ar);
+  assert.equal(sizeLine(...st.inches), `14 3/8" W × 14 3/8" D × 37 1/4" H`);
+  assert.equal(project.overall.width, 15.2, "the plan's number is the engine's own extent, wider than the drawn sticks");
+});
+
+test("3 ft Eiffel: refused with a named reason (about 20 MB, cap 8 MB); the estimate tracks the real USDZ", async () => {
+  const { g } = eiffelBench();
+  const ar = arModel(g);
+  const st = arStats(ar);
+  const { USDZExporter } = await import("three/examples/jsm/exporters/USDZExporter.js");
+  const real = (await new USDZExporter().parseAsync(ar, { quickLookCompatible: true })).byteLength;
+  assert.ok(Math.abs(st.bytes - real) / real < 0.15, `estimate ${st.bytes} vs real ${real}`);
+  const prep = await prepareAr(async () => st);
+  assert.equal(prep.size, `14 3/8" W × 14 3/8" D × 37 1/4" H`);
+  assert.match(prep.refused ?? "", /^This build is too detailed to open in AR \(about (19|20|21) MB; phones handle up to 8 MB\)\./);
+});
+
+test("normal builds are not refused: linen, bookcase, pocket vanity well under the cap", async () => {
+  for (const [prompt, line] of [
+    ["linen closet 31.5 wide 78 tall 16 deep", `31 1/2" W × 16 3/4" D × 78" H`],
+    ["bookcase 36 wide 72 tall 12 deep", null],
+    ["pocket vanity", null],
+  ] as const) {
+    const st = arStats(arModel(benchLike(prompt).model));
+    assert.ok(st.bytes < AR_CAP_BYTES / 4, `${prompt}: ${st.bytes}`);
+    const prep = await prepareAr(async () => st);
+    assert.equal(prep.refused, null, prompt);
+    if (line) assert.equal(prep.size, line);
+  }
+});
+
+test("size text: inches to the nearest 1/8 as the app writes them", () => {
+  assert.equal(inchText(78), `78"`);
+  assert.equal(inchText(14.35), `14 3/8"`);
+  assert.equal(inchText(16.75), `16 3/4"`);
+  assert.equal(inchText(0.5), `1/2"`);
+  assert.equal(inchText(31.49), `31 1/2"`);
+  assert.equal(sizeLine(31.5, 16.75, 78), `31 1/2" W × 16 3/4" D × 78" H`);
+  assert.equal(tooBig(21 * 1024 * 1024), "This build is too detailed to open in AR (about 21 MB; phones handle up to 8 MB). It still builds and measures the same here.");
+});
+
+test("failure paths: a throw, a missing model, an over-cap file all come back as plain words, never a throw", async () => {
+  assert.deepEqual(await prepareAr(async () => { throw new Error("WebGL lost"); }), { size: null, refused: FAILED });
+  assert.deepEqual(await prepareAr(async () => null), { size: null, refused: FAILED });
+  assert.equal(await openAr(async () => { throw new DOMException("NotAllowedError"); }), FAILED, "camera denied / session refused");
+  assert.equal(await openAr(async () => { throw new Error("USDZExporter: No valid image data"); }), FAILED, "export throws");
+  assert.equal(await openAr(async () => AR_CAP_BYTES + 1), tooBig(AR_CAP_BYTES + 1), "real file over the cap");
+  assert.equal(await openAr(async () => 300_000), null, "opened");
+  assert.equal(await openAr(async () => undefined), null, "WebXR started");
+  assert.match(FAILED, /didn't open/);
+});
+
+test("over the cap, Quick Look is never handed the file (no link, no blob URL)", async () => {
+  const { model } = benchLike("linen closet 31.5 wide 78 tall 16 deep");
+  // Node has no document or URL.createObjectURL for blobs here: reaching the link step would throw.
+  const bytes = await openQuickLook(arModel(model), "Linen", 1);
+  assert.ok(bytes > 1);
 });
 
 test("GLB round trip: GLTFLoader reads back every part and the same size in metres", async () => {
@@ -167,6 +263,8 @@ test("source guards: exporters load on tap; the figure and props stay outside th
   const bench = canvas.slice(canvas.indexOf("function BenchScene("));
   assert.match(bench, /<group ref=\{setArRoot\}>/, "the AR root is BenchScene's group");
   assert.doesNotMatch(bench, /ScaleLayer/, "the scale figure and props are not inside it");
+  assert.match(button, /if \(!mode \|\| parts === 0\) return null;/, "no AR reported: no chip at all");
+  assert.doesNotMatch(light + heavy + button, /console\.(error|warn|log)/, "failures are lines under the chip, not console output");
 });
 
 test("USDZ (Quick Look): metres, horizontal plane anchoring, one mesh per AR mesh", async () => {
