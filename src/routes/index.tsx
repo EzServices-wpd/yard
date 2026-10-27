@@ -37,12 +37,14 @@ const CHIPS = DREAMS.filter((d) => (CHIP_IDS as readonly string[]).includes(d.id
 const HOUSE = CHIPS.filter((d) => d.group === "house");
 const WEEKEND = CHIPS.filter((d) => d.group === "weekend");
 
-/** One class row for every build: sheet, board, round, pipe. A chip names the class, not a brand. */
+/** One class row for every build: sheet, board, round, pipe, craft stick, card. A chip names the class, not a brand. */
 const STOCKS = [
   { id: "sheet", label: "¾″ plywood", say: "¾″ plywood", append: "from 3/4 plywood" },
   { id: "board", label: "2×4 lumber", say: "2×4 lumber", append: "from 2x4" },
   { id: "round", label: "½″ dowel", say: "½″ dowel", append: "from 1/2 inch dowel" },
   { id: "pipe", label: "PVC pipe", say: "PVC pipe", append: "from 3/4 inch PVC" },
+  { id: "stick", label: "Popsicle sticks", say: "popsicle sticks", append: "from popsicle sticks" },
+  { id: "card", label: "Cardboard", say: "cardboard", append: "from cardboard" },
 ] as const;
 
 type StockId = (typeof STOCKS)[number]["id"];
@@ -232,7 +234,7 @@ function LandingPage() {
               ))}
             </g>
           </svg>
-          <p className="text-base font-medium text-ink">The plan the lumber aisle should have printed</p>
+          <p className="text-base font-medium text-ink">Free plans for anything you can build</p>
           <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
             {/* Words rise in once; the full line stays in the accessible name and the layout never shifts. */}
             {[["Think", "it", "up."], ["Yard", "works", "it", "out."]].map((line, li) => (
@@ -246,8 +248,8 @@ function LandingPage() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink sm:text-lg">
-            One model. Every cut, part and step.
+          <p className="mt-5 max-w-xl text-balance text-base leading-relaxed text-ink sm:text-lg">
+            Plywood or popsicle sticks, PVC or cardboard. One real model. Every part, cut and step.
           </p>
           <p className="mt-1 text-base italic text-ink">{TAGLINE}</p>
 
