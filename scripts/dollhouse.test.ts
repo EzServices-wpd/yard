@@ -52,6 +52,8 @@ test("the plan: every part cut and used in a step, steps in build order, one she
   // After the cut step, each part is first used in its own step, in build order: walls on the base, storeys, the back, the roof last.
   const first = (n: string) => plan.instructions.findIndex((s, i) => i > 0 && s.partsUsed?.includes(n));
   assert.deepEqual(["Side wall", "Room divider", "Back wall", "Roof panel"].map(first), order);
+  // Square side-wall tops carry the pitched roof on their outer edge only: the step says so (row 582).
+  assert.match(plan.instructions[order[3]].description, /rest on the outer edge of each side-wall top/);
   assert.deepEqual(plan.bom.filter((b) => /plywood/i.test(b.name)).map((b) => [b.catalogId, b.quantity]), [["plywood-1-2-4x8", 1]]);
   assert.ok(plan.bom.some((b) => /screws/.test(b.name)) && !plan.bom.some((b) => /shelf pins/.test(b.name)));
   const text = [...p.notes, ...plan.instructions.map((s) => s.description), ...plan.cutList.map((c) => c.notes ?? "")].join(" ");
