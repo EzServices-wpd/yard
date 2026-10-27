@@ -73,9 +73,10 @@ export function BuildScrubber() {
           setScrub({ open: true, k: still ? n : 1 });
           setPlaying(!still);
         }}
-        className="absolute bottom-3 left-3 z-10 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-surface/90 px-4 text-sm text-fg shadow-lg backdrop-blur hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        aria-label="Watch it build"
+        className="absolute right-3 top-12 z-20 inline-flex size-11 items-center justify-center gap-1.5 rounded-full border border-border bg-surface/90 text-sm text-fg shadow-lg backdrop-blur hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:top-3 sm:w-auto sm:px-4"
       >
-        <Play className="size-4" aria-hidden /> Watch it build
+        <Play className="size-4" aria-hidden /> <span className="max-sm:sr-only">Watch it build</span>
       </button>
     );
   }
@@ -87,7 +88,7 @@ export function BuildScrubber() {
       aria-label="Watch it build"
       data-yard-scrub={`${k}/${n}`}
       data-bench-overlay="scrub"
-      className="absolute bottom-3 left-1/2 z-20 w-[min(34rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-xl border border-border bg-surface/95 px-2 py-1.5 shadow-lg backdrop-blur"
+      className="absolute left-1/2 top-3 z-20 w-[min(34rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-xl border border-border bg-surface/95 px-2 py-1.5 shadow-lg backdrop-blur"
       onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } }}
     >
       <p className="truncate px-2 pt-0.5 text-xs text-muted" aria-hidden>
