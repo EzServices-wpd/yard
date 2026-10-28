@@ -1,6 +1,7 @@
 "use client";
 
 import { useCutFocus } from "@/components/workspace/cut-focus";
+import { setArRoot } from "@/components/workspace/view-in-room";
 import { Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, Environment } from "@react-three/drei";
@@ -29,6 +30,7 @@ import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 import { STAGE } from "@/components/workspace/stage-palette";
 import { measureBoxStrokes } from "@/components/workspace/measure-box";
+import { clipCentre, shareState, subscribeShare } from "@/components/workspace/share-clip";
 
 const HULL = STAGE.ghost;
 const BENCH_BG = SHOP_GROUND.bg;
@@ -208,6 +210,7 @@ export function WorkspaceCanvas() {
   const viewNonce = useYard((s) => s.viewNonce);
   const pending = building || grokBusy;
   const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
+  const sharing = useSyncExternalStore(subscribeShare, () => shareState().open, () => false);
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
@@ -315,8 +318,9 @@ export function WorkspaceCanvas() {
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
         <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
-        {/* The open Watch it build bar is a card the fit avoids (refit on open and close); the closed button is not. */}
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}|${viewNonce}`} />
+        {/* The open Watch it build bar and the open share sheet are cards the fit avoids (refit on open and close); closed, the key is release's. */}
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}${sharing ? "h" : ""}|${viewNonce}`} />
+        <ClipTurn />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
         <ExplodeTestHook project={project} />
@@ -324,6 +328,31 @@ export function WorkspaceCanvas() {
     </div>
   );
 }
+
+/**
+ * The share clip's one slow turn (share-clip.ts): while it records, the camera circles the orbit target from
+ * where it stood, centred in the frame (the clip has no cards, so the card shift is set aside); when the turn
+ * clears, the camera goes back to exactly that pose and shift. Idle, it does nothing.
+ */
+function ClipTurn() {
+  const { camera, controls, invalidate } = useThree();
+  const from = useRef<THREE.Vector3 | null>(null);
+  const shift = useRef<THREE.PerspectiveCamera["view"]>(null);
+  useEffect(() => subscribeShare(() => invalidate()), [invalidate]);
+  useFrame(() => {
+    const turn = shareState().turn;
+    const target = (controls as unknown as { target?: THREE.Vector3 } | null)?.target;
+    if (!target || (turn == null && !from.current)) return;
+    if (!from.current) from.current = camera.position.clone();
+    shift.current = clipCentre(camera as THREE.PerspectiveCamera, turn != null, shift.current);
+    camera.position.copy(target).add(from.current.clone().sub(target).applyAxisAngle(UP_Y, turn ?? 0));
+    camera.lookAt(target);
+    if (turn == null) from.current = null;
+    else invalidate();
+  });
+  return null;
+}
+const UP_Y = new THREE.Vector3(0, 1, 0);
 
 type Glide = {
   from: { pos: THREE.Vector3; tgt: THREE.Vector3; off: [number, number] };
@@ -869,7 +898,7 @@ function BenchScene({
   const cutFocus = useCutFocus();
   const focusOn = !reveal && cutFocus.size > 0;
   return (
-    <group>
+    <group ref={setArRoot}>
       {showHull && <GhostLines strokes={hull} color={HULL} alpha={[MARK_ALPHA.ghostMain, MARK_ALPHA.ghostFine]} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
       {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}

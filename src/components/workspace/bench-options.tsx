@@ -11,6 +11,7 @@ import { YardsMenu } from "./yards-menu";
 import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
 import { FIGURES, setScale, useScale } from "./scale-props";
+import { ViewInRoomButton } from "./view-in-room-button";
 import type { WorkMode } from "@/lib/yard/types";
 
 /** A refusal's material chip: it names that nothing was built and opens nothing (there is no stock to choose). */
@@ -280,6 +281,7 @@ export function BenchOptionsPanel({
               <Toggle on={scale.props} onClick={() => setScale({ props: !scale.props })} label="Props" />
             </div>
           )}
+          <ViewInRoomButton />
           <Row label="Camera">
             <Seg
               items={(["iso", "front", "side", "top"] as const).map((c) => ({ id: c, label: c === "iso" ? "3/4" : c[0].toUpperCase() + c.slice(1) }))}
