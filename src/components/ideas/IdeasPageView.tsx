@@ -101,7 +101,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
             </p>
           ) : null}
           {drawn.length > 0 ? (
-            <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {drawn.map((c, i) => <IdeaCard key={c.slug} card={c} href={buildHref(c.examplePrompt, flags)} eager={i < 4} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />)}
             </div>
           ) : null}
@@ -125,7 +125,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
               <h2 id="ideas-featured" className="font-display text-xl text-ink">Featured</h2>
               <ul className={ROW}>
                 {featured.map((c, i) => (
-                  <li key={c.slug} className={`shrink-0 snap-start lg:w-auto ${i === 0 ? "w-[72%] sm:w-[46%] lg:col-span-2 lg:row-span-2" : "w-[44%] sm:w-[30%]"}`}>
+                  <li key={c.slug} className={`shrink-0 snap-start lg:w-auto ${i === 0 ? "w-[72%] sm:w-[46%] lg:col-span-2 lg:row-span-2" : "w-[68%] sm:w-[40%]"}`}>
                     <IdeaCard card={c} href={buildHref(c.examplePrompt, flags)} eager={i === 0} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={feed.countsLive} />
                   </li>
                 ))}
@@ -193,7 +193,7 @@ function Group({ group, sub, showCount, ...rest }: { group: G; sub?: { label: st
       {v.top.length > 0 ? (
         <ul className={ROW}>
           {v.top.map((c) => (
-            <li key={c.slug} className="w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-auto">
+            <li key={c.slug} className="w-[68%] shrink-0 snap-start sm:w-[40%] lg:w-auto">
               <IdeaCard card={c} href={buildHref(c.examplePrompt, flags)} onOpen={(el) => onBuild(c.examplePrompt, el)} onIntent={onIntent && (() => onIntent(c.examplePrompt))} showCount={showCount} />
             </li>
           ))}

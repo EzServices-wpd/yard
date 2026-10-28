@@ -1,10 +1,10 @@
 {
  "corner": {
-  "v": "3f6e4278",
+  "v": "447f5460",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3233,
+  "bytes": 3657,
   "dims": {
    "width": 24,
    "height": 60,
@@ -12,11 +12,11 @@
   }
  },
  "corner-small": {
-  "v": "80f8309b",
+  "v": "ed813fa9",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3211,
+  "bytes": 3635,
   "dims": {
    "width": 6,
    "height": 60,
@@ -24,11 +24,11 @@
   }
  },
  "slope": {
-  "v": "b2366794",
+  "v": "40af44c4",
   "w": 480,
   "h": 360,
   "parts": 11,
-  "bytes": 4774,
+  "bytes": 5198,
   "dims": {
    "width": 48,
    "height": 60,
@@ -37,11 +37,11 @@
   "model": "/ideas/models/slope.74c4da1c.json"
  },
  "ldesk": {
-  "v": "e55a92ad",
+  "v": "bbce48e4",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3831,
+  "bytes": 4255,
   "dims": {
    "width": 60,
    "height": 30,
@@ -50,11 +50,11 @@
   "model": "/ideas/models/ldesk.d7a8c642.json"
  },
  "pocket": {
-  "v": "d65987b4",
+  "v": "b2245197",
   "w": 480,
   "h": 360,
   "parts": 50,
-  "bytes": 13867,
+  "bytes": 14291,
   "dims": {
    "width": 38,
    "height": 102,
@@ -63,11 +63,11 @@
   "model": "/ideas/models/pocket.31da6987.json"
  },
  "linen": {
-  "v": "42f80edf",
+  "v": "2eb28aba",
   "w": 480,
   "h": 360,
   "parts": 11,
-  "bytes": 4564,
+  "bytes": 4988,
   "dims": {
    "width": 31.5,
    "height": 78,
@@ -76,11 +76,11 @@
   "model": "/ideas/models/linen.53565c24.json"
  },
  "closet80": {
-  "v": "f49dc91b",
+  "v": "b43b738a",
   "w": 480,
   "h": 360,
   "parts": 16,
-  "bytes": 5713,
+  "bytes": 6137,
   "dims": {
    "width": 80,
    "height": 120,
@@ -89,11 +89,11 @@
   "model": "/ideas/models/closet80.e0dd295d.json"
  },
  "window": {
-  "v": "982c940a",
+  "v": "e2f00282",
   "w": 480,
   "h": 360,
   "parts": 15,
-  "bytes": 6239,
+  "bytes": 6663,
   "dims": {
    "width": 42,
    "height": 96,
@@ -102,11 +102,11 @@
   "model": "/ideas/models/window.0f073d5e.json"
  },
  "desk": {
-  "v": "612aad8e",
+  "v": "0d1354b0",
   "w": 480,
   "h": 360,
   "parts": 40,
-  "bytes": 11293,
+  "bytes": 11717,
   "dims": {
    "width": 60,
    "height": 29,
@@ -115,11 +115,11 @@
   "model": "/ideas/models/desk.264dc27f.json"
  },
  "island": {
-  "v": "400060b5",
+  "v": "3cc458f0",
   "w": 480,
   "h": 360,
   "parts": 22,
-  "bytes": 7099,
+  "bytes": 7523,
   "dims": {
    "width": 60,
    "height": 36,
@@ -128,11 +128,11 @@
   "model": "/ideas/models/island.4978e77f.json"
  },
  "radiator": {
-  "v": "ea998341",
+  "v": "ce867d88",
   "w": 480,
   "h": 360,
   "parts": 14,
-  "bytes": 5253,
+  "bytes": 5677,
   "dims": {
    "width": 36,
    "height": 30,
@@ -141,11 +141,11 @@
   "model": "/ideas/models/radiator.0e2c74be.json"
  },
  "bench": {
-  "v": "82c81b40",
+  "v": "76028c00",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3808,
+  "bytes": 4232,
   "dims": {
    "width": 48,
    "height": 18,
@@ -154,11 +154,11 @@
   "model": "/ideas/models/bench.0bc1354f.json"
  },
  "coatbench": {
-  "v": "b399f286",
+  "v": "d110ebb1",
   "w": 480,
   "h": 360,
   "parts": 20,
-  "bytes": 6656,
+  "bytes": 7080,
   "dims": {
    "width": 48,
    "height": 72,
@@ -167,11 +167,11 @@
   "model": "/ideas/models/coatbench.17dbda0e.json"
  },
  "headboard": {
-  "v": "7ea04d7e",
+  "v": "49b6a5a1",
   "w": 480,
   "h": 360,
   "parts": 1,
-  "bytes": 2191,
+  "bytes": 2615,
   "dims": {
    "width": 60,
    "height": 48,
@@ -180,11 +180,11 @@
   "model": "/ideas/models/headboard.2ad43382.json"
  },
  "bunk": {
-  "v": "66791da8",
+  "v": "2164d4ca",
   "w": 480,
   "h": 360,
   "parts": 50,
-  "bytes": 13860,
+  "bytes": 14284,
   "dims": {
    "width": 82,
    "height": 65,
@@ -193,11 +193,11 @@
   "model": "/ideas/models/bunk.e9746894.json"
  },
  "laundry": {
-  "v": "e4dedb9f",
+  "v": "15648c50",
   "w": 480,
   "h": 360,
   "parts": 13,
-  "bytes": 4994,
+  "bytes": 5418,
   "dims": {
    "width": 48,
    "height": 36,
@@ -206,11 +206,11 @@
   "model": "/ideas/models/laundry.6ff10cc9.json"
  },
  "windowseat": {
-  "v": "a7c6880d",
+  "v": "a7c57e0c",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4103,
+  "bytes": 4527,
   "dims": {
    "width": 60,
    "height": 18,
@@ -219,11 +219,11 @@
   "model": "/ideas/models/windowseat.be74f23c.json"
  },
  "sofatable": {
-  "v": "0f23826d",
+  "v": "3d5b8494",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4084,
+  "bytes": 4508,
   "dims": {
    "width": 48,
    "height": 30,
@@ -232,11 +232,11 @@
   "model": "/ideas/models/sofatable.700dd3d3.json"
  },
  "daybed": {
-  "v": "1a5a4451",
+  "v": "be5dbcd4",
   "w": 480,
   "h": 360,
   "parts": 12,
-  "bytes": 4791,
+  "bytes": 5215,
   "dims": {
    "width": 75,
    "height": 22,
@@ -245,11 +245,11 @@
   "model": "/ideas/models/daybed.04a1bc7b.json"
  },
  "round": {
-  "v": "01795bb2",
+  "v": "584843a8",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 7449,
+  "bytes": 7873,
   "dims": {
    "width": 40,
    "height": 30,
@@ -259,11 +259,11 @@
   "model": "/ideas/models/round.f87fd212.json"
  },
  "coffee": {
-  "v": "762a7d0a",
+  "v": "5801d400",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 7467,
+  "bytes": 7891,
   "dims": {
    "width": 48,
    "height": 18,
@@ -273,11 +273,11 @@
   "model": "/ideas/models/coffee.5d7b6443.json"
  },
  "shelves": {
-  "v": "8046fb2c",
+  "v": "a4c2dc3f",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4122,
+  "bytes": 4546,
   "dims": {
    "width": 36,
    "height": 24.75,
@@ -286,11 +286,11 @@
   "model": "/ideas/models/shelves.c170a5b6.json"
  },
  "jarshelf": {
-  "v": "071381e5",
+  "v": "6748b4fa",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4087,
+  "bytes": 4511,
   "dims": {
    "width": 24,
    "height": 18,
@@ -299,11 +299,11 @@
   "model": "/ideas/models/jarshelf.561578eb.json"
  },
  "wallcab": {
-  "v": "04d443cb",
+  "v": "85fef033",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3861,
+  "bytes": 4285,
   "dims": {
    "width": 24,
    "height": 30,
@@ -312,11 +312,11 @@
   "model": "/ideas/models/wallcab.8a2f8d10.json"
  },
  "uppercab": {
-  "v": "554e5305",
+  "v": "b04a9f9d",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3874,
+  "bytes": 4298,
   "dims": {
    "width": 30,
    "height": 30,
@@ -325,11 +325,11 @@
   "model": "/ideas/models/uppercab.d3d08fb7.json"
  },
  "coat": {
-  "v": "a84cb919",
+  "v": "029fba20",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3833,
+  "bytes": 4257,
   "dims": {
    "width": 36,
    "height": 12,
@@ -338,11 +338,11 @@
   "model": "/ideas/models/coat.68a0a38d.json"
  },
  "spice": {
-  "v": "e0feb505",
+  "v": "cae5f52e",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4079,
+  "bytes": 4503,
   "dims": {
    "width": 18,
    "height": 24,
@@ -351,11 +351,11 @@
   "model": "/ideas/models/spice.23dc812f.json"
  },
  "wine": {
-  "v": "64cf3410",
+  "v": "ba87401d",
   "w": 480,
   "h": 360,
   "parts": 19,
-  "bytes": 54693,
+  "bytes": 55117,
   "dims": {
    "width": 24,
    "height": 36,
@@ -364,11 +364,11 @@
   "model": "/ideas/models/wine.393a11e8.json"
  },
  "medicine": {
-  "v": "5b21c914",
+  "v": "6c9fcd3b",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4022,
+  "bytes": 4446,
   "dims": {
    "width": 16,
    "height": 24,
@@ -377,11 +377,11 @@
   "model": "/ideas/models/medicine.a560622e.json"
  },
  "ironing": {
-  "v": "85d15d46",
+  "v": "9ec9c6ec",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3824,
+  "bytes": 4248,
   "dims": {
    "width": 16,
    "height": 48,
@@ -390,11 +390,11 @@
   "model": "/ideas/models/ironing.1ee66cb3.json"
  },
  "laundryfold": {
-  "v": "fa6e5ab8",
+  "v": "cae6b642",
   "w": 480,
   "h": 360,
   "parts": 10,
-  "bytes": 4303,
+  "bytes": 4727,
   "dims": {
    "width": 48,
    "height": 36,
@@ -403,11 +403,11 @@
   "model": "/ideas/models/laundryfold.ee3c1ccb.json"
  },
  "hood": {
-  "v": "3894bd32",
+  "v": "9936ad30",
   "w": 480,
   "h": 360,
   "parts": 10,
-  "bytes": 4336,
+  "bytes": 4760,
   "dims": {
    "width": 30,
    "height": 24,
@@ -416,11 +416,11 @@
   "model": "/ideas/models/hood.8732a8db.json"
  },
  "tv": {
-  "v": "4e1607c0",
+  "v": "b23fcdc5",
   "w": 480,
   "h": 360,
   "parts": 14,
-  "bytes": 5230,
+  "bytes": 5654,
   "dims": {
    "width": 70,
    "height": 30,
@@ -429,11 +429,11 @@
   "model": "/ideas/models/tv.8b862694.json"
  },
  "basecab": {
-  "v": "9df3ba63",
+  "v": "92c4276f",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3830,
+  "bytes": 4254,
   "dims": {
    "width": 24,
    "height": 34.5,
@@ -442,11 +442,11 @@
   "model": "/ideas/models/basecab.4f214a01.json"
  },
  "shoerack": {
-  "v": "b5d9497b",
+  "v": "002d84ec",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3845,
+  "bytes": 4269,
   "dims": {
    "width": 36,
    "height": 18,
@@ -455,11 +455,11 @@
   "model": "/ideas/models/shoerack.ac5433df.json"
  },
  "pantry": {
-  "v": "e5518ecf",
+  "v": "26e439c4",
   "w": 480,
   "h": 360,
   "parts": 10,
-  "bytes": 4246,
+  "bytes": 4670,
   "dims": {
    "width": 24,
    "height": 84,
@@ -468,11 +468,11 @@
   "model": "/ideas/models/pantry.df37f6df.json"
  },
  "dresser": {
-  "v": "5eeb297c",
+  "v": "7991fe6d",
   "w": 480,
   "h": 360,
   "parts": 23,
-  "bytes": 7326,
+  "bytes": 7750,
   "dims": {
    "width": 60,
    "height": 36,
@@ -481,11 +481,11 @@
   "model": "/ideas/models/dresser.228867e9.json"
  },
  "nightstand": {
-  "v": "af5346a2",
+  "v": "2fe0d626",
   "w": 480,
   "h": 360,
   "parts": 11,
-  "bytes": 4499,
+  "bytes": 4923,
   "dims": {
    "width": 18,
    "height": 24,
@@ -494,11 +494,11 @@
   "model": "/ideas/models/nightstand.fd5a22dd.json"
  },
  "overtoilet": {
-  "v": "5e614dca",
+  "v": "b0b44203",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3601,
+  "bytes": 4025,
   "dims": {
    "width": 27,
    "height": 68,
@@ -507,11 +507,11 @@
   "model": "/ideas/models/overtoilet.65f32fc6.json"
  },
  "crate": {
-  "v": "1815031c",
+  "v": "fd3cad52",
   "w": 480,
   "h": 360,
   "parts": 19,
-  "bytes": 19287,
+  "bytes": 19711,
   "dims": {
    "width": 36,
    "height": 25,
@@ -616,11 +616,11 @@
   }
  },
  "bookcase": {
-  "v": "7ab723dc",
+  "v": "f67764c6",
   "w": 480,
   "h": 360,
   "parts": 10,
-  "bytes": 4304,
+  "bytes": 4728,
   "dims": {
    "width": 36,
    "height": 72,
@@ -629,11 +629,11 @@
   "model": "/ideas/models/bookcase.d63deb29.json"
  },
  "workbench": {
-  "v": "4f7d6ac2",
+  "v": "7115b350",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3578,
+  "bytes": 4002,
   "dims": {
    "width": 60,
    "height": 36,
@@ -642,11 +642,11 @@
   "model": "/ideas/models/workbench.ae058f79.json"
  },
  "birdhouse": {
-  "v": "4d3fd234",
+  "v": "18d12f32",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 4216,
+  "bytes": 4640,
   "dims": {
    "width": 6.875,
    "height": 11.8125,
@@ -655,11 +655,11 @@
   "model": "/ideas/models/birdhouse.94190074.json"
  },
  "raisedbed": {
-  "v": "3b4e4f38",
+  "v": "7a431f9f",
   "w": 480,
   "h": 360,
   "parts": 16,
-  "bytes": 5749,
+  "bytes": 6171,
   "dims": {
    "width": 48,
    "height": 16.5,
@@ -668,11 +668,11 @@
   "model": "/ideas/models/raisedbed.171e1a16.json"
  },
  "recipe-wall-mounted-mail-organizer": {
-  "v": "adeaa77f",
+  "v": "367cf774",
   "w": 480,
   "h": 360,
   "parts": 7,
-  "bytes": 3637,
+  "bytes": 4061,
   "dims": {
    "width": 12,
    "height": 14.1875,
@@ -681,11 +681,11 @@
   "model": "/ideas/models/recipe-wall-mounted-mail-organizer.87ed9387.json"
  },
  "recipe-water-wheel": {
-  "v": "6dc11bbc",
+  "v": "3b877e54",
   "w": 480,
   "h": 360,
   "parts": 24,
-  "bytes": 25026,
+  "bytes": 25450,
   "dims": {
    "width": 18,
    "height": 30.25,
@@ -694,11 +694,11 @@
   "model": "/ideas/models/recipe-water-wheel.353ff83b.json"
  },
  "recipe-abacus": {
-  "v": "502a709e",
+  "v": "643bd9fd",
   "w": 480,
   "h": 360,
   "parts": 58,
-  "bytes": 103482,
+  "bytes": 103906,
   "dims": {
    "width": 16,
    "height": 10.625,
@@ -707,11 +707,11 @@
   "model": "/ideas/models/recipe-abacus.fbb2f3cb.json"
  },
  "recipe-under-stairs-shelf": {
-  "v": "80eafc88",
+  "v": "cc2d4c41",
   "w": 480,
   "h": 360,
   "parts": 13,
-  "bytes": 5070,
+  "bytes": 5494,
   "dims": {
    "width": 48,
    "height": 72,
@@ -720,11 +720,11 @@
   "model": "/ideas/models/recipe-under-stairs-shelf.428b73a5.json"
  },
  "recipe-laptop-stand": {
-  "v": "63007874",
+  "v": "eed59774",
   "w": 480,
   "h": 360,
   "parts": 9,
-  "bytes": 4111,
+  "bytes": 4533,
   "dims": {
    "width": 11.375,
    "height": 6.3125,
@@ -733,11 +733,11 @@
   "model": "/ideas/models/recipe-laptop-stand.bea86200.json"
  },
  "recipe-utility-cart": {
-  "v": "642df52e",
+  "v": "e3a3f543",
   "w": 480,
   "h": 360,
   "parts": 11,
-  "bytes": 4581,
+  "bytes": 5005,
   "dims": {
    "width": 30,
    "height": 34,
@@ -746,11 +746,11 @@
   "model": "/ideas/models/recipe-utility-cart.0d84ce73.json"
  },
  "recipe-jewelry-box": {
-  "v": "f737246c",
+  "v": "bc5e2e76",
   "w": 480,
   "h": 360,
   "parts": 10,
-  "bytes": 4328,
+  "bytes": 4750,
   "dims": {
    "width": 10,
    "height": 3.4375,
@@ -759,11 +759,11 @@
   "model": "/ideas/models/recipe-jewelry-box.b7c3823b.json"
  },
  "recipe-bird-feeder": {
-  "v": "2202fcb9",
+  "v": "d93601fa",
   "w": 480,
   "h": 360,
   "parts": 11,
-  "bytes": 4576,
+  "bytes": 5000,
   "dims": {
    "width": 10,
    "height": 10.625,
@@ -772,11 +772,11 @@
   "model": "/ideas/models/recipe-bird-feeder.651b3a36.json"
  },
  "recipe-raised-garden-bed": {
-  "v": "3b4e4f38",
+  "v": "7a431f9f",
   "w": 480,
   "h": 360,
   "parts": 16,
-  "bytes": 5749,
+  "bytes": 6171,
   "dims": {
    "width": 48,
    "height": 16.5,
@@ -785,11 +785,11 @@
   "model": "/ideas/models/recipe-raised-garden-bed.171e1a16.json"
  },
  "recipe-outdoor-storage-bench": {
-  "v": "285d9daf",
+  "v": "f54d9c24",
   "w": 480,
   "h": 360,
   "parts": 25,
-  "bytes": 7835,
+  "bytes": 8257,
   "dims": {
    "width": 48,
    "height": 19.1875,
@@ -798,11 +798,11 @@
   "model": "/ideas/models/recipe-outdoor-storage-bench.ca8bbbbb.json"
  },
  "recipe-guitar-hanger": {
-  "v": "6efc26f3",
+  "v": "bfa5283b",
   "w": 480,
   "h": 360,
   "parts": 4,
-  "bytes": 7753,
+  "bytes": 8177,
   "dims": {
    "width": 5.5,
    "height": 10,
@@ -811,11 +811,11 @@
   "model": "/ideas/models/recipe-guitar-hanger.636e0ddf.json"
  },
  "recipe-standing-desk-converter": {
-  "v": "121610c5",
+  "v": "967689f6",
   "w": 480,
   "h": 360,
   "parts": 8,
-  "bytes": 3844,
+  "bytes": 4268,
   "dims": {
    "width": 30,
    "height": 16,
@@ -850,11 +850,11 @@
   "stock": "popsicle-standard"
  },
  "cat-tree": {
-  "v": "242b5c61",
+  "v": "dc79b6a2",
   "w": 480,
   "h": 360,
   "parts": 20,
-  "bytes": 6565,
+  "bytes": 6989,
   "dims": {
    "width": 20,
    "height": 48,
