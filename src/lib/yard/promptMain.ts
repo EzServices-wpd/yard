@@ -2025,6 +2025,59 @@ function stickFurnitureName(prompt: string, recipeName: string): string {
 }
 
 function neverEmpty(project: YardProject, item: CatalogItem, box: { width: number; height: number; depth: number }): YardProject {
+  // An open frame on cut-length stock always places its corner posts and rails; never zero parts.
+  if ((item.formFactor === "pipe" || item.formFactor === "round" || item.formFactor === "stick") && (project.kind === "frame" || project.kind === "ladder")) {
+    const W = Math.max(12, box.width);
+    const H = Math.max(12, box.height);
+    const D = Math.max(6, box.depth);
+    const join = item.preferredJoins?.[0] ?? "glue";
+    const instances = [];
+    // corner posts
+    for (let i = 0; i < 4; i++) {
+      const x = (i % 2 === 0 ? -W / 2 : W / 2);
+      const z = (i < 2 ? -D / 2 : D / 2);
+      instances.push({
+        id: createId("p"),
+        catalogId: item.id,
+        position: { x, y: H / 2, z },
+        rotation: { x: 0, y: 0, z: 0 },
+        cutLength: H,
+        role: "post",
+        join,
+        from: { x, y: 0, z },
+        to: { x, y: H, z },
+      });
+    }
+    // front and back top rails
+    instances.push({
+      id: createId("r"),
+      catalogId: item.id,
+      position: { x: 0, y: H, z: -D / 2 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: W,
+      role: "rail",
+      join,
+      from: { x: -W / 2, y: H, z: -D / 2 },
+      to: { x: W / 2, y: H, z: -D / 2 },
+    });
+    instances.push({
+      id: createId("r"),
+      catalogId: item.id,
+      position: { x: 0, y: H, z: D / 2 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: W,
+      role: "rail",
+      join,
+      from: { x: -W / 2, y: H, z: D / 2 },
+      to: { x: W / 2, y: H, z: D / 2 },
+    });
+    return {
+      ...project,
+      instances,
+      notes: ["Open frame of cut lengths at the typed size.", ...project.notes],
+    };
+  }
+
   const view = memberView(item);
   const assumed = `I don't have a dedicated ${project.name} recipe in ${item.name} yet. This is a close frame. Assumed ${box.width.toFixed(0)}" × ${box.depth.toFixed(0)}" × ${box.height.toFixed(0)}".`;
   if (KEEP_FORM.has(project.kind)) {
