@@ -24,6 +24,19 @@ const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine
 
 const L = { one4: "lumber-1x4-8", two4: "lumber-2x4-8", two6: "lumber-2x6-8", two8: "lumber-2x8-8", two10: "lumber-2x10-8", two12: "lumber-2x12-8", post4: "lumber-4x4-8", one6: "lumber-1x6-8" };
 
+/** A named board section is the member stock of a frame build; the class usual does not replace it. */
+function namedBoard(lower: string, switched?: string): { id: string; face: number; thick: number; label: string } | null {
+  if (switched === L.one4) return { id: L.one4, face: 3.5, thick: 0.75, label: "1×4" };
+  if (switched === L.one6) return { id: L.one6, face: 5.5, thick: 0.75, label: "1×6" };
+  if (switched === L.two4) return { id: L.two4, face: 3.5, thick: 1.5, label: "2×4" };
+  if (switched === L.two6) return { id: L.two6, face: 5.5, thick: 1.5, label: "2×6" };
+  if (/\b1\s*[x×]\s*4\b/.test(lower)) return { id: L.one4, face: 3.5, thick: 0.75, label: "1×4" };
+  if (/\b1\s*[x×]\s*6\b/.test(lower)) return { id: L.one6, face: 5.5, thick: 0.75, label: "1×6" };
+  if (/\b2\s*[x×]\s*4\b/.test(lower)) return { id: L.two4, face: 3.5, thick: 1.5, label: "2×4" };
+  if (/\b2\s*[x×]\s*6\b/.test(lower)) return { id: L.two6, face: 5.5, thick: 1.5, label: "2×6" };
+  return null;
+}
+
 /** The class, when the prompt names one of these frames and no craft stock or model scale. */
 export function outdoorFrameKind(prompt: string, materialOverride?: string): OutdoorFrame | null {
   const lower = prompt.toLowerCase();
@@ -236,19 +249,19 @@ export function buildGate(prompt: string, size?: { width: number; height: number
   return project(prompt, name, panels, W, H, 2.25, notes, L.two4);
 }
 
-type AFrame = { beamL: number; Hb: number; spread: number; beamId: string; bd: number; legId: string; legW: number; inset: number };
+type AFrame = { beamL: number; Hb: number; spread: number; beamId: string; bd: number; legId: string; legW: number; thick: number; inset: number };
 
 /** Doubled beam on edge riding on an A of two splayed legs at each end, a cross brace across each A at 40% height. */
-function aFramePanels({ beamL, Hb, spread, beamId, bd, legId, legW, inset }: AFrame): Panel[] {
+function aFramePanels({ beamL, Hb, spread, beamId, bd, legId, legW, thick, inset }: AFrame): Panel[] {
   const beamY = Hb - bd;
   const panels: Panel[] = [];
-  panels.push(panel("rail", "Top beam outer", -1.5, beamY, 0, 1.5, bd, beamL, beamId));
-  panels.push(panel("rail", "Top beam inner", 0, beamY, 0, 1.5, bd, beamL, beamId));
+  panels.push(panel("rail", "Top beam outer", -thick, beamY, 0, thick, bd, beamL, beamId));
+  panels.push(panel("rail", "Top beam inner", 0, beamY, 0, thick, bd, beamL, beamId));
   const legRun = spread / 2; // horizontal run from the apex to the foot
   const legLen = Math.hypot(legRun, beamY);
   const angle = Math.round((Math.atan2(beamY, legRun) * 180) / Math.PI);
   const across = legW * (legLen / beamY); // horizontal width of the sloped leg
-  for (const [e, z] of [[1, inset], [2, beamL - inset - 1.5]] as const) {
+  for (const [e, z] of [[1, inset], [2, beamL - inset - thick]] as const) {
     for (const side of [-1, 1]) {
       // Legs meet at the apex under the beam centre, so the beam bears on both leg tops.
       const footX = side < 0 ? -spread / 2 : spread / 2 - across;
@@ -257,9 +270,9 @@ function aFramePanels({ beamL, Hb, spread, beamId, bd, legId, legW, inset }: AFr
       const w = Math.max(footX, topX) + across - minX;
       const pts: [number, number][] = [[footX - minX, 0], [footX - minX + across, 0], [topX - minX + across, beamY], [topX - minX, beamY]];
       panels.push(
-        panel("upright", `A-frame ${e} leg ${side < 0 ? "left" : "right"}`, minX, 0, z, w, beamY, 1.5, legId, {
+        panel("upright", `A-frame ${e} leg ${side < 0 ? "left" : "right"}`, minX, 0, z, w, beamY, thick, legId, {
           polygon: { plane: "xy", pts },
-          blank: { lengthIn: Math.ceil((legLen + legW * (legRun / beamY)) * 8) / 8, widthIn: legW, thicknessIn: 1.5 },
+          blank: { lengthIn: Math.ceil((legLen + legW * (legRun / beamY)) * 8) / 8, widthIn: legW, thicknessIn: thick },
           cutNote: `Cut ${inchFrac(legLen)}" long with both ends at ${angle}° — level on the ground, tight under the beam.`,
         }),
       );
@@ -267,7 +280,7 @@ function aFramePanels({ beamL, Hb, spread, beamId, bd, legId, legW, inset }: AFr
     // Cross brace across the A at 40% of the height, on the inside face of the legs.
     const by = beamY * 0.4;
     const halfAt = (spread / 2) * (1 - by / beamY);
-    panels.push(panel("rail", `A-frame ${e} cross brace`, -halfAt, by, e === 1 ? z + 1.5 : z - 1.5, halfAt * 2, legW, 1.5, legId));
+    panels.push(panel("rail", `A-frame ${e} cross brace`, -halfAt, by, e === 1 ? z + thick : z - thick, halfAt * 2, legW, thick, legId));
   }
   return panels;
 }
@@ -284,7 +297,7 @@ export function buildSwingSet(prompt: string, size?: { width: number; height: nu
   const Hb = Math.min(94, size?.height ?? axis(lower, /tall|high|height/) ?? 92);
   const spread = size?.width ?? Math.round(Hb * 0.75);
   const swings = Math.max(1, Math.min(4, num(lower, /(\d)\s*swings?/) ?? (beamL >= 96 ? 2 : 1)));
-  const panels = aFramePanels({ beamL, Hb, spread, beamId: "lumber-2x10-10", bd: 9.25, legId: L.two6, legW: 5.5, inset: 0.5 });
+  const panels = aFramePanels({ beamL, Hb, spread, beamId: "lumber-2x10-10", bd: 9.25, legId: L.two6, legW: 5.5, thick: 1.5, inset: 0.5 });
   // The steel A-frame bracket at each end wraps the beam and the leg tops.
   for (const [i, z] of [[1, 0], [2, beamL - 2]] as const) panels.push(panel("rail", `A-frame bracket ${i}`, -2, Hb - 9.25 - 4, z, 5, 4, 2, "swing-a-frame-bracket"));
   const name = `Swing set ${ft(beamL)} beam × ${ft(Hb)} tall`;
@@ -296,20 +309,21 @@ export function buildSwingSet(prompt: string, size?: { width: number; height: nu
   return project(prompt, name, panels, spread, Hb, beamL, notes, L.two6);
 }
 
-/** Sawhorse: the same A-frame at shop scale — a doubled 2×4 top on edge, splayed 2×4 legs, a 2×4 brace across each A. */
-export function buildSawhorse(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+/** Sawhorse: the same A-frame at shop scale — a doubled top on edge, splayed legs, a brace across each A. A named board section is the member stock. */
+export function buildSawhorse(prompt: string, size?: { width: number; height: number; depth: number }, switched?: string): YardProject {
   const lower = prompt.toLowerCase();
   const small = /\b(?:mini|small|low|short)\s+saw\s*horses?\b/.test(lower);
   const beamL = Math.min(96, size?.depth ?? axis(lower, /long|length|wide|width/) ?? (small ? 24 : 36));
   const Hb = Math.min(40, size?.height ?? axis(lower, /tall|high|height/) ?? (small ? 18 : 30));
   const spread = size?.width ?? Math.round(Hb * 0.7);
-  const panels = aFramePanels({ beamL, Hb, spread, beamId: L.two4, bd: 3.5, legId: L.two4, legW: 3.5, inset: 3 });
+  const board = namedBoard(lower, switched) ?? { id: L.two4, face: 3.5, thick: 1.5, label: "2×4" };
+  const panels = aFramePanels({ beamL, Hb, spread, beamId: board.id, bd: board.face, legId: board.id, legW: board.face, thick: board.thick, inset: 3 });
   const name = `Sawhorse ${inchFrac(beamL)}" × ${inchFrac(Hb)}"`;
   const notes = [
-    `${name}: a doubled 2×4 top on edge rides on an A of two splayed 2×4 legs at each end, ${inchFrac(spread)}" apart at the floor, with a 2×4 brace across each A at 40% of the height.`,
+    `${name}: a doubled ${board.label} top on edge rides on an A of two splayed ${board.label} legs at each end, ${inchFrac(spread)}" apart at the floor, with a ${board.label} brace across each A at 40% of the height.`,
     "Screw each leg to both top boards and each brace across its pair of legs. Build two, lay a sheet or a 2×10 across them for a work surface. Guidance only.",
   ];
-  return project(prompt, name, panels, spread, Hb, beamL, notes, L.two4);
+  return project(prompt, name, panels, spread, Hb, beamL, notes, board.id);
 }
 
 /** Typed 2× board for a picnic table's top and seats; 2×6 when none is typed. */
@@ -842,5 +856,5 @@ export function buildOutdoorFrame(prompt: string, kind: OutdoorFrame, size?: { w
   if (kind === "shed") return buildShed(prompt, size);
   if (kind === "picnic") return buildPicnicTable(prompt, size, switched);
   if (kind === "enclosure") return buildEnclosure(prompt, purposeOf(prompt.toLowerCase())!, size);
-  return kind === "deck" ? buildDeck(prompt, size) : kind === "gate" ? buildGate(prompt, size) : kind === "sawhorse" ? buildSawhorse(prompt, size) : buildSwingSet(prompt, size);
+  return kind === "deck" ? buildDeck(prompt, size) : kind === "gate" ? buildGate(prompt, size) : kind === "sawhorse" ? buildSawhorse(prompt, size, switched) : buildSwingSet(prompt, size);
 }
