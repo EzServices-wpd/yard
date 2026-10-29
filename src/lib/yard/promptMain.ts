@@ -958,8 +958,9 @@ function fitWeekendSize(
   const whole = wholeStickBuild(project);
   if (override) {
     if (!(override.width > 0) || !(override.height > 0) || !(override.depth > 0)) return project;
-    // A whole-stick build was rebuilt at this size by its own module count; it is never stretched.
-    if (whole) return quiet || !misses(project.overall, override) ? project : realSizeNote(project, override);
+    // A typed size is the finished outside even on thin member stock. Whole-stick mode does not shrink a typed envelope.
+    if (whole && misses(project.overall, override)) return scaleToBox(project, override);
+    if (whole) return project;
     return scaleToBox(project, override);
   }
   if (axisLabeled(prompt) && !whole) {
@@ -981,10 +982,9 @@ function fitWeekendSize(
   const target: Box3 = { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
   const proportionsOff = whole && typedAxes.length < 3 && misses(project.overall, target, 0.25);
   if (!misses(project.overall, want) && !proportionsOff) return project;
-  if (!whole) return scaleToBox(project, target);
-  const r = rebuild?.(target);
-  const pick = r && missBy(r.overall, want) <= missBy(project.overall, want) + 1e-6 ? r : project;
-  return misses(pick.overall, want) ? realSizeNote(pick, want) : pick;
+  // Typed size is the finished outside on thin member stock; do not shrink the envelope.
+  if (whole) return scaleToBox(project, target);
+  return scaleToBox(project, target);
 }
 
 /** Parts already inside the typed box — envelope padding is not a reason to shrink them. */
