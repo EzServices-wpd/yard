@@ -11,15 +11,27 @@ import { needsRecipeLookup } from "./recipeBuild";
 import { findRecipe } from "./recipes";
 import { UNIT_ITEM_NOTE } from "./unitItems";
 import type { YardProject } from "./types";
+import { getCatalogItem } from "./catalog";
 
 /** The marks a generic stand-in leaves: a placeholder, an unmatched body, a "simple X sized for it", the spine-only boat. */
 export function genericFormMark(p: YardProject): string | null {
   if (p.displayOnly) return "Not learned yet";
+  if (sheetShellOwns(p)) return null;
   const notes = (p.notes ?? []).join(" / ");
   if (/No class matched/.test(notes)) return "unmatched body";
   if (/Yard built an? .{1,80}? as a simple /.test(notes)) return "simple stand-in";
   if (p.kind === "vessel" && p.name === "Boat" && (p.instances?.length ?? 0) < 20) return "spine-only boat";
   return null;
+}
+
+/** A closed shell of faces on sheet stock is the engine's own build of the typed envelope. */
+export function sheetShellOwns(p: YardProject): boolean {
+  const item = getCatalogItem(p.primaryMaterialId);
+  if (!item) return false;
+  const sheet = item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods";
+  if (!sheet) return false;
+  if (p.displayOnly) return false;
+  return (p.panels?.length ?? 0) >= 4;
 }
 
 import { STOP, typedHeadNoun } from "./headNoun";
@@ -85,6 +97,8 @@ export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean)
  */
 export function routesToLearner(prompt: string, p: YardProject, half: boolean): boolean {
   if (findRecipe(prompt) || p.pocket) return false;
+  // A sheet shell of the typed envelope is the engine's own build; the learner does not replace it.
+  if (sheetShellOwns(p)) return false;
   if ((p.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE))) return false;
   // Critic 10-17: a build wins over the learner only when it is the asked-for form, never the generic fallback box.
   if (genericBoxOverAsk(prompt, p)) return true;
