@@ -83,10 +83,19 @@ export function engineKeepsPrompt(prompt: string, p: YardProject, half: boolean)
  * only when the engine has no form of its own: not a unit item, not an engine-library form, and the old checks
  * (craft stock nobody asked for, a build whose name shares no typed word) say so.
  */
+/** A non-empty sheet shell is the engine's own build of the typed envelope. */
+function isBuiltSheetShell(p: YardProject): boolean {
+  if (!p.panels || p.panels.length < 4 || p.displayOnly) return false;
+  const id = p.primaryMaterialId ?? "";
+  return /cardboard|sheet|plywood|chipboard|corrugated/i.test(id);
+}
+
 export function routesToLearner(prompt: string, p: YardProject, half: boolean): boolean {
   if (findRecipe(prompt) || p.pocket) return false;
   if ((p.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE))) return false;
   // Critic 10-17: a build wins over the learner only when it is the asked-for form, never the generic fallback box.
+  // A built sheet shell of the typed envelope is the engine's own form. The learner never replaces a non-empty sheet shell with a placeholder.
+  if (isBuiltSheetShell(p)) return false;
   if (genericBoxOverAsk(prompt, p)) return true;
   // Refiner :20: a closed storage carcase that holds the typed size and interior counts read the whole ask.
   if (closedCarcaseReadsAsk(prompt, p, () => (half ? ignoredTypedWords(p, prompt) : []))) return false;
