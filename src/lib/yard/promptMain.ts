@@ -1548,6 +1548,11 @@ function generateRaw(
   const anatomy = formOverride ? null : classAnatomy(prompt, item, kind);
   if (anatomy === "pet-bed") return enforceWeekendHonesty(withWireNote(attachFunction(buildPetBed(prompt, item)), item));
   if (anatomy === "box-figure") return enforceWeekendHonesty(withWireNote(attachFunction(buildBoxFigure(prompt, item, box, recipe.name)), item));
+  // A vehicle form on sheet stock builds as a tube of the typed envelope, not an empty wire.
+  if (kind === "vehicle" && (item.formFactor === "sheet" || item.category === "cardboard" || item.category === "sheet_goods")) {
+    const tubed = buildGeneralTubeProject(prompt, item, box, recipe.name);
+    if (tubed) return enforceWeekendHonesty(withWireNote(attachFunction(tubed), item));
+  }
   // An upright figure (robot, person) with no stock typed and only the generic mapped form: the class picks
   // folded cardboard boxes, the easy honest default, and the plan says how to change it.
   const noStockTyped = !materialOverride && isWireStock(detectMaterial(prompt)) && !/\bwire\b/i.test(prompt);
