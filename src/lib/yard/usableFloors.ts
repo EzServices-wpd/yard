@@ -231,7 +231,7 @@ function unclean(p: YardProject, base: () => Cleanness): string | null {
  * reaches into, and the zone the full count needs. A typed count is never cut (it is refused instead, tooSmall.ts);
  * only a default count shrinks, and the card says so.
  */
-export function shelvesThatFit(asked: number, zone: number, t: number): { fit: number; zoneFor: number } {
+export function shelvesWithHandRoom(asked: number, zone: number, t: number): { fit: number; zoneFor: number } {
   const fit = Math.max(0, Math.min(asked, Math.floor((zone + 1e-6) / (HAND_ROLLED_IN + t)) - 1));
   return { fit, zoneFor: (asked + 1) * (HAND_ROLLED_IN + t) };
 }

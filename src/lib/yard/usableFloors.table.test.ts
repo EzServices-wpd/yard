@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { checkBuild } from "./invariants";
 import { ungroundedParts } from "./grounded";
-import { USABLE_FLOORS, HAND_ROLLED_IN, floorFamily, floorOn, isCarcass, leastBay, shelvesThatFit, cleanness } from "./usableFloors";
+import { USABLE_FLOORS, HAND_ROLLED_IN, floorFamily, floorOn, isCarcass, leastBay, shelvesWithHandRoom, cleanness } from "./usableFloors";
 
 it("the floor table: every family, every axis, a number and a source", () => {
   for (const f of Object.values(USABLE_FLOORS)) {
@@ -37,9 +37,9 @@ it("the other families read from the same table", () => {
 });
 
 it("shelves that fit: a hand's room over each", () => {
-  assert.deepEqual(shelvesThatFit(5, 10.5, 0.75), { fit: 1, zoneFor: 27 });
-  assert.deepEqual(shelvesThatFit(3, 60, 0.75), { fit: 3, zoneFor: 18 });
-  assert.equal(shelvesThatFit(2, 4, 0.75).fit, 0);
+  assert.deepEqual(shelvesWithHandRoom(5, 10.5, 0.75), { fit: 1, zoneFor: 27 });
+  assert.deepEqual(shelvesWithHandRoom(3, 60, 0.75), { fit: 3, zoneFor: 18 });
+  assert.equal(shelvesWithHandRoom(2, 4, 0.75).fit, 0);
 });
 
 it("grounded.ts and I1 agree: the same parts reach neither the floor nor a wall, on every build probed", () => {
