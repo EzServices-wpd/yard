@@ -49,10 +49,26 @@ export function typedRooms(prompt: string): number | null {
   return m ? (WORDS[m[1]] ?? Number(m[1])) : null;
 }
 
-/** Only the axes the prompt types (axis words or a W x D x H string); the rest take the dollhouse's own defaults. */
+/**
+ * A typed plywood thickness: a fraction, decimal or mixed number ("3/4", ".5", "1 1/2", I35), or a whole 1" or 2" with its
+ * unit. A larger whole inch count ("21 inch plywood", "36\" plywood dollhouse") is the house's size, never a thickness:
+ * plywood isn't sold over 1 1/8", and every other Yard build reads a bare length as a size.
+ */
+export const PLY_THICKNESS = /(?<![\d./])(\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d*\.\d+|[12](?=\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)))\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?(?:plywood|ply)\b/;
+const UNIT_LEN = /\d\s*(?:"|''|'|-?\s*(?:in\b|inch|ft\b|feet|foot))/;
+
+/**
+ * Only the axes the prompt types (axis words or a W x D x H string); the rest take the dollhouse's own defaults. A bare
+ * length with no axis word ("36 inch dollhouse", "4 ft dollhouse") is the height, as the shared size reader takes it;
+ * a plywood thickness and a doll's own size ("for 18 inch dolls") size nothing.
+ */
 export function dollhouseTyped(prompt: string): { width?: number; height?: number; depth?: number } {
   const m = typedMeasures(prompt);
-  return { width: m.width ?? m.tuple?.[0], depth: m.depth ?? m.tuple?.[1], height: m.height ?? m.tuple?.[2] };
+  const s = prompt.toLowerCase().replace(/[″”]/g, '"').replace(new RegExp(PLY_THICKNESS.source, "g"), " ")
+    .replace(/\d+(?:\.\d+)?\s*-?\s*(?:"|in(?:ch(?:es)?)?\b\.?)\s*(?:[a-z]+\s+){0,2}?(?:dolls?|barbies?|figures?|figurines?)\b/g, " ");
+  const b = m.height ?? m.tuple ? null : s.match(/(?<![\d./x×:-])(\d+(?:\.\d+)?)\s*-?\s*(ft\b\.?|feet\b|foot\b|'|"|in\b\.?|inch(?:es)?\b)(?!\s*-?\s*(?:wide|width|deep|depth|tall|high|height|long|length|thick|x|×|by)\b)/);
+  const bare = b ? Number(b[1]) * (/^(?:f|')/.test(b[2]) ? 12 : 1) : undefined;
+  return { width: m.width ?? m.tuple?.[0], depth: m.depth ?? m.tuple?.[1], height: m.height ?? m.tuple?.[2] ?? bare };
 }
 
 const r16 = (n: number) => Math.round(n * 16) / 16;
@@ -180,6 +196,9 @@ export function buildDollhouse(prompt: string, item: CatalogItem, typed: { width
     if (/^flat/.test(w)) { notes.push(`You asked for a flat roof; this ${lab} has a ${deg}° gable roof instead.`); continue; }
     notes.push(`You asked for ${a ? `${a} ` : many ? "" : /^[aeiou]/.test(w) ? "an " : "a "}${w}; this ${lab} is built without ${many ? (/s$/.test(w) ? "them" : "it") : "one"} for now.`);
   }
+  // A typed length the header can't place on an axis ("36 inch", "1/2 inch plywood") leaves the untyped axes to these notes.
+  if (UNIT_LEN.test(lower)) for (const [a, v, w, n] of [["width", W, "wide", "width"], ["depth", D, "deep", "depth"], ["height", H, "tall", "height"]] as const)
+    if (typed[a] === undefined) notes.push(`Assumed ${f(v)}" ${w} (${lab} default) — type a ${n} to lock it.`);
   return { ...base, panels, notes, params: { storeys: S, rooms, dividers, doors, windows: cut.length, width: W, depth: D, height: H, eave: He, ridge: Hr, pitchDeg: deg, clear: c, thickness: T } };
 }
 

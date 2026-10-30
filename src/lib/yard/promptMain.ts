@@ -68,7 +68,7 @@ import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildRealObject, realObjectKind } from "./realObjects";
-import { dollhouseTyped, isDollhouse } from "./dollhouse";
+import { dollhouseTyped, isDollhouse, PLY_THICKNESS } from "./dollhouse";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
 import { positiveSentence } from "./positiveWording";
 import { purposeOf, titleWithPurpose } from "./purpose";
@@ -1355,9 +1355,9 @@ function generateRaw(
     // The typed thickness is read as a number ("3/4", "0.5", ".25"): a 4×8 plywood of that thickness is the typed
     // sheet; one not on the list (1/8", 5/8") is said, never swapped silently, and thinner than 1/2" builds in 1/2",
     // like 1/4". A picker switch to 1/2" or 3/4" wins; any other switch keeps the typed sheet and says so.
-    // A mixed number is one thickness ("1 1/2" is 1.5, "3 1/2" is 3.5, I35), never its fraction alone; a whole inch count is a thickness
-    // only with its unit ("1 inch", "3\"", "12 in"), whatever its size: a bare "2" is a count, and "21 inch" is never "1 inch".
-    const tm = bare.toLowerCase().match(/(?<![\d./])(\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d*\.\d+|\d+(?=\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)))\s*(?:"|-?\s*in(?:ch(?:es)?)?)?\s*(?:thick\s+)?plywood\b/);
+    // A mixed number is one thickness ("1 1/2" is 1.5, I35); a whole inch count is a thickness only as 1" or 2" with its
+    // unit ("1 inch", "2\""): a bare "2" is a count, and "21 inch" or "36\"" is the house's size (PLY_THICKNESS).
+    const tm = bare.toLowerCase().match(PLY_THICKNESS);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
     const tIn = tm ? num(tm[1].replace(/\s*\/\s*/g, "/")) : NaN;
     const typed = Number.isFinite(tIn);

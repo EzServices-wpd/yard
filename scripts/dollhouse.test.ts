@@ -7,6 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt, ignoredTypedWords } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
+import { headerTitle } from "../src/lib/yard/pdf";
 import { dollhouseIssues, plyDollhouse } from "../src/lib/yard/dollhouse";
 import { checkBuild } from "../src/lib/yard/invariants";
 import { offline } from "./eval-gate-lib";
@@ -226,16 +227,31 @@ test("every typed plywood thickness is read or said: 'ply' is plywood, an off-li
   assert.equal(t("dollhouse 1 1/8 inch plywood"), "plywood-3-4-4x8");
   assert.match(notes("dollhouse 3 1/2 plywood"), /3 1\/2" plywood isn't on the stock list/);
   for (const q of ["dollhouse 2 plywood", "2 story dollhouse plywood", "dollhouse 36 inch tall plywood"]) assert.doesNotMatch(notes(q), /stock list/, q);
-  // Any whole inch count with its unit is a typed thickness, not only 1 or 2 (row 626): "3 inch plywood" is said, never swapped silently.
-  for (const s of ["plywood", "ply"]) for (const u of [" inch", "\"", " in"]) {
-    const q = `dollhouse 3${u} ${s}`;
-    assert.equal(t(q), "plywood-3-4-4x8", q);
-    assert.match(notes(q), /3" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/, q);
-    assert.equal(build(q, "plywood-1-2-4x8").primaryMaterialId, "plywood-1-2-4x8", q);
-    assert.doesNotMatch(build(q, "plywood-1-2-4x8").notes.join(" "), /3" plywood/, q);
-    for (const sw of ["plywood-1-4-4x8", "popsicle-standard", "lumber-2x4-8"]) assert.match(build(q, sw).notes.join(" "), /stays 3\/4" Plywood/, `${q} ${sw}`);
+  // A whole inch count over 2 with its unit is the house's size, never a plywood thickness (plywood isn't sold over 1 1/8"):
+  // a bare length with no axis word is the height, as the shared size reader takes it, and the untyped axes say Assumed.
+  for (const n of [12, 21, 36]) for (const q of [`dollhouse ${n} inch plywood`, `${n}" plywood dollhouse`, `dollhouse ${n} in ply`]) {
+    const p = build(q);
+    assert.doesNotMatch(notes(q), /plywood isn't on the stock list/, q);
+    assert.equal(p.overall.height, n, q);
+    assert.equal(p.primaryMaterialId, "plywood-3-4-4x8", q);
+    assert.match(headerTitle(p), /\(W, D assumed\)$/, q);
+    assert.match(p.notes.join(" "), /Assumed 24" wide \(dollhouse default\)/, q);
   }
-  for (const n of ["12", "21", "36"]) assert.match(notes(`dollhouse ${n} inch plywood`), new RegExp(`(?<!\\d)${n}" plywood isn't on the stock list`), n);
+  for (const [q, h] of [["dollhouse 36 inch", 36], ["4 ft dollhouse", 48], ["36\" dollhouse", 36], ["dollhouse 4'", 48], ["three story dollhouse 4 feet", 48]] as const) {
+    assert.equal(build(q).overall.height, h, q);
+    assert.match(headerTitle(build(q)), /\(W, D assumed\)$/, q);
+  }
+  assert.equal(build("dollhouse 20 inch wide").overall.height, 30);
+  // A typed count is kept at the typed height: 5 storeys at 48" build (it was refused at the 30" default).
+  assert.equal(count(build("5 story dollhouse 48 inch plywood"), "Upper floor"), 4);
+  assert.match(build("dollhouse 3 inch plywood").refused ?? "", /needs at least 14 1\/2" tall/);
+  // A thickness is never read from inside another number: "1/12 3/4 plywood" (1:12 scale) is 3/4", never 12 3/4" (lookbehind).
+  assert.equal(t("dollhouse 1/12 3/4 plywood"), "plywood-3-4-4x8");
+  assert.doesNotMatch(notes("dollhouse 1/12 3/4 plywood"), /stock list/);
+  // A doll's own size and a plywood thickness size nothing; a default size typed with a thickness is marked assumed (row 615).
+  assert.equal(build("dollhouse for 18 inch dolls").overall.height, 30);
+  assert.match(headerTitle(build("dollhouse 1/2 inch plywood")), /\(size assumed\)$/);
+  assert.match(headerTitle(build("dollhouse 1 inch plywood")), /\(size assumed\)$/);
   assert.match(notes("dollhouse 1.5 plywood"), /1 1\/2" plywood isn't/);
   assert.match(notes("dollhouse 15/32 plywood"), /15\/32" plywood isn't/);
   for (const sw of ["plywood-1-4-4x8", "popsicle-standard", "lumber-2x4-8"]) {
