@@ -242,6 +242,18 @@ test("every typed plywood thickness is read or said: 'ply' is plywood, an off-li
     assert.match(headerTitle(build(q)), /\(W, D assumed\)$/, q);
   }
   assert.equal(build("dollhouse 20 inch wide").overall.height, 30);
+  // A mixed-number bare length is one height (r8 row 648), never dropped for the 30" default.
+  for (const [q, h] of [["dollhouse 30 1/2 inch", 30.5], ["dollhouse 36 1/2\"", 36.5], ["dollhouse 1 1/2 ft", 18], ["dollhouse 2 1/2 feet", 30]] as const) {
+    assert.equal(build(q).overall.height, h, q);
+    assert.doesNotMatch(notes(q), /Assumed 30" tall/, q);
+  }
+  // A whole count over 2 before "plywood" that is not the height is a thickness, and it is said (r8 row 649).
+  for (const q of ["dollhouse 36 tall 3 inch plywood", "dollhouse 36 inch 3 inch plywood", "dollhouse 24x12x30 4 inch ply"]) {
+    assert.match(notes(q), /\d" plywood isn't on the stock list, so this dollhouse is cut from 3\/4" Plywood/, q);
+    assert.equal(t(q), "plywood-3-4-4x8", q);
+  }
+  assert.equal(build("dollhouse 36 tall 3 inch plywood").overall.height, 36);
+  for (const q of ["3 story dollhouse 36 inch plywood", "dollhouse 12 story 96 inch plywood"]) assert.doesNotMatch(notes(q), /stock list/, q);
   // A typed count is kept at the typed height: 5 storeys at 48" build (it was refused at the 30" default).
   assert.equal(count(build("5 story dollhouse 48 inch plywood"), "Upper floor"), 4);
   assert.match(build("dollhouse 3 inch plywood").refused ?? "", /needs at least 14 1\/2" tall/);

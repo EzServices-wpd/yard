@@ -1357,7 +1357,10 @@ function generateRaw(
     // like 1/4". A picker switch to 1/2" or 3/4" wins; any other switch keeps the typed sheet and says so.
     // A mixed number is one thickness ("1 1/2" is 1.5, I35); a whole inch count is a thickness only as 1" or 2" with its
     // unit ("1 inch", "2\""): a bare "2" is a count, and "21 inch" or "36\"" is the house's size (PLY_THICKNESS).
-    const tm = bare.toLowerCase().match(PLY_THICKNESS);
+    // A whole count over 2 before "plywood" that the size reader did not take as the height ("dollhouse 36 tall 3 inch
+    // plywood") can only be a thickness: it is said, never dropped silently.
+    const whole = bare.toLowerCase().match(/(?<![\d./])(\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)\s*(?:thick\s+)?plywood\b/);
+    const tm = bare.toLowerCase().match(PLY_THICKNESS) ?? (whole && Number(whole[1]) !== dollhouseTyped(prompt).height ? whole : null);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
     const tIn = tm ? num(tm[1].replace(/\s*\/\s*/g, "/")) : NaN;
     const typed = Number.isFinite(tIn);
