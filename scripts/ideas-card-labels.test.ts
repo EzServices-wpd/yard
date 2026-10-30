@@ -6,11 +6,11 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import DRAWINGS from "../src/lib/ideas/drawings.json";
 import { formatSize } from "../src/lib/ideas/size";
-import { DRAW_H, DRAW_W, LABEL_BANDS, MAX_UNITS, cardLabels, labelBox, labelUnits } from "../src/lib/ideas/drawingLabels";
+import { CHIP_MAX, DRAW_H, DRAW_W, LABEL_BANDS, MAX_UNITS, WHITE_BOX, cardLabels, labelBox, labelUnits } from "../src/lib/ideas/drawingLabels";
 
 const m = DRAWINGS as Record<string, { v: string; bytes: number; dims: { width: number; height: number; depth: number; round?: true } }>;
 const svgs = Object.entries(m).map(([slug, e]) => [slug, fs.readFileSync(`public/ideas/drawings/${slug}.${e.v}.svg`, "utf8")] as const);
-const labels = (svg: string) => [...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)"[^>]*fill="rgb\((\d+),(\d+),(\d+)\)"[^>]*>([^<]*)<\/text>/g)];
+const labels = (svg: string) => [...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" text-anchor="(\w+)"[^>]*fill="rgb\((\d+),(\d+),(\d+)\)"[^>]*>([^<]*)<\/text>/g)];
 
 test("every labelled drawing carries the card label sheet, and its file name is still its hash", () => {
   let n = 0;
@@ -36,19 +36,35 @@ test("labels stay inside the drawing at the largest card size, never overlap eac
   for (const [slug, svg] of svgs) {
     const bg = svg.match(/<rect x="0" y="0" width="480" height="360"[^>]*fill="rgb\((\d+),(\d+),(\d+)\)"/);
     const boxes = labels(svg).map((x) => {
-      const b = labelBox(Number(x[1]), Number(x[2]), x[6], MAX_UNITS);
-      assert.ok(b[0] >= 0 && b[1] >= 0 && b[2] <= DRAW_W && b[3] <= DRAW_H, `${slug}: "${x[6]}" leaves the drawing at ${MAX_UNITS} units`);
+      const b = labelBox(Number(x[1]), Number(x[2]), x[7], MAX_UNITS, x[3]);
+      assert.ok(b[0] >= 0 && b[1] >= 0 && b[2] <= DRAW_W && b[3] <= DRAW_H, `${slug}: "${x[7]}" leaves the drawing at ${MAX_UNITS} units`);
       if (bg) {
-        const [a, c] = [lum([+x[3], +x[4], +x[5]]), lum([+bg[1], +bg[2], +bg[3]])];
-        assert.ok((Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05) >= 4.5, `${slug}: "${x[6]}" contrast`);
+        const [a, c] = [lum([+x[4], +x[5], +x[6]]), lum([+bg[1], +bg[2], +bg[3]])];
+        assert.ok((Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05) >= 4.5, `${slug}: "${x[7]}" contrast`);
       }
-      return [b, x[6]] as const;
+      return [b, x[7]] as const;
     });
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
       const [p, q] = [boxes[i][0], boxes[j][0]];
       assert.ok(p[2] <= q[0] || q[2] <= p[0] || p[3] <= q[1] || q[3] <= p[1], `${slug}: "${boxes[i][1]}" overlaps "${boxes[j][1]}" at ${MAX_UNITS} units`);
     }
   }
+});
+
+test("each label sits on its baked white box at 9 units; the sheet hides the boxes on cards and the labels on home chips", () => {
+  const box = /<rect x="([\d.]+)" y="[\d.]+" width="([\d.]+)" height="[\d.]+" fill="rgb\(255,255,255\)"[^>]*\/>(<text[^>]*>[^<]*<\/text>)?/g;
+  let n = 0;
+  for (const [slug, svg] of svgs.filter(([, s]) => s.includes("<text"))) {
+    assert.ok(svg.includes(`@media(min-width:${CHIP_MAX + 1}px){${WHITE_BOX}{display:none}}@media(max-width:${CHIP_MAX}px){text{display:none}}`), `${slug}: box/chip rules`);
+    for (const r of svg.matchAll(box)) {
+      assert.ok(r[3], `${slug}: a white box with no label after it (the sheet would hide a drawn part)`);
+      const [x] = labels(r[3]), b = labelBox(Number(x[1]), Number(x[2]), x[7], 9, x[3]);
+      assert.ok(Math.abs((b[0] + b[2]) / 2 - (Number(r[1]) + Number(r[2]) / 2)) <= 1, `${slug}: "${x[7]}" left its white box at 9 units`);
+      n++;
+    }
+    assert.equal([...svg.matchAll(box)].length, labels(svg).length, `${slug}: every label has one white box`);
+  }
+  assert.ok(n >= 160, `only ${n} label boxes`);
 });
 
 test("the longest size a drawn card prints is 31 characters (what the narrowest card fits on one line; ideas-card-fit.py)", () => {
