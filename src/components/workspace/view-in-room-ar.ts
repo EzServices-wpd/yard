@@ -159,15 +159,16 @@ const usdz = async (model: THREE.Group) => {
 };
 /** The estimate only ever passes a build without exporting when it is far under the cap (it is within ~15%). */
 const FAST = 0.6;
-export type ArBuilt = { model: THREE.Group; file: Uint8Array | null; bytes: number; real: boolean; boxSticks: boolean; inches: [number, number, number]; parts: number };
+export type ArBuilt = { model: THREE.Group; file: Uint8Array | null; bytes: number; real: boolean; judged?: boolean; boxSticks: boolean; inches: [number, number, number]; parts: number };
 
 /**
  * What AR will get, and its REAL file size. The size line is the bench's (rounded sticks') measured size. Rounded sticks first; if their estimate is clearly over the cap,
  * plain box sticks (same poses). A build is passed on the estimate alone only when it is far under the cap;
  * anything nearer is exported for real (USDZ, the file Quick Look opens; Android gets the same model) and
- * judged on its byte length, so a refusal is always the real number.
+ * judged on its byte length, so a refusal is always the real number. exportFile null (WebXR: no file, the
+ * model goes to the session as is): nothing is exported, and the estimate is judged against the cap.
  */
-export async function arBuild(root: THREE.Object3D, cap: number, exportFile: (m: THREE.Group) => Promise<Uint8Array> = usdz): Promise<ArBuilt> {
+export async function arBuild(root: THREE.Object3D, cap: number, exportFile: ((m: THREE.Group) => Promise<Uint8Array>) | null = usdz): Promise<ArBuilt> {
   const tries: boolean[] = [false, true];
   let last: ArBuilt | null = null;
   let inches: [number, number, number] | null = null; // always the bench's (rounded) size: box corners add ~2 mm
@@ -178,6 +179,11 @@ export async function arBuild(root: THREE.Object3D, cap: number, exportFile: (m:
     inches ??= st.inches;
     const base = { model, boxSticks: !!model.userData.boxSticks, inches, parts: st.parts };
     if (st.bytes <= cap * FAST) return { ...base, file: null, bytes: st.bytes, real: false };
+    if (!exportFile) {
+      last = { ...base, file: null, bytes: st.bytes, real: false, judged: true };
+      if (st.bytes <= cap) return last;
+      continue;
+    }
     // Clearly over even allowing for the estimate's error: go straight to box sticks (no wasted export).
     if (!boxSticks && st.bytes > cap * 1.3) {
       last = { ...base, file: null, bytes: st.bytes, real: false };
@@ -187,7 +193,7 @@ export async function arBuild(root: THREE.Object3D, cap: number, exportFile: (m:
     last = { ...base, file, bytes: file.byteLength, real: true };
     if (file.byteLength <= cap) return last;
   }
-  if (last && !last.real) {
+  if (last && !last.real && exportFile) {
     const file = await exportFile(last.model);
     last = { ...last, file, bytes: file.byteLength, real: true };
   }
