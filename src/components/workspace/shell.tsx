@@ -25,6 +25,7 @@ import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
+import { MeasureSheetGap } from "@/components/workspace/measure-sheet-card";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
@@ -470,6 +471,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
+          <MeasureSheetGap show={side === "measure"} />
           <RevealStatus />
           <BuildScrubber />
           <ShareButton />
