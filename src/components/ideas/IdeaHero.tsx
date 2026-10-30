@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ArrowRight } from "lucide-react";
 import type { IdeaCard } from "@/lib/ideas/feed";
 import type { HeroModel } from "./HeroStage";
-import { CardSize } from "./IdeaCard";
+import { CardSize, plainClick } from "./IdeaCard";
 
 const EVENTS = ["pointerdown", "scroll", "keydown", "touchstart"] as const;
 type Stage = ComponentType<{ model: HeroModel; active: boolean; onReady: () => void }>;
@@ -20,7 +20,7 @@ function canGoLive() {
  * live model fades in over it in the same reserved 4:3 box once the page is idle and the hero is on screen.
  * It turns slowly, and stops when offscreen, when the tab is hidden, or under reduced motion (still pose).
  */
-export function IdeaHero({ card, onBuild, live = true }: { card: IdeaCard; onBuild: () => void; live?: boolean }) {
+export function IdeaHero({ card, href, onBuild, live = true }: { card: IdeaCard; href: string; onBuild: () => void; live?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<{ C: Stage; model: HeroModel } | null>(null);
   const [ready, setReady] = useState(false);
@@ -78,19 +78,23 @@ export function IdeaHero({ card, onBuild, live = true }: { card: IdeaCard; onBui
 
   const C = stage?.C;
   return (
-    <section className="mt-6 grid items-center gap-4 rounded-2xl border border-rule bg-paper p-3 sm:mt-8 sm:grid-cols-[1fr_1.3fr] sm:gap-8 sm:p-6" data-ideas-hero={card.slug} aria-labelledby="ideas-hero-title">
+    <section className="yard-sheet mt-6 grid items-center gap-4 rounded-2xl border border-rule bg-paper p-3 sm:mt-8 sm:grid-cols-[1fr_1.3fr] sm:gap-8 sm:p-6" data-ideas-hero={card.slug} aria-labelledby="ideas-hero-title">
       <div className="order-2 sm:order-1">
         <h2 id="ideas-hero-title" className="font-display text-2xl leading-tight text-ink sm:text-3xl">{card.title}</h2>
         <p className="mt-1"><CardSize card={card} /></p>
         {card.blurb ? <p className="mt-2 max-w-md text-base leading-relaxed text-ink">{card.blurb}</p> : null}
-        <button
-          type="button"
-          onClick={onBuild}
+        <a
+          href={href}
+          onClick={(e) => {
+            if (!plainClick(e)) return;
+            e.preventDefault();
+            onBuild();
+          }}
           data-ideas-hero-build
           className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition-transform duration-150 active:scale-[0.97]"
         >
           Build this <ArrowRight className="size-4" aria-hidden />
-        </button>
+        </a>
       </div>
       <div ref={box} className="relative order-1 aspect-[4/3] w-full overflow-hidden rounded-xl bg-[rgb(247,244,238)] sm:order-2" data-hero-live={ready ? "1" : undefined}>
         {card.drawing ? (

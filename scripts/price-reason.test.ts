@@ -9,9 +9,10 @@ test("linen alcove: the line names the added structural screws and the exact del
   const plan = buildPlan(p);
   const r = priceReason(p, plan);
   assert.ok(r, "a reason");
-  assert.equal(r.delta, 18.97);
-  assert.equal(r.base, 183.7);
-  assert.match(r.text, /^\+\$18\.97 vs the plain build: adds structural screws$/);
+  // The plain twin stands free and buys the anti-tip kit (row 292); the alcove unit is screwed to the studs instead.
+  assert.equal(r.delta, 8.99);
+  assert.equal(r.base, 193.68);
+  assert.match(r.text, /^\+\$8\.99 vs the plain build: adds structural screws \(\+\$18\.97\) and 1 more$/);
   assert.doesNotMatch(r.text, /https?:|www\./);
 });
 

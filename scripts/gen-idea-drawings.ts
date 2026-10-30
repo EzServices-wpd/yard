@@ -5,6 +5,7 @@
  * Writes public/ideas/drawings/<slug>.<v>[.p].svg, src/lib/ideas/drawings.json (the manifest) and
  * src/lib/ideas/recipes.json (passing recipe cards, so /ideas never runs the engine).
  * Run: npx tsx scripts/gen-idea-drawings.ts   (re-run when an idea or the engine geometry changes)
+ *      npx tsx scripts/gen-idea-drawings.ts --only rocket   (re-bake only the named slugs; every other entry and file stays)
  */
 import crypto from "crypto";
 import fs from "fs";
@@ -15,6 +16,9 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import type { YardProject } from "../src/lib/yard/types";
 import { drawnDims } from "../src/lib/ideas/size";
+import { cardLabels } from "../src/lib/ideas/drawingLabels";
+import { logCardPrompt, typeKey } from "../src/lib/ideas/liveFeed";
+import { nameBase } from "./gen-idea-types";
 
 export const DRAW_W = 480, DRAW_H = 360;
 /** Raw bytes per wood drawing; past it coordinates are rounded harder (big models). */
@@ -149,27 +153,58 @@ function zoomed(svg: string, k: number) {
   return svg.replace(/(<rect x="0" y="0" width="\d+" height="\d+"[^>]*\/>)/, `$1<g transform="translate(${cx * (1 - k)} ${cy * (1 - k)}) scale(${k})">`).replace(/<\/svg>$/, "</g></svg>");
 }
 
+/**
+ * Log-only build types (no curated card): the feed draws them by type key (drawingForType), so each is baked under its
+ * type from the prompt the card builds on tap (logCardPrompt: logPrompts.json, else the type at its logged size).
+ * Not baked (judged by eye, 10-26): soccer-goal (a bare box frame), brooklyn-bridge (no towers above the deck),
+ * windmill (broken sails), barn (a braced crate, no roof), empire-state-building (a cone, no setbacks), space-needle
+ * (straight tapered legs, no waist), firewood-unit (builds a firewood-rack); dollhouse, toolbox, bike rack, White House,
+ * mailbox post and sailboat still build wrong.
+ */
+export const LOG_TYPES: Record<string, string> = {
+  rocket: logCardPrompt("rocket", { width: 9.875, depth: 9.875, height: 28 }),
+  ...Object.fromEntries(["lighthouse", "cat-tree", "viking-ship"].map((t) => [t, logCardPrompt(t, null)])),
+};
+
 const cards = [
   ...IDEAS.map((d) => ({ slug: d.id, prompt: d.prompt })),
   ...[...popularIdeas(), ...newIdeas()].map((r) => ({ slug: r.id, prompt: r.prompt })),
+  ...Object.entries(LOG_TYPES).map(([slug, prompt]) => ({ slug, prompt, log: true })),
 ];
+const onlyArg = process.argv.indexOf("--only");
+const only = onlyArg > 0 ? new Set(process.argv[onlyArg + 1].split(",")) : null;
 const seen = new Set<string>();
 /** Hero models: panel boxes only (no engine on /ideas), for builds light enough to turn live on a phone. */
 export const HERO_MAX_PARTS = 150;
 const MODELS = path.join("public", "ideas", "models");
-const manifest: Record<string, { v: string; w: number; h: number; parts: number; bytes: number; dims: { width: number; height: number; depth: number; round?: true }; model?: string }> = {};
-fs.rmSync(OUT, { recursive: true, force: true });
-fs.mkdirSync(OUT, { recursive: true });
-fs.rmSync(MODELS, { recursive: true, force: true });
-fs.mkdirSync(MODELS, { recursive: true });
+/** `stock`: the build's own primary stock id (the feed reads no price, shop or href from here). */
+type Entry = { v: string; w: number; h: number; parts: number; bytes: number; dims: { width: number; height: number; depth: number; round?: true }; model?: string; stock?: string };
+const manifest: Record<string, Entry> = only ? JSON.parse(fs.readFileSync(MANIFEST, "utf8")) : {};
+if (only) {
+  for (const slug of only) {
+    const old = manifest[slug];
+    if (old) fs.rmSync(path.join(OUT, `${slug}.${old.v}.svg`), { force: true });
+    if (old?.model) fs.rmSync(path.join("public", old.model), { force: true });
+    delete manifest[slug];
+  }
+} else {
+  fs.rmSync(OUT, { recursive: true, force: true });
+  fs.mkdirSync(OUT, { recursive: true });
+  fs.rmSync(MODELS, { recursive: true, force: true });
+  fs.mkdirSync(MODELS, { recursive: true });
+}
 const r2 = (n: number) => Math.round(n * 100) / 100;
 /** Card dims keep the drawing's 1/16″ labels exact (6 5/16 = 6.3125; r2 made it 6.31, which printed as 6 1/4). */
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
 for (const c of cards) {
-  if (seen.has(c.slug)) continue;
+  if (seen.has(c.slug) || (only && !only.has(c.slug))) continue;
   seen.add(c.slug);
   const view = VIEW[c.slug] ?? {};
   const built = generateFromPrompt(c.prompt);
+  // A log type's drawing must be that type's own build: a refusal, stand-in or other type stops the bake.
+  if ("log" in c && (built.refused || built.standIn || built.unmatched || built.displayOnly || typeKey(`builtin:${nameBase(built.name)}`) !== c.slug)) {
+    throw new Error(`${c.slug}: "${c.prompt}" builds ${built.name}${built.refused ? ` (refused: ${built.refused})` : ""}, not a ${c.slug}`);
+  }
   const project = (view.turn && quarterTurn(built)) || built;
   const drawn = view.ghostUnit ? sashes(project) : project;
   const raw = planOverviewSvg(drawn, DRAW_W, DRAW_H).svg;
@@ -178,6 +213,7 @@ for (const c of cards) {
   if (!view.custom && svg.length > BUDGET) svg = tidy(post(raw), 0);
   if (view.stroke) svg = thinner(svg, view.stroke);
   if (view.zoom) svg = zoomed(svg, view.zoom);
+  svg = cardLabels(svg); // labels readable at card size (drawingLabels.ts)
   const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
   fs.writeFileSync(path.join(OUT, `${c.slug}.${v}.svg`), svg);
   const parts = built.panels.length + built.instances.length;
@@ -185,7 +221,7 @@ for (const c of cards) {
   const labelled = !view.custom ? drawnDims(raw) : null;
   // A quarter-turned drawing labels the model's depth across: the card still says W × D in the model's own axes.
   const o = labelled && project !== built ? { ...labelled, width: labelled.depth, depth: labelled.width } : labelled || project.overall;
-  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r4(o.width), height: r4(o.height), depth: r4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) } };
+  manifest[c.slug] = { v, w: DRAW_W, h: DRAW_H, parts, bytes: svg.length, dims: { width: r4(o.width), height: r4(o.height), depth: r4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) }, stock: built.primaryMaterialId };
   if (parts <= HERO_MAX_PARTS && !built.instances.length && !built.panels.some((p) => p.form || p.strut || p.outline)) {
     const model = JSON.stringify({
       overall: built.overall,
@@ -203,8 +239,8 @@ for (const c of cards) {
   }
 }
 fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 1) + "\n");
-// Recipe cards baked too, so /ideas never builds a recipe in the browser.
+// Recipe cards baked too, so /ideas never builds a recipe in the browser (a full bake only).
 const card = (r: ReturnType<typeof popularIdeas>[number]) => ({ id: r.id, label: r.label, prompt: r.prompt, size: r.size, blurb: r.blurb, box: r.box });
-fs.writeFileSync(path.join("src", "lib", "ideas", "recipes.json"), JSON.stringify({ popular: popularIdeas().map(card), fresh: newIdeas().map(card) }, null, 1) + "\n");
+if (!only) fs.writeFileSync(path.join("src", "lib", "ideas", "recipes.json"), JSON.stringify({ popular: popularIdeas().map(card), fresh: newIdeas().map(card) }, null, 1) + "\n");
 const sizes = Object.values(manifest).map((m) => m.bytes).sort((a, b) => b - a);
 console.log(`ideas drawings: ${sizes.length} cards, largest ${sizes[0]} B, median ${sizes[sizes.length >> 1]} B`);

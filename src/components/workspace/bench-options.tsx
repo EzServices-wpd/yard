@@ -10,6 +10,8 @@ import { MeasureFields } from "./measure-overlay";
 import { YardsMenu } from "./yards-menu";
 import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
+import { FIGURES, setScale, useScale } from "./scale-props";
+import { ViewInRoomButton } from "./view-in-room-button";
 import type { WorkMode } from "@/lib/yard/types";
 
 /** A refusal's material chip: it names that nothing was built and opens nothing (there is no stock to choose). */
@@ -127,6 +129,7 @@ export function BenchOptionsPanel({
   const plan = useYard((s) => s.plan);
   const { label: stockLabel, wire, offersStock } = useStockLabel();
   const [toolsShown] = useBenchToolsShown();
+  const scale = useScale();
 
   useEffect(() => {
     if (!open) return;
@@ -265,8 +268,25 @@ export function BenchOptionsPanel({
               <Seg items={modes.map((m) => ({ id: m.id, label: m.label }))} value={workMode} onChange={(v) => setWorkMode(v as WorkMode)} />
             </Row>
           )}
+          {/* True scale (plan concept 8): a figure beside the build and props on its shelves; never parts. */}
+          {/* Scale, Props and Camera are 44 px touch targets (Critic 2, #176): `touch` on Seg and Toggle. */}
+          <Row label="Scale">
+            <Seg
+              touch
+              items={[{ id: "off", label: "Off" }, ...(["person", "kid"] as const).map((id) => ({ id, label: FIGURES[id].label }))]}
+              value={scale.figure}
+              onChange={(v) => setScale({ figure: v as typeof scale.figure })}
+            />
+          </Row>
+          {project.panels.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5" data-yard-scale-props>
+              <Toggle touch on={scale.props} onClick={() => setScale({ props: !scale.props })} label="Props" />
+            </div>
+          )}
+          <ViewInRoomButton />
           <Row label="Camera">
             <Seg
+              touch
               items={(["iso", "front", "side", "top"] as const).map((c) => ({ id: c, label: c === "iso" ? "3/4" : c[0].toUpperCase() + c.slice(1) }))}
               value={camera}
               onChange={(v) => setCamera(v as typeof camera)}
@@ -445,13 +465,14 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Toggle({ on, onClick, label, plain }: { on: boolean; onClick: () => void; label: string; plain?: boolean }) {
+/** `touch`: a 44 px minimum hit area both ways (WCAG 2.5.5); without it the compact release size. */
+function Toggle({ on, onClick, label, plain, touch }: { on: boolean; onClick: () => void; label: string; plain?: boolean; touch?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={plain ? undefined : on}
-      className={`rounded-md border px-3 py-2 text-xs ${on && !plain ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:bg-elevated"}`}
+      className={`rounded-md border px-3 py-2 text-xs ${touch ? "min-h-11 min-w-11" : ""} ${on && !plain ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:bg-elevated"}`}
     >
       {label}
     </button>
@@ -462,10 +483,13 @@ function Seg({
   items,
   value,
   onChange,
+  touch,
 }: {
   items: { id: string; label: string; disabled?: boolean }[];
   value: string;
   onChange: (id: string) => void;
+  /** 44 px tall segments (min-w-11 is already 44 px wide); without it the compact release height. */
+  touch?: boolean;
 }) {
   return (
     <div className="flex overflow-hidden rounded-md border border-border text-xs" role="group">
@@ -476,7 +500,7 @@ function Seg({
           disabled={it.disabled}
           aria-pressed={value === it.id}
           onClick={() => onChange(it.id)}
-          className={`h-9 min-w-11 px-2.5 disabled:opacity-30 ${value === it.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
+          className={`${touch ? "h-11" : "h-9"} min-w-11 px-2.5 disabled:opacity-30 ${value === it.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
         >
           {it.label}
         </button>

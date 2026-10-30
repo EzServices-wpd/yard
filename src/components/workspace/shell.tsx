@@ -1,6 +1,6 @@
 "use client";
 import { userText } from "@/lib/yard/userText";
-import { headerAxes, headerTitle } from "@/lib/yard/pdf";
+import { headerTitle } from "@/lib/yard/pdf";
 import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -18,11 +18,14 @@ import { DecisionLine } from "@/components/workspace/decision-line";
 import { priceReason, type PriceReason } from "@/components/workspace/price-reason";
 import { MorphButton } from "@/components/workspace/morph-button";
 import { RevealStatus } from "@/components/workspace/reveal-status";
+import { BuildScrubber } from "@/components/workspace/build-scrubber";
+import { ShareButton } from "@/components/workspace/share-button";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
 import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
+import { MeasureSheetGap } from "@/components/workspace/measure-sheet-card";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
@@ -41,9 +44,7 @@ import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
-import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { modelProudNote } from "@/lib/yard/modelSize";
-import { headerSize } from "@/lib/yard/headerSize";
+import { MeasureReadout } from "@/components/workspace/measure-readout";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
@@ -175,7 +176,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         try {
           const live = await runYardPrompt(prompt, { fresh: true });
           // A newer prompt typed while the link's build was still looking up owns the bench now.
-          if (shared && live) {
+          // A link with no edits (the build-info permalink, a ?y= of the bare words) opens as the fresh build, the
+          // same build its link card prices (lib/og/card.ts); re-applying an empty Measure draft re-sized and re-priced it.
+          const fresh = useYard.getState().project;
+          const edits = Object.keys(shared?.measure ?? {}).length > 0 || (shared?.stockId != null && shared.stockId !== fresh.primaryMaterialId) || (shared?.join != null && shared.join !== fresh.shopJoin) || shared?.shelves != null || shared?.cubbies != null || shared?.drawers != null;
+          if (shared && live && edits) {
             useYard.getState().setMeasure(shared.measure);
             let next = useYard.getState().project;
             if (shared.stockId || shared.join) next = { ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId, shopJoin: (shared.join as never) ?? next.shopJoin };
@@ -322,8 +327,12 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           </Link>
           <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
             {/* With a build, the title is the plan's header itself (same as the PDF); a refused build names what was asked
-                for and says nothing was built; "Workbench" only on an empty bench. */}
-            {pieceCount > 0 || project.refused ? headerTitle(project) : "Workbench"}
+                for and says nothing was built; a not-learned placeholder names the typed object; "Workbench" only on an empty bench. */}
+            {pieceCount > 0 || project.refused
+              ? headerTitle(project)
+              : project.displayOnly // the typed object, never "Workbench" (the tab keeps the plain title: row 578)
+                ? `${project.name.split(/[,\d]/)[0].trim() || project.name} · not learned yet`
+                : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -462,7 +471,10 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
+          <MeasureSheetGap show={side === "measure"} />
           <RevealStatus />
+          <BuildScrubber />
+          <ShareButton />
           <LavaLamp key={lampKey} show={lampOn} prompt={initialPrompt ?? project.prompt} caption="Building" />
           {aiChip && (
             <p data-yard-ai-chip="1" className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/70 bg-surface/85 px-3 py-1 text-[11px] text-muted backdrop-blur">
@@ -820,39 +832,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   className="min-h-11 shrink-0 font-mono text-[11px] text-faint hover:text-fg"
                   aria-label={project.pocket ?? project.recastFrom?.pocket ? "Measure the hole, the piece, and the shelves" : "Measure this build"}
                   title="Measure"
+                  data-yard-measure-readout
                 >
-                  {(() => {
-                    const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
-                    const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
-                    // One size: the header's own W × D × H (typed axes as typed, assumed axes the model's extent).
-                    const one = headerSize(project);
-                    // Same words and order as the header (W × D × H); a round piece keeps its "dia × H" talk.
-                    const envelope = project.fitted?.unit?.shape !== "round"
-                      ? headerAxes(project)
-                      : fmtUnitEnvelopeInches(one.width, one.height, one.depth, {
-                          shape: project.fitted?.unit?.shape,
-                          prompt: project.prompt,
-                          name: project.name,
-                          legs: project.fitted?.unit?.legs,
-                        });
-                    const emptyTalk = pocketUnit ? null : openingStorageMeasureEmptyTalk(project.prompt);
-                    const companion = emptyTalk
-                      ? emptyTalk.hudCompanion
-                      : wire
-                        ? ""
-                        : workMode === "walk"
-                          ? " · on the road"
-                          : workMode === "build"
-                            ? " · snap to the glow"
-                            : "";
-                    return (
-                      <>
-                        {envelope}
-                        {proud ? ` · ${proud}` : ""}
-                        {companion}
-                      </>
-                    );
-                  })()}
+                  <MeasureReadout project={project} wire={wire} workMode={workMode} />
                 </button>
               </div>
               </div>

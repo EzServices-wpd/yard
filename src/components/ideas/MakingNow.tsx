@@ -1,23 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { currentTestFlags } from "@/lib/ideas/testFlags";
 import { useEffect, useState } from "react";
-import { safePrompt, type SnapshotRow } from "@/lib/yard/ideaLog";
-import { loadSnapshot } from "@/lib/yard/ideaLogClient";
-import { isChained } from "@/lib/ideas/liveFeed";
+import type { MakingNowItem } from "@/lib/ideas/liveFeed";
 import { useOffscreen } from "@/hooks/use-offscreen";
 
 /**
- * "People are making right now" (R10–R12). Loads the CDN snapshot at idle, no engine import.
+ * "People are making right now" (R10–R12). Loads its rows (/api/ideas?view=strip, CDN-cached) at idle, no engine import.
+ * Each row is a build's engine title and size, never the words a visitor typed (privacy page; makingNow in liveFeed).
  * Fixed-height slot from SSR (CLS 0): 44px on a phone so every link is a 44px target (row 57), 36px from sm.
- * CSS-only scroll (transform), paused on hover/focus/off-screen;
- * prefers-reduced-motion shows a static list. Every prompt is re-sanitised before it is shown.
+ * CSS-only scroll (transform), paused on hover/focus/off-screen; prefers-reduced-motion shows a static list.
  */
 export function MakingNow() {
-  const [rows, setRows] = useState<SnapshotRow[]>([]);
+  const [rows, setRows] = useState<MakingNowItem[]>([]);
   const [ref, off] = useOffscreen<HTMLDivElement>();
   useEffect(() => {
     let live = true;
-    const go = () => void loadSnapshot().then((s) => live && setRows(s.recent.filter((r) => safePrompt(r.prompt) === r.prompt && !isChained(r.prompt)).slice(0, 12)));
+    const go = () =>
+      void fetch("/api/ideas?view=strip")
+        .then((r) => (r.ok ? (r.json() as Promise<{ rows?: MakingNowItem[] }>) : null))
+        .then((f) => live && Array.isArray(f?.rows) && setRows(f.rows))
+        .catch(() => {});
     const id = "requestIdleCallback" in window ? window.requestIdleCallback(go, { timeout: 6000 }) : setTimeout(go, 3000);
     return () => {
       live = false;
@@ -32,9 +34,15 @@ export function MakingNow() {
           <div className="yard-making-track relative min-w-0 flex-1 overflow-hidden">
             <ul className="yard-making-list inline-flex gap-4">
               {[...rows, ...rows].map((r, i) => (
-                <li key={`${r.key}-${i}`} aria-hidden={i >= rows.length || undefined}>
-                  <Link to="/workspace" search={{ q: r.prompt, ...currentTestFlags() }} tabIndex={i >= rows.length ? -1 : undefined} className="inline-flex min-h-11 items-center hover:text-ink hover:underline sm:min-h-0">
-                    {r.prompt}
+                <li key={`${r.slug}-${i}`} aria-hidden={i >= rows.length || undefined}>
+                  <Link to="/workspace" search={{ q: r.q, ...currentTestFlags() }} tabIndex={i >= rows.length ? -1 : undefined} className="inline-flex min-h-11 items-center hover:text-ink hover:underline sm:min-h-0">
+                    {r.title}
+                    {r.size ? (
+                      <>
+                        ,&nbsp;<span className="yard-measure" aria-hidden>{r.size}</span>
+                        <span className="sr-only">{r.sizeAria}</span>
+                      </>
+                    ) : null}
                   </Link>
                 </li>
               ))}

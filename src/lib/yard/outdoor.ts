@@ -18,6 +18,15 @@ const OUTDOOR_WORDS = /\b(?:outdoors?|outside|patio|garden|porch|exterior|backya
 /** Things that only ever live outdoors: their name alone asks for the exterior package. */
 const OUTDOOR_NOUN = /\b(?:bat|bird|wren|bluebird|martin)\s*-?\s*(?:houses?|box(?:es)?)\b|\bcompost\b|\bsand\s*box(?:es)?\b|\bpergolas?\b|\barbou?rs?\b|\bchicken\s+coops?\b|\bdog\s*houses?\b|\bpicnic\s+tables?\b|\badirondack\b/;
 
+/**
+ * An outdoor ask on a build that is an indoor toy by its own class (the plywood dollhouse: a porch is one of its
+ * features, and "outdoor" gets a keep-it-covered note). Read from the build, never the prompt, so a board or craft
+ * dollhouse the route left to its old build keeps the exterior package.
+ */
+export function outdoorBuild(project: Pick<YardProject, "shape">, prompt: string | undefined | null): boolean {
+  return project.shape?.classId !== "dollhouse" && isOutdoorPrompt(prompt);
+}
+
 /** True when the typed prompt asks for an outdoor build. */
 export function isOutdoorPrompt(prompt: string | undefined | null): boolean {
   const lower = (prompt ?? "").toLowerCase();
@@ -56,7 +65,7 @@ function woodBuild(project: YardProject): boolean {
 function outdoorWood(project: YardProject, prompt: string | undefined | null): boolean {
   // Outdoor when the prompt says so or the build's own notes put it outside.
   const notesOutside = (project.notes ?? []).some((n) => /\b(?:exterior screws|pressure-treated)\b/i.test(n));
-  return (isOutdoorPrompt(prompt) || notesOutside) && project.kind !== "opening" && !project.windowPkg && woodBuild(project);
+  return (outdoorBuild(project, prompt) || notesOutside) && project.kind !== "opening" && !project.windowPkg && woodBuild(project);
 }
 
 /**

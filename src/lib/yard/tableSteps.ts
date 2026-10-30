@@ -3,6 +3,7 @@
  */
 
 import { inchFrac } from "./inchText";
+import { bareName } from "./headerSize";
 import { getCatalogItem } from "./catalog";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
@@ -55,7 +56,7 @@ export function uniqueTableSteps(project: YardProject): AssemblyStep[] {
   steps.push({
     step: n++,
     title: "Confirm the footprint — do not cut yet",
-    description: `${project.name}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs${shelfBit}. ${footprintConfirmTalk({
+    description: `${bareName(project.name)}. ${roundTop ? `Round top, diameter ${round(W)}"` : ovalTop ? `Oval top ${round(W)}" long × ${round(D)}" wide` : `Top ${round(W)}" × ${round(D)}"`} · height ${round(H)}" · ${legN} legs${shelfBit}. ${footprintConfirmTalk({
       shape: roundTop ? "round" : ovalTop ? "oval" : "rect",
       widthLabel: round(W),
       depthLabel: round(D),

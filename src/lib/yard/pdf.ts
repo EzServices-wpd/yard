@@ -4,7 +4,7 @@ import { stepTones } from "./planStepPicture";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
-import { planSheetNest, sheetSizeLabel, type NestSheet } from "./nesting";
+import { planSheetNest, sheetBuyName, sheetSizeLabel, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, CutLine, YardProject } from "./types";
 import { fmtUnitEnvelope, shortSheetTalk } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
@@ -43,7 +43,7 @@ export function slugPlan(name: string) {
 
 
 export { typedAxesTalk } from "./headerSize";
-import { coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
+import { NAME_SIZE_RE, coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
 
 const CRAFT_GLOSSARY = [
   { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them as they come." },
@@ -486,7 +486,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     // The same sheets Buy counted (one nest per plan): structural sheets, then the thin backer's
     // own sheets. Named solid boards are never on a sheet — they get board diagrams below.
     const planNest = plan.sheetNest ?? planSheetNest(partLines);
-    const sheets: NestSheet[] = [...(planNest.sheets?.sheets ?? [])];
+    // A structural sheet is headed with the name of the Buy row that buys it (row 504), else its own material.
+    const sheets: NestSheet[] = (planNest.sheets?.sheets ?? []).map((s) => ({ ...s, material: sheetBuyName(s, plan.bom) ?? s.material }));
     for (const s of planNest.backer?.sheets ?? []) {
       const thick = partLines.find((c) => s.parts.some((p) => p.label && p.label === c.label))?.thicknessIn ?? 0.25;
       sheets.push({ ...s, index: sheets.length + 1, material: `${frac(thick)} plywood` });
@@ -1182,7 +1183,7 @@ export function headerTitle(project: YardProject, opts: { features?: boolean } =
 
 /** The build's name without its bare typed size ("File cabinet 30" x 24" x 30"" → "File cabinet"). */
 export function headerName(project: YardProject): string {
-  return clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
+  return clean(project.name).replace(NAME_SIZE_RE, "").trim() || "Yard plan";
 }
 
 /** The one size in one order: `31 1/2" W × 16" D × 78" H`, axes nobody typed marked assumed. Header, bench, PDF. */

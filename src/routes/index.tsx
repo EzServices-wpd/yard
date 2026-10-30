@@ -5,6 +5,7 @@ import { useOffscreen } from "@/hooks/use-offscreen";
 import { leavesIn, swing } from "@/components/home/showcase-doors";
 import { drawerSpecs, drawersIn, setOpen, slide, type DrawerSpec } from "@/components/home/showcase-drawers";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { canonical } from "@/lib/canonical";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -19,6 +20,7 @@ import type { Showcase } from "@/lib/yard/homeShowcase";
 const SHOWCASE_CAPTION = "Live Yard output, not a photo.";
 
 export const Route = createFileRoute("/")({
+  head: () => canonical("/"),
   // F28: the "Made on Yard" cards come from the engine; build them once per server instance, not in the visitor's tab.
   // C2: the plan strip (one real plan: the linen canary) and the chips' baked drawings come from the server too.
   loader: async () => ({ shows: await homeShows(), plan: await homePlan(), chipArt: await homeChipArt() }),
@@ -35,17 +37,19 @@ const CHIPS = DREAMS.filter((d) => (CHIP_IDS as readonly string[]).includes(d.id
 const HOUSE = CHIPS.filter((d) => d.group === "house");
 const WEEKEND = CHIPS.filter((d) => d.group === "weekend");
 
-/** One class row for every build: sheet, board, round, pipe. A chip names the class, not a brand. */
+/** One class row for every build: sheet, board, round, pipe, craft stick, card. A chip names the class, not a brand. */
 const STOCKS = [
   { id: "sheet", label: "¾″ plywood", say: "¾″ plywood", append: "from 3/4 plywood" },
   { id: "board", label: "2×4 lumber", say: "2×4 lumber", append: "from 2x4" },
   { id: "round", label: "½″ dowel", say: "½″ dowel", append: "from 1/2 inch dowel" },
   { id: "pipe", label: "PVC pipe", say: "PVC pipe", append: "from 3/4 inch PVC" },
+  { id: "stick", label: "Popsicle sticks", say: "popsicle sticks", append: "from popsicle sticks" },
+  { id: "card", label: "Cardboard", say: "cardboard", append: "from cardboard" },
 ] as const;
 
 type StockId = (typeof STOCKS)[number]["id"];
 
-/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $183.70). */
+/** C2 (5A): one real plan in the strip: the linen canary (31 1/2 × 16 × 78 in, 11 cut pieces, Buy list $193.68). */
 const PLAN_PROMPT = "linen closet 31.5 wide 78 tall 16 deep";
 
 /** Finished pieces. Each card opens that plan on the bench. The size is never typed here: the loader formats it from the engine. */
@@ -58,7 +62,7 @@ const PIECES = [
     caption: "Knee space, drawers, and uppers shaped to the pocket",
   },
   {
-    // C3: the linen closet already leads the plan strip ($183.70), so this card shows a different idea; one linen price on home.
+    // C3: the linen closet already leads the plan strip ($193.68), so this card shows a different idea; one linen price on home.
     id: "ldesk",
     label: DREAMS.find((d) => d.id === "ldesk")?.label ?? "L in the corner",
     note: "",
@@ -138,12 +142,12 @@ const CHIP =
 /** The chip's drawing: fixed box (CLS 0), lazy, decorative (the label names it). */
 function ChipArt({ src }: { src?: string }) {
   return src ? (
-    <span className="size-9 shrink-0 overflow-hidden rounded-full bg-paper lg:size-7" aria-hidden>
+    <span className="yard-sheet size-9 shrink-0 overflow-hidden rounded-full bg-paper lg:size-7" aria-hidden>
       {/* The model sits small in its 4:3 sheet: zoom in (transform only, no layout). */}
       <img src={src} alt="" width={36} height={36} loading="lazy" decoding="async" className="h-full w-full scale-[1.7] object-cover" />
     </span>
   ) : (
-    <span className="size-9 shrink-0 rounded-full bg-paper lg:size-7" aria-hidden />
+    <span className="yard-sheet size-9 shrink-0 rounded-full bg-paper lg:size-7" aria-hidden />
   );
 }
 
@@ -159,6 +163,7 @@ function LandingPage() {
   // F28: the showcases are built in the loader (server-rendered on first load), never on the main thread at startup.
   const { shows, plan, chipArt } = Route.useLoaderData() as { shows: Record<string, HomeShow | undefined>; plan?: HomePlan; chipArt?: Record<string, string> };
   const [sentinel, scrolled] = useScrolled();
+  const [heroRef, heroOff] = useOffscreen<HTMLElement>();
 
   const stock = STOCKS.find((s) => s.id === stockId) ?? null;
   const disclosure = affiliateDisclosure();
@@ -209,7 +214,7 @@ function LandingPage() {
           <Link to="/" className="flex min-h-11 items-center" aria-label="Yard home">
             <Logo inverted className="h-7 w-auto" />
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav aria-label="Main" className="flex items-center gap-1">
             <Link to="/ideas" search={pickTestFlags(search)} className={`${NAV_LINK} text-ink-muted hover:text-ink`}>
               Ideas
             </Link>
@@ -221,7 +226,7 @@ function LandingPage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-24">
-        <section className="yard-hero-in relative isolate mx-auto flex max-w-3xl overflow-x-clip flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
+        <section ref={heroRef} data-offscreen={heroOff || undefined} className="yard-hero-in relative isolate mx-auto flex max-w-3xl overflow-x-clip flex-col items-center pt-12 text-center sm:pt-20 lg:pt-24">
           <svg className="yard-grain" viewBox="0 0 800 600" preserveAspectRatio="none" aria-hidden>
             <g fill="none" stroke="currentColor" strokeWidth="1.2">
               {Array.from({ length: 14 }, (_, i) => (
@@ -229,7 +234,7 @@ function LandingPage() {
               ))}
             </g>
           </svg>
-          <p className="text-base font-medium text-ink">The plan the lumber aisle should have printed</p>
+          <p className="text-base font-medium text-ink">Free plans for anything you can build</p>
           <h1 className="mt-4 font-display text-[2.6rem] leading-[1.05] tracking-tight text-ink sm:text-6xl lg:text-7xl">
             {/* Words rise in once; the full line stays in the accessible name and the layout never shifts. */}
             {[["Think", "it", "up."], ["Yard", "works", "it", "out."]].map((line, li) => (
@@ -243,8 +248,8 @@ function LandingPage() {
               </span>
             ))}
           </h1>
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink sm:text-lg">
-            One model. Every cut, part and step.
+          <p className="mt-5 max-w-xl text-balance text-base leading-relaxed text-ink sm:text-lg">
+            Plywood or popsicle sticks, PVC or cardboard. One real model. Every part, cut and step.
           </p>
           <p className="mt-1 text-base italic text-ink">{TAGLINE}</p>
 
@@ -356,7 +361,7 @@ function LandingPage() {
                 key={h.id}
                 type="button"
                 onClick={() => open(h.prompt)}
-                className="yard-card group flex flex-col overflow-hidden rounded-xl border border-rule bg-white/50 text-left transition-colors duration-150 hover:border-ink/30"
+                className="yard-card yard-sheet group flex flex-col overflow-hidden rounded-xl border border-rule bg-[var(--yard-fill)] text-left transition-colors duration-150 hover:border-ink/30"
               >
                 <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-paper">
                   {shows[h.id] ? (
@@ -534,7 +539,7 @@ function PlanStrip({ plan, art, onOpen }: { plan: HomePlan; art?: string; onOpen
         </div>
         <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_1.15fr_1fr]">
           <div>
-            <div className="aspect-[16/10] w-full overflow-hidden rounded-xl bg-paper sm:aspect-[4/3]">
+            <div className="yard-sheet aspect-[16/10] w-full overflow-hidden rounded-xl bg-paper sm:aspect-[4/3]">
               {art ? <img src={art} alt={`Yard drawing of the linen closet, ${plan.sizeAria}`} width={480} height={360} loading="lazy" decoding="async" className="h-full w-full object-contain" /> : null}
             </div>
             <h3 className="mt-3 font-display text-lg text-ink">The size you typed</h3>

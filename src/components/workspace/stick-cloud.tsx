@@ -7,8 +7,9 @@ import { useYard } from "@/lib/yard/store";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
-import { benchDrawerPull, benchPullDepth } from "@/components/workspace/drawerGroups";
+import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
+import { BENCH_INK, STEP_GLOW, plyCount, shopLook } from "@/components/workspace/shop-light";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
 import { doorHingeLayout } from "@/lib/yard/hingedLeaf";
@@ -20,6 +21,7 @@ import {
   EdgeBand,
   PinHoles,
 } from "@/components/workspace/panelHardware";
+import { useExplodeRefs } from "@/components/workspace/explode-driver";
 
 export { StickCloud } from "@/components/workspace/stickCloudCraft";
 export { CarcaseJoins } from "@/components/workspace/carcaseJoins";
@@ -51,26 +53,29 @@ export function PanelMesh({
   const placeholder = useYard((s) => !!s.project.displayOnly);
   const partLook = panelRenderLook(prompt, panel);
   const item = getCatalogItem(partLook.catalogId) ?? getCatalogItem(panel.materialId);
-  const look = stockLook(item);
+  const look = shopLook(stockLook(item), item);
   const glass = panel.type === "glass_panel" || panel.type === "mirror";
   // A mirror set into a door rides on that door: it shows on the door's face and swings with it.
   const hostDoor = useYard((s) => (panel.joints?.length ? s.project.panels.find((q) => q.type === "door" && panel.joints!.some((j) => j.with === q.id)) : undefined));
   const mirror = panel.type === "mirror";
-  // Step view: this step's parts keep their real wood tone with a warm glow and orange edges;
+  // Step view: this step's parts get chalk-blue edges and a faint warm-tan lift (BENCH_INK.stepGlow #c4a574 at STEP_GLOW 0.1, which keeps
+  // the wood's saturation; see shop-light.ts);
   // everything else steps back to a faint ghost so the lit parts read at a glance.
   const ghost = hasStep && !inStep;
   const opacity = ghost ? 0.16 : glass && !mirror ? 0.42 : 1;
   const color = placeholder ? "#9a9a9a" : ghost ? "#8a7c68" : mirror ? "#d3dce2" : partLook.color(!!look.map);
-  const glow = inStep ? 0.22 : selected ? 0.14 : 0;
-  const edgeColor = inStep ? "#e0782f" : ghost ? "#6b5d4a" : "#2a1d11";
+  const glow = inStep ? STEP_GLOW.step : selected ? STEP_GLOW.selected : 0;
+  const edgeColor = inStep ? BENCH_INK.stepEdge : ghost ? "#6b5d4a" : "#2a1d11";
   const { width: w, height: h, depth: d } = panel.size;
 
   const isDoor = panel.type === "door";
   const isDrawer = panel.type === "drawer";
   // Operate: a drawer slides as one group (shared drawer id, or its front plus the parts under it); a lone box keeps
   // today's own-depth pull (drawerGroups).
-  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel));
-  const pullDepth = useYard((s) => (isDrawer ? benchPullDepth(s.project.panels, panel) : 0));
+  // Tap a drawer while Operate is on: it opens alone to ~2/3 so its cavity shows; otherwise the stack staggers.
+  const drawerPull = useYard((s) => benchDrawerPull(s.project.panels, panel, s.facesOpen ? s.selectedId : null));
+  const wearsPull = useYard((s) => benchWearsPull(s.project.panels, panel));
+  const pullDepth = useYard((s) => (wearsPull ? (isDrawer ? benchPullDepth(s.project.panels, panel) : d) : 0));
   const isLid = isHingedLidPanel(panel);
   const leaf = panel.leaf;
   // Row 207: the door hinges Buy lists, from the one shared layout (cached per project, so the selector is stable).
@@ -237,14 +242,18 @@ export function PanelMesh({
   }, [panel.outline, panel.form, panel.strut, poly, w, h, d]);
   const topRadius = Math.min(w, d) / 2;
   const shadows = !!useShadows;
+  // See inside: the staged explode moves these two groups (transform only, explode-driver.tsx).
+  const ex = useExplodeRefs(panel.id);
   if (hiddenInStep) return null;
 
   // Bought coat hooks: steel hook glyph, never a wood box the same color as the rail.
   if (isBoughtHardwareName(panel.name)) {
     return (
+      <group ref={ex.outer}><group ref={ex.inner}>
       <group position={groupPos} rotation={groupRot}>
         <group
           position={meshPos}
+          userData={{ yardPart: panel.id, yardPartGlyph: true }}
           onPointerDown={(e) => {
             e.stopPropagation();
             onSelect();
@@ -253,14 +262,17 @@ export function PanelMesh({
           <CoatHook w={w} h={h} d={d} />
         </group>
       </group>
+      </group></group>
     );
   }
 
   return (
+    <group ref={ex.outer}><group ref={ex.inner}>
     <group position={groupPos} rotation={groupRot}>
       <group position={meshPos}>
         <mesh
           frustumCulled={false}
+          userData={{ yardPart: panel.id, yardGhost: ghost }}
           castShadow={shadows}
           receiveShadow={shadows}
           onPointerDown={(e) => {
@@ -283,7 +295,7 @@ export function PanelMesh({
             roughness={glass ? 0.08 : look.roughness}
             metalness={glass ? 0.22 : look.metalness}
             envMapIntensity={glass ? 1.4 : look.env}
-            emissive={glow ? "#ff8a3d" : "#000000"}
+            emissive={glow ? BENCH_INK.stepGlow : "#000000"}
             emissiveIntensity={glow}
             depthWrite={opacity > 0.5}
             polygonOffset={mirror}
@@ -305,7 +317,7 @@ export function PanelMesh({
         {/* Rails/aprons: EdgeBand top strips sit flat under the top and read as
             scrambled bars on yawed 3-leg chords. Skip banding on rails + yawed members. */}
         {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
-          <EdgeBand w={w} h={h} d={d} />
+          <EdgeBand w={w} h={h} d={d} plies={placeholder || ghost ? 0 : plyCount(item, Math.min(w, h, d))} />
         )}
         {opacity > 0.4 && hingeCenters && hingeCenters.length > 0 && (
           <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} centers={hingeCenters} />
@@ -313,11 +325,12 @@ export function PanelMesh({
         {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
         )}
-        {isDrawer && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
+        {wearsPull && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
         {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
       </group>
     </group>
+    </group></group>
   );
 }

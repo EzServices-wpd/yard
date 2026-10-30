@@ -6,6 +6,7 @@ import { currentTestFlags, pickTestFlags, type TestFlags } from "@/lib/ideas/tes
 import { IdeasPageView } from "@/components/ideas/IdeasPageView";
 import { IDEAS_CHANGED, listLearnedIdeas, type LearnedIdea } from "@/lib/yard/ideaLibrary";
 import { loadIdeasFeed } from "@/lib/ideas/feedFn";
+import { canonical } from "@/lib/canonical";
 
 export const Route = createFileRoute("/ideas")({
   // Same HTML for every visitor: the CDN serves it for an hour and refreshes in the background.
@@ -16,9 +17,10 @@ export const Route = createFileRoute("/ideas")({
       { name: "description", content: "Build ideas for Yard: shelves, benches, toys and weekend projects, each with a model, cut list and Buy list." },
       { property: "og:title", content: "Ideas · Yard" },
       { property: "og:description", content: "Build ideas for Yard: shelves, benches, toys and weekend projects, each with a model, cut list and Buy list." },
-      { property: "og:url", content: "https://yard.wiki/ideas" },
+      { name: "twitter:title", content: "Ideas · Yard" },
+      ...canonical("/ideas").meta,
     ],
-    links: [{ rel: "canonical", href: "https://yard.wiki/ideas" }],
+    links: canonical("/ideas").links,
   }),
   // Test flags (offline/local/test=1) survive here so every build link from Ideas can carry them on.
   validateSearch: (s: Record<string, unknown>): { q?: string } & TestFlags => ({
@@ -32,7 +34,8 @@ export const Route = createFileRoute("/ideas")({
 
 function IdeasPage() {
   const navigate = useNavigate();
-  const incoming = Route.useSearch().q ?? "";
+  const search = Route.useSearch();
+  const incoming = search.q ?? "";
   const [learned, setLearned] = useState<LearnedIdea[]>([]);
   // Rendered on the server (live feed, or the curated fallback with live=false); same HTML for every visitor.
   const loaded = Route.useLoaderData().feed;
@@ -59,7 +62,7 @@ function IdeasPage() {
   }
   return (
     <SiteChrome active="ideas">
-      <IdeasPageView incoming={incoming} learned={learned} onBuild={go} onIntent={prefetch} feed={feed} />
+      <IdeasPageView incoming={incoming} learned={learned} onBuild={go} onIntent={prefetch} feed={feed} flags={pickTestFlags(search)} />
     </SiteChrome>
   );
 }

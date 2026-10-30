@@ -15,9 +15,15 @@ U = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://127.0.0.1:8091"
 FLAGS = ["test=1", "offline=1", "local=1"]
 LINKS_JS = """() => [...document.querySelectorAll('a[href]')].map(a => [a.getAttribute('href'), (a.innerText || a.getAttribute('aria-label') || '').trim().slice(0, 40)])"""
 fails, seen = [], 0
-_row = lambda i, p, size: {"key": f"k{i}", "prompt": p, "size": size, "resultKey": f"builtin:x{i}", "status": "Trusted", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "at": "2026-10-17T12:00:00.000Z", "source": "live"}
-_rows = [_row(0, "bookshelf 36 wide 72 tall 12 deep", "36×12×72"), _row(1, "shoe rack 30 wide", "30×12×18"), _row(2, "nightstand 18 wide", "18×16×24")]
-SNAP = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "rows": _rows, "popular": _rows, "recent": _rows})
+# The ticker reads the live Ideas feed (/api/ideas?view=strip): counted cards with an engine title, size and build prompt.
+_card = lambda i, t, q: {"slug": f"x{i}", "buildType": f"x{i}", "title": t, "size": "36 × 12 × 72 in", "sizeAria": "36 wide, 12 deep, 72 tall", "count": 9 - i, "lastSeen": "2026-10-17T12:00:00.000Z", "examplePrompt": q}
+FEED = __import__("json").dumps({"at": "2026-10-17T12:00:00.000Z", "live": True, "countsLive": True, "hero": None, "sections": [{"id": "recent", "title": "Popular recently", "order": 0, "total": 3,
+    "cards": [_card(0, "Bookcase", "bookcase 36 wide 72 tall 12 deep"), _card(1, "Shoe rack", "shoe rack 30 wide 18 tall 12 deep"), _card(2, "Nightstand", "nightstand 18 wide 24 tall 16 deep")]}]})
+
+# The strip itself asks for ?view=strip: only the rows it renders (MakingNowItem: slug, title, size, sizeAria, q).
+# Twelve rows (MAKING_NOW_MAX) so the count check below proves the strip reads this response, not the full feed.
+_NAMES = ["Bookcase", "Shoe rack", "Nightstand", "Desk", "Bench", "Wine rack", "Toy chest", "Coat rack", "Planter", "Stool", "Crate", "Shelf"]
+STRIP = __import__("json").dumps({"rows": [{"slug": f"s{i}", "title": t, "size": "36 × 12 × 72 in", "sizeAria": "36 wide, 12 deep, 72 tall", "q": f"{t.lower()} 36 wide 72 tall 12 deep"} for i, t in enumerate(_NAMES)]})
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -25,8 +31,8 @@ with sync_playwright() as p:
         ctx = b.new_context(viewport={"width": W, "height": H})
         # Test flags only: offline/local keep the page off the network; test=1 tags API calls. Block the store anyway.
         ctx.route("**/api/ideas-log*", lambda r: r.fulfill(status=204))
-        # A live snapshot so the Making-now ticker and Popular/Recent rows render their links too.
-        ctx.route("**/api/ideas-snapshot*", lambda r: r.fulfill(status=200, content_type="application/json", body=SNAP))
+        # A live feed so the Making-now ticker renders its links too (no page code reads /api/ideas-snapshot any more).
+        ctx.route(__import__("re").compile(r"/api/ideas(?:\?|$)"), lambda r: r.fulfill(status=200, content_type="application/json", body=STRIP if "view=strip" in r.request.url else FEED))
         page = ctx.new_page()
         for path in ["/", "/ideas"]:
             for flag in FLAGS:
@@ -34,10 +40,13 @@ with sync_playwright() as p:
                 page.wait_for_timeout(800)
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                 page.wait_for_timeout(600)
-                for btn in page.get_by_role("button", name="Show all").all():
+                for btn in page.locator("[data-ideas-show-all][aria-expanded=false]").all():
                     try: btn.click(timeout=1500)
                     except Exception: pass
                 page.wait_for_timeout(300)
+                if path == "/":  # the strip renders one link per ?view=strip row (its duplicate copy is aria-hidden)
+                    strip = page.locator("[data-yard-making-now] li:not([aria-hidden]) a").count()
+                    if strip != 12: fails.append(f"/?{flag} @{W}: strip shows {strip} links from 12 ?view=strip rows")
                 links = [l for l in page.evaluate(LINKS_JS) if l[0].startswith("/") and not l[0].startswith("//")]
                 if not links: fails.append(f"{path}?{flag} @{W}: no internal links found")
                 seen += len(links)
@@ -45,7 +54,8 @@ with sync_playwright() as p:
                     if flag not in href.split("#")[0]:
                         fails.append(f"{path}?{flag} @{W}: {text!r} -> {href}")
                 print(f"{path}?{flag} @{W}: {len(links)} internal links, {sum(1 for h, _ in links if flag not in h)} missing the flag")
-        # Cards and chips are buttons that navigate(): the build URL keeps the flag too.
+        # Home cards and chips are buttons that navigate(); Ideas cards are links whose click runs the same navigate():
+        # the build URL keeps the flag too.
         if W == 1440:
             for path in ["/", "/ideas"]:
                 for flag in FLAGS:
@@ -53,7 +63,7 @@ with sync_playwright() as p:
                     page.goto(f"{U}{path}?{flag}", wait_until="networkidle")
                     page.wait_for_timeout(600)
                     # Home: a Made on Yard card. Ideas: the first card.
-                    page.locator("main button.yard-card" if path == "/" else "main button:has(svg), main button:has(img)").first.click()
+                    page.locator("main button.yard-card" if path == "/" else "main a[data-idea]").first.click()
                     try: page.wait_for_url("**/workspace**", timeout=8000)
                     except Exception: pass
                     ok = "/workspace" in page.url and flag in page.url

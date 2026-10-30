@@ -31,6 +31,7 @@ import { isUnitItem, unitItemAsk } from "./unitItems";
  * and failure class so the guards can ratchet (evals/invariants-baseline.json) and score (evals/score.json).
  */
 import { buildPlan } from "./report";
+import { freeGapSpot, isTrimStrip, nestSheetsByStock, type NestResult } from "./nesting";
 import { supportsOf } from "./supportGraph";
 import { spanFindings, stampSpanOffer } from "./spanCheck";
 import { placementIndex } from "./placeEveryPart";
@@ -38,7 +39,7 @@ import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
 import { getCatalogItem } from "./catalog";
 import { unitSizeById } from "./unitSizes";
-import { footTalk, hungBuild, isOutdoorPrompt } from "./outdoor";
+import { footTalk, hungBuild, isOutdoorPrompt, outdoorBuild } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
@@ -52,13 +53,14 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
 import { typedMeasures } from "./measureText";
+import { hangingClearanceIssues } from "./hangingClearance";
 import { boundPrompt } from "./promptLimits";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
 
-export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I35" | "I36" | "I37" | "I38" | "I41" | "I43" | "I46" | "I42" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
+export type InvariantId = "I1" | "I2" | "I3" | "I4" | "I5" | "I6" | "I7" | "I8" | "I9" | "I10" | "I11" | "I12" | "I13" | "I14" | "I17" | "I18" | "I19" | "I20" | "I21" | "I22" | "I23" | "I24" | "I25" | "I26" | "I27" | "I28" | "I29" | "I30" | "I31" | "I32" | "I35" | "I36" | "I37" | "I38" | "I39" | "I41" | "I42" | "I43" | "I46" | "I50" | "I51" | "C10" | "C11" | "C12" | "C13" | "C14" | "C15" | "C16" | "C17" | "C18" | "C19";
 export type Violation = { id: InvariantId; cls: string; msg: string };
 export const INVARIANT_CLASS: Record<InvariantId, string> = {
-  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I35: "F21", I36: "F32", I37: "F9", I38: "F2", I41: "F17", I42: "F2", I43: "F21", I46: "F7", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
+  I1: "F1", I2: "F2", I3: "F3", I4: "F6", I5: "F12", I6: "F12", I7: "F1", I8: "F2", I9: "F7", I10: "F22", I11: "F9", I12: "F18", I13: "F21", I14: "F11", I17: "F47", I18: "F12", I19: "F12", I20: "F47", I21: "F2", I22: "F17", I23: "F17", I24: "F17", I25: "F12", I26: "F30", I27: "F31", I28: "F32", I29: "F12", I30: "F32", I31: "F17", I32: "F17", I35: "F21", I36: "F32", I37: "F9", I38: "F2", I39: "F2", I41: "F17", I42: "F2", I43: "F21", I46: "F7", I50: "F7", I51: "F7", C10: "C10", C11: "C11", C12: "C12", C13: "C13", C14: "C14", C15: "C15", C16: "C16", C17: "C17", C18: "C18", C19: "C19",
 };
 /**
  * The invariants checked per build and scored (I2 and I10 are single fixed checks, run by the test directly).
@@ -202,7 +204,7 @@ function i12(p: YardProject, prompt: string): Violation[] {
 
 /** I13: outdoors, nothing on the ground is interior plywood. */
 function i13(p: YardProject, prompt: string): Violation[] {
-  if (!isOutdoorPrompt(prompt) || /plywood/i.test(prompt)) return [];
+  if (!outdoorBuild(p, prompt) || /plywood/i.test(prompt)) return [];
   return p.panels.filter((q) => /^plywood-/.test(q.materialId) && q.position.y < 0.5).map((q) => v("I13", `${q.name} is interior plywood on the ground outdoors`));
 }
 
@@ -385,7 +387,7 @@ export function checkBuild(project: YardProject, prompt: string, plan: BuildPlan
     ...i1(project), ...i3(project, plan), ...i4(project, plan), ...i6(project, plan), ...i7(project), ...i8(project, prompt),
     ...i9(project, plan), ...i11(project, plan), ...i12(project, prompt), ...i13(project, prompt), ...i14(project, plan), ...i17(project),
     ...i18(project, plan), ...i19(project, plan), ...i20(project, plan, prompt), ...i21(project, prompt), ...i22(project, prompt), ...i23(project, prompt), ...i24(project, prompt), ...i29(plan), ...c10(project, plan), ...c11(project, plan, prompt), ...c12(plan), ...c13(project, plan, prompt), ...c14(project, prompt), ...c15(project, plan), ...c16(project, plan, prompt), ...c17(project, plan), ...c18(project, plan), ...c19(project, plan),
-    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i35(project, prompt), ...i36(project, prompt), ...i37(project, plan), ...i38(project, plan), ...i41(project, prompt), ...i43(project, prompt), ...i46(project, plan), ...i42(project, prompt),
+    ...i26(project), ...i27(project, prompt), ...i28(project, plan), ...i30(project), ...i31(project, prompt, plan), ...i32(project, plan), ...i35(project, prompt), ...i36(project, prompt), ...i37(project, plan), ...i38(project, plan), ...i39(project), ...i41(project, prompt), ...i42(project, prompt), ...i43(project, prompt), ...i46(project, plan), ...i50(plan), ...i51(plan),
   ];
 }
 
@@ -452,6 +454,11 @@ export function i36(p: YardProject, prompt: string): Violation[] {
 /** I28 (F32 stock thickness never scales): a part is its stock's thickness, or whole layers of it glued up and said so (stockThickness.ts). */
 function i28(p: YardProject, plan: BuildPlan): Violation[] {
   return thicknessFailures(p, plan).map((m) => v("I28", m));
+}
+
+/** I39 (F2 hanging clearance): a clothes rod runs side to side in a box a hanger can use. */
+function i39(p: YardProject): Violation[] {
+  return hangingClearanceIssues(p).map((m) => v("I39", m));
 }
 
 /**
@@ -639,6 +646,69 @@ function i27(p: YardProject, prompt: string): Violation[] {
   return rotorPlayFailures(p, slides).map((m) => v("I27", m));
 }
 
+/**
+ * I50 (F7 Buy = layout, per stock): each plywood Buy row's quantity is the plan layout's sheet count for that stock and
+ * sheet size (a stand's 15/32" skirt and 23/32" top are two rows, never the whole nest on the first). The thin-part
+ * backer nest and 1/4" rows are not checked here. Graded by the eval gate, outside PER_BUILD so the eval score's max is unchanged.
+ */
+function i50(plan: BuildPlan): Violation[] {
+  const nest = plan.sheetNest;
+  if (!nest?.sheets) return [];
+  const ply = (id: string) => /^plywood-/.test(id) && !/^plywood-1-4/.test(id);
+  const want = new Map<string, number>();
+  for (const g of nestSheetsByStock(nest.sheets)) {
+    if (!ply(g.stock)) continue;
+    if (g.on8) want.set(`${g.stock}-4x8`, g.on8);
+    if (g.on10) want.set(`${g.stock}-4x10`, g.on10);
+  }
+  const got = new Map<string, number>();
+  for (const b of plan.bom) {
+    const id = b.catalogId ?? "";
+    if (!ply(id) || !/sheet|panel/i.test(b.unit)) continue;
+    const k = `${id.replace(/-\d+x\d+$/, "")}-${/-4x10$/.test(id) ? "4x10" : "4x8"}`;
+    got.set(k, (got.get(k) ?? 0) + b.quantity);
+  }
+  const out: Violation[] = [];
+  for (const k of new Set([...want.keys(), ...got.keys()])) {
+    if ((want.get(k) ?? 0) !== (got.get(k) ?? 0)) out.push(v("I50", `Buy lists ${got.get(k) ?? 0} ${k} sheet(s); the sheet layout draws ${want.get(k) ?? 0}`));
+  }
+  return out;
+}
+
+/**
+ * I51 (F7 no wasted sheet; kick-strip review, Oct 25): no sheet is opened for a trim strip (isTrimStrip: kick strip, toe
+ * kick, plinth) that fits a free gap of an earlier sheet of the same stock and size, as cut or turned. Other parts keep
+ * their grain, so they are not checked. Structural and backer nests. Graded by the eval gate, outside PER_BUILD so the eval score's max is unchanged.
+ */
+export function i51Gaps(nest: NestResult | null | undefined): string[] {
+  const out: string[] = [];
+  const sheets = nest?.sheets ?? [];
+  sheets.forEach((s, j) => {
+    // Only a sheet opened for trim strips alone could have been saved, and only if all of them fit earlier gaps together.
+    if (!s.parts.length || !s.parts.every(isTrimStrip)) return;
+    const early = sheets.slice(0, j).filter((e) => e.material === s.material && e.width === s.width && e.height === s.height).map((e) => ({ ...e, parts: [...e.parts] }));
+    const spots: string[] = [];
+    for (const p of s.parts) {
+      let home: (typeof early)[number] | undefined;
+      for (const [w, h] of [[p.width, p.height], [p.height, p.width]]) {
+        home = early.find((e) => {
+          const at = freeGapSpot(e, w, h);
+          if (at) e.parts.push({ ...p, ...at, width: w, height: h });
+          return !!at;
+        });
+        if (home) break;
+      }
+      if (!home) return;
+      spots.push(`${p.label ?? ""} ${p.name} ${p.width}x${p.height} opens Sheet ${s.index} though it fits a free gap on Sheet ${home.index}`.trim());
+    }
+    out.push(...spots);
+  });
+  return out;
+}
+function i51(plan: BuildPlan): Violation[] {
+  return [...i51Gaps(plan.sheetNest?.sheets), ...i51Gaps(plan.sheetNest?.backer)].map((m) => v("I51", m));
+}
+
 /** I18 (F12 part ownership): every part is installed by one build step (same-named twins may share a step). */
 function i18(p: YardProject, plan: BuildPlan): Violation[] {
   const out: Violation[] = [];
@@ -679,6 +749,8 @@ export function i46(p: YardProject, plan: BuildPlan): Violation[] {
     const total = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
     if (carried.has(id)) {
       if (Number.isFinite(total) && carried.get(id) !== total) out.push(v("I46", `Buy counts ${total} ${b.name} from the model's joints; the steps carry ${carried.get(id)}`));
+      // A wall line sold by the piece (a kit, lags each): Buy's quantity is what the steps carry.
+      else if (tiedById(b) && /^(?:kit|each)$/i.test(b.unit) && carried.get(id) !== b.quantity) out.push(v("I46", `Buy lists ${b.quantity} ${b.name}; the steps carry ${carried.get(id)}`));
       continue;
     }
     if (tiedById(b) || anchorKind(b)) {
@@ -830,7 +902,7 @@ function c15(p: YardProject, plan: BuildPlan): Violation[] {
 function c16(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
   if (p.displayOnly) return [];
   const out: Violation[] = [];
-  const outdoor = isOutdoorPrompt(prompt) || plan.bom.some((b) => b.catalogId === "outdoor-finish");
+  const outdoor = outdoorBuild(p, prompt) || plan.bom.some((b) => b.catalogId === "outdoor-finish");
   if (outdoor && contactBuild({ ...p, prompt })) for (const b of plan.bom.filter((x) => /pressure[- ]treated/i.test(x.name))) out.push(v("C16", `"${b.name}" on a build that touches food, skin or a nest`));
   if (outdoor && !/\bplywood\b/i.test(prompt)) for (const b of plan.bom.filter(interiorSheet)) out.push(v("C16", `interior sheet "${b.name}" on an outdoor build`));
   return out;

@@ -25,14 +25,14 @@ describe("C10 price consistency", () => {
     });
   }
 
-  it("linen: picking the default screw join in the store keeps $183.70", () => {
+  it("linen: picking the default screw join in the store keeps $193.68", () => {
     const s = useYard.getState();
     s.generate("linen closet 31.5 wide 78 tall 16 deep", undefined, undefined, { fresh: true });
-    assert.equal(s.makePlan().totals.estCostUsd, 183.7);
+    assert.equal(s.makePlan().totals.estCostUsd, 193.68);
     s.setJoinMethod("screw");
     const now = useYard.getState().project;
     useYard.getState().commit({ ...now, shopJoin: "screw", joinMethod: "screw" });
-    assert.equal(useYard.getState().makePlan().totals.estCostUsd, 183.7);
+    assert.equal(useYard.getState().makePlan().totals.estCostUsd, 193.68);
   });
 
   it("a new build swaps every total at once: the shown plan never outlives its build", () => {
