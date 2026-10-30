@@ -561,9 +561,11 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
     : thinPick
       ? `Stock: ${item.name}. Every plywood face is this sheet.`
       : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;
+  // Row 626: a note names the picked sheet once no part is left on a ¾" sheet.
+  const thin34 = Math.abs(thick - 0.75) > 0.02 && !panels.some((p) => /^plywood-3-4/.test(p.materialId ?? ""));
   const notes = (project.notes ?? [])
     .filter((n) => !/^Stock:/.test(n) && !/does not replace the sheet/i.test(n) && !/thinner than this carcase/i.test(n))
-    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : n));
+    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : thin34 ? n.replace(/¾["″]?\s*plywood/gi, item.name) : n));
   return {
     ...project,
     primaryMaterialId: item.id,
