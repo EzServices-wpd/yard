@@ -230,3 +230,49 @@ test("rendered backdrop and bench host: the Measure backdrop takes no presses, o
   const isTap = need().isSheetTap, px = need().SHEET_TAP_PX;
   assert.ok(isTap({ x: 0, y: 0 }, { x: px, y: 0 }) && !isTap({ x: 0, y: 0 }, { x: px + 1, y: 0 }) && !isTap(null, { x: 0, y: 0 }));
 });
+
+// Critic 2 #208 advisory (D4): the hold is phone-only. On desktop the Measure panel sits beside the bench, so a
+// press on the canvas must keep the bench's own events on (select, place, drag) and never close or swallow anything.
+test("desktop, Measure panel open: a press on the canvas leaves the bench's events on and is the bench's", () => {
+  const { BenchHost } = need();
+  phoneWidth = false;
+  const rig = benchRig();
+  let closes = 0, stopped = 0;
+  const m = mount(React.createElement(BenchHost, { sheetOpen: true, onClose: () => closes++ }, null));
+  const h = propsOf(m.host.all("[data-bench-host]")[0]);
+  for (const dx of [0, 3, 40]) {
+    h.onPointerDownCapture({ target: rig.canvas, clientX: 100, clientY: 100 });
+    assert.ok(rig.on(), `desktop: the bench's events stay on (press moved ${dx} px)`);
+    h.onClickCapture({ target: rig.canvas, clientX: 100 + dx, clientY: 100, stopPropagation: () => { stopped++; } });
+  }
+  assert.equal(closes, 0, "desktop: a tap on the bench never closes the side panel");
+  assert.equal(stopped, 0, "desktop: the bench gets its own click");
+  m.unmount();
+  rig.dispose();
+  phoneWidth = true;
+});
+
+// Pin (Critic 2 #208 advisory): measure-sheet-gap.ts reaches the bench's event store through react-three-fiber's
+// `_roots`, an underscore export that is not public API. This uses r3f's own createRoot (no renderer: configure is
+// never called), so if an upgrade renames `_roots`, changes its key or drops `setEvents`, this goes red, instead of
+// closing taps quietly placing and selecting parts on the bench again.
+test("pin: r3f's _roots still maps a canvas to its store, and the open phone sheet switches that store's events off", async () => {
+  const fiber = await import("@react-three/fiber");
+  assert.ok(fiber._roots instanceof Map, "@react-three/fiber still exports _roots as a Map");
+  const { BenchHost } = need();
+  phoneWidth = true;
+  const canvas = Object.assign(doc.createElement("canvas"), { closest: (s: string) => (s === "canvas" ? canvas : null) });
+  fiber.createRoot(canvas as never);
+  const store = fiber._roots.get(canvas as never)?.store;
+  assert.ok(store, "createRoot registers the canvas in _roots");
+  store.setState({ gl: {} as never }); // no WebGL here: r3f's invalidate reads gl.xr on every store change
+  const enabled = () => store.getState().events.enabled;
+  assert.equal(enabled(), true, "r3f starts with events on");
+  const m = mount(React.createElement(BenchHost, { sheetOpen: true, onClose: () => {} }, null));
+  propsOf(m.host.all("[data-bench-host]")[0]).onPointerDownCapture({ target: canvas, clientX: 0, clientY: 0 });
+  assert.equal(enabled(), false, "a press with the sheet open turns the real store's events off");
+  m.render(React.createElement(BenchHost, { sheetOpen: false, onClose: () => {} }, null));
+  assert.equal(enabled(), true, "closing the sheet turns them back on");
+  m.unmount();
+  fiber._roots.delete(canvas as never);
+});
