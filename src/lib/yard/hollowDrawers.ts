@@ -19,7 +19,8 @@ const span = (a: number, al: number, b: number, bl: number) => Math.min(a + al, 
 
 /** Row 626: a wall (drawer side, bay divider) of a ½" sheet build is cut from that sheet; ¾", boards and ¼" sheets keep ¾". */
 export function sheetWallT(materialId: string): number {
-  const t = getCatalogItem(materialId)?.formFactor === "sheet" ? getCatalogItem(materialId)?.dims.thickness : undefined;
+  const it = getCatalogItem(materialId);
+  const t = it?.formFactor === "sheet" ? it.dims.thickness : undefined;
   return t && t >= WALL_MIN_T && t < DRAWER_SIDE_T ? t : DRAWER_SIDE_T;
 }
 
