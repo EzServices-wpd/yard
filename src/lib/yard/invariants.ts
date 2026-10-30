@@ -39,7 +39,7 @@ import { buildInfo } from "./buildInfo";
 import { RECIPES, findRecipe } from "./recipes";
 import { getCatalogItem } from "./catalog";
 import { unitSizeById } from "./unitSizes";
-import { footTalk, hungBuild, isOutdoorPrompt } from "./outdoor";
+import { footTalk, hungBuild, isOutdoorPrompt, outdoorBuild } from "./outdoor";
 import { partLetters } from "./pdfDraw";
 import { stepTones } from "./planStepPicture";
 import { unownedParts } from "./ownEveryPart";
@@ -204,7 +204,7 @@ function i12(p: YardProject, prompt: string): Violation[] {
 
 /** I13: outdoors, nothing on the ground is interior plywood. */
 function i13(p: YardProject, prompt: string): Violation[] {
-  if (!isOutdoorPrompt(prompt) || /plywood/i.test(prompt)) return [];
+  if (!outdoorBuild(p, prompt) || /plywood/i.test(prompt)) return [];
   return p.panels.filter((q) => /^plywood-/.test(q.materialId) && q.position.y < 0.5).map((q) => v("I13", `${q.name} is interior plywood on the ground outdoors`));
 }
 
@@ -902,7 +902,7 @@ function c15(p: YardProject, plan: BuildPlan): Violation[] {
 function c16(p: YardProject, plan: BuildPlan, prompt: string): Violation[] {
   if (p.displayOnly) return [];
   const out: Violation[] = [];
-  const outdoor = isOutdoorPrompt(prompt) || plan.bom.some((b) => b.catalogId === "outdoor-finish");
+  const outdoor = outdoorBuild(p, prompt) || plan.bom.some((b) => b.catalogId === "outdoor-finish");
   if (outdoor && contactBuild({ ...p, prompt })) for (const b of plan.bom.filter((x) => /pressure[- ]treated/i.test(x.name))) out.push(v("C16", `"${b.name}" on a build that touches food, skin or a nest`));
   if (outdoor && !/\bplywood\b/i.test(prompt)) for (const b of plan.bom.filter(interiorSheet)) out.push(v("C16", `interior sheet "${b.name}" on an outdoor build`));
   return out;
