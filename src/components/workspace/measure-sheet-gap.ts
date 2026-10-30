@@ -52,8 +52,8 @@ function releaseBench(held: { current: Events | null }) {
  * canvas first switches the bench's three.js events off (the orbit controls listen on their own and still turn the
  * model), and they come back when the sheet closes. A tap (6 px or less) then closes the sheet; a drag only orbits.
  * Neither adds a part (Free mode) or selects one (Look mode) only because those events are off while the sheet is
- * open: the bench's handlers would still fire on pointer-down otherwise. Release got the same result from its
- * backdrop, which ate the press. On desktop nothing here touches the bench: its events stay on and its clicks are
+ * open: the bench's handlers would still fire on pointer-down otherwise. Before #208 the clear backdrop got the
+ * same result by eating the press. On desktop nothing here touches the bench: its events stay on and its clicks are
  * its own. Escape (phone only) closes the sheet and puts focus back on the control that opened it. Returns the
  * bench host's capture handlers.
  */
