@@ -16,6 +16,7 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import type { YardProject } from "../src/lib/yard/types";
 import { drawnDims } from "../src/lib/ideas/size";
+import { cardLabels } from "../src/lib/ideas/drawingLabels";
 import { logCardPrompt, typeKey } from "../src/lib/ideas/liveFeed";
 import { nameBase } from "./gen-idea-types";
 
@@ -212,6 +213,7 @@ for (const c of cards) {
   if (!view.custom && svg.length > BUDGET) svg = tidy(post(raw), 0);
   if (view.stroke) svg = thinner(svg, view.stroke);
   if (view.zoom) svg = zoomed(svg, view.zoom);
+  svg = cardLabels(svg); // labels readable at card size (drawingLabels.ts)
   const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
   fs.writeFileSync(path.join(OUT, `${c.slug}.${v}.svg`), svg);
   const parts = built.panels.length + built.instances.length;

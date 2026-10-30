@@ -164,8 +164,8 @@ test("framing: the closed button is not a bench card (default fit = no scrubber)
   assert.match(bar, /data-yard-scrub-counter>\{scrubCounter\(track!, k\)\}/, "the visible counter is the plan step, not beats");
   assert.doesNotMatch(bar, /padStart/, "no 01 / 05 beat counter");
   const canvas = read("src/components/workspace/canvas.tsx");
-  // The share sheet (PR 11) adds its own "h" only while it is open: closed, both add nothing.
-  assert.match(canvas, /overlayKey=\{`\$\{measureOpen \? 1 : 0\}\$\{activeStep \?\? ""\}\$\{scrubbing \? "s" : ""\}\$\{sharing \? "h" : ""\}\|\$\{viewNonce\}`\}/, "closed: the same overlay key as release; open: a refit");
+  // The share sheet (PR 11) adds its own "h" and the phone Measure sheet its "m" only while open: closed, all add nothing.
+  assert.match(canvas, /overlayKey=\{`\$\{measureOpen \? 1 : 0\}\$\{activeStep \?\? ""\}\$\{scrubbing \? "s" : ""\}\$\{sharing \? "h" : ""\}\$\{sheetGap \? "m" : ""\}\|\$\{viewNonce\}`\}/, "closed: the same overlay key as release; open: a refit");
   assert.match(canvas, /locked \|\| scrubbing \? built : figureBox\(built, figure\)/, "the hidden figure is left out of the fit while scrubbing");
 });
 

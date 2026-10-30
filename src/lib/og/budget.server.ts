@@ -50,9 +50,45 @@ export type Within = { facts: CardFacts | null; why: "ok" | "busy" | "slow" | "e
 let worker: Worker | null = null;
 let busy = false;
 
+/** Runs in flight by token: the page's title and its /api/og card share one engine run. */
+const running = new Map<string, Promise<Within>>();
+
 /** The card's facts within `ms`, never on the request thread; one card at a time per instance. */
 export function cardFactsWithin(token: string, ms = CARD_BUDGET_MS): Promise<Within> {
+  const run = running.get(token);
+  if (run) return run;
   if (busy) return Promise.resolve({ facts: null, why: "busy" });
+  const p = startRun(token, ms);
+  running.set(token, p);
+  void p.then(() => running.delete(token));
+  return p;
+}
+
+/** How long a /workspace page waits for its title: past this the plain title goes out (the run goes on for the card). */
+export const TITLE_BUDGET_MS = 1500;
+const titles = new Map<string, { name: string; size: string } | null>();
+const TITLES_MAX = 256;
+
+/** Row 578: the engine's name and size for a build token (the card's own), or null: not built, too slow, busy, no token. */
+export async function engineTitleWithin(token: string, ms = TITLE_BUDGET_MS): Promise<{ name: string; size: string } | null> {
+  if (!token) return null;
+  if (titles.has(token)) return titles.get(token)!;
+  const title = (r: Within) => r.facts && { name: r.facts.name, size: r.facts.size };
+  const run = cardFactsWithin(token);
+  // Worked out once per token, like the card (built, none or too slow), even after this page stopped waiting.
+  void run.then((r) => {
+    if (r.why === "busy") return;
+    if (titles.size >= TITLES_MAX) titles.delete(titles.keys().next().value!);
+    titles.set(token, title(r));
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((r) => { timer = setTimeout(() => r(null), ms); });
+  const r = await Promise.race([run, late]);
+  clearTimeout(timer);
+  return r && title(r);
+}
+
+function startRun(token: string, ms: number): Promise<Within> {
   busy = true;
   const w = (worker ??= spawn());
   w.unref();

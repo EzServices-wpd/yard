@@ -25,6 +25,7 @@ import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
+import { MeasureSheetGap } from "@/components/workspace/measure-sheet-card";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
@@ -329,7 +330,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 for and says nothing was built; a not-learned placeholder names the typed object; "Workbench" only on an empty bench. */}
             {pieceCount > 0 || project.refused
               ? headerTitle(project)
-              : project.displayOnly // the typed object, as the tab names it (route buildTitle's noun): never "Workbench"
+              : project.displayOnly // the typed object, never "Workbench" (the tab keeps the plain title: row 578)
                 ? `${project.name.split(/[,\d]/)[0].trim() || project.name} · not learned yet`
                 : "Workbench"}
           </span>
@@ -470,6 +471,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
         <div className="relative min-w-0 flex-1" data-bench-host>
           <WorkspaceCanvas />
+          <MeasureSheetGap show={side === "measure"} />
           <RevealStatus />
           <BuildScrubber />
           <ShareButton />

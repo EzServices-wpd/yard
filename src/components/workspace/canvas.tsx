@@ -31,6 +31,7 @@ import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-pr
 import { STAGE } from "@/components/workspace/stage-palette";
 import { measureBoxStrokes } from "@/components/workspace/measure-box";
 import { clipCentre, shareState, subscribeShare } from "@/components/workspace/share-clip";
+import { sheetGapOpen, subscribeSheetGap } from "@/components/workspace/measure-sheet-gap";
 
 const HULL = STAGE.ghost;
 const BENCH_BG = SHOP_GROUND.bg;
@@ -211,6 +212,8 @@ export function WorkspaceCanvas() {
   const pending = building || grokBusy;
   const scrubbing = useSyncExternalStore(subscribeScrub, () => scrubState().open, () => false);
   const sharing = useSyncExternalStore(subscribeShare, () => shareState().open, () => false);
+  // The phone Measure sheet's card (measure-sheet-gap.tsx): a refit on open and close; closed, the key is release's.
+  const sheetGap = useSyncExternalStore(subscribeSheetGap, sheetGapOpen, () => false);
 
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
@@ -318,8 +321,8 @@ export function WorkspaceCanvas() {
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
         <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
-        {/* The open Watch it build bar and the open share sheet are cards the fit avoids (refit on open and close); closed, the key is release's. */}
-        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}${sharing ? "h" : ""}|${viewNonce}`} />
+        {/* The open Watch it build bar, the open share sheet and the phone Measure sheet are cards the fit avoids (refit on open and close); closed, the key is release's. */}
+        <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}${sharing ? "h" : ""}${sheetGap ? "m" : ""}|${viewNonce}`} />
         <ClipTurn />
         {workMode === "walk" && project.traverse && <WalkRig traverse={project.traverse} />}
         <StepCapture />
