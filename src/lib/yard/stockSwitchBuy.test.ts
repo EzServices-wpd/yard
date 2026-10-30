@@ -158,3 +158,11 @@ it("row 626 leaves the tipi's ½\" canvas cover where release has it (row 685 ow
     const cover = plan.cutList.find((c) => /canvas cover/i.test(c.name));
     assert.deepEqual(cover && [cover.quantity, cover.thicknessIn], [56, 0.75]);
   }));
+
+it("row 683: the counter step's sentence is release's, with the count and ply read off the counter", () =>
+  offline(() => {
+    const said = (q: string, s?: string) => buildPlan(s ? generateFromPrompt(q, s) : generateFromPrompt(q)).instructions.map((st) => st.description.match(/Cut list has [^—]*—[^.]*thick/)?.[0]).filter(Boolean);
+    assert.deepEqual(said("sink base cabinet 48 wide"), ['Cut list has two ¾" plies — glue them face-to-face (laminate) so the finished work surface is 1½" thick']);
+    assert.deepEqual(said("sink base cabinet 48 wide in 1/2 inch plywood"), ['Cut list has three ½" plies — glue them face-to-face (laminate) so the finished work surface is 1½" thick']);
+    assert.deepEqual(said("kitchen island", "plywood-1-2-4x8"), ['Cut list has three ½" Counter plies — glue them face-to-face (laminate) so the finished top is 1½" thick']);
+  }));
