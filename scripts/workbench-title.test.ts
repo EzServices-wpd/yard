@@ -34,6 +34,8 @@ test("row 517: on a not-learned placeholder the header names the typed object; r
   // Row 578 (was: the tab cut the same noun from the typed prompt): the route title is the engine's header only
   // (scripts/share-title.test.ts), so a placeholder, which the engine never names, keeps the plain workbench title.
   assert.doesNotMatch(route, /\.split\(\/\[,\\d\]\/\)/, "the route cuts no typed noun");
+  // The bench never re-titles the tab on a placeholder (0 pieces, not refused), so the plain title stands.
+  assert.match(shell, /if \(titlePending \|\| \(benchPieces <= 0 && !project\.refused\)\) return;\s*document\.title = `\$\{headerTitle\(project\)\} · Yard`;/);
   const { roughBlock } = await import("../src/lib/yard/recipeBuild");
   for (const [q, want] of [["toolbox", "Toolbox"], ["toolbox 18x16x18", "Toolbox"], ["lattice tower 24.5 tall", "Lattice tower"]]) {
     const name = roughBlock(q, generateFromPrompt(q)).name;
