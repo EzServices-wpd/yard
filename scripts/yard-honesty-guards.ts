@@ -48,6 +48,7 @@ import { inspectTemplate, frameHangs, frameGlazing } from "../src/lib/yard/formT
 import { boxGap, contactReport, projectBoxes } from "../src/lib/yard/contact";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
+import { i52 } from "../src/lib/yard/invariants";
 import { toPrimitive as toPrimitiveG } from "../src/lib/yard/geometry";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -1460,12 +1461,44 @@ if (bambooBridge.instances.some((i) => i.catalogId !== "bamboo-skewer-12")) {
   failWeekend("bamboo bridge foreign members");
 }
 const bambooPlan = buildPlan(bambooBridge);
-if (bambooPlan.partsKind !== "whole") failWeekend("bamboo bridge plan not whole", bambooPlan.partsKind);
+// GUARD CHANGE (row 612): 12" skewers in a stick graph are cut to their spans (was: the plan stays whole, one skewer a piece).
+// The plan is a cut list, the pieces carry cut lengths, Buy counts whole skewers by cut yield (no under- or over-buy),
+// the words say cut (never "used whole" / "Do not cut"), and the honesty check passes.
+const longCut = (label: string, p: typeof bambooBridge, pl: typeof bambooPlan, stockId: string) => {
+  if (pl.partsKind === "whole") failWeekend(`${label} plan is whole, not cut to span`, pl.partsKind);
+  if (!p.instances.some((i) => i.catalogId === stockId && i.cutLength != null)) failWeekend(`${label} pieces carry no cut length`);
+  const line = pl.bom.find((b) => b.catalogId === stockId);
+  const m = line?.unit.match(/\bpacks? of (\d+)\s*\((\d+) [a-z ]*used\)/i);
+  if (!line || !m) failWeekend(`${label} Buy has no whole-stock pack line`, line?.unit);
+  else {
+    const used = Number(m[2]);
+    if (used >= p.instances.filter((i) => i.catalogId === stockId).length) failWeekend(`${label} Buy counts pieces, not sticks by cut yield`, line.unit);
+    if (line.quantity !== Math.ceil(used / Number(m[1]))) failWeekend(`${label} Buy packs != ceil(used / pack)`, line.unit);
+  }
+  const over = i52(pl);
+  if (over.length) failWeekend(`${label} I52 under- or over-buy`, over.map((v) => v.msg));
+  const said = [...p.notes, ...pl.instructions.flatMap((s) => [s.title, s.description])];
+  if (said.some((t) => /used whole|Do not cut/i.test(t))) failWeekend(`${label} says used whole / Do not cut but cuts`);
+  if (!said.some((t) => /\d+ short pieces are cut from whole/.test(t))) failWeekend(`${label} notes do not say how many pieces are cut`);
+  const ins = inspectWeekendHonesty(p, pl);
+  if (!ins.ok) failWeekend(`${label} inspect`, ins.issues);
+};
+longCut("bamboo bridge", bambooBridge, bambooPlan, "bamboo-skewer-12");
 if (!bambooPlan.bom.some((b) => /glue/i.test(b.name))) {
   failWeekend("bamboo bridge missing glue", bambooPlan.bom.map((b) => b.name));
 }
-const bambooInspect = inspectWeekendHonesty(bambooBridge, bambooPlan);
-if (!bambooInspect.ok) failWeekend("bamboo bridge inspect", bambooInspect.issues);
+const skewerTower = generateFromPrompt("skewer tower");
+longCut("skewer tower", skewerTower, buildPlan(skewerTower), "bamboo-skewer-12");
+const giantBridge = generateFromPrompt("brooklyn bridge from giant craft sticks");
+longCut("giant-stick brooklyn", giantBridge, buildPlan(giantBridge), "popsicle-giant");
+// NEGATIVE: the exemption is for long craft stock only. Short craft stock with a cut length still fails the whole-stick check.
+for (const q of ["brooklyn bridge from popsicle sticks", "4 foot lattice tower from jumbo craft sticks", "toothpick tower", "castle from drinking straws"]) {
+  const p = generateFromPrompt(q);
+  const k = p.instances.findIndex((i) => i.catalogId === p.primaryMaterialId);
+  if (k < 0) { failWeekend(`negative ${q}: no primary-stock piece`); continue; }
+  const cutOne = { ...p, instances: p.instances.map((i, j) => (j === k ? { ...i, cutLength: 1 } : i)) };
+  if (!inspectWeekendHonesty(cutOne, buildPlan(p)).issues.some((x) => x.guard === "whole")) failWeekend(`negative ${q}: a cut short-stock piece passes the whole-stick check`);
+}
 
 console.log("WEEKEND STRUCTURE FAMILIES OK", {
   eiffel: { family: detectWeekendFamily("3 foot Eiffel Tower from popsicle sticks")?.family, override: "eiffel", kind: eiffel.kind },
