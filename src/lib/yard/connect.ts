@@ -5,6 +5,7 @@
 
 import type { CatalogItem, StructureKind, Vec3, YardInstance } from "./types";
 import { toPrimitive } from "./geometry";
+import { checkParts } from "./partCeiling";
 import {
   StructureEdge,
   StructureGraph,
@@ -792,6 +793,10 @@ export function finishGraph(
   grain = 1,
 ): { graph: StructureGraph; offer: SupportOffer } {
   const d = stockDensity(item, grain);
+  // The ceiling: a raw graph whose members already need far more sticks than MAX_PARTS stops before the weld and prune passes.
+  const at = new Map(graph.nodes.map((n) => [n.id, n.position]));
+  const stick = Math.max(0.5, toPrimitive(item).length);
+  checkParts(Math.floor(graph.edges.reduce((s, e) => { const a = at.get(e.from), b = at.get(e.to); return a && b ? s + Math.ceil(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) / stick) : s; }, 0) / 1.5));
   const memberKeep = kind === "furniture" || kind === "ladder" || kind === "frame";
   const thin = Math.min(d.thick, item.dims.thickness ?? item.dims.height ?? d.thick);
   const weldTol =
