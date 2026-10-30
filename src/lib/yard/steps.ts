@@ -2,7 +2,7 @@
 
 import { fastenerText, structural, wallScrew, WALL_ANCHORS_ID } from "./wallAnchorSteps";
 import { bareName, headerSize, typedAxesTalk } from "./headerSize";
-import { drawerBoxes } from "./hollowDrawers";
+import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
@@ -56,6 +56,16 @@ import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, FastenerUse, Panel, YardInstance, YardProject } from "./types";
+
+/** Row 683: a counter step names the layers its cut list lays up: count × the part's own sheet (two ¾" or three ½"). */
+const PLY_WORD: Record<number, string> = { 2: "two", 3: "three", 4: "four" };
+const PLY_GLYPH: Record<string, string> = { "0.5": "½", "0.75": "¾", "1.5": "1½" };
+function plies(p: Panel | undefined, total = false): string {
+  const t = sheetWallT(p?.materialId ?? "");
+  const n = p ? Math.max(2, Math.round(sheetCutDims(p.size.width, p.size.height, p.size.depth).thicknessIn / t)) : 2;
+  const x = total ? n * t : t;
+  return total ? `${PLY_GLYPH[String(x)] ?? inchFrac(x)}"` : `${PLY_WORD[n] ?? n} ${PLY_GLYPH[String(x)] ?? inchFrac(x)}"`;
+}
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
@@ -2234,7 +2244,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 6,
         title: `Set the counter at ${round(H)}"`,
-        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Cut list has two ¾" Counter plies — glue them face-to-face (laminate) so the finished top is 1½" thick, then glue and screw the stack down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
+        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Cut list has ${plies(counters[0] ?? of("top")[0])} Counter plies — glue them face-to-face (laminate) so the finished top is ${plies(counters[0] ?? of("top")[0], true)} thick, then glue and screw the stack down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
         partsUsed: names(counters.length ? counters : of("top")),
       },
       {
@@ -2571,7 +2581,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       description: `${counters.map(cutLine).join("; ")}. ${
         (counters[0]?.size.height ?? 0) > 0.8
           ? stockJoinVerb(project) === "Screw"
-            ? "Cut list has two ¾\" plies — glue them face-to-face (laminate) so the finished work surface is 1½\" thick, then glue and screw the stack down into the uprights and the knee dividers."
+            ? `Cut list has ${plies(counters[0])} plies — glue them face-to-face (laminate) so the finished work surface is ${plies(counters[0], true)} thick, then glue and screw the stack down into the uprights and the knee dividers.`
             : "Tape or glue the faces together, then tape or glue the stack down into the uprights and the knee dividers."
           : stockJoinVerb(project) === "Screw"
             ? "Glue and screw down into the uprights and the knee dividers."

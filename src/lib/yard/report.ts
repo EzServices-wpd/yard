@@ -154,7 +154,8 @@ function closetCuts(project: YardProject): CutLine[] {
       // Any part thicker than its stock is a real glue-up, even under 1.5x of it.
     ) {
       // Any sheet part thicker than its sheet is a glue-up of plies (a 3 5/8" hub is 5 layers), never one thick board.
-      const T = isPly || isSolidBoard ? plyT : lumberT(id);
+      // A "part" with no thin axis (the tipi's 42" canvas cover, row 685) is no sheet laminate: it keeps release's ¾" count until row 685.
+      const T = isPly || isSolidBoard ? (dims.thicknessIn > 12 ? STOCK_T : plyT) : lumberT(id);
       const plies = Math.max(2, Math.round(dims.thicknessIn / T));
       // The row counts layers, so the note always says how many make each part: the part count reads off the model.
       // The text reads off the real layers: the count × the stock's thickness, never the part's modelled size.
