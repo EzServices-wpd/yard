@@ -581,6 +581,8 @@
 /* A card's size on one line: 13px (the readable floor) with tight spaces, 14px from xl where the cards are wide enough. */
 .yard-measure-fit { font-size: 13px; letter-spacing: -0.02em; word-spacing: -0.25em; }
 @media (min-width: 80rem) { .yard-measure-fit { font-size: 14px; } }
+/* Under 375px the narrowest card is ~203px of text: tighter letters keep a 31-character size inside it, still 13px. */
+@media (max-width: 374.98px) { .yard-measure-fit { letter-spacing: -0.05em; } }
 /* 2B: counts and step numbers stay in the text face, with figures that line up. */
 .yard-num { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
 /* 4B: the header line only once the page has scrolled (opacity only; a sentinel sets data-scrolled). */
