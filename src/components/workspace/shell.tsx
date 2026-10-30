@@ -26,7 +26,7 @@ import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
 import { MeasureSheetGap } from "@/components/workspace/measure-sheet-card";
-import { useMeasureSheetDismiss } from "@/components/workspace/measure-sheet-gap";
+import { BenchHost, PanelBackdrop } from "@/components/workspace/measure-sheet-gap";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
@@ -59,7 +59,6 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
   const closeSide = useCallback(() => setSide(null), []);
-  const sheetDismiss = useMeasureSheetDismiss(side === "measure", closeSide);
   // The span/spine offer: dismissible per build; on a phone it lives in the Edit sheet, never over the model.
   const [offerDismissed, setOfferDismissed] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -460,19 +459,14 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
       <div className="relative flex min-h-0 flex-1">
         {side && (
           <>
-            <button
-              type="button"
-              aria-label="Close panel"
-              onClick={() => setSide(null)}
-              className={`absolute z-10 md:hidden ${side === "measure" ? "pointer-events-none inset-x-0 top-0 h-[50vh] bg-transparent" : "inset-0 bg-bg/50"}`}
-            />
+            <PanelBackdrop sheet={side === "measure"} onClose={closeSide} />
             <aside className={`absolute z-20 overflow-y-auto border-border bg-surface md:static md:inset-y-0 md:left-0 md:w-80 md:shrink-0 md:border-r ${side === "measure" ? "inset-x-0 bottom-0 top-auto h-[50vh] w-full border-t md:h-auto md:w-80" : "inset-y-0 left-0 w-[min(20rem,92vw)] border-r"}`} data-yard-panel={side === "measure" ? "half" : "side"}>
               {side === "catalog" ? <CatalogPanel /> : <MeasurePanel onBuilt={() => setPlanOpen(false)} />}
             </aside>
           </>
         )}
 
-        <div className="relative min-w-0 flex-1" data-bench-host {...sheetDismiss}>
+        <BenchHost sheetOpen={side === "measure"} onClose={closeSide}>
           <WorkspaceCanvas />
           <MeasureSheetGap show={side === "measure"} />
           <RevealStatus />
@@ -845,7 +839,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
             </div>
           </div>
           )}
-        </div>
+        </BenchHost>
       </div>
 
       <PlanDrawer open={planOpen} onClose={() => setPlanOpen(false)} />

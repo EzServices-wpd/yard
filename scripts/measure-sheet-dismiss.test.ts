@@ -3,8 +3,6 @@
 // focus return, and tap-vs-drag on the bench are all checked against what the components do, not their source text.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 
 // ---- a tiny DOM: just what react-dom's client renderer and these components touch ----
 type L = (e: { type: string; key?: string; defaultPrevented?: boolean; preventDefault?: () => void }) => void;
@@ -138,35 +136,97 @@ test("Escape closes the phone sheet and puts focus back on the control that open
   m.unmount();
 });
 
-test("bench presses: a tap on the canvas closes the sheet; a drag (orbit) and taps off the canvas do not", () => {
-  const { useMeasureSheetDismiss, isSheetTap, SHEET_TAP_PX } = need();
-  let h: ReturnType<typeof useMeasureSheetDismiss> | null = null, closes = 0;
-  const Probe = ({ open }: { open: boolean }) => { h = useMeasureSheetDismiss(open, () => closes++); return null; };
-  const m = mount(React.createElement(Probe, { open: true }));
-  const canvas = { closest: (s: string) => (s === "canvas" ? {} : null) }, chip = { closest: () => null };
-  let stopped = 0;
-  const press = (target: object, dx: number) => {
-    h!.onPointerDownCapture({ clientX: 100, clientY: 100 } as never);
-    h!.onClickCapture({ target, clientX: 100 + dx, clientY: 100, stopPropagation: () => stopped++ } as never);
-  };
-  press(canvas, 40);
-  assert.equal(closes, 0, "a drag on the model orbits; the sheet stays");
-  assert.equal(stopped, 0, "and the click goes on to the canvas");
-  press(chip, 0);
-  assert.equal(closes, 0, "a tap on a bench button is that button's");
-  press(canvas, 2);
-  assert.equal(closes, 1, "a tap on the canvas closes, as the old backdrop did");
-  assert.equal(stopped, 1, "and selects nothing");
-  m.render(React.createElement(Probe, { open: false }));
-  press(canvas, 0);
-  assert.equal(closes, 1, "sheet closed: taps are the canvas's");
+test("desktop: Escape is not the sheet's (the Measure side panel stays open)", () => {
+  const { useMeasureSheetDismiss } = need();
+  phoneWidth = false;
+  let closes = 0;
+  const Probe = () => { useMeasureSheetDismiss(true, () => closes++); return null; };
+  const m = mount(React.createElement(Probe));
+  win.dispatch({ type: "keydown", key: "Escape", preventDefault() {} });
+  assert.equal(closes, 0);
   m.unmount();
-  assert.ok(isSheetTap({ x: 0, y: 0 }, { x: SHEET_TAP_PX, y: 0 }) && !isSheetTap({ x: 0, y: 0 }, { x: SHEET_TAP_PX + 1, y: 0 }) && !isSheetTap(null, { x: 0, y: 0 }));
+  phoneWidth = true;
 });
 
-test("shell: the measure backdrop no longer takes presses, and the bench host carries the dismiss handlers", () => {
-  const shell = fs.readFileSync(path.resolve(path.dirname(new URL(import.meta.url).pathname), "../src/components/workspace/shell.tsx"), "utf8");
-  assert.match(shell, /side === "measure" \? "pointer-events-none inset-x-0 top-0 h-\[50vh\] bg-transparent"/);
-  assert.match(shell, /useMeasureSheetDismiss\(side === "measure", closeSide\)/);
-  assert.match(shell, /data-bench-host \{\.\.\.sheetDismiss\}>/);
+// The rendered element's React props (react-dom keeps them on the node), so a test can press what the user presses.
+const propsOf = (n: N) => (n as unknown as Record<string, Record<string, (e: unknown) => void>>)[Object.keys(n).find((k) => k.startsWith("__reactProps$"))!];
+
+// The bench as react-three-fiber runs it: one event store per canvas, and canvas.tsx's handlers fire on pointer-down
+// (Free mode: the floor places a piece; every mode: a part selects) only while that store's events are on.
+const { _roots } = await import("@react-three/fiber");
+const { useYard } = await import("../src/lib/yard/store");
+function benchRig() {
+  let on = true;
+  const canvas = doc.createElement("canvas") as N & { closest: (s: string) => unknown };
+  canvas.closest = (sel: string) => (sel === "canvas" ? canvas : null);
+  _roots.set(canvas as never, { store: { getState: () => ({ setEvents: (e: { enabled: boolean }) => { on = e.enabled; } }) } } as never);
+  const down = (mode: "free" | "look") => {
+    if (!on) return;
+    const s = useYard.getState();
+    if (mode === "free") s.placePiece(s.project.primaryMaterialId, { x: 0, y: 0, z: 0 });
+    else s.select(s.project.panels[0].id);
+  };
+  return { canvas, down, on: () => on, dispose: () => _roots.delete(canvas as never) };
+}
+
+for (const mode of ["free", "look"] as const) {
+  test(`${mode} mode, sheet open on a phone: a tap closes it and leaves the parts and the selection alone; a drag only orbits`, () => {
+    const { BenchHost } = need();
+    phoneWidth = true;
+    useYard.getState().setProject(generateFromPrompt("cat tree"));
+    useYard.getState().select(null);
+    const snap = () => { const s = useYard.getState(); return JSON.stringify([s.project.panels.length, s.project.instances.length, s.selectedId]); };
+    const before = snap();
+    const rig = benchRig();
+    let closes = 0;
+    const close = () => closes++;
+    const m = mount(React.createElement(BenchHost, { sheetOpen: true, onClose: close }, null));
+    const host = m.host.all("[data-bench-host]")[0];
+    assert.ok(host, "the bench host renders");
+    let stopped = 0;
+    const press = (dx: number) => {
+      const h = propsOf(host);
+      // Capture on the host runs first, then the canvas's own pointer-down; the click comes after pointer-up.
+      h.onPointerDownCapture({ target: rig.canvas, clientX: 100, clientY: 100 });
+      rig.down(mode);
+      h.onClickCapture({ target: rig.canvas, clientX: 100 + dx, clientY: 100, stopPropagation: () => { stopped++; } });
+    };
+    press(40);
+    assert.equal(closes, 0, "a drag keeps the sheet open");
+    assert.equal(snap(), before, "a drag adds no part and selects nothing");
+    press(3);
+    assert.equal(closes, 1, "a tap closes the sheet");
+    assert.equal(snap(), before, "and adds no part and selects nothing (release: the backdrop took it)");
+    assert.equal(stopped, 2, "the bench never gets the click while the sheet is open (a drag's click would read as a miss)");
+    m.render(React.createElement(BenchHost, { sheetOpen: false, onClose: close }, null));
+    assert.ok(rig.on(), "closed: the bench's own events are back");
+    press(3);
+    assert.equal(closes, 1, "closed: a tap is the bench's");
+    assert.notEqual(snap(), before, `closed: the same tap ${mode === "free" ? "places a piece" : "selects a part"} again`);
+    m.unmount();
+    rig.dispose();
+  });
+}
+
+test("rendered backdrop and bench host: the Measure backdrop takes no presses, other panels' backdrop still closes", () => {
+  const { PanelBackdrop, BenchHost } = need();
+  let closes = 0;
+  const m = mount(React.createElement(PanelBackdrop, { sheet: true, onClose: () => closes++ }));
+  const b = m.host.childNodes[0];
+  assert.equal(b.getAttribute("aria-label"), "Close panel");
+  assert.match(b.className, /pointer-events-none inset-x-0 top-0 h-\[50vh\]/, "Measure: clear and press-through, top half only");
+  m.render(React.createElement(PanelBackdrop, { sheet: false, onClose: () => closes++ }));
+  assert.doesNotMatch(b.className, /pointer-events-none/, "Stock panel: the dimmed backdrop takes taps");
+  propsOf(m.host.childNodes[0]).onClick({});
+  assert.equal(closes, 1, "and a tap on it closes");
+  m.unmount();
+  const h = mount(React.createElement(BenchHost, { sheetOpen: true, onClose: () => {} }, React.createElement("canvas")));
+  const host = h.host.all("[data-bench-host]")[0];
+  assert.equal(host.className, "relative min-w-0 flex-1", "same box as release's bench host");
+  assert.equal(host.childNodes[0].nodeName, "CANVAS", "children render inside");
+  assert.equal(typeof propsOf(host).onPointerDownCapture, "function");
+  assert.equal(typeof propsOf(host).onClickCapture, "function");
+  h.unmount();
+  const isTap = need().isSheetTap, px = need().SHEET_TAP_PX;
+  assert.ok(isTap({ x: 0, y: 0 }, { x: px, y: 0 }) && !isTap({ x: 0, y: 0 }, { x: px + 1, y: 0 }) && !isTap(null, { x: 0, y: 0 }));
 });

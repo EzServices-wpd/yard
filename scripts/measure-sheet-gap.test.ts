@@ -45,7 +45,7 @@ test("the card is the sheet's box, phone only, inert, and outside the Buy list a
 });
 
 test("shell renders the card in the bench host only while Measure is open", () => {
-  const host = shell.slice(shell.indexOf("data-bench-host"), shell.indexOf("<RevealStatus />"));
+  const host = shell.slice(shell.indexOf("<BenchHost"), shell.indexOf("<RevealStatus />"));
   assert.match(host, /<MeasureSheetGap show=\{side === "measure"\} \/>/);
 });
 
