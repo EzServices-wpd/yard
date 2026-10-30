@@ -82,7 +82,8 @@ export const FAILED = "AR didn't open on this phone. Nothing was sent. Try again
 
 /** What the lazy half reports for a model: its measured size in inches and its file size. */
 /** real: bytes is the real file's length (else the estimate, only ever used to pass far under the cap). */
-export type ArStats = { inches: [number, number, number]; bytes: number; parts: number; real?: boolean; boxSticks?: boolean };
+/** judged: no file is made (WebXR takes the model itself), so the estimate is the measure the cap judges. */
+export type ArStats = { inches: [number, number, number]; bytes: number; parts: number; real?: boolean; judged?: boolean; boxSticks?: boolean };
 /** The chip's line under it: the size it will stand at, or why it can't. */
 export type ArPrep = { size: string | null; refused: string | null; boxSticks?: boolean };
 
@@ -111,11 +112,41 @@ export async function prepareAr(measure: () => Promise<ArStats | null>, planPart
     if (!s) return { size: null, refused: FAILED };
     if (arMoved() || s.parts < planParts) return { size: null, refused: NOT_WHOLE };
     const size = sizeLine(...s.inches);
-    // Only a real file's length refuses; an estimate never does.
-    return { size, refused: s.real && s.bytes > AR_CAP_BYTES ? tooBig(s.bytes) : null, boxSticks: !!s.boxSticks };
+    // Only a real file's length refuses (or, on WebXR, the judged in-memory measure); a passing estimate never does.
+    return { size, refused: (s.real || s.judged) && s.bytes > AR_CAP_BYTES ? tooBig(s.bytes) : null, boxSticks: !!s.boxSticks };
   } catch {
     return { size: null, refused: FAILED };
   }
+}
+
+/**
+ * One measure of the bench model, two frames after it lands; returns its cancel. build(realFile) is told
+ * whether to export the real file: only Quick Look opens one, so WebXR never runs the USDZ export (a main-thread
+ * long task) just to measure. A cancelled measure writes nothing: a late, older one can't overwrite a newer build.
+ */
+export function startMeasure<B extends ArStats>(
+  mode: ArMode,
+  build: (realFile: boolean) => Promise<B | null>,
+  planParts: number,
+  keep: (b: B | null) => void,
+  show: (p: ArPrep) => void,
+  frame: (f: () => void) => number = requestAnimationFrame,
+  cancel: (id: number) => void = cancelAnimationFrame,
+): () => void {
+  let live = true;
+  const id = frame(() =>
+    frame(() => {
+      void prepareAr(async () => {
+        const b = await build(mode === "quicklook");
+        if (live) keep(b);
+        return b;
+      }, planParts).then((p) => live && show(p));
+    }),
+  );
+  return () => {
+    live = false;
+    cancel(id);
+  };
 }
 
 /** Run the open; null when AR opened, else the message to show. Never throws. */

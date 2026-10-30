@@ -8,7 +8,7 @@ import path from "node:path";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
-import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMoved, chipView, tapRun, arMode, inchText, openAr, prepareAr, sizeLine, tooBig } from "../src/components/workspace/view-in-room";
+import { AR_CAP_BYTES, FAILED, NOT_WHOLE, arMoved, chipView, tapRun, arMode, inchText, openAr, prepareAr, sizeLine, startMeasure, tooBig } from "../src/components/workspace/view-in-room";
 import { INCH_M, arBuild, arGlb, arModel, arStats, openQuickLook, quickLookHref } from "../src/components/workspace/view-in-room-ar";
 import { setScrub } from "../src/components/workspace/build-scrub";
 import { getCatalogItem } from "../src/lib/yard/catalog";
@@ -219,6 +219,46 @@ test("refusal is the REAL file size: a huge estimate with a small real file open
   assert.equal(big.real, true);
   assert.match((await prepareAr(async () => big)).refused ?? "", /^This build is too detailed to open in AR \(about 8 MB; phones handle up to 8 MB\)\./);
   assert.equal((await prepareAr(async () => ({ inches: [1, 1, 1], bytes: AR_CAP_BYTES * 3, parts: 0, real: false }))).refused, null, "an estimate alone is never a refusal");
+});
+
+test("WebXR (no file): never exported while measuring, judged on the estimate; Quick Look still exports and judges the real file", async () => {
+  const { model } = benchLike("linen closet 31.5 wide 78 tall 16 deep");
+  const est = arStats(arModel(model)).bytes;
+  let exported = 0;
+  const fake = async () => (exported++, new Uint8Array(1000));
+  // Between 0.6 and 1 of the cap (the trebuchet's band): Quick Look exports; WebXR passes on the estimate.
+  const ios = await arBuild(model, est / 0.8, fake);
+  assert.equal(ios.real, true);
+  assert.equal(exported, 1);
+  const android = await arBuild(model, est / 0.8, null);
+  assert.deepEqual([android.real, android.judged, android.file, android.bytes, exported], [false, true, null, est, 1]);
+  assert.equal((await prepareAr(async () => android)).refused, null);
+  // Over the cap: WebXR is refused on its judged measure (named, same line), still with no export.
+  const over = await arBuild(model, est / 1.2, null);
+  assert.deepEqual([over.real, over.judged, exported], [false, true, 1]);
+  assert.equal((await prepareAr(async () => ({ ...over, bytes: AR_CAP_BYTES + 1 }))).refused, tooBig(AR_CAP_BYTES + 1));
+  const { g } = eiffelBench("3 ft popsicle stick eiffel tower");
+  const eiffel = await arBuild(g, AR_CAP_BYTES, null);
+  assert.deepEqual([eiffel.boxSticks, eiffel.real, eiffel.file], [true, false, null], "rounded estimate over the cap: box sticks, still no export");
+  assert.equal((await prepareAr(async () => eiffel)).refused, null);
+});
+
+test("startMeasure: only Quick Look asks for the real file; a cancelled (older) measure never overwrites a newer build", async () => {
+  const frame = (f: () => void) => (f(), 1);
+  const asked: boolean[] = [];
+  for (const mode of ["quicklook", "webxr"] as const) startMeasure(mode, async (real) => (asked.push(real), null), 0, () => {}, () => {}, frame, () => {});
+  assert.deepEqual(asked, [true, false]);
+  const st = (bytes: number) => ({ inches: [1, 1, 1] as [number, number, number], bytes, parts: 1 });
+  let late!: (b: ReturnType<typeof st>) => void;
+  const kept: number[] = [], shown: (string | null)[] = [];
+  const cancelOld = startMeasure("quicklook", () => new Promise((r) => (late = r)), 1, (b) => kept.push(b!.bytes), (p) => shown.push(p.size), frame, () => {});
+  cancelOld(); // the build changed before the old measure finished
+  startMeasure("quicklook", async () => st(2), 1, (b) => kept.push(b!.bytes), (p) => shown.push(p.size), frame, () => {});
+  await new Promise((r) => setTimeout(r, 0));
+  late(st(1)); // the older measure lands last
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(kept, [2], "only the newer build is kept");
+  assert.equal(shown.length, 1);
 });
 
 test("every other build: the same bounding box as before (no box swap), not refused", async () => {
