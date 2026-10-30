@@ -5,6 +5,7 @@ import { buildPlan } from "./report.ts";
 import { headerTitle } from "./pdf.ts";
 import { stockThickness, partThickness, THICK_TOL } from "./stockThickness.ts";
 import { isSolidDrawer, sheetWallT } from "./hollowDrawers.ts";
+import { supportHangingBays } from "./hangingClearance.ts";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog.ts";
 import { offline } from "../../../scripts/eval-lib.ts";
 import type { Panel, YardProject } from "./types.ts";
@@ -37,7 +38,8 @@ const cut = (p: Panel) =>
   !p.strut && !p.form && !p.outline && p.materialId !== "hardware" && !isSolidDrawer(p) && p.type !== "mirror" && !GLAZING.test(p.name) &&
   partThickness(p) > 0.02 && stockThickness(p.materialId) != null;
 const byName = new Map(FORGE_CATALOG.map((i) => [i.name, i]));
-const SHEET_WORD = /(?:^|[^\d/])(¼|½|¾|1\/4|1\/2|3\/4)["″]? ?plywood\b/gi;
+// Row 683: "two ¾\" Counter plies" / "layers" claims count too, not only "… plywood".
+const SHEET_WORD = /(?:^|[^\d/])(¼|½|¾|1\/4|1\/2|3\/4)["″]? ?(?:[A-Z][a-z]+ )?(?:plywood|plies|ply|layers)\b/gi;
 const FRAC: Record<string, number> = { "¼": 0.25, "½": 0.5, "¾": 0.75, "1/4": 0.25, "1/2": 0.5, "3/4": 0.75 };
 const SPECIES = /\b(oak|pine|poplar|maple|walnut|cherry|birch|cedar)\b/gi;
 const formOf = (p: YardProject) => ({
@@ -132,3 +134,27 @@ it("row 626: only a ½\" sheet is a thinner wall stock", () => {
   assert.equal(sheetWallT("plywood-1-2-4x8"), 0.5);
   for (const id of ["plywood-3-4-4x8", "plywood-1-4-4x8", "lumber-1x4-8", "lumber-2x4-8", "piece-clothespin", "nope"]) assert.equal(sheetWallT(id), 0.75, id);
 });
+
+it("row 626 (M12): a bay divider stood under a 60\" rod in a ½\" carcase is ½\", cut from the floor's sheet", () => {
+  const P = (type: string, name: string, x: number, y: number, z: number, w: number, h: number, d: number, materialId = "plywood-1-2-4x8") =>
+    ({ id: name, type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId }) as Panel;
+  const panels = [
+    P("side", "Left side", 0, 0, 0, 0.5, 84, 24), P("side", "Right side", 60.5, 0, 0, 0.5, 84, 24),
+    P("bottom", "Bottom", 0.5, 0, 0, 60, 0.5, 24), P("top", "Top", 0.5, 83.5, 0, 60, 0.5, 24),
+    P("rail", "Hanging rod", 0.5, 70, 11, 60, 1.25, 1.25, "hardware-closet-rod"),
+  ];
+  const out = supportHangingBays({ name: "synthetic", panels, primaryMaterialId: "plywood-1-2-4x8" } as unknown as YardProject);
+  const div = out.panels.filter((p) => /^Bay divider\b/.test(p.name));
+  assert.ok(div.length >= 1, "a divider stands under the 60\" rod");
+  for (const d of div) {
+    assert.equal(d.materialId, "plywood-1-2-4x8");
+    assert.ok(Math.abs(Math.min(d.size.width, d.size.height, d.size.depth) - 0.5) < 0.01, `${d.name} ${JSON.stringify(d.size)}`);
+  }
+});
+
+it("row 626 leaves the tipi's ½\" canvas cover where release has it (row 685 owns that wrong Buy list)", () =>
+  offline(() => {
+    const plan = buildPlan(generateFromPrompt("tipi", "plywood-1-2-4x8"));
+    const cover = plan.cutList.find((c) => /canvas cover/i.test(c.name));
+    assert.deepEqual(cover && [cover.quantity, cover.thicknessIn], [56, 0.75]);
+  }));
