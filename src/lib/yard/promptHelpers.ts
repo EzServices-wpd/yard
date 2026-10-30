@@ -1,4 +1,5 @@
 import { UNIT_SIZES } from "./unitSizes";
+import { checkParts } from "./partCeiling";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
@@ -735,14 +736,12 @@ export function toProject(
   historic = false,
   extra: Pick<YardProject, "supportOffer" | "buildStats" | "joinMethod"> & { name?: string } = {},
 ): YardProject {
-  let list = instances;
-  if (list.length > 8000) {
-    list = list.slice(0, 8000);
-    notes = [
-      ...notes,
-      `Stopped at 8,000 pieces — the bench will hitch past that. This is a renderer limit, not a materials cap. Use longer stock or a shorter span.`,
-    ];
-  } else if (list.length > 1500) {
+  const list = instances;
+  // Over the part ceiling the build is refused (partCeiling.ts), never cut short.
+  const pts = () => list.flatMap((i) => (i.to && i.from ? [i.from, i.to] : [i.position]));
+  const span = (k: "x" | "y" | "z") => { let lo = Infinity, hi = -Infinity; for (const q of pts()) { lo = Math.min(lo, q[k]); hi = Math.max(hi, q[k]); } return hi - lo; };
+  checkParts(list.length, () => Math.max(0, ...pts().map((q) => q.y)), () => ({ width: span("x"), height: span("y"), depth: span("z") }));
+  if (list.length > 1500) {
     notes = [...notes, `${list.length} pieces. Orbit may hitch on a phone — that is expected, not a cap.`];
   }
   const xs: number[] = [];

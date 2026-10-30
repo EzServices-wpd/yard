@@ -4,6 +4,8 @@
  * Figures are the structures' public dimensions; nothing here is copied from a plan.
  */
 import type { FormOp, Size3 } from "./formTypes";
+import { canonicalMeasures, typedMeasures } from "./measureText";
+import { inchFrac } from "./inchText";
 
 type P = { x: number; y: number; z: number };
 const poly = (points: P[], role: string): FormOp => ({ op: "poly", points, role });
@@ -50,11 +52,50 @@ export function fitSuspensionTo(spec: SuspensionSpec) {
     const bare = lower.replace(/\d+(?:\.\d+)?\s*x\s*\d+(?:\.\d+)?/g, " ").match(/(\d+(?:\.\d+)?)/);
     const n = ft ? parseFloat(ft[1]) * 12 : inch ? parseFloat(inch[1]) : bare ? parseFloat(bare[1]) : 0;
     const tall = /tall|high|height/.test(lower);
+    // A number bound to an axis word is that axis: "138 1/2 wide 11 1/2 tall" is 138 1/2" long, never 138 1/2" tall.
+    // Length wins over height: the ratio is fixed.
+    const t = typedMeasures(prompt);
     // Landmark default: no number builds the signature feature (the towers) at a readable height and
     // derives the length from the real ratio — the ratio is never distorted to fit a bench.
-    const h = tall && n ? n : n ? n / spec.lOverH : LANDMARK_READABLE_IN;
+    const h = t.width ? t.width / spec.lOverH : t.height ? t.height : tall && n ? n : n ? n / spec.lOverH : LANDMARK_READABLE_IN;
     return { width: h * spec.lOverH, height: h, depth: Math.max(4, Math.min(h * 0.45, 14)) };
   };
+}
+
+/** The fixed-ratio bridges, in the order form.ts matches them. */
+const SUSPENSION_NAMES: [RegExp, string, SuspensionSpec][] = [
+  [/golden gate/, "The Golden Gate Bridge", GOLDEN_GATE],
+  [/brooklyn bridge/, "The Brooklyn Bridge", BROOKLYN],
+  [/sydney harbou?r bridge/, "", GOLDEN_GATE],
+  [/tower bridge/, "Tower Bridge", TOWER_BRIDGE],
+  [/bay bridge|verrazz?ano|mackinac|akashi|humber bridge|suspension bridge/, "A suspension bridge at Golden Gate proportions", GOLDEN_GATE],
+];
+
+/** A typed length on a bridge: a "wide" number, else a "long" / "in length" one. */
+function typedLength(prompt: string): number | undefined {
+  const t = typedMeasures(prompt);
+  if (t.width) return t.width;
+  const m = canonicalMeasures(prompt).toLowerCase().match(/(?<![\d.x×])(\d+(?:\.\d+)?)\s*(ft(?![a-z])\.?|feet(?![a-z])|foot(?![a-z])|'|"|in(?![a-z])\.?|inch(?:es)?(?![a-z]))?\s*(?:long|in length)\b/);
+  return m ? Number(m[1]) * (m[2] && /^(?:f|')/.test(m[2]) ? 12 : 1) : undefined;
+}
+
+/**
+ * A suspension bridge keeps its published length : tower height, so a typed length and a typed height that disagree
+ * (more than 10%) can't both be built. Neither is dropped in silence: nothing is built and both sizes that build are named.
+ */
+export function suspensionRatioRefusal(prompt: string): { name: string; why: string } | null {
+  const lower = prompt.toLowerCase();
+  const hit = SUSPENSION_NAMES.find(([re]) => re.test(lower));
+  if (!hit || !hit[1]) return null;
+  const L = typedLength(prompt);
+  const H = typedMeasures(prompt).height;
+  if (!L || !H) return null;
+  const [, name, spec] = hit;
+  const hOfL = L / spec.lOverH;
+  if (Math.abs(hOfL - H) <= Math.max(0.5, 0.1 * H)) return null;
+  const r = (n: number) => inchFrac(Math.round(n * 16) / 16);
+  const why = `${name} keeps its real proportions (about ${Math.round(spec.lOverH * 10) / 10} times as long as its towers are tall), so it can't be both ${r(L)}" long and ${r(H)}" tall, and nothing is built. Type ${r(L)}" wide for ${r(hOfL)}" towers, or ${r(H)}" tall for a ${r(H * spec.lOverH)}" long bridge.`;
+  return { name: name.replace(/^The |^A | at Golden Gate proportions$/g, "").replace(/^suspension/, "Suspension"), why };
 }
 
 function parabola(x0: number, y0: number, x1: number, y1: number, yMid: number, n: number, z: number): P[] {

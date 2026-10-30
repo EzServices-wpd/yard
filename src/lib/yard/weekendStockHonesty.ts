@@ -627,6 +627,15 @@ function joinForbidden(item: CatalogItem, name: string): boolean {
   return false;
 }
 
+/**
+ * GUARD CHANGE (row 612): craft stock over 8" that a builder snips (12" bamboo skewers, giant 12" craft sticks) is cut
+ * to its spans when it is a stick graph, so Buy counts sticks by cut yield. Shorter craft stock (popsicle, mini, jumbo,
+ * toothpicks), straws, and long pieces that are not snipped (pipe cleaners, shoelaces: canCut false) keep the whole-stick rule.
+ */
+export function cutsToSpans(project: YardProject, item: CatalogItem): boolean {
+  return item.category === "craft_wood" && item.canCut === true && toPrimitive(item).length > 8 && project.instances.some((i) => i.catalogId === item.id && !!i.from);
+}
+
 export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | null): WeekendReport {
   const issues: WeekendIssue[] = [];
   if (!isWeekendProject(project) && project.instances.length === 0) {
@@ -699,7 +708,17 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         }
       }
     }
-    if (isWholeStock(stock)) {
+    if (isWholeStock(stock) && cutsToSpans(project, stock)) {
+      // GUARD CHANGE (row 612): long craft stock in a stick graph is cut to its spans, but never past one whole stick.
+      const len = toPrimitive(stock).length;
+      const over = project.instances.filter((i) => i.catalogId === stock.id && i.cutLength != null && i.cutLength > len + 0.15);
+      if (over.length) {
+        issues.push({
+          guard: "whole",
+          message: `${over.length} ${stock.name} pieces are cut longer than one ${len}" stick.`,
+        });
+      }
+    } else if (isWholeStock(stock)) {
       const cuts = project.instances.filter((i) => i.cutLength != null);
       if (cuts.length) {
         issues.push({
@@ -1116,7 +1135,9 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     // Animals in long craft stock (12" skewers) are drawn at each part's true length too (a skewer is longer than a snout).
     const S0 = Math.max(0.5, toPrimitive(item).length);
     const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame" || project.shape?.classId === "blocks" || (project.shape?.classId === "quadruped" && S0 > 8);
-    if (isWholeStock(item) && (project.kind === "tower" || exactCut || project.shape?.classId === "small-house")) {
+    // Long craft stock (12" skewers) in a stick graph: a span well under one skewer is cut from one, not a whole skewer each (row 598).
+    const longLattice = cutsToSpans(project, item);
+    if (isWholeStock(item) && (project.kind === "tower" || exactCut || longLattice || project.shape?.classId === "small-house")) {
       const S = S0;
       let cut = 0;
       instances = instances.map((i) => {

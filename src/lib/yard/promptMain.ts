@@ -5,6 +5,9 @@ import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
 import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
+import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
+import { suspensionRatioRefusal } from "./formLandmarks";
+import { withArticle } from "./article";
 import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
@@ -41,7 +44,7 @@ import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, det
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
+import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, engineOwnsForm, isLockedForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
@@ -414,8 +417,12 @@ let idDepth = 0;
  */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
   if (idDepth === 0) seedIds(args);
+  const typedAtIntake = args[0] ?? "";
   idDepth++;
   try {
+    // A fixed-ratio bridge typed with a length and a height that disagree is refused, naming both sizes that build.
+    const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
+    if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
     const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
@@ -435,9 +442,55 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
     const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+  } catch (e) {
+    if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
+    return partsRefusal(args, e);
   } finally {
     idDepth--;
   }
+}
+
+/**
+ * Over the part ceiling (partCeiling.ts): nothing is built, and the note names the largest size that builds: the typed
+ * size words scaled down, or, for a bench edit or follow-on ("make it taller") that sent a size, that W x D x H.
+ */
+function partsRefusal(args: Parameters<typeof generateRaw>, err?: TooManyParts): YardProject {
+  const [prompt = "", mat, form, o] = args;
+  let stock: string | undefined;
+  const builds = (q: string, opts = o) => {
+    try {
+      const p = generateFromPrompt(q, mat, form, opts);
+      if (p.refused) return false;
+      stock ??= p.primaryMaterialId;
+      return true;
+    } catch (x) {
+      if (x instanceof TooManyParts) return false;
+      throw x;
+    }
+  };
+  const ov = o?.sizeOverride;
+  const down = (b: { width: number; height: number; depth: number }, k: number) => {
+    const f = (n: number) => Math.max(1 / 16, Math.floor(n * k * 16 + 1e-6) / 16);
+    return { width: f(b.width), height: f(b.height), depth: f(b.depth) };
+  };
+  const said = (b: { width: number; height: number; depth: number }) => [`${inchFrac(b.width)}" wide`, `${inchFrac(b.depth)}" deep`, `${inchFrac(b.height)}" tall`];
+  let typed: string[] | undefined;
+  let fit: string[] | null;
+  if (ov) {
+    typed = said(ov);
+    const k = largestScale((k) => builds(prompt, { ...o, sizeOverride: down(ov, k) }));
+    fit = k == null ? null : said(down(ov, k));
+  } else {
+    typed = scaledSizes(prompt, 1)?.words;
+    // No size typed: the default build is over the ceiling, so name the tallest typed height that builds.
+    const asked = typed ? prompt : `${prompt} ${inchFrac(err?.height && err.height > 1 ? Math.ceil(err.height) : 1200)}" tall`;
+    fit = largestBuilding(asked, (q) => builds(q));
+  }
+  const item = getCatalogItem(stock ?? mat ?? "") ?? detectMaterial(prompt);
+  const name = (subjectFromPrompt(prompt) || "this build").replace(/\b\w/g, (c) => c.toUpperCase());
+  const sized = typed ? ` at ${typed.join(", ")}` : "";
+  const why = `Yard builds up to ${MAX_PARTS.toLocaleString("en-US")} parts in one plan, and ${withArticle(name)} in ${item.name.replace(/\s*\(.*?\)/g, "").toLowerCase().replace(/s?$/, "s")}${sized} needs more, so nothing is built. ${fit ? `It builds up to ${fit.join(", ")}: type ${fit.join(", ")} or smaller.` : "Type a smaller size to build it."}`;
+  return { ...emptyProject(), name, prompt, kind: "custom", primaryMaterialId: item.id, refused: why, cardNote: why };
 }
 
 function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
@@ -663,13 +716,25 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;
   };
-  const project = built(args);
   const override = args[3]?.sizeOverride;
+  let project: YardProject;
+  try {
+    project = built(args);
+  } catch (e) {
+    // A whole-stick module ignores a bare typed size ('toothpick pyramid 12"'), and its default can be over the part
+    // ceiling when the typed size is not: build at the typed size, as the fit below would have.
+    const box = e instanceof TooManyParts && !override ? e.box : undefined;
+    const want = box && typedEnvelope(args[0], box);
+    if (!box || !want || !misses(box, want)) throw e;
+    project = built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: typedTarget(want, box) }]);
+  }
   // A size the builder missed: rebuild at the typed envelope (module counts follow), then fit.
   const rebuild = (box: Box3) => fitWeekendSize(built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: box }]), args[0], box, undefined, undefined, true);
   const natural = () => {
     const bare = stripEnvelopeWords(args[0]);
-    return bare && bare !== args[0] ? built([bare, args[1], args[2], args[3]]) : null;
+    if (!bare || bare === args[0]) return null;
+    // The no-size build only lends its proportions: over the part ceiling it lends none, and the typed build stands.
+    try { return built([bare, args[1], args[2], args[3]]); } catch (e) { if (e instanceof TooManyParts) return null; throw e; }
   };
   const sized = addFigureBookend(fitWeekendSize(project, args[0], override, override ? undefined : rebuild, natural), args[0]);
   const tabled0 = honorTableTriple(sized, args[0]);
@@ -931,7 +996,8 @@ function wholeStickBuild(project: YardProject): boolean {
   const item = getCatalogItem(project.primaryMaterialId);
   if (!item || !isWholeStock(item)) return false;
   const own = project.instances.filter((i) => i.catalogId === project.primaryMaterialId);
-  return own.length > 0 && own.every((i) => i.cutLength == null);
+  // Long craft stock cut to its spans (12" skewers, giant sticks) is still a stick module that reads no bare size (row 622).
+  return own.length > 0 && (own.every((i) => i.cutLength == null) || cutsToSpans(project, item));
 }
 
 const misses = (o: Box3, want: Partial<Box3>, slack = 0.04) =>
@@ -945,7 +1011,12 @@ function realSizeNote(project: YardProject, want: Partial<Box3>): YardProject {
   const word = { width: "wide", height: "tall", depth: "deep" } as const;
   const asked = AXES.filter((a) => want[a] != null).map((a) => `${inchFrac(want[a]!)}" ${word[a]}`).join(" × ");
   const o = project.overall;
-  const note = `You typed ${asked}. Whole ${stick}s build it ${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows. Type "cut the sticks" to build it to the exact size.`;
+  const built = `${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows.`;
+  // Pieces already cut to their spans (12" skewers, giant sticks): never call them whole or offer "cut the sticks" (row 653).
+  const cut = project.instances.some((i) => i.catalogId === project.primaryMaterialId && i.cutLength != null);
+  const note = cut
+    ? `You typed ${asked}. ${stick}s cut to their spans build it ${built}`
+    : `You typed ${asked}. Whole ${stick}s build it ${built} Type "cut the sticks" to build it to the exact size.`;
   return { ...project, notes: [note, ...(project.notes ?? []).filter((n) => !/^You typed .* the closest the stick allows/.test(n))] };
 }
 
@@ -988,15 +1059,21 @@ function fitWeekendSize(
   const nat = whole ? natural?.() : null;
   const base = nat && nat.kind === project.kind && nat.overall.width > 0.2 ? nat.overall : project.overall;
   const typedAxes = AXES.filter((a) => want[a] != null);
-  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
-  const r2 = (n: number) => Math.round(n * 16) / 16;
-  const target: Box3 = { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
+  const target = typedTarget(want, base);
   const proportionsOff = whole && typedAxes.length < 3 && misses(project.overall, target, 0.25);
   if (!misses(project.overall, want) && !proportionsOff) return project;
   if (!whole) return scaleToBox(project, target);
   const r = rebuild?.(target);
   const pick = r && missBy(r.overall, want) <= missBy(project.overall, want) + 1e-6 ? r : project;
   return misses(pick.overall, want) ? realSizeNote(pick, want) : pick;
+}
+
+/** The typed axes, and the untyped ones scaled from `base` by the typed ones (to 1/16"). */
+function typedTarget(want: Partial<Box3>, base: Box3): Box3 {
+  const typedAxes = AXES.filter((a) => want[a] != null);
+  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
+  const r2 = (n: number) => Math.round(n * 16) / 16;
+  return { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
 }
 
 /** Parts already inside the typed box — envelope padding is not a reason to shrink them. */
