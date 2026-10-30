@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useYard } from "@/lib/yard/store";
 import { subscribeScrub } from "./build-scrub";
-import { AR_CAP_BYTES, FAILED, arMode, arMoved, arRoot, browserArEnv, chipView, openAr, prepareAr, tapRun, type ArMode, type ArPrep } from "./view-in-room";
+import { AR_CAP_BYTES, FAILED, arMode, arMoved, arRoot, browserArEnv, chipView, openAr, startMeasure, tapRun, type ArMode, type ArPrep } from "./view-in-room";
 
 const lazy = () => import("./view-in-room-ar");
 type ArLib = Awaited<ReturnType<typeof lazy>>;
@@ -48,25 +48,22 @@ export function ViewInRoomButton() {
   // Measure what AR would get once the bench has drawn this build (two frames after it lands).
   useEffect(() => {
     if (!mode || !parts || moved) return;
-    let live = true;
     setPrep(null);
     setFailed(null);
     built.current = null;
-    const raf = requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        void prepareAr(async () => {
-          const root = arRoot();
-          if (!root) return null;
-          const ar = (lib.current ??= await lazy());
-          built.current = await ar.arBuild(root, AR_CAP_BYTES);
-          return built.current;
-        }, project.panels.length).then((p) => live && setPrep(p));
-      }),
+    // Quick Look gets the real file checked against the cap; WebXR (Android) is judged on the estimate.
+    return startMeasure(
+      mode,
+      async (realFile) => {
+        const root = arRoot();
+        if (!root) return null;
+        const ar = (lib.current ??= await lazy());
+        return ar.arBuild(root, AR_CAP_BYTES, realFile ? undefined : null);
+      },
+      project.panels.length,
+      (b) => void (built.current = b),
+      setPrep,
     );
-    return () => {
-      live = false;
-      cancelAnimationFrame(raf);
-    };
   }, [mode, parts, moved, project]);
   const view = chipView({ mode, parts, moved, busy, prep, failed });
   if (!view || !mode) return null;
