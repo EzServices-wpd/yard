@@ -1,18 +1,22 @@
 import type { IdeaCard as Card } from "@/lib/ideas/feed";
 import { IdeaDrawing } from "./IdeaDrawing";
 
-/** "W × D × H in" in the measure face (spelled out for screen readers), then the note in the text face. */
-export function CardSize({ card, className = "" }: { card: Pick<Card, "slug" | "size" | "sizeAria" | "stock">; className?: string }) {
+/**
+ * "W × D × H in" in the measure face (spelled out for screen readers), then the note in the text face. The measure never
+ * breaks; on a card (`fit`) it is 13px with tight spaces (yard-measure-fit) and the note takes its own line, so the
+ * longest size any drawn card shows fits the narrowest card (scripts/e2e/ideas-card-fit.py).
+ */
+export function CardSize({ card, className = "", fit = false }: { card: Pick<Card, "slug" | "size" | "sizeAria" | "stock">; className?: string; fit?: boolean }) {
   if (!card.size && !card.stock) return null;
   return (
     <span className={`text-sm text-ink ${className}`}>
       {card.size ? (
         <>
-          <span className="yard-measure" data-size={card.slug} aria-hidden>{card.size}</span>
+          <span className={`yard-measure whitespace-nowrap${fit ? " yard-measure-fit" : ""}`} data-size={card.slug} aria-hidden>{card.size}</span>
           <span className="sr-only">{card.sizeAria}</span>
         </>
       ) : null}
-      {card.stock ? `${card.size ? " · " : ""}${card.stock}` : null}
+      {card.stock ? (fit ? <span className="line-clamp-2 block">{card.stock}</span> : `${card.size ? " · " : ""}${card.stock}`) : null}
     </span>
   );
 }
@@ -45,7 +49,7 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
         <span className="font-display text-base leading-tight text-ink group-hover:underline sm:text-lg">{card.title}</span>
         {card.status === "new" ? <span className="shrink-0 text-[13px] text-ink-muted">New</span> : null}
       </span>
-      <CardSize card={card} className="mt-0.5 line-clamp-2" />
+      <CardSize card={card} className="mt-0.5 block" fit />
       {card.blurb ? <span className="mt-1.5 line-clamp-2 hidden text-sm leading-snug text-ink sm:block">{card.blurb}</span> : null}
       {showCount && card.count > 0 ? <span className="yard-num mt-1 text-[13px] text-ink-muted">Built {card.count}×</span> : null}
     </a>
