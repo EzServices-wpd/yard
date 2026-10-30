@@ -135,7 +135,7 @@ function closetCuts(project: YardProject): CutLine[] {
     // two laminated layers, a ¼" drawer bottom / backer stays ¼" plywood.
     const isSolidBoard = materialId === CATALOG_LUMBER_BIND;
     // Row 626: a ½" sheet part thicker than its sheet is layers of that sheet (3 × ½" make a 1½" top).
-    const plyT = isPly ? sheetWallT(materialId ?? "") : STOCK_T;
+    const plyT = sheetWallT(materialId ?? "");
     let id = materialId;
     let matName = materialName;
     // Square stick posts (≈1½×1½) are solid 2x2 lumber — never laminated into
@@ -148,7 +148,7 @@ function closetCuts(project: YardProject): CutLine[] {
     } else if (
       // Class pack: sheet goods thicker than stock are laminated plies (island/desk
       // 1½" counters), not a magic thick board the lumber aisle does not sell.
-      (((isPly || isSolidBoard) && dims.thicknessIn > plyT + 0.05 && !/^leg$/i.test(family)) ||
+      (((isPly || isSolidBoard) && dims.thicknessIn > STOCK_T + 0.05 && !/^leg$/i.test(family)) ||
         // A lumber part thicker than its board (a 3 5/8" post from 2x4) is boards glued face to face too.
         (!isSolidBoard && /^lumber-/.test(id ?? "") && dims.thicknessIn > lumberT(id) + 0.05))
       // Any part thicker than its stock is a real glue-up, even under 1.5x of it.

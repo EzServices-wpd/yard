@@ -4,7 +4,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { headerTitle } from "./pdf.ts";
 import { stockThickness, partThickness, THICK_TOL } from "./stockThickness.ts";
-import { isSolidDrawer } from "./hollowDrawers.ts";
+import { isSolidDrawer, sheetWallT } from "./hollowDrawers.ts";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog.ts";
 import { offline } from "../../../scripts/eval-lib.ts";
 import type { Panel, YardProject } from "./types.ts";
@@ -44,6 +44,11 @@ const formOf = (p: YardProject) => ({
   fronts: p.panels.filter((x) => /drawer\s*front/i.test(x.name)).length,
   doors: p.panels.filter((x) => x.type === "door").length,
   w: Math.round(p.overall.width), h: Math.round(p.overall.height),
+  // each drawer box keeps its outside width: the walls thin inward, the box never shrinks
+  boxes: [...new Set(p.panels.filter((x) => x.drawerPart === "side").map((x) => x.drawerId))].map((id) => {
+    const s = p.panels.filter((x) => x.drawerId === id && x.drawerPart === "side");
+    return Math.round((Math.max(...s.map((x) => x.position.x + x.size.width)) - Math.min(...s.map((x) => x.position.x))) * 16) / 16;
+  }).sort((a, b) => a - b),
 });
 
 export function stockSwitchFailures(q: string, stock?: string): string[] {
@@ -122,3 +127,8 @@ it("row 626: a ¼\" pick is not a wall stock: drawer sides and bay dividers stay
     assert.ok(walls.length >= 5);
     assert.deepEqual(walls.filter((x) => partThickness(x) < 0.7).map((x) => x.name), []);
   }));
+
+it("row 626: only a ½\" sheet is a thinner wall stock", () => {
+  assert.equal(sheetWallT("plywood-1-2-4x8"), 0.5);
+  for (const id of ["plywood-3-4-4x8", "plywood-1-4-4x8", "lumber-1x4-8", "lumber-2x4-8", "piece-clothespin", "nope"]) assert.equal(sheetWallT(id), 0.75, id);
+});

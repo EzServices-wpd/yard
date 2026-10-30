@@ -2595,8 +2595,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
 
   if (kicks.length) {
     // Row 626: the kick strip names the sheet it is cut from (½" in a ½" build).
-    const kickT = /^plywood-/.test(kicks[0].materialId) ? getCatalogItem(kicks[0].materialId)?.dims.thickness : undefined;
-    const kickPly = kickT && Math.abs(kickT - 0.75) > 0.02 ? `${inchFrac(kickT)}" plywood` : '¾" plywood';
+    const kickSheet = getCatalogItem(kicks[0].materialId);
+    const kickPly = kickSheet?.dims.thickness && Math.abs(kickSheet.dims.thickness - 0.75) > 0.02 ? kickSheet.name : '¾" plywood';
     steps.push({
       step: n++,
       title: pocket || u?.kneeW ? "Kick strip on the banks only" : "Add the kick strip",
