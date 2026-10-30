@@ -55,6 +55,13 @@ export function stockSwitchFailures(q: string, stock?: string): string[] {
     const T = stockThickness(x.materialId)!, t = partThickness(x), k = Math.round(t / T);
     if (k < 1 || Math.abs(t - k * T) > THICK_TOL) out.push(`${x.name} is ${t}" thick in ${x.materialId} (${T}")`);
   }
+  // 1b. a drawer box closes: the back sits between the sides, the bottom behind the back
+  for (const id of new Set(p.panels.filter((x) => x.drawerId && x.drawerPart === "side").map((x) => x.drawerId!))) {
+    const part = (k: string) => p.panels.filter((x) => x.drawerId === id && x.drawerPart === k).sort((a, b) => a.position.x - b.position.x);
+    const [l, r] = part("side"), [b] = part("back"), [f] = part("bottom");
+    const gaps = [l.position.x + l.size.width - b.position.x, b.position.x + b.size.width - r.position.x, b.position.z + b.size.depth - f.position.z, f.position.z + f.size.depth - (l.position.z + l.size.depth)];
+    if (gaps.some((g) => Math.abs(g) > THICK_TOL)) out.push(`${b.name}: box does not close (${gaps.map((g) => g.toFixed(3)).join(", ")})`);
+  }
   // 2. a sheet's cut row is cut at that sheet's thickness (a thicker part is layers of it)
   for (const r of plan.cutList) {
     const it = byName.get(r.material);
@@ -106,4 +113,12 @@ it("row 626: a stock switch rebuilds every part in the stock it buys (13 builds)
   offline(() => {
     const bad = CASES.flatMap(([q, s]) => stockSwitchFailures(q, s).map((m) => `${q}${s ? ` [→${s}]` : ""}: ${m}`));
     assert.deepEqual(bad, []);
+  }));
+
+it("row 626: a ¼\" pick is not a wall stock: drawer sides and bay dividers stay ¾\"", () =>
+  offline(() => {
+    const p = generateFromPrompt("wardrobe 36 wide 84 tall 24 deep with a rod and 2 drawers", "plywood-1-4-4x8");
+    const walls = p.panels.filter((x) => x.drawerPart === "side" || /^Bay divider/.test(x.name));
+    assert.ok(walls.length >= 5);
+    assert.deepEqual(walls.filter((x) => partThickness(x) < 0.7).map((x) => x.name), []);
   }));
