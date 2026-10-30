@@ -12,8 +12,9 @@ import { toPrimitive, isWholeStock } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
+import { buildDollhouse, dollhouseIssues, DOLLHOUSE_STEPS } from "./dollhouse";
 
-export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower" | "blocks";
+export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower" | "blocks" | "dollhouse";
 export type TemplatePartName =
   | "wall"
   | "floor"
@@ -51,6 +52,8 @@ export type TemplateBuild = {
   stockId?: string;
   /** The builder already sized it to the typed size: no rescale after (the notes and title stay its own). */
   sized?: boolean;
+  /** Nothing is built, and why (a typed size or count the class can't hold). */
+  refused?: string;
 };
 
 export type TemplateStep = { role: string; title: string; why: string; /** Count noun for the step title ("12 wall slats"). */ word?: string; /** Replaces the stock join text (a pivot is not glued). */ hold?: string };
@@ -1437,6 +1440,7 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "rim", word: "rim piece", title: "Glue the low rim around the top perch", why: "It keeps a sleeping cat on the perch." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
+  dollhouse: [],
   blocks: [
     { role: "base", word: "base piece", title: "Cut and glue the base", why: "Everything stands on it." },
     { role: "cradle", word: "saddle piece", title: "Glue up the two saddles", why: "They hold the hull level on the floor." },
@@ -1491,6 +1495,7 @@ export function buildTemplate(
   if (id === "launcher") return buildLauncher(prompt, item, typed, whole);
   if (id === "platform-tower") return buildPlatformTower(prompt, item, typed, whole);
   if (id === "humanoid") return buildHumanoid(prompt, item, typed, whole);
+  if (id === "dollhouse") return buildDollhouse(prompt, item, typed);
   return null;
 }
 
@@ -1573,6 +1578,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
   const issues: TemplateIssue[] = [];
   const shape = project.shape;
   if (!shape) return [{ code: "no-shape", detail: `${project.name} has no template class` }];
+  if (shape.classId === "dollhouse") return dollhouseIssues(project);
   const P = shape.params ?? {};
   const roles = new Map<string, YardProject["instances"]>();
   for (const i of project.instances) {
@@ -1807,11 +1813,12 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
 /** Template panel names keep their own words on the cut list (not the carcase type alias). */
 export function templateCutName(name: string): string | null {
   if (/^Side spacer (?:left|right)$/.test(name)) return "Side spacer";
-  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Tier shelf|Back wall|Back board|Lower front board|Upper front board|Roof board|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
+  return /^(?:Front gable|Back gable|Side wall|Roof panel|Base floor|Upper floor|Attic floor|Room divider|Perch|Tier shelf|Back wall|Back board|Lower front board|Upper front board|Roof board|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
 }
 
 type PanelStepSpec = { match: RegExp; title: string; why: string };
 const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = {
+  dollhouse: DOLLHOUSE_STEPS,
   "flat-frame": [
     { match: /^Frame (rail|stile)$/, title: "Glue and clamp the four mitered members", why: "Dry-fit, then glue the miters and band-clamp; check the diagonals match." },
     { match: /^(Glass|Acrylic)$/, title: "Set the glazing into the rabbet", why: "Clean both faces; it goes in first, against the lip." },
