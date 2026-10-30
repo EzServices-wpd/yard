@@ -4,6 +4,7 @@
 import { doorLeaves, doorRise } from "./hingedLeaf";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
+import { counterPlies } from "./plyLayers";
 import { boardFace, mattressDeck } from "./fittedParse";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
@@ -2209,8 +2210,8 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
       primaryMaterialId: PLY,
       notes: [
         closed
-          ? `Kitchen island ${W}" × ${stackH}" × ${D}". ${fronts[0].toUpperCase()}${fronts.slice(1)} on the front face, a ¼" back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`
-          : `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood carcase; counter is two ¾" plies laminated to 1½"; 3½" toekick.`,
+          ? `Kitchen island ${W}" × ${stackH}" × ${D}". ${fronts[0].toUpperCase()}${fronts.slice(1)} on the front face, a ¼" back. ¾" plywood carcase; ${counterPlies(panels.find((p) => p.type === "counter"))}; 3½" toekick.`
+          : `Kitchen island ${W}" × ${stackH}" × ${D}". Open both sides — no back. ¾" plywood carcase; ${counterPlies(panels.find((p) => p.type === "counter"))}; 3½" toekick.`,
         shelfY > 0 ? `Bottom shelf and one middle shelf are glued in.` : "The bottom shelf is glued in.",
         "Guidance only — level it on the floor. Confirm the real kitchen.",
       ],

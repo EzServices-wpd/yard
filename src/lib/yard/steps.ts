@@ -2,7 +2,8 @@
 
 import { fastenerText, structural, wallScrew, WALL_ANCHORS_ID } from "./wallAnchorSteps";
 import { bareName, headerSize, typedAxesTalk } from "./headerSize";
-import { drawerBoxes, sheetWallT } from "./hollowDrawers";
+import { drawerBoxes } from "./hollowDrawers";
+import { plies } from "./plyLayers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
@@ -57,15 +58,6 @@ import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, FastenerUse, Panel, YardInstance, YardProject } from "./types";
 
-/** Row 683: a counter step names the layers its cut list lays up: count × the part's own sheet (two ¾" or three ½"). */
-const PLY_WORD: Record<number, string> = { 2: "two", 3: "three", 4: "four" };
-const PLY_GLYPH: Record<string, string> = { "0.5": "½", "0.75": "¾", "1.5": "1½" };
-function plies(p: Panel | undefined, total = false): string {
-  const t = sheetWallT(p?.materialId ?? "");
-  const n = p ? Math.max(2, Math.round(sheetCutDims(p.size.width, p.size.height, p.size.depth).thicknessIn / t)) : 2;
-  const x = total ? n * t : t;
-  return total ? `${PLY_GLYPH[String(x)] ?? inchFrac(x)}"` : `${PLY_WORD[n] ?? n} ${PLY_GLYPH[String(x)] ?? inchFrac(x)}"`;
-}
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";

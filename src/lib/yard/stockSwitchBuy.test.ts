@@ -166,3 +166,12 @@ it("row 683: the counter step's sentence is release's, with the count and ply re
     assert.deepEqual(said("sink base cabinet 48 wide in 1/2 inch plywood"), ['Cut list has three ½" plies — glue them face-to-face (laminate) so the finished work surface is 1½" thick']);
     assert.deepEqual(said("kitchen island", "plywood-1-2-4x8"), ['Cut list has three ½" Counter plies — glue them face-to-face (laminate) so the finished top is 1½" thick']);
   }));
+
+it("row 690: the island note names the counter layers the step and cut list lay up (¾\" is release's)", () =>
+  offline(() => {
+    const clause = (q: string, s?: string) => (s ? generateFromPrompt(q, s) : generateFromPrompt(q)).notes?.map((n) => n.match(/counter is [^;]*;/)?.[0]).filter(Boolean);
+    assert.deepEqual(clause("kitchen island"), ['counter is two ¾" plies laminated to 1½";']);
+    assert.deepEqual(clause("kitchen island", "plywood-1-2-4x8"), ['counter is three ½" plies laminated to 1½";']);
+    assert.deepEqual(clause("kitchen island in 1/2 inch plywood"), ['counter is three ½" plies laminated to 1½";']);
+    assert.deepEqual(clause("kitchen island", "plywood-15-32-4x8-exterior"), ['counter is two ¾" plies laminated to 1½";']);
+  }));
