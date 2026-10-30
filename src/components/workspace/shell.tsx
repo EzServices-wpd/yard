@@ -333,7 +333,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 for and says nothing was built; a not-learned placeholder names the typed object; "Workbench" only on an empty bench. */}
             {pieceCount > 0 || project.refused
               ? headerTitle(project)
-              : project.displayOnly // the typed object, as the tab names it (route buildTitle's noun): never "Workbench"
+              : project.displayOnly // the typed object, never "Workbench" (the tab keeps the plain title: row 578)
                 ? `${project.name.split(/[,\d]/)[0].trim() || project.name} · not learned yet`
                 : "Workbench"}
           </span>
