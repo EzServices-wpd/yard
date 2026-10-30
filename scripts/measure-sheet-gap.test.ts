@@ -45,8 +45,26 @@ test("the card is the sheet's box, phone only, inert, and outside the Buy list a
 });
 
 test("shell renders the card in the bench host only while Measure is open", () => {
-  const host = shell.slice(shell.indexOf("data-bench-host>"), shell.indexOf("<RevealStatus />"));
+  const host = shell.slice(shell.indexOf("<BenchHost"), shell.indexOf("<RevealStatus />"));
   assert.match(host, /<MeasureSheetGap show=\{side === "measure"\} \/>/);
+});
+
+// Critic 2 #208 advisory (D14): the dismiss tests render BenchHost alone, so nothing checked that the shell hands it
+// the sheet's real state. WorkspaceApp itself (three.js canvas, router, stores) does not render in a test DOM, so this
+// reads the one BenchHost element in shell.tsx and evaluates its props against every panel state.
+test("shell wires BenchHost to the Measure sheet: open only while Measure is the side panel, closing clears it", () => {
+  const tags = shell.match(/<BenchHost\b[^>]*>/g) ?? [];
+  assert.equal(tags.length, 1, "one BenchHost in the shell");
+  const open = /sheetOpen=\{([^}]+)\}/.exec(tags[0])?.[1];
+  assert.ok(open, "BenchHost gets a sheetOpen expression");
+  const sheetOpen = new Function("side", `return (${open});`) as (side: string | null) => unknown;
+  assert.equal(sheetOpen("measure"), true, "Measure open: the sheet is open");
+  for (const side of ["catalog", null]) assert.equal(sheetOpen(side), false, `side ${side}: not the sheet`);
+  assert.match(tags[0], /onClose=\{closeSide\}/, "BenchHost closes through closeSide");
+  assert.match(shell, /const closeSide = useCallback\(\(\) => setSide\(null\), \[\]\);/, "closeSide clears the side panel");
+  const host = shell.slice(shell.indexOf(tags[0]), shell.indexOf("</BenchHost>"));
+  assert.match(host, /<WorkspaceCanvas \/>/, "the bench canvas renders inside BenchHost, so its presses reach the handlers");
+  assert.doesNotMatch(shell, /data-bench-host/, "no second bench host div beside it");
 });
 
 test("the fit key gains 'm' only while the phone sheet is open; closed it is release's", () => {
