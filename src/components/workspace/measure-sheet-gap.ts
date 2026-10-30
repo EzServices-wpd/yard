@@ -31,7 +31,13 @@ export const isSheetTap = (down: Pt | null, up: Pt) => down != null && Math.hypo
 const phone = () => typeof window !== "undefined" && window.matchMedia(SHEET_GAP_QUERY).matches;
 
 type Events = { getState: () => { setEvents: (e: { enabled: boolean }) => void } };
-/** The bench's three.js event store for a canvas (react-three-fiber keeps one per canvas). */
+/**
+ * The bench's three.js event store for a canvas (react-three-fiber keeps one per canvas). `_roots` is an underscore
+ * export, not r3f's public API: an r3f upgrade could rename it or change what it holds, and then this finds no store,
+ * the hold below quietly does nothing, and a closing tap on the open phone sheet places or selects parts again (the
+ * #208 block). The pin test in scripts/measure-sheet-dismiss.test.ts ("pin: r3f's _roots ...") runs r3f's own
+ * createRoot and goes red if that happens; check it on every @react-three/fiber bump.
+ */
 const benchEvents = (canvas: Element | null) => (canvas ? (_roots.get(canvas as HTMLCanvasElement)?.store as unknown as Events | undefined) : undefined);
 function releaseBench(held: { current: Events | null }) {
   held.current?.getState().setEvents({ enabled: true });
@@ -44,9 +50,12 @@ function releaseBench(held: { current: Events | null }) {
  * orbits, but the bench's own pointer actions (select a part, place a piece in Free mode, drag a piece) fire on
  * pointer-down, before a tap can be told from a drag. So while the sheet is open on a phone, a press on the
  * canvas first switches the bench's three.js events off (the orbit controls listen on their own and still turn the
- * model), and they come back when the sheet closes. A tap (6 px or less) then closes the sheet and changes no part
- * and no selection, as the backdrop did; a drag only orbits. Escape (phone only) closes it and puts focus back on
- * the control that opened it. Returns the bench host's capture handlers.
+ * model), and they come back when the sheet closes. A tap (6 px or less) then closes the sheet; a drag only orbits.
+ * Neither adds a part (Free mode) or selects one (Look mode) only because those events are off while the sheet is
+ * open: the bench's handlers would still fire on pointer-down otherwise. Before #208 the clear backdrop got the
+ * same result by eating the press. On desktop nothing here touches the bench: its events stay on and its clicks are
+ * its own. Escape (phone only) closes the sheet and puts focus back on the control that opened it. Returns the
+ * bench host's capture handlers.
  */
 export function useMeasureSheetDismiss(open: boolean, close: () => void) {
   const opener = useRef<HTMLElement | null>(null);
@@ -85,7 +94,8 @@ export function useMeasureSheetDismiss(open: boolean, close: () => void) {
     },
     onClickCapture: (e: MouseEvent) => {
       if (!open || !phone() || !(e.target as Element).closest?.("canvas")) return;
-      // The bench's click is never its own while the sheet is open (a drag's click would read as a miss).
+      // The bench's click is never its own while the sheet is open (a drag's click would read as a miss and clear
+      // the selection). Selecting and placing are held off at pointer-down above, not here.
       e.stopPropagation();
       if (isSheetTap(down.current, { x: e.clientX, y: e.clientY })) close();
     },
