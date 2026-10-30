@@ -36,12 +36,12 @@ const board = (q: number) => ({ name: "2x4", quantity: q, unit: "boards", catalo
 const cut = (id: string, quantity: number, lengthIn: number, widthIn = 3.5) => ({ id: `${id}|Leg|${lengthIn}`, name: "Leg", quantity, lengthIn, widthIn });
 
 test("lumber coverage: under-buy flags, one extra board or 10% is allowed, more over-buy flags", () => {
-  const cuts = [cut("board", 4, 48)]; // two 48" pieces per 96" board: needs 2
+  const cuts = [cut("board", 4, 47.9)]; // two 47.9" pieces + kerf per 96" board: needs 2
   assert.deepEqual(audit(cat, plan([board(2)], cuts)), []);
   assert.deepEqual(audit(cat, plan([board(3)], cuts)), [], "one extra board is allowed");
   assert.match(audit(cat, plan([board(1)], cuts)).join(), /^stock under 2x4: buys 1 < needs 2/);
   assert.match(audit(cat, plan([board(4)], cuts)).join(), /^stock over 2x4: buys 4 for 2 \(allowed \+1\)/);
-  assert.match(audit(cat, plan([board(9)], [cut("board", 1, 48, 24)])).join(), /stock over 2x4: buys 9 for 4/, "a 24\" wide glue-up is 7 strips, 2 per board");
+  assert.match(audit(cat, plan([board(9)], [cut("board", 1, 48, 24)])).join(), /stock over 2x4: buys 9 for 7/, "a 24\" wide glue-up is 7 strips of 48\", one per board with kerf");
   assert.match(audit(cat, plan([board(3)], [cut("board", 1, 100)])).join(), /1 pieces longer than 96"/);
 });
 
@@ -49,8 +49,20 @@ test("stick packs: the pack line must cover the pieces used; packs allow one ext
   const line = (q: number, used: number) => ({ name: "Stick", quantity: q, unit: `pack of 50 (${used} sticks used)`, catalogId: "stick", estimatedCost: 3 * q });
   const whole = (n: number) => [{ id: "stick", name: "Stick", quantity: n, lengthIn: 12, widthIn: 0.2, whole: true }];
   assert.deepEqual(audit(cat, plan([line(2, 80)], whole(80))), []);
-  assert.deepEqual(audit(cat, plan([line(1, 80)], whole(80))).sort(), ["pack Stick: 1x50 != ceil(80/50)", "stock under Stick: buys 50 < needs 80 (first-fit)"]);
+  assert.deepEqual(audit(cat, plan([line(1, 80)], whole(80))).sort(), ["pack Stick: 1x50 != ceil(80/50)", "stock under Stick: buys 50 < needs 80 (used)"]);
   assert.deepEqual(audit(cat, plan([line(4, 80)], whole(80))).sort(), ["pack Stick: 4x50 != ceil(80/50)", "stock over Stick: buys 200 for 80 (allowed +50)"]);
+});
+
+test("without \"(N used)\", first-fit adds a 1/8\" kerf per cut", () => {
+  assert.match(audit(cat, plan([board(2)], [cut("board", 4, 48)])).join(), /^stock under 2x4: buys 2 < needs 4 \(first-fit\)/, "two 48\" cuts don't fit a 96\" board with kerf");
+  assert.deepEqual(audit(cat, plan([board(4)], [cut("board", 4, 48)])), []);
+});
+
+test("the engine's \"(N used)\" is the need; only cut pieces that can't fit in N flag", () => {
+  const line = (q: number, used: number) => ({ name: "Giant", quantity: q, unit: `pack of 25 (${used} sticks used)`, catalogId: "stick", estimatedCost: 5 * q });
+  const pieces = [{ id: "stick|Rib|6", name: "Rib", quantity: 200, lengthIn: 6, widthIn: 0.2 }]; // first-fit packs these into 100 sticks
+  assert.deepEqual(audit(cat, plan([line(6, 130)], pieces)), [], "130 used is the need: 6 packs of 25 is one extra pack, not an over-buy");
+  assert.deepEqual(audit(cat, plan([line(4, 90)], pieces)), ["stock used Giant: cut pieces need 100 > 90 used"]);
 });
 
 test("sheets vs nest, pieces vs cut list, total vs Buy sum, and unauditable pack lines", () => {

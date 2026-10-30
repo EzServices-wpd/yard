@@ -26,6 +26,9 @@ export function record(E: Engine, q: string, p: any, pl: any): any {
 }
 export const hash = (o: unknown) => createHash("sha1").update(JSON.stringify(o)).digest("hex").slice(0, 16);
 
+/** Saw kerf per cut in the first-fit need (used only when the line has no "(N used)"). */
+export const KERF = 0.125;
+
 /** Buy audit: flags for one build. "UNAUDITABLE ..." flags are counted lines (no "(N used)"), not failures by themselves. */
 export function audit(cat: Cat, pl: any): string[] {
   const f: string[] = []; const sum = (a: number[]) => a.reduce((s, x) => s + (x || 0), 0); const item = (id: any) => cat.getCatalogItem?.(id ?? "");
@@ -50,9 +53,12 @@ export function audit(cat: Cat, pl: any): string[] {
     for (const c of cuts) { const strips = ff === "board" && W > 0 && c.widthIn > W + 1e-6 ? Math.ceil(c.widthIn / W - 1e-6) : 1;
       for (let k = 0; k < c.quantity * strips; k++) { if (c.whole) whole++; else lens.push(c.lengthIn); } }
     const long = lens.filter((x) => x > L + 1e-6).length; if (long) f.push(`stock ${b.name}: ${long} pieces longer than ${L}"`);
-    const bins: number[] = []; for (const c of lens.filter((x) => x <= L + 1e-6).sort((a, z) => z - a)) { const k = bins.findIndex((r) => r >= c - 1e-6); if (k >= 0) bins[k] -= c; else bins.push(L - c); }
-    const need = bins.length + whole + long; const bought = m ? b.quantity * Number(m[1]) : b.quantity; const allow = Math.max(m ? Number(m[1]) : 1, Math.ceil(0.1 * need));
-    if (bought < need) f.push(`stock under ${b.name}: buys ${bought} < needs ${need} (first-fit)`);
+    // The engine's own "(N used)" is the need when present (flag only if the cut pieces can't fit in N); else first-fit with a 1/8" kerf per cut.
+    const ffd = (kerf: number) => { const bins: number[] = []; for (const c of lens.filter((x) => x <= L + 1e-6).sort((a, z) => z - a)) { const k = bins.findIndex((r) => r >= c - 1e-6); if (k >= 0) bins[k] -= c + kerf; else bins.push(L - c - kerf); } return bins.length + whole + long; };
+    const usedN = u ? Number(u[1]) : null; const fit = ffd(0); const need = usedN ?? ffd(KERF);
+    const bought = m ? b.quantity * Number(m[1]) : b.quantity; const allow = Math.max(m ? Number(m[1]) : 1, Math.ceil(0.1 * need));
+    if (usedN != null && fit > usedN) f.push(`stock used ${b.name}: cut pieces need ${fit} > ${usedN} used`);
+    if (bought < need) f.push(`stock under ${b.name}: buys ${bought} < needs ${need} (${usedN != null ? "used" : "first-fit"})`);
     else if (bought - need > allow) f.push(`stock over ${b.name}: buys ${bought} for ${need} (allowed +${allow})`);
   }
   return f;
