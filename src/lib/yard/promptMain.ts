@@ -999,7 +999,12 @@ function realSizeNote(project: YardProject, want: Partial<Box3>): YardProject {
   const word = { width: "wide", height: "tall", depth: "deep" } as const;
   const asked = AXES.filter((a) => want[a] != null).map((a) => `${inchFrac(want[a]!)}" ${word[a]}`).join(" × ");
   const o = project.overall;
-  const note = `You typed ${asked}. Whole ${stick}s build it ${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows. Type "cut the sticks" to build it to the exact size.`;
+  const built = `${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows.`;
+  // Pieces already cut to their spans (12" skewers, giant sticks): never call them whole or offer "cut the sticks" (row 653).
+  const cut = project.instances.some((i) => i.catalogId === project.primaryMaterialId && i.cutLength != null);
+  const note = cut
+    ? `You typed ${asked}. ${stick}s cut to their spans build it ${built}`
+    : `You typed ${asked}. Whole ${stick}s build it ${built} Type "cut the sticks" to build it to the exact size.`;
   return { ...project, notes: [note, ...(project.notes ?? []).filter((n) => !/^You typed .* the closest the stick allows/.test(n))] };
 }
 

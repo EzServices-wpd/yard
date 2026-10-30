@@ -267,3 +267,24 @@ it("the over-ceiling rebuild puts a bare size on the axis the fit would (U5: the
   assert.ok(Math.abs(p.overall.width - 36) <= 1.5 && p.overall.height < 30, JSON.stringify(p.overall));
   assert.equal(generateFromPrompt('toothpick pyramid 18"').instances.length, 2723);
 });
+
+it("a size note on craft stock cut to its spans never says whole or offers 'cut the sticks' (row 653)", () => {
+  for (const q of ['castle from skewers 12" tall', 'castle from giant craft sticks 12" tall', 'pyramid from skewers 12"']) {
+    const p = generateFromPrompt(q);
+    assert.ok(p.instances.some((i) => i.cutLength != null), `${q} is cut to span`);
+    const n = (p.notes ?? []).find((x) => /^You typed /.test(x)) ?? "";
+    assert.match(n, /cut to their spans build it .* the closest the stick allows\.$/, q);
+    assert.doesNotMatch(n, /Whole|cut the sticks/, q);
+  }
+  // Whole sticks keep the whole-stick note.
+  assert.match((generateFromPrompt("toothpick geodesic dome 18 inches").notes ?? []).join(" "), /Whole .* the closest the stick allows\. Type "cut the sticks"/);
+});
+
+it("only cut-to-span stock counts as a stick module when cut: an exact-size cut castle keeps its typed box (W4)", () => {
+  // Sticks the builder was told to cut are sized by the builder; they are not rebuilt by module count.
+  for (const st of ["popsicle sticks", "toothpicks", "straws"]) {
+    const q = `castle from ${st} 12 wide 12 deep 18 tall cut the sticks`;
+    const o = generateFromPrompt(q).overall;
+    assert.ok(Math.abs(o.width - 12) <= 0.25 && Math.abs(o.depth - 12) <= 0.25 && Math.abs(o.height - 18) <= 0.25, `${q}: ${JSON.stringify(o)}`);
+  }
+});
