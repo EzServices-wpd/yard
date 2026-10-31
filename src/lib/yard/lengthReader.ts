@@ -57,15 +57,16 @@ export function readLengths(text: string): Length[] {
   const out: Length[] = [];
   LEN.lastIndex = 0;
   for (let m = LEN.exec(s); m; m = LEN.exec(s)) {
-    const [raw, num, half, mm, cm, metre, inch, ft, foot, tail, tailNum] = m;
+    const [raw, num, half, mm, cm, metre, inch, ft, mark, tail, tailNum] = m;
     const spelled = /[a-z]/i.test(num);
     const value = (spelled ? wordValue(num) : readNumber(num)) + (half ? HALVES[/half/i.test(half) ? "half" : "quarter"] : 0);
-    const unit: Unit | null = mm ? "mm" : cm ? "cm" : metre ? "m" : inch ? "in" : ft || foot ? "ft" : null;
+    const unit: Unit | null = mm ? "mm" : cm ? "cm" : metre ? "m" : inch ? "in" : ft || mark ? "ft" : null;
     let end = m.index + raw.length;
     // Inches after feet join only under 12: "6 ft 14 in" is two lengths, read on from the 14.
     const joins = tail != null && readNumber(tailNum) < 12;
     if (tail != null && !joins) LEN.lastIndex = end -= tail.length;
-    if (!Number.isFinite(value) || (spelled && !unit)) continue;
+    // A spelled number is a length only with a unit word: "one in each corner" is a count.
+    if (!Number.isFinite(value) || (spelled && (!unit || /^\s*-?\s*in\.?$/i.test(inch ?? "") || mark))) continue;
     const inches = (unit ? value * PER[unit] : value) + (joins ? readNumber(tailNum) : 0);
     out.push({ inches, value, unit, start: m.index, end, raw: s.slice(m.index, end), num, spelled });
   }

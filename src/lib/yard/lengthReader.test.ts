@@ -57,6 +57,7 @@ it("canonicalMeasures is idempotent and leaves stock names alone", () => {
   // A spelled number with a unit is its digits (row 608): the stock reader then reads the sheet it names.
   assert.equal(canonicalMeasures("dollhouse quarter inch plywood"), "dollhouse 1/4 inch plywood");
   assert.equal(canonicalMeasures("bridge from skewers 1829mm long"), 'bridge from skewers 72" long');
+  assert.equal(canonicalMeasures("shelf with one in each corner"), "shelf with one in each corner");
 });
 
 it("tuples read in typed order, x or by", () => {
