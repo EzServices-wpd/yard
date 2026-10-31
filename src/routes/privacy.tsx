@@ -72,9 +72,9 @@ function PrivacyPage() {
               so no third party sees you when a page loads.
             </p>
             <p className="mt-2">
-              If a page crashes, Yard sends the error and the engine&apos;s build title and size to Sentry,
-              our error service, through our own site. It never sends what you typed, your IP address or a
-              recording of your screen.
+              If a page crashes, Yard sends the error and the kind of build to Sentry, our error service,
+              through our own site. It never sends what you typed, your IP address or a recording of your
+              screen.
             </p>
           </section>
 
