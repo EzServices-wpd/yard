@@ -1,6 +1,6 @@
 "use client";
 import { userText } from "@/lib/yard/userText";
-import { headerAxes, headerName, headerTitle } from "@/lib/yard/pdf";
+import { headerTitle } from "@/lib/yard/pdf";
 import { setErrContext } from "@/lib/err/report";
 import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
@@ -153,12 +153,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     if (titlePending || (benchPieces <= 0 && !project.refused)) return;
     document.title = `${headerTitle(project)} · Yard`;
   }, [titlePending, benchPieces, project]);
-  // A crash report names the bench's build (title and size), never the words typed: those are cut from the message.
+  // A crash report names only the engine's build family (its fixed kind id), never a title, size or the words typed.
   useEffect(() => {
     setErrContext(() => {
       const p = useYard.getState().project;
-      const built = p.panels.length > 0;
-      return { title: built ? headerName(p) : "", size: built ? headerAxes(p) : "", typed: [p.prompt, p.typedPrompt] };
+      return { family: p.panels.length > 0 ? p.kind : "", typed: [p.prompt, p.typedPrompt] };
     });
     return () => setErrContext(() => ({}));
   }, []);

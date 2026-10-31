@@ -3,7 +3,7 @@ import { noQuery, scrubMessage } from "@/lib/err/report";
 
 // Crash forwarder: the browser posts a scrubbed report here (src/lib/err/report.ts) and this sends it on to Sentry,
 // so the browser never contacts Sentry. Reads only the JSON body: no IP, UA or cookie is read or forwarded.
-// No DSN set -> 204 and no network call. Tags are only the build title, size and commit.
+// No DSN set -> 204 and no network call. Tags are only the build family (a fixed engine id) and the commit.
 const str = (v: unknown, n: number) => noQuery(typeof v === "string" ? v : "").slice(0, n);
 
 /** "https://KEY@o1.ingest.sentry.io/123" -> envelope URL and key; null when unset or malformed. */
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/err")({
             level: "error",
             environment: process.env.VERCEL_ENV || "development",
             exception: { values: [{ type: str(b.name, 40) || "Error", value: scrubMessage(str(b.message, 400), []), ...(stack ? { stacktrace: { frames: frames(stack) } } : {}) }] },
-            tags: { build_title: str(b.title, 80), build_size: str(b.size, 60), commit: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 40) },
+            tags: { build_family: /^[a-z][a-z0-9-]{0,29}$/.test(str(b.family, 30)) ? str(b.family, 30) : "", commit: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 40) },
           };
           const envelope = `${JSON.stringify({ event_id: id, sent_at: now })}\n${JSON.stringify({ type: "event" })}\n${JSON.stringify(event)}`;
           await fetch(target.url, {

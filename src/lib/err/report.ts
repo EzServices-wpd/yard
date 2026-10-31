@@ -1,13 +1,13 @@
 // Crash reporter (no SDK). The browser posts only to our own /api/err; the server forwards to Sentry.
 // It sends the error name, a scrubbed short message, stack frames without query strings, and the bench's build
-// title and size. Never what was typed: the live prompt, any field's value, quoted text and long runs are cut out.
+// family (the engine's fixed kind id, never a title or size). Never what was typed: the live prompt, any field's value, quoted text and long runs are cut out.
 
-type Ctx = () => { title?: string; size?: string; typed?: (string | undefined)[] };
+type Ctx = () => { family?: string; typed?: (string | undefined)[] };
 let ctx: Ctx = () => ({});
 let sent = 0;
 const seen = new Set<string>();
 
-/** The workspace registers how to read the current build's title and size (and the words to never send). */
+/** The workspace registers how to read the current build's family (and the words to never send). */
 export function setErrContext(fn: Ctx) {
   ctx = fn;
 }
@@ -52,8 +52,7 @@ export function reportError(err: unknown) {
       name: String(e.name || "Error").slice(0, 40),
       message: scrubMessage(e.message, typed),
       stack: scrubStack(e.stack),
-      title: (c.title ?? "").slice(0, 80),
-      size: (c.size ?? "").slice(0, 60),
+      family: /^[a-z][a-z0-9-]{0,29}$/.test(c.family ?? "") ? c.family : "",
     });
     if (seen.has(body)) return;
     seen.add(body);
