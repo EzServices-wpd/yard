@@ -27,15 +27,44 @@ function frames(stack: string) {
   }).reverse();
 }
 
+/** Only our own reporter's post: same-origin (Sec-Fetch-Site or a matching Origin) and a JSON/text body. No IP read. */
+function fromOurPage(request: Request): boolean {
+  const h = request.headers;
+  const type = (h.get("content-type") ?? "").toLowerCase();
+  if (!type.startsWith("application/json") && !type.startsWith("text/plain")) return false;
+  if (h.get("sec-fetch-site") === "same-origin") return true;
+  const origin = h.get("origin");
+  return !!origin && origin === new URL(request.url).origin;
+}
+
+/** Reads at most `max` bytes of the body and stops there; the rest is never read. */
+async function readCapped(request: Request, max: number): Promise<string> {
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const parts: Uint8Array[] = [];
+  let n = 0;
+  while (n < max) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value);
+    n += value.length;
+  }
+  void reader.cancel().catch(() => {});
+  const buf = new Uint8Array(Math.min(n, max));
+  let o = 0;
+  for (const p of parts) { buf.set(p.subarray(0, buf.length - o), o); o += Math.min(p.length, buf.length - o); }
+  return new TextDecoder().decode(buf);
+}
+
 export const Route = createFileRoute("/api/err")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const headers = { "Cache-Control": "no-store" };
         const target = sentryTarget(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN);
-        if (!target) return new Response(null, { status: 204, headers });
+        if (!target || !fromOurPage(request)) return new Response(null, { status: 204, headers });
         try {
-          const b = JSON.parse((await request.text()).slice(0, 4096)) as Record<string, unknown>;
+          const b = JSON.parse(await readCapped(request, 4096)) as Record<string, unknown>;
           const id = crypto.randomUUID().replace(/-/g, "");
           const now = new Date().toISOString();
           const stack = str(b.stack, 4000);
@@ -52,6 +81,7 @@ export const Route = createFileRoute("/api/err")({
           await fetch(target.url, {
             method: "POST",
             body: envelope,
+            signal: AbortSignal.timeout(3000),
             headers: { "Content-Type": "application/x-sentry-envelope", "X-Sentry-Auth": `Sentry sentry_version=7, sentry_key=${target.key}, sentry_client=yard-err/1` },
           });
           return new Response(null, { status: 204, headers });

@@ -15,29 +15,39 @@ export function setErrContext(fn: Ctx) {
 /** Drops ?query and #hash from every URL, keeping a stack frame's trailing :line:col. */
 export const noQuery = (s: string) => s.replace(/(https?:\/\/[^\s?#)]*)[?#][^\s)]*?(:\d+:\d+)?(?=[\s)]|$)/g, "$1$2");
 
-/** Keep only the shape of a message: typed words, field values, quoted strings and long tokens become [x]. */
-export function scrubMessage(msg: string, typed: string[]): string {
-  let m = String(msg).slice(0, 2000);
-  for (const t of typed) {
-    if (!t || t.length < 3) continue;
-    m = m.split(t).join("[x]");
-    // and every typed word of 4+ letters, wherever it shows up
-    for (const w of t.match(/[\p{L}\p{N}]{4,}/gu) ?? []) m = m.replace(new RegExp(`(?<![\\p{L}\\p{N}])${w}(?![\\p{L}\\p{N}])`, "giu"), "[x]");
-  }
-  m = noQuery(m)
-    .replace(/(["'`“‘])[^"'`”’]*(["'`”’])/g, "[x]") // anything quoted
-    .replace(/\S{25,}/g, "[x]") // long tokens (pasted text, data, urls)
-    .replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "[x]");
-  return m.slice(0, 120);
+/** One pass that cuts every typed word and digit run (any length, any case; long words with any ending). */
+function cutTyped(s: string, typed: string[], digits = true): string {
+  const toks = [...new Set(typed.flatMap((t) => t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []))]
+    .filter((w) => digits || /\p{L}/u.test(w))
+    .sort((a, b) => b.length - a.length);
+  if (!toks.length) return s;
+  // 4+ letter words also take any ending (bookshelf -> bookshelves); short ones match whole words only
+  const alt = toks.map((w) => (w.length >= 4 ? `${w.slice(0, -1)}\\p{L}*` : `${w}(?![\\p{L}\\p{N}])`)).join("|");
+  return s.replace(new RegExp(`(?<![\\p{L}\\p{N}])(?:${alt})`, "giu"), "[x]");
 }
 
-/** Frames only ("at f (file:1:2)" / "f@file:1:2"), query strings and hashes dropped; the message line is not kept. */
-export function scrubStack(stack: string | undefined): string {
+/** Keep only the shape of a message: typed words, digit runs, quoted strings and long tokens become [x]. */
+export function scrubMessage(msg: string, typed: string[]): string {
+  return noQuery(cutTyped(String(msg).slice(0, 2000), typed))
+    .replace(/(["'`“‘])[^"'`”’]*(["'`”’])/g, "[x]") // anything quoted
+    .replace(/\S{25,}/g, "[x]") // long tokens (pasted text, data, urls)
+    .replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "[x]")
+    .replace(/\d+/g, "#") // every digit run (sizes, counts, ids)
+    .slice(0, 120);
+}
+
+// A real frame: "at [async |new ]name (url:1:2)", "at url:1:2" or "name@url:1:2". Anything else (a message's own
+// "at ..." line, typed text) is dropped.
+const FRAME = /^(?:at (?:(?:async |new )?[\w$.<>[\]]+ \()?(?:https?:\/\/|\/|file:|<anonymous>)\S*:\d+:\d+\)?|[\w$.<>[\]/]*@(?:https?:\/\/|\/|file:)\S*:\d+:\d+)$/;
+
+/** Frames only, query strings and hashes dropped, typed words cut from names and paths (line:col digits kept). */
+export function scrubStack(stack: string | undefined, typed: string[] = []): string {
   return (stack ?? "")
     .split("\n")
-    .filter((l) => /^\s*at\s|@\S+:\d+:\d+\s*$/.test(l))
+    .map((l) => noQuery(l.trim()))
+    .filter((l) => FRAME.test(l))
     .slice(0, 20)
-    .map((l) => noQuery(l.trim()).slice(0, 200))
+    .map((l) => cutTyped(l, typed, false).slice(0, 200))
     .join("\n");
 }
 
@@ -51,7 +61,7 @@ export function reportError(err: unknown) {
     const body = JSON.stringify({
       name: String(e.name || "Error").slice(0, 40),
       message: scrubMessage(e.message, typed),
-      stack: scrubStack(e.stack),
+      stack: scrubStack(e.stack, typed),
       family: /^[a-z][a-z0-9-]{0,29}$/.test(c.family ?? "") ? c.family : "",
     });
     if (seen.has(body)) return;
