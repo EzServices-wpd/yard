@@ -15,15 +15,18 @@ export function setErrContext(fn: Ctx) {
 /** Drops ?query and #hash from every URL, keeping a stack frame's trailing :line:col. */
 export const noQuery = (s: string) => s.replace(/(https?:\/\/[^\s?#)]*)[?#][^\s)]*?(:\d+:\d+)?(?=[\s)]|$)/g, "$1$2");
 
-/** One pass that cuts every typed word and digit run (any length, any case; long words with any ending). */
+/** NFC, and Turkish İ as I, so a typed word matches whatever Unicode form the message carries. */
+const nfc = (s: string) => s.normalize("NFC").replace(/İ/g, "I");
+
+/** One pass that cuts every typed token wherever it sits (after a digit, %, _ or inside a longer word). 4+ letter
+ * words also take any ending, f/ves too (bookshelves, knife -> knives). Only 1-2 character tokens need a non-letter on each side. */
 function cutTyped(s: string, typed: string[], digits = true): string {
-  const toks = [...new Set(typed.flatMap((t) => t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []))]
+  const toks = [...new Set(typed.flatMap((t) => nfc(t).toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []))]
     .filter((w) => digits || /\p{L}/u.test(w))
     .sort((a, b) => b.length - a.length);
-  if (!toks.length) return s;
-  // 4+ letter words also take any ending (bookshelf -> bookshelves); short ones match whole words only
-  const alt = toks.map((w) => (w.length >= 4 ? `${w.slice(0, -1)}\\p{L}*` : `${w}(?![\\p{L}\\p{N}])`)).join("|");
-  return s.replace(new RegExp(`(?<![\\p{L}\\p{N}])(?:${alt})`, "giu"), "[x]");
+  if (!toks.length) return nfc(s);
+  const alt = toks.map((w) => (w.length >= 4 ? `${w.slice(0, -1).replace(/(?<=\p{L}{3})(?:ve|f|e)$/u, "")}\\p{L}*` : w.length === 3 ? w : `(?<!\\p{L})${w}(?!\\p{L})`)).join("|");
+  return nfc(s).replace(new RegExp(alt, "giu"), "[x]");
 }
 
 /** Keep only the shape of a message: typed words, digit runs, quoted strings and long tokens become [x]. */
@@ -59,7 +62,7 @@ export function reportError(err: unknown) {
     const fields = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea"), (f) => f.value);
     const typed = [...(c.typed ?? []), ...fields].filter((t): t is string => !!t && t.trim().length > 2).map((t) => t.trim());
     const body = JSON.stringify({
-      name: String(e.name || "Error").slice(0, 40),
+      name: scrubMessage(String(e.name || "Error"), typed).slice(0, 40),
       message: scrubMessage(e.message, typed),
       stack: scrubStack(e.stack, typed),
       family: /^[a-z][a-z0-9-]{0,29}$/.test(c.family ?? "") ? c.family : "",
