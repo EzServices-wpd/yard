@@ -1452,7 +1452,7 @@ function generateRaw(
     const ask = materialOverride ?? (typed ? listed?.id : typedStockId(bare));
     if (built && ask && ask !== stock.id) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
     // Said the way a builder writes it: a mixed fraction in 16ths ("1 1/2", "5/8"; "1.5" is 1 1/2), else as typed ("15/32").
-    const said = (() => { const n = Math.round(tIn * 16); if (Math.abs(tIn * 16 - n) > 1e-6) return tm![1].replace(/\s*\/\s*/g, "/").trim(); const w = Math.floor(n / 16), r = n % 16, g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(r, 16); return r ? `${w ? `${w} ` : ""}${r / k}/${16 / k}` : `${w}`; })();
+    const said = (() => { const n = Math.round(tIn * 16); if (Math.abs(tIn * 16 - n) > 1e-6) return tm!.replace(/\s*\/\s*/g, "/").trim(); const w = Math.floor(n / 16), r = n % 16, g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(r, 16); return r ? `${w ? `${w} ` : ""}${r / k}/${16 / k}` : `${w}`; })();
     if (built && !materialOverride && typed && !listed)
       return { ...built, notes: [...(built.notes ?? []), `${said}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
     if (built) return built;
