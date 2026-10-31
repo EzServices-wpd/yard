@@ -7,6 +7,7 @@
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { typedMeasures } from "./measureText";
+import { readLengths } from "./lengthReader";
 import type { CatalogItem, Panel, YardProject } from "./types";
 import type { TemplateBuild } from "./formTemplates";
 
@@ -66,10 +67,10 @@ export function dollhouseTyped(prompt: string): { width?: number; height?: numbe
   const m = typedMeasures(prompt);
   const s = prompt.toLowerCase().replace(/[″”]/g, '"').replace(new RegExp(PLY_THICKNESS.source, "g"), " ")
     .replace(/\d+(?:\.\d+)?\s*-?\s*(?:"|in(?:ch(?:es)?)?\b\.?)\s*(?:[a-z]+\s+){0,2}?(?:dolls?|barbies?|figures?|figurines?)\b/g, " ");
-  // A mixed number is one length ("30 1/2 inch", "1 1/2 ft"), as the thickness reader takes it (I35).
-  const b = m.height ?? m.tuple ? null : s.match(/(?<![\d./x×:-])(\d+\s+\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*-?\s*(ft\b\.?|feet\b|foot\b|'|"|in\b\.?|inch(?:es)?\b)(?!\s*-?\s*(?:wide|width|deep|depth|tall|high|height|long|length|thick|x|×|by)\b)/);
-  const len = (t: string) => t.replace(/\s*\/\s*/g, "/").trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
-  const bare = b ? len(b[1]) * (/^(?:f|')/.test(b[2]) ? 12 : 1) : undefined;
+  // A mixed number is one length ("30 1/2 inch", "1 1/2 ft"), read by the one length reader (NR-1).
+  const b = m.height ?? m.tuple ? undefined : readLengths(s).find((l) => (l.unit === "in" || l.unit === "ft") && !l.spelled && !/[x×:-]$/.test(s.slice(0, l.start))
+    && !/^\s*-?\s*(?:wide|width|deep|depth|tall|high|height|long|length|thick|x|×|by)\b/.test(s.slice(l.end)));
+  const bare = b?.inches;
   return { width: m.width ?? m.tuple?.[0], depth: m.depth ?? m.tuple?.[1], height: m.height ?? m.tuple?.[2] ?? bare };
 }
 

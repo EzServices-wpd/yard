@@ -3,6 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
+import { readLengths } from "./lengthReader";
 import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
@@ -1436,10 +1437,11 @@ function generateRaw(
     // unit ("1 inch", "2\""): a bare "2" is a count, and "21 inch" or "36\"" is the house's size (PLY_THICKNESS).
     // A whole count over 2 before "plywood" that the size reader did not take as the height ("dollhouse 36 tall 3 inch
     // plywood") can only be a thickness: it is said, never dropped silently.
-    const whole = bare.toLowerCase().match(/(?<![\d./])(\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)\s*(?:thick\s+)?plywood\b/);
-    const tm = bare.toLowerCase().match(PLY_THICKNESS) ?? (whole && Number(whole[1]) !== dollhouseTyped(prompt).height ? whole : null);
+    const lw = bare.toLowerCase();
+    const whole = readLengths(lw).find((l) => l.unit === "in" && /^\d+$/.test(l.num) && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
+    const tm = lw.match(PLY_THICKNESS)?.[1] ?? (whole && whole.value !== dollhouseTyped(prompt).height ? whole.num : null);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
-    const tIn = tm ? num(tm[1].replace(/\s*\/\s*/g, "/")) : NaN;
+    const tIn = tm ? num(tm.replace(/\s*\/\s*/g, "/")) : NaN;
     const typed = Number.isFinite(tIn);
     const listed = typed ? FORGE_CATALOG.find((i) => /^plywood-.*-4x8$/.test(i.id) && Math.abs((i.dims?.thickness ?? -1) - tIn) < 1e-3) : undefined;
     const fits = (i?: CatalogItem | null) => (i && /^plywood-(?:1-2|3-4)-/.test(i.id) ? i : null);
