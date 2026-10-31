@@ -1,5 +1,5 @@
 import { withSaidHardware } from "./hardwareSaid";
-import { drawerBoxes } from "./hollowDrawers";
+import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
 import { storeTermsFromBuy } from "./listings";
 import { checkedRow, HARDWARE } from "./checkedStock";
@@ -134,6 +134,8 @@ function closetCuts(project: YardProject): CutLine[] {
     // Named solid boards follow the same shop rules as ¾" sheet parts: a 1½" top is
     // two laminated layers, a ¼" drawer bottom / backer stays ¼" plywood.
     const isSolidBoard = materialId === CATALOG_LUMBER_BIND;
+    // Row 626: a ½" sheet part thicker than its sheet is layers of that sheet (3 × ½" make a 1½" top).
+    const plyT = sheetWallT(materialId ?? "");
     let id = materialId;
     let matName = materialName;
     // Square stick posts (≈1½×1½) are solid 2x2 lumber — never laminated into
@@ -152,7 +154,8 @@ function closetCuts(project: YardProject): CutLine[] {
       // Any part thicker than its stock is a real glue-up, even under 1.5x of it.
     ) {
       // Any sheet part thicker than its sheet is a glue-up of plies (a 3 5/8" hub is 5 layers), never one thick board.
-      const T = isPly || isSolidBoard ? STOCK_T : lumberT(id);
+      // A "part" with no thin axis (the tipi's 42" canvas cover, row 685) is no sheet laminate: it keeps release's ¾" count until row 685.
+      const T = isPly || isSolidBoard ? (dims.thicknessIn > 12 ? STOCK_T : plyT) : lumberT(id);
       const plies = Math.max(2, Math.round(dims.thicknessIn / T));
       // The row counts layers, so the note always says how many make each part: the part count reads off the model.
       // The text reads off the real layers: the count × the stock's thickness, never the part's modelled size.

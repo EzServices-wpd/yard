@@ -8,6 +8,7 @@ import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
 import { closetShelfClearIn, MIN_HANG_ROOM_IN, SHELF_CLEAR_FLOOR_IN } from "./shelfClear";
 import { SPAN_TOL, spanFindings } from "./spanCheck";
+import { sheetWallT } from "./hollowDrawers";
 import { askedNoun } from "./tooSmall";
 import type { Panel, YardProject } from "./types";
 
@@ -352,9 +353,10 @@ function openDepth(panels: Panel[], at: number, t: number, y0: number, y1: numbe
 
 /** Full height of the hanging bay: on the carcase bottom, up to a raised floor or the top. */
 function standBayDivider(panels: Panel[], at: number, host: Panel): boolean {
-  const t = 0.75;
   if (bayVerticals(panels).some((d) => Math.abs(d.position.x + d.size.width / 2 - at) < 1.5)) return false;
   const ground = panels.filter((p) => p.type === "bottom" && p.position.y < 0.3);
+  // Row 626: the divider is cut from the carcase sheet it stands on, at that sheet's thickness.
+  const t = sheetWallT((ground[0] ?? host).materialId);
   const y0 = ground.length ? Math.max(...ground.map((b) => b.position.y + b.size.height)) : 0.75;
   const raised = panels
     .filter((p) => p.type === "bottom" && p.position.y > y0 + 4 && overlapLen(at - t / 2, at + t / 2, p.position.x, p.position.x + p.size.width) > 0)

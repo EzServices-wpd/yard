@@ -1,3 +1,4 @@
+import { getCatalogItem } from "./catalog";
 import type { Panel, YardProject } from "./types";
 
 /**
@@ -9,10 +10,19 @@ import type { Panel, YardProject } from "./types";
 
 export const DRAWER_SIDE_T = 0.75;
 export const DRAWER_BOTTOM_T = 0.25;
+/** The thinnest sheet that stands as a wall (a drawer side, a bay divider): ½". A ¼" sheet is a back or a bottom. */
+export const WALL_MIN_T = 0.5;
 const r8 = (n: number) => Math.round(n * 8) / 8;
 
 type Box = { x: number; y: number; z: number; w: number; h: number; d: number };
 const span = (a: number, al: number, b: number, bl: number) => Math.min(a + al, b + bl) - Math.max(a, b);
+
+/** Row 626: a wall (drawer side, bay divider) of a ½" sheet build is cut from that sheet; ¾", boards and ¼" sheets keep ¾". */
+export function sheetWallT(materialId: string): number {
+  const it = getCatalogItem(materialId);
+  const t = it?.formFactor === "sheet" ? it.dims.thickness : undefined;
+  return t && t >= WALL_MIN_T && t < DRAWER_SIDE_T ? t : DRAWER_SIDE_T;
+}
 
 /** A drawer envelope still waiting to be hollowed (a solid block). */
 export const isSolidDrawer = (p: Pick<Panel, "type" | "name" | "drawerId">) => p.type === "drawer" && !p.drawerId && !/drawer\s*front/i.test(p.name);
@@ -31,18 +41,19 @@ function partName(box: string, part: string): string {
 export function hollowParts(env: Panel): Panel[] {
   const { x, y, z } = env.position;
   const H = r8(env.size.height), D = r8(env.size.depth);
-  const innerW = Math.max(r8(env.size.width - 2 * DRAWER_SIDE_T), 1);
-  const bottomD = Math.max(r8(env.size.depth - DRAWER_SIDE_T), 1);
+  const T = sheetWallT(env.materialId);
+  const innerW = Math.max(r8(env.size.width - 2 * T), 1);
+  const bottomD = Math.max(r8(env.size.depth - T), 1);
   const id = env.id;
   const tag = (part: Panel["drawerPart"], name: string, at: Box, materialId = env.materialId): Panel => {
     const { yaw: _yaw, joints: _joints, ...rest } = env;
     return { ...rest, id: `${id}-${name.toLowerCase().replace(/\W+/g, "-")}`, type: "drawer", name, position: { x: at.x, y: at.y, z: at.z }, size: { width: at.w, height: at.h, depth: at.d }, materialId, drawerId: id, drawerPart: part };
   };
   return [
-    tag("side", `${partName(env.name, "side")} (left)`, { x, y, z, w: DRAWER_SIDE_T, h: H, d: D }),
-    tag("side", `${partName(env.name, "side")} (right)`, { x: x + DRAWER_SIDE_T + innerW, y, z, w: DRAWER_SIDE_T, h: H, d: D }),
-    tag("back", partName(env.name, "back"), { x: x + DRAWER_SIDE_T, y, z, w: innerW, h: H, d: DRAWER_SIDE_T }),
-    tag("bottom", partName(env.name, "bottom"), { x: x + DRAWER_SIDE_T, y, z: z + DRAWER_SIDE_T, w: innerW, h: DRAWER_BOTTOM_T, d: bottomD }, drawerBottomStock(env.materialId)),
+    tag("side", `${partName(env.name, "side")} (left)`, { x, y, z, w: T, h: H, d: D }),
+    tag("side", `${partName(env.name, "side")} (right)`, { x: x + T + innerW, y, z, w: T, h: H, d: D }),
+    tag("back", partName(env.name, "back"), { x: x + T, y, z, w: innerW, h: H, d: T }),
+    tag("bottom", partName(env.name, "bottom"), { x: x + T, y, z: z + T, w: innerW, h: DRAWER_BOTTOM_T, d: bottomD }, drawerBottomStock(env.materialId)),
   ];
 }
 
