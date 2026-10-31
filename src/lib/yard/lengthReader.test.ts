@@ -244,8 +244,11 @@ it("release reads: commas, arches, N-inch / N-foot, N' long and width N ft build
   fc.assert(fc.property(fc.integer({ min: 2, max: 40 }), fc.constantFrom("skewer bridge", "popsicle stick bridge", "garden arch", "dollhouse"), (n, cls) => {
     const ok = typedAxisNumber(`${cls} ${n}' long`, "length") === n && typedAxisNumber(`${cls} ${n}-inch wide`, "width") === null
       && typedAxisNumber(`${cls} ${n}-foot wide`, "width") === null && typedAxisNumber(`${cls} width ${n} ft`, "width") === n
-      && typedSizeIn(`${cls} ${n}-1/2-inch wide`).length === undefined && dollhouseTyped(`${cls} width ${n} ft`).height === n * 12;
+      && typedSizeIn(`${cls} ${n}-1/2-inch wide`).length === undefined && dollhouseTyped(`${cls} width ${n} ft`).height === n * 12
+      && dollhouseTyped(`dollhouse ${n},5 ft`).height === 60;
     return ok && canonicalMeasures(`garden arch ${n} 1/2 ft wide`) === `garden arch ${n}.5 ft wide` && canonicalMeasures(`${cls} ${n}-1/2-inch wide`) === `${cls} ${n}-1/2-inch wide`
       && normalizeUserPrompt(`bookcase, ${n} 1/2 ft boards`) === `bookcase, ${n} 1/24 inch boards`;
   }), { seed: SEED, numRuns: 200 });
+  // An arch word keeps release's plywood count too: the odd sheet is said, as on release.
+  assert.ok(generateFromPrompt("dollhouse with arched door 36 tall 3 inch plywood").notes?.includes(`3" plywood isn't on the stock list, so this dollhouse is cut from 3/4" Plywood 4×8. Pick 1/2" or 3/4" plywood to switch it.`));
 });
