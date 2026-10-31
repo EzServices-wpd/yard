@@ -10,6 +10,7 @@
  * W x D x H string, "27 1/2 square", "92 5/8 long") or a feet-and-inches pair is rewritten.
  */
 import { plainFractions, readLengths, readNumber } from "./lengthReader";
+import { inchFrac } from "./inchText";
 
 // A unit word ends at any non-letter, a digit included: "5ft6in" is 5 ft 6 in ("ft\b" would miss it and read 6").
 const FT = String.raw`(?:'|ft(?![a-z])\.?|feet(?![a-z])|foot(?![a-z]))`;
@@ -21,7 +22,7 @@ const AXIS_BEFORE = String.raw`(?<=(?:\d\s*(?:"|')?\s*(?:[x×]|\bby)\s*))`;
 export { readNumber };
 
 const dec = (n: number) => String(Math.round(n * 10000) / 10000);
-const AXIS_WORD = /^\s*(?:wide|deep|tall|high)\b/i;
+const AXIS_WORD = /^\s*(?:wide|deep|tall|high|long)\b/i;
 const STOCK_AFTER = /^\s*(?:thick|x|×|by|plywood|ply|screws?|nails?|brads?|bolts?|dowels?|pipes?|pvc|conduit|boards?|lumber|holes?|dia|diameter|skewers?|sticks?|rods?|tub(?:e|es|ing)|hinges?|staples?|pocket|squares?|casters?|wheels?|legs?)(?![a-z])/i;
 
 /**
@@ -35,10 +36,14 @@ function lengthsAsInches(s: string): string {
   for (const l of readLengths(s).reverse()) {
     if (!l.unit) continue;
     const after = s.slice(l.end), rest = l.raw.slice(l.num.length);
+    const half = /^\s+and\s+(?:a|one)\s+(?:half|quarter)/i.exec(rest)?.[0] ?? "";
     const pair = l.unit === "ft" && /\d/.test(rest);
-    const sizes = AXIS_WORD.test(after) && (l.unit !== "in" || l.spelled || /and/i.test(rest));
+    // "4 ft long" stays: a stock's length ("2x4 bench 4 ft long") reads in feet downstream.
+    const sizes = AXIS_WORD.test(after) && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in" || l.spelled || !!half);
     const r = /m$/.test(l.unit) ? Math.round(l.inches * 16) / 16 : l.inches;
-    const out = pair || sizes ? `${dec(r)}"` : /\d[\s-]+\d+\/\d+/.test(l.num) && !STOCK_AFTER.test(after) ? dec(l.value) + rest : null;
+    // A spelled number with a unit is its digits wherever it is ("quarter inch plywood" → "1/4 inch plywood", row 608).
+    const said = (v: number) => (v < 1 ? inchFrac(v) : dec(v)) + rest.slice(half.length);
+    const out = pair || sizes ? `${dec(r)}"` : l.spelled || half ? said(l.value) : /\d[\s-]+\d+\/\d+/.test(l.num) && !STOCK_AFTER.test(after) ? dec(l.value) + rest : null;
     if (out != null) s = s.slice(0, l.start) + out + after;
   }
   return s;

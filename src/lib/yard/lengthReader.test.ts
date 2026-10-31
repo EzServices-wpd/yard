@@ -52,8 +52,11 @@ it("round trip: any size on the 1/16 grid reads back the same in every shop spel
 it("canonicalMeasures is idempotent and leaves stock names alone", () => {
   for (const p of ["bookcase 2 1/2 ft 3 inch wide", "castle 20 1/2\"", "toy box 2.5 ft wide 1.5 ft deep", "bookcase 1829mm tall", "bookcase seventy-two inches tall"])
     assert.equal(canonicalMeasures(canonicalMeasures(p)), canonicalMeasures(p), p);
-  for (const p of ["shelf from 1/2 plywood", "3/4 x 4 x 8 sheet", "box with 1 1/2 inch screws", "bench from 2x4", "dollhouse 6mm plywood", "dollhouse quarter inch plywood", "6 ft 2 x 4 frame", "a 1 1/2 inch thick top"])
+  for (const p of ["shelf from 1/2 plywood", "3/4 x 4 x 8 sheet", "box with 1 1/2 inch screws", "bench from 2x4", "dollhouse 6mm plywood", "6 ft 2 x 4 frame", "2x4 bench 4 ft long", "a 1 1/2 inch thick top"])
     assert.equal(canonicalMeasures(p), p, p);
+  // A spelled number with a unit is its digits (row 608): the stock reader then reads the sheet it names.
+  assert.equal(canonicalMeasures("dollhouse quarter inch plywood"), "dollhouse 1/4 inch plywood");
+  assert.equal(canonicalMeasures("bridge from skewers 1829mm long"), 'bridge from skewers 72" long');
 });
 
 it("tuples read in typed order, x or by", () => {
