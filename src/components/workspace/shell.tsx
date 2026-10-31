@@ -1,6 +1,7 @@
 "use client";
 import { userText } from "@/lib/yard/userText";
-import { headerTitle } from "@/lib/yard/pdf";
+import { headerAxes, headerName, headerTitle } from "@/lib/yard/pdf";
+import { setErrContext } from "@/lib/err/report";
 import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -152,6 +153,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     if (titlePending || (benchPieces <= 0 && !project.refused)) return;
     document.title = `${headerTitle(project)} · Yard`;
   }, [titlePending, benchPieces, project]);
+  // A crash report names the bench's build (title and size), never the words typed: those are cut from the message.
+  useEffect(() => {
+    setErrContext(() => {
+      const p = useYard.getState().project;
+      const built = p.panels.length > 0;
+      return { title: built ? headerName(p) : "", size: built ? headerAxes(p) : "", typed: [p.prompt, p.typedPrompt] };
+    });
+    return () => setErrContext(() => ({}));
+  }, []);
 
   const [orbitHint, setOrbitHint] = useState(false);
   useEffect(() => {

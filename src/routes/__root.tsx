@@ -4,6 +4,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts, retainSearchParams } fro
 import { TEST_FLAGS, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { installErrorReporter, reportError } from "@/lib/err/report";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Yard";
@@ -43,7 +44,14 @@ function VercelAnalytics() {
   return null;
 }
 
+/** Crashes go to our own /api/err (scrubbed there and here); no Sentry script loads in the browser. */
+function ErrorReporter() {
+  useEffect(installErrorReporter, []);
+  return null;
+}
+
 export const Route = createRootRoute({
+  onCatch: (error) => reportError(error),
   // The test flags (offline=1, local=1, test=1) ride along on every navigation (links, navigate(), redirects),
   // whatever the target route; test=1 also holds for the tab session (testSession).
   validateSearch: (s: Record<string, unknown>): TestFlags => pickTestFlags(s),
@@ -115,6 +123,7 @@ export const Route = createRootRoute({
         </AuthProvider>
         <Scripts />
         <VercelAnalytics />
+        <ErrorReporter />
         <LateFonts />
       </body>
     </html>
