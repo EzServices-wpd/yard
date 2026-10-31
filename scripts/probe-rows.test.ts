@@ -1,7 +1,7 @@
 /** Tests for the grade kit's error-row replay and recorded-behaviour rows (scripts/probe-rows.ts). */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { expectMoves, isPrompt, parseRows, recordExpect, replayTsv, reproduces, unmarkedRows, type Rec } from "./probe-rows.ts";
+import { expectMoves, isPrompt, NOT_FOUND, parseRows, recordExpect, replayTsv, reproduces, unmarkedRows, type Rec } from "./probe-rows.ts";
 
 // 10 real rows of yard-errors-ranked.md (texts cut short): multi-quote, double quotes, no quote, BLOCK, an area column, no P.
 const MD = [
@@ -34,11 +34,17 @@ test("the parser reads row, P, BLOCK, prompts and symptom quotes from the real f
   assert.deepEqual(byRow(401).prompts, []);
   assert.deepEqual(byRow(635).prompts, ["dollhouse 36 inch", "36 inch dollhouse", "36\" dollhouse", "4 ft dollhouse"]);
   assert.deepEqual(byRow(319).prompts, ["wardrobe 72 wide with 2 drawers"], "'72 wide 72 tall' is a fragment");
+  const notes = parseRows([
+    `| 247 | [SWE] no sink cutout, and the note itself mentions 'where a drawer would hit the bowl'. | P1 | 19 |`,
+    `| 538 | sheets headed '3/4" Plywood 4x8' while Buy buys '3/4" Plywood Project Panel 2×4' (floating shelf). | P3 | 565 |`,
+    `| 653 | the note 'You typed 12" tall. Type "cut the sticks" to build it.' Typing 'cut the sticks' gives the same build. | P1 | 1 |`,
+  ].join("\n"));
+  assert.deepEqual(notes.map((r) => r.prompts), [[], [], []], "note, header and Buy text is never a prompt");
 });
 
 test("isPrompt keeps typed builds and drops claims, fragments and headers", () => {
   for (const q of ["toothpick tower", "5 story dollhouse", "1/4 ply dollhouse", "13 foot Eiffel Tower from popsicle sticks", "bookcase 1.8 m H, 30 W"]) assert.ok(isPrompt(q), q);
-  for (const q of ["4 shelves", "48 wide", "with 12 rods", "only the stand family moves", "Floor-standing hall tree", "· 2 shelves", "stays 3/4", "5/8 plywood", "toothpick", "a b c d e f g h i j k l m"]) assert.ok(!isPrompt(q), q);
+  for (const q of ["4 shelves", "48 wide", "with 12 rods", "only the stand family moves", "Floor-standing hall tree", "· 2 shelves", "stays 3/4", "5/8 plywood", "15/32\" BC exterior plywood 4x8", "toothpick", "a b c d e f g h i j k l m"]) assert.ok(!isPrompt(q), q);
 });
 
 test("unmarked rows come from the triage's class lines", () => {
@@ -49,12 +55,12 @@ test("unmarked rows come from the triage's class lines", () => {
 const rec = (title: string, notes: string[] = [], extra: Partial<NonNullable<Rec["d"]>> = {}): Rec =>
   ({ full: "f" + title.length, d: { title, refused: null, notes, totals: { pieces: 10, estCostUsd: 20 }, bom: [["Wood glue", 1, "bottle", 4.98]], ...extra } });
 
-test("reproduces is yes when a quoted symptom still shows, no when none does, unknown with none quoted", () => {
+test("reproduces is yes when a quoted symptom still shows, 'symptom text not found' (never 'fixed') when none does, unknown with none quoted", () => {
   assert.equal(reproduces(byRow(316), rec("Bookcase · 2 shelves")), "yes");
-  assert.equal(reproduces(byRow(316), rec("Bookcase · 3 shelves")), "no");
+  assert.equal(reproduces(byRow(316), rec("Bookcase · 3 shelves")), NOT_FOUND);
   assert.equal(reproduces(byRow(653), rec("Skewer tower", ["You typed 12\" tall. Whole Bamboo Skewer 12\"s build it to 12\" — the closest"])), "yes", "a quote ending in … matches on its start");
   assert.equal(reproduces(byRow(60), rec("Desk")), "unknown");
-  assert.equal(reproduces(byRow(316), { err: "boom" }), "no");
+  assert.equal(reproduces(byRow(316), { err: "boom" }), NOT_FOUND);
 });
 
 test("the replay TSV has Critic's columns, one line per prompt, n/a for rows with no prompt", () => {
@@ -64,7 +70,7 @@ test("the replay TSV has Critic's columns, one line per prompt, n/a for rows wit
   assert.deepEqual(t[0], ["row", "P", "prompt", "reproduces", "head_sha", "base_sha", "run_date", "head_hash", "same_as_base", "built"]);
   assert.deepEqual(t.slice(1), [
     ["316", "P2", "bookcase 60 wide with 2 shelves", "yes", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "2026-10-30", "f20", "yes", "built"],
-    ["316", "P2", "bookcase 60 wide with 4 shelves", "no", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "2026-10-30", "21d0bfa9" /* sha1("error: boom") */, "n/a", "error"],
+    ["316", "P2", "bookcase 60 wide with 4 shelves", NOT_FOUND, "aaaaaaaaaaaa", "bbbbbbbbbbbb", "2026-10-30", "21d0bfa9" /* sha1("error: boom") */, "n/a", "error"],
     ["353", "P2", "n/a", "n/a", "aaaaaaaaaaaa", "bbbbbbbbbbbb", "2026-10-30", "n/a", "n/a", "n/a"],
   ]);
   const moved = replayTsv(rows, new Set([316]), head, { "bookcase 60 wide with 2 shelves": rec("Bookcase · 3 shelves!") }, "a", "b", "d");

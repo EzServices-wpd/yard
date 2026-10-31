@@ -4,7 +4,8 @@
  * Reads `yard-errors-ranked.md` (one `| N | text | … | P1 | …` line per row) and `ERROR-CLASS-TRIAGE.md` (the unmarked
  * rows), takes each row's quoted prompts, and turns kit build records (`{ full, d }`, as dumped by the kit) into:
  *  - `replayTsv`: one line per (row, prompt) with row id, prompt, reproduces, head sha, base sha, run date and a short
- *    hash of the build output; 'n/a' for an unmarked row with no replayable prompt. Critic fills open/fixed from it.
+ *    hash of the build output; 'n/a' for an unmarked row with no replayable prompt. Critic updates open/fixed from builds;
+ *    "symptom text not found" never means fixed (the symptom may live in steps, sizes or the live path).
  *  - `recordExpect` / `expectMoves`: the current behaviour of a prompt (refused, title, pieces, $, notes) recorded once,
  *    so any later change shows as a move. Moves are WARN until Critic approves the expectation.
  * Pure functions plus a small CLI; it builds nothing (the kit builds, offline, with the base tree's harness).
@@ -25,21 +26,26 @@ const SIZEWORD = /^(wide|tall|deep|long|high|thick|inch|inches|feet|foot|shelf|s
 export const isPrompt = (q: string): boolean => {
   const w = q.trim().split(/\s+/);
   if (!/^[a-z0-9]/.test(q) || !/[a-z]{3}/.test(q) || w.length < 2 || w.length > 12) return false;
-  if (/[·…→=;{}()[\]<>|]|->|\.$|: /.test(q) || FRAGMENT.test(q) || CLAIM.test(q)) return false;
+  if (/[·…→=;{}()[\]<>|]|->|\.$|: |\d" [A-Z]/.test(q) || FRAGMENT.test(q) || CLAIM.test(q)) return false; // 15/32" BC …: a stock name
   return !/^\d/.test(q) || w.some((x) => /^[a-z]{4,}$/i.test(x) && !SIZEWORD.test(x.toLowerCase()));
 };
 
 // Single-quoted spans, plus double-quoted spans that start lower-case and don't follow a number (so 12" isn't a quote).
+// A quote the row says a note says, mentions, reads or leaks, a sheet is headed or Buy buys (or one inside a longer
+// quoted note) is symptom text, never a prompt: rows 247, 538, 653 replayed note text as prompts.
 const SQ = /(?<![A-Za-z0-9])'([^'\n]{2,160}?)'(?![A-Za-z])/g, DQ = /(?<![\d/½¼¾⅛A-Za-z])"([a-z][^"\n]{4,120})"/g;
-export const quotes = (t: string): string[] => [...t.matchAll(SQ), ...t.matchAll(DQ)].sort((a, b) => a.index! - b.index!).map((m) => m[1].trim());
+const FROM = /\b(notes?|mentions|says|reads|leaks?( into)?|headed|buys)\s*$/i;
+export const quotes = (t: string): { q: string; from: boolean }[] => [...t.matchAll(SQ), ...t.matchAll(DQ)].sort((a, b) => a.index! - b.index!)
+  .map((m) => ({ q: m[1].trim(), from: FROM.test(t.slice(Math.max(0, m.index! - 40), m.index)) }));
 
 export const parseRows = (md: string): Row[] => {
   const seen = new Set<number>(), out: Row[] = [];
   for (const line of md.split("\n")) {
     const m = line.match(/^\| (\d+) \| (.*)$/); if (!m || seen.has(+m[1])) continue; seen.add(+m[1]);
     const cells = m[2].split(" | "), text = m[2], qs = quotes(text); // some rows carry an area column first, so quote the whole line
-    const p = cells[1]?.trim().match(/^(P\d)\b/)?.[1] ?? null;
-    out.push({ row: +m[1], text, p, block: /\bBLOCK\b/.test(text), prompts: [...new Set(qs.filter(isPrompt))], evidence: [...new Set(qs.filter((q) => !isPrompt(q)))] });
+    const p = cells[1]?.trim().match(/^(P\d)\b/)?.[1] ?? null, ev = qs.filter((x) => x.from || !isPrompt(x.q)).map((x) => x.q);
+    const typed = (q: string) => !ev.includes(q) && !ev.some((e) => e.replace(/\.$/, "") !== q && e.includes(q)); // a quote inside a quoted note is note text
+    out.push({ row: +m[1], text, p, block: /\bBLOCK\b/.test(text), prompts: [...new Set(qs.map((x) => x.q).filter(typed))], evidence: [...new Set(ev)] });
   }
   return out;
 };
@@ -51,12 +57,14 @@ export const unmarkedRows = (triage: string): Set<number> =>
 const text = (r: Rec): string => r.err ? `error: ${r.err}` : [r.d?.title, r.d?.refused, ...(r.d?.notes ?? []), ...(r.d?.bom ?? []).map((b) => `${b[0]} ${b[2]}`)].filter(Boolean).join("\n");
 const sha8 = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 8);
 
-/** yes: a quoted symptom (header, note, Buy text) still shows in the build; no: the row quotes symptoms and none show;
+/** yes: a quoted symptom (header, note, Buy text) still shows in the build; "symptom text not found": the row quotes
+ *  symptoms and none shows in title, notes or Buy (NOT fixed: steps, sizes and the live path aren't read);
  *  unknown: the row quotes no symptom, so only Critic can tell. A quote ending in "…" matches on its start. */
-export const reproduces = (row: Row, r: Rec): "yes" | "no" | "unknown" => {
+export const NOT_FOUND = "symptom text not found";
+export const reproduces = (row: Row, r: Rec): "yes" | typeof NOT_FOUND | "unknown" => {
   const ev = row.evidence.map((e) => e.replace(/…$/, "").trim()).filter((e) => e.length >= 4);
   if (!ev.length) return "unknown";
-  const t = text(r); return ev.some((e) => t.includes(e)) ? "yes" : "no";
+  const t = text(r); return ev.some((e) => t.includes(e)) ? "yes" : NOT_FOUND;
 };
 
 export const COLS = ["row", "P", "prompt", "reproduces", "head_sha", "base_sha", "run_date", "head_hash", "same_as_base", "built"];
