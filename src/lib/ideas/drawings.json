@@ -875,5 +875,46 @@
    "depth": 8
   },
   "stock": "popsicle-standard"
+ },
+ "dollhouse": {
+  "v": "568a9c4b",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 5760,
+  "dims": {
+   "width": 12,
+   "height": 16,
+   "depth": 12.375
+  },
+  "stock": "plywood-1-2-4x8",
+  "model": "/ideas/models/dollhouse.73365e62.json"
+ },
+ "trellis": {
+  "v": "8023bd2b",
+  "w": 480,
+  "h": 360,
+  "parts": 21,
+  "bytes": 2962,
+  "dims": {
+   "width": 48,
+   "height": 60,
+   "depth": 2
+  },
+  "stock": "lumber-2x2-8"
+ },
+ "wardrobe": {
+  "v": "021c0cca",
+  "w": 480,
+  "h": 360,
+  "parts": 10,
+  "bytes": 4864,
+  "dims": {
+   "width": 40,
+   "height": 72,
+   "depth": 22
+  },
+  "stock": "plywood-3-4-4x8",
+  "model": "/ideas/models/wardrobe.7d2b6ee3.json"
  }
 }

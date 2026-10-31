@@ -37,8 +37,8 @@ test("All ideas lists every Trusted, unheld, non-generic build type exactly once
   const curatedOnly = all.filter((c) => !trusted.has(c.buildType));
   for (const c of curatedOnly) assert.equal(c.count, 0, `${c.slug} has builds but no Trusted row`);
   assert.equal(all.length, want.length + curatedOnly.length);
-  // 10-25: 85 logged types (41 with no drawing yet; rocket, lighthouse, cat tree and viking ship are baked) and 15 curated ideas with no build: 100 rows vs 54 cards in the sections.
-  assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length], [85, 41, 15]);
+  // 10-25: 85 logged types (38 with no drawing yet; rocket, lighthouse, cat tree and viking ship are baked, and 10-30 dollhouse, trellis and wardrobe) and 15 curated ideas with no build.
+  assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length], [85, 38, 15]);
   assert.deepEqual(feedViolations(feed, snap, gradedTypes(base)), []);
 });
 

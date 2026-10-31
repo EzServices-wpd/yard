@@ -71,14 +71,18 @@ function PrivacyPage() {
               sent to xAI (the Grok API) to write that text or image. Fonts are served from our own site,
               so no third party sees you when a page loads.
             </p>
+            <p className="mt-2">
+              If a page crashes, Yard sends the error and the kind of build to Sentry, our error service,
+              through our own site. It never sends what you typed, your IP address or a recording of your
+              screen.
+            </p>
           </section>
 
           <section>
             <h2 className="font-display text-xl text-ink">Prompts and feedback we keep</h2>
             <p className="mt-2">
-              When you ask Yard for a build, the server saves the text you typed so we can see which
-              builds people want and where Yard gets them wrong. Before anything is saved, it strips out
-              things that look like personal details, such as email addresses and phone numbers. The
+              When you ask Yard for a build, the browser sends the text you typed, with email addresses
+              and phone numbers stripped out first, along with the build it made and its size. The
               saved prompt isn&apos;t tied to an account, a name or anything else that identifies you.
             </p>
             <p className="mt-2">
@@ -88,8 +92,9 @@ function PrivacyPage() {
               personal-detail scrub runs first, and the feedback isn&apos;t linked to you either. To
               prevent spam, a random id kept in your browser limits feedback to 10 sends a day. That
               count is deleted after a day and is never saved with your feedback, and there&apos;s also
-              an overall daily cap across everyone. Yard doesn&apos;t read your IP address or browser
-              details, and no IP address, name or email is stored with saved prompts or feedback.
+              an overall daily cap across everyone. Saving a prompt or feedback note never reads your
+              IP address or browser details, and no IP address, name or email is stored with them. The
+              one place we use your IP address is the daily limit on AI lookups: see Analytics below.
             </p>
             <p className="mt-2">
               We use saved prompts and feedback only to make builds better. We don&apos;t sell them,
@@ -97,8 +102,9 @@ function PrivacyPage() {
               database provider, Upstash.
             </p>
             <p className="mt-2">
-              We delete saved prompts and feedback notes after 90 days. Before then, a build that&apos;s
-              popular or rated highly may be saved as an anonymous recipe in Yard&apos;s Ideas library.
+              We delete saved prompts and feedback notes within 90 days (the system removes them at
+              85). Before then, a build that&apos;s popular or rated highly may be saved as an
+              anonymous recipe in Yard&apos;s Ideas library.
               A recipe holds only the shape, sizes and parts, never the words you typed or anything
               about your browser. Recipes stay in the library until we retire them.
             </p>
@@ -110,9 +116,10 @@ function PrivacyPage() {
             <p className="mt-2">
               Yard uses Vercel Web Analytics to count visits in aggregate: page views, referrers,
               country and device class. It sets no cookies and does not track you across other sites.
-              AI lookups are limited to a fair number per visitor each day. To apply that limit, Yard
-              keeps a short-lived counter tied to your IP address. It&apos;s deleted after 24 hours and
-              never stored with your prompts or feedback. Like most websites, our host, Vercel, may keep
+              AI lookups are limited to a fair number per visitor each day. Yard keeps a counter of
+              your AI lookups for that day, filed under your IP address. It&apos;s a number only,
+              expires after 24 hours and is never stored with your prompts or feedback. Like most
+              websites, our host, Vercel, may keep
               IP addresses in its own server logs. Vercel&apos;s policy is at{" "}
               <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
                 vercel.com/docs/analytics/privacy-policy
