@@ -224,6 +224,9 @@ test("I49 r4: the legit rewrites still happen; 'a pair of doors' reads '2 doors'
     assert.equal(v.sizes.length + v.counts.length, (r.sizes?.length ?? 0) + (r.counts?.length ?? 0), `kept: ${q}`);
     assert.equal(plan(viaReader(q, raw)), plan(want), `builds as typed: ${q}`);
   }
+  // String pins: the count edit and a size the regex path does not read ("depth") are still rewritten word for word.
+  assert.equal(viaReader("cabinet 1 m wide with a pair of doors", { counts: [C4("doors", 2, "pair of doors")] }), "cabinet 1 m wide with 2 doors");
+  assert.equal(viaReader("cabinet 45 cm depth with a pair of doors", { sizes: [cm("D", 45, "45 cm depth")], counts: [C4("doors", 2, "pair of doors")] }), "cabinet 17 11/16 deep with 2 doors");
 });
 
 test("I49 r4: each boundary and metric rule holds on its own (row 481)", () => {

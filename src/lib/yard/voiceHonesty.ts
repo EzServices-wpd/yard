@@ -978,7 +978,7 @@ export function normalizeUserPrompt(prompt: string): string {
       return `${f * 12 + i} inch`;
     });
     s = s.replace(
-      /(?<![\d./])(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\s+(\d{1,2})(?![\d/])(?!\s*[x×])/gi,
+      /(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\s+(\d{1,2})(?!\d)(?!\s*[x×])/gi,
       (_, ft, inch) => {
         const f = parseFloat(ft);
         const i = parseFloat(inch);
