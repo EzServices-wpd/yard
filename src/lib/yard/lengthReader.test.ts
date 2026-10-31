@@ -96,7 +96,7 @@ it("callers moved onto the reader: bridge span, craft bare size, dollhouse bare 
   assert.equal(house.overall.height, 36);
   assert.ok(!(house.notes ?? []).some((n) => /36" plywood/i.test(n)), (house.notes ?? []).join(" | "));
   // An odd sheet is said as typed or in 16ths (release text, byte for byte).
-  for (const [q, said] of [["dollhouse 15/32 plywood", "15/32"], ["dollhouse 12.1 inch plywood", "12 1/8"], ["dollhouse 0.1 plywood", "1/8"], ["dollhouse 0.3 plywood", "5/16"]])
+  for (const [q, said] of [["dollhouse 15/32 plywood", "15/32"], ["dollhouse 12.1 inch plywood", "12 1/8"], ["dollhouse 0.1 plywood", "1/8"], ["dollhouse 0.3 plywood", "5/16"], ["dollhouse 15/32 ply", "15/32"], ['dollhouse 15/32" plywood', "15/32"], ["dollhouse 1 1/8 inch plywood", "1 1/8"]])
     assert.ok((generateFromPrompt(q).notes ?? []).some((n) => n.startsWith(`${said}" plywood isn't on the stock list`)), q);
 });
 
