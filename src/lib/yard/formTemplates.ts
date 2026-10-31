@@ -11,6 +11,7 @@ import { createId } from "@/lib/utils";
 import { toPrimitive, isWholeStock } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
+import { readLengths } from "./lengthReader";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 import { buildDollhouse, dollhouseIssues, DOLLHOUSE_STEPS } from "./dollhouse";
 
@@ -84,22 +85,20 @@ export function parseInches(s: string): number | null {
 
 const NUM = String.raw`(\d+(?:\.\d+)?(?:[\s-]+\d+\/\d+)?|\d+\/\d+)`;
 
-/** Typed overall size in inches: "12 inches long", "18 in tall", "5 feet tall", "2-foot", "30\" long". */
+/** Typed overall size in inches: "12 inches long", "18 in tall", "5 feet tall", "2-foot", "30\" long", "20 1/2\"" (NR-1 reader). */
 export function typedSizeIn(prompt: string): { length?: number; height?: number } {
   const l = prompt.toLowerCase();
-  const unit = String.raw`(?:\s*-?\s*)(inches|inch|in\b|"|''|feet|foot|ft\b|')`;
-  const toIn = (n: string, u: string) => parseFloat(n) * (/^(?:feet|foot|ft|')$/.test(u.trim()) ? 12 : 1);
   const out: { length?: number; height?: number } = {};
-  for (const m of l.matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)` + unit + String.raw`\s*(long|tall|high|length|height|in length|in height)?`, "g"))) {
-    const v = toIn(m[1], m[2]);
-    if (!(v > 1 && v < 400)) continue;
+  for (const n of readLengths(l)) {
+    const v = n.inches;
+    if ((n.unit !== "in" && n.unit !== "ft") || !(v > 1 && v < 400)) continue;
+    const ax = l.slice(n.end).match(/^\s*(long|tall|high|length|height|in length|in height)?/)!;
     // Skip stock names (2x4, 1/4" plywood, 12" skewers) and hole/photo sizes.
-    const before = l.slice(Math.max(0, (m.index ?? 0) - 2), m.index);
-    const after = l.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 14);
+    const before = l.slice(Math.max(0, n.start - 2), n.start);
+    const after = l.slice(n.end + ax[0].length, n.end + ax[0].length + 14);
     if (/[x×\/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
-    const ax = m[3];
-    if (ax && /tall|high|height/.test(ax)) out.height ??= v;
-    else if (ax) out.length ??= v;
+    if (ax[1] && /tall|high|height/.test(ax[1])) out.height ??= v;
+    else if (ax[1]) out.length ??= v;
     else if (out.length == null && out.height == null) out.length = v;
   }
   return out;

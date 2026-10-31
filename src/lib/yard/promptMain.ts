@@ -3,6 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
+import { readLengths } from "./lengthReader";
 import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
@@ -1436,10 +1437,11 @@ function generateRaw(
     // unit ("1 inch", "2\""): a bare "2" is a count, and "21 inch" or "36\"" is the house's size (PLY_THICKNESS).
     // A whole count over 2 before "plywood" that the size reader did not take as the height ("dollhouse 36 tall 3 inch
     // plywood") can only be a thickness: it is said, never dropped silently.
-    const whole = bare.toLowerCase().match(/(?<![\d./])(\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)\s*(?:thick\s+)?plywood\b/);
-    const tm = bare.toLowerCase().match(PLY_THICKNESS) ?? (whole && Number(whole[1]) !== dollhouseTyped(prompt).height ? whole : null);
+    const lw = bare.toLowerCase();
+    const whole = readLengths(lw).find((l) => l.unit === "in" && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
+    const tm = lw.match(PLY_THICKNESS)?.[1] ?? (whole && whole.value !== dollhouseTyped(prompt).height ? whole.num : null);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
-    const tIn = tm ? num(tm[1].replace(/\s*\/\s*/g, "/")) : NaN;
+    const tIn = tm ? num(tm.replace(/\s*\/\s*/g, "/")) : NaN;
     const typed = Number.isFinite(tIn);
     const listed = typed ? FORGE_CATALOG.find((i) => /^plywood-.*-4x8$/.test(i.id) && Math.abs((i.dims?.thickness ?? -1) - tIn) < 1e-3) : undefined;
     const fits = (i?: CatalogItem | null) => (i && /^plywood-(?:1-2|3-4)-/.test(i.id) ? i : null);
@@ -1450,7 +1452,7 @@ function generateRaw(
     const ask = materialOverride ?? (typed ? listed?.id : typedStockId(bare));
     if (built && ask && ask !== stock.id) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
     // Said the way a builder writes it: a mixed fraction in 16ths ("1 1/2", "5/8"; "1.5" is 1 1/2), else as typed ("15/32").
-    const said = (() => { const n = Math.round(tIn * 16); if (Math.abs(tIn * 16 - n) > 1e-6) return tm![1].replace(/\s*\/\s*/g, "/").trim(); const w = Math.floor(n / 16), r = n % 16, g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(r, 16); return r ? `${w ? `${w} ` : ""}${r / k}/${16 / k}` : `${w}`; })();
+    const said = (() => { const n = Math.round(tIn * 16); if (Math.abs(tIn * 16 - n) > 1e-6) return tm!.replace(/\s*\/\s*/g, "/").trim(); const w = Math.floor(n / 16), r = n % 16, g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(r, 16); return r ? `${w ? `${w} ` : ""}${r / k}/${16 / k}` : `${w}`; })();
     if (built && !materialOverride && typed && !listed)
       return { ...built, notes: [...(built.notes ?? []), `${said}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
     if (built) return built;
