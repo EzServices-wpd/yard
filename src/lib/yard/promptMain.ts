@@ -1438,7 +1438,7 @@ function generateRaw(
     // A whole count over 2 before "plywood" that the size reader did not take as the height ("dollhouse 36 tall 3 inch
     // plywood") can only be a thickness: it is said, never dropped silently.
     const lw = bare.toLowerCase();
-    const whole = readLengths(lw).find((l) => l.unit === "in" && /^\d+$/.test(l.num) && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
+    const whole = readLengths(lw).find((l) => l.unit === "in" && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
     const tm = lw.match(PLY_THICKNESS)?.[1] ?? (whole && whole.value !== dollhouseTyped(prompt).height ? whole.num : null);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
     const tIn = tm ? num(tm.replace(/\s*\/\s*/g, "/")) : NaN;

@@ -39,7 +39,7 @@ function lengthsAsInches(s: string): string {
     const half = /^\s+and\s+(?:a|one)\s+(?:half|quarter)/i.exec(rest)?.[0] ?? "";
     const pair = l.unit === "ft" && /\d/.test(rest);
     // "4 ft long" stays: a stock's length ("2x4 bench 4 ft long") reads in feet downstream.
-    const sizes = AXIS_WORD.test(after) && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in" || l.spelled || !!half);
+    const sizes = AXIS_WORD.test(after) && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in");
     const r = /m$/.test(l.unit) ? Math.round(l.inches * 16) / 16 : l.inches;
     // A spelled number with a unit is its digits wherever it is ("quarter inch plywood" → "1/4 inch plywood", row 608).
     const said = (v: number) => (v < 1 ? inchFrac(v) : dec(v)) + rest.slice(half.length);

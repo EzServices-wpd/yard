@@ -52,8 +52,7 @@ function wordValue(w: string): number {
 
 /** Every length in the text, in order, non-overlapping. A bare number is a length with no unit (inches = value). */
 export function readLengths(text: string): Length[] {
-  const s = plainFractions(text);
-  if (s.length !== text.length) return readLengths(s); // ponytail: positions are then on the plain-fraction text
+  const s = plainFractions(text); // ponytail: with a unicode fraction, positions are on the plain-fraction text
   const out: Length[] = [];
   LEN.lastIndex = 0;
   for (let m = LEN.exec(s); m; m = LEN.exec(s)) {

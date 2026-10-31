@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 import { readLength, readLengths, readNumber, readTuple } from "./lengthReader";
 import { canonicalMeasures } from "./measureText";
+import { normalizeUserPrompt } from "./voiceHonesty";
 import { generateFromPrompt } from "./promptMain";
 import { typedAxisNumber } from "./typedAxis";
 import { typedSizeIn } from "./formTemplates";
@@ -26,6 +27,11 @@ it("reads every spelling of one size (literals)", () => {
   const bad = ORACLE.filter(([t, want]) => !near(readLength(t)?.inches, want, 0.001)).map(([t, want]) => `${t}: ${readLength(t)?.inches} != ${want}`);
   assert.deepEqual(bad, []);
   assert.equal(readNumber("8 1/4"), 8.25);
+  // Never inside another number, never a spelled count without a unit word, inches join feet only under 12.
+  assert.deepEqual([readLengths("w/4 in"), readLengths(".5 in"), readLengths("two shelves"), readLengths("one in each")].map((x) => x.length), [0, 0, 0, 0]);
+  assert.deepEqual(readLengths("6 ft 12 in").map((l) => l.inches), [72, 12]);
+  assert.equal(readLength("bench 30", 0, { bareUnit: "ft" })?.inches, 360);
+  assert.equal(readTuple("just 36 wide"), null);
   assert.ok(Number.isNaN(readNumber("1/0")));
 });
 
@@ -58,6 +64,8 @@ it("canonicalMeasures is idempotent and leaves stock names alone", () => {
   assert.equal(canonicalMeasures("dollhouse quarter inch plywood"), "dollhouse 1/4 inch plywood");
   assert.equal(canonicalMeasures("bridge from skewers 1829mm long"), 'bridge from skewers 72" long');
   assert.equal(canonicalMeasures("shelf with one in each corner"), "shelf with one in each corner");
+  assert.equal(canonicalMeasures("dollhouse 2 ft 6 in"), 'dollhouse 30"');
+  assert.doesNotMatch(normalizeUserPrompt("bookcase from 2 1/2 ft boards"), /1\/24/);
 });
 
 it("tuples read in typed order, x or by", () => {
@@ -71,12 +79,17 @@ it("callers moved onto the reader: bridge span, craft bare size, dollhouse bare 
   assert.equal(typedAxisNumber("bridge 18 1/2 inches long", "length"), 18.5);
   assert.equal(typedAxisNumber("shelf 2 1/2 ft wide", "width"), 30);
   assert.equal(typedAxisNumber("bridge 18 long", "length"), 18);
+  assert.equal(typedAxisNumber("bridge width 24 1/2", "width"), 24.5);
+  assert.equal(typedAxisNumber("shelf 0 wide", "width"), null);
+  assert.deepEqual(typedSizeIn("castle 600mm"), {});
   assert.deepEqual(typedSizeIn('castle from toothpicks 20 1/2"'), { length: 20.5 });
   assert.deepEqual(typedSizeIn("castle from toothpicks 20 1/2 in"), { length: 20.5 });
   assert.deepEqual(typedSizeIn('pyramid 12" tall from 1/4" dowels'), { height: 12 });
   assert.equal(dollhouseTyped("dollhouse 30 1/2 inch").height, 30.5);
   assert.equal(dollhouseTyped("dollhouse 4 ft").height, 48);
   assert.equal(dollhouseTyped("dollhouse 1/2 inch plywood").height, undefined);
+  assert.equal(dollhouseTyped("dollhouse quarter inch plywood").height, undefined);
+  assert.equal(dollhouseTyped('dollhouse 36x24"').height, undefined);
 });
 
 /** Same size, any spelling → the same build (Chief's side quest, rows 674-676, 658). */
@@ -92,4 +105,7 @@ it("every spelling of one size builds the same thing", () => {
   for (const g of GROUPS) { const want = dims(g[0]); for (const p of g.slice(1)) if (dims(p) !== want) bad.push(`${p}: ${dims(p)} != ${want}`); }
   assert.deepEqual(bad, []);
   assert.equal(generateFromPrompt("bookcase 36 wide seventy-two inches tall 12 deep").overall.height, 72); // not the 84" default
+  // An arch span typed in inches keeps the walk-through height, as feet do; a typed height still wins.
+  assert.equal(dims("PVC garden arch 48 inches wide"), dims("PVC garden arch 4 feet wide"));
+  assert.equal(generateFromPrompt("garden arch 30 wide 24 tall").overall.height, 24);
 });
