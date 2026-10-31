@@ -4,7 +4,8 @@
  *   2 1/2 ft 3 in, 2'6", 2 ft 6 in, 5ft6in, 2.5 ft         → 33, 30, 30, 66, 30
  *   6mm, 19mm, 1829mm, 1.5 cm, 2 m                         → mm / 25.4, cm / 2.54, m × 39.37
  *   one inch, 1-inch, half inch, quarter inch, seventy-two inches → 1, 1, 0.5, 0.25, 72 (a spelled number needs a unit)
- * A length never starts inside another number ("2 1/2 ft 3 in" is 33, never "2 1/27", row 658). Callers decide what a
+ * A length never starts inside another number ("2 1/2 ft 3 in" is 33, never "2 1/27", row 658). A number with a comma
+ * in it ("1,5 m", "1,200 mm", "72,5 cm") is not read at all: the old path keeps release's reading of it. Callers decide what a
  * length sizes (stock names like "1/2 plywood" or "2x4" are theirs to skip); this module only reads.
  */
 
@@ -36,7 +37,7 @@ const IN = String.raw`(?:''|["″”]|(?:in\.?|inch(?:es)?)(?![a-z]))`;
 const AXIS = String.raw`(?=\s+(?:wide|deep|tall|high|long)\b)`;
 /** NUM [unit]; after feet, inches that carry a mark or an axis word after them ("2 ft 6 in", "2'6\"", "2 ft 6 wide"). */
 const LEN = new RegExp(
-  String.raw`(?<![\d./]|[a-wyz])(${DIG}|${WORD})${AND_HALF}(?:\s*-?\s*(?:(mm|millimet(?:er|re)s?)|(cm|centimet(?:er|re)s?)|(m|met(?:er|re)s?))(?![a-z])` +
+  String.raw`(?<![\d./,]|[a-wyz])(${DIG}|${WORD})(?!\d|,\d)${AND_HALF}(?:\s*-?\s*(?:(mm|millimet(?:er|re)s?)|(cm|centimet(?:er|re)s?)|(m|met(?:er|re)s?))(?![a-z])` +
     String.raw`|\s*-?\s*(${IN})|(?:\s*-?\s*(ft\.?|feet|foot)(?![a-z])|\s*('))(\s*(?:and\s+|-\s*)?(${DIG})(?:\s*${IN}|${AXIS}))?)?`,
   "gi",
 );

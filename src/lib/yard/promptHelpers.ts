@@ -78,8 +78,8 @@ export function parseSize(lower: string): { height: number; width: number; depth
     width = 48;
     height = 84;
     depth = 16;
-  } else if (isArch && (feetArePlan || (/\d\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|width)\b/.test(dimText) && !/(?:tall|high|height)\b/.test(dimText))) && height === 24) {
-    // "4 feet wide" (or 48" wide) is the span, not a 4-foot-tall arch.
+  } else if (isArch && feetArePlan && height === 24) {
+    // "4 feet wide" is the span, not a 4-foot-tall arch.
     height = 84;
     if (depth === 24) depth = 16;
   }

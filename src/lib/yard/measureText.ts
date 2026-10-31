@@ -33,13 +33,17 @@ const STOCK_AFTER = /^\s*(?:thick|x|×|by|plywood|ply|screws?|nails?|brads?|bolt
  * after them: "6 ft 2 x 4 frame" is a length and a stock, never 74" x 4. Stock names ("1 1/2 inch screws") keep theirs.
  */
 function lengthsAsInches(s: string): string {
+  // On an arch a feet word stays feet (as "4 ft long" does): release's span rule (promptHelpers.parseSize) reads it, so
+  // "4 feet wide" is the walk-through span and "30 wide" a narrow trellis arch, as on release (NR-3 owns that rule).
+  const arch = /\barch/i.test(s);
   for (const l of readLengths(s).reverse()) {
     if (!l.unit) continue;
     const after = s.slice(l.end), rest = l.raw.slice(l.num.length);
     const half = /^\s+and\s+(?:a|one)\s+(?:half|quarter)/i.exec(rest)?.[0] ?? "";
     const pair = l.unit === "ft" && /\d/.test(rest);
     // "4 ft long" stays: a stock's length ("2x4 bench 4 ft long") reads in feet downstream.
-    const sizes = AXIS_WORD.test(after) && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in");
+    const feetWord = arch && !pair && /^\s*-?\s*(?:ft|feet|foot)/i.test(rest);
+    const sizes = AXIS_WORD.test(after) && !feetWord && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in");
     const r = /m$/.test(l.unit) ? Math.round(l.inches * 16) / 16 : l.inches;
     // A spelled number with a unit is its digits wherever it is ("quarter inch plywood" → "1/4 inch plywood", row 608).
     const said = (v: number) => (v < 1 ? inchFrac(v) : dec(v)) + rest.slice(half.length);

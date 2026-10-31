@@ -9,6 +9,7 @@ import { readLength, readLengths, readNumber, readTuple } from "./lengthReader";
 import { canonicalMeasures } from "./measureText";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { generateFromPrompt } from "./promptMain";
+import { buildPlan } from "./report";
 import { typedAxisNumber } from "./typedAxis";
 import { typedSizeIn } from "./formTemplates";
 import { dollhouseTyped } from "./dollhouse";
@@ -113,7 +114,32 @@ it("every spelling of one size builds the same thing", () => {
   for (const g of GROUPS) { const want = dims(g[0]); for (const p of g.slice(1)) if (dims(p) !== want) bad.push(`${p}: ${dims(p)} != ${want}`); }
   assert.deepEqual(bad, []);
   assert.equal(generateFromPrompt("bookcase 36 wide seventy-two inches tall 12 deep").overall.height, 72); // not the 84" default
-  // An arch span typed in inches keeps the walk-through height, as feet do; a typed height still wins.
-  assert.equal(dims("PVC garden arch 48 inches wide"), dims("PVC garden arch 4 feet wide"));
-  assert.equal(generateFromPrompt("garden arch 30 wide 24 tall").overall.height, 24);
+});
+
+// Critic #225 B2 (row 710): an arch keeps release's span rule. Feet on the span build the 84" walk-through portal; an
+// inch span is the narrow arch it was on release (W x D x H from release 08c36c6f, never widened to 43 3/16").
+it("arch: a typed span builds what it built on release (feet = walk-through portal, inches = as typed)", () => {
+  const dims = (p: string) => { const o = generateFromPrompt(p).overall; return [o.width, o.depth, o.height]; };
+  for (const [q, want] of [["PVC garden arch 30 wide", [31.2, 13.2, 24.6]], ["PVC garden arch 36 wide", [37.2, 13.2, 24.6]], ["PVC garden arch 2'6\" wide", [31.2, 13.2, 24.6]],
+    ['PVC garden arch 30 1/2" wide', [31.7, 13.2, 24.6]], ["PVC garden arch 48 inches wide", [49.2, 13.2, 24.6]], ["PVC garden arch 4 feet wide", [49.2, 17.2, 84.6]],
+    ["PVC garden arch 4.5 feet wide", [55.2, 17.2, 84.6]], ["garden arch 30 wide 24 tall", [31, 8, 24]]] as [string, number[]][])
+    assert.deepEqual(dims(q), want, q);
+  assert.equal(canonicalMeasures("PVC garden arch 4 feet wide"), "PVC garden arch 4 feet wide");
+  assert.equal(canonicalMeasures("garden arch 3' wide"), 'garden arch 36" wide');
+});
+
+// Critic #225 B1 (row 709): a number with a comma in it ("1,5 m", "1,200 mm", "72,5 cm") is never read, and no length
+// starts inside it, so the build is release's (W x D x H and $ from release 08c36c6f, byte for byte).
+it("comma numbers: never read, never split; the build is release's", () => {
+  fc.assert(fc.property(fc.integer({ min: 0, max: 999 }), fc.integer({ min: 0, max: 999 }), fc.constantFrom("mm", "cm", "m", "in", "ft", "inches", '"', "'"), fc.constantFrom("", " "), (a, b, u, sp) => {
+    const tok = `${a},${b}${sp}${u}`, q = `bookcase ${tok} wide`;
+    return readLengths(q).every((l) => l.end <= 9 || l.start >= 9 + tok.length) && canonicalMeasures(q) === q;
+  }), { seed: SEED, numRuns: 300 });
+  for (const [q, w, d, h, usd] of [["bookcase 1,5 m tall", 36, 12, 84, 131.76], ["toy chest 0,9 m wide", 36, 16, 30, 115.27], ["dresser 1,5 m wide", 36, 18, 36, 218.16],
+    ["desk 1,2 m wide", 48, 24, 29, 356.99], ["wardrobe 1,200 mm wide", 36, 24, 84, 270.82], ["bookcase 36 wide 1,829 mm tall", 36, 12, 84, 131.76],
+    ["bookcase 1,000 mm wide", 36, 12, 84, 131.76], ["bookcase 72,5 cm wide", 72, 12, 84, 203.64], ["bookcase 1,8 m tall 30 wide", 30, 12, 30, 83.35],
+    ["dollhouse 0,6 m tall", 25, 19, 22.5, 19.96], ["toy box 0,9 m wide", 36, 16, 30, 115.27]] as [string, number, number, number, number][]) {
+    const p = generateFromPrompt(q);
+    assert.deepEqual([p.refused ?? null, p.overall.width, p.overall.depth, p.overall.height, buildPlan(p).totals.estCostUsd], [null, w, d, h, usd], q);
+  }
 });
