@@ -1,4 +1,5 @@
 import { inchFrac } from "./inchText";
+import { counterPlies } from "./plyLayers";
 import { toPrimitive } from "./geometry";
 /**
  * Weekend / hobbyist stock honesty — named stock is the only stock.
@@ -561,9 +562,15 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
     : thinPick
       ? `Stock: ${item.name}. Every plywood face is this sheet.`
       : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;
+  // Row 626: a note names the picked sheet, not the ¾" plywood it replaced.
+  const thin34 = Math.abs(thick - 0.75) > 0.02;
+  // Row 690: a note's counter layers are re-read off the re-stocked part (three ½" on ½"), like its step and cut list.
+  const was = new Map(project.panels.filter((p) => p.type === "counter").map((p) => [p.id, counterPlies(p)]));
+  const relayer = (n: string) => panels.reduce((t, p) => (was.has(p.id) ? t.replace(was.get(p.id)!, counterPlies(p)) : t), n);
   const notes = (project.notes ?? [])
+    .map(relayer)
     .filter((n) => !/^Stock:/.test(n) && !/does not replace the sheet/i.test(n) && !/thinner than this carcase/i.test(n))
-    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : n));
+    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : thin34 ? n.replace(/¾["″]?\s*plywood/gi, item.name) : n));
   return {
     ...project,
     primaryMaterialId: item.id,

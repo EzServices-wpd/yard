@@ -3,6 +3,7 @@
 import { fastenerText, structural, wallScrew, WALL_ANCHORS_ID } from "./wallAnchorSteps";
 import { bareName, headerSize, typedAxesTalk } from "./headerSize";
 import { drawerBoxes } from "./hollowDrawers";
+import { plies } from "./plyLayers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
 import { leafDoor, sheetT } from "./face";
 import { usesHotGlue, HOT_GLUE_HOLD } from "./adhesive";
@@ -56,6 +57,7 @@ import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
 import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, FastenerUse, Panel, YardInstance, YardProject } from "./types";
+
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
 import { cornerSteps } from "./corner";
 import { oddSteps } from "./oddShapes";
@@ -2234,7 +2236,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 6,
         title: `Set the counter at ${round(H)}"`,
-        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Cut list has two ¾" Counter plies — glue them face-to-face (laminate) so the finished top is 1½" thick, then glue and screw the stack down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
+        description: `${(counters.length ? counters : of("top")).map(cutLine).join("; ")}. Cut list has ${plies(counters[0] ?? of("top")[0])} Counter plies — glue them face-to-face (laminate) so the finished top is ${plies(counters[0] ?? of("top")[0], true)} thick, then glue and screw the stack down into both uprights. Front and back edges flush. Iron-on edge banding (thin veneer strip that covers the raw plywood edge) on the edges people will see.`,
         partsUsed: names(counters.length ? counters : of("top")),
       },
       {
@@ -2571,7 +2573,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       description: `${counters.map(cutLine).join("; ")}. ${
         (counters[0]?.size.height ?? 0) > 0.8
           ? stockJoinVerb(project) === "Screw"
-            ? "Cut list has two ¾\" plies — glue them face-to-face (laminate) so the finished work surface is 1½\" thick, then glue and screw the stack down into the uprights and the knee dividers."
+            ? `Cut list has ${plies(counters[0])} plies — glue them face-to-face (laminate) so the finished work surface is ${plies(counters[0], true)} thick, then glue and screw the stack down into the uprights and the knee dividers.`
             : "Tape or glue the faces together, then tape or glue the stack down into the uprights and the knee dividers."
           : stockJoinVerb(project) === "Screw"
             ? "Glue and screw down into the uprights and the knee dividers."
@@ -2594,13 +2596,16 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   }
 
   if (kicks.length) {
+    // Row 626: the kick strip names the sheet it is cut from (½" in a ½" build).
+    const kickSheet = getCatalogItem(kicks[0].materialId);
+    const kickPly = kickSheet?.dims.thickness && Math.abs(kickSheet.dims.thickness - 0.75) > 0.02 ? kickSheet.name : '¾" plywood';
     steps.push({
       step: n++,
       title: pocket || u?.kneeW ? "Kick strip on the banks only" : "Add the kick strip",
       description: `${kicks.map(cutLine).join("; ")}. ${
         pocket || u?.kneeW
           ? "The kick strip is the recessed strip at the floor so your toes clear when you stand close. Kick the drawer banks only. Leave the knee open to the floor."
-          : "The kick strip is the recessed strip at the floor so your toes clear. Cut it from the same ¾\" plywood — 3½\" tall, set back about 3½\" from the front face."
+          : `The kick strip is the recessed strip at the floor so your toes clear. Cut it from the same ${kickPly} — 3½" tall, set back about 3½" from the front face.`
       }`,
       partsUsed: names(kicks),
     });
