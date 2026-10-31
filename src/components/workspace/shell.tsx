@@ -157,9 +157,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   useEffect(() => {
     setErrContext(() => {
       const p = useYard.getState().project;
-      return { family: p.panels.length > 0 ? p.kind : "", typed: [p.prompt, p.typedPrompt] };
+      return p.panels.length > 0 ? p.kind : "";
     });
-    return () => setErrContext(() => ({}));
+    return () => setErrContext(() => "");
   }, []);
 
   const [orbitHint, setOrbitHint] = useState(false);

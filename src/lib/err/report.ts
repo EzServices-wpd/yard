@@ -1,71 +1,64 @@
 // Crash reporter (no SDK). The browser posts only to our own /api/err; the server forwards to Sentry.
-// It sends the error name, a scrubbed short message, stack frames without query strings, and the bench's build
-// family (the engine's fixed kind id, never a title or size). Never what was typed: the live prompt, any field's value, quoted text and long runs are cut out.
+// No free text is sent: the message and error name keep only words from WORDS below (JavaScript's own error words and
+// the words of this app's own throw sites); every other word, number or non-ASCII run becomes [x] or #. Stack frames
+// keep only our built /assets/*.js file, line and column. The build family is the engine's fixed kind id.
 
-type Ctx = () => { family?: string; typed?: (string | undefined)[] };
-let ctx: Ctx = () => ({});
+let family: () => string | undefined = () => undefined;
 let sent = 0;
 const seen = new Set<string>();
 
-/** The workspace registers how to read the current build's family (and the words to never send). */
-export function setErrContext(fn: Ctx) {
-  ctx = fn;
+/** The workspace registers how to read the current build's family. */
+export function setErrContext(fn: () => string | undefined) {
+  family = fn;
 }
 
-/** Drops ?query and #hash from every URL, keeping a stack frame's trailing :line:col. */
-export const noQuery = (s: string) => s.replace(/(https?:\/\/[^\s?#)]*)[?#][^\s)]*?(:\d+:\d+)?(?=[\s)]|$)/g, "$1$2");
+// JS / browser error words and names, then the app's own client throw sites (grep of `new Error(` / `throw` in src).
+const WORDS = new Set(`a abort aborted aborterror access aggregateerror already an and array assignment at been before
+being by call called cannot chunk chunkloaderror constant constructor context css declared defined denied document
+domexception dynamically end error evalerror exceeded failed fetch for from function has imported in initialization
+input internalerror invalid invalidstateerror is iterable json length load loading lost maximum module network
+networkerror non not notallowederror notfounderror notsupportederror null object of on operation or out permission
+position properties property quota quotaexceedederror rangeerror read reading referenceerror request script
+securityerror set signal size stack string syntaxerror the thrown timeout timeouterror to token typeerror undefined
+unexpected unknownerror urierror valid variable was webgl with
+allow blocked budget cancelled cap finite maxsteps measured more must parts poll pop prompt run sign signaling stale
+step store than time unavailable unset up ups whole`.split(/\s+/));
 
-/** NFC, and Turkish İ as I, so a typed word matches whatever Unicode form the message carries. */
-const nfc = (s: string) => s.normalize("NFC").replace(/İ/g, "I");
-
-/** One pass that cuts every typed token wherever it sits (after a digit, %, _ or inside a longer word). 4+ letter
- * words also take any ending, f/ves too (bookshelves, knife -> knives). Only 1-2 character tokens need a non-letter on each side. */
-function cutTyped(s: string, typed: string[], digits = true): string {
-  const toks = [...new Set(typed.flatMap((t) => nfc(t).toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []))]
-    .filter((w) => digits || /\p{L}/u.test(w))
-    .sort((a, b) => b.length - a.length);
-  if (!toks.length) return nfc(s);
-  const alt = toks.map((w) => (w.length >= 4 ? `${w.slice(0, -1).replace(/(?<=\p{L}{3})(?:ve|f|e)$/u, "")}\\p{L}*` : w.length === 3 ? w : `(?<!\\p{L})${w}(?!\\p{L})`)).join("|");
-  return nfc(s).replace(new RegExp(alt, "giu"), "[x]");
+/** Whole tokens only (split at spaces and ASCII punctuation): an allowlisted ASCII word stays, a digit run becomes #,
+ * anything else (typed words, glued runs like 30wide, any non-ASCII) becomes [x]; an [x] stays, so the server's rerun
+ * is a no-op. The cut comes first, so a cut can't show part of a word. */
+export function scrubMessage(msg: unknown): string {
+  return String(msg ?? "").slice(0, 500).replace(/\s+/g, " ")
+    .replace(/\[x\]|[^ !-/:-@[-`{-~]+/g, (t) => (/^\d+$/.test(t) ? "#" : t === "[x]" || (/^[A-Za-z]+$/.test(t) && WORDS.has(t.toLowerCase())) ? t : "[x]"))
+    .slice(0, 200);
 }
 
-/** Keep only the shape of a message: typed words, digit runs, quoted strings and long tokens become [x]. */
-export function scrubMessage(msg: string, typed: string[]): string {
-  return noQuery(cutTyped(String(msg).slice(0, 2000), typed))
-    .replace(/(["'`“‘])[^"'`”’]*(["'`”’])/g, "[x]") // anything quoted
-    .replace(/\S{25,}/g, "[x]") // long tokens (pasted text, data, urls)
-    .replace(/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "[x]")
-    .replace(/\d+/g, "#") // every digit run (sizes, counts, ids)
-    .slice(0, 120);
+// A frame in our own build: Chrome "at [fn ](url:1:2)" or Firefox "fn@url:1:2"; only the /assets path, line, col are kept.
+const FRAME = /^(?:at (?:[^()]* \()?|[^@\s]*@)(?:https?:\/\/[^/\s]+)?(\/assets\/[\w-]+\.js):(\d+):(\d+)\)?$/;
+
+/** Frames only, each as "at /assets/name.js:line:col" (no function name, host, query, page or /s/ path). */
+export function scrubStack(stack: unknown): string {
+  return String(stack ?? "").split("\n").map((l) => FRAME.exec(l.trim())).filter((m) => !!m).slice(0, 20)
+    .map((m) => `at ${m[1]}:${m[2]}:${m[3]}`).join("\n");
 }
 
-// A real frame: "at [async |new ]name (url:1:2)", "at url:1:2" or "name@url:1:2". Anything else (a message's own
-// "at ..." line, typed text) is dropped.
-const FRAME = /^(?:at (?:(?:async |new )?[\w$.<>[\]]+ \()?(?:https?:\/\/|\/|file:|<anonymous>)\S*:\d+:\d+\)?|[\w$.<>[\]/]*@(?:https?:\/\/|\/|file:)\S*:\d+:\d+)$/;
-
-/** Frames only, query strings and hashes dropped, typed words cut from names and paths (line:col digits kept). */
-export function scrubStack(stack: string | undefined, typed: string[] = []): string {
-  return (stack ?? "")
-    .split("\n")
-    .map((l) => noQuery(l.trim()))
-    .filter((l) => FRAME.test(l))
-    .slice(0, 20)
-    .map((l) => cutTyped(l, typed, false).slice(0, 200))
-    .join("\n");
+/** V8 opens a stack with "name: message", where a frame-shaped line could carry text: cut it, or send no stack when the
+ * stack doesn't start with it. Other engines' stacks hold only frames. */
+export function framesOf(e: Error): string {
+  const s = String(e.stack ?? ""), head = String(e);
+  return s.startsWith(head) ? s.slice(head.length) : "captureStackTrace" in Error ? "" : s;
 }
 
 export function reportError(err: unknown) {
   try {
     if (sent >= 3 || typeof window === "undefined") return;
     const e = err instanceof Error ? err : new Error(typeof err === "string" ? err : "Non-error thrown");
-    const c = ctx();
-    const fields = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea"), (f) => f.value);
-    const typed = [...(c.typed ?? []), ...fields].filter((t): t is string => !!t && t.trim().length > 2).map((t) => t.trim());
+    const f = family() ?? "";
     const body = JSON.stringify({
-      name: scrubMessage(String(e.name || "Error"), typed).slice(0, 40),
-      message: scrubMessage(e.message, typed),
-      stack: scrubStack(e.stack, typed),
-      family: /^[a-z][a-z0-9-]{0,29}$/.test(c.family ?? "") ? c.family : "",
+      name: scrubMessage(e.name || "Error").slice(0, 40),
+      message: scrubMessage(e.message),
+      stack: scrubStack(framesOf(e)),
+      family: /^[a-z][a-z0-9-]{0,29}$/.test(f) ? f : "",
     });
     if (seen.has(body)) return;
     seen.add(body);

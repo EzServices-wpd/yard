@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { noQuery, scrubMessage } from "@/lib/err/report";
+import { scrubMessage, scrubStack } from "@/lib/err/report";
 
-// Crash forwarder: the browser posts a scrubbed report here (src/lib/err/report.ts) and this sends it on to Sentry,
+// Crash forwarder: the browser posts a scrubbed report here (src/lib/err/report.ts); this scrubs it again with the same
+// allowlist and sends it on to Sentry,
 // so the browser never contacts Sentry. Reads only the JSON body: no IP, UA or cookie is read or forwarded.
 // No DSN set -> 204 and no network call. Tags are only the build family (a fixed engine id) and the commit.
-const str = (v: unknown, n: number) => noQuery(typeof v === "string" ? v : "").slice(0, n);
+const str = (v: unknown, n: number) => (typeof v === "string" ? v : "").slice(0, n);
 
 /** "https://KEY@o1.ingest.sentry.io/123" -> envelope URL and key; null when unset or malformed. */
 export function sentryTarget(dsn: string | undefined): { url: string; key: string } | null {
@@ -19,12 +20,10 @@ export function sentryTarget(dsn: string | undefined): { url: string; key: strin
   }
 }
 
-/** One frame per line ("at f (file:1:2)" or "f@file:1:2") -> Sentry frames, oldest first. */
+/** "at /assets/x.js:1:2" lines (scrubStack's shape) -> Sentry frames, oldest first. */
 function frames(stack: string) {
-  return stack.split("\n").slice(0, 20).map((l) => {
-    const m = /^(?:at\s+)?(?:(.*?)\s*[@(])?\s*(\S+?):(\d+):(\d+)\)?\s*$/.exec(l.trim());
-    return m ? { function: (m[1] || "?").slice(0, 80), filename: m[2], lineno: +m[3], colno: +m[4], in_app: true } : { function: l.slice(0, 80) };
-  }).reverse();
+  return stack.split("\n").map((l) => /^at (\S+):(\d+):(\d+)$/.exec(l)).filter((m) => !!m)
+    .map((m) => ({ filename: m[1], lineno: +m[2], colno: +m[3], in_app: true })).reverse();
 }
 
 /** Only our own reporter's post: same-origin (Sec-Fetch-Site or a matching Origin) and a JSON/text body. No IP read. */
@@ -67,14 +66,14 @@ export const Route = createFileRoute("/api/err")({
           const b = JSON.parse(await readCapped(request, 4096)) as Record<string, unknown>;
           const id = crypto.randomUUID().replace(/-/g, "");
           const now = new Date().toISOString();
-          const stack = str(b.stack, 4000);
+          const stack = scrubStack(str(b.stack, 4000));
           const event = {
             event_id: id,
             timestamp: now,
             platform: "node", // not "javascript": Sentry infers a client IP only for browser platforms
             level: "error",
             environment: process.env.VERCEL_ENV || "development",
-            exception: { values: [{ type: scrubMessage(str(b.name, 40), []) || "Error", value: scrubMessage(str(b.message, 400), []), ...(stack ? { stacktrace: { frames: frames(stack) } } : {}) }] },
+            exception: { values: [{ type: scrubMessage(str(b.name, 40)).slice(0, 40) || "Error", value: scrubMessage(str(b.message, 400)), ...(stack ? { stacktrace: { frames: frames(stack) } } : {}) }] },
             tags: { build_family: /^[a-z][a-z0-9-]{0,29}$/.test(str(b.family, 30)) ? str(b.family, 30) : "", commit: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 40) },
           };
           const envelope = `${JSON.stringify({ event_id: id, sent_at: now })}\n${JSON.stringify({ type: "event" })}\n${JSON.stringify(event)}`;
