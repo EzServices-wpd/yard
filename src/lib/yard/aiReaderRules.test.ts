@@ -219,7 +219,11 @@ test("I49 r4: the legit rewrites still happen; 'a pair of doors' reads '2 doors'
     ["nightstand 0.5 m wide 40 cm deep with two drawers", { sizes: [cm("W", 50, "0.5 m wide", "m"), cm("D", 40, "40 cm deep")] }, "nightstand 19 11/16 wide 15 3/4 deep with two drawers"],
     ["cabinet 1 m wide with a pair of doors", { counts: [C4("doors", 2, "pair of doors")] }, "cabinet 1 m wide with 2 doors"],
   ];
-  for (const [q, raw, want] of cases) lands(q, raw, want);
+  for (const [q, raw, want] of cases) {
+    const v = validateSpec(q, raw).spec, r = raw as { sizes?: unknown[]; counts?: unknown[] };
+    assert.equal(v.sizes.length + v.counts.length, (r.sizes?.length ?? 0) + (r.counts?.length ?? 0), `kept: ${q}`);
+    assert.equal(plan(viaReader(q, raw)), plan(want), `builds as typed: ${q}`);
+  }
 });
 
 test("I49 r4: each boundary and metric rule holds on its own (row 481)", () => {
@@ -282,7 +286,11 @@ test("I49 r5: Critic's new legit rewrites still happen (2 m tall first, (2 m) as
     ["bookcase 2 m high with two shelves", { sizes: [cm("H", 200, "2 m high", "m")] }, "bookcase 78 3/4 tall with two shelves"],
     ["cabinet 45 cm depth with two doors", { sizes: [cm("D", 45, "45 cm depth")] }, "cabinet 17 11/16 deep with two doors"],
   ];
-  for (const [q, raw, want] of cases) lands(q, raw, want);
+  for (const [q, raw, want] of cases) {
+    const v = validateSpec(q, raw).spec, r = raw as { sizes?: unknown[]; counts?: unknown[] };
+    assert.equal(v.sizes.length + v.counts.length, (r.sizes?.length ?? 0) + (r.counts?.length ?? 0), `kept: ${q}`);
+    assert.equal(plan(viaReader(q, raw)), plan(want), `builds as typed: ${q}`);
+  }
 });
 
 test("I49 r5 allow-list: a lone number+unit segment (optionally with its own axis word) is a sole size; legit rewrites survive", () => {
