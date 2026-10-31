@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { scrubMessage, scrubStack } from "@/lib/err/report";
+import { cutAt, scrubMessage, scrubStack } from "@/lib/err/report";
 
 // Crash forwarder: the browser posts a scrubbed report here (src/lib/err/report.ts); this scrubs it again with the same
 // allowlist and sends it on to Sentry,
@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/err")({
             platform: "node", // not "javascript": Sentry infers a client IP only for browser platforms
             level: "error",
             environment: process.env.VERCEL_ENV || "development",
-            exception: { values: [{ type: scrubMessage(str(b.name, 40)).slice(0, 40) || "Error", value: scrubMessage(str(b.message, 400)), ...(stack ? { stacktrace: { frames: frames(stack) } } : {}) }] },
+            exception: { values: [{ type: cutAt(scrubMessage(str(b.name, 4096)), 40) || "Error", value: scrubMessage(str(b.message, 4096)), ...(stack ? { stacktrace: { frames: frames(stack) } } : {}) }] },
             tags: { build_family: /^[a-z][a-z0-9-]{0,29}$/.test(str(b.family, 30)) ? str(b.family, 30) : "", commit: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 40) },
           };
           const envelope = `${JSON.stringify({ event_id: id, sent_at: now })}\n${JSON.stringify({ type: "event" })}\n${JSON.stringify(event)}`;

@@ -12,25 +12,32 @@ export function setErrContext(fn: () => string | undefined) {
   family = fn;
 }
 
-// JS / browser error words and names, then the app's own client throw sites (grep of `new Error(` / `throw` in src).
-const WORDS = new Set(`a abort aborted aborterror access aggregateerror already an and array assignment at been before
-being by call called cannot chunk chunkloaderror constant constructor context css declared defined denied document
-domexception dynamically end error evalerror exceeded failed fetch for from function has imported in initialization
-input internalerror invalid invalidstateerror is iterable json length load loading lost maximum module network
-networkerror non not notallowederror notfounderror notsupportederror null object of on operation or out permission
-position properties property quota quotaexceedederror rangeerror read reading referenceerror request script
-securityerror set signal size stack string syntaxerror the thrown timeout timeouterror to token typeerror undefined
-unexpected unknownerror urierror valid variable was webgl with
-allow blocked budget cancelled cap finite maxsteps measured more must parts poll pop prompt run sign signaling stale
-step store than time unavailable unset up ups whole`.split(/\s+/));
+// JS / browser error words and names, then the app's own client throw sites (grep of `new Error(` / `throw` in src),
+// minus words a user might type for a build (step, set, size, store, parts, ...): those become [x]; the frame still points.
+const WORDS = new Set(`a abort aborted aborterror aggregateerror already an and array assignment at been before being
+by call called cannot chunkloaderror constant constructor context css declared defined denied domexception dynamically
+error evalerror exceeded failed fetch for from function has imported in initialization input internalerror invalid
+invalidstateerror is iterable json loading lost maximum network networkerror non not notallowederror notfounderror
+notsupportederror null object of on operation or out permission position properties property quota quotaexceedederror
+rangeerror read reading referenceerror request script securityerror signal syntaxerror the thrown timeout timeouterror
+to token typeerror undefined unexpected unknownerror urierror valid variable was webgl with
+allow cancelled finite maxsteps measured more must poll prompt signaling stale than unavailable unset up ups`.split(/\s+/));
 
 /** Whole tokens only (split at spaces and ASCII punctuation): an allowlisted ASCII word stays, a digit run becomes #,
  * anything else (typed words, glued runs like 30wide, any non-ASCII) becomes [x]; an [x] stays, so the server's rerun
- * is a no-op. The cut comes first, so a cut can't show part of a word. */
+ * is a no-op. Over 500 chars the input is cut and the word at the cut becomes [x] whole; the output is then cut to 200
+ * at a token edge. So no cut can show part of a word. */
 export function scrubMessage(msg: unknown): string {
-  return String(msg ?? "").slice(0, 500).replace(/\s+/g, " ")
-    .replace(/\[x\]|[^ !-/:-@[-`{-~]+/g, (t) => (/^\d+$/.test(t) ? "#" : t === "[x]" || (/^[A-Za-z]+$/.test(t) && WORDS.has(t.toLowerCase())) ? t : "[x]"))
-    .slice(0, 200);
+  const raw = String(msg ?? "");
+  let s = raw.slice(0, 500).replace(/\s+/g, " ");
+  if (raw.length > 500) s = s.replace(/[^ !-/:-@[-`{-~]+$/, "[x]");
+  s = s.replace(/\[x\]|[^ !-/:-@[-`{-~]+/g, (t) => (/^\d+$/.test(t) ? "#" : t === "[x]" || (/^[A-Za-z]+$/.test(t) && WORDS.has(t.toLowerCase())) ? t : "[x]"));
+  return cutAt(s, 200);
+}
+
+/** Cuts scrubbed text to `max` chars at a token edge (a sliced [x] or word at the end is dropped). */
+export function cutAt(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max).replace(/(?:\[x?|[A-Za-z]+)$/, "") : s;
 }
 
 // A frame in our own build: Chrome "at [fn ](url:1:2)" or Firefox "fn@url:1:2"; only the /assets path, line, col are kept.
@@ -55,7 +62,7 @@ export function reportError(err: unknown) {
     const e = err instanceof Error ? err : new Error(typeof err === "string" ? err : "Non-error thrown");
     const f = family() ?? "";
     const body = JSON.stringify({
-      name: scrubMessage(e.name || "Error").slice(0, 40),
+      name: cutAt(scrubMessage(e.name || "Error"), 40),
       message: scrubMessage(e.message),
       stack: scrubStack(framesOf(e)),
       family: /^[a-z][a-z0-9-]{0,29}$/.test(f) ? f : "",
