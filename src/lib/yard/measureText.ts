@@ -9,7 +9,7 @@
  * size ("1 1/2 inch screws") are left alone; only a number that sizes an axis (a size word after it, or a place in a
  * W x D x H string, "27 1/2 square", "92 5/8 long") or a feet-and-inches pair is rewritten.
  */
-import { plainFractions, readLengths, readNumber } from "./lengthReader";
+import { plainFractions, readLengths, readNumber, releaseReads } from "./lengthReader";
 import { inchFrac } from "./inchText";
 
 // A unit word ends at any non-letter, a digit included: "5ft6in" is 5 ft 6 in ("ft\b" would miss it and read 6").
@@ -33,17 +33,13 @@ const STOCK_AFTER = /^\s*(?:thick|x|×|by|plywood|ply|screws?|nails?|brads?|bolt
  * after them: "6 ft 2 x 4 frame" is a length and a stock, never 74" x 4. Stock names ("1 1/2 inch screws") keep theirs.
  */
 function lengthsAsInches(s: string): string {
-  // On an arch a feet word stays feet (as "4 ft long" does): release's span rule (promptHelpers.parseSize) reads it, so
-  // "4 feet wide" is the walk-through span and "30 wide" a narrow trellis arch, as on release (NR-3 owns that rule).
-  const arch = /\barch/i.test(s);
   for (const l of readLengths(s).reverse()) {
     if (!l.unit) continue;
     const after = s.slice(l.end), rest = l.raw.slice(l.num.length);
     const half = /^\s+and\s+(?:a|one)\s+(?:half|quarter)/i.exec(rest)?.[0] ?? "";
     const pair = l.unit === "ft" && /\d/.test(rest);
     // "4 ft long" stays: a stock's length ("2x4 bench 4 ft long") reads in feet downstream.
-    const feetWord = arch && !pair && /^\s*-?\s*(?:ft|feet|foot)/i.test(rest);
-    const sizes = AXIS_WORD.test(after) && !feetWord && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in");
+    const sizes = AXIS_WORD.test(after) && (l.unit === "ft" ? !/^\s*long/i.test(after) : l.unit !== "in");
     const r = /m$/.test(l.unit) ? Math.round(l.inches * 16) / 16 : l.inches;
     // A spelled number with a unit is its digits wherever it is ("quarter inch plywood" → "1/4 inch plywood", row 608).
     const said = (v: number) => (v < 1 ? inchFrac(v) : dec(v)) + rest.slice(half.length);
@@ -53,12 +49,22 @@ function lengthsAsInches(s: string): string {
   return s;
 }
 
+/** A typed number: "24 1/2", "24-1/2", "1/2", "24.5", "24". */
+const NUM = String.raw`\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+`;
+/** Release's feet and inches pass, kept for releaseReads text (NR-1 r3). */
+const releaseFeetInches = (s: string) =>
+  s.replace(new RegExp(String.raw`\b(\d+(?:\.\d+)?)\s*${FT}\s*(?:and\s+|-\s*)?(${NUM})(?:\s*${IN}|(?=\s+(?:wide|deep|tall|high|long)\b))`, "gi"), (all, ft: string, inch: string) => {
+    const f = Number(ft), i = readNumber(inch);
+    if (!Number.isFinite(f) || !Number.isFinite(i) || i >= 12) return all;
+    return `${dec(f * 12 + i)}"`;
+  });
+
 /** The prompt with every typed size written as plain decimal inches (see the module note). */
 export function canonicalMeasures(prompt: string): string {
   // Unicode fractions read as shop fractions: "24½" → "24 1/2", "½" → "1/2".
   let s = plainFractions(prompt);
   s = s.replace(/[″”]/g, '"').replace(/[‘’′]/g, "'");
-  s = lengthsAsInches(s);
+  s = releaseReads(s) ? releaseFeetInches(s) : lengthsAsInches(s);
   // Compact feet-inches, nothing between the foot mark and the inches ("2ft6 x 12 x 30", "5ft6", "2'6 x 12 x 30"): the
   // inches need no mark or axis word. A lone "x N" after it is a stock ("6ft2x4" stays a 6 ft 2x4).
   s = s.replace(new RegExp(String.raw`\b(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet|foot)(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)(?![\d./])`, "gi"), (all, ft: string, inch: string, at: number, whole: string) => {

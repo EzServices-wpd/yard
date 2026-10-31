@@ -3,7 +3,7 @@ import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
 import { canonicalMeasures, rewritesMeasures } from "./measureText";
-import { readLengths } from "./lengthReader";
+import { readLengths, releaseReads } from "./lengthReader";
 import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
 import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
@@ -1438,7 +1438,9 @@ function generateRaw(
     // A whole count over 2 before "plywood" that the size reader did not take as the height ("dollhouse 36 tall 3 inch
     // plywood") can only be a thickness: it is said, never dropped silently.
     const lw = bare.toLowerCase();
-    const whole = readLengths(lw).find((l) => l.unit === "in" && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
+    // Release's reading for releaseReads text (NR-1 r3).
+    const rw = releaseReads(lw) ? lw.match(/(?<![\d./])(\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)\s*(?:thick\s+)?plywood\b/) : null;
+    const whole = rw ? { value: Number(rw[1]), num: rw[1] } : releaseReads(lw) ? undefined : readLengths(lw).find((l) => l.unit === "in" && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
     const tm = lw.match(PLY_THICKNESS)?.[1] ?? (whole && whole.value !== dollhouseTyped(prompt).height ? whole.num : null);
     const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
     const tIn = tm ? num(tm.replace(/\s*\/\s*/g, "/")) : NaN;

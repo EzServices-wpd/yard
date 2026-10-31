@@ -2,6 +2,7 @@
 
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
+import { releaseReads } from "./lengthReader";
 import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
@@ -967,11 +968,13 @@ export function normalizeUserPrompt(prompt: string): string {
       s,
     );
   if (house) {
+    // Release's counts for releaseReads text (NR-1 r3): no lookbehind there.
+    const lb = releaseReads(s) ? "" : String.raw`(?<![\d./])`;
     // "2x4x8 bench" names the stock (a 2×4, 8 ft long) — not a 2" × 4" × 8" piece of furniture.
     s = s.replace(/\b([12])\s*[x×]\s*(2|3|4|6|8|10|12)\s*[x×]\s*(6|8|10|12|14|16)\b(?!\s*(?:in\b|inch|"|[x×.]|\d))(?:\s*(?:ft|feet|foot|')\b)?/gi, "$1x$2");
     // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8. A count never starts inside a number
     // ("2 1/2 ft 3" is never "2 1/27", row 658).
-    s = s.replace(/(?<![\d./])(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})(?![\d/])/g, (_, ft, inch) => {
+    s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})` + (lb ? String.raw`(?![\d/])` : String.raw`(?!\d)`), "g"), (_, ft, inch) => {
       const f = parseFloat(ft);
       const i = parseFloat(inch);
       if (!Number.isFinite(f) || f > 40 || i >= 12) return _;
@@ -986,8 +989,8 @@ export function normalizeUserPrompt(prompt: string): string {
         return `${f * 12 + i} inch`;
       },
     );
-    s = s.replace(/(?<![\d./])(\d+(?:\.\d+)?)\s*-?\s*'(?!')/g, (_, n) => `${parseFloat(n) * 12} inch`);
-    s = s.replace(/(?<![\d./])(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\b/gi, (_, n) => {
+    s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*-?\s*'(?!')`, "g"), (_, n) => `${parseFloat(n) * 12} inch`);
+    s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\b`, "gi"), (_, n) => {
       const v = parseFloat(n);
       if (!Number.isFinite(v) || v > 40) return _;
       return `${v * 12} inch`;

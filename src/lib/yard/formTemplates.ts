@@ -11,7 +11,7 @@ import { createId } from "@/lib/utils";
 import { toPrimitive, isWholeStock } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
-import { readLengths } from "./lengthReader";
+import { readLengths, releaseReads } from "./lengthReader";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
 import { buildDollhouse, dollhouseIssues, DOLLHOUSE_STEPS } from "./dollhouse";
 
@@ -89,6 +89,23 @@ const NUM = String.raw`(\d+(?:\.\d+)?(?:[\s-]+\d+\/\d+)?|\d+\/\d+)`;
 export function typedSizeIn(prompt: string): { length?: number; height?: number } {
   const l = prompt.toLowerCase();
   const out: { length?: number; height?: number } = {};
+  if (releaseReads(l)) {
+    // Release's reading, kept for releaseReads text (NR-1 r3; NR-2/NR-3 own it).
+    const unit = String.raw`(?:\s*-?\s*)(inches|inch|in\b|"|''|feet|foot|ft\b|')`;
+    const toIn = (n: string, u: string) => parseFloat(n) * (/^(?:feet|foot|ft|')$/.test(u.trim()) ? 12 : 1);
+    for (const m of l.matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)` + unit + String.raw`\s*(long|tall|high|length|height|in length|in height)?`, "g"))) {
+      const v = toIn(m[1], m[2]);
+      if (!(v > 1 && v < 400)) continue;
+      const before = l.slice(Math.max(0, (m.index ?? 0) - 2), m.index);
+      const after = l.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 14);
+      if (/[x×\/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
+      const ax = m[3];
+      if (ax && /tall|high|height/.test(ax)) out.height ??= v;
+      else if (ax) out.length ??= v;
+      else if (out.length == null && out.height == null) out.length = v;
+    }
+    return out;
+  }
   for (const n of readLengths(l)) {
     const v = n.inches;
     if ((n.unit !== "in" && n.unit !== "ft") || !(v > 1 && v < 400)) continue;

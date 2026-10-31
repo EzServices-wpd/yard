@@ -5,7 +5,7 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
-import { readLength, readLengths, readNumber, readTuple } from "./lengthReader";
+import { readLength, readLengths, readNumber, readTuple, releaseReads } from "./lengthReader";
 import { canonicalMeasures } from "./measureText";
 import { normalizeUserPrompt } from "./voiceHonesty";
 import { generateFromPrompt } from "./promptMain";
@@ -116,7 +116,7 @@ it("every spelling of one size builds the same thing", () => {
   assert.equal(generateFromPrompt("bookcase 36 wide seventy-two inches tall 12 deep").overall.height, 72); // not the 84" default
 });
 
-// Critic #225 B2 (row 710): an arch keeps release's span rule. Feet on the span build the 84" walk-through portal; an
+// Critic #225 B2 (row 710), r3: an arch is release's reading throughout (releaseReads), so it keeps release's span rule. Feet on the span build the 84" walk-through portal; an
 // inch span is the narrow arch it was on release (W x D x H from release 08c36c6f, never widened to 43 3/16").
 it("arch: a typed span builds what it built on release (feet = walk-through portal, inches = as typed)", () => {
   const dims = (p: string) => { const o = generateFromPrompt(p).overall; return [o.width, o.depth, o.height]; };
@@ -125,7 +125,7 @@ it("arch: a typed span builds what it built on release (feet = walk-through port
     ["PVC garden arch 4.5 feet wide", [55.2, 17.2, 84.6]], ["garden arch 30 wide 24 tall", [31, 8, 24]]] as [string, number[]][])
     assert.deepEqual(dims(q), want, q);
   assert.equal(canonicalMeasures("PVC garden arch 4 feet wide"), "PVC garden arch 4 feet wide");
-  assert.equal(canonicalMeasures("garden arch 3' wide"), 'garden arch 36" wide');
+  assert.equal(canonicalMeasures("garden arch 3' wide"), "garden arch 3' wide"); // r3: an arch is release's text
 });
 
 // Critic #225 B1 (row 709): a number with a comma in it ("1,5 m", "1,200 mm", "72,5 cm") is never read, and no length
@@ -142,4 +142,110 @@ it("comma numbers: never read, never split; the build is release's", () => {
     const p = generateFromPrompt(q);
     assert.deepEqual([p.refused ?? null, p.overall.width, p.overall.depth, p.overall.height, buildPlan(p).totals.estCostUsd], [null, w, d, h, usd], q);
   }
+});
+
+// NR-1 r3 (Ezra/Chief): commas, arches, hyphenated N-inch / N-foot, a foot mark before "long" and "width N ft" are
+// release's (rows 712, 722, 724; NR-2/NR-3). Release's build of each of Critic's r2 off-card and comma/arch movers.
+const RELEASE_BUILDS: [string, boolean, number, number, number, number | null][] = [
+    ["PVC garden arch 3' wide", false, 19.2, 13.2, 36.6, 27.24],
+    ["PVC garden arch 914mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 91.4 cm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch thirty-six inches wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 2 1/2 ft 3 inch wide", false, 2, 2.1, 2.1, 25.48],
+    ["PVC garden arch 24 and a half inches wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["shelf unit 30 wide, 1 m tall", false, 30, 12, 18, 83.35],
+    ["dollhouse 18-inch wide", false, 19, 19, 18.1, 19.96],
+    ["dollhouse 20-1/2-inch wide", false, 25, 25, 24.5, 19.96],
+    ["dollhouse 23-1/2-inch wide", false, 25, 25, 24.5, 19.96],
+    ["dollhouse 30-inch wide", false, 31, 31, 29.9, 19.96],
+    ["dollhouse 31-1/2-inch wide", false, 25, 25, 24.5, 19.96],
+    ["dollhouse 36-inch wide", false, 37, 37, 35.8, 19.96],
+    ["dollhouse 48-inch wide", false, 49, 49, 47.6, 19.96],
+    ["dollhouse 6-1/8-inch wide", false, 25, 25, 24.5, 19.96],
+    ["dollhouse 60-inch wide", false, 61, 61, 59.3, 19.96],
+    ["dollhouse 72-inch wide", false, 73, 73, 71.1, 19.96],
+    ["dollhouse 84-inch wide", false, 85, 85, 82.8, 19.96],
+    ["dollhouse width 2 ft", false, 20.2, 10.6, 24.5, 19.96],
+    ["garden arch 18-inch wide", false, 66.1, 19, 90, 42.93],
+    ["garden arch 2-foot wide", false, 18.4, 8, 24.5, 42.93],
+    ["garden arch 20-1/2-inch wide", false, 61.5, 17, 84.5, 42.93],
+    ["garden arch 23-1/2-inch wide", false, 61.5, 17, 84.5, 42.93],
+    ["garden arch 24-inch wide", false, 18.4, 8, 24.5, 42.93],
+    ["garden arch 3-foot wide", false, 27.2, 8.3, 36.5, 42.93],
+    ["garden arch 30-inch wide", false, 22.8, 8, 30.5, 42.93],
+    ["garden arch 31-1/2-inch wide", false, 61.5, 17, 84.5, 42.93],
+    ["garden arch 36-inch wide", false, 27.2, 8.3, 36.5, 42.93],
+    ["garden arch 4-foot wide", false, 35.9, 10.7, 48.5, 42.93],
+    ["garden arch 48-inch wide", false, 35.9, 10.7, 48.5, 42.93],
+    ["garden arch 5-foot wide", false, 61.5, 17, 84.5, 42.93],
+    ["garden arch 6-foot wide", false, 53.4, 15.5, 72.5, 42.93],
+    ["garden arch 60-inch wide", false, 61.5, 17, 84.5, 42.93],
+    ["garden arch 7-foot wide", false, 61.5, 17, 84.5, 42.93],
+    ["garden arch 72-inch wide", false, 53.4, 15.5, 72.5, 42.93],
+    ["garden arch 84-inch wide", false, 61.5, 17, 84.5, 42.93],
+    ["popsicle stick bridge 2' long", false, 162.7, 25, 33.6, 34.94],
+    ["popsicle stick bridge 2-foot long", false, 106.3, 16.6, 22.1, 19.96],
+    ["popsicle stick bridge 24-inch long", false, 106.3, 16.6, 22.1, 19.96],
+    ["popsicle stick bridge 4' long", false, 49, 8.1, 10.3, 19.96],
+    ["popsicle stick bridge 5' long", false, 405.2, 61, 83.4, 64.9],
+    ["popsicle stick bridge 6' long", false, 486, 73, 100, 79.88],
+    ["popsicle stick bridge 7' long", false, 566.8, 85, 116.5, 94.86],
+    ["skewer bridge 2' long", false, 162.7, 25, 33.6, 25.95],
+    ["skewer bridge 2-foot long", false, 106.3, 16.6, 22.1, 18.96],
+    ["skewer bridge 24-inch long", false, 106.3, 16.6, 22.1, 18.96],
+    ["skewer bridge 4' long", false, 49, 8.1, 10.3, 11.97],
+    ["skewer bridge 5' long", false, 405.2, 61, 83.4, 60.9],
+    ["skewer bridge 6' long", false, 486, 73, 100, 67.89],
+    ["skewer bridge 7' long", false, 566.8, 85, 116.5, 81.87],
+    ["PVC garden arch 457 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 2' wide", false, 19.2, 13.2, 12.6, 25.48],
+    ["PVC garden arch 610 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 762 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 914 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 1067 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 4' wide", false, 25.2, 13.2, 48.6, 33],
+    ["PVC garden arch 1219 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 5' wide", false, 31.2, 13.2, 60.6, 33],
+    ["PVC garden arch 1524 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 6' wide", false, 37.2, 13.2, 72.6, 38.76],
+    ["PVC garden arch 1829 mm wide", false, 61.6, 17.2, 84.6, 44.6],
+    ["PVC garden arch 1.2 m wide 2 m tall", false, 43.2, 17.2, 84.6, 44.52],
+    ["dollhouse 2,5 ft tall", false, 67.7, 51.7, 60, 19.96],
+    ["dollhouse 4,5 feet tall", false, 67.7, 51.7, 60, 19.96],
+    ["garden arch 2,5 ft wide", false, 61, 17, 84.5, 42.93],
+    ["garden arch 4,5 feet wide", false, 61, 17, 84.5, 42.93],
+    ["PVC garden arch 2,5 ft wide", false, 61.2, 17.2, 84.6, 44.6],
+    ["PVC garden arch 36,5 inches wide", false, 5, 5, 5, 25.48],
+    ["PVC garden arch 24,5\" wide", false, 5, 5, 5, 25.48],
+    ["PVC garden arch 30,5 in wide", false, 5, 5, 5, 25.48],
+    ["PVC garden arch 4,5 feet wide", false, 61.2, 17.2, 84.6, 44.6],
+    ["castle from toothpicks 24,5\"", false, 5.7, 5.2, 4.8, 7.95],
+    ["desk 1,500 mm wide 750 mm deep", false, 48, 24, 29, 356.99],
+    ["cabinet 60,5 cm wide 90 cm tall", false, 90, 16, 84, 391.36],
+    ["bookcase 914mm wide,1829mm tall,305mm deep", false, 36, 12, 84, 131.76],
+    ["bookcase 914 mm wide, 1829 mm tall, 305 mm deep", false, 36, 12, 84, 131.76],
+    ["bookcase 91.4 cm wide,182.9 cm tall", false, 91.4, 12, 84, 203.64],
+    ["desk 1.5 m wide, 75 cm deep", false, 48, 24, 29, 356.99],
+    ["toy chest 2.5 ft wide, 18 deep", false, 36, 18, 30, 115.27],
+    ["dollhouse 2 ft wide, 30\" tall", false, 25, 25, 30, 19.96],
+    ["bookcase 1,829 mm tall 914 mm wide", false, 36, 12, 84, 131.76],
+    ["wardrobe 1,2 m wide 2 m tall", false, 2, 24, 84, 193.69],
+];
+
+it("release reads: commas, arches, N-inch / N-foot, N' long and width N ft build what release builds", () => {
+  for (const [q, refused, w, d, h, usd] of RELEASE_BUILDS) {
+    assert.ok(releaseReads(q), q);
+    const p = generateFromPrompt(q);
+    const o = [p.overall.width, p.overall.depth, p.overall.height].map((n) => Math.round(n * 1e4) / 1e4);
+    assert.deepEqual([Boolean(p.refused), ...o, refused ? usd : buildPlan(p).totals.estCostUsd], [refused, w, d, h, usd], q);
+  }
+  // Release's own readings, in any number: a foot mark before "long" is the bare count, a hyphenated size before an
+  // axis word is unread, "width N ft" is N, and an arch or a comma keeps the text as release left it.
+  fc.assert(fc.property(fc.integer({ min: 2, max: 40 }), fc.constantFrom("skewer bridge", "popsicle stick bridge", "garden arch", "dollhouse"), (n, cls) => {
+    const ok = typedAxisNumber(`${cls} ${n}' long`, "length") === n && typedAxisNumber(`${cls} ${n}-inch wide`, "width") === null
+      && typedAxisNumber(`${cls} ${n}-foot wide`, "width") === null && typedAxisNumber(`${cls} width ${n} ft`, "width") === n
+      && typedSizeIn(`${cls} ${n}-1/2-inch wide`).length === undefined && dollhouseTyped(`${cls} width ${n} ft`).height === n * 12;
+    return ok && canonicalMeasures(`garden arch ${n} 1/2 ft wide`) === `garden arch ${n}.5 ft wide` && canonicalMeasures(`${cls} ${n}-1/2-inch wide`) === `${cls} ${n}-1/2-inch wide`
+      && normalizeUserPrompt(`bookcase, ${n} 1/2 ft boards`) === `bookcase, ${n} 1/24 inch boards`;
+  }), { seed: SEED, numRuns: 200 });
 });

@@ -73,6 +73,15 @@ export function readLengths(text: string): Length[] {
   return out;
 }
 
+/**
+ * NR-1 scope (Ezra/Chief r3, rows 712, 722, 724): text the one reader leaves to release's own readers, so it builds
+ * exactly as on release (NR-2/NR-3 own these): any comma, an arch, a hyphenated "N-inch" / "N-1/2-inch" / "N-foot"
+ * before an axis word, a foot mark before "long", and an axis word before a feet count ("width 2 ft").
+ */
+export const releaseReads = (t: string) => RELEASE_READS.test(t);
+const AX_WORD = String.raw`(?:wide|width|deep|depth|tall|high|height|long|length)`;
+const RELEASE_READS = new RegExp(String.raw`,|\barch|\d\s*-\s*(?:in(?:ch(?:es)?)?|ft|feet|foot)\s+${AX_WORD}\b|\d\s*'\s*(?:long|length)\b|\b(?:width|depth|height|length)\s*\d+(?:\.\d+)?\s*(?:ft|feet|foot|')`, "i");
+
 /** The first length that starts at or after `pos`. `bareUnit` gives a unitless number its unit. */
 export function readLength(text: string, pos = 0, o: { bareUnit?: Unit | null } = {}): Length | null {
   const l = readLengths(text).find((x) => x.start >= pos);
