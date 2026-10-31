@@ -65,6 +65,7 @@ it("canonicalMeasures is idempotent and leaves stock names alone", () => {
   assert.equal(canonicalMeasures("bridge from skewers 1829mm long"), 'bridge from skewers 72" long');
   assert.equal(canonicalMeasures("shelf with one in each corner"), "shelf with one in each corner");
   assert.equal(canonicalMeasures("dollhouse 2 ft 6 in"), 'dollhouse 30"');
+  assert.equal(canonicalMeasures("cabinet 30 in wide"), "cabinet 30 in wide");
   assert.doesNotMatch(normalizeUserPrompt("bookcase from 2 1/2 ft boards"), /1\/24/);
 });
 
@@ -90,6 +91,10 @@ it("callers moved onto the reader: bridge span, craft bare size, dollhouse bare 
   assert.equal(dollhouseTyped("dollhouse 1/2 inch plywood").height, undefined);
   assert.equal(dollhouseTyped("dollhouse quarter inch plywood").height, undefined);
   assert.equal(dollhouseTyped('dollhouse 36x24"').height, undefined);
+  // "36 inch plywood" is the house's height (the size reader took it), never a 36" sheet thickness.
+  const house = generateFromPrompt("dollhouse 36 inch plywood");
+  assert.equal(house.overall.height, 36);
+  assert.ok(!(house.notes ?? []).some((n) => /36" plywood/i.test(n)), (house.notes ?? []).join(" | "));
 });
 
 /** Same size, any spelling → the same build (Chief's side quest, rows 674-676, 658). */
