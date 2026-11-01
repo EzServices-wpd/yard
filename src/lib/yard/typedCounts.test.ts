@@ -151,7 +151,7 @@ test("class F r4 (card 1): only '1 shelf' / 'an open shelf' on a card 1 host sta
     ["desk organizer with 1 shelf", false], ["nightstand lamp with 1 shelf", false], ["double vanity with 1 shelf", false],
     ["desk with 1 shelf and casters", false], ["desk with 1 wide shelf", false], ["desk with two open shelf", false], ["sideboard with the open shelf", false], ["vanity with an open shelf 30 wide", false],
     ["buffet with 1  shelf", true], ["media console with  an  open  shelf", true], ["desk 60 wide with 1 shelf", true],
-    ["vanity 85 wide 34.5 tall with 1 shelf", true],
+    ["vanity 85 wide 34.5 tall with 1 shelf", true], ["the sideboard with 1 shelf", true], ["a vanity with an open shelf", true],
   ] as const) {
     if (!!composeProducts(q, stub)?.notes.some((n) => n.startsWith("Combined:")) === host) split.push(q);
   }
