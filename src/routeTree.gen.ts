@@ -16,6 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as ApiErrRouteImport } from './routes/api/err'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiIdeasRouteImport } from './routes/api/ideas'
 import { Route as ApiIdeasLogRouteImport } from './routes/api/ideas-log'
@@ -59,6 +60,11 @@ const TermsRoute = TermsRouteImport.update({
 const WorkspaceRoute = WorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiErrRoute = ApiErrRouteImport.update({
+  id: '/api/err',
+  path: '/api/err',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/err': typeof ApiErrRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/err': typeof ApiErrRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/err': typeof ApiErrRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/ideas': typeof ApiIdeasRoute
   '/api/ideas-log': typeof ApiIdeasLogRoute
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/err'
     | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/err'
     | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
@@ -208,6 +219,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/err'
     | '/api/feedback'
     | '/api/ideas'
     | '/api/ideas-log'
@@ -227,6 +239,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  ApiErrRoute: typeof ApiErrRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiIdeasRoute: typeof ApiIdeasRoute
   ApiIdeasLogRoute: typeof ApiIdeasLogRoute
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       path: '/workspace'
       fullPath: '/workspace'
       preLoaderRoute: typeof WorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/err': {
+      id: '/api/err'
+      path: '/api/err'
+      fullPath: '/api/err'
+      preLoaderRoute: typeof ApiErrRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/feedback': {
@@ -363,6 +383,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
+  ApiErrRoute: ApiErrRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiIdeasRoute: ApiIdeasRoute,
   ApiIdeasLogRoute: ApiIdeasLogRoute,

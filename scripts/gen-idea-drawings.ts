@@ -156,14 +156,20 @@ function zoomed(svg: string, k: number) {
 /**
  * Log-only build types (no curated card): the feed draws them by type key (drawingForType), so each is baked under its
  * type from the prompt the card builds on tap (logCardPrompt: logPrompts.json, else the type at its logged size).
- * Not baked (judged by eye, 10-26): soccer-goal (a bare box frame), brooklyn-bridge (no towers above the deck),
- * windmill (broken sails), barn (a braced crate, no roof), empire-state-building (a cone, no setbacks), space-needle
- * (straight tapered legs, no waist), firewood-unit (builds a firewood-rack); dollhouse, toolbox, bike rack, White House,
- * mailbox post and sailboat still build wrong.
+ * Not baked (judged by eye, 10-26, re-judged 10-30): soccer-goal (a closed 12-edge box, a bar across the mouth),
+ * brooklyn-bridge (no towers above the deck), windmill (broken sails), barn (a braced crate, no roof),
+ * empire-state-building (a cone, no setbacks), space-needle (straight tapered legs, no waist), firewood-unit (builds a
+ * firewood-rack), dog-house at its logged size (no roof), swing-set at its logged 12″ (broken); toolbox, bike rack and
+ * White House are stand-ins, and sailboat and mailbox post still build wrong.
+ * Baked 10-30 at the size the log builds most, so a tap (logCardPrompt with the logged size) builds the drawn model:
+ * dollhouse (gable roof, open rooms), trellis (2x2 lattice on posts), wardrobe (two doors).
  */
 export const LOG_TYPES: Record<string, string> = {
   rocket: logCardPrompt("rocket", { width: 9.875, depth: 9.875, height: 28 }),
   ...Object.fromEntries(["lighthouse", "cat-tree", "viking-ship"].map((t) => [t, logCardPrompt(t, null)])),
+  dollhouse: logCardPrompt("dollhouse", { width: 12, depth: 12.375, height: 16 }),
+  trellis: logCardPrompt("trellis", { width: 48, depth: 2, height: 60 }),
+  wardrobe: logCardPrompt("wardrobe", { width: 40, depth: 22, height: 72 }),
 };
 
 const cards = [

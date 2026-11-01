@@ -349,11 +349,11 @@ test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the fe
   }
   assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
   // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
-  for (const t of ["soccer-goal", "dollhouse", "brooklyn-bridge", "windmill", "barn", "empire-state-building", "space-needle", "firewood-unit", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  for (const t of ["soccer-goal", "brooklyn-bridge", "windmill", "barn", "empire-state-building", "space-needle", "firewood-unit", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
   // Log types baked under their type from the prompt each card builds on tap (gen-idea-drawings LOG_TYPES), with the build's stock.
   assert.equal(cards.find(({ c }) => c.buildType === "rocket")?.c.examplePrompt, "rocket 9.875 wide 28 tall 9.875 deep");
   assert.equal(cards.find(({ c }) => c.buildType === "lighthouse")?.c.examplePrompt, "2 foot lighthouse from popsicle sticks");
-  for (const t of ["rocket", "lighthouse", "cat-tree", "viking-ship"]) {
+  for (const t of ["rocket", "lighthouse", "cat-tree", "viking-ship", "dollhouse"]) {
     const c = cards.find(({ c }) => c.buildType === t)?.c;
     assert.ok(c, `${t} card shows`);
     assert.match(c!.drawing!.src, new RegExp(`^/ideas/drawings/${t}\\.[0-9a-f]{8}\\.svg$`), t);
