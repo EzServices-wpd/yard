@@ -32,6 +32,7 @@ test("class F: a typed count is read as a count, 'no X' as zero, never a size", 
   assert.deepEqual(typedCounts("coffee table with an open shelf"), {});
   assert.deepEqual(typedCounts("buffet with no open shelves"), { shelves: 0 });
   assert.deepEqual(typedCounts("cabinet w/o any open shelves"), { shelves: 0 });
+  assert.deepEqual(typedCounts("bench with twelve shelves"), { shelves: 12 });
 });
 
 test("class F: every typed feature word or count is built or named in a note (I41), never dropped", () => {
