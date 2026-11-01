@@ -103,6 +103,9 @@ test("class F r2 (Critic rows 733/735): a count note says the header's number; e
     ["coffee table with no shelves", ""],
     ["end table with zero shelves", ""],
     ["vanity with no shelves", ""],
+    ["bench with 1 shelf", ""],
+    ["rolling cart with casters and 2 shelves", "You asked for 2 shelves; this cart has 3."],
+    ["nightstand with 1 drawer and 1 shelf", ""],
   ]) {
     const p = generateFromPrompt(q);
     const asked = (p.notes ?? []).filter((n) => /^You asked for/.test(n));

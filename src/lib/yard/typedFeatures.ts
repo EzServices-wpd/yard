@@ -105,9 +105,11 @@ export function builtCount(p: YardProject, f: TypedFeature): number {
   const ps = p.panels ?? [];
   if (f === "doors") return p.kind === "opening" ? 0 : ps.filter((x) => x.type === "door").length;
   if (f === "drawers") return new Set(ps.filter((x) => x.drawerId).map((x) => x.drawerId)).size || ps.filter((x) => /\bdrawer\b/i.test(x.name) && /\bfront\b/i.test(x.name)).length;
-  // The header's own count (pdf headerFeatures); a header that names none ("Bay 1 shelf") still counts its shelf
-  // lines. Shelf rails and cleats are not shelves.
-  if (f === "shelves") return headerShelfCount(ps) || shelfLineCount(ps.filter((x) => x.type === "shelf" && !/\b(?:rails?|cleats?)\b/i.test(x.name)));
+  // The header's own count (pdf headerFeatures); a header that names none ("Bay 1 shelf", "Bottom shelf") still
+  // counts its shelf lines. Shelf rails, cleats and supports are not shelves.
+  if (f === "shelves") {
+    return headerShelfCount(ps) || shelfLineCount(ps.filter((x) => (x.type === "shelf" || /\bshelf\b/i.test(x.name)) && !/\b(?:rails?|cleats?|supports?|pins?|brackets?|lips?)\b/i.test(x.name)));
+  }
   if (f === "casters") return ps.filter(isCasterPart).length;
   return [...ps, ...(p.instances ?? [])].filter((x) => /\brods?\b/i.test((x as { name?: string }).name ?? "")).length;
 }
@@ -120,7 +122,10 @@ function countNoted(p: YardProject, f: TypedFeature, n: number, typed: string): 
 
 /** Typed counts the build neither honours nor answers in a note. */
 export function countsDropped(p: YardProject, prompt: string): [TypedFeature, number, number][] {
+  // A Combined build (compose.ts) answers a typed shelf with its own Shelf product, as release did: its note says so.
+  const shelfProduct = (p.notes ?? []).some((n) => n.startsWith("Combined:") && /\bShelf\b/.test(n));
   return Object.entries(readCounts(prompt)).flatMap(([f, [n, typed]]) => {
+    if (f === "shelves" && shelfProduct) return [];
     const b = builtCount(p, f as TypedFeature);
     return b === n || countNoted(p, f as TypedFeature, n, typed) ? [] : [[f as TypedFeature, n, b] as [TypedFeature, number, number]];
   });
