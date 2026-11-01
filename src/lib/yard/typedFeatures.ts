@@ -54,7 +54,7 @@ const NUM_RE = `(\\d+|${Object.keys(NUM).join("|")})`;
 /** A size word after a number makes it a size ("36 wide shelves"), never a count. */
 const SIZE_WORD = "(?!(?:wide|tall|deep|high|long|inch|inches|in|ft|feet|foot|by|x)\\b)";
 /** A negated feature that names hardware for it ("no drawer slides") is not a count of zero. */
-const NOT_HARDWARE = "(?!\\s+(?:slides?|pulls?|knobs?|fronts?|hardware|locks?|hinges?|stops?|runners?))";
+const NOT_HARDWARE = "(?!\\s+(?:slides?|pulls?|knobs?|fronts?|hardware|locks?|hinges?|stops?|runners?|pins?|brackets?|supports?))";
 
 /**
  * Class F (rows 569/570, I41): the count typed for each feature, anywhere in the prompt ("6 drawer dresser", "with 3
@@ -73,7 +73,8 @@ function readCounts(prompt: string): Partial<Record<TypedFeature, [number, strin
   const out: Partial<Record<TypedFeature, [number, string]>> = {};
   for (const f of COUNTED) {
     const w = f === "rods" && isClothesRodPrompt(lower) ? `(?:${WORDS.rods.source}|(?<!drawer\\s)rails?\\b)` : WORDS[f].source;
-    const m = lower.match(new RegExp(`(?<![\\d/.x×-])(?<!\\d\\s)\\b${NUM_RE}[\\s-]+(?:${SIZE_WORD}[a-z]+\\s+)?${w}`));
+    // "a holder for 6 fishing rods" counts what it holds, not its parts.
+    const m = lower.match(new RegExp(`(?<![\\d/.x×-])(?<!\\d\\s)(?<!\\b(?:for|holds?|holding|fits?)\\s)\\b${NUM_RE}[\\s-]+(?:${SIZE_WORD}[a-z]+\\s+)?${w}`));
     const no = lower.match(new RegExp(`\\b(?:no|without|w/o)\\s+(?:a\\s+|any\\s+)?${w}${NOT_HARDWARE}`));
     const rods = f === "rods" ? rodsAsked(prompt) : 0;
     if (rods) out[f] = [rods, m?.[0] ?? `${rods} rods`];
@@ -141,7 +142,8 @@ const SAY = (w: string, h: string, f: TypedFeature) =>
 
 /** Every typed feature is built or named in a note: a feature the family cannot take is refused out loud, never dropped. */
 export function withFeatureNotes(p: YardProject, prompt: string): YardProject {
-  if (!p.panels?.length && !(p.instances ?? []).length) return p;
+  // An opening (a prehung door) picked for a typed feature is the wrong family: I41 flags it, a note can't answer it.
+  if ((!p.panels?.length && !(p.instances ?? []).length) || p.kind === "opening") return p;
   const missing = allTyped(prompt).filter((f) => !featureBuilt(p, f) && !featureNoted(p, f));
   const said = (f: TypedFeature) => readCounts(prompt)[f]?.[1];
   const head = typedHeadNoun(prompt) ?? "build";
