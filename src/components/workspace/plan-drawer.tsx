@@ -4,7 +4,7 @@ import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
 import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -13,6 +13,7 @@ import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type Pap
 import { usd } from "@/lib/utils";
 import { BuyList } from "@/components/workspace/buy-list";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
+import { CutRowDrawing } from "@/components/workspace/part-drawing";
 import { NestPlate } from "@/components/workspace/nest-plate";
 import { overlaps, setCutFocus } from "@/components/workspace/cut-focus";
 import { useCutTicks } from "@/components/workspace/cut-ticks";
@@ -22,6 +23,8 @@ import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 import { backerRowIds } from "@/lib/plan/backer";
+
+const rowEl = (L: string) => document.querySelector(`tr[data-yard-cut-row="${CSS.escape(L)}"]`);
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -261,8 +264,31 @@ function PlanBody({
   const [ticks, toggleTick] = useCutTicks(`${project.prompt}|${project.overall.width}x${project.overall.height}x${project.overall.depth}|${project.primaryMaterialId}`);
   const cutCount = cutProgressRows(plan).filter((c) => ticks.has(c.label!)).length;
   // Tap a letter on the sheet: light its pieces and its row, and bring the row into view.
+  // A row's drawing opens under it and the last one closes: keep the tapped row still under the finger.
+  const pinRow = useRef<{ L: string; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const pin = pinRow.current;
+    pinRow.current = null;
+    const row = pin && rowEl(pin.L);
+    const box = row?.closest(".overflow-y-auto");
+    if (row && box) box.scrollTop += row.getBoundingClientRect().top - pin.top;
+    // Then bring an opened drawing fully above the Save PDF bar (a bottom row's would open out of view).
+    const pic = document.querySelector("[data-yard-part-row]");
+    const area = pic?.closest(".overflow-y-auto");
+    const over = pic && area ? pic.getBoundingClientRect().bottom - area.getBoundingClientRect().bottom + 8 : 0;
+    if (area && over > 0) area.scrollTop += over;
+  }, [activeLetter]);
+  // Escape closes the open drawing; focus stays on the letter that opened it. The export dialog keeps its own Escape.
+  useEffect(() => {
+    if (!activeLetter || exportOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) setActiveLetter(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeLetter, exportOpen]);
   const pickLetter = useCallback((letter: string, fromSheet: boolean) => {
     setActiveLetter((cur) => (cur === letter && !fromSheet ? null : letter));
+    const top = !fromSheet && rowEl(letter)?.getBoundingClientRect().top;
+    if (typeof top === "number") pinRow.current = { L: letter, top };
     if (fromSheet) {
       const row = document.querySelector(`[data-yard-cut-row="${CSS.escape(letter)}"]`);
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -351,8 +377,8 @@ function PlanBody({
                     const done = !!L && ticks.has(L);
                     const thin = backerIds.has(c.id);
                     return (
+                      <Fragment key={c.id}>
                       <tr
-                        key={c.id}
                         data-yard-cut-row={L}
                         data-active={overlaps(c, focusIds, activeLetter) ? "1" : undefined}
                         data-part-ids={c.partIds?.join(" ") || undefined}
@@ -398,6 +424,9 @@ function PlanBody({
                           ) : null}
                         </td>
                       </tr>
+                      {/* The tapped row's part: in place and alone, from the live drawing (no new words). */}
+                      <CutRowDrawing project={project} plan={plan} row={c} active={!!L && L === activeLetter} />
+                      </Fragment>
                     );
                   })}
                 </tbody>
