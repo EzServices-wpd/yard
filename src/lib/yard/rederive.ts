@@ -17,7 +17,7 @@ const hi = (p: Panel, k: number) => p.position[AX[k][0]] + p.size[AX[k][1]];
 const over = (p: Panel, q: Panel, k: number) => Math.min(hi(p, k), hi(q, k)) - Math.max(lo(p, k), lo(q, k));
 
 /** [i, j, k, g]: panel i's far face on axis k meets panel j's near face, g apart (0, or a fraction's 1/16" or less). */
-export function jointsOf(panels: Panel[]): [number, number, number, number][] {
+function jointsOf(panels: Panel[]): [number, number, number, number][] {
   const out: [number, number, number, number][] = [];
   for (let i = 0; i < panels.length; i++) for (let j = 0; j < panels.length; j++) {
     if (i === j || !boxy(panels[i]) || !boxy(panels[j])) continue;
@@ -27,14 +27,6 @@ export function jointsOf(panels: Panel[]): [number, number, number, number][] {
     }
   }
   return out;
-}
-
-/** Joints of `was` that no longer meet in `now` (same panel list), with the gap (+) or overlap (−) in inches. */
-export function openJoints(was: Panel[], now: Panel[], tol = 1 / 16): { a: string; b: string; axis: string; gap: number }[] {
-  return jointsOf(was)
-    .filter(([i, j]) => boxy(now[i]) && boxy(now[j]))
-    .map(([i, j, k, g]) => ({ a: now[i].name, b: now[j].name, axis: "xyz"[k], gap: lo(now[j], k) - hi(now[i], k) - g }))
-    .filter((x) => Math.abs(x.gap) > tol + 1e-9);
 }
 
 /** `now` is `was` with some faces thinned in place: move and grow parts until every joint of `was` meets again. */
