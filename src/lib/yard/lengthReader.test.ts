@@ -271,4 +271,8 @@ it("card 6 (r4): a castle typed in any spelling builds or refuses like its digit
   assert.equal(t.name, "Castle");
   assert.equal(t.refused, "Yard builds up to 8,000 parts in one plan, and a Castle in wooden toothpicks at 30 inches needs more, so nothing is built. It builds up to 29 1/2 inches: type 29 1/2 inches or smaller.");
   assert.match(core("toothpick castle 30 and a half inches").refused ?? "", /^Yard builds up to 8,000 parts in one plan, and a Castle in wooden toothpicks at 30 1\/2 inches needs more/);
+  // Card 6 is castle-only: a non-castle refusal keeps b43aabaf's (= release's) title, spelled size words and all (row 731 non-castle stays NR-2).
+  const tw = core("toothpick tower ten feet tall");
+  assert.equal(tw.name, "Tower Ten Feet");
+  assert.match(tw.refused ?? "", /^Yard builds up to 8,000 parts in one plan, and a Tower Ten Feet in wooden toothpicks at 120" tall needs more/);
 });
