@@ -316,7 +316,7 @@ export function PanelMesh({
               color={shop && !inStep ? BENCH_INK.ink : edgeColor}
               lineWidth={inStep ? 1.8 : 1}
               transparent
-              opacity={ghost ? 0.35 : shop || inStep ? 1 : 0.55}
+              opacity={ghost ? 0.35 : inStep ? 0.95 : shop ? 1 : 0.55}
               depthWrite={false}
               layers={1}
             />
