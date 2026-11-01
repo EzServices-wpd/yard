@@ -23,6 +23,9 @@ const CASES: [string, string | undefined, string?][] = [
   ["over-toilet shelf", "plywood-1-2-4x8"],
   ["storage cubby 3x3", "plywood-1-2-4x8"],
   ["pocket vanity 18 wide", "plywood-1-2-4x8"],
+  ["fold down desk", "plywood-1-2-4x8"],
+  ["coat bench", "plywood-1-2-4x8"],
+  ["storage ottoman 36 square", "plywood-1-2-4x8"],
   ["dresser 36x40x18 4 drawers in 1/2 inch plywood", undefined, "dresser 36x40x18 4 drawers"],
 ];
 
