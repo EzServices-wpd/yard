@@ -3,6 +3,9 @@ import test from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { i41 } from "./invariants";
 import { builtCount, typedCounts, typedFeatures } from "./typedFeatures";
+import { composeProducts } from "./compose";
+import { headerTitle } from "./pdf";
+import type { YardProject } from "./types";
 
 globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
 
@@ -20,6 +23,11 @@ test("class F: a typed count is read as a count, 'no X' as zero, never a size", 
   assert.deepEqual(typedCounts("dresser with no drawer slides"), {});
   assert.deepEqual(typedFeatures("wardrobe 80 tall with double hang"), ["double hang"]);
   assert.deepEqual(typedFeatures("pantry cabinet with pull out shelves"), ["shelves", "pull-outs"]);
+  // Card words on card heads only (row 735): no pull-out ask for other wordings or a closet; "0 shelves" asks for none.
+  assert.deepEqual(typedFeatures("pantry with slide-out baskets"), []);
+  assert.deepEqual(typedFeatures("closet with pull out drawers"), ["drawers"]);
+  assert.deepEqual(typedFeatures("coffee table with 0 shelves"), []);
+  assert.deepEqual(typedCounts("fishing rod holder for 6 rods"), {});
 });
 
 test("class F: every typed feature word or count is built or named in a note (I41), never dropped", () => {
@@ -71,4 +79,50 @@ test("class F controls: a count the build honours adds no note; a bare 'a shelf'
   // Shelves count by level, not by piece: 3 shelves across 3 bays are 3, not 9.
   assert.equal(builtCount(generateFromPrompt("bookcase 72 wide with 3 shelves"), "shelves"), 3);
   assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
+});
+
+const CARD = [
+  /^You asked for .+; this [a-z ]+ has (?:\d+|none)\.$/,
+  /^You asked for a double hang; this (?:wardrobe|closet|armoire) is built without one for now\.$/,
+  /^You asked for (?:pull out shelves|pull-out drawers|roll out trays|slide out shelves); this (?:cabinet|pantry) is built without them for now\.$/,
+  /^You asked for (?:a shelf|shelves|doors|drawers); this [a-z ]+ is built without (?:one|them) for now\.$/,
+];
+
+test("class F r2 (Critic rows 733/735): a count note says the header's number; every note is the card's words; capacity is no count", () => {
+  const bad: string[] = [];
+  for (const [q, said] of [
+    ["coffee table without shelves", "You asked for no shelves; this table has 3."],
+    ["media console with no shelves", "You asked for no shelves; this console has 2."],
+    ["walk in closet without a rod", "You asked for no rod; this closet has 1."],
+    ["base cabinet with pull-out shelves and 2 doors", "You asked for pull out shelves; this cabinet is built without them for now."],
+    ["fishing rod holder for 6 rods", ""],
+    ["pantry with slide-out baskets", ""],
+    ["closet with pull out drawers", ""],
+    ["cabinet with pull out trays", ""],
+    ["coffee table with 0 shelves", ""],
+    ["vanity with no shelves", ""],
+  ]) {
+    const p = generateFromPrompt(q);
+    const asked = (p.notes ?? []).filter((n) => /^You asked for/.test(n));
+    if (asked.join(" | ") !== said) bad.push(`${q}: ${asked.join(" | ")}`);
+    for (const n of asked) if (!CARD.some((re) => re.test(n))) bad.push(`${q}: off-card "${n}"`);
+    const header = headerTitle(p).match(/· (\d+) shel(?:f|ves)\b/)?.[1];
+    const note = asked.join(" ").match(/ has (\d+)\./)?.[1];
+    if (header && note && /shel/.test(asked.join(" ")) && header !== note) bad.push(`${q}: header ${header}, note ${note}`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test("class F r2 (row 736): count words split part from product as digits do, on every host; more clauses keep the release build", () => {
+  const stub = (c: string) => ({ id: c, name: c, prompt: c, notes: [], instances: [], overall: { width: 10, height: 10, depth: 10 },
+    panels: [{ id: c, name: "Side", type: "side", materialId: "m", size: { width: 10, height: 10, depth: 10 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }] }) as unknown as YardProject;
+  const split: string[] = [];
+  for (const h of ["media console", "sideboard", "credenza", "buffet", "vanity", "desk", "nightstand", "coffee table", "end table"]) {
+    for (const s of ["1 open shelf", "one open shelf", "an open shelf", "2 open shelves", "two open shelves", "0 shelves", "zero shelves", "no shelves", "3 shelves", "three shelves"]) {
+      if (composeProducts(`${h} with ${s}`, stub)) split.push(`${h} with ${s}`);
+    }
+    if (!composeProducts(`${h} with 2 doors and 1 shelf`, stub)) split.push(`${h} with 2 doors and 1 shelf kept no Shelf`);
+  }
+  assert.deepEqual(split, []);
+  assert.ok(composeProducts("picture frame with a shelf", stub));
 });
