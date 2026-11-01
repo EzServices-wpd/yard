@@ -43,12 +43,20 @@ test("class F: every typed feature word or count is built or named in a note (I4
   assert.deepEqual(bad, []);
 });
 
-test("class F: I41 fires on each dropped feature or count once its note is taken away", () => {
+test("class F: I41 fires on each dropped feature or count once its note is taken away; the note is the card's text", () => {
   const quiet: string[] = [];
-  for (const q of ["wardrobe 48 wide 80 tall 24 deep with double hang", "pantry cabinet 24 wide 7 ft tall 24 deep with pull out shelves", "closet with no rods", "closet with 2 rails", "bookcase with 0 shelves", "nightstand 20 wide 24 tall with 3 shelves"]) {
+  for (const [q, said] of [
+    ["wardrobe 48 wide 80 tall 24 deep with double hang", "You asked for a double hang; this wardrobe is built without one for now."],
+    ["pantry cabinet 24 wide 7 ft tall 24 deep with pull out shelves", "You asked for pull out shelves; this cabinet is built without them for now."],
+    ["closet with no rods", "You asked for no rods; this closet has 1."],
+    ["closet without rods", "You asked for no rods; this closet has 1."],
+    ["closet with 2 rails", "You asked for 2 rails; this closet has 1."],
+    ["bookcase with 0 shelves", "You asked for 0 shelves; this bookcase has 5."],
+    ["nightstand 20 wide 24 tall with 3 shelves", "You asked for 3 shelves; this nightstand has 1."],
+  ]) {
     const p = generateFromPrompt(q);
     const asked = (p.notes ?? []).filter((n) => /^You asked for/.test(n));
-    if (asked.length !== 1) quiet.push(`${q}: ${asked.length} 'You asked for' notes`);
+    if (asked.join(" | ") !== said) quiet.push(`${q}: ${asked.join(" | ")}`);
     if (!i41({ ...p, notes: (p.notes ?? []).filter((n) => !asked.includes(n)) }, q).length) quiet.push(`${q}: I41 silent without the note`);
   }
   assert.deepEqual(quiet, []);
