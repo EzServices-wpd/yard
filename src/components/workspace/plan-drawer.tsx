@@ -4,7 +4,7 @@ import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
 import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -13,6 +13,7 @@ import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type Pap
 import { usd } from "@/lib/utils";
 import { BuyList } from "@/components/workspace/buy-list";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
+import { CutRowDrawing } from "@/components/workspace/part-drawing";
 import { NestPlate } from "@/components/workspace/nest-plate";
 import { overlaps, setCutFocus } from "@/components/workspace/cut-focus";
 import { useCutTicks } from "@/components/workspace/cut-ticks";
@@ -351,8 +352,8 @@ function PlanBody({
                     const done = !!L && ticks.has(L);
                     const thin = backerIds.has(c.id);
                     return (
+                      <Fragment key={c.id}>
                       <tr
-                        key={c.id}
                         data-yard-cut-row={L}
                         data-active={overlaps(c, focusIds, activeLetter) ? "1" : undefined}
                         data-part-ids={c.partIds?.join(" ") || undefined}
@@ -398,6 +399,9 @@ function PlanBody({
                           ) : null}
                         </td>
                       </tr>
+                      {/* The tapped row's part: in place and alone, from the live drawing (no new words). */}
+                      <CutRowDrawing project={project} plan={plan} row={c} active={!!L && L === activeLetter} />
+                      </Fragment>
                     );
                   })}
                 </tbody>
