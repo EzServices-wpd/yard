@@ -137,7 +137,7 @@ test("class F r4 (card 1): only '1 shelf' / 'an open shelf' on a card 1 host sta
   const split: string[] = [];
   const card1 = ["media console", "sideboard", "credenza", "buffet", "vanity", "desk", "nightstand"];
   for (const h of [...card1, "coffee table", "end table"]) {
-    for (const s of ["1 shelf", "1 open shelf", "one open shelf", "an open shelf", "an open shelf.", "a single lower shelf", "2 open shelves", "two open shelves", "open shelves", "zero shelves", "no shelves", "no open shelves", "twelve shelves"]) {
+    for (const s of ["1 shelf", "1 open shelf", "one open shelf", "an open shelf", "an open shelf.", "a single lower shelf", "1 shelf unit", "2 open shelves", "two open shelves", "open shelves", "zero shelves", "no shelves", "no open shelves", "twelve shelves"]) {
       const host = card1.includes(h) && /^(?:1 shelf|1 open shelf|one open shelf|an open shelf)$/.test(s);
       if (!!composeProducts(`${h} with ${s}`, stub)?.notes.some((n) => n.startsWith("Combined:")) === host) split.push(`${h} with ${s}`);
     }
