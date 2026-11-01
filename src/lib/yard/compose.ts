@@ -130,7 +130,8 @@ function partNotProduct(core: string): boolean {
 /**
  * Class F (row 570, card 1): the whole prompt is a card 1 host, optionally with its size ("vanity 85 wide 34.5 tall"),
  * then "with 1 shelf", "with one shelf", "with 1/one [word] shelf" or "with an open shelf": that is the host's own
- * shelf. Anything else (another clause, casters, "desk organizer", a size after the shelf) keeps the release build.
+ * shelf. Anything else (another clause, "desk organizer", a size after the shelf) keeps the release build. Release's
+ * casters rule (C13) builds the prompt without its casters words first, so "desk with 1 shelf and casters" is this form.
  * Only the typed words decide, never price or stock, so a stock switch keeps the structure (row 745).
  */
 const CARD1 = /^(?:an? |the )?(?:media console|sideboard|credenza|buffet|vanity|desk|nightstand)(?: \d+(?:\.\d+)? (?:wide|tall|deep))* with (?:(?:1|one) (?:(?!wide |tall |deep )[a-z]+ )?shelf|an open shelf)$/;
