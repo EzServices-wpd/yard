@@ -26,13 +26,18 @@ const CASES: [string, string | undefined, string?][] = [
   ["dresser 36x40x18 4 drawers in 1/2 inch plywood", undefined, "dresser 36x40x18 4 drawers"],
 ];
 
-it("rows 705/706: every joint of the 3/4 build still meets after a stock switch", () => {
+it("rows 705/706: every joint of the 3/4 build still meets after a stock switch, W and H hold", () => {
   const open: string[] = [];
   for (const [q, stock, base] of CASES) offline(() => {
     const was = generateFromPrompt(base ?? q).panels;
     const now = (stock ? generateFromPrompt(q, stock) : generateFromPrompt(q)).panels;
     assert.equal(now.length, was.length, `${q}: same parts`);
     for (const j of openJoints(was, now)) open.push(`${q}: ${j.a} / ${j.b} ${j.axis} ${j.gap.toFixed(3)}`);
+    // The typed width and height hold: the outer faces stay put (depth may lose the 1/4" a proud front thinned).
+    for (const a of ["x", "y"] as const) {
+      const span = (ps: typeof was) => Math.max(...ps.map((p) => p.position[a] + p.size[a === "x" ? "width" : "height"])) - Math.min(...ps.map((p) => p.position[a]));
+      if (Math.abs(span(now) - span(was)) > 1 / 16) open.push(`${q}: ${a} span ${span(was)} -> ${span(now)}`);
+    }
   });
   assert.deepEqual(open, []);
 });
