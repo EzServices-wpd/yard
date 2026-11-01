@@ -4,7 +4,7 @@ import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
 import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -23,6 +23,8 @@ import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 import { backerRowIds } from "@/lib/plan/backer";
+
+const rowEl = (L: string) => document.querySelector(`tr[data-yard-cut-row="${CSS.escape(L)}"]`);
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -262,8 +264,19 @@ function PlanBody({
   const [ticks, toggleTick] = useCutTicks(`${project.prompt}|${project.overall.width}x${project.overall.height}x${project.overall.depth}|${project.primaryMaterialId}`);
   const cutCount = cutProgressRows(plan).filter((c) => ticks.has(c.label!)).length;
   // Tap a letter on the sheet: light its pieces and its row, and bring the row into view.
+  // A row's drawing opens under it and the last one closes: keep the tapped row still under the finger.
+  const pinRow = useRef<{ L: string; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const pin = pinRow.current;
+    pinRow.current = null;
+    const row = pin && rowEl(pin.L);
+    const box = row?.closest(".overflow-y-auto");
+    if (row && box) box.scrollTop += row.getBoundingClientRect().top - pin.top;
+  }, [activeLetter]);
   const pickLetter = useCallback((letter: string, fromSheet: boolean) => {
     setActiveLetter((cur) => (cur === letter && !fromSheet ? null : letter));
+    const top = !fromSheet && rowEl(letter)?.getBoundingClientRect().top;
+    if (typeof top === "number") pinRow.current = { L: letter, top };
     if (fromSheet) {
       const row = document.querySelector(`[data-yard-cut-row="${CSS.escape(letter)}"]`);
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
