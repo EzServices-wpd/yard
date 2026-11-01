@@ -10,18 +10,20 @@ import { getCatalogItem } from "./catalog";
  */
 const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
 const EPS = 0.005;
+const GAP = 1 / 16; // a typed fraction rounds a cut to 1/16": a part that close to a face is joined to it
 const boxy = (p: Panel) => !p.yaw && !p.polygon && !p.strut && !p.form && !p.outline && !p.blank;
 const lo = (p: Panel, k: number) => p.position[AX[k][0]];
 const hi = (p: Panel, k: number) => p.position[AX[k][0]] + p.size[AX[k][1]];
 const over = (p: Panel, q: Panel, k: number) => Math.min(hi(p, k), hi(q, k)) - Math.max(lo(p, k), lo(q, k));
 
-/** [i, j, k]: panel i's far face on axis k meets panel j's near face. */
-export function jointsOf(panels: Panel[]): [number, number, number][] {
-  const out: [number, number, number][] = [];
+/** [i, j, k, g]: panel i's far face on axis k meets panel j's near face, g apart (0, or a fraction's 1/16" or less). */
+export function jointsOf(panels: Panel[]): [number, number, number, number][] {
+  const out: [number, number, number, number][] = [];
   for (let i = 0; i < panels.length; i++) for (let j = 0; j < panels.length; j++) {
     if (i === j || !boxy(panels[i]) || !boxy(panels[j])) continue;
     for (let k = 0; k < 3; k++) {
-      if (Math.abs(lo(panels[j], k) - hi(panels[i], k)) < EPS && [0, 1, 2].every((o) => o === k || over(panels[i], panels[j], o) > 0.05)) out.push([i, j, k]);
+      const g = lo(panels[j], k) - hi(panels[i], k);
+      if (g > -EPS && g < GAP + EPS && [0, 1, 2].every((o) => o === k || over(panels[i], panels[j], o) > 0.05)) out.push([i, j, k, Math.max(0, g)]);
     }
   }
   return out;
@@ -31,7 +33,7 @@ export function jointsOf(panels: Panel[]): [number, number, number][] {
 export function openJoints(was: Panel[], now: Panel[], tol = 1 / 16): { a: string; b: string; axis: string; gap: number }[] {
   return jointsOf(was)
     .filter(([i, j]) => boxy(now[i]) && boxy(now[j]))
-    .map(([i, j, k]) => ({ a: now[i].name, b: now[j].name, axis: "xyz"[k], gap: lo(now[j], k) - hi(now[i], k) }))
+    .map(([i, j, k, g]) => ({ a: now[i].name, b: now[j].name, axis: "xyz"[k], gap: lo(now[j], k) - hi(now[i], k) - g }))
     .filter((x) => Math.abs(x.gap) > tol + 1e-9);
 }
 
@@ -55,14 +57,15 @@ export function meetAgain(was: Panel[], now: Panel[]): Panel[] {
   const pinned = new Set<string>();
   for (let pass = 0; pass < 4; pass++) {
     let moved = false;
-    for (const [i, j, k] of J) {
-      const a = hi(P[i], k), b = lo(P[j], k);
-      if (Math.abs(a - b) < EPS) continue;
+    for (const [i, j, k, g] of J) {
+      const a = hi(P[i], k) + g, b = lo(P[j], k) - g;
+      if (Math.abs(b + g - a) < EPS) continue;
       const jl = `${j}:${k}:lo`, ih = `${i}:${k}:hi`;
+      // a = where j's near face belongs, b = where i's far face belongs (the 3/4" gap g kept).
       if (grows(P[j], k) && !pinned.has(jl) && hi(P[j], k) - a > 1) { setLo(P[j], k, a); pinned.add(jl); }
       else if (grows(P[i], k) && !pinned.has(ih) && b - lo(P[i], k) > 1) { setHi(P[i], k, b); pinned.add(ih); }
-      else if (!grows(P[j], k) && !outer(j, k) && !pinned.has(jl)) { shift(P[j], k, a - b); pinned.add(jl); pinned.add(`${j}:${k}:hi`); }
-      else if (!grows(P[i], k) && !outer(i, k) && !pinned.has(ih)) { shift(P[i], k, b - a); pinned.add(ih); pinned.add(`${i}:${k}:lo`); }
+      else if (!grows(P[j], k) && !outer(j, k) && !pinned.has(jl)) { shift(P[j], k, a - lo(P[j], k)); pinned.add(jl); pinned.add(`${j}:${k}:hi`); }
+      else if (!grows(P[i], k) && !outer(i, k) && !pinned.has(ih)) { shift(P[i], k, b - hi(P[i], k)); pinned.add(ih); pinned.add(`${i}:${k}:lo`); }
       else continue;
       moved = true;
     }
