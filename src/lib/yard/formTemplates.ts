@@ -98,7 +98,7 @@ export function typedSizeIn(prompt: string): { length?: number; height?: number 
       if (!(v > 1 && v < 400)) continue;
       const before = l.slice(Math.max(0, (m.index ?? 0) - 2), m.index);
       const after = l.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 14);
-      if (/[x×\/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
+      if (/[x×/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
       const ax = m[3];
       if (ax && /tall|high|height/.test(ax)) out.height ??= v;
       else if (ax) out.length ??= v;
