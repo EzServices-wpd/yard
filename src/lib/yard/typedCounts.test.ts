@@ -149,7 +149,7 @@ test("class F r4 (card 1): only '1 shelf' / 'an open shelf' on a card 1 host sta
   for (const [q, host] of [
     ["corner desk with 1 shelf", false], ["buffet cabinet with an open shelf", false], ["vanity mirror with an open shelf", false],
     ["desk organizer with 1 shelf", false], ["nightstand lamp with 1 shelf", false], ["double vanity with 1 shelf", false],
-    ["desk with 1 shelf and casters", false], ["desk with 1 wide shelf", false], ["sideboard with the open shelf", false], ["vanity with an open shelf 30 wide", false],
+    ["desk with 1 shelf and casters", false], ["desk with 1 wide shelf", false], ["desk with two open shelf", false], ["sideboard with the open shelf", false], ["vanity with an open shelf 30 wide", false],
     ["buffet with 1  shelf", true], ["media console with  an  open  shelf", true], ["desk 60 wide with 1 shelf", true],
     ["vanity 85 wide 34.5 tall with 1 shelf", true],
   ] as const) {
