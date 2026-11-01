@@ -130,14 +130,14 @@ function partNotProduct(core: string): boolean {
 
 /**
  * Class F (rows 570, 736, 739): a counted or open shelf ("1 shelf", "two open shelves", "no open shelves", "an open
- * shelf") is a part of its host. Counts come from readCount, the checker's own reader. Bare "a shelf" is still a product
- * ("picture frame with a shelf"); an uncounted "open shelves" is a part.
+ * shelf") is a part of its host. Counts come from readCount, the checker's own reader. The split drops "a" / "an", so
+ * bare "a shelf" is still a product ("picture frame with a shelf"); "(an) open shelf" or "open shelves" is a part.
  */
 const SHELF_ADJ = /^(?:(?:an?|the)\s+)?(?:open|lower|upper|bottom|top|middle|inner|interior|adjustable)\s+shel(?:f|ves)$/;
 const shelfCount = (clause: string) => {
   const c = clause.trim().toLowerCase();
   const r = readCount(c, "shel(?:f|ves)\\b", "shelf");
-  if (r && r.at === 0 && r.words.length === c.length) return r.one && !r.one.adj ? null : r.n;
+  if (r && r.at === 0 && r.words.length === c.length) return r.n;
   return SHELF_ADJ.test(c) ? -1 : null;
 };
 
