@@ -272,7 +272,19 @@ function PlanBody({
     const row = pin && rowEl(pin.L);
     const box = row?.closest(".overflow-y-auto");
     if (row && box) box.scrollTop += row.getBoundingClientRect().top - pin.top;
+    // Then bring an opened drawing fully above the Save PDF bar (a bottom row's would open out of view).
+    const pic = document.querySelector("[data-yard-part-row]");
+    const area = pic?.closest(".overflow-y-auto");
+    const over = pic && area ? pic.getBoundingClientRect().bottom - area.getBoundingClientRect().bottom + 8 : 0;
+    if (area && over > 0) area.scrollTop += over;
   }, [activeLetter]);
+  // Escape closes the open drawing; focus stays on the letter that opened it. The export dialog keeps its own Escape.
+  useEffect(() => {
+    if (!activeLetter || exportOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) setActiveLetter(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeLetter, exportOpen]);
   const pickLetter = useCallback((letter: string, fromSheet: boolean) => {
     setActiveLetter((cur) => (cur === letter && !fromSheet ? null : letter));
     const top = !fromSheet && rowEl(letter)?.getBoundingClientRect().top;

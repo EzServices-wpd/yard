@@ -1,6 +1,6 @@
 // PR B (madera comparison, feature 3): tapping a cut-list letter shows that part's drawing under its row, from the
 // live vector renderer. Rendered with react-dom/server: the active row with part ids mounts its drawing with exactly
-// those ids hot, the "alone" picture measures one part (not the build), and a row without ids or not active renders nothing.
+// those ids hot, the "alone" picture is labelled exactly with the row's size (or not at all), and a row without ids or not active renders nothing.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -32,10 +32,17 @@ for (const prompt of ["linen closet 31.5 wide 78 tall 16 deep", "pocket vanity 4
       // In place: the whole build (model parts only, so no prop or scale figure), the row's own letter bubble.
       for (const id of parts(place)) assert.ok(model.has(id), `${id} is a model part`);
       assert.ok(labels(place).includes(row.label!), `${row.label}: letter in place`);
-      // Alone: one of the row's parts, and its lines read that part's own size, not the build's.
-      assert.deepEqual([...parts(alone)], [row.partIds!.find((id) => model.has(id))]);
-      const want = [row.lengthIn, row.widthIn].map((v) => `${inchFrac(v)}"`);
-      for (const w of want) assert.ok(labels(alone).includes(w), `${row.label}: alone shows ${w} (got ${labels(alone).join(", ")})`);
+      // In place: exactly the row's parts are hot (the hot edge ink), every other part ghosted.
+      const hotEdge = "rgb(150,64,12)";
+      const hot = new Set([...place.matchAll(/<g data-part="([^"]+)"[^>]*>([\s\S]*?)<\/g>/g)].filter((m) => m[2].includes(hotEdge)).map((m) => m[1]));
+      assert.deepEqual([...hot].sort(), row.partIds!.filter((id) => model.has(id)).sort(), `${row.label}: hot parts are the row's`);
+      // Alone: one of the row's parts; its lines read exactly the row's length, width and thickness, no other number.
+      const one = [...parts(alone)];
+      assert.equal(one.length, 1);
+      assert.ok(row.partIds!.includes(one[0]), `${row.label}: alone is one of its parts`);
+      const size = [row.lengthIn, row.widthIn, row.thicknessIn ?? 0.75].map((v) => `${inchFrac(v)}"`).sort();
+      const got = labels(alone).sort();
+      if (got.length || prompt.startsWith("linen")) assert.deepEqual(got, size, `${row.label} ${row.name}: alone labels`);
     }
   });
 }

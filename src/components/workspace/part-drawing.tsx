@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { partLetters, renderProject, type Frame, type Tone } from "@/lib/yard/pdfDraw";
 import { KIT } from "@/lib/yard/pdfKit";
+import { inchFrac } from "@/lib/yard/inchText";
 import { SvgDoc } from "@/lib/yard/svgDoc";
 import type { jsPDF } from "jspdf";
 import type { BuildPlan, CutLine, YardProject } from "@/lib/yard/types";
@@ -15,20 +16,23 @@ import type { BuildPlan, CutLine, YardProject } from "@/lib/yard/types";
  */
 const W = 240;
 const H = 180;
+// The alone picture draws on a smaller sheet, so at 390 its size labels read ~8.5 px instead of ~6 px.
+const AW = 180;
+const AH = 135;
 
 type PartPictures = { place: string; alone: string };
 
 // One render per (build, row): a big house build is 80+ parts a picture, so a re-render or a re-tap reuses it.
 const cache = new WeakMap<YardProject, Map<string, PartPictures>>();
 
-function picture(project: YardProject, tones: Map<string, Tone>, opts: { fitIds?: string[]; letters?: Map<string, string>; dims?: boolean }) {
-  const doc = new SvgDoc(W, H);
-  const frame: Frame = { x: 0, y: 0, w: W, h: H };
+function picture(project: YardProject, tones: Map<string, Tone>, opts: { fitIds?: string[]; letters?: Map<string, string>; dims?: boolean }, w = W, h = H) {
+  const doc = new SvgDoc(w, h);
+  const frame: Frame = { x: 0, y: 0, w, h };
   doc.setFillColor(...KIT.paper);
-  doc.roundedRect(0, 0, W, H, 6, 6, "F");
+  doc.roundedRect(0, 0, w, h, 6, 6, "F");
   renderProject(doc as unknown as jsPDF, project, frame, {
     tones,
-    pad: 22,
+    pad: opts.dims ? 16 : 22,
     partGroup: (id) => ({ "data-part": id }),
     ...opts,
   });
@@ -49,8 +53,12 @@ function partPictures(project: YardProject, plan: BuildPlan, row: CutLine): Part
     fitIds: all,
     letters: partLetters(project, plan.cutList),
   });
-  // One part, fitted and measured on its own solids, so the lines read that part's size, not the whole build's.
-  const alone = picture(project, new Map([[ids[0], "built" as Tone]]), { dims: true });
+  // One part alone. Its lines may only say the row's own size (the numbers the cut list shows): the drawing measures a
+  // part's 3D box, which differs for an angled, round, spliced or doubled part, so then it is drawn with no lines.
+  const want3 = [row.lengthIn, row.widthIn, row.thicknessIn ?? 0.75].map((v) => `${inchFrac(v)}"`).sort().join("|");
+  const labels = (svg: string) => [...svg.matchAll(/<text[^>]*>([^<]*)</g)].map((m) => m[1].replace(/&quot;/g, '"')).sort().join("|");
+  const one = (id: string, dims: boolean) => picture(project, new Map([[id, "built" as Tone]]), { dims }, AW, AH);
+  const alone = ids.slice(0, 4).map((id) => one(id, true)).find((svg) => labels(svg) === want3) ?? one(ids[0], false);
   const out = { place, alone };
   byRow.set(row.id, out);
   return out;
