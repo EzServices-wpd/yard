@@ -12,6 +12,7 @@ import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
 import { FIGURES, setScale, useScale } from "./scale-props";
 import { ViewInRoomButton } from "./view-in-room-button";
+import { setShopDrawing, shopDrawable, useShopDrawing } from "./shop-drawing";
 import type { WorkMode } from "@/lib/yard/types";
 
 /** A refusal's material chip: it names that nothing was built and opens nothing (there is no stock to choose). */
@@ -130,6 +131,7 @@ export function BenchOptionsPanel({
   const { label: stockLabel, wire, offersStock } = useStockLabel();
   const [toolsShown] = useBenchToolsShown();
   const scale = useScale();
+  const shopDrawing = useShopDrawing();
 
   useEffect(() => {
     if (!open) return;
@@ -262,6 +264,8 @@ export function BenchOptionsPanel({
             {(housePath || project.pocket) && <Toggle on={measureOpen} onClick={() => setMeasureOpen(!measureOpen)} label="Opening outline" />}
             {historicOk && !housePath && <Toggle on={showHistoric} onClick={() => setShowHistoric(!showHistoric)} label="Form" />}
             {showLoadBtn && <Toggle on={showLoad} onClick={() => setShowLoad(!showLoad)} label="Load" />}
+            {/* Outlines only on the bench; the browser's own print gives the black-on-white drawing (shop-drawing-print.tsx). */}
+            {shopDrawable(project) && <Toggle touch on={shopDrawing} onClick={() => setShopDrawing(!shopDrawing)} label="Shop drawing" />}
           </div>
           {!housePath && (
             <Row label="Move">

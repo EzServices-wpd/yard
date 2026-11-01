@@ -9,7 +9,7 @@ import type { Panel } from "@/lib/yard/types";
 import { doorHingesLeft, isHingedLidPanel } from "@/lib/yard/operateFaces";
 import { benchDrawerPull, benchPullDepth, benchWearsPull } from "@/components/workspace/drawerGroups";
 import { stockLook } from "@/lib/yard/stockLook";
-import { BENCH_INK, STEP_GLOW, plyCount, shopLook } from "@/components/workspace/shop-light";
+import { BENCH_INK, SHOP_GROUND, STEP_GLOW, plyCount, shopLook } from "@/components/workspace/shop-light";
 import { panelRenderLook } from "@/lib/yard/partStock";
 import { isBoughtHardwareName } from "@/lib/yard/boughtHardware";
 import { doorHingeLayout } from "@/lib/yard/hingedLeaf";
@@ -22,6 +22,7 @@ import {
   PinHoles,
 } from "@/components/workspace/panelHardware";
 import { useExplodeRefs } from "@/components/workspace/explode-driver";
+import { useShopDrawingOn } from "@/components/workspace/shop-drawing";
 
 export { StickCloud } from "@/components/workspace/stickCloudCraft";
 export { CarcaseJoins } from "@/components/workspace/carcaseJoins";
@@ -244,6 +245,9 @@ export function PanelMesh({
   const shadows = !!useShadows;
   // See inside: the staged explode moves these two groups (transform only, explode-driver.tsx).
   const ex = useExplodeRefs(panel.id);
+  // Shop drawing: outlines only. The face fills the ground colour unlit (so it still hides the lines behind it), full ink
+  // edges, and no grain, banding, hardware or pin holes.
+  const shop = useShopDrawingOn();
   if (hiddenInStep) return null;
 
   // Bought coat hooks: steel hook glyph, never a wood box the same color as the rail.
@@ -287,28 +291,32 @@ export function PanelMesh({
           ) : (
             <boxGeometry args={[w, h, d]} />
           )}
-          <meshStandardMaterial
-            color={color}
-            map={glass || placeholder ? undefined : grain ?? look.map ?? undefined}
-            transparent={opacity < 1 || glass}
-            opacity={opacity}
-            roughness={glass ? 0.08 : look.roughness}
-            metalness={glass ? 0.22 : look.metalness}
-            envMapIntensity={glass ? 1.4 : look.env}
-            emissive={glow ? BENCH_INK.stepGlow : "#000000"}
-            emissiveIntensity={glow}
-            depthWrite={opacity > 0.5}
-            polygonOffset={mirror}
-            polygonOffsetFactor={mirror ? -2 : 0}
-          />
+          {shop ? (
+            <meshBasicMaterial color={SHOP_GROUND.bg} transparent={opacity < 1} opacity={opacity} depthWrite={opacity > 0.5} />
+          ) : (
+            <meshStandardMaterial
+              color={color}
+              map={glass || placeholder ? undefined : grain ?? look.map ?? undefined}
+              transparent={opacity < 1 || glass}
+              opacity={opacity}
+              roughness={glass ? 0.08 : look.roughness}
+              metalness={glass ? 0.22 : look.metalness}
+              envMapIntensity={glass ? 1.4 : look.env}
+              emissive={glow ? BENCH_INK.stepGlow : "#000000"}
+              emissiveIntensity={glow}
+              depthWrite={opacity > 0.5}
+              polygonOffset={mirror}
+              polygonOffsetFactor={mirror ? -2 : 0}
+            />
+          )}
           {/* Thin dark outline on every panel so neighbouring parts read as separate pieces. */}
           {!glass && (
             <Edges
               threshold={25}
-              color={edgeColor}
+              color={shop && !inStep ? BENCH_INK.ink : edgeColor}
               lineWidth={inStep ? 1.8 : 1}
               transparent
-              opacity={ghost ? 0.35 : inStep ? 0.95 : 0.55}
+              opacity={ghost ? 0.35 : shop || inStep ? 1 : 0.55}
               depthWrite={false}
               layers={1}
             />
@@ -316,17 +324,17 @@ export function PanelMesh({
         </mesh>
         {/* Rails/aprons: EdgeBand top strips sit flat under the top and read as
             scrambled bars on yawed 3-leg chords. Skip banding on rails + yawed members. */}
-        {!glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
+        {!shop && !glass && opacity > 0.4 && !isRoundTop && !outlineGeo && !isPost && panel.type !== "rail" && !(panel.yaw) && (
           <EdgeBand w={w} h={h} d={d} plies={placeholder || ghost ? 0 : plyCount(item, Math.min(w, h, d))} />
         )}
-        {opacity > 0.4 && hingeCenters && hingeCenters.length > 0 && (
+        {!shop && opacity > 0.4 && hingeCenters && hingeCenters.length > 0 && (
           <DoorHinges w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} centers={hingeCenters} />
         )}
-        {opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
+        {!shop && opacity > 0.4 && (leaf ? leaf.role === "pull" : isDoor) && (
           <BarPull w={w} h={h} d={d} isLeft={leaf ? leaf.hinge === "left" : isLeft} />
         )}
-        {wearsPull && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
-        {panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
+        {!shop && wearsPull && opacity > 0.4 && <CupPull w={w} h={h} d={pullDepth} />}
+        {!shop && panel.type === "upright" && !isPost && h >= 24 && opacity > 0.4 && showPinHoles && (
           <PinHoles w={w} h={h} d={d} isLeft={isLeft} />
         )}
       </group>
