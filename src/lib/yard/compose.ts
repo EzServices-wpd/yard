@@ -2,6 +2,7 @@ import { createId } from "@/lib/utils";
 import { looksLikePocket } from "./pocket";
 import { detectWeekendFamily } from "./weekendFamily";
 import type { Panel, Vec3, YardInstance, YardProject } from "./types";
+import { COUNT_WORD } from "./countWords";
 
 /**
  * Two or more named products in one sentence ("coat rack with bench",
@@ -122,15 +123,24 @@ function partNotProduct(core: string): boolean {
   ) {
     return true;
   }
-  if (/^(?:lower|upper|bottom|top|middle|inner|interior|adjustable|open)\s+shel(?:f|ves)$/.test(core)) return true;
+  if (/^(?:lower|upper|bottom|top|middle|inner|interior|adjustable)\s+shel(?:f|ves)$/.test(core)) return true;
   if (/^open\s+knee\s+space$/.test(core)) return true;
   return false;
 }
 
-function stemOf(clause: string): string | null {
+/**
+ * Class F (rows 570, 736): a counted or open shelf ("1 shelf", "two open shelves", "no shelves", "an open shelf") is a
+ * part of its host, with the checker's count words. Bare "shelf" is still a product ("picture frame with a shelf").
+ */
+const COUNTED_SHELF = new RegExp(`^(?:(?:an?|the)\\s+)?(?:(${COUNT_WORD})\\s+)?(?:(open|lower|upper|bottom|top|middle|inner|interior|adjustable)\\s+)?shel(?:f|ves)$`);
+const countedShelf = (clause: string) => {
+  const m = clause.trim().toLowerCase().match(COUNTED_SHELF);
+  return !!m && !!(m[1] || m[2]);
+};
+
+function stemOf(clause: string, shelfOnHost = false): string | null {
   const core = clauseCore(clause);
-  // Class F (row 570): a typed count is read before clauseCore drops numbers, so "1 shelf" stays a part of the host.
-  if (!core || partNotProduct(core) || partNotProduct(clause.trim().toLowerCase())) return null;
+  if (!core || partNotProduct(core) || (shelfOnHost && countedShelf(clause))) return null;
   // A survey sentence mentions products in passing. A product clause is short.
   if (core.split(/\s+/).length > 8) return null;
   if (/\b(?:space|area|zone)\b/.test(core)) return null;
@@ -285,8 +295,10 @@ export function composeProducts(
     .map((s) => s.trim())
     .filter(Boolean);
   if (clauses.length < 2) return null;
+  // Class F keeps a counted shelf on its host only in "host with N shelves": with more clauses (doors, drawers) the
+  // host would build them too and cost more, so that build stays as it was (no price goes up).
   const found = clauses
-    .map((clause) => ({ clause, stem: stemOf(clause) }))
+    .map((clause) => ({ clause, stem: stemOf(clause, clauses.length === 2) }))
     .filter((c): c is { clause: string; stem: string } => !!c.stem);
   const kept = found.filter((c) => !accessory(c.stem, found.filter((o) => o !== c).map((o) => o.stem)));
   if (kept.length < 2) return null;

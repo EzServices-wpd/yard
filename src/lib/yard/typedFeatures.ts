@@ -8,6 +8,8 @@ import type { YardProject } from "./types";
 import { typedHeadNoun } from "./headNoun";
 import { ROLLING, isCasterPart } from "./casterParts";
 import { isClothesRodPrompt, rodsAsked } from "./hangingClearance";
+import { NUM } from "./countWords";
+import { headerShelfCount, shelfLineCount } from "./shelfSpan";
 
 export type TypedFeature = "doors" | "drawers" | "lid" | "casters" | "shelves" | "rods" | "double hang" | "pull-outs";
 /** The nouns a feature word can be. A build titled by one of these when the typed head noun is not one picked the wrong family. */
@@ -39,17 +41,30 @@ export function typedFeatures(prompt: string): TypedFeature[] {
   const tail = featureTail(prompt);
   const out: TypedFeature[] = [];
   for (const f of Object.keys(WORDS) as TypedFeature[]) {
+    // Rods are read as a count (readCounts); double hang and pull-outs only as Ezra's card words them, on its heads.
+    if (f === "rods" || (f in CARD_SAYS && !CARD_SAYS[f as keyof typeof CARD_SAYS](tail, head))) continue;
     const m = tail.match(WORDS[f]);
-    if (!m || NEGATED(m[0]).test(tail)) continue;
+    // "with 0 shelves" asks for none: the count reader answers it, never "you asked for shelves".
+    if (!m || NEGATED(m[0]).test(tail) || readCounts(prompt)[f]?.[0] === 0) continue;
     out.push(f);
   }
   if (!out.includes("casters") && ROLLING.test(prompt) && /\brolling\b|\bmobile\b/i.test(prompt)) out.push("casters");
   return out;
 }
 
+/** Class F: the words Ezra's card approved for the new features, on the card's heads only; null says nothing. */
+const CARD_SAYS = {
+  "double hang": (tail: string, head: string) => (/^(?:wardrobe|closet|armoire)$/.test(head) && /\bdouble[\s-]*(?:hang(?:ing)?|rods?)\b/.test(tail) ? "double hang" : null),
+  "pull-outs": (tail: string, head: string) => {
+    if (!/^(?:cabinet|pantry)$/.test(head)) return null;
+    const m = tail.match(/\b(pull|slide|roll)[\s-]*outs?\s+(shelves|drawers|trays)\b/);
+    const said = m && ({ "pull shelves": "pull out shelves", "pull drawers": "pull-out drawers", "roll trays": "roll out trays", "slide shelves": "slide out shelves" } as Record<string, string>)[`${m[1]} ${m[2]}`];
+    return said ?? null;
+  },
+};
+
 /** Class F: the features a typed count can name. */
 const COUNTED = ["doors", "drawers", "shelves", "rods", "casters"] as const;
-const NUM: Record<string, number> = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 const NUM_RE = `(\\d+|${Object.keys(NUM).join("|")})`;
 /** A size word after a number makes it a size ("36 wide shelves"), never a count. */
 const SIZE_WORD = "(?!(?:wide|tall|deep|high|long|inch|inches|in|ft|feet|foot|by|x)\\b)";
@@ -76,7 +91,8 @@ function readCounts(prompt: string): Partial<Record<TypedFeature, [number, strin
     // "a holder for 6 fishing rods" counts what it holds, not its parts.
     const m = lower.match(new RegExp(`(?<![\\d/.x×-])(?<!\\d\\s)(?<!\\b(?:for|holds?|holding|fits?)\\s)\\b${NUM_RE}[\\s-]+(?:${SIZE_WORD}[a-z]+\\s+)?${w}`));
     const no = lower.match(new RegExp(`\\b(?:no|without|w/o)\\s+(?:a\\s+|any\\s+)?${w}${NOT_HARDWARE}`));
-    const rods = f === "rods" ? rodsAsked(prompt) : 0;
+    // rodsAsked reads clothes rods; "fishing rod holder for 6 rods" is a capacity, never a part count.
+    const rods = f === "rods" && isClothesRodPrompt(lower) ? rodsAsked(prompt) : 0;
     if (rods) out[f] = [rods, m?.[0] ?? `${rods} rods`];
     else if (m) out[f] = [/\d/.test(m[1]) ? parseInt(m[1], 10) : NUM[m[1]], m[0]];
     else if (no) out[f] = [0, no[0].replace(/^(?:without|w\/o)\s+(?:a\s+|any\s+)?/, "no ")];
@@ -89,7 +105,9 @@ export function builtCount(p: YardProject, f: TypedFeature): number {
   const ps = p.panels ?? [];
   if (f === "doors") return p.kind === "opening" ? 0 : ps.filter((x) => x.type === "door").length;
   if (f === "drawers") return new Set(ps.filter((x) => x.drawerId).map((x) => x.drawerId)).size || ps.filter((x) => /\bdrawer\b/i.test(x.name) && /\bfront\b/i.test(x.name)).length;
-  if (f === "shelves") return new Set(ps.filter((x) => x.type === "shelf" || /\bshelf\b/i.test(x.name)).map((x) => Math.round(x.position.y * 4))).size;
+  // The header's own count (pdf headerFeatures); a header that names none ("Bay 1 shelf") still counts its shelf
+  // lines. Shelf rails and cleats are not shelves.
+  if (f === "shelves") return headerShelfCount(ps) || shelfLineCount(ps.filter((x) => x.type === "shelf" && !/\b(?:rails?|cleats?)\b/i.test(x.name)));
   if (f === "casters") return ps.filter(isCasterPart).length;
   return [...ps, ...(p.instances ?? [])].filter((x) => /\brods?\b/i.test((x as { name?: string }).name ?? "")).length;
 }
@@ -106,12 +124,6 @@ export function countsDropped(p: YardProject, prompt: string): [TypedFeature, nu
     const b = builtCount(p, f as TypedFeature);
     return b === n || countNoted(p, f as TypedFeature, n, typed) ? [] : [[f as TypedFeature, n, b] as [TypedFeature, number, number]];
   });
-}
-
-/** Every feature the prompt types: after the head noun, or by a count of one or more. */
-function allTyped(prompt: string): TypedFeature[] {
-  const counted = Object.entries(typedCounts(prompt)).filter(([, n]) => n! > 0).map(([f]) => f as TypedFeature);
-  return [...new Set([...typedFeatures(prompt), ...counted])];
 }
 
 const partText = (p: YardProject) => [...p.panels.map((x) => x.name ?? ""), ...(p.instances ?? []).map((i) => (i as { name?: string }).name ?? "")].join("\n");
@@ -144,15 +156,16 @@ const SAY = (w: string, h: string, f: TypedFeature) =>
 export function withFeatureNotes(p: YardProject, prompt: string): YardProject {
   // An opening (a prehung door) picked for a typed feature is the wrong family: I41 flags it, a note can't answer it.
   if ((!p.panels?.length && !(p.instances ?? []).length) || p.kind === "opening") return p;
-  const missing = allTyped(prompt).filter((f) => !featureBuilt(p, f) && !featureNoted(p, f));
+  const missing = typedFeatures(prompt).filter((f) => !featureBuilt(p, f) && !featureNoted(p, f));
   const said = (f: TypedFeature) => readCounts(prompt)[f]?.[1];
   const head = typedHeadNoun(prompt) ?? "build";
   // A count the build does not match: the note says what was asked and how many are built (class F).
-  const counts = countsDropped(p, prompt).filter(([f, n]) => !missing.includes(f) || n === 0);
+  const counts = countsDropped(p, prompt).filter(([f]) => !missing.includes(f));
   if (!missing.length && !counts.length) return p;
   const tail = featureTail(prompt);
+  const word = (f: TypedFeature) => (f in CARD_SAYS ? CARD_SAYS[f as keyof typeof CARD_SAYS](tail, head) : null) ?? tail.match(WORDS[f])?.[0] ?? f;
   const notes = [
-    ...missing.map((f) => SAY(tail.match(WORDS[f])?.[0] ?? said(f) ?? f, head, f)),
+    ...missing.map((f) => SAY(word(f), head, f)),
     ...counts.map(([f, , b]) => `You asked for ${said(f) ?? f}; this ${head} has ${b || "none"}.`),
   ];
   return { ...p, notes: [...(p.notes ?? []), ...notes] };

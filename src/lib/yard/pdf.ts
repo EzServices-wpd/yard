@@ -15,7 +15,7 @@ import { stepPlacements } from "./placement";
 import { buyListCart } from "./amazonCart";
 import { drawQr } from "./pdfQr";
 import { cutListName } from "./shopPlural";
-import { shelfLineCount } from "./shelfSpan";
+import { headerShelfCount, shelfLineCount } from "./shelfSpan";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
 import {
   TOOL_LABEL,
@@ -1219,8 +1219,7 @@ export function headerFeatures(project: YardProject): string[] {
   }
   if (typed("hooks?\\b")) { const n = count(/\bhook\b/); if (n) out.push(plural(n, "hook", "hooks")); }
   if (typed("shel(?:f|ves)\\b")) {
-    const shelves = project.panels.filter((p) => /^(?:grid |adjustable |fixed |inner )?shelf$/i.test(p.name.replace(/\s*\d+$/, "")));
-    const n = shelfLineCount(shelves);
+    const n = headerShelfCount(project.panels);
     if (n) out.push(plural(n, "shelf", "shelves"));
   }
   if (typed("cubb(?:y|ies)\\b")) {
