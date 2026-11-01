@@ -79,7 +79,7 @@ function readCounts(prompt: string): Partial<Record<TypedFeature, [number, strin
     const rods = f === "rods" ? rodsAsked(prompt) : 0;
     if (rods) out[f] = [rods, m?.[0] ?? `${rods} rods`];
     else if (m) out[f] = [/\d/.test(m[1]) ? parseInt(m[1], 10) : NUM[m[1]], m[0]];
-    else if (no) out[f] = [0, no[0]];
+    else if (no) out[f] = [0, no[0].replace(/^(?:without|w\/o)\s+(?:a\s+|any\s+)?/, "no ")];
   }
   return out;
 }

@@ -10,6 +10,7 @@ test("class F: a typed count is read as a count, 'no X' as zero, never a size", 
   assert.deepEqual(typedCounts("nightstand 20 wide 24 tall with 3 shelves"), { shelves: 3 });
   assert.deepEqual(typedCounts("6 drawer dresser with two doors"), { doors: 2, drawers: 6 });
   assert.deepEqual(typedCounts("closet with no rods"), { rods: 0 });
+  assert.deepEqual(typedCounts("bookcase without shelves"), { shelves: 0 });
   assert.deepEqual(typedCounts("closet with 2 rails"), { rods: 2 });
   assert.deepEqual(typedCounts("bookcase 36 wide shelves"), {});
   assert.deepEqual(typedCounts("closet with two 1 1/4 rods"), { rods: 2 });
@@ -29,6 +30,7 @@ test("class F: every typed feature word or count is built or named in a note (I4
     "nightstand 22 1/2 wide 28 tall 17 deep with an open shelf",
     "media console 38 wide 34 tall 18 deep with 1 shelf",
     "closet with no rods",
+    "closet without rods",
     "closet with 2 rails",
     "bookcase with 0 shelves",
     "nightstand 20 wide 24 tall with 3 shelves",

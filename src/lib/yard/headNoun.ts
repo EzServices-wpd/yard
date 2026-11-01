@@ -2,7 +2,7 @@
 export const STOP = /^(?:a|an|the|my|our|for|to|of|with|and|from|inch|inches|wide|tall|high|deep|long|foot|feet|model|small|big|large|tiny)$/;
 
 /** The typed noun phrase: the prompt up to its first "from/with/for/in/on/by …" tail ("shoe rack by the door" → shoe rack). */
-export const headPhrase = (prompt: string): string => prompt.toLowerCase().split(/\s(?:from|with|out of|made of|using|for|that|which|to|in|on|by)\s/)[0];
+export const headPhrase = (prompt: string): string => prompt.toLowerCase().split(/\s(?:from|with|without|w\/o|out of|made of|using|for|that|which|to|in|on|by)\s/)[0];
 
 export function typedHeadNoun(prompt: string): string | null {
   // The head noun ends the noun phrase: "Eiffel Tower from popsicle sticks" → tower, never sticks.
