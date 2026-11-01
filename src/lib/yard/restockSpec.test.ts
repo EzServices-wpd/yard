@@ -28,6 +28,7 @@ function restock(q: string) {
 }
 // Row 298 is fixed by rows 705/706: the 1/2" stamp keeps each outer face, so the drawn width is the typed width and
 // no I42 is left on a restocked carcass.
+const drawnWide = (p: YardProject) => Math.max(...p.panels.map((q) => q.position.x + q.size.width)) - Math.min(...p.panels.map((q) => q.position.x));
 
 test("row 295 desk 60 wide: depth stays assumed and counts the 1/2\" proud fronts (24 1/2, was 24 3/4 at 3/4\")", () => {
   const r = restock("desk 60 wide");
@@ -44,6 +45,7 @@ test("row 295 bathroom vanity 36 wide: depth stays assumed at 21 1/2 (fronts pro
   assert.match(coverAxesTalk(r.before).subtitle, / · doors stand proud$/);
   // #113's sink base keeps its outer faces too (rows 705/706): cover 36, tag 36, no I42.
   assert.deepEqual(r.i42, []);
+  assert.equal(drawnWide(r.after), 36);
 });
 
 test("row 295 nightstand 20 wide 24 tall: depth stays assumed at 16 1/2, never a typed 16; typed W and H stay typed", () => {
@@ -52,6 +54,7 @@ test("row 295 nightstand 20 wide 24 tall: depth stays assumed at 16 1/2, never a
   assert.equal(r.cover, '20" wide x 24" tall · 16 1/2" deep assumed, measure to lock · drawer fronts stand proud');
   // The spec marks no width as edited and the outer faces hold (rows 705/706): no I42.
   assert.deepEqual(r.i42, []);
+  assert.equal(drawnWide(r.after), 20);
 });
 
 test("row 295 bookcase 36 wide 72 tall 12 deep: all three stay typed, nothing edited, the cover is the 3/4\" build's", () => {
@@ -59,6 +62,7 @@ test("row 295 bookcase 36 wide 72 tall 12 deep: all three stay typed, nothing ed
   assert.equal(r.title, 'Bookcase · 36" W × 12" D × 72" H');
   assert.equal(r.cover, '36" wide x 72" tall x 12" deep');
   assert.deepEqual(r.i42, []);
+  assert.equal(drawnWide(r.after), 36);
 });
 
 test("row 295 family sweep: an untyped carcass restocked keeps every axis assumed on the header too (dresser, wardrobe, linen)", () => {
@@ -69,6 +73,7 @@ test("row 295 family sweep: an untyped carcass restocked keeps every axis assume
   ] as const) {
     const r = restock(q);
     assert.equal(r.title, want, q);
+    assert.equal(drawnWide(r.after), drawnWide(r.before), q);
     assert.match(r.cover, / deep assumed, measure to lock · (?:drawer fronts|doors) stand proud$/, q);
   }
   assert.match(restock("linen closet").title, /× 16 1\/2" D × 78" H \(size assumed\)$/);
