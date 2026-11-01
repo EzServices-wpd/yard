@@ -1,4 +1,5 @@
 import type { Panel } from "./types";
+import { getCatalogItem } from "./catalog";
 
 /**
  * Rows 705/706: a stock switch re-derives parts from the joints, never from the ¾" layout. Two parts are joined on
@@ -39,8 +40,13 @@ export function meetAgain(was: Panel[], now: Panel[]): Panel[] {
   const J = jointsOf(was);
   if (!J.length) return now;
   const P = now.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
-  // A part grows only along a length or width: never on an axis 1 1/2" or less (its stock thickness).
-  const grows = (p: Panel, k: number) => p.size[AX[k][1]] > 1.6;
+  // A sheet part grows along any cut edge, never through its stock thickness (1 1/2" or less); a board, stick or rod
+  // only along its length. A drawer envelope (a block, not a sheet) grows like the sheet its box is cut from.
+  const grows = (p: Panel, k: number) => {
+    const s = [p.size.width, p.size.height, p.size.depth];
+    const it = getCatalogItem(p.materialId);
+    return !(s[k] === Math.min(...s) && s[k] <= 1.6) && (it?.category === "sheet_goods" || it?.formFactor === "sheet" || s[k] === Math.max(...s));
+  };
   const env = [0, 1, 2].map((k) => [Math.min(...was.map((p) => lo(p, k))), Math.max(...was.map((p) => hi(p, k)))]);
   const outer = (i: number, k: number) => Math.abs(lo(was[i], k) - env[k][0]) < EPS || Math.abs(hi(was[i], k) - env[k][1]) < EPS;
   const setLo = (p: Panel, k: number, v: number) => { p.size[AX[k][1]] = hi(p, k) - v; p.position[AX[k][0]] = v; };

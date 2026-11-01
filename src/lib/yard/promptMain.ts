@@ -806,7 +806,9 @@ function stampStockThickness(project: YardProject): YardProject {
   const item = getCatalogItem(project.primaryMaterialId);
   const thick = item?.dims.thickness;
   if (!thick || Math.abs(thick - 0.75) < 0.02 || !project.panels.length) return project;
+  // Only a face that is the build's stated size holds it: proud fronts (doors, drawer fronts) keep the face they hang on.
   const env = envelopeOf(project.panels);
+  for (const [a, k] of [["x", "width"], ["y", "height"], ["z", "depth"]] as const) if (Math.abs(env[a][1] - env[a][0] - (project.overall?.[k] ?? 0)) > 0.02) env[a][1] = Infinity;
   const panels = project.panels.map((panel) => {
     if (panel.materialId !== project.primaryMaterialId) return panel;
     const size = panel.size;
