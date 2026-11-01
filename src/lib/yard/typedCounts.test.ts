@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { i41 } from "./invariants";
-import { typedCounts, typedFeatures } from "./typedFeatures";
+import { builtCount, typedCounts, typedFeatures } from "./typedFeatures";
 
 globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
 
@@ -16,6 +16,7 @@ test("class F: a typed count is read as a count, 'no X' as zero, never a size", 
   assert.deepEqual(typedCounts("bed with 2 side rails"), {});
   assert.deepEqual(typedCounts("a holder for 6 fishing rods"), {});
   assert.deepEqual(typedCounts("6 drawer dresser no drawer slides"), { drawers: 6 });
+  assert.deepEqual(typedCounts("dresser with no drawer slides"), {});
   assert.deepEqual(typedFeatures("wardrobe 80 tall with double hang"), ["double hang"]);
   assert.deepEqual(typedFeatures("pantry cabinet with pull out shelves"), ["shelves", "pull-outs"]);
 });
@@ -57,5 +58,7 @@ test("class F controls: a count the build honours adds no note; a bare 'a shelf'
     if (p.kind !== "opening") assert.deepEqual(i41(p, q), [], q);
     assert.ok(!(p.notes ?? []).some((n) => /^You asked for/.test(n)), q);
   }
+  // Shelves count by level, not by piece: 3 shelves across 3 bays are 3, not 9.
+  assert.equal(builtCount(generateFromPrompt("bookcase 72 wide with 3 shelves"), "shelves"), 3);
   assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
 });
