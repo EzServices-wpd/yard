@@ -20,7 +20,6 @@ import type { FittedSpec, Panel, YardProject } from "./types";
 import { namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
 import { isSideEndTable } from "./family";
 import { countBridge } from "./fittedShared";
-import { readCount } from "./countWords";
 
 const PLY = "plywood-3-4-4x8";
 const TWO_BY_TWO = "lumber-2x2-8";
@@ -112,7 +111,7 @@ function spokenTableShelfCount(prompt: string): number | null {
   }
   // "with a shelf" / "with the shelf" — singular only.
   if (
-    (/\b(?:with\s+)?(?:a|the|one|single)\s+shel(?:f)\b/.test(lower) || !!readCount(lower, "shel(?:f|ves)\\b", "shelf")?.one) &&
+    /\b(?:with\s+)?(?:a|the|one|single)\s+shel(?:f)\b/.test(lower) &&
     !/\bshelves\b/.test(lower)
   ) {
     return 1;
