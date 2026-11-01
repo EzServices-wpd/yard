@@ -98,11 +98,11 @@ const CARD = [
   /^You asked for (?:a shelf|shelves|doors|drawers); this [a-z ]+ is built without (?:one|them) for now\.$/,
 ];
 
-test("class F r2 (Critic rows 733/735): a count note says the header's number; every note is the card's words; capacity is no count", () => {
+test("class F r2 (Critic rows 733/735; r5 B2: a Combined build's header counts its Shelf product, so no count note): a count note says the header's number; every note is the card's words; capacity is no count", () => {
   const bad: string[] = [];
   for (const [q, said] of [
     ["coffee table without shelves", "You asked for no shelves; this table has 3."],
-    ["media console with no shelves", "You asked for no shelves; this console has 3."],
+    ["media console with no shelves", ""],
     ["walk in closet without a rod", "You asked for no rod; this closet has 1."],
     ["base cabinet with pull-out shelves and 2 doors", "You asked for pull out shelves; this cabinet is built without them for now."],
     ["fishing rod holder for 6 rods", ""],
@@ -110,16 +110,16 @@ test("class F r2 (Critic rows 733/735): a count note says the header's number; e
     ["closet with pull out drawers", ""],
     ["cabinet with pull out trays", ""],
     ["coffee table with 0 shelves", ""],
-    ["coffee table with no shelves", "You asked for no shelves; this table has 3."],
-    ["end table with zero shelves", "You asked for zero shelves; this table has 3."],
-    ["vanity with no shelves", "You asked for no shelves; this vanity has 3."],
+    ["coffee table with no shelves", ""],
+    ["end table with zero shelves", ""],
+    ["vanity with no shelves", ""],
     ["bench with 1 shelf", ""],
     ["rolling cart with casters and 2 shelves", "You asked for 2 shelves; this cart has 3."],
     ["nightstand with 1 drawer and 1 shelf", ""],
     ["coffee table with an open shelf", ""],
     ["end table with an open shelf", ""],
     ["side table with an open shelf", ""],
-    ["buffet with no open shelves", "You asked for no open shelves; this buffet has 3."],
+    ["buffet with no open shelves", ""],
   ]) {
     const p = generateFromPrompt(q);
     const asked = (p.notes ?? []).filter((n) => /^You asked for/.test(n));
@@ -143,6 +143,17 @@ test("class F r4 (card 1): only '1 shelf' / 'an open shelf' on a card 1 host sta
       if (!!composeProducts(`${h} with ${s}`, stub)?.notes.some((n) => n.startsWith("Combined:")) === host) split.push(`${h} with ${s}`);
     }
     if (!composeProducts(`${h} with 2 doors and 1 shelf`, stub)?.notes.some((n) => n.startsWith("Combined:"))) split.push(`${h} with 2 doors and 1 shelf kept no Shelf`);
+  }
+  // r5 (Critic r4 B1): the whole prompt is the card 1 form; host-word variants, extra parts, "the" and a size after the
+  // shelf keep release; a size before "with" and doubled spaces do not change the form.
+  for (const [q, host] of [
+    ["corner desk with 1 shelf", false], ["buffet cabinet with an open shelf", false], ["vanity mirror with an open shelf", false],
+    ["desk organizer with 1 shelf", false], ["nightstand lamp with 1 shelf", false], ["double vanity with 1 shelf", false],
+    ["desk with 1 shelf and casters", false], ["sideboard with the open shelf", false], ["vanity with an open shelf 30 wide", false],
+    ["buffet with 1  shelf", true], ["media console with  an  open  shelf", true], ["desk 60 wide with 1 shelf", true],
+    ["vanity 85 wide 34.5 tall with 1 shelf", true],
+  ] as const) {
+    if (!!composeProducts(q, stub)?.notes.some((n) => n.startsWith("Combined:")) === host) split.push(q);
   }
   assert.deepEqual(split, []);
   assert.ok(composeProducts("picture frame with a shelf", stub));

@@ -2,7 +2,6 @@ import { createId } from "@/lib/utils";
 import { looksLikePocket } from "./pocket";
 import { detectWeekendFamily } from "./weekendFamily";
 import type { Panel, Vec3, YardInstance, YardProject } from "./types";
-import { readCount } from "./countWords";
 
 /**
  * Two or more named products in one sentence ("coat rack with bench",
@@ -129,16 +128,12 @@ function partNotProduct(core: string): boolean {
 }
 
 /**
- * Class F (row 570, card 1): "with 1 shelf" (digits or "one", one optional word: "1 open shelf") or "with an open
- * shelf" on a card 1 host is the host's own shelf. The split drops "a" / "an", so "an open shelf" arrives as "open
- * shelf". Only the typed words decide, never price or stock, so a stock switch keeps the structure (row 745).
+ * Class F (row 570, card 1): the whole prompt is a card 1 host, optionally with its size ("vanity 85 wide 34.5 tall"),
+ * then "with 1 shelf", "with one shelf", "with 1/one [word] shelf" or "with an open shelf": that is the host's own
+ * shelf. Anything else (another clause, casters, "desk organizer", a size after the shelf) keeps the release build.
+ * Only the typed words decide, never price or stock, so a stock switch keeps the structure (row 745).
  */
-const CARD1_HOST = /\b(?:media console|sideboard|credenza|buffet|vanity|desk|nightstand)\b/;
-const oneShelf = (clause: string) => {
-  const c = clause.trim().toLowerCase();
-  const r = readCount(c, "shel(?:f|ves)\\b");
-  return (r?.n === 1 && r.at === 0 && r.words.length === c.length) || c === "open shelf";
-};
+const CARD1 = /^(?:an? |the )?(?:media console|sideboard|credenza|buffet|vanity|desk|nightstand)(?: \d+(?:\.\d+)? (?:wide|tall|deep))* with (?:(?:1|one) (?:(?!wide |tall |deep )[a-z]+ )?shelf|an open shelf)$/;
 
 function stemOf(clause: string): string | null {
   const core = clauseCore(clause);
@@ -303,12 +298,8 @@ export function composeProducts(
   const kept = found.filter((c) => !accessory(c.stem, found.filter((o) => o !== c).map((o) => o.stem)));
   if (kept.length < 2) return null;
   // Class F (row 570, card 1): "host with 1 shelf / an open shelf" builds the host with its own shelf, not a second
-  // Shelf product. Other counts, other hosts and longer prompts keep the release build.
-  if (clauses.length === 2 && kept.length === 2) {
-    const shelf = kept.find((c) => oneShelf(c.clause));
-    const host = kept.find((c) => c !== shelf);
-    if (shelf && host && CARD1_HOST.test(host.clause.toLowerCase())) return null;
-  }
+  // Shelf product. Only the whole-prompt form above; everything else keeps the release build.
+  if (CARD1.test(prompt.toLowerCase().replace(/\s+/g, " ").trim())) return null;
 
   // Coat rack + bench is one hall tree. Stacking the wall rack on the seat
   // stretches the bench sides into fins and runs the pegs across the seat.

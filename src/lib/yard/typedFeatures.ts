@@ -114,11 +114,11 @@ function countNoted(p: YardProject, f: TypedFeature, n: number, typed: string): 
 
 /** Typed counts the build neither honours nor answers in a note. */
 export function countsDropped(p: YardProject, prompt: string): [TypedFeature, number, number][] {
-  // A Combined build (compose.ts) answers a typed shelf with its own Shelf product, as release did: its note says so.
-  // It never answers "no shelves" (row 739): that gets the count note.
+  // A Combined build (compose.ts) answers any typed shelf count with its own Shelf product, as release did: its
+  // header counts that product's shelves, not the host's, so a count note there would name the wrong number.
   const shelfProduct = (p.notes ?? []).some((n) => n.startsWith("Combined:") && /\bShelf\b/.test(n));
   return Object.entries(readCounts(prompt)).flatMap(([f, [n, typed]]) => {
-    if (f === "shelves" && shelfProduct && n > 0) return [];
+    if (f === "shelves" && shelfProduct) return [];
     const b = builtCount(p, f as TypedFeature);
     return b === n || countNoted(p, f as TypedFeature, n, typed) ? [] : [[f as TypedFeature, n, b] as [TypedFeature, number, number]];
   });
