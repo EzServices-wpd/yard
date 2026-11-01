@@ -245,7 +245,7 @@ export function PanelMesh({
   const shadows = !!useShadows;
   // See inside: the staged explode moves these two groups (transform only, explode-driver.tsx).
   const ex = useExplodeRefs(panel.id);
-  // Shop drawing: outlines only. The face fills the ground colour unlit (so it still hides the lines behind it), full ink
+  // Shop drawing: outlines only. The face fills the exact ground colour, unlit and not tone-mapped (so it still hides the lines behind it), full ink
   // edges, and no grain, banding, hardware or pin holes.
   const shop = useShopDrawingOn();
   if (hiddenInStep) return null;
@@ -292,7 +292,7 @@ export function PanelMesh({
             <boxGeometry args={[w, h, d]} />
           )}
           {shop ? (
-            <meshBasicMaterial color={SHOP_GROUND.bg} transparent={opacity < 1} opacity={opacity} depthWrite={opacity > 0.5} />
+            <meshBasicMaterial color={SHOP_GROUND.bg} toneMapped={false} transparent={opacity < 1} opacity={opacity} depthWrite={opacity > 0.5} />
           ) : (
             <meshStandardMaterial
               color={color}
