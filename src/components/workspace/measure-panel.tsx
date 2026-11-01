@@ -4,6 +4,7 @@ import { mainMaterialId } from "@/lib/yard/mainMaterial";
 import { NOTHING_BUILT_STOCK, nothingBuilt } from "@/lib/yard/stockPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
+import { restockKeepingFaces } from "@/components/workspace/restock-faces";
 import { fitBadge } from "@/lib/yard/fitBadge";
 import { saveBuild, shareFrom, shareUrl } from "@/lib/yard/shareBuild";
 import type { JoinMethod, SpaceKind } from "@/lib/yard/types";
@@ -602,8 +603,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
                 data-yard-stock={item.id}
                 onClick={() => {
                   const before = snap();
-                  generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true });
+                  restockKeepingFaces(() => generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true }));
                   makePlan();
+                  useYard.getState().revealBench(); // the restock lit the Building lamp; put it out as the Stock panel does
                   setSummary(changeLine(before, snap()) || `Stock is ${item.name}`);
                 }}
                 className={`h-12 rounded-full border px-3 text-xs ${item.formFactor === mainStock?.formFactor ? "border-fg/40 text-fg" : "border-border text-muted"}`}
@@ -617,8 +619,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             {thicknessChoices.map((item) => (
               <button key={item.id} type="button" data-yard-thickness={item.id} className={`h-11 min-h-11 rounded-full border px-3 text-xs ${item.id === project.primaryMaterialId ? "border-fg/40 text-fg" : "border-border text-muted"}`} onClick={() => {
                 const before = snap();
-                generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true });
+                restockKeepingFaces(() => generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true }));
                 makePlan();
+                useYard.getState().revealBench();
                 setSummary(changeLine(before, snap()) || `Thickness is ${fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}`);
               }}>
                 {fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}"
