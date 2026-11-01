@@ -2,7 +2,7 @@ import { createId } from "@/lib/utils";
 import { looksLikePocket } from "./pocket";
 import { detectWeekendFamily } from "./weekendFamily";
 import type { Panel, Vec3, YardInstance, YardProject } from "./types";
-import { COUNT_WORD } from "./countWords";
+import { readCount } from "./countWords";
 
 /**
  * Two or more named products in one sentence ("coat rack with bench",
@@ -129,13 +129,16 @@ function partNotProduct(core: string): boolean {
 }
 
 /**
- * Class F (rows 570, 736): a counted or open shelf ("1 shelf", "two open shelves", "no shelves", "an open shelf") is a
- * part of its host, with the checker's count words. Bare "shelf" is still a product ("picture frame with a shelf").
+ * Class F (rows 570, 736, 739): a counted or open shelf ("1 shelf", "two open shelves", "no open shelves", "an open
+ * shelf") is a part of its host. Counts come from readCount, the checker's own reader. Bare "a shelf" is still a product
+ * ("picture frame with a shelf"); an uncounted "open shelves" is a part.
  */
-const COUNTED_SHELF = new RegExp(`^(?:(?:an?|the)\\s+)?(?:(${COUNT_WORD})\\s+)?(?:(open|lower|upper|bottom|top|middle|inner|interior|adjustable)\\s+)?shel(?:f|ves)$`);
-const countedShelf = (clause: string) => {
-  const m = clause.trim().toLowerCase().match(COUNTED_SHELF);
-  return !!m && !!(m[1] || m[2]);
+const SHELF_ADJ = /^(?:(?:an?|the)\s+)?(?:open|lower|upper|bottom|top|middle|inner|interior|adjustable)\s+shel(?:f|ves)$/;
+const shelfCount = (clause: string) => {
+  const c = clause.trim().toLowerCase();
+  const r = readCount(c, "shel(?:f|ves)\\b", "shelf");
+  if (r && r.at === 0 && r.words.length === c.length) return r.one && !r.one.adj ? null : r.n;
+  return SHELF_ADJ.test(c) ? -1 : null;
 };
 
 function stemOf(clause: string): string | null {
@@ -305,9 +308,9 @@ export function composeProducts(
   // I41's count note). With more clauses (doors, drawers) the host would build them too and cost more, so that build
   // stays as it was: no price goes up.
   if (clauses.length === 2 && kept.length === 2) {
-    const shelf = kept.find((c) => countedShelf(c.clause));
+    const shelf = kept.find((c) => shelfCount(c.clause) != null);
     if (shelf) {
-      if (!/^(?:no|zero|0)\s/i.test(shelf.clause.trim())) return null;
+      if (shelfCount(shelf.clause) !== 0) return null;
       const alone = build(shareStock(kept.find((c) => c !== shelf)!.clause, prompt));
       return alone.panels.length || alone.instances.length ? { ...alone, prompt } : null;
     }

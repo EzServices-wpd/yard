@@ -8,7 +8,7 @@ import type { YardProject } from "./types";
 import { typedHeadNoun } from "./headNoun";
 import { ROLLING, isCasterPart } from "./casterParts";
 import { isClothesRodPrompt, rodsAsked } from "./hangingClearance";
-import { NUM } from "./countWords";
+import { NUM, readCount } from "./countWords";
 import { headerShelfCount, shelfLineCount } from "./shelfSpan";
 
 export type TypedFeature = "doors" | "drawers" | "lid" | "casters" | "shelves" | "rods" | "double hang" | "pull-outs";
@@ -65,12 +65,6 @@ const CARD_SAYS = {
 
 /** Class F: the features a typed count can name. */
 const COUNTED = ["doors", "drawers", "shelves", "rods", "casters"] as const;
-const NUM_RE = `(\\d+|${Object.keys(NUM).join("|")})`;
-/** A size word after a number makes it a size ("36 wide shelves"), never a count. */
-const SIZE_WORD = "(?!(?:wide|tall|deep|high|long|inch|inches|in|ft|feet|foot|by|x)\\b)";
-/** A negated feature that names hardware for it ("no drawer slides") is not a count of zero. */
-const NOT_HARDWARE = "(?!\\s+(?:slides?|pulls?|knobs?|fronts?|hardware|locks?|hinges?|stops?|runners?|pins?|brackets?|supports?))";
-
 /**
  * Class F (rows 569/570, I41): the count typed for each feature, anywhere in the prompt ("6 drawer dresser", "with 3
  * shelves", "two doors"), and 0 for "no rods" / "without shelves". A rod count is hangingClearance's own reading; in a
@@ -88,14 +82,12 @@ function readCounts(prompt: string): Partial<Record<TypedFeature, [number, strin
   const out: Partial<Record<TypedFeature, [number, string]>> = {};
   for (const f of COUNTED) {
     const w = f === "rods" && isClothesRodPrompt(lower) ? `(?:${WORDS.rods.source}|(?<!drawer\\s)rails?\\b)` : WORDS[f].source;
-    // "a holder for 6 fishing rods" counts what it holds, not its parts.
-    const m = lower.match(new RegExp(`(?<![\\d/.x×-])(?<!\\d\\s)(?<!\\b(?:for|holds?|holding|fits?)\\s)\\b${NUM_RE}[\\s-]+(?:${SIZE_WORD}[a-z]+\\s+)?${w}`));
-    const no = lower.match(new RegExp(`\\b(?:no|without|w/o)\\s+(?:a\\s+|any\\s+)?${w}${NOT_HARDWARE}`));
+    // One reader (countWords.readCount) for the checker, compose and the shelf builders: "an open shelf" is 1.
+    const r = readCount(lower, w, f === "shelves" ? "shelf" : undefined);
     // rodsAsked reads clothes rods; "fishing rod holder for 6 rods" is a capacity, never a part count.
     const rods = f === "rods" && isClothesRodPrompt(lower) ? rodsAsked(prompt) : 0;
-    if (rods) out[f] = [rods, m?.[0] ?? `${rods} rods`];
-    else if (m) out[f] = [/\d/.test(m[1]) ? parseInt(m[1], 10) : NUM[m[1]], m[0]];
-    else if (no) out[f] = [0, no[0].replace(/^(?:without|w\/o)\s+(?:a\s+|any\s+)?/, "no ")];
+    if (rods) out[f] = [rods, r?.n ? r.words : `${rods} rods`];
+    else if (r) out[f] = [r.n, r.words];
   }
   return out;
 }

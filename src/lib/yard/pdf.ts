@@ -15,7 +15,7 @@ import { stepPlacements } from "./placement";
 import { buyListCart } from "./amazonCart";
 import { drawQr } from "./pdfQr";
 import { cutListName } from "./shopPlural";
-import { headerShelfCount, shelfLineCount } from "./shelfSpan";
+import { headerShelfCount } from "./shelfSpan";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
 import {
   TOOL_LABEL,
