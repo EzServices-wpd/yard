@@ -64,7 +64,8 @@ import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
 import { blockKit, buildBlocks, defaultBlockStock, detectBlockSubject, pieceBounds, stripStockSizes } from "./blocks";
-import { composeProducts } from "./compose";
+import { composeProducts, hostShelf } from "./compose";
+import { buildPlan } from "./report";
 import { applySpokenFace } from "./face";
 import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct } from "./productModel";
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
@@ -416,6 +417,29 @@ let idDepth = 0;
  * per call so the workspace still sees each build as new; a form's own fixed id is kept.
  */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  if (idDepth > 0) return generateOnce(...args);
+  hostShelf.used = false;
+  const p = generateOnce(...args);
+  if (!hostShelf.used) return p;
+  // Class F (row 738): "host with N shelves" builds the host alone only when that costs no more than the release build
+  // (host plus a Shelf), so no price goes up (a big table's lower shelf, a table with 3 or more).
+  hostShelf.release = true;
+  try {
+    const release = generateOnce(...args);
+    return usd(release) < usd(p) ? release : p;
+  } finally {
+    hostShelf.release = false;
+  }
+}
+const usd = (p: YardProject) => {
+  try {
+    return buildPlan(p).totals.estCostUsd ?? Infinity;
+  } catch {
+    return Infinity;
+  }
+};
+
+function generateOnce(...args: Parameters<typeof generateRaw>): YardProject {
   if (idDepth === 0) seedIds(args);
   const typedAtIntake = args[0] ?? "";
   idDepth++;

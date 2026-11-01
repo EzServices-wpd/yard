@@ -83,6 +83,8 @@ test("class F controls: a count the build honours adds no note; a bare 'a shelf'
   // Shelves count by level, not by piece: 3 shelves across 3 bays are 3, not 9.
   assert.equal(builtCount(generateFromPrompt("bookcase 72 wide with 3 shelves"), "shelves"), 3);
   assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
+  // r3 (row 738): the host alone never costs more than the release build; a 60" table's lower shelf keeps host plus Shelf.
+  for (const q of ["coffee table 60 wide with an open shelf", "coffee table with 3 open shelves"]) assert.ok((generateFromPrompt(q).notes ?? []).some((n) => n.startsWith("Combined:")), q);
 });
 
 const CARD = [

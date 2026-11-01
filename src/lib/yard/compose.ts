@@ -128,6 +128,8 @@ function partNotProduct(core: string): boolean {
   return false;
 }
 
+/** Class F: `used` says the host-with-shelf rule built this prompt; `release` asks for the release build instead. */
+export const hostShelf = { used: false, release: false };
 /**
  * Class F (rows 570, 736, 739): a counted or open shelf ("1 shelf", "two open shelves", "no open shelves", "an open
  * shelf") is a part of its host. Counts come from readCount, the checker's own reader. The split drops "a" / "an", so
@@ -304,12 +306,13 @@ export function composeProducts(
   const kept = found.filter((c) => !accessory(c.stem, found.filter((o) => o !== c).map((o) => o.stem)));
   if (kept.length < 2) return null;
   // Class F (rows 570, 736): in "host with N shelves" the counted shelf is the host's own, so the whole prompt builds
-  // the host; "no / zero / 0 shelves" builds the host alone, as "0 shelves" does (the zero stays in the prompt for
-  // I41's count note). With more clauses (doors, drawers) the host would build them too and cost more, so that build
-  // stays as it was: no price goes up.
-  if (clauses.length === 2 && kept.length === 2) {
+  // the host; "no / zero / 0 shelves" builds the host alone (the zero stays in the prompt for I41's count note). With
+  // more clauses (doors, drawers) the host would build them too, so that build stays as it was. generateFromPrompt
+  // keeps the release build when the host alone costs more (row 738): no price goes up.
+  if (!hostShelf.release && clauses.length === 2 && kept.length === 2) {
     const shelf = kept.find((c) => shelfCount(c.clause) != null);
     if (shelf) {
+      hostShelf.used = true;
       if (shelfCount(shelf.clause) !== 0) return null;
       const alone = build(shareStock(kept.find((c) => c !== shelf)!.clause, prompt));
       return alone.panels.length || alone.instances.length ? { ...alone, prompt } : null;
