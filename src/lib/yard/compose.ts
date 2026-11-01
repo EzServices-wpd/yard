@@ -122,14 +122,15 @@ function partNotProduct(core: string): boolean {
   ) {
     return true;
   }
-  if (/^(?:lower|upper|bottom|top|middle|inner|interior|adjustable)\s+shel(?:f|ves)$/.test(core)) return true;
+  if (/^(?:lower|upper|bottom|top|middle|inner|interior|adjustable|open)\s+shel(?:f|ves)$/.test(core)) return true;
   if (/^open\s+knee\s+space$/.test(core)) return true;
   return false;
 }
 
 function stemOf(clause: string): string | null {
   const core = clauseCore(clause);
-  if (!core || partNotProduct(core)) return null;
+  // Class F (row 570): a typed count is read before clauseCore drops numbers, so "1 shelf" stays a part of the host.
+  if (!core || partNotProduct(core) || partNotProduct(clause.trim().toLowerCase())) return null;
   // A survey sentence mentions products in passing. A product clause is short.
   if (core.split(/\s+/).length > 8) return null;
   if (/\b(?:space|area|zone)\b/.test(core)) return null;
