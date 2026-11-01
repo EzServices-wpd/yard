@@ -605,6 +605,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
                   const before = snap();
                   restockKeepingFaces(() => generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true }));
                   makePlan();
+                  useYard.getState().revealBench(); // the restock lit the Building lamp; put it out as the Stock panel does
                   setSummary(changeLine(before, snap()) || `Stock is ${item.name}`);
                 }}
                 className={`h-12 rounded-full border px-3 text-xs ${item.formFactor === mainStock?.formFactor ? "border-fg/40 text-fg" : "border-border text-muted"}`}
@@ -620,6 +621,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
                 const before = snap();
                 restockKeepingFaces(() => generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true }));
                 makePlan();
+                useYard.getState().revealBench();
                 setSummary(changeLine(before, snap()) || `Thickness is ${fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}`);
               }}>
                 {fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}"
