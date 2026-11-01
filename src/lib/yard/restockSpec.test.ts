@@ -26,9 +26,8 @@ function restock(q: string) {
   assert.deepEqual(marks(after), marks(before), q);
   return { before, after, title: headerTitle(after, { features: false }), cover: coverAxesTalk(after).subtitle, i42: typedAssumedFailures(after, q) };
 }
-// Row 298 (pre-existing, its own PR): the 1/2" stamp thins a side in place, so the drawn width is 1/4" under the
-// typed width on every 1/2" carcass, fresh or restocked. I42 reports it honestly; nothing here hides it.
-const row298 = (m: string) => /^PDF cover says \d+" wide, its drawing tag \d+ 3\/4"$/.test(m);
+// Row 298 is fixed by rows 705/706: the 1/2" stamp keeps each outer face, so the drawn width is the typed width and
+// no I42 is left on a restocked carcass.
 
 test("row 295 desk 60 wide: depth stays assumed and counts the 1/2\" proud fronts (24 1/2, was 24 3/4 at 3/4\")", () => {
   const r = restock("desk 60 wide");
@@ -43,33 +42,30 @@ test("row 295 bathroom vanity 36 wide: depth stays assumed at 21 1/2 (fronts pro
   // #113 builds the vanity as a sink base with doors, so its proud fronts are doors (same note at 3/4").
   assert.equal(r.cover, '36" wide · 34" tall and 21 1/2" deep assumed, measure to lock · doors stand proud');
   assert.match(coverAxesTalk(r.before).subtitle, / · doors stand proud$/);
-  // #113's sink base thins its sides in place too: the only I42 left is the row-298 geometry (cover 36, tag 35 3/4).
-  assert.deepEqual(r.i42.filter((m) => !row298(m)), []);
-  assert.deepEqual(r.i42, ['PDF cover says 36" wide, its drawing tag 35 3/4"']);
+  // #113's sink base keeps its outer faces too (rows 705/706): cover 36, tag 36, no I42.
+  assert.deepEqual(r.i42, []);
 });
 
 test("row 295 nightstand 20 wide 24 tall: depth stays assumed at 16 1/2, never a typed 16; typed W and H stay typed", () => {
   const r = restock("nightstand 20 wide 24 tall");
   assert.equal(r.title, 'Nightstand · 20" W × 16 1/2" D × 24" H (D assumed)');
   assert.equal(r.cover, '20" wide x 24" tall · 16 1/2" deep assumed, measure to lock · drawer fronts stand proud');
-  // The spec now marks no width as edited, so the only I42 left is the row-298 geometry (cover 20, tag 19 3/4).
-  assert.deepEqual(r.i42.filter((m) => !row298(m)), []);
-  assert.deepEqual(r.i42, ['PDF cover says 20" wide, its drawing tag 19 3/4"']);
+  // The spec marks no width as edited and the outer faces hold (rows 705/706): no I42.
+  assert.deepEqual(r.i42, []);
 });
 
 test("row 295 bookcase 36 wide 72 tall 12 deep: all three stay typed, nothing edited, the cover is the 3/4\" build's", () => {
   const r = restock("bookcase 36 wide 72 tall 12 deep");
   assert.equal(r.title, 'Bookcase · 36" W × 12" D × 72" H');
   assert.equal(r.cover, '36" wide x 72" tall x 12" deep');
-  assert.deepEqual(r.i42.filter((m) => !row298(m)), []);
-  assert.deepEqual(r.i42, ['PDF cover says 36" wide, its drawing tag 35 3/4"']);
+  assert.deepEqual(r.i42, []);
 });
 
 test("row 295 family sweep: an untyped carcass restocked keeps every axis assumed on the header too (dresser, wardrobe, linen)", () => {
   // These rebuild from the bench's unit, whose notes no longer say what was assumed: the header reads the spec.
   for (const [q, want] of [
-    ["dresser", 'Dresser · 35 3/4" W × 18 1/2" D × 36" H (size assumed)'],
-    ["wardrobe", 'Wardrobe · 35 15/16" W × 24 1/2" D × 84" H (size assumed)'],
+    ["dresser", 'Dresser · 36" W × 18 1/2" D × 36" H (size assumed)'],
+    ["wardrobe", 'Wardrobe · 36" W × 24 1/2" D × 84" H (size assumed)'],
   ] as const) {
     const r = restock(q);
     assert.equal(r.title, want, q);
