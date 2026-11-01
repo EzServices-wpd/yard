@@ -28,8 +28,8 @@ test("class F: a typed count is read as a count, 'no X' as zero, never a size", 
   assert.deepEqual(typedFeatures("closet with pull out drawers"), ["drawers"]);
   assert.deepEqual(typedFeatures("coffee table with 0 shelves"), []);
   assert.deepEqual(typedCounts("fishing rod holder for 6 rods"), {});
-  // r3 (rows 738/739): one reader for the checker, compose and the builders: "an open shelf" is 1, "no open shelves" 0.
-  assert.deepEqual(typedCounts("coffee table with an open shelf"), { shelves: 1 });
+  // r4 (rows 739/745): one reader for the checker and compose; "no open shelves" is 0, an article is no count.
+  assert.deepEqual(typedCounts("coffee table with an open shelf"), {});
   assert.deepEqual(typedCounts("buffet with no open shelves"), { shelves: 0 });
   assert.deepEqual(typedCounts("cabinet w/o any open shelves"), { shelves: 0 });
 });
@@ -83,8 +83,11 @@ test("class F controls: a count the build honours adds no note; a bare 'a shelf'
   // Shelves count by level, not by piece: 3 shelves across 3 bays are 3, not 9.
   assert.equal(builtCount(generateFromPrompt("bookcase 72 wide with 3 shelves"), "shelves"), 3);
   assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
-  // r3 (row 738): the host alone never costs more than the release build; a 60" table's lower shelf keeps host plus Shelf.
-  for (const q of ["coffee table 60 wide with an open shelf", "coffee table with 3 open shelves"]) assert.ok((generateFromPrompt(q).notes ?? []).some((n) => n.startsWith("Combined:")), q);
+  // r4 (row 745): the typed words alone pick the structure, so every stock builds the same products.
+  for (const q of ["media console with an open shelf", "sideboard 84 wide with 1 shelf", "coffee table 72 wide with an open shelf", "end table with 1 shelf"]) {
+    const kinds = [undefined, "plywood-1-4-4x8", "plywood-1-2-4x8", "plywood-3-4-4x8"].map((m) => (generateFromPrompt(q, m).notes ?? []).some((n) => n.startsWith("Combined:")));
+    assert.deepEqual(kinds, kinds.map(() => /table/.test(q)), q);
+  }
 });
 
 const CARD = [
@@ -98,7 +101,7 @@ test("class F r2 (Critic rows 733/735): a count note says the header's number; e
   const bad: string[] = [];
   for (const [q, said] of [
     ["coffee table without shelves", "You asked for no shelves; this table has 3."],
-    ["media console with no shelves", "You asked for no shelves; this console has 2."],
+    ["media console with no shelves", "You asked for no shelves; this console has 3."],
     ["walk in closet without a rod", "You asked for no rod; this closet has 1."],
     ["base cabinet with pull-out shelves and 2 doors", "You asked for pull out shelves; this cabinet is built without them for now."],
     ["fishing rod holder for 6 rods", ""],
@@ -106,16 +109,16 @@ test("class F r2 (Critic rows 733/735): a count note says the header's number; e
     ["closet with pull out drawers", ""],
     ["cabinet with pull out trays", ""],
     ["coffee table with 0 shelves", ""],
-    ["coffee table with no shelves", ""],
-    ["end table with zero shelves", ""],
-    ["vanity with no shelves", ""],
+    ["coffee table with no shelves", "You asked for no shelves; this table has 3."],
+    ["end table with zero shelves", "You asked for zero shelves; this table has 3."],
+    ["vanity with no shelves", "You asked for no shelves; this vanity has 3."],
     ["bench with 1 shelf", ""],
     ["rolling cart with casters and 2 shelves", "You asked for 2 shelves; this cart has 3."],
     ["nightstand with 1 drawer and 1 shelf", ""],
     ["coffee table with an open shelf", ""],
     ["end table with an open shelf", ""],
     ["side table with an open shelf", ""],
-    ["buffet with no open shelves", "You asked for no open shelves; this buffet has 2."],
+    ["buffet with no open shelves", "You asked for no open shelves; this buffet has 3."],
   ]) {
     const p = generateFromPrompt(q);
     const asked = (p.notes ?? []).filter((n) => /^You asked for/.test(n));
@@ -124,18 +127,19 @@ test("class F r2 (Critic rows 733/735): a count note says the header's number; e
     const header = headerTitle(p).match(/· (\d+) shel(?:f|ves)\b/)?.[1];
     const note = asked.join(" ").match(/ has (\d+)\./)?.[1];
     if (header && note && /shel/.test(asked.join(" ")) && header !== note) bad.push(`${q}: header ${header}, note ${note}`);
-    if (/an open shelf/.test(q) && header !== "1") bad.push(`${q}: header ${header} for an open shelf`);
   }
   assert.deepEqual(bad, []);
 });
 
-test("class F r2 (row 736): count words split part from product as digits do, on every host; more clauses keep the release build", () => {
+test("class F r4 (card 1): only '1 shelf' / 'an open shelf' on a card 1 host stays on the host; the rest keeps the release build", () => {
   const stub = (c: string) => ({ id: c, name: c, prompt: c, notes: [], instances: [], overall: { width: 10, height: 10, depth: 10 },
     panels: [{ id: c, name: "Side", type: "side", materialId: "m", size: { width: 10, height: 10, depth: 10 }, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }] }) as unknown as YardProject;
   const split: string[] = [];
-  for (const h of ["media console", "sideboard", "credenza", "buffet", "vanity", "desk", "nightstand", "coffee table", "end table"]) {
-    for (const s of ["1 open shelf", "one open shelf", "an open shelf", "2 open shelves", "two open shelves", "open shelves", "0 shelves", "zero shelves", "no shelves", "no open shelves", "3 shelves", "three shelves", "twelve shelves"]) {
-      if (composeProducts(`${h} with ${s}`, stub)?.notes.some((n) => n.startsWith("Combined:"))) split.push(`${h} with ${s}`);
+  const card1 = ["media console", "sideboard", "credenza", "buffet", "vanity", "desk", "nightstand"];
+  for (const h of [...card1, "coffee table", "end table"]) {
+    for (const s of ["1 shelf", "1 open shelf", "one open shelf", "an open shelf", "an open shelf.", "a single lower shelf", "2 open shelves", "two open shelves", "open shelves", "zero shelves", "no shelves", "no open shelves", "twelve shelves"]) {
+      const host = card1.includes(h) && /^(?:1 shelf|1 open shelf|one open shelf|an open shelf)$/.test(s);
+      if (!!composeProducts(`${h} with ${s}`, stub)?.notes.some((n) => n.startsWith("Combined:")) === host) split.push(`${h} with ${s}`);
     }
     if (!composeProducts(`${h} with 2 doors and 1 shelf`, stub)?.notes.some((n) => n.startsWith("Combined:"))) split.push(`${h} with 2 doors and 1 shelf kept no Shelf`);
   }

@@ -82,8 +82,8 @@ function readCounts(prompt: string): Partial<Record<TypedFeature, [number, strin
   const out: Partial<Record<TypedFeature, [number, string]>> = {};
   for (const f of COUNTED) {
     const w = f === "rods" && isClothesRodPrompt(lower) ? `(?:${WORDS.rods.source}|(?<!drawer\\s)rails?\\b)` : WORDS[f].source;
-    // One reader (countWords.readCount) for the checker, compose and the shelf builders: "an open shelf" is 1.
-    const r = readCount(lower, w, f === "shelves" ? "shelf" : undefined);
+    // One reader (countWords.readCount) for the checker and compose.
+    const r = readCount(lower, w);
     // rodsAsked reads clothes rods; "fishing rod holder for 6 rods" is a capacity, never a part count.
     const rods = f === "rods" && isClothesRodPrompt(lower) ? rodsAsked(prompt) : 0;
     if (rods) out[f] = [rods, r?.n ? r.words : `${rods} rods`];
@@ -115,9 +115,10 @@ function countNoted(p: YardProject, f: TypedFeature, n: number, typed: string): 
 /** Typed counts the build neither honours nor answers in a note. */
 export function countsDropped(p: YardProject, prompt: string): [TypedFeature, number, number][] {
   // A Combined build (compose.ts) answers a typed shelf with its own Shelf product, as release did: its note says so.
+  // It never answers "no shelves" (row 739): that gets the count note.
   const shelfProduct = (p.notes ?? []).some((n) => n.startsWith("Combined:") && /\bShelf\b/.test(n));
   return Object.entries(readCounts(prompt)).flatMap(([f, [n, typed]]) => {
-    if (f === "shelves" && shelfProduct) return [];
+    if (f === "shelves" && shelfProduct && n > 0) return [];
     const b = builtCount(p, f as TypedFeature);
     return b === n || countNoted(p, f as TypedFeature, n, typed) ? [] : [[f as TypedFeature, n, b] as [TypedFeature, number, number]];
   });

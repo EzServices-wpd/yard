@@ -5,7 +5,6 @@ import { createId } from "@/lib/utils";
 import type { Panel } from "./types";
 import { inchFrac } from "./inchText";
 import { frontCue } from "./cueRules";
-import { readCount } from "./countWords";
 export { frontCue, formChangeNotes, frontCueNotes } from "./cueRules";
 import { isSideEndTable, wantsShoes } from "./family";
 
@@ -297,9 +296,7 @@ export function spokenShelfCount(text: string): number | null {
     /\bshelf\b/.test(lower) &&
     !/\bshelves\b/.test(lower) &&
     (/floating|wall-?mounted|with\s+(?:a\s+)?lip|\blip\b/.test(lower) ||
-      /\b(?:a|the|one|single)\s+shel(?:f)\b/.test(lower) ||
-      // Class F (row 738): "an open shelf" is one, read by the checker's own reader.
-      !!readCount(lower, "shel(?:f|ves)\\b", "shelf")?.one)
+      /\b(?:a|the|one|single)\s+shel(?:f)\b/.test(lower))
   ) {
     return 1;
   }
