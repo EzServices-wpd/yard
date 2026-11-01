@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { StockFind } from "@/components/workspace/stock-find";
+import { restockKeepingFaces } from "@/components/workspace/restock-faces";
 import { CATALOG_CATEGORIES, FORGE_CATALOG, getCatalogItem, searchCatalog } from "@/lib/yard/catalog";
 import { listFoundStock, rememberCatalogItem } from "@/lib/yard/foundStock";
 import { JOIN_LABELS } from "@/lib/yard/joints";
@@ -68,12 +69,12 @@ export function CatalogPanel() {
     useYard.getState().beginBuild();
     window.setTimeout(() => {
       try {
-        generate(nextPrompt, item.id, undefined, {
+        restockKeepingFaces(() => generate(nextPrompt, item.id, undefined, {
           includeSpine: spine,
           fresh: true,
           keepView: true,
           restock: true,
-        });
+        }));
         makePlan();
       } finally {
         revealBench();
