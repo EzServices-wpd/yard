@@ -3,7 +3,8 @@ import { getCatalogItem } from "./catalog";
 
 /**
  * Rows 705/706: a stock switch re-derives parts from the joints, never from the ¾" layout. Two parts are joined on
- * axis k when one's end meets the other's start face to face (they overlap on the other two axes). After the faces
+ * axis k when one's end meets the other's start face to face, or a fraction's 1/16" short of it (they overlap on the
+ * other two axes); that gap is kept. After the faces
  * thin, every joint meets again: the part that can grow on that axis (a shelf, back, rod or rail along its length)
  * follows the wall's new face; a part's own thickness never stretches, so two walls that meet end to end close up by
  * moving the one that is not an outer face of the build.
