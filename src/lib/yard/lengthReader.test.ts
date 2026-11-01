@@ -252,3 +252,23 @@ it("release reads: commas, arches, N-inch / N-foot, N' long and width N ft build
   // An arch word keeps release's plywood count too: the odd sheet is said, as on release.
   assert.ok(generateFromPrompt("dollhouse with arched door 36 tall 3 inch plywood").notes?.includes(`3" plywood isn't on the stock list, so this dollhouse is cut from 3/4" Plywood 4×8. Pick 1/2" or 3/4" plywood to switch it.`));
 });
+
+it("card 6 (r4): a castle typed in any spelling builds or refuses like its digit spelling; the refusal title never takes the size words (row 731)", () => {
+  const core = (q: string) => {
+    const p = generateFromPrompt(q);
+    return { name: p.name, refused: p.refused ?? null, o: [p.overall.width, p.overall.depth, p.overall.height], usd: p.refused ? 0 : buildPlan(p).totals.estCostUsd };
+  };
+  // One prompt per card 6 shape (Critic r3 B2 probe/coff-offlist.json and r4/c6.json).
+  for (const q of ["castle from toothpicks 29 1/2 inches", "toothpick castle 12 1/4 inch", "castle from toothpicks 1 1/4 feet", "toothpick castle 2-1/2 ft", "castle from toothpicks 12-1/2 inch", "toothpick castle 12 and a half inches", "toothpick castle thirty inches", "castle from toothpicks two and a half feet", 'castle made of toothpicks 29 1/2"', "castle out of toothpicks 2 ft 6 in"]) {
+    assert.deepEqual(core(q), core(canonicalMeasures(q)), q);
+  }
+  // Card 6's example: release built a misread 2 5/16" castle for $7.95; the size is now read whole.
+  const ex = core("castle from toothpicks 29 1/2 inches");
+  assert.deepEqual([ex.refused, ex.usd], [null, 34.68]);
+  assert.ok(near(ex.o[0], 33.3, 0.05) && near(ex.o[2], 29.3, 0.05), JSON.stringify(ex.o));
+  // Row 731: "a Castle Thirty Inches in wooden toothpicks" was the title taking the spelled size; only the title changes.
+  const t = core("toothpick castle thirty inches");
+  assert.equal(t.name, "Castle");
+  assert.equal(t.refused, "Yard builds up to 8,000 parts in one plan, and a Castle in wooden toothpicks at 30 inches needs more, so nothing is built. It builds up to 29 1/2 inches: type 29 1/2 inches or smaller.");
+  assert.match(core("toothpick castle 30 and a half inches").refused ?? "", /^Yard builds up to 8,000 parts in one plan, and a Castle in wooden toothpicks at 30 1\/2 inches needs more/);
+});
