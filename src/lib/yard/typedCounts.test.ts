@@ -100,6 +100,8 @@ test("class F r2 (Critic rows 733/735): a count note says the header's number; e
     ["closet with pull out drawers", ""],
     ["cabinet with pull out trays", ""],
     ["coffee table with 0 shelves", ""],
+    ["coffee table with no shelves", ""],
+    ["end table with zero shelves", ""],
     ["vanity with no shelves", ""],
   ]) {
     const p = generateFromPrompt(q);
@@ -119,9 +121,9 @@ test("class F r2 (row 736): count words split part from product as digits do, on
   const split: string[] = [];
   for (const h of ["media console", "sideboard", "credenza", "buffet", "vanity", "desk", "nightstand", "coffee table", "end table"]) {
     for (const s of ["1 open shelf", "one open shelf", "an open shelf", "2 open shelves", "two open shelves", "0 shelves", "zero shelves", "no shelves", "3 shelves", "three shelves"]) {
-      if (composeProducts(`${h} with ${s}`, stub)) split.push(`${h} with ${s}`);
+      if (composeProducts(`${h} with ${s}`, stub)?.notes.some((n) => n.startsWith("Combined:"))) split.push(`${h} with ${s}`);
     }
-    if (!composeProducts(`${h} with 2 doors and 1 shelf`, stub)) split.push(`${h} with 2 doors and 1 shelf kept no Shelf`);
+    if (!composeProducts(`${h} with 2 doors and 1 shelf`, stub)?.notes.some((n) => n.startsWith("Combined:"))) split.push(`${h} with 2 doors and 1 shelf kept no Shelf`);
   }
   assert.deepEqual(split, []);
   assert.ok(composeProducts("picture frame with a shelf", stub));

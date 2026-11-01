@@ -138,9 +138,9 @@ const countedShelf = (clause: string) => {
   return !!m && !!(m[1] || m[2]);
 };
 
-function stemOf(clause: string, shelfOnHost = false): string | null {
+function stemOf(clause: string): string | null {
   const core = clauseCore(clause);
-  if (!core || partNotProduct(core) || (shelfOnHost && countedShelf(clause))) return null;
+  if (!core || partNotProduct(core)) return null;
   // A survey sentence mentions products in passing. A product clause is short.
   if (core.split(/\s+/).length > 8) return null;
   if (/\b(?:space|area|zone)\b/.test(core)) return null;
@@ -295,13 +295,23 @@ export function composeProducts(
     .map((s) => s.trim())
     .filter(Boolean);
   if (clauses.length < 2) return null;
-  // Class F keeps a counted shelf on its host only in "host with N shelves": with more clauses (doors, drawers) the
-  // host would build them too and cost more, so that build stays as it was (no price goes up).
   const found = clauses
-    .map((clause) => ({ clause, stem: stemOf(clause, clauses.length === 2) }))
+    .map((clause) => ({ clause, stem: stemOf(clause) }))
     .filter((c): c is { clause: string; stem: string } => !!c.stem);
   const kept = found.filter((c) => !accessory(c.stem, found.filter((o) => o !== c).map((o) => o.stem)));
   if (kept.length < 2) return null;
+  // Class F (rows 570, 736): in "host with N shelves" the counted shelf is the host's own, so the whole prompt builds
+  // the host; "no / zero / 0 shelves" builds the host alone, as "0 shelves" does (the zero stays in the prompt for
+  // I41's count note). With more clauses (doors, drawers) the host would build them too and cost more, so that build
+  // stays as it was: no price goes up.
+  if (clauses.length === 2 && kept.length === 2) {
+    const shelf = kept.find((c) => countedShelf(c.clause));
+    if (shelf) {
+      if (!/^(?:no|zero|0)\s/i.test(shelf.clause.trim())) return null;
+      const alone = build(shareStock(kept.find((c) => c !== shelf)!.clause, prompt));
+      return alone.panels.length || alone.instances.length ? { ...alone, prompt } : null;
+    }
+  }
 
   // Coat rack + bench is one hall tree. Stacking the wall rack on the seat
   // stretches the bench sides into fins and runs the pegs across the seat.
