@@ -21,7 +21,7 @@ import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
 import { typedHeadNoun } from "./headNoun";
 import { hunt } from "./hunter";
-import { FEATURE_NOUN, featureBuilt, featureNoted, titleHeadNoun, typedFeatures } from "./typedFeatures";
+import { FEATURE_NOUN, countsDropped, featureBuilt, featureNoted, titleHeadNoun, typedCounts, typedFeatures } from "./typedFeatures";
 import { namedFormOwnsHead } from "./formOwnership";
 import { FIT_MEASURE, fitClause, sizePhrases, typedSizeTuple, typedWidth } from "./sizePhrases";
 import { isUnitItem, unitItemAsk } from "./unitItems";
@@ -474,7 +474,8 @@ export function i37(p: YardProject, plan: BuildPlan): Violation[] {
 /**
  * I41 (F17 typed features, typedFeatures.ts): a feature word typed after the head noun (doors, drawers, a lid,
  * casters or wheels, shelves) never picks the build (no prehung door for "kitchen cart with 2 doors"), and each one
- * is built on the head noun's build or named in a note.
+ * is built on the head noun's build or named in a note. Class F: so is every typed count ("3 shelves", "no rods"):
+ * the build has that many, or a note says what was asked and what is built.
  */
 export function i41(p: YardProject, prompt: string): Violation[] {
   // A refused build (tooSmall.ts) builds nothing and says why: a typed feature is not dropped on it.
@@ -482,11 +483,12 @@ export function i41(p: YardProject, prompt: string): Violation[] {
   const q = prompt || p.prompt || "";
   const head = typedHeadNoun(q);
   const feats = typedFeatures(q);
-  if (!head || !feats.length) return [];
+  if (!head || (!feats.length && !Object.keys(typedCounts(q)).length)) return [];
   const out: Violation[] = [];
   const th = titleHeadNoun(p.name ?? "");
   if (p.kind === "opening" || (th && FEATURE_NOUN.test(th) && !(p.name ?? "").toLowerCase().includes(head))) out.push(v("I41", `the feature picked the build: "${p.name}" for a typed ${head}`));
   for (const f of feats) if (!featureBuilt(p, f) && !featureNoted(p, f)) out.push(v("I41", `typed ${f} neither built nor noted`));
+  for (const [f, n, b] of countsDropped(p, q)) out.push(v("I41", `typed ${n} ${f}, built ${b}, not noted`));
   return out;
 }
 
