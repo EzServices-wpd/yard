@@ -250,6 +250,11 @@ export function shelfLineCount(shelves: Panel[]): number {
   return new Set(shelves.map((p) => Math.round(p.position.y * 4) / 4)).size;
 }
 
+/** The header's shelf count: shelf lines of the parts named shelf (never shelf rails or cleats). Header and I41 share it. */
+export function headerShelfCount(panels: Panel[]): number {
+  return shelfLineCount(panels.filter((p) => /^(?:grid |adjustable |fixed |inner )?shelf$/i.test(p.name.replace(/\s*\d+$/, ""))));
+}
+
 /** Levels of the shelf stack: one height per shelf number. Two bays of Shelf 4 are one level. */
 export function shelfLevelLayout(panels: Panel[]): { levels: number; keyed: number; minClear: number; shared: boolean } {
   const at = new Map<string, number>();
