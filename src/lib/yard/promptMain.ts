@@ -44,7 +44,8 @@ import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, det
 import { classifyAnatomy } from "./anatomy";
 import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
-import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
+import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes, envelopeOf, keepOuterFace } from "./weekendStockHonesty";
+import { meetAgain } from "./rederive";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, engineOwnsForm, isLockedForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
@@ -796,19 +797,26 @@ function settleOnFloor(project: YardProject): YardProject {
   };
 }
 
-/** Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock. */
+/**
+ * Sheet faces take the picked stock thickness. A 1/2" sheet is not still cut at 3/4". Backer keeps its own stock.
+ * Rows 705/706: a face on the outside of the build keeps its outer face (the typed size holds), and every part
+ * re-derives from its joints (rederive.ts), so nothing is left 1/4" off a face that thinned.
+ */
 function stampStockThickness(project: YardProject): YardProject {
   const item = getCatalogItem(project.primaryMaterialId);
   const thick = item?.dims.thickness;
   if (!thick || Math.abs(thick - 0.75) < 0.02 || !project.panels.length) return project;
+  // Only a face that is the build's stated size holds it: proud fronts (doors, drawer fronts) keep the face they hang on.
+  const env = envelopeOf(project.panels);
+  for (const [a, k] of [["x", "width"], ["y", "height"], ["z", "depth"]] as const) if (Math.abs(env[a][1] - env[a][0] - (project.overall?.[k] ?? 0)) > 0.02) env[a][1] = Infinity;
   const panels = project.panels.map((panel) => {
     if (panel.materialId !== project.primaryMaterialId) return panel;
     const size = panel.size;
     const thin = (["width", "height", "depth"] as const).reduce((a, b) => (size[a] <= size[b] ? a : b));
     if (Math.abs(size[thin] - 0.75) > 0.05) return panel;
-    return { ...panel, size: { ...size, [thin]: thick } };
+    return keepOuterFace({ ...panel, size: { ...size, [thin]: thick } }, panel, env);
   });
-  return { ...project, panels };
+  return { ...project, panels: meetAgain(project.panels, panels) };
 }
 
 /**
