@@ -24,6 +24,7 @@ import { explodeClock, solvedVersion, subscribeSolved } from "@/components/works
 import { ExplodeDriver, explodeView, overlayRects } from "@/components/workspace/explode-driver";
 import { fitPoints } from "@/components/workspace/explode-frame";
 import { BENCH_INK, MARK_ALPHA, SHOP_GROUND, SHOP_LIGHT, shopKeyPosition } from "@/components/workspace/shop-light";
+import { useShopDrawingOn } from "@/components/workspace/shop-drawing";
 import { drawerGroupOf, drawerGroups, maxOpenPull } from "@/components/workspace/drawerGroups";
 import { ScaleLayer } from "@/components/workspace/scale-ghost";
 import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components/workspace/build-scrub";
@@ -46,9 +47,11 @@ const HIST = BENCH_INK.ink;
 function StudioLights({
   project,
   useShadows,
+  footprint = true,
 }: {
   project: YardProject;
   useShadows: boolean;
+  footprint?: boolean;
 }) {
   const W = Math.max(project.overall.width, 16);
   const H = Math.max(project.overall.height, 16);
@@ -80,7 +83,7 @@ function StudioLights({
       />
       <directionalLight position={[span * 0.9, H * 0.5, span * 0.3]} intensity={fitted ? L.fill.fitted : L.fill.loose} color={L.fill.color} />
       <directionalLight position={[span * 0.2, H * 0.9, -span * 0.9]} intensity={L.rim.intensity} color={L.rim.color} />
-      <FootprintShadow project={project} />
+      {footprint && <FootprintShadow project={project} />}
     </>
   );
 }
@@ -218,6 +221,9 @@ export function WorkspaceCanvas() {
   const step = plan?.instructions.find((s) => s.step === activeStep) ?? null;
   const stepIds = useMemo(() => (step ? stepInstanceIds(project, step) : []), [step, project]);
   const useShadows = project.instances.length + project.panels.length < 180;
+  // Shop drawing: outlines on the bare ground (no floor, grid, footprint, cast shadows or scale layer).
+  const shop = useShopDrawingOn();
+  const lit = useShadows && !shop;
   // No WebGL (a headless or locked-down browser): say what the model is in words, never a blank stage.
   const [noGl, setNoGl] = useState(false);
   useEffect(() => {
@@ -277,9 +283,9 @@ export function WorkspaceCanvas() {
           {/* Self-hosted (drei presets fetch from raw.githack.com at runtime): same CC0 Poly Haven file, public/hdri. */}
           <Environment files={BENCH_HDRI} environmentIntensity={0.5} background={false} />
         </Suspense>
-        <StudioLights project={project} useShadows={useShadows} />
+        <StudioLights project={project} useShadows={lit} footprint={!shop} />
         {/* Floor: no hard cast shadow (it read as a dark slab); the soft footprint shadow grounds the model. */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} visible={!shop}>
           <planeGeometry args={[6000, 6000]} />
           <meshStandardMaterial color={SHOP_GROUND.floor} roughness={0.95} metalness={0} />
         </mesh>
@@ -303,11 +309,11 @@ export function WorkspaceCanvas() {
           pending={pending}
           detail={detail}
           joinMethod={project.joinMethod}
-          useShadows={useShadows}
+          useShadows={lit}
           plan={plan}
           stepping={activeStep != null}
         />
-        <Grid args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor={SHOP_GROUND.gridCell} sectionSize={24} sectionThickness={0.5} sectionColor={SHOP_GROUND.gridSection} fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
+        <Grid visible={!shop} args={[80, 80]} cellSize={8} cellThickness={0.28} cellColor={SHOP_GROUND.gridCell} sectionSize={24} sectionThickness={0.5} sectionColor={SHOP_GROUND.gridSection} fadeDistance={80} fadeStrength={2.2} infiniteGrid position={[0, 0, 0]} />
         <OrbitControls
           makeDefault
           enabled={workMode !== "walk"}
@@ -320,7 +326,7 @@ export function WorkspaceCanvas() {
           target={[0, 6, 0]}
           touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         />
-        <ScaleLayer project={project} hidden={pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
+        <ScaleLayer project={project} hidden={shop || pending || explode || activeStep != null || workMode === "walk" || scrubbing} />
         {/* The open Watch it build bar, the open share sheet and the phone Measure sheet are cards the fit avoids (refit on open and close); closed, the key is release's. */}
         <CameraRig project={project} preset={camera} stepIds={stepIds} locked={workMode === "walk"} scrubbing={scrubbing} overlayKey={`${measureOpen ? 1 : 0}${activeStep ?? ""}${scrubbing ? "s" : ""}${sharing ? "h" : ""}${sheetGap ? "m" : ""}|${viewNonce}`} />
         <ClipTurn />

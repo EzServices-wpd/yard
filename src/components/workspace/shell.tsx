@@ -33,6 +33,8 @@ import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { BenchTools } from "@/components/workspace/bench-tools";
+import { ShopDrawingSheet } from "@/components/workspace/shop-drawing-print";
+import { setShopDrawing, useShopDrawingOn } from "@/components/workspace/shop-drawing";
 import { hydrateYard, useYard } from "@/lib/yard/store";
 import { decodeShare, loadSaved } from "@/lib/yard/shareBuild";
 import { applyInsideCount } from "@/lib/yard/insideCount";
@@ -153,6 +155,10 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     if (titlePending || (benchPieces <= 0 && !project.refused)) return;
     document.title = `${headerTitle(project)} · Yard`;
   }, [titlePending, benchPieces, project]);
+  // Shop drawing: a new prompt clears it (a stock switch keeps the prompt, so it keeps the mode). While on, only its
+  // sheet prints.
+  const shopDrawing = useShopDrawingOn();
+  useEffect(() => setShopDrawing(false), [project.prompt]);
   // A crash report names only the engine's build family (its fixed kind id), never a title, size or the words typed.
   useEffect(() => {
     setErrContext(() => {
@@ -330,7 +336,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     </>
   );
   return (
-    <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <>
+    <div className={`flex h-dvh flex-col bg-bg text-fg${shopDrawing ? " print:hidden" : ""}`} style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-2 sm:h-14 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link to="/" className="shrink-0">
@@ -856,6 +863,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         <ExportDialog project={project} plan={plan} onClose={() => setExportOpen(false)} />
       )}
     </div>
+    <ShopDrawingSheet on={shopDrawing} project={project} />
+    </>
   );
 }
 
