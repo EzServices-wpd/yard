@@ -6,6 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import fs from "node:fs";
 import { generateFromPrompt } from "../src/lib/yard/promptMain";
 import { buildPlan } from "../src/lib/yard/report";
 import { i41 } from "../src/lib/yard/invariants";
@@ -17,6 +18,18 @@ globalThis.fetch = (async () => { throw new Error("network is off in this probe"
 const h = (x: unknown) => createHash("sha1").update(JSON.stringify(x)).digest("hex").slice(0, 10);
 type Obs = { prompt: string; canon: string; norm: string; name: string; W: number; D: number; H: number; usd: number; pieces: number; refused: string | null; notes: string[]; i41: string[]; cut: string; bom: string[] };
 const seen = new Map<string, Obs>();
+// run-unit-tests.ts prints nothing of a passing file's stdout, so CRITIC lines also go to the runner's own stdout (the job log).
+const SINK = (() => {
+  let fd: number | null = null;
+  try {
+    for (let pid = process.ppid, i = 0; i < 10 && pid > 1; i++) {
+      if (/run-unit-tests/.test(fs.readFileSync(`/proc/${pid}/cmdline`, "utf8"))) { if (fd != null) fs.closeSync(fd); fd = fs.openSync(`/proc/${pid}/fd/1`, "a"); }
+      pid = Number(fs.readFileSync(`/proc/${pid}/stat`, "utf8").split(") ")[1].split(" ")[1]);
+    }
+  } catch { /* not on Linux CI */ }
+  return fd;
+})();
+const emit = (line: string) => { console.log(line); if (SINK != null) try { fs.writeSync(SINK, line + "\n"); } catch { /* ignore */ } };
 function obs(prompt: string): Obs {
   const got = seen.get(prompt);
   if (got) return got;
@@ -35,7 +48,7 @@ function obs(prompt: string): Obs {
     o = { prompt, canon: "", norm: "", name: `THREW ${(e as Error).message}`, W: -1, D: -1, H: -1, usd: -1, pieces: -1, refused: null, notes: [], i41: [], cut: "", bom: [] };
   }
   seen.set(prompt, o);
-  console.log(`CRITIC ${JSON.stringify(o)}`);
+  emit(`CRITIC ${JSON.stringify(o)}`);
   return o;
 }
 const box = (o: Obs) => `${o.W}x${o.D}x${o.H} $${o.usd} ${o.pieces}p ${o.refused ? "REFUSED" : ""}`;
@@ -63,6 +76,7 @@ test("D: a spelled or unit size beside a class F count builds like its digit spe
     const a = obs(`${host} ${f} 2 1/2 ft wide`), b = obs(`${host} ${f} 30 wide`);
     if (box(a) !== box(b)) bad.push(`${a.prompt}: ${box(a)} != ${box(b)}`);
   }
+  emit(`CRITIC_BAD ${JSON.stringify(bad)}`);
   assert.deepEqual(bad, []);
 });
 
@@ -88,6 +102,7 @@ test("A: owner's class F x size interactions", () => {
     if (o.i41.length) bad.push(`${q}: I41 ${o.i41.join("; ")}`);
     if (box(o) !== box(d)) bad.push(`${q}: ${box(o)} != ${digit}: ${box(d)}`);
   }
+  emit(`CRITIC_BAD ${JSON.stringify(bad)}`);
   assert.deepEqual(bad, []);
 });
 
@@ -112,6 +127,7 @@ test("B: a spelled count of feet / legs is not read as a size", () => {
     obs(q.replace(/\b(four|six|three|two|one|five)\b/, (w) => String(["zero", "one", "two", "three", "four", "five", "six"].indexOf(w))));
     if (o.W !== p.W || o.D !== p.D || o.H !== p.H) bad.push(`${q}: ${box(o)} vs "${plain}" ${box(p)} (norm "${o.norm}")`);
   }
+  emit(`CRITIC_BAD ${JSON.stringify(bad)}`);
   assert.deepEqual(bad, []);
 });
 
@@ -141,8 +157,9 @@ test("C: stock names with an adjective keep their size and build like release", 
     obs(same);
     if (o.name.startsWith("THREW")) bad.push(`${q}: ${o.name}`);
     // Report-only on the twin; the build diff vs release is read from the CRITIC lines.
-    if (/\d\.\d+ inch/.test(o.canon) && !/\d\.\d+ inch/.test(q)) console.log(`CRITIC_NOTE ${JSON.stringify({ q, canon: o.canon })}`);
+    if (/\d\.\d+ inch/.test(o.canon) && !/\d\.\d+ inch/.test(q)) emit(`CRITIC_NOTE ${JSON.stringify({ q, canon: o.canon })}`);
   }
+  emit(`CRITIC_BAD ${JSON.stringify(bad)}`);
   assert.deepEqual(bad, []);
 });
 
