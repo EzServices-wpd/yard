@@ -2,7 +2,7 @@ LOCK: none
 
 # Claude progress log
 
-Shared log for the Yard bot team. Lives on `release/2026-10-24`. Always pull this branch before reading it.
+Shared log for the Yard bot team. Lives on `release/2026-10-24`. Always pull this branch before reading it. Cold start: read `docs/BOT-LOAD.md` first (queue, state, every standing rule).
 
 ## Lock
 
