@@ -46,7 +46,7 @@ Newest first. Tip, canary status, the rule per change, before/after prompts, fil
 ### 2026-11-06 16:18 ET | class F shipped; digit counts of feet are not a size — in progress (lock held)
 
 - Class F shipped. Do not re-implement it. Yard Critic PASS on exact head `d47dc17c8b84012fbe8de8073496db7d7c6ce24a` vs then-release `80c3e765`, lean bar, canaries byte-identical, CARD1 host list unchanged. Plain-merged #245 into release `ec37c4c8248abaa72d9e1a555271861083ab71be`. Squash #246 to main `eb082af6a014115fc574598c9fca22393ddf40f9`. Merge-back #247 `b5442befb7a417ba72bd02e1eff43df696e9c7dd`. Production READY for that main SHA (`dpl_CghbaV74qwH6gzTB1a7xPvRYyyxc` / yard-if6j79v6x, aliases include yard.wiki).
-- Lock for class F cleared on this feature branch only (it had ridden in with #245). New lock: digit count of feet not a size. Not graded. Not merged. PR into `release/2026-10-24`. Do not merge.
+- Lock for class F cleared on this feature branch only (it had ridden in with #245). New lock: digit count of feet not a size. Not graded. Not merged. PR #248 into `release/2026-10-24`. Do not merge.
 - Rule: a number before feet / foot is not a length when with / on / and / has / plus comes before it or a part noun follows it, unless an axis word follows. Digits use the same rule the one reader already applied to spelled counts. `normalizeUserPrompt` and `sizePhrases` follow that reader instead of a second feet scan. A leading "6 foot shelf" stays the storage height (C2). A comma keeps release's reading (`bookcase, 3 1/2 ft boards` unchanged).
 - Reproduced on `b5442bef` before the change. After, each headline matches its spelled twin (name, overall, steps, Buy names and quantities):
 

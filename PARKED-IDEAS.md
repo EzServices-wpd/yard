@@ -23,7 +23,7 @@ Update 2026-11-06: shipped via #245 / #246 / #247. Yard Critic PASS on exact hea
 "bookcase with 2 foot shelves" → 24" tall. Release reads these this way; NR-1 r5 fixed only the spelled forms
 ("four feet") because NR-1 is the reader of spelled sizes. Fixing the digit forms moves release builds, so it needs
 its own mover list.
-Update 2026-11-06 16:18 ET: in progress (lock held on the feature branch; not merged, not graded). The one reader skips a digit before feet/foot the same way it skips the spelled number, unless an axis word follows. Checked on release `b5442bef` first. After the change the headlines match their spelled twins: "coffee table with 4 feet" is 40×40×18, "side table with 3 feet" is 20×20×22, "table with 4 foot legs" is 40×40×30, "bookcase with 2 foot shelves" is 36×12×84. "2 feet wide" / "4 feet tall" / "6 foot shelf" stay sizes. Mover list: `scripts/baselines/approvals/digit-feet/`.
+Update 2026-11-06 16:18 ET: in progress on PR #248 (lock held on the feature branch; not merged, not graded). The one reader skips a digit before feet/foot the same way it skips the spelled number, unless an axis word follows. Checked on release `b5442bef` first. After the change the headlines match their spelled twins: "coffee table with 4 feet" is 40×40×18, "side table with 3 feet" is 20×20×22, "table with 4 foot legs" is 40×40×30, "bookcase with 2 foot shelves" is 36×12×84. "2 feet wide" / "4 feet tall" / "6 foot shelf" stay sizes. Mover list: `scripts/baselines/approvals/digit-feet/`.
 
 ## 2026-11-06 | Stool with a feature word drops a size typed with a unit mark (pre-existing on release)
 
