@@ -38,6 +38,15 @@ export function planStepParts(project: YardProject, steps: AssemblyStep[], lette
   const byId = new Map(project.panels.map((p) => [p.id, p]));
   const base = (name: string) => name.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+\d+$/, "").replace(/\s+/g, " ").trim();
   const head = (name: string) => singular(base(name).replace(/\s+[A-Z]$/, "").split(/\s+/).pop() ?? "");
+  // Per part, once per plan (the loops below run per step × lettered match × part). Same strings and patterns as
+  // before; none has the g/y flag, so reusing one RegExp answers exactly as building it at each test did.
+  const per = new Map(
+    project.panels.map((p) => {
+      const nm = base(p.name).toLowerCase();
+      const h = head(p.name);
+      return [p.id, { fam: head(cutListName(p.name, p.type)), head: h, nm, multi: nm.includes(" "), nameRe: new RegExp(`\\b${escapeRe(nm)}s?\\b`), headRe: new RegExp(`\\b${escapeRe(h)}(?:s|es)?\\b`, "i") }] as const;
+    }),
+  );
   const info = steps.map((s) => {
     const ids = stepInstanceIds(project, s);
     const kind = stepKindOf(s, ids);
@@ -54,8 +63,8 @@ export function planStepParts(project: YardProject, steps: AssemblyStep[], lette
         const words = [m[3], m[4]].filter((w): w is string => !!w).map(singular);
         for (const p of panels) {
           const Lt = letters.get(p.id);
-          const fam = head(cutListName(p.name, p.type));
-          if (Lt && group.includes(Lt) && words.some((w) => w === fam || w === head(p.name))) hit.add(p.id);
+          const { fam, head: h } = per.get(p.id)!;
+          if (Lt && group.includes(Lt) && words.some((w) => w === fam || w === h)) hit.add(p.id);
         }
       }
       return hit;
@@ -67,22 +76,20 @@ export function planStepParts(project: YardProject, steps: AssemblyStep[], lette
       const low = chunk.toLowerCase();
       const fullNamed = new Set<string>();
       for (const p of panels) {
-        const nm = base(p.name).toLowerCase();
-        const multi = nm.includes(" ");
-        if ((multi || !textHasLetters) && nm.length > 2 && new RegExp(`\\b${escapeRe(nm)}s?\\b`).test(low)) {
+        const { nm, multi, nameRe } = per.get(p.id)!;
+        if ((multi || !textHasLetters) && nm.length > 2 && nameRe.test(low)) {
           hit.add(p.id);
           if (multi) fullNamed.add(p.id);
         }
       }
       // Heads the words already pin to named parts ("Left knee divider" → "divider" means those two).
-      const pinnedHeads = new Set(panels.filter((p) => fullNamed.has(p.id)).map((p) => head(p.name)));
+      const pinnedHeads = new Set(panels.filter((p) => fullNamed.has(p.id)).map((p) => per.get(p.id)!.head));
       for (const p of panels) {
-        const multi = base(p.name).includes(" ");
+        const { multi, head: h, headRe } = per.get(p.id)!;
         // Head-noun talk ("the two tops", "the back") only for parts the step never letters.
         const neverLettered = !letters.get(p.id) || !lettered.has(p.id);
-        const h = head(p.name);
         if (pinnedHeads.has(h) && !fullNamed.has(p.id)) continue;
-        if (neverLettered && (multi || !textHasLetters || !letters.get(p.id)) && h.length > 2 && new RegExp(`\\b${escapeRe(h)}(?:s|es)?\\b`, "i").test(chunk)) hit.add(p.id);
+        if (neverLettered && (multi || !textHasLetters || !letters.get(p.id)) && h.length > 2 && headRe.test(chunk)) hit.add(p.id);
       }
       return hit;
     };

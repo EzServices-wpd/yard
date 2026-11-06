@@ -602,11 +602,21 @@ export function catalogLumberTags(base: string[] = ["lumber", "trim", "shelf"]):
   return out;
 }
 
+/**
+ * Compiled once per alias. Every pattern here is built without the g/y flags, so a shared RegExp keeps no
+ * lastIndex between calls and test/match answer exactly as a freshly built one would (aliasRegExpCache.test.ts).
+ */
+const ALIAS_RE = new Map<string, RegExp>();
+const LEG_RE = new Map<string, RegExp>();
+
 /** Word-bounded regex for one alias (multi-word: flexible whitespace). */
 export function aliasToRegExp(alias: string): RegExp {
+  const hit = ALIAS_RE.get(alias);
+  if (hit) return hit;
   const bits = alias.trim().toLowerCase().split(/\s+/).map(escapeRe);
-  if (bits.length === 1) return new RegExp(`\\b${bits[0]}\\b`);
-  return new RegExp(`\\b${bits.join("\\s+")}\\b`);
+  const re = bits.length === 1 ? new RegExp(`\\b${bits[0]}\\b`) : new RegExp(`\\b${bits.join("\\s+")}\\b`);
+  ALIAS_RE.set(alias, re);
+  return re;
 }
 
 /**
@@ -647,9 +657,13 @@ export function promptNamesNamedLumber(prompt: string): boolean {
 }
 
 /** "walnut legs" / "legs of walnut" / "with walnut table legs" — the species typed for the legs. */
-function legPhraseFor(alias: string): RegExp {
+export function legPhraseFor(alias: string): RegExp {
+  const hit = LEG_RE.get(alias);
+  if (hit) return hit;
   const src = aliasToRegExp(alias).source;
-  return new RegExp(`${src}\\s+(?:table\\s+)?legs?\\b|\\blegs?\\s+(?:in|of|made\\s+of|from)\\s+${src}`);
+  const re = new RegExp(`${src}\\s+(?:table\\s+)?legs?\\b|\\blegs?\\s+(?:in|of|made\\s+of|from)\\s+${src}`);
+  LEG_RE.set(alias, re);
+  return re;
 }
 
 /** Species typed specifically for the legs ("oak table with walnut legs" → walnut), else null. */

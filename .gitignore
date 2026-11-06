@@ -13,3 +13,6 @@ dist
 
 # Optional: keep agent skills versioned; ignore only local Cursor junk if added later
 # .cursor/
+
+# Eval-gate row cache (scripts/build-cache.ts)
+.cache/
