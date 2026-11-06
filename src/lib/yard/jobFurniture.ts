@@ -4,6 +4,7 @@
  */
 import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
+import { readLengths, releaseReads } from "./lengthReader";
 import { detectMaterial } from "./promptHelpers";
 import { createId } from "./structureGraph";
 import type { AssemblyStep, Panel, YardProject } from "./types";
@@ -61,6 +62,31 @@ function num(prompt: string, re: RegExp, fallback: number): number {
   return m ? Number(m[1]) : fallback;
 }
 
+/**
+ * Width or depth on a stool or chair: the inches the one reader reads, so a unit mark between the number and the
+ * axis word stays ("24\" wide", "24 inches wide", "18\" deep" — the same inches as "24 wide" / "18 deep"). A comma,
+ * an arch, or a hyphenated "N-inch" stays release's own read (releaseReads). "wide 24" stays unread, as before.
+ */
+function seatAxis(prompt: string, kind: "width" | "depth"): number | null {
+  const t = prompt.toLowerCase().replace(/[″”]/g, '"');
+  if (releaseReads(t)) return null;
+  const words = kind === "width" ? "wide|width" : "deep|depth";
+  const l = readLengths(t).find((x) => new RegExp(String.raw`^\s*(?:${words})\b`, "i").test(t.slice(x.end)));
+  return l && l.inches > 0 ? l.inches : null;
+}
+
+/** The typed width or depth, or null when none was typed. A unit mark wins; a comma keeps the bare-number read. */
+function seatTyped(prompt: string, kind: "width" | "depth"): number | null {
+  const read = seatAxis(prompt, kind);
+  if (read != null) return read;
+  const m = prompt.match(kind === "width" ? /(\d+(?:\.\d+)?)\s*(?:wide|width)/i : /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i);
+  return m ? Number(m[1]) : null;
+}
+
+function seatInches(prompt: string, kind: "width" | "depth", fallback: number): number {
+  return seatTyped(prompt, kind) ?? fallback;
+}
+
 function panel(type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, materialId: string): Panel {
   return { id: createId("p"), type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId };
 }
@@ -83,16 +109,16 @@ function boardOf(id: string): { id: string; w: number; t: number; label: string 
 function buildBoardChair(prompt: string, board: { id: string; w: number; t: number; label: string }): YardProject {
   // Seat heights people sit at: a bar stool at a 42" bar, a counter stool at a 36" counter, else a chair.
   const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, 18);
-  const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, 18);
+  const width = seatInches(prompt, "width", 18);
   const { w: bw, t: bt, id } = board;
   const legT = bt * 2;
   const legD = bw;
   const gap = 0.25;
-  const typedDepth = prompt.match(/(\d+(?:\.\d+)?)\s*(?:deep|depth)/i);
-  const boards = typedDepth
-    ? Math.max(2, Math.floor((Number(typedDepth[1]) - legD + gap) / (bw + gap)))
+  const depthSaid = seatTyped(prompt, "depth");
+  const boards = depthSaid != null
+    ? Math.max(2, Math.floor((depthSaid - legD + gap) / (bw + gap)))
     : Math.max(3, Math.ceil(13 / (bw + gap)));
-  const span = typedDepth ? Number(typedDepth[1]) - legD : boards * bw + (boards - 1) * gap;
+  const span = depthSaid != null ? depthSaid - legD : boards * bw + (boards - 1) * gap;
   const depth = Math.round((legD + span) * 16) / 16;
   const step = boards > 1 ? (span - bw) / (boards - 1) : 0;
   const backH = 16;
@@ -147,8 +173,10 @@ export function buildJobFurniture(prompt: string): YardProject {
   const stool = /\bstools?\b/.test(lower);
   const tall = stool ? num(prompt, /(\d+(?:\.\d+)?)\s*(?:"|inch(?:es)?|in)?\s*(?:tall|high)\b/i, NaN) : NaN;
   const seatH = num(prompt, /(\d+(?:\.\d+)?)\s*(?:inch(?:es)?|in)?\s*seat\s*height/i, Number.isFinite(tall) ? tall : /\bbar\s*stool/.test(lower) ? 30 : /\bcounter\s*stool/.test(lower) ? 24 : 18);
-  const width = num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, /\bchair\b|\bstool\b/.test(lower) ? 18 : 36);
-  const depth = num(prompt, /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i, /\bchair\b|\bstool\b/.test(lower) ? 16 : 18);
+  const seat = /\bchair\b|\bstool\b/.test(lower);
+  // A unit mark on a stool or chair is the same axis the bare number already was. Other nouns keep the bare-number read.
+  const width = seat ? seatInches(prompt, "width", 18) : num(prompt, /(\d+(?:\.\d+)?)\s*(?:wide|width)/i, 36);
+  const depth = seat ? seatInches(prompt, "depth", 16) : num(prompt, /(\d+(?:\.\d+)?)\s*(?:deep|depth)/i, 18);
   const leg = 1.5;
   const x0 = -width / 2;
   const ply = "plywood-3-4-4x8";

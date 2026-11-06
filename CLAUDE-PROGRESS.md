@@ -1,4 +1,4 @@
-LOCK: YARD Chief | item: digit count of feet not a size | started: 2026-11-06 16:18 ET | status: in-progress
+LOCK: YARD Chief | item: stool plus a feature word keeps a unit-marked size | started: 2026-11-06 17:17 ET | status: in-progress
 
 # Claude progress log
 
@@ -27,6 +27,7 @@ Whoever runs the Critic pastes the short PASS summary here right after the grade
 
 Format: `- <YYYY-MM-DD> | <item> | PASS | <one-line summary> | moves price/part size: yes/no | verdict: <path or link>`
 
+- 2026-11-06 | digit count of feet not a size (exact head `a2e8170ee0878c91ff4c884ce0731855e9f5b727`) | PASS | vs then-release `b5442befb7a417ba72bd02e1eff43df696e9c7dd`, lean bar (model, steps, parts). A digit before feet/foot is not a size when with/on/and/has/plus comes before it or a part noun follows, unless an axis word follows. Headline prompts match their spelled twins. | moves price/part size: yes (catalog follows the parts; no price card) | verdict: Yard Critic grade (no verdict path recorded)
 - 2026-11-06 | class F typed size beside a shelf on every host (exact head `d47dc17c8b84012fbe8de8073496db7d7c6ce24a`) | PASS | vs then-release `80c3e7655194c89bacd741e55097531e20f0c93e`, lean bar (model, steps, parts only). Canaries byte-identical. CARD1 host list unchanged. A typed axis beside `1 shelf` / `an open shelf` is kept on every host, including comma, spelled, and metric axes. | moves price/part size: yes (typed size kept to match the digit twin; no price card) | verdict: Yard Critic grade (no verdict path recorded)
 - 2026-11-06 | CARD1 any-size spelling (`ship/card1-any-size`, code `f1e7472a930dd929b31c6f92510bddd8adba43bf`) | PASS | vs then-release `deabae9d818a04a59bbd99104456df485eed0f88` / then-main `cf05d769fee45089ce5ac70e2dd45343515667a9`, lean bar (model, steps, parts only). Zero blockers. No price card. Headline: "desk 4 ft wide with an open shelf" builds as the typed-size desk matching the digit twin. Scope note (not a blocker): size-after, comma-before-shelf, and non-CARD1 hosts still Combined, same as that tip. | moves price/part size: yes (typed size kept to match the digit twin; no price card) | verdict: Yard Critic grade (no verdict path recorded)
 - 2026-11-06 | NR-1 r5 (#225, head `fc7de9efb98af31f9ae3324df177384d8bbebf7f`) | PASS | vs then-release `afcb1f8b` ~9:24 AM ET, lean bar (model, steps, parts only). Zero blockers. Digit forms ("with 4 feet") parked (= release). Axis forms still sizes. 0 movers drop a typed size release honoured. 35/35 new refusals match their digit twins. Canaries unchanged. eval-gate Δ 0. Tests 2116/2116. No loosened tests. | moves price/part size: yes (catalog follows the parts; no dollar-delta card) | verdict: Critic grade 2026-11-06 ~9:24 AM ET (no verdict path recorded)
@@ -35,6 +36,7 @@ Format: `- <YYYY-MM-DD> | <item> | PASS | <one-line summary> | moves price/part 
 
 Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: canaries identical yes/no | by <bot>`
 
+- 2026-11-06 17:11 ET | digit count of feet not a size (squash of release after #248) | PR #249 | main `333ba25bb31f5085a96e44668e258828534f0a5b` | regrade: canaries identical yes — Critic PASS on exact head `a2e8170ee0878c91ff4c884ce0731855e9f5b727` vs then-release `b5442befb7a417ba72bd02e1eff43df696e9c7dd`; production READY `dpl_7uT1q7YuuaDgoYNSx67dGzKFeF21` (yard-d2cp6x7kp, aliases include yard.wiki) | by YARD Chief
 - 2026-11-06 15:52 ET | class F typed size beside a shelf on every host (squash of release after #245) | PR #246 | main `eb082af6a014115fc574598c9fca22393ddf40f9` | regrade: canaries identical yes — Critic PASS on exact head `d47dc17c8b84012fbe8de8073496db7d7c6ce24a` vs then-release `80c3e765`; production READY `dpl_CghbaV74qwH6gzTB1a7xPvRYyyxc` (yard-if6j79v6x, aliases include yard.wiki) | by YARD Chief
 - 2026-11-06 10:31 ET | CARD1 any-size spelling (squash of release after #238) | PR #239 | main `3cb578532eb00e5627e2d363ab9616452df3a70b` | regrade: no separate post-merge canary check recorded (Critic PASS was vs then-release `deabae9d` / then-main `cf05d769`) | by YARD Chief
 - 2026-11-06 09:36 ET | NR-1 r5 one length reader (squash of release after #225) | PR #235 | main `cf05d769fee45089ce5ac70e2dd45343515667a9` | regrade: canaries identical yes — Critic's r5 grade found canaries unchanged vs then-release `afcb1f8b`; no separate post-merge main regrade | by YARD Chief
@@ -42,6 +44,28 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-06 17:17 ET | digit-feet shipped; a stool keeps a unit-marked size — in progress (lock held)
+
+- Digit-feet shipped. Do not re-implement it. Yard Critic PASS on exact head `a2e8170ee0878c91ff4c884ce0731855e9f5b727` vs then-release `b5442befb7a417ba72bd02e1eff43df696e9c7dd`, lean bar (model, steps, parts). Plain-merged #248 into release as `94a7e50bbbe6f657808d1bbf1768d5624cfb6437`. Squash #249 to main `333ba25bb31f5085a96e44668e258828534f0a5b`. Merge-back #250 `104075e45583b7a82b77d6d30cb90c09df5e70de`. Production READY for that main SHA (`dpl_7uT1q7YuuaDgoYNSx67dGzKFeF21` / yard-d2cp6x7kp, aliases include yard.wiki).
+- The digit-feet lock rode into release with #248. Replaced on this feature branch only. New lock: a stool plus a feature word keeps a unit-marked size. Not graded. Not merged. PR #251 into `release/2026-10-24`. Do not merge.
+- Rule: a width or depth on a stool, or on the chair that shares that seat reader, is the inches the one reader reads. A unit mark between the number and the axis word stays (`24"`, `inches`, `inch`, `in`, `in.`, feet, a marked fraction, a spelled inch). `jobFurniture` calls `readLengths`; it does not add a second scan. A comma and a hyphenated `N-inch` stay release's read. `wide 24` stays unread. A count of feet is not a size. Height already kept an inch mark. Bench, table, and desk already kept a marked width.
+- Reproduced on `104075e45583b7a82b77d6d30cb90c09df5e70de` before the change. The parked note said the size holds without a feature word. On this tip it does not: `stool 24" wide` was 18" wide, the same drop as the feature-word prompts. After, each broken prompt matches its bare twin (name, overall, steps, Buy names and quantities):
+
+  | Prompt | Before (release) | After |
+  |---|---|---|
+  | stool 24 wide with two drawers | 24×16×18 (already the twin) | unchanged |
+  | stool 24" wide with two drawers | 18×16×18 | 24×16×18 |
+  | stool 24 inches wide with two drawers | 18×16×18 | 24×16×18 |
+  | stool 18" deep with three shelves | 18×16×18 | 18×18×18 |
+  | stool 18 deep with three shelves | 18×18×18 (already the twin) | unchanged |
+  | stool 24" wide | 18×16×18 | 24×16×18 |
+  | chair 20" wide with a drawer | 18×16×34 | 20×16×34 |
+
+- Canaries on this branch: weekend geometry 6/6 unchanged; `walk-canary.ts` linen 31.5×78×16 and pocket green; linen-check PASS. `approved-canary-changes.json` not edited. C19 still in PR gates. ¼" plywood still drawer-bottom stock only. CARD1 host list unchanged.
+- Files: `src/lib/yard/jobFurniture.ts`, `src/lib/yard/stoolUnitSize.test.ts`, `scripts/baselines/approvals/stool-unit-size/` (rerun, not a CI gate, plus the mover list).
+- Tests: `npx tsx --test src/lib/yard/stoolUnitSize.test.ts` pass. `npx tsx scripts/baselines/approvals/stool-unit-size/rerun.ts` pass (28 pairs). `lengthReader.test.ts` and `classC2.test.ts` pass. Weekend canaries 6/6, walk-canary, linen-check, and `npx tsc --noEmit` pass. 210 of 1,355 movers change the catalog total; that total follows the parts and is not a grade.
+- Parked, not started: equal bays. "A linen needs…" wording still needs Ezra's yes. A comma (`stool, 24" wide`) and a hyphenated `24-inch` still drop the mark, because releaseReads leaves them to release. A spelled "N foot shelves" on a coffee table is still a Combined Shelf. That split is clauseCore, not this size class.
 
 ### 2026-11-06 16:18 ET | class F shipped; digit counts of feet are not a size — in progress (lock held)
 
