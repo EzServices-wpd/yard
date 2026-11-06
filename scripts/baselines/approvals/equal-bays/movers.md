@@ -16,22 +16,154 @@ Against release `c230ab55348aa963937de462a6eb162460a41a1e`, before this change. 
 
 The older cabinet note (about 13 5/12, 13 1/6, 13 5/12) is not this tip. On this tip the opening between the sides is 40 3/4", and the three bays plus two 1/2" dividers fill it: 3 × 13 1/4 + 2 × 1/2 = 40 3/4. Closet 72 fills 70 1/2" as 3 × 23 + 2 × 3/4.
 
-Step titles did not change on these prompts. The span note keeps its sentence; only the measured "or less" opening changes (closet 72: 23 1/8" → 23"). Buy names and plywood quantities did not change. The two pine bookcases below are the Buy-quantity movers.
+Step titles did not change on these prompts. The span note keeps its sentence; only the measured "or less" opening changes (closet 72: 23 1/8" → 23"). Buy names did not change. Buy quantities for the whole comparison are the table below, not a two-prompt list.
 
 ## Buy quantities
 
-Sweep of 379 prompts (closet, cabinet, bookcase, wardrobe, pantry at widths 48–120 step 2, plain and `in 1/2 inch plywood`, plus MDF and pine bookcases, the cabinet headline, and the linen canary). **190 changed bay widths. Step titles: 0 changed. Buy names: 0 changed. Buy quantities: 2 changed.** Both quantity changes are Pine 1×4 board counts. The catalog total moves only with that count.
+Compared with release `c230ab55348aa963937de462a6eb162460a41a1e` on 10,223 prompts. **129 changed a Buy quantity. 0 changed a Buy name. 0 changed a step title.** Each prompt below changes one line. The board count follows the equal-bay cut packing. A catalog total is not a grade.
 
-| Prompt | Buy before | Buy after | Catalog total |
-|---|---|---|---|
-| `bookcase 72 wide from pine boards` | Pine 1×4 ×40 | Pine 1×4 ×42 | $248.35 → $256.35 |
-| `bookcase 96 wide from pine boards` | Pine 1×4 ×52 | Pine 1×4 ×55 | $296.35 → $308.35 |
+The comparison is two sweeps, deduped:
 
-Same other Buy lines (1/4" backer ×2, screws ×2, shelf pins ×2, glue ×1, anti-tip kit ×1). The equal bay lengths nest onto more 8 ft 1×4s. Overall size unchanged.
+- 5,939 prompts: bookcase, bookshelf, closet, cabinet, wardrobe, pantry, pantry cabinet, linen closet, garage cabinet, office bookcase, storage cabinet, closet shelves, garage shelves, pantry shelves, laundry shelves, utility shelves, and built-in bookcase, at widths 36–120 every inch with `from pine boards`; the same hosts at even widths with no stock phrase, `from MDF`, `in 1/2 inch plywood`, `from 1x10`, `from 1x12s`, and `from oak`; plus sized pine and half-ply variants (`72 tall 12 deep`, `84 tall 16 deep`, `48 tall 12 deep in 1/2 inch plywood`) at 60/64/72/84/96/108/120 for bookcase, closet, cabinet, wardrobe, and pantry.
+- 4,284 prompts: the same 17 hosts at odd widths 37–119 with no stock phrase, `from MDF`, `in 1/2 inch plywood`, `from 1x10`, `from 1x12s`, and `from oak`.
+
+By line: Pine 1×4 on 57 prompts, Oak 1×4 on 45, 1×10 Board (8 ft) on 26, 1/2" Plywood 4×8 on 1 (`bookcase 108 wide 48 tall 12 deep in 1/2 inch plywood`, 4→3). `from MDF`, `from 1x12s`, and plain 3/4" plywood sheet counts did not change a quantity in this comparison. The critic's five extras and the two previously listed bookcases are in the table.
+
+| Prompt | Buy line | Before | After |
+|---|---|---:|---:|
+| `bookcase 100 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `bookcase 108 wide 48 tall 12 deep in 1/2 inch plywood` | 1/2" Plywood 4×8 | 4 | 3 |
+| `bookcase 119 wide from oak` | Oak 1×4 | 61 | 59 |
+| `bookcase 119 wide from pine boards` | Pine 1×4 | 61 | 59 |
+| `bookcase 120 wide 72 tall 12 deep from pine boards` | Pine 1×4 | 60 | 62 |
+| `bookcase 120 wide 84 tall 16 deep from pine boards` | Pine 1×4 | 82 | 84 |
+| `bookcase 120 wide from oak` | Oak 1×4 | 66 | 68 |
+| `bookcase 120 wide from pine boards` | Pine 1×4 | 66 | 68 |
+| `bookcase 58 wide from oak` | Oak 1×4 | 36 | 37 |
+| `bookcase 58 wide from pine boards` | Pine 1×4 | 36 | 37 |
+| `bookcase 61 wide from 1x10` | 1×10 Board (8 ft) | 9 | 10 |
+| `bookcase 72 wide 72 tall 12 deep from pine boards` | Pine 1×4 | 37 | 39 |
+| `bookcase 72 wide 84 tall 16 deep from pine boards` | Pine 1×4 | 50 | 52 |
+| `bookcase 72 wide from oak` | Oak 1×4 | 40 | 42 |
+| `bookcase 72 wide from pine boards` | Pine 1×4 | 40 | 42 |
+| `bookcase 80 wide from 1x10` | 1×10 Board (8 ft) | 12 | 11 |
+| `bookcase 96 wide 72 tall 12 deep from pine boards` | Pine 1×4 | 48 | 51 |
+| `bookcase 96 wide 84 tall 16 deep from pine boards` | Pine 1×4 | 65 | 69 |
+| `bookcase 96 wide from oak` | Oak 1×4 | 52 | 55 |
+| `bookcase 96 wide from pine boards` | Pine 1×4 | 52 | 55 |
+| `bookshelf 100 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `bookshelf 119 wide from oak` | Oak 1×4 | 61 | 59 |
+| `bookshelf 119 wide from pine boards` | Pine 1×4 | 61 | 59 |
+| `bookshelf 120 wide from oak` | Oak 1×4 | 66 | 68 |
+| `bookshelf 120 wide from pine boards` | Pine 1×4 | 66 | 68 |
+| `bookshelf 58 wide from oak` | Oak 1×4 | 36 | 37 |
+| `bookshelf 58 wide from pine boards` | Pine 1×4 | 36 | 37 |
+| `bookshelf 61 wide from 1x10` | 1×10 Board (8 ft) | 9 | 10 |
+| `bookshelf 72 wide from oak` | Oak 1×4 | 40 | 42 |
+| `bookshelf 72 wide from pine boards` | Pine 1×4 | 40 | 42 |
+| `bookshelf 80 wide from 1x10` | 1×10 Board (8 ft) | 12 | 11 |
+| `bookshelf 96 wide from oak` | Oak 1×4 | 52 | 55 |
+| `bookshelf 96 wide from pine boards` | Pine 1×4 | 52 | 55 |
+| `built-in bookcase 100 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `built-in bookcase 119 wide from oak` | Oak 1×4 | 61 | 59 |
+| `built-in bookcase 119 wide from pine boards` | Pine 1×4 | 61 | 59 |
+| `built-in bookcase 120 wide from oak` | Oak 1×4 | 66 | 68 |
+| `built-in bookcase 120 wide from pine boards` | Pine 1×4 | 66 | 68 |
+| `built-in bookcase 58 wide from oak` | Oak 1×4 | 36 | 37 |
+| `built-in bookcase 58 wide from pine boards` | Pine 1×4 | 36 | 37 |
+| `built-in bookcase 61 wide from 1x10` | 1×10 Board (8 ft) | 9 | 10 |
+| `built-in bookcase 72 wide from oak` | Oak 1×4 | 40 | 42 |
+| `built-in bookcase 72 wide from pine boards` | Pine 1×4 | 40 | 42 |
+| `built-in bookcase 80 wide from 1x10` | 1×10 Board (8 ft) | 12 | 11 |
+| `built-in bookcase 96 wide from oak` | Oak 1×4 | 52 | 55 |
+| `built-in bookcase 96 wide from pine boards` | Pine 1×4 | 52 | 55 |
+| `cabinet 72 wide 72 tall 12 deep from pine boards` | Pine 1×4 | 48 | 49 |
+| `cabinet 72 wide 84 tall 16 deep from pine boards` | Pine 1×4 | 58 | 59 |
+| `cabinet 72 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `cabinet 72 wide from oak` | Oak 1×4 | 32 | 33 |
+| `cabinet 72 wide from pine boards` | Pine 1×4 | 32 | 33 |
+| `closet 58 wide from oak` | Oak 1×4 | 60 | 61 |
+| `closet 58 wide from pine boards` | Pine 1×4 | 60 | 61 |
+| `closet 72 wide 72 tall 12 deep from pine boards` | Pine 1×4 | 56 | 57 |
+| `closet 72 wide 84 tall 16 deep from pine boards` | Pine 1×4 | 67 | 69 |
+| `closet 72 wide from 1x10` | 1×10 Board (8 ft) | 26 | 27 |
+| `closet 72 wide from oak` | Oak 1×4 | 67 | 69 |
+| `closet 72 wide from pine boards` | Pine 1×4 | 67 | 69 |
+| `closet shelves 58 wide from oak` | Oak 1×4 | 60 | 61 |
+| `closet shelves 58 wide from pine boards` | Pine 1×4 | 60 | 61 |
+| `closet shelves 72 wide from 1x10` | 1×10 Board (8 ft) | 26 | 27 |
+| `closet shelves 72 wide from oak` | Oak 1×4 | 67 | 69 |
+| `closet shelves 72 wide from pine boards` | Pine 1×4 | 67 | 69 |
+| `garage cabinet 72 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `garage cabinet 72 wide from oak` | Oak 1×4 | 32 | 33 |
+| `garage cabinet 72 wide from pine boards` | Pine 1×4 | 32 | 33 |
+| `garage shelves 58 wide from oak` | Oak 1×4 | 24 | 25 |
+| `garage shelves 58 wide from pine boards` | Pine 1×4 | 24 | 25 |
+| `garage shelves 72 wide from 1x10` | 1×10 Board (8 ft) | 11 | 12 |
+| `garage shelves 72 wide from oak` | Oak 1×4 | 27 | 29 |
+| `garage shelves 72 wide from pine boards` | Pine 1×4 | 27 | 29 |
+| `laundry shelves 58 wide from oak` | Oak 1×4 | 24 | 25 |
+| `laundry shelves 58 wide from pine boards` | Pine 1×4 | 24 | 25 |
+| `laundry shelves 72 wide from 1x10` | 1×10 Board (8 ft) | 11 | 12 |
+| `laundry shelves 72 wide from oak` | Oak 1×4 | 27 | 29 |
+| `laundry shelves 72 wide from pine boards` | Pine 1×4 | 27 | 29 |
+| `linen closet 56 wide from 1x10` | 1×10 Board (8 ft) | 23 | 24 |
+| `linen closet 56 wide from oak` | Oak 1×4 | 52 | 54 |
+| `linen closet 56 wide from pine boards` | Pine 1×4 | 52 | 54 |
+| `linen closet 58 wide from oak` | Oak 1×4 | 60 | 61 |
+| `linen closet 58 wide from pine boards` | Pine 1×4 | 60 | 61 |
+| `linen closet 72 wide from 1x10` | 1×10 Board (8 ft) | 26 | 27 |
+| `linen closet 72 wide from oak` | Oak 1×4 | 67 | 69 |
+| `linen closet 72 wide from pine boards` | Pine 1×4 | 67 | 69 |
+| `office bookcase 100 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `office bookcase 119 wide from oak` | Oak 1×4 | 61 | 59 |
+| `office bookcase 119 wide from pine boards` | Pine 1×4 | 61 | 59 |
+| `office bookcase 120 wide from oak` | Oak 1×4 | 66 | 68 |
+| `office bookcase 120 wide from pine boards` | Pine 1×4 | 66 | 68 |
+| `office bookcase 58 wide from oak` | Oak 1×4 | 36 | 37 |
+| `office bookcase 58 wide from pine boards` | Pine 1×4 | 36 | 37 |
+| `office bookcase 61 wide from 1x10` | 1×10 Board (8 ft) | 9 | 10 |
+| `office bookcase 72 wide from oak` | Oak 1×4 | 40 | 42 |
+| `office bookcase 72 wide from pine boards` | Pine 1×4 | 40 | 42 |
+| `office bookcase 80 wide from 1x10` | 1×10 Board (8 ft) | 12 | 11 |
+| `office bookcase 96 wide from oak` | Oak 1×4 | 52 | 55 |
+| `office bookcase 96 wide from pine boards` | Pine 1×4 | 52 | 55 |
+| `pantry 58 wide from oak` | Oak 1×4 | 60 | 61 |
+| `pantry 58 wide from pine boards` | Pine 1×4 | 60 | 61 |
+| `pantry 72 wide 72 tall 12 deep from pine boards` | Pine 1×4 | 56 | 57 |
+| `pantry 72 wide 84 tall 16 deep from pine boards` | Pine 1×4 | 67 | 69 |
+| `pantry 72 wide from 1x10` | 1×10 Board (8 ft) | 26 | 27 |
+| `pantry 72 wide from oak` | Oak 1×4 | 67 | 69 |
+| `pantry 72 wide from pine boards` | Pine 1×4 | 67 | 69 |
+| `pantry cabinet 58 wide from oak` | Oak 1×4 | 60 | 61 |
+| `pantry cabinet 58 wide from pine boards` | Pine 1×4 | 60 | 61 |
+| `pantry cabinet 72 wide from 1x10` | 1×10 Board (8 ft) | 26 | 27 |
+| `pantry cabinet 72 wide from oak` | Oak 1×4 | 67 | 69 |
+| `pantry cabinet 72 wide from pine boards` | Pine 1×4 | 67 | 69 |
+| `pantry shelves 58 wide from oak` | Oak 1×4 | 60 | 61 |
+| `pantry shelves 58 wide from pine boards` | Pine 1×4 | 60 | 61 |
+| `pantry shelves 72 wide from 1x10` | 1×10 Board (8 ft) | 26 | 27 |
+| `pantry shelves 72 wide from oak` | Oak 1×4 | 67 | 69 |
+| `pantry shelves 72 wide from pine boards` | Pine 1×4 | 67 | 69 |
+| `storage cabinet 72 wide from 1x10` | 1×10 Board (8 ft) | 13 | 14 |
+| `storage cabinet 72 wide from oak` | Oak 1×4 | 32 | 33 |
+| `storage cabinet 72 wide from pine boards` | Pine 1×4 | 32 | 33 |
+| `utility shelves 58 wide from oak` | Oak 1×4 | 24 | 25 |
+| `utility shelves 58 wide from pine boards` | Pine 1×4 | 24 | 25 |
+| `utility shelves 72 wide from 1x10` | 1×10 Board (8 ft) | 11 | 12 |
+| `utility shelves 72 wide from oak` | Oak 1×4 | 27 | 29 |
+| `utility shelves 72 wide from pine boards` | Pine 1×4 | 27 | 29 |
+| `wardrobe 55 wide from oak` | Oak 1×4 | 60 | 59 |
+| `wardrobe 55 wide from pine boards` | Pine 1×4 | 60 | 59 |
+| `wardrobe 58 wide from 1x10` | 1×10 Board (8 ft) | 27 | 26 |
+| `wardrobe 70 wide from oak` | Oak 1×4 | 65 | 66 |
+| `wardrobe 70 wide from pine boards` | Pine 1×4 | 65 | 66 |
+| `wardrobe 75 wide from oak` | Oak 1×4 | 72 | 73 |
+| `wardrobe 75 wide from pine boards` | Pine 1×4 | 72 | 73 |
 
 ## Other model moves in the 48-prompt class matrix
 
-Same shape as the headlines: end bays shrink by a fraction of the divider, the middle grows, the run still fills. Step titles unchanged. Buy names and quantities unchanged. Catalog total unchanged.
+Same shape as the headlines: end bays shrink by a fraction of the divider, the middle grows, the run still fills. On these plywood prompts, step titles, Buy names, and Buy quantities are unchanged.
 
 | Prompt | Before | After |
 |---|---|---|
