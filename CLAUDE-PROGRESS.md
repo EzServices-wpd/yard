@@ -46,7 +46,7 @@ Newest first. Tip, canary status, the rule per change, before/after prompts, fil
 - Lock taken on this feature branch only (not a direct commit to `release/2026-10-24`). Do not clear it here. Release tip when the lock was written: `80c3e7655194c89bacd741e55097531e20f0c93e` (docs #242). Main `a032063e5f1c4cc94f0d02b32772cb788600b6a4`. Engine-speed #241 / squash #243 / merge-back #244 already shipped; production deploy for `a032063e` is READY (`dpl_5H2BWSNgXhcwtkQFcsSzGXqTiQ9z`).
 - Rule: a typed axis beside class F shelf wording (`1 shelf`, `one shelf`, `1 open shelf`, `an open shelf`) is the inches the one reader reads, on every host and on either side of the shelf phrase. A separator comma is not a reason to leave that axis to release. The host allow-list in `compose.ts` still only decides whether the shelf stays on the host.
 - Reproduced on `80c3e765` before the change. Standard order already matched the digit twin (media console 3 ft, nightstand 2 1/2 ft, coffee table 4 ft, desk 4 ft). A comma dropped spelled and metric axes (`thirty inches`, `four feet`, `six feet`, `762 mm`, `1829 mm`) into a default-sized build. Size-after without a comma already matched its digit twin and stayed Combined.
-- Not graded. Not merged. Canaries run locally on this branch: weekend geometry 6/6 unchanged; `walk-canary.ts` linen 31.5×78×16 and pocket green. `approved-canary-changes.json` not edited.
+- Not graded. Not merged. PR #245 into `release/2026-10-24`. Canaries run locally on this branch: weekend geometry 6/6 unchanged; `walk-canary.ts` linen 31.5×78×16 and pocket green. `approved-canary-changes.json` not edited.
 
 ### 2026-11-06 ~10:33 ET | CARD1 any-size spelling shipped (#238/#239/#240)
 
