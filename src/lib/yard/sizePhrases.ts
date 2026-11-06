@@ -3,6 +3,7 @@
  * axes ("about knee high bench" → "bench 18 tall"), so every builder reads them the way it reads "18 tall".
  * Typed and phrase axes always win (I21: each holds within 1/2").
  */
+import { feetLengthAt, releaseReads } from "./lengthReader";
 export type Axis = "width" | "height" | "depth";
 export type PhraseAxes = Partial<Record<Axis, number>>;
 
@@ -58,7 +59,16 @@ export function sizePhrases(prompt: string): { prompt: string; axes: PhraseAxes;
   }
   // "6 foot shelf" with no axis word: a storage form stands that tall.
   // Other forms already read a bare length on their own long axis (bench, arch, tower), so only storage forms are set here.
-  if (TALL_FORMS.test(lower) && !/\d\s*(?:by|x|×)\s*\d/i.test(prompt)) set(/\b(\d+(?:\.\d+)?)\s*(?:-|\s)?(?:foot|feet|ft|')(?!\s*(?:wide|deep|tall|high|long|by|x|×))(?=\s+[a-z])/i, "height", (m) => Number(m[1]) * 12);
+  // A count of feet or a part's length is not that height ("bookcase with 2 foot shelves", "2 foot shelves" on a
+  // bookcase). The one reader already dropped those, digits the same as words. A leading "N foot shelf" stays:
+  // "shelf" is the product, and C2 pins that height.
+  if (TALL_FORMS.test(lower) && !/\d\s*(?:by|x|×)\s*\d/i.test(prompt)) {
+    const re = /\b(\d+(?:\.\d+)?)\s*(?:-|\s)?(?:foot|feet|ft|')(?!\s*(?:wide|deep|tall|high|long|by|x|×))(?=\s+[a-z])/i;
+    const hit = prompt.match(re);
+    const leadingShelf = /^(?:(?:small|a|an|the|large|little|big|tall|short|narrow|wide|long)\s+){0,3}\d+(?:\.\d+)?\s*-?\s*(?:foot|feet|ft|')\s+shel(?:f|ves|ving)\b/i.test(prompt.trim());
+    // A comma keeps release's reading of this phrase (NR-1). "bookcase, 3 1/2 ft boards" stays release's build.
+    if (hit && (leadingShelf || releaseReads(prompt) || feetLengthAt(prompt, hit.index ?? 0))) set(re, "height", (m) => Number(m[1]) * 12);
+  }
   if (!phrases.length) return { prompt, axes, phrases };
   s = s.replace(/\b(?:about|around|roughly|approximately)\s+(?=\s)/gi, " ").replace(/\b(?:a|an)\s+(?=(?:a|an)\b)/gi, "").replace(/\s+/g, " ").trim();
   const said = (Object.entries(axes) as [Axis, number][]).map(([a, v]) => `${fmt(v)} ${a === "width" ? "wide" : a === "depth" ? "deep" : "tall"}`).join(" ");

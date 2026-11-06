@@ -56,6 +56,11 @@ function wordValue(w: string): number {
   return TENS.includes(a) ? TENS.indexOf(a) * 10 + (b ? ONES.indexOf(b) : 0) : ONES.indexOf(a);
 }
 
+/** True when a feet span at `offset` is a length this reader kept. A count of feet or a part's own length is not. */
+export function feetLengthAt(text: string, offset: number): boolean {
+  return readLengths(text).some((l) => l.unit === "ft" && offset >= l.start && offset < l.end);
+}
+
 /** Every length in the text, in order, non-overlapping. A bare number is a length with no unit (inches = value). */
 export function readLengths(text: string): Length[] {
   const s = plainFractions(text); // ponytail: with a unicode fraction, positions are on the plain-fraction text
@@ -72,10 +77,11 @@ export function readLengths(text: string): Length[] {
     if (tail != null && !joins) LEN.lastIndex = end -= tail.length;
     // A spelled number is a length only with a unit word: "one in each corner" is a count.
     if (!Number.isFinite(value) || (spelled && (!unit || /^\s*-?\s*in\.?$/i.test(inch ?? "") || mark))) continue;
-    // A spelled number before feet / foot is a count of feet or a part's own length, never a length here, unless an
-    // axis word follows ("two feet wide"): "coffee table with four feet", "four foot legs", "five one foot shelves"
-    // (NR-1 r5, Critic B). Release never read these either.
-    if (spelled && unit === "ft" && !AXIS_NEXT.test(s.slice(end)) && (COUNT_BEFORE.test(s.slice(0, m.index)) || PART_NEXT.test(s.slice(end)))) continue;
+    // A number before feet / foot is a count of feet or a part's own length, never a length here, unless an
+    // axis word follows ("two feet wide", "2 feet wide"): "coffee table with four feet", "with 4 feet",
+    // "four foot legs", "4 foot legs", "two foot shelves", "2 foot shelves" (NR-1 r5, Critic B; digit counts
+    // use the same rule). A leading "6 foot shelf" is still the storage form's height in sizePhrases (C2).
+    if (unit === "ft" && !AXIS_NEXT.test(s.slice(end)) && (COUNT_BEFORE.test(s.slice(0, m.index)) || PART_NEXT.test(s.slice(end)))) continue;
     const inches = (unit ? value * PER[unit] : value) + (joins ? readNumber(tailNum) : 0);
     out.push({ inches, value, unit, start: m.index, end, raw: s.slice(m.index, end), num, spelled });
   }

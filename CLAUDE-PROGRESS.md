@@ -1,4 +1,4 @@
-LOCK: YARD Chief | item: class-F other hosts with Shelf | started: 2026-11-06 15:05 ET | status: in-progress
+LOCK: YARD Chief | item: digit count of feet not a size | started: 2026-11-06 16:18 ET | status: in-progress
 
 # Claude progress log
 
@@ -27,6 +27,7 @@ Whoever runs the Critic pastes the short PASS summary here right after the grade
 
 Format: `- <YYYY-MM-DD> | <item> | PASS | <one-line summary> | moves price/part size: yes/no | verdict: <path or link>`
 
+- 2026-11-06 | class F typed size beside a shelf on every host (exact head `d47dc17c8b84012fbe8de8073496db7d7c6ce24a`) | PASS | vs then-release `80c3e7655194c89bacd741e55097531e20f0c93e`, lean bar (model, steps, parts only). Canaries byte-identical. CARD1 host list unchanged. A typed axis beside `1 shelf` / `an open shelf` is kept on every host, including comma, spelled, and metric axes. | moves price/part size: yes (typed size kept to match the digit twin; no price card) | verdict: Yard Critic grade (no verdict path recorded)
 - 2026-11-06 | CARD1 any-size spelling (`ship/card1-any-size`, code `f1e7472a930dd929b31c6f92510bddd8adba43bf`) | PASS | vs then-release `deabae9d818a04a59bbd99104456df485eed0f88` / then-main `cf05d769fee45089ce5ac70e2dd45343515667a9`, lean bar (model, steps, parts only). Zero blockers. No price card. Headline: "desk 4 ft wide with an open shelf" builds as the typed-size desk matching the digit twin. Scope note (not a blocker): size-after, comma-before-shelf, and non-CARD1 hosts still Combined, same as that tip. | moves price/part size: yes (typed size kept to match the digit twin; no price card) | verdict: Yard Critic grade (no verdict path recorded)
 - 2026-11-06 | NR-1 r5 (#225, head `fc7de9efb98af31f9ae3324df177384d8bbebf7f`) | PASS | vs then-release `afcb1f8b` ~9:24 AM ET, lean bar (model, steps, parts only). Zero blockers. Digit forms ("with 4 feet") parked (= release). Axis forms still sizes. 0 movers drop a typed size release honoured. 35/35 new refusals match their digit twins. Canaries unchanged. eval-gate Δ 0. Tests 2116/2116. No loosened tests. | moves price/part size: yes (catalog follows the parts; no dollar-delta card) | verdict: Critic grade 2026-11-06 ~9:24 AM ET (no verdict path recorded)
 
@@ -34,12 +35,34 @@ Format: `- <YYYY-MM-DD> | <item> | PASS | <one-line summary> | moves price/part 
 
 Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: canaries identical yes/no | by <bot>`
 
+- 2026-11-06 15:52 ET | class F typed size beside a shelf on every host (squash of release after #245) | PR #246 | main `eb082af6a014115fc574598c9fca22393ddf40f9` | regrade: canaries identical yes — Critic PASS on exact head `d47dc17c8b84012fbe8de8073496db7d7c6ce24a` vs then-release `80c3e765`; production READY `dpl_CghbaV74qwH6gzTB1a7xPvRYyyxc` (yard-if6j79v6x, aliases include yard.wiki) | by YARD Chief
 - 2026-11-06 10:31 ET | CARD1 any-size spelling (squash of release after #238) | PR #239 | main `3cb578532eb00e5627e2d363ab9616452df3a70b` | regrade: no separate post-merge canary check recorded (Critic PASS was vs then-release `deabae9d` / then-main `cf05d769`) | by YARD Chief
 - 2026-11-06 09:36 ET | NR-1 r5 one length reader (squash of release after #225) | PR #235 | main `cf05d769fee45089ce5ac70e2dd45343515667a9` | regrade: canaries identical yes — Critic's r5 grade found canaries unchanged vs then-release `afcb1f8b`; no separate post-merge main regrade | by YARD Chief
 
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-06 16:18 ET | class F shipped; digit counts of feet are not a size — in progress (lock held)
+
+- Class F shipped. Do not re-implement it. Yard Critic PASS on exact head `d47dc17c8b84012fbe8de8073496db7d7c6ce24a` vs then-release `80c3e765`, lean bar, canaries byte-identical, CARD1 host list unchanged. Plain-merged #245 into release `ec37c4c8248abaa72d9e1a555271861083ab71be`. Squash #246 to main `eb082af6a014115fc574598c9fca22393ddf40f9`. Merge-back #247 `b5442befb7a417ba72bd02e1eff43df696e9c7dd`. Production READY for that main SHA (`dpl_CghbaV74qwH6gzTB1a7xPvRYyyxc` / yard-if6j79v6x, aliases include yard.wiki).
+- Lock for class F cleared on this feature branch only (it had ridden in with #245). New lock: digit count of feet not a size. Not graded. Not merged. PR into `release/2026-10-24`. Do not merge.
+- Rule: a number before feet / foot is not a length when with / on / and / has / plus comes before it or a part noun follows it, unless an axis word follows. Digits use the same rule the one reader already applied to spelled counts. `normalizeUserPrompt` and `sizePhrases` follow that reader instead of a second feet scan. A leading "6 foot shelf" stays the storage height (C2). A comma keeps release's reading (`bookcase, 3 1/2 ft boards` unchanged).
+- Reproduced on `b5442bef` before the change. After, each headline matches its spelled twin (name, overall, steps, Buy names and quantities):
+
+  | Prompt | Before (release) | After |
+  |---|---|---|
+  | coffee table with 4 feet | 48×22×18 | 40×40×18 |
+  | side table with 3 feet | 36×36×22 | 20×20×22 |
+  | table with 4 foot legs | 48×36×30 | 40×40×30 |
+  | bookcase with 2 foot shelves | 36×12×24 | 36×12×84 |
+  | bookcase with 5 one foot shelves | 36×12×84 (already the twin) | unchanged |
+
+  Axis forms stay sizes: "desk 2 feet wide" is 24" wide, "bookcase 4 feet tall" is 48" tall, "table 6 feet long" is 72" wide, "6 foot shelf" is 72" tall, "workbench 6 feet" is 72" wide. Class F shelf sizes ("coffee table 4 feet wide with an open shelf", "nightstand 4 feet wide, with 1 shelf", "desk 4 ft wide with an open shelf") still match their digit twins.
+- Canaries on this branch: weekend geometry 6/6 unchanged; `walk-canary.ts` linen 31.5×78×16 and pocket green; linen-check PASS. `approved-canary-changes.json` not edited.
+- Files: `src/lib/yard/lengthReader.ts`, `src/lib/yard/sizePhrases.ts`, `src/lib/yard/voiceHonesty.ts`, `src/lib/yard/lengthReader.test.ts`, `scripts/baselines/approvals/digit-feet/` (rerun, not a CI gate, plus the mover list).
+- Tests: `npx tsx --test --test-name-pattern "digit count before feet" src/lib/yard/lengthReader.test.ts` pass. Class F `typedCounts.test.ts`, C2, weekend canaries 6/6, axis binding, hanging clearance pass. `npx tsx scripts/baselines/approvals/digit-feet/rerun.ts` pass (16 pairs, 9 sizes).
+- Parked, not started: stool plus a feature word dropping a unit-marked size; equal bays. "A linen needs…" wording still needs Ezra's yes. A spelled "N foot shelves" on a coffee table is still a Combined Shelf; the digit form keeps the shelves on the table. That split is clauseCore, not this size class.
 
 ### 2026-11-06 15:05 ET | class F other hosts with Shelf — in progress (lock held)
 

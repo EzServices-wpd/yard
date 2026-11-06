@@ -13,6 +13,7 @@ import { buildPlan } from "./report";
 import { typedAxisNumber } from "./typedAxis";
 import { typedSizeIn } from "./formTemplates";
 import { dollhouseTyped } from "./dollhouse";
+import { sizePhrases } from "./sizePhrases";
 
 const SEED = 20261030;
 const near = (a: number | undefined, b: number, tol = 1 / 32) => a != null && Math.abs(a - b) <= tol;
@@ -305,4 +306,106 @@ it("r5 (Critic B): a spelled count before feet / foot is the feet it stands on o
     { seed: SEED, numRuns: 120 },
   );
   for (const host of HOSTS) assert.deepEqual(core(`${host} with four feet`), core(host), host);
+});
+
+it("digit count before feet / foot matches the spelled count: not a size, unless an axis word follows", () => {
+  // The reader: a digit before feet / foot is the same count or part length the spelled number already was.
+  const PREP = ["with", "on", "and", "has", "plus"];
+  const PART = ["", " legs", " shelves", " boards", " rods"];
+  fc.assert(
+    fc.property(fc.integer({ min: 1, max: 12 }), fc.constantFrom(...PREP), fc.constantFrom(...PART), fc.constantFrom("feet", "foot", "ft"), (n, prep, part, unit) => {
+      const q = `table ${prep} ${n} ${unit}${part}`;
+      const axis = `table ${n} ${unit} wide`;
+      return readLengths(q).every((l) => l.unit !== "ft") && readLengths(axis).some((l) => l.unit === "ft" && l.inches === n * 12);
+    }),
+    { seed: SEED, numRuns: 200 },
+  );
+  for (const q of ["coffee table with 4 feet", "cabinet on 4 feet", "table with 4 foot legs", "bookcase with 2 foot shelves", "bookcase with 5 one foot shelves", "stool and 3 feet", "table with 4'", "bookcase 2 foot shelves"]) {
+    assert.deepEqual(readLengths(q).filter((l) => l.unit === "ft"), [], q);
+  }
+  // Axis forms, a bare size, and the C2 storage height stay sizes.
+  assert.equal(readLengths("desk 2 feet wide")[0]?.inches, 24);
+  assert.equal(readLengths("bookcase 4 feet tall")[0]?.inches, 48);
+  assert.equal(readLengths("table 6 feet long")[0]?.inches, 72);
+  assert.equal(readLengths("workbench 6 feet")[0]?.inches, 72);
+  assert.equal(readLengths("table 4 feet")[0]?.inches, 48);
+  assert.equal(readLengths("4 foot bookcase")[0]?.inches, 48);
+  assert.equal(sizePhrases("6 foot shelf").axes.height, 72);
+  assert.equal(sizePhrases("2 foot shelf").axes.height, 24);
+  assert.equal(sizePhrases("small 6 foot shelf").axes.height, 72);
+  assert.equal(sizePhrases("4 foot bookcase").axes.height, 48);
+  assert.equal(sizePhrases("bookcase with 2 foot shelves").axes.height, undefined);
+  assert.equal(normalizeUserPrompt("coffee table with 4 feet"), "coffee table with 4 feet");
+  assert.equal(normalizeUserPrompt("table with 4 foot legs"), "table with 4 foot legs");
+  assert.equal(normalizeUserPrompt("workbench 6 feet"), "workbench 72 inch");
+  assert.equal(normalizeUserPrompt("table 4 feet"), "table 48 inch");
+  assert.equal(normalizeUserPrompt("bookcase, 3 1/2 ft boards"), "bookcase, 3 1/24 inch boards");
+  assert.doesNotMatch(normalizeUserPrompt("bookcase from 2 1/2 ft boards"), /1\/24/);
+  // A comma keeps release's build of this fraction. The same boards without a comma are a part length, like the spelled twin.
+  assert.deepEqual([generateFromPrompt("bookcase, 3 1/2 ft boards").overall.width, generateFromPrompt("bookcase, 3 1/2 ft boards").overall.depth, generateFromPrompt("bookcase, 3 1/2 ft boards").overall.height], [24, 48, 24]);
+
+  const grade = (q: string) => {
+    const p = generateFromPrompt(q);
+    const pl = buildPlan(p);
+    return {
+      name: p.name,
+      o: [p.overall.width, p.overall.depth, p.overall.height],
+      refused: p.refused ?? null,
+      combined: (p.notes ?? []).some((n) => n.startsWith("Combined:")),
+      steps: pl.instructions.map((s) => s.title),
+      bom: pl.bom.map((b) => [b.name, b.quantity]),
+    };
+  };
+  const headlines: [string, string][] = [
+    ["coffee table with 4 feet", "coffee table with four feet"],
+    ["side table with 3 feet", "side table with three feet"],
+    ["table with 4 foot legs", "table with four foot legs"],
+    ["bookcase with 2 foot shelves", "bookcase with two foot shelves"],
+    ["bookcase with 5 one foot shelves", "bookcase with five one foot shelves"],
+    ["bookcase 2 foot shelves", "bookcase two foot shelves"],
+    ["table 4 foot legs", "table four foot legs"],
+    ["bookcase from 2 1/2 ft boards", "bookcase from two and a half ft boards"],
+    ["coffee table with 4'", "coffee table with four feet"],
+    ["coffee table with 4 ft", "coffee table with four ft"],
+    ["table with 4 ft legs", "table with four ft legs"],
+    ["desk 2 feet wide", "desk two feet wide"],
+    ["bookcase 4 feet tall", "bookcase four feet tall"],
+    ["table 6 feet long", "table six feet long"],
+    ["coffee table 4 feet wide with an open shelf", "coffee table 48 wide with an open shelf"],
+    ["nightstand 4 feet wide, with 1 shelf", "nightstand 48 wide, with 1 shelf"],
+    ["desk 4 ft wide with an open shelf", "desk 48 wide with an open shelf"],
+  ];
+  const bad: string[] = [];
+  for (const [q, twin] of headlines) {
+    if (JSON.stringify(grade(q)) !== JSON.stringify(grade(twin))) bad.push(`${q} != ${twin}`);
+  }
+  assert.deepEqual(bad, []);
+  assert.equal(generateFromPrompt("desk 2 feet wide").overall.width, 24);
+  assert.equal(generateFromPrompt("bookcase 4 feet tall").overall.height, 48);
+  assert.equal(generateFromPrompt("table 6 feet long").overall.width, 72);
+  assert.equal(generateFromPrompt("6 foot shelf").overall.height, 72);
+  assert.equal(generateFromPrompt("2 foot shelf").overall.height, 24);
+  assert.equal(generateFromPrompt("4 foot bookcase").overall.height, 48);
+  assert.equal(generateFromPrompt("workbench 6 feet").overall.width, 72);
+  assert.equal(generateFromPrompt("table 4 feet").overall.width, 48);
+  assert.equal(generateFromPrompt("6 foot ladder from 2x4").overall.height, 72);
+
+  const HOSTS = ["coffee table", "side table", "table", "cabinet", "dresser", "nightstand", "bench", "stool", "bookcase", "desk"];
+  const NUMS: [string, string][] = [["1", "one"], ["2", "two"], ["3", "three"], ["4", "four"], ["5", "five"], ["6", "six"], ["8", "eight"], ["12", "twelve"]];
+  // "N foot shelves" on a table is a shelf feature, not this size class: clauseCore strips a digit and its unit
+  // ("4 foot shelves" → "shelves", kept on the table) and leaves a spelled count ("four foot shelves") as its own
+  // Shelf product. Bookcase keeps both on the bookcase. "twelve" is past the spoken shelf-count words (one…ten).
+  const FORMS = ["with N feet", "on N feet", "and N feet", "has N feet", "plus N feet", "with N foot legs", "with N ft"];
+  fc.assert(
+    fc.property(fc.constantFrom(...HOSTS), fc.constantFrom(...NUMS), fc.constantFrom(...FORMS), (host, [d, w], form) => {
+      const got = grade(`${host} ${form.replace("N", d)}`);
+      const want = grade(`${host} ${form.replace("N", w)}`);
+      assert.deepEqual(got, want, `${host} ${form.replace("N", d)}`);
+      return true;
+    }),
+    { seed: SEED, numRuns: 80 },
+  );
+  for (const [d, w] of NUMS.slice(0, 7)) {
+    assert.deepEqual(grade(`bookcase with ${d} foot shelves`), grade(`bookcase with ${w} foot shelves`), d);
+  }
 });
