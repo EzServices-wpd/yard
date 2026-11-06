@@ -59,10 +59,20 @@ jobs:
           ln -s ../node_modules .base/node_modules
           echo "head $(git rev-parse --short HEAD) · merge-base $(git rev-parse --short "$MB")"
 
+      # Graded rows from earlier runs (scripts/build-cache.ts). A row is reused only for the exact same src/, grader
+      # files, lockfile and Node version, so the base side (main) is usually a full hit and only changed trees rebuild.
+      - name: Restore the gate row cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/yard-gate
+          key: yard-gate-${{ github.sha }}
+          restore-keys: yard-gate-
+
       - name: Grade head and base (gate + properties, in parallel)
         id: grade
         run: |
           set +e
+          touch "$RUNNER_TEMP/grade-start"
           start=$(date +%s)
           npx -y tsx scripts/eval-gate.ts --jobs 2 --out "$RUNNER_TEMP/gate-head.json" > "$RUNNER_TEMP/gate-head.log" 2>&1 & h=$!
           (cd .base && npx -y tsx ../scripts/eval-gate.ts --root . --jobs 2 --out "$RUNNER_TEMP/gate-base.json") > "$RUNNER_TEMP/gate-base.log" 2>&1 & b=$!
@@ -72,6 +82,17 @@ jobs:
           echo "secs=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
           for f in gate-head gate-base props-head props-base; do echo "::group::$f"; tail -25 "$RUNNER_TEMP/$f.log"; echo "::endgroup::"; done
           test -s "$RUNNER_TEMP/gate-head.json" && test -s "$RUNNER_TEMP/gate-base.json" && test -s "$RUNNER_TEMP/props-head.json"
+
+      # Keep only the trees this run graded, so the saved cache never grows past two trees.
+      - name: Save the gate row cache
+        if: always()
+        run: find .cache/yard-gate -mindepth 1 -maxdepth 1 -type d ! -newer "$RUNNER_TEMP/grade-start" -exec rm -rf {} + 2>/dev/null; du -sh .cache/yard-gate 2>/dev/null || true
+
+      - uses: actions/cache/save@v4
+        if: always() && hashFiles('.cache/yard-gate/**') != ''
+        with:
+          path: .cache/yard-gate
+          key: yard-gate-${{ github.sha }}
 
       - name: Diff head vs main
         id: diff

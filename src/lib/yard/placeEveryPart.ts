@@ -53,6 +53,35 @@ const SIDE = /^(?:left|right|front|back|top|bottom|upper|lower|inner|outer|middl
 
 const INSERTED_TIP = "This part was on the model and not yet in a step.";
 
+/**
+ * Pure string → value caches for the step × part loop (mentions runs once per pair). The keys are the whole input,
+ * the values never change for a key, and no pattern here has the g/y flag, so a cached RegExp answers exactly as a
+ * fresh one. Capped so a long browser session cannot grow them without bound.
+ */
+const CACHE_CAP = 5000;
+function cached<T>(m: Map<string, T>, key: string, make: () => T): T {
+  const hit = m.get(key);
+  if (hit !== undefined) return hit;
+  const v = make();
+  if (m.size >= CACHE_CAP) m.clear();
+  m.set(key, v);
+  return v;
+}
+const reEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const NAMED_RE = new Map<string, RegExp>();
+const SIDED_FAMILY_RE = new Map<string, RegExp>();
+const ONTO_RE = new Map<string, RegExp>();
+const KIND_RE = new Map<string, RegExp>();
+const JOIN_KIND_RE = new Map<string, RegExp>();
+const FAMILY = new Map<string, string>();
+/** "drawer front" → /\bdrawer fronts?\b/ */
+const namedRe = (n: string) => cached(NAMED_RE, n, () => new RegExp(`\\b${reEsc(n)}s?\\b`));
+const sidedFamilyRe = (f: string) => cached(SIDED_FAMILY_RE, f, () => new RegExp(`(\\w+) ${reEsc(f)}s\\b`));
+// The name goes in unescaped, exactly as before (a name with a dot or paren matched as a pattern then too).
+const ontoRe = (n: string) => cached(ONTO_RE, n, () => new RegExp(`to the ${n}|onto the ${n}|on the ${n}`));
+const kindRe = (k: string) => cached(KIND_RE, k, () => new RegExp(`\\b${k}s?\\b`));
+const joinKindRe = (k: string) => cached(JOIN_KIND_RE, k, () => new RegExp(`^\\S+ (?:the )?(?:[a-z]{1,2} )?${k}s?\\b`));
+
 function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean {
   // A step that declares it uses no parts (stapling mesh, drilling vents) places none: nothing is fastened in it.
   if (Array.isArray(step.partsUsed) && step.partsUsed.length === 0 && step.tips !== INSERTED_TIP) return false;
@@ -62,10 +91,10 @@ function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean 
   // A title that names the part outright ("Fit the drawer front") still places it.
   if (used.length && names && used.every((u) => names.has(u))) {
     const n = part.name.toLowerCase();
-    if (used.includes(n) || (n.includes(" ") && new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`).test(step.title.toLowerCase()))) return true;
+    if (used.includes(n) || (n.includes(" ") && namedRe(n).test(step.title.toLowerCase()))) return true;
     // "Fit the drawer fronts" places every drawer front; "the 6 right end slats" places no left one.
     const f = familyWord(part.name);
-    const m = f.includes(" ") ? step.title.toLowerCase().match(new RegExp(`(\\w+) ${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s\\b`)) : null;
+    const m = f.includes(" ") ? step.title.toLowerCase().match(sidedFamilyRe(f)) : null;
     return !!m && !(SIDE.test(m[1]) && !n.split(/\s+/).includes(m[1]));
   }
   const kind = part.kind.toLowerCase();
@@ -81,17 +110,17 @@ function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean 
       // A step that lists a member stick by id places that stick's role.
       (!!part.ids && used.some((u) => part.ids!.has(u))) ||
       // A title that names the part outright ("Fit the drawer front") places it.
-      (name.length > 3 && name.includes(" ") && new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`).test(title)) ||
+      (name.length > 3 && name.includes(" ") && namedRe(name).test(title)) ||
       (fam.includes(" ") && (used.includes(fam) || used.includes(plural(fam, 2)))) ||
       // A join step named for the part's type ("Attach A Top to both uprights") places that part.
-      (/^(?:attach|fasten|set|hang|glue|screw)\b/.test(title) && kind.length > 2 && new RegExp(`^\\S+ (?:the )?(?:[a-z]{1,2} )?${kind}s?\\b`).test(title))
+      (/^(?:attach|fasten|set|hang|glue|screw)\b/.test(title) && kind.length > 2 && joinKindRe(kind).test(title))
     );
   }
   const text = `${step.title} ${step.description}`.toLowerCase();
   if (name.length > 3 && text.includes(name)) return true;
   if (fam.includes(" ") && (text.includes(plural(fam, 2)) || text.includes(fam))) return true;
-  if (new RegExp(`to the ${name}|onto the ${name}|on the ${name}`).test(text)) return true;
-  return new RegExp(`\\b${kind}s?\\b`).test(text);
+  if (ontoRe(name).test(text)) return true;
+  return kindRe(kind).test(text);
 }
 
 function isBuild(step: AssemblyStep): boolean {
@@ -104,6 +133,10 @@ const POSITION = /^(left|right|front|back|top|bottom|lower|upper|middle|inner|ou
 
 /** A part's family word: "Left upright" → "upright", "Leg front left 1" → "leg", "Left drawer front 2" → "drawer front". */
 export function familyWord(name: string): string {
+  return cached(FAMILY, name, () => familyWordOf(name));
+}
+
+function familyWordOf(name: string): string {
   const words = name
     .toLowerCase()
     .replace(/\(.*?\)/g, " ")
