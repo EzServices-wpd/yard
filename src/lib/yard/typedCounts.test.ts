@@ -158,3 +158,28 @@ test("class F r4 (card 1): only '1 shelf' / 'an open shelf' on a card 1 host sta
   assert.deepEqual(split, []);
   assert.ok(composeProducts("picture frame with a shelf", stub));
 });
+
+test("class F card 1 at every size spelling: a host keeps its own shelf (never a second Shelf product) and builds like its digit size", () => {
+  // Critic NR-1 probe A/D (2026-11-05): "desk 4 ft wide with an open shelf" built an 84" "Desk with Shelf" ($363.48)
+  // where "desk 48 wide with an open shelf" builds the 48" desk ($318.56). Every spelling the one reader reads is that size.
+  const box = (q: string) => {
+    const p = generateFromPrompt(q);
+    return { o: [p.overall.width, p.overall.depth, p.overall.height], combined: (p.notes ?? []).some((n) => n.startsWith("Combined:")), i41: i41(p, q).length };
+  };
+  const HOSTS = ["desk", "nightstand", "media console", "sideboard", "vanity"];
+  const SIZES: [string, string][] = [
+    ["4 ft wide", "48 wide"], ["2 1/2 ft wide", "30 wide"], ["2'6\" wide", "30 wide"], ["2 ft 6 in wide", "30 wide"],
+    ["thirty inches wide", "30 wide"], ["two and a half feet wide", "30 wide"], ["762 mm wide", "30 wide"], ["76.2 cm wide", "30 wide"],
+    ["6 ft tall", "72 tall"], ["seventy-two inches tall", "72 tall"], ["1829mm tall", "72 tall"], ["6' tall", "72 tall"], ["3 ft wide", "36 wide"],
+  ];
+  const bad: string[] = [];
+  for (const host of HOSTS) for (const [typed, digits] of SIZES) for (const f of ["with 1 shelf", "with an open shelf", "with one shelf"]) {
+    const q = `${host} ${typed} ${f}`, got = box(q), want = box(`${host} ${digits} ${f}`);
+    if (got.combined) bad.push(`${q}: a second Shelf product`);
+    if (got.i41) bad.push(`${q}: I41`);
+    if (JSON.stringify(got.o) !== JSON.stringify(want.o)) bad.push(`${q}: ${got.o} != ${digits}: ${want.o}`);
+  }
+  assert.deepEqual(bad, []);
+  // Controls: release's own reading stays (a comma is releaseReads text; a size after the shelf is another clause).
+  assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
+});
