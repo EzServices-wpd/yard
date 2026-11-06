@@ -13,7 +13,7 @@ Examples (release and NR-1 r5 alike):
 - "nightstand 2 1/2 ft wide with 1 shelf" → 66" wide (digits → 30")
 Class to write: a typed size is kept by every class F feature build (I41 "the feature picked the build" holds).
 Update 2026-11-06: fix for the card 1 hosts is on branch `class-card1-any-size` (f1e7472, mover folder 4dc2add): 213
-price-downs, 0 ups; graded after #225. Other hosts ("coffee table with an open shelf") stay two products by row 570.
+price-downs, 0 ups; sent to Critic after #225 landed; waiting for PASS/BLOCK. Other hosts ("coffee table with an open shelf") stay two products by row 570.
 Seen by: Critic NR-1 probe tests A and D (scripts/nr1.critic.test.ts on critic/nr1-head).
 
 ## 2026-11-06 | Digit count of feet read as a size (pre-existing on release)
