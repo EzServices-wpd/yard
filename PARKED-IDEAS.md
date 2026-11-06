@@ -5,16 +5,16 @@ Unsolved items from a round. Each needs its own class, its own round and its own
 ## 2026-11-06 | "<host> with Shelf" ignores the typed size (class F, pre-existing on release)
 
 "1 shelf" or "an open shelf" (and "N foot shelves") next to a size that is not plain digits switches the build to a
-"<host> with Shelf" family that drops the typed width and adds a shelf unit beside it. Release does this today
-(75 of the Critic's 712 NR-1 probe prompts end in a "with Shelf" build); NR-1 only routes more spellings into it.
-Examples (release and NR-1 r5 alike):
+"<host> with Shelf" family that drops the typed width and adds a shelf unit beside it. Before the card-1 ship, release did this
+(75 of the Critic's 712 NR-1 probe prompts ended in a "with Shelf" build); NR-1 only routes more spellings into it.
+Examples from before that ship (release and NR-1 r5 alike):
 - "desk 4 ft wide with an open shelf" → 84" wide, $363.48 (digits "desk 48 wide with an open shelf" → 48", $318.56)
 - "media console 3 ft wide with 1 shelf" → 72" wide (digits → 36")
 - "nightstand 2 1/2 ft wide with 1 shelf" → 66" wide (digits → 30")
 Class to write: a typed size is kept by every class F feature build (I41 "the feature picked the build" holds).
-Update 2026-11-06: fix for the card 1 hosts is on branch `class-card1-any-size` (f1e7472, mover folder 4dc2add): 213
-price-downs, 0 ups; graded after #225. Other hosts ("coffee table with an open shelf") stay two products by row 570.
+Update 2026-11-06: the card-1 hosts fix has shipped via #238/#239/#240. Engine `f1e7472a930dd929b31c6f92510bddd8adba43bf` from `ship/card1-any-size` (plain release merge `e04795ae0d83af1375d2e3dcf12e45345bd19246`; mover-folder tip `4dc2add4` was not merged). Squash #239 is main `3cb578532eb00e5627e2d363ab9616452df3a70b`. Merge-back #240 is release `b0bdccff09bdee04ca64feb70d41cfd9bc642347`. Critic headline: "desk 4 ft wide with an open shelf" builds as the typed-size desk matching the digit twin. Other hosts ("coffee table with an open shelf") remain parked. Scope note from the grade (not a blocker): size-after, comma-before-shelf, and non-CARD1 hosts still Combined, same as the graded tip (`deabae9d`).
 Seen by: Critic NR-1 probe tests A and D (scripts/nr1.critic.test.ts on critic/nr1-head).
+Update 2026-11-06 15:05 ET: this class is being attempted now (lock held on the feature branch; not merged, not graded). Checked on release `80c3e765` first. The pre-CARD1 examples in standard order already match their digit twins there: "media console 3 ft wide with 1 shelf" is 36" (not 72"), "nightstand 2 1/2 ft wide with 1 shelf" is 30" (not 66"), and "coffee table 4 ft wide with an open shelf" matches "coffee table 48 wide with an open shelf" (both Combined, 84" × 48" × 18"). What still dropped the typed axis was a separator comma (and a size after the shelf when a comma sits in front of the size) for spellings the release comma reader misses: "thirty inches", "four feet", "six feet", "762 mm", "1829 mm", on every host including CARD1. Size-after with no comma already matched the digit twin and stays Combined, which the card-1 pin requires ("vanity with an open shelf 30 wide"). The host allow-list is not being extended: "tv console" / "bedside table" stay Combined when their digit twins are Combined.
 
 ## 2026-11-06 | Digit count of feet read as a size (pre-existing on release)
 

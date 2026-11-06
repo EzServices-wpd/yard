@@ -1,6 +1,6 @@
 # Bot load file — read this first on resume
 
-Snapshot 2026-11-06 08:45 ET · release `release/2026-10-24` · main `5a21262` · written by Claude for the Grok team (YARD Chief, Critic).
+Snapshot 2026-11-06 15:05 ET · release `release/2026-10-24` @ `80c3e765` when this note was written · main `a032063e` · class F other hosts with Shelf in progress on this branch (lock held; not merged) · written by YARD Chief.
 
 This is the one page that gets a bot from cold to working. Detail lives in `CLAUDE-PROGRESS.md` (session log, lock, PASS log, landings) and `PARKED-IDEAS.md`. If anything here disagrees with those two, they win; if a canary is red, the canary wins.
 
@@ -16,20 +16,25 @@ This is the one page that gets a bot from cold to working. Detail lives in `CLAU
 
 | Item | Branch / PR | Tip | State | Blocked on |
 |---|---|---|---|---|
-| NR-1 r5: one length reader | `class-number-reader` · PR #225 | `fc7de9e` | CI green (guards, eval-gate Δ0/511, canaries 7/7) | Critic regrade of r5 → PASS logged → Ezra's yes on mover card |
-| #225 mover folder (DRAFT) | `movers/nr1-r5` | `20aed8a` | 6,433 prompts: 1,962 move — 488 price-ups (189 builds, all listed), 834 down, 640 same/refusal | Card not shown until r5 PASS is logged |
-| Class F card 1 at any size spelling | `class-card1-any-size` | `f1e7472` + movers `4dc2add` | 213 move vs r5, all price-downs, 0 ups; NR-1 probe A–E pass | Graded only after #225 lands (built on r5) |
+| NR-1 r5: one length reader | shipped · #225 into release · squash #235 release → main · merge-back #236 main → release | PR head stayed `fc7de9efb98af31f9ae3324df177384d8bbebf7f`. Release merge `efbd49fc9b3df273f2832f143649289969a5c749`. Main at that landing `cf05d769fee45089ce5ac70e2dd45343515667a9`. Merge-back #236 `deabae9d818a04a59bbd99104456df485eed0f88` | Critic PASS 2026-11-06 ~9:24 AM ET vs then-release `afcb1f8b`, under the lean bar (model, steps, parts only; no dollar-delta / price-up card). Zero blockers. Digit forms ("with 4 feet") parked (= release). Axis forms still sizes. 0 movers drop a typed size release honoured. 35/35 new refusals match their digit twins. Canaries unchanged. eval-gate Δ 0. Tests 2116/2116. No loosened tests. | — |
+| CARD1 any-size spelling (class F card 1) | shipped · `ship/card1-any-size` · #238 into release · squash #239 release → main · merge-back #240 main → release | Engine head stayed `f1e7472a930dd929b31c6f92510bddd8adba43bf` (mover-folder tip `4dc2add4` was not merged). Release merge `e04795ae0d83af1375d2e3dcf12e45345bd19246`. Main `3cb578532eb00e5627e2d363ab9616452df3a70b` (2 files: `compose.ts`, `typedCounts.test.ts`). Release tip at that landing `b0bdccff09bdee04ca64feb70d41cfd9bc642347` | Yard Critic PASS vs then-release `deabae9d` / then-main `cf05d769`, lean bar (model, steps, parts only). Zero blockers. No price card. Headline: "desk 4 ft wide with an open shelf" builds as the typed-size desk matching the digit twin. Scope note (not a blocker): size-after, comma-before-shelf, and non-CARD1 hosts still Combined, same as that tip. Production deploy for `3cb57853` was not verified — yard.wiki is not claimed live | — |
+| Engine speed (hot regexes, graded gate-row cache) | shipped · #241 into release · squash #243 release → main · merge-back #244 main → release · docs #242 release only | Main `a032063e5f1c4cc94f0d02b32772cb788600b6a4` (11:13 AM ET). Merge-back #244 `530b670661d3ce5f424523eeb4460f6eed0d65c2`. Docs #242 release `80c3e7655194c89bacd741e55097531e20f0c93e` | Output-neutral. Production deploy for `a032063e` is READY (`dpl_5H2BWSNgXhcwtkQFcsSzGXqTiQ9z` / yard-5l0og90pa) | — |
+| Class F: typed size kept beside a shelf on every host | in progress · PR #245 into `release/2026-10-24` · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | A separator comma no longer drops a spelled or metric axis beside `1 shelf` / `an open shelf`. The build matches the digit twin (model, steps, parts). Host allow-list in `compose.ts` is unchanged. Not graded | Critic grade |
 | Critic NR-1 probe | `critic/nr1-base`, `critic/nr1-head` | `62b9bba`, `bbca4d6` | Probe harness, **do not merge** | — |
-| Other open PRs | #231, #203, #202, #121, #120, #119, #118, #11 | — | Not Claude's; not in this queue | — |
+| Other open PRs | #231, #203, #202, #121, #120, #119, #118, #11 | — | Not in this queue | — |
 
-Nothing has landed via the push rules yet (Landings: none). No Critic PASS entries yet.
+Critic PASS entries for #225 and CARD1, and the #235 and #239 landings, are logged in `CLAUDE-PROGRESS.md`. Canaries for the #235 landing: Critic's r5 grade found them unchanged vs then-release `afcb1f8b`. There is no separate post-merge main regrade for #235. The CARD1 grade was against then-release `deabae9d` / then-main `cf05d769`; this update does not record a new canary check on main `3cb57853`.
 
 ## 3. Next, in order (one at a time)
 
-1. Critic regrades `class-number-reader` @ `fc7de9e`. PASS → paste the line in `CLAUDE-PROGRESS.md` → Critic PASS entries.
-2. Only then: show Ezra the #225 mover card from `scripts/baselines/approvals/pr-225/` (`movers.md` lists every price-up). It moves prices and part sizes, so the PR is never merged without his explicit yes.
-3. After #225 lands and the regrade on new main keeps canaries byte-identical: regrade `class-card1-any-size` on that main, Critic, then its own card.
-4. Parked (each its own class, round and mover list — see `PARKED-IDEAS.md`): "<host> with Shelf" for non-card-1 hosts; digit "with 4 feet" read as size; stool + feature words drops a unit-marked size; "A linen needs…" refusal wording (wording → needs Ezra's yes).
+Ezra's queue, updated 2026-11-06 15:05 ET. Items 1 and 2 are done. Item 3's first class is in progress on this branch (lock held). Do not merge it from this note.
+
+1. DONE: `class-card1-any-size` shipped (#238 / #239 / #240).
+2. DONE: output-neutral engine-speed patch shipped (#241 into release, squash #243 to main `a032063e`, merge-back #244, docs #242 on release as `80c3e765`). Production deploy READY.
+3. IN PROGRESS: class F — a typed axis beside `1 shelf` / `an open shelf` / `one shelf` is kept on every host and matches the digit-twin spelling (comma-before and size-after included). Then the other parked honesty classes, one at a time: digit forms like "with 4 feet"; stool plus a feature word dropping a unit-marked size; equal bays.
+4. "A linen needs…" wording still needs Ezra's yes.
+
+Do not resume SWE 2, Critic 2, or Design.
 
 ## 4. Standing rules (from Ezra — all of them, in one place)
 
@@ -41,10 +46,11 @@ Engine
 - ¼" plywood is back, drawer-bottom stock only, never a carcass.
 
 Approvals
-- Anything moving a price, part size, canary build or user-facing wording needs Ezra's explicit yes with the exact list of prompts that move (exception: correct plywood-stock changes).
-- Price-ups: list every one on the card, plus builds gaining many pieces with before/after prices.
+- Lean grading bar (Ezra, 2026-11-06 ~8:37 AM ET, standing): grade only the model, the steps, and the parts (correct items and quantities). Price follows the catalog from those parts. A changed total is not its own grade. No dollar-delta card, and no Ezra click on a list of price-ups.
+- Still block on a bad model, wrong or mismatched steps, wrong Buy items or quantities, a loosened test, a false claim, a canary or protected-build regression, or a privacy/auth risk.
+- User-facing wording changes (e.g. "A linen needs…") still need Ezra's yes.
 - One folder per change: patch, mover list, tests, and the generator so the grader can rerun it (pattern: `scripts/baselines/approvals/pr-225/`).
-- Each change is graded alone. Never stack a card on an ungraded change or send it before its grade. A card isn't shown until the grader has confirmed it.
+- Each change is graded alone. Never stack a grade on an ungraded change or send it before its grade.
 - Never edit an existing test that pins old behaviour without Ezra's yes (loosening a test needs approval).
 - Canaries stay byte-identical.
 
@@ -56,7 +62,7 @@ Git / infra
 
 ## 5. Gaps this file closes
 
-Everything Claude built is on the branches above and logged in `CLAUDE-PROGRESS.md`. Before this file, three things were not in the repo:
+NR-1 r5 and CARD1 any-size spelling are on release and main (§2). The critic probe branches stay unmerged (**do not merge**). Before this file, three things were not in the repo:
 - The full rule list (§4) — the log carried only the push rules.
 - The `movers/nr1-r5` tip `20aed8a` (agreement counts on the published prompt set) — committed after the last log entry.
 - A current queue — `docs/BOT.md` NEXT still showed September's Slice D.
