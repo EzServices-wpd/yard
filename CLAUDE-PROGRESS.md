@@ -56,6 +56,6 @@ Newest first. Tip, canary status, the rule per change, before/after prompts, fil
 - CI on fc7de9e: guards ✅, eval-gate ✅ (Δ 0 on 511 prompts), canaries 7/7.
 - Probe A and D still fail; both failures are on release too ("<host> with Shelf" ignores the typed size). Parked in
   PARKED-IDEAS.md, not NR-1's.
-- NR-1 vs release still moves 265 probe prompts (about 68 price-ups); needs Critic PASS, then Ezra's yes with the
+- NR-1 vs release still moves 265 probe prompts (67 price-ups, 110 price-downs); needs Critic PASS, then Ezra's yes with the
   full mover list before merge.
 - Next: Critic regrade of r5; then the mover card.
