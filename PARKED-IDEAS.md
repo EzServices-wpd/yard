@@ -33,6 +33,12 @@ with two drawers" build 18" (also "stool 18\" deep with three shelves" → 16" d
 size holds. 14 of 2,044 spelling pairs in the #225 mover sweep. Its own class: the stool path reads a marked size only
 without features.
 Update 2026-11-06 17:17 ET: in progress on PR #251 (lock held on the feature branch; not merged, not graded). Checked on release `104075e4` first. The note's "without the feature words the size holds" is not what this tip does: `stool 24" wide` is also 18" wide. The chair on the same seat reader drops the mark the same way (`chair 20" wide` is 18"). Height already kept an inch mark. Bench, table, and desk already kept a marked width. The seat reader now uses the one length reader, so a unit mark matches the bare twin (name, overall, steps, Buy names and quantities). A comma and a hyphenated `N-inch` stay release's read. Mover list: `scripts/baselines/approvals/stool-unit-size/`.
+Update 2026-11-06: shipped via #251 / #252 / #253. Yard Critic PASS on #251 head `c6cccd6673289e40d23b1aba5672d0ce4e30aa85`, lean bar (model, steps, parts). Squash #252 is main `ea287eb75361fbfa3a13354257cd84ee0f84048b`. Merge-back #253 is release `c230ab55348aa963937de462a6eb162460a41a1e`. Production READY for that main SHA (`dpl_5ypakZABbcku8KrdqHTfkUhSfQjh` / yard-ds1vwu7ep, aliases include yard.wiki).
+
+## 2026-11-06 | Equal clear bays on an auto-divided shelf (pre-existing on release)
+
+A long shelf span that the span pass divides into 3 or more bays gave wider end bays than the middle. Divider thickness was subtracted to choose the bay count, then the centres split the whole run, so each end bay was wider by half the divider. On release `c230ab55`: `closet 72 wide` was 23 1/8, 22 3/4, 23 1/8; `cabinet 42 wide 30 tall 15 deep with 3 doors in 1/2 inch plywood` was 13 5/16, 13 1/16, 13 5/16 (an older note of about 13 5/12, 13 1/6, 13 5/12 is not this tip).
+Update 2026-11-06 18:16 ET: in progress on this feature branch (lock held; not merged, not graded). Centres now use the equal clear bay. Closet 72 is 23, 23, 23 and fills 70 1/2". The cabinet is 13 1/4, 13 1/4, 13 1/4 and fills 40 3/4". A two-bay split and builder `Bay divider` layouts stay as they were. Mover list: `scripts/baselines/approvals/equal-bays/`.
 
 ## 2026-11-06 | Refusal says "A linen needs at least ..." (user-facing wording, pre-existing)
 
