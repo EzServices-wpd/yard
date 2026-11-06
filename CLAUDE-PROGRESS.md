@@ -39,6 +39,21 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-06 (later) | #225 mover folder; class F card 1 fix held behind #225
+
+- Release tip `e8a8119`. Lock not taken (no landing).
+- #225 DRAFT mover folder: branch `movers/nr1-r5`, `scripts/baselines/approvals/pr-225/` (generator sweep.py +
+  observe.mts + movers.py, prompts.json 6,433, release/head outputs, movers.md, nr1-r5.diff, draft card text).
+  r5 vs release: 1,962 move — 488 price-ups (189 builds, every one listed), 834 down, 640 same-price/refusal.
+  0 movers leave a typed size release honoured; 35 new refusals each match their digit spelling's refusal on release.
+  Card not to be shown until the Critic PASS of r5 is logged here.
+- Class F card 1 at every size spelling: branch `class-card1-any-size` (f1e7472 + mover folder 4dc2add), built on r5.
+  Rule: CARD1 reads any spelling the one reader reads as its inches, so "desk 4 ft wide with an open shelf" builds the
+  48" desk, not an 84" "Desk with Shelf". vs r5: 213 move, all price-downs, 0 ups. Critic NR-1 probe A–E all pass.
+  Test: typedCounts.test.ts (5 hosts × 13 spellings × 3 shelf forms; fails on the old CARD1). Unit suite same as r5.
+  No PR yet: graded after #225.
+- Parked: stool + feature words drops a unit-marked size; "A linen needs ..." refusal wording.
+
 ### 2026-11-06 | NR-1 r5 (PR #225, `class-number-reader` fc7de9e) | waiting for Critic
 
 - Release tip `afdc8b1`, main `5a21262`. Lock not taken (no landing this session).
