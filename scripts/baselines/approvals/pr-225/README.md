@@ -19,7 +19,7 @@ table.
 Checks on the movers (from `release.jsonl` / `head-r5.jsonl`):
 - Never away from the typed size: of the sweep movers, 1,751 now build the typed axis exactly where release did not;
   0 moved away from a typed size release had honoured.
-- Spelling agreement: of 3,468 spelled/unit sizes compared with their digit form, release disagrees on 1,319; r5 on
+- Spelling agreement: of 2,044 spelled/unit sizes compared with their digit form, release disagrees on 832; r5 on
   125. Of those 125, 111 are "<host> with 1 shelf" ("with Shelf" combined build; see below) and 14 are a stool with a
   feature word and a marked size (parked).
 - 35 prompts newly refuse; each one's digit form refuses on release too (e.g. "bookcase twenty-four inches tall with
