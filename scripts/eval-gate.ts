@@ -10,7 +10,11 @@
  *                                             including corpus removals (a prompt in evals/gate.json no longer in the corpus)
  *   npm run eval:gate -- --class F1           only prompts that trip F1 in evals/gate.json (+ canaries): a per-class target
  *   npm run eval:gate -- --shard my.json      only these prompts (a corpus file or a JSON array of strings)
- *   options: --out <file> --root <checkout> --ref <gate.json> --jobs <n> --no-answer-keys
+ *   options: --out <file> --root <checkout> --ref <gate.json> --jobs <n> --no-answer-keys --no-cache
+ *
+ * Rows are cached per tree in .cache/yard-gate (scripts/build-cache.ts): a prompt already graded on the same
+ * src/, grader and Node version is read back, not rebuilt. Canaries and answer keys always build fresh.
+ * --no-cache or YARD_BUILD_CACHE=0 grades everything from scratch.
  *
  * Answer keys (evals/corpus/answer-keys.json, or YARD_ANSWER_KEYS=<file>) are scored into gate.json "answerKeys"
  * as a REPORT ONLY: they never change the totals, the canaries or the merge rule.
@@ -26,6 +30,7 @@ import { diffGates, renderComment } from "./eval-gate-diff.ts";
 import { HEAD_ROOT, byClass, bySource, corpusRemovals, gradeCanary, gradeOne, loadCanaries, loadCorpus, loadEngine, norm, stable, totalsOf, type CanaryResult, type Entry, type PromptResult } from "./eval-gate-lib.ts";
 import { typedDemands } from "./eval-gate-typed.ts";
 import { scoreAnswerKeys, type KeyReport } from "./eval-gate-keys.ts";
+import { rowCache } from "./build-cache.ts";
 
 const argv = process.argv.slice(2);
 const arg = (k: string) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : undefined; };
@@ -57,7 +62,15 @@ function select(all: Entry[]): Entry[] {
 
 async function gradeSlice(entries: Entry[], withCanaries: boolean) {
   const E = await loadEngine(root);
-  const rows = entries.map((e) => gradeOne(E, e));
+  const cache = rowCache<PromptResult>(root, HEAD_ROOT);
+  const rows = entries.map((e) => {
+    const hit = cache.get(e);
+    if (hit) return hit;
+    const row = gradeOne(E, e);
+    cache.put(e, row);
+    return row;
+  });
+  if (cache.dir) console.error(`build cache: ${cache.hits()} hit / ${cache.misses()} built`);
   const canaries = withCanaries ? loadCanaries().map((c) => gradeCanary(E, c)) : [];
   const keys = withCanaries && !flag("--no-answer-keys") && !cls && !shard ? await scoreAnswerKeys(E) : null;
   return { rows, canaries, keys };
@@ -69,7 +82,7 @@ async function runParallel(entries: Entry[]): Promise<{ rows: PromptResult[]; ca
   writeFileSync(join(dir, "entries.json"), JSON.stringify(entries));
   const script = new URL(import.meta.url).pathname;
   await Promise.all(Array.from({ length: jobs }, (_, i) => new Promise<void>((ok, bad) => {
-    const extra = ["--root", root, "--worker", `${i}/${jobs}`, "--worker-dir", dir];
+    const extra = ["--root", root, "--worker", `${i}/${jobs}`, "--worker-dir", dir, ...(flag("--no-cache") ? ["--no-cache"] : [])];
     const c = spawn("npx", ["-y", "tsx", script, ...extra], { stdio: ["ignore", "inherit", "inherit"], cwd: process.cwd() });
     c.on("exit", (code) => (code === 0 ? ok() : bad(new Error(`eval-gate worker ${i} exited ${code}`))));
   })));
