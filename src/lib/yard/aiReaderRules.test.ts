@@ -165,6 +165,13 @@ const holds = (cases: [string, unknown][], what: string) => {
   }
 };
 const cm = (axis: string, n: number, quote: string, unit = "cm") => S(axis, n / 2.54, quote, "overall", unit);
+// A legit reading is kept by the validator and the build lands at the typed size. Since NR-1 the regex path reads metric
+// sizes on an axis word itself, so the reader need not rewrite them; the build must still equal the inch spelling's.
+const lands = (q: string, raw: unknown, want: string) => {
+  const v = validateSpec(q, raw).spec, r = raw as { sizes?: unknown[]; counts?: unknown[] };
+  assert.equal(v.sizes.length + v.counts.length, (r.sizes?.length ?? 0) + (r.counts?.length ?? 0), `kept: ${q}`);
+  assert.equal(plan(viaReader(q, raw)), plan(want), `builds as typed: ${q}`);
+};
 
 test("I49 r4: a quote that is only part of a larger typed measurement never rewrites (row 477)", () => {
   holds([
@@ -212,7 +219,14 @@ test("I49 r4: the legit rewrites still happen; 'a pair of doors' reads '2 doors'
     ["nightstand 0.5 m wide 40 cm deep with two drawers", { sizes: [cm("W", 50, "0.5 m wide", "m"), cm("D", 40, "40 cm deep")] }, "nightstand 19 11/16 wide 15 3/4 deep with two drawers"],
     ["cabinet 1 m wide with a pair of doors", { counts: [C4("doors", 2, "pair of doors")] }, "cabinet 1 m wide with 2 doors"],
   ];
-  for (const [q, raw, want] of cases) assert.equal(viaReader(q, raw), want, q);
+  for (const [q, raw, want] of cases) {
+    const v = validateSpec(q, raw).spec, r = raw as { sizes?: unknown[]; counts?: unknown[] };
+    assert.equal(v.sizes.length + v.counts.length, (r.sizes?.length ?? 0) + (r.counts?.length ?? 0), `kept: ${q}`);
+    assert.equal(plan(viaReader(q, raw)), plan(want), `builds as typed: ${q}`);
+  }
+  // String pins: the count edit and a size the regex path does not read ("depth") are still rewritten word for word.
+  assert.equal(viaReader("cabinet 1 m wide with a pair of doors", { counts: [C4("doors", 2, "pair of doors")] }), "cabinet 1 m wide with 2 doors");
+  assert.equal(viaReader("cabinet 45 cm depth with a pair of doors", { sizes: [cm("D", 45, "45 cm depth")], counts: [C4("doors", 2, "pair of doors")] }), "cabinet 17 11/16 deep with 2 doors");
 });
 
 test("I49 r4: each boundary and metric rule holds on its own (row 481)", () => {
@@ -275,7 +289,11 @@ test("I49 r5: Critic's new legit rewrites still happen (2 m tall first, (2 m) as
     ["bookcase 2 m high with two shelves", { sizes: [cm("H", 200, "2 m high", "m")] }, "bookcase 78 3/4 tall with two shelves"],
     ["cabinet 45 cm depth with two doors", { sizes: [cm("D", 45, "45 cm depth")] }, "cabinet 17 11/16 deep with two doors"],
   ];
-  for (const [q, raw, want] of cases) assert.equal(viaReader(q, raw), want, q);
+  for (const [q, raw, want] of cases) {
+    const v = validateSpec(q, raw).spec, r = raw as { sizes?: unknown[]; counts?: unknown[] };
+    assert.equal(v.sizes.length + v.counts.length, (r.sizes?.length ?? 0) + (r.counts?.length ?? 0), `kept: ${q}`);
+    assert.equal(plan(viaReader(q, raw)), plan(want), `builds as typed: ${q}`);
+  }
 });
 
 test("I49 r5 allow-list: a lone number+unit segment (optionally with its own axis word) is a sole size; legit rewrites survive", () => {
@@ -292,8 +310,8 @@ test("I49 r5 allow-list: a lone number+unit segment (optionally with its own axi
     assert.equal(soleSize(q, s as never), true, `sole: ${q} "${s.quote}"`);
     assert.equal(validateSpec(q, { sizes: [s], counts: [] }).spec.sizes.length, 1, `kept: ${q} "${s.quote}"`);
   }
-  assert.equal(viaReader("bookcase 1.8 m tall 30 wide", { sizes: [cm("H", 180, "1.8 m", "m")] }), "bookcase 70 7/8 tall 30 wide");
-  assert.equal(viaReader("desk 0.5 m wide 40 cm deep", { sizes: [cm("W", 50, "0.5 m wide", "m"), cm("D", 40, "40 cm deep")] }), "desk 19 11/16 wide 15 3/4 deep");
+  lands("bookcase 1.8 m tall 30 wide", { sizes: [cm("H", 180, "1.8 m", "m")] }, "bookcase 70 7/8 tall 30 wide");
+  lands("desk 0.5 m wide 40 cm deep", { sizes: [cm("W", 50, "0.5 m wide", "m"), cm("D", 40, "40 cm deep")] }, "desk 19 11/16 wide 15 3/4 deep");
 });
 
 test("I49 r5 allow-list: the sweep's blacklist holes (quote before a joiner and another number, or beside a clashing cue) never rewrite", () => {
@@ -416,8 +434,11 @@ test("I49 r6 mutation pin: the same-box guard compares the pocket unit when ther
 });
 
 test("I49 r6 mutation pin: the same-box guard compares with the size-only build, so a legit size edit plus a count edit still reads (G5)", () => {
-  assert.equal(viaReader("plant stand three tiers 1 m tall", { sizes: [cm("H", 100, "1 m tall", "m")], counts: [C4("tiers", 3, "three tiers")] }), "plant stand 3 tiers 39 3/8 tall");
-  assert.equal(viaReader("dresser with nine drawers 1 m wide", { sizes: [cm("W", 100, "1 m wide", "m")], counts: [C4("drawers", 9, "nine drawers")] }), "dresser with 9 drawers 39 3/8 wide");
+  // "depth" is not an axis word the regex path reads, so these still need the reader's size edit beside the count edit.
+  assert.equal(viaReader("cabinet with two doors 45 cm depth", { sizes: [cm("D", 45, "45 cm depth")], counts: [C4("doors", 2, "two doors")] }), "cabinet with 2 doors 17 11/16 deep");
+  assert.equal(viaReader("bookcase with three shelves 30 cm depth", { sizes: [cm("D", 30, "30 cm depth")], counts: [C4("shelves", 3, "three shelves")] }), "bookcase with 3 shelves 11 13/16 deep");
+  lands("plant stand three tiers 1 m tall", { sizes: [cm("H", 100, "1 m tall", "m")], counts: [C4("tiers", 3, "three tiers")] }, "plant stand 3 tiers 39 3/8 tall");
+  lands("dresser with nine drawers 1 m wide", { sizes: [cm("W", 100, "1 m wide", "m")], counts: [C4("drawers", 9, "nine drawers")] }, "dresser with 9 drawers 39 3/8 wide");
 });
 
 // Critic r6 row 529: "a pair of X" after a number, unit or joiner ("2 x a pair of drawers" → "2 x 2 drawers"), and a
