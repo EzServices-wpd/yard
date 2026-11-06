@@ -24,6 +24,7 @@ Update 2026-11-06: shipped via #245 / #246 / #247. Yard Critic PASS on exact hea
 ("four feet") because NR-1 is the reader of spelled sizes. Fixing the digit forms moves release builds, so it needs
 its own mover list.
 Update 2026-11-06 16:18 ET: in progress on PR #248 (lock held on the feature branch; not merged, not graded). The one reader skips a digit before feet/foot the same way it skips the spelled number, unless an axis word follows. Checked on release `b5442bef` first. After the change the headlines match their spelled twins: "coffee table with 4 feet" is 40×40×18, "side table with 3 feet" is 20×20×22, "table with 4 foot legs" is 40×40×30, "bookcase with 2 foot shelves" is 36×12×84. "2 feet wide" / "4 feet tall" / "6 foot shelf" stay sizes. Mover list: `scripts/baselines/approvals/digit-feet/`.
+Update 2026-11-06: shipped via #248 / #249 / #250. Yard Critic PASS on exact head `a2e8170ee0878c91ff4c884ce0731855e9f5b727` vs then-release `b5442befb7a417ba72bd02e1eff43df696e9c7dd`, lean bar (model, steps, parts). Plain merge #248 is release `94a7e50bbbe6f657808d1bbf1768d5624cfb6437`. Squash #249 is main `333ba25bb31f5085a96e44668e258828534f0a5b`. Merge-back #250 is release `104075e45583b7a82b77d6d30cb90c09df5e70de`. Production READY for that main SHA (`dpl_7uT1q7YuuaDgoYNSx67dGzKFeF21` / yard-d2cp6x7kp, aliases include yard.wiki).
 
 ## 2026-11-06 | Stool with a feature word drops a size typed with a unit mark (pre-existing on release)
 
@@ -31,6 +32,7 @@ Update 2026-11-06 16:18 ET: in progress on PR #248 (lock held on the feature bra
 with two drawers" build 18" (also "stool 18\" deep with three shelves" → 16" deep). Without the feature words the
 size holds. 14 of 2,044 spelling pairs in the #225 mover sweep. Its own class: the stool path reads a marked size only
 without features.
+Update 2026-11-06 17:17 ET: in progress on PR #251 (lock held on the feature branch; not merged, not graded). Checked on release `104075e4` first. The note's "without the feature words the size holds" is not what this tip does: `stool 24" wide` is also 18" wide. The chair on the same seat reader drops the mark the same way (`chair 20" wide` is 18"). Height already kept an inch mark. Bench, table, and desk already kept a marked width. The seat reader now uses the one length reader, so a unit mark matches the bare twin (name, overall, steps, Buy names and quantities). A comma and a hyphenated `N-inch` stay release's read. Mover list: `scripts/baselines/approvals/stool-unit-size/`.
 
 ## 2026-11-06 | Refusal says "A linen needs at least ..." (user-facing wording, pre-existing)
 
