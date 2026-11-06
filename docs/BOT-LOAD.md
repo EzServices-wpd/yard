@@ -1,6 +1,6 @@
 # Bot load file — read this first on resume
 
-Snapshot 2026-11-06 10:33 ET · release `release/2026-10-24` @ `b0bdccff` · main `3cb57853` · written by Claude for the Grok team (YARD Chief, Critic).
+Snapshot 2026-11-06 15:05 ET · release `release/2026-10-24` @ `80c3e765` when this note was written · main `a032063e` · class F other hosts with Shelf in progress on this branch (lock held; not merged) · written by YARD Chief.
 
 This is the one page that gets a bot from cold to working. Detail lives in `CLAUDE-PROGRESS.md` (session log, lock, PASS log, landings) and `PARKED-IDEAS.md`. If anything here disagrees with those two, they win; if a canary is red, the canary wins.
 
@@ -17,7 +17,9 @@ This is the one page that gets a bot from cold to working. Detail lives in `CLAU
 | Item | Branch / PR | Tip | State | Blocked on |
 |---|---|---|---|---|
 | NR-1 r5: one length reader | shipped · #225 into release · squash #235 release → main · merge-back #236 main → release | PR head stayed `fc7de9efb98af31f9ae3324df177384d8bbebf7f`. Release merge `efbd49fc9b3df273f2832f143649289969a5c749`. Main at that landing `cf05d769fee45089ce5ac70e2dd45343515667a9`. Merge-back #236 `deabae9d818a04a59bbd99104456df485eed0f88` | Critic PASS 2026-11-06 ~9:24 AM ET vs then-release `afcb1f8b`, under the lean bar (model, steps, parts only; no dollar-delta / price-up card). Zero blockers. Digit forms ("with 4 feet") parked (= release). Axis forms still sizes. 0 movers drop a typed size release honoured. 35/35 new refusals match their digit twins. Canaries unchanged. eval-gate Δ 0. Tests 2116/2116. No loosened tests. | — |
-| CARD1 any-size spelling (class F card 1) | shipped · `ship/card1-any-size` · #238 into release · squash #239 release → main · merge-back #240 main → release | Engine head stayed `f1e7472a930dd929b31c6f92510bddd8adba43bf` (mover-folder tip `4dc2add4` was not merged). Release merge `e04795ae0d83af1375d2e3dcf12e45345bd19246`. Main `3cb578532eb00e5627e2d363ab9616452df3a70b` (2 files: `compose.ts`, `typedCounts.test.ts`). Release tip `b0bdccff09bdee04ca64feb70d41cfd9bc642347` | Yard Critic PASS vs then-release `deabae9d` / then-main `cf05d769`, lean bar (model, steps, parts only). Zero blockers. No price card. Headline: "desk 4 ft wide with an open shelf" builds as the typed-size desk matching the digit twin. Scope note (not a blocker): size-after, comma-before-shelf, and non-CARD1 hosts still Combined, same as that tip. Production deploy for `3cb57853` was not verified — yard.wiki is not claimed live | — |
+| CARD1 any-size spelling (class F card 1) | shipped · `ship/card1-any-size` · #238 into release · squash #239 release → main · merge-back #240 main → release | Engine head stayed `f1e7472a930dd929b31c6f92510bddd8adba43bf` (mover-folder tip `4dc2add4` was not merged). Release merge `e04795ae0d83af1375d2e3dcf12e45345bd19246`. Main `3cb578532eb00e5627e2d363ab9616452df3a70b` (2 files: `compose.ts`, `typedCounts.test.ts`). Release tip at that landing `b0bdccff09bdee04ca64feb70d41cfd9bc642347` | Yard Critic PASS vs then-release `deabae9d` / then-main `cf05d769`, lean bar (model, steps, parts only). Zero blockers. No price card. Headline: "desk 4 ft wide with an open shelf" builds as the typed-size desk matching the digit twin. Scope note (not a blocker): size-after, comma-before-shelf, and non-CARD1 hosts still Combined, same as that tip. Production deploy for `3cb57853` was not verified — yard.wiki is not claimed live | — |
+| Engine speed (hot regexes, graded gate-row cache) | shipped · #241 into release · squash #243 release → main · merge-back #244 main → release · docs #242 release only | Main `a032063e5f1c4cc94f0d02b32772cb788600b6a4` (11:13 AM ET). Merge-back #244 `530b670661d3ce5f424523eeb4460f6eed0d65c2`. Docs #242 release `80c3e7655194c89bacd741e55097531e20f0c93e` | Output-neutral. Production deploy for `a032063e` is READY (`dpl_5H2BWSNgXhcwtkQFcsSzGXqTiQ9z` / yard-5l0og90pa) | — |
+| Class F: typed size kept beside a shelf on every host | in progress · this branch · PR into `release/2026-10-24` · do not merge yet | Lock held. See `CLAUDE-PROGRESS.md` | A separator comma no longer drops a spelled or metric axis beside `1 shelf` / `an open shelf`. The build matches the digit twin (model, steps, parts). Host allow-list in `compose.ts` is unchanged. Not graded | Critic grade |
 | Critic NR-1 probe | `critic/nr1-base`, `critic/nr1-head` | `62b9bba`, `bbca4d6` | Probe harness, **do not merge** | — |
 | Other open PRs | #231, #203, #202, #121, #120, #119, #118, #11 | — | Not in this queue | — |
 
@@ -25,11 +27,11 @@ Critic PASS entries for #225 and CARD1, and the #235 and #239 landings, are logg
 
 ## 3. Next, in order (one at a time)
 
-Ezra's queue, 2026-11-06 ~10:04 AM ET. Item 1 is done.
+Ezra's queue, updated 2026-11-06 15:05 ET. Items 1 and 2 are done. Item 3's first class is in progress on this branch (lock held). Do not merge it from this note.
 
 1. DONE: `class-card1-any-size` shipped (#238 / #239 / #240).
-2. NEXT: land Claude's output-neutral engine-speed patch (compile hot regexes once, cache graded gate rows; no build-output change). Grade, then ship.
-3. Then parked honesty classes, one at a time: other hosts that still become "with Shelf" and drop the typed size; digit forms like "with 4 feet"; stool plus a feature word dropping a unit-marked size; equal bays.
+2. DONE: output-neutral engine-speed patch shipped (#241 into release, squash #243 to main `a032063e`, merge-back #244, docs #242 on release as `80c3e765`). Production deploy READY.
+3. IN PROGRESS: class F — a typed axis beside `1 shelf` / `an open shelf` / `one shelf` is kept on every host and matches the digit-twin spelling (comma-before and size-after included). Then the other parked honesty classes, one at a time: digit forms like "with 4 feet"; stool plus a feature word dropping a unit-marked size; equal bays.
 4. "A linen needs…" wording still needs Ezra's yes.
 
 Do not resume SWE 2, Critic 2, or Design.

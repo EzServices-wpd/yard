@@ -59,12 +59,29 @@ const releaseFeetInches = (s: string) =>
     return `${dec(f * 12 + i)}"`;
   });
 
+/**
+ * Class F shelf wording: "1 shelf", "one shelf", "one open shelf", "1 lower shelf", "an open shelf".
+ * The same tail CARD1 keeps on a host. "1 wide shelf", "a shelf", "two foot shelves" and "with four feet" are not it.
+ */
+const SHELF_FEAT = /(?<![a-z\d])(?:(?:1|one)\s+(?:(?!wide |tall |deep )[a-z]+ )?shelf|an open shelf)\b/i;
+
+/**
+ * A separator comma beside that shelf wording is not a reason to drop a typed axis. Release still owns a comma
+ * inside a number ("1,200 mm"), an arch, a hyphenated "N-inch", and "width N ft" — those stay releaseReads after
+ * the separator commas are ignored. Every host, not a host list: the size is whatever the one reader reads.
+ */
+function shelfAxisDespiteComma(s: string): boolean {
+  return SHELF_FEAT.test(s) && releaseReads(s) && !releaseReads(s.replace(/,(?!\d)/g, " "));
+}
+
 /** The prompt with every typed size written as plain decimal inches (see the module note). */
 export function canonicalMeasures(prompt: string): string {
   // Unicode fractions read as shop fractions: "24½" → "24 1/2", "½" → "1/2".
   let s = plainFractions(prompt);
   s = s.replace(/[″”]/g, '"').replace(/[‘’′]/g, "'");
-  s = releaseReads(s) ? releaseFeetInches(s) : lengthsAsInches(s);
+  // A comma usually leaves the text to release. Next to a class F shelf it does not: "thirty inches" and "762 mm"
+  // stay the same inches as "30", on every host and on either side of the shelf phrase.
+  s = releaseReads(s) && !shelfAxisDespiteComma(s) ? releaseFeetInches(s) : lengthsAsInches(s);
   // Compact feet-inches, nothing between the foot mark and the inches ("2ft6 x 12 x 30", "5ft6", "2'6 x 12 x 30"): the
   // inches need no mark or axis word. A lone "x N" after it is a stock ("6ft2x4" stays a 6 ft 2x4).
   s = s.replace(new RegExp(String.raw`\b(\d+(?:\.\d+)?)\s*(?:'|ft\.?|feet|foot)(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?)(?![\d./])`, "gi"), (all, ft: string, inch: string, at: number, whole: string) => {

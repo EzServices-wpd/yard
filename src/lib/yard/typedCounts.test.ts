@@ -5,6 +5,8 @@ import { i41 } from "./invariants";
 import { builtCount, typedCounts, typedFeatures } from "./typedFeatures";
 import { composeProducts } from "./compose";
 import { headerTitle } from "./pdf";
+import { buildPlan } from "./report";
+import { canonicalMeasures } from "./measureText";
 import type { YardProject } from "./types";
 
 globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
@@ -182,4 +184,102 @@ test("class F card 1 at every size spelling: a host keeps its own shelf (never a
   assert.deepEqual(bad, []);
   // Controls: release's own reading stays (a comma is releaseReads text; a size after the shelf is another clause).
   assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
+});
+
+test("class F: every host keeps a typed axis beside a shelf, in every spelling and word order, matching the digit twin", () => {
+  // The shelf wording, not a host list, is the class. CARD1 hosts already stayed one piece at "4 ft wide".
+  // What still dropped the inches was a separator comma (releaseReads): "thirty inches", "four feet", "762 mm"
+  // built the default "<host> with Shelf" while "30 wide" / "48 wide" kept the typed axis. Size-after and
+  // comma-before are the same rule. A comma inside a number, an arch, "with four feet" and "two foot shelves" stay release.
+  const box = (q: string) => {
+    const p = generateFromPrompt(q);
+    const panels = p.panels
+      .map((x) => `${x.name}|${x.type}|${Math.round(x.size.width * 10) / 10}x${Math.round(x.size.height * 10) / 10}x${Math.round(x.size.depth * 10) / 10}`)
+      .sort();
+    return {
+      name: p.name,
+      o: [p.overall.width, p.overall.depth, p.overall.height],
+      combined: (p.notes ?? []).some((n) => n.startsWith("Combined:")),
+      refused: p.refused ?? null,
+      i41: i41(p, q).length,
+      panels,
+    };
+  };
+  const HOSTS = ["desk", "nightstand", "media console", "coffee table", "tv console", "bookcase", "end table"];
+  const SIZES: [string, string][] = [
+    ["3 ft wide", "36 wide"], ["2 1/2 ft wide", "30 wide"], ["762 mm wide", "30 wide"], ["thirty inches wide", "30 wide"],
+    ["four feet wide", "48 wide"], ["6 ft tall", "72 tall"], ["six feet tall", "72 tall"], ["1829 mm tall", "72 tall"],
+  ];
+  const FEATS = ["with 1 shelf", "with an open shelf"];
+  const orders = (h: string, size: string, f: string) => [
+    `${h} ${size} ${f}`, `${h} ${f} ${size}`, `${h} ${size}, ${f}`, `${h}, ${size} ${f}`, `${h} ${f}, ${size}`,
+  ];
+  const bad: string[] = [];
+  for (const h of HOSTS) for (const [typed, digits] of SIZES) for (const f of FEATS) {
+    const forms = orders(h, "SIZE", f);
+    for (let i = 0; i < forms.length; i++) {
+      const q = forms[i].replace("SIZE", typed);
+      const twin = forms[i].replace("SIZE", digits);
+      const got = box(q), want = box(twin);
+      if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${q} -> ${JSON.stringify(got)} != ${twin} -> ${JSON.stringify(want)}`);
+    }
+  }
+  for (const [q, twin] of [
+    ["coffee table thirty inches wide, with one shelf", "coffee table 30 wide, with one shelf"],
+    ["end table 762 mm wide, with 1 open shelf", "end table 30 wide, with 1 open shelf"],
+    ["bedside table 2'6\" wide, with an open shelf", "bedside table 30 wide, with an open shelf"],
+    ["console table five feet wide, with an open shelf", "console table 60 wide, with an open shelf"],
+    ["media console 3 ft wide with 1 shelf", "media console 36 wide with 1 shelf"],
+    ["nightstand 2 1/2 ft wide with 1 shelf", "nightstand 30 wide with 1 shelf"],
+    ["coffee table 4 ft wide with an open shelf", "coffee table 48 wide with an open shelf"],
+    ["desk 4 ft wide, with an open shelf", "desk 48 wide, with an open shelf"],
+    ["vanity with an open shelf 2 1/2 ft wide", "vanity with an open shelf 30 wide"],
+    ["desk with an open shelf 4 ft wide", "desk with an open shelf 48 wide"],
+  ] as const) {
+    const got = box(q), want = box(twin);
+    if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${q} -> ${JSON.stringify(got)} != ${twin} -> ${JSON.stringify(want)}`);
+  }
+  assert.deepEqual(bad, []);
+
+  // Steps and parts (cut list and Buy), not the price, for the spellings that used to drop the axis.
+  const plan = (q: string) => {
+    const p = generateFromPrompt(q);
+    const pl = buildPlan(p);
+    return {
+      name: p.name,
+      o: [p.overall.width, p.overall.depth, p.overall.height],
+      steps: pl.instructions.map((s) => s.title),
+      cuts: pl.cutList.map((c) => [c.name, c.quantity, c.lengthIn, c.widthIn, c.thicknessIn, c.material]),
+      bom: pl.bom.map((b) => [b.name, b.quantity]),
+    };
+  };
+  const headlines: [string, string][] = [
+    ["nightstand thirty inches wide, with 1 shelf", "nightstand 30 wide, with 1 shelf"],
+    ["coffee table 762 mm wide, with 1 shelf", "coffee table 30 wide, with 1 shelf"],
+    ["nightstand four feet wide, with 1 shelf", "nightstand 48 wide, with 1 shelf"],
+    ["bookcase six feet tall, with 1 shelf", "bookcase 72 tall, with 1 shelf"],
+    ["bookcase 1829 mm tall, with an open shelf", "bookcase 72 tall, with an open shelf"],
+    ["desk with 1 shelf, thirty inches wide", "desk with 1 shelf, 30 wide"],
+    ["tv console 3 ft wide with 1 shelf", "tv console 36 wide with 1 shelf"],
+    ["coffee table 4 ft wide with an open shelf", "coffee table 48 wide with an open shelf"],
+  ];
+  const planBad: string[] = [];
+  for (const [q, twin] of headlines) {
+    if (JSON.stringify(plan(q)) !== JSON.stringify(plan(twin))) planBad.push(`${q} != ${twin}`);
+  }
+  assert.deepEqual(planBad, []);
+
+  // Not this class: release still owns these. A comma inside a number, an arch, a count of feet, a part's own length.
+  assert.equal(canonicalMeasures("bookcase 914 mm wide, 1829 mm tall"), "bookcase 914 mm wide, 1829 mm tall");
+  assert.equal(canonicalMeasures("shelf unit 30 wide, 1 m tall"), "shelf unit 30 wide, 1 m tall");
+  assert.equal(canonicalMeasures("garden arch four feet wide, with an open shelf"), "garden arch four feet wide, with an open shelf");
+  assert.equal(canonicalMeasures("coffee table with four feet"), "coffee table with four feet");
+  assert.equal(canonicalMeasures("bookcase with two foot shelves"), "bookcase with two foot shelves");
+  assert.equal(canonicalMeasures("desk 1,200 mm wide, with 1 shelf"), "desk 1,200 mm wide, with 1 shelf");
+  for (const q of ["nightstand thirty inches wide, with 1 shelf", "coffee table 762 mm wide, with an open shelf", "bookcase six feet tall, with 1 shelf"]) {
+    assert.equal(canonicalMeasures(canonicalMeasures(q)), canonicalMeasures(q), q);
+  }
+  assert.ok((generateFromPrompt("picture frame with a shelf").notes ?? []).some((n) => n.startsWith("Combined:")));
+  assert.equal(generateFromPrompt("coffee table with four feet").overall.width, generateFromPrompt("coffee table").overall.width);
+  assert.equal(generateFromPrompt("bookcase with two foot shelves").overall.height, generateFromPrompt("bookcase").overall.height);
 });
