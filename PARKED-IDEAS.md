@@ -38,7 +38,7 @@ Update 2026-11-06: shipped via #251 / #252 / #253. Yard Critic PASS on #251 head
 ## 2026-11-06 | Equal clear bays on an auto-divided shelf (pre-existing on release)
 
 A long shelf span that the span pass divides into 3 or more bays gave wider end bays than the middle. Divider thickness was subtracted to choose the bay count, then the centres split the whole run, so each end bay was wider by half the divider. On release `c230ab55`: `closet 72 wide` was 23 1/8, 22 3/4, 23 1/8; `cabinet 42 wide 30 tall 15 deep with 3 doors in 1/2 inch plywood` was 13 5/16, 13 1/16, 13 5/16 (an older note of about 13 5/12, 13 1/6, 13 5/12 is not this tip).
-Update 2026-11-06 18:16 ET: in progress on this feature branch (lock held; not merged, not graded). Centres now use the equal clear bay. Closet 72 is 23, 23, 23 and fills 70 1/2". The cabinet is 13 1/4, 13 1/4, 13 1/4 and fills 40 3/4". A two-bay split and builder `Bay divider` layouts stay as they were. Mover list: `scripts/baselines/approvals/equal-bays/`.
+Update 2026-11-06 18:16 ET: in progress on PR #254 (lock held on the feature branch; not merged, not graded). Centres now use the equal clear bay. Closet 72 is 23, 23, 23 and fills 70 1/2". The cabinet is 13 1/4, 13 1/4, 13 1/4 and fills 40 3/4". A two-bay split and builder `Bay divider` layouts stay as they were. Mover list: `scripts/baselines/approvals/equal-bays/`.
 
 ## 2026-11-06 | Refusal says "A linen needs at least ..." (user-facing wording, pre-existing)
 
