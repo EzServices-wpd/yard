@@ -276,3 +276,33 @@ it("card 6 (r4): a castle typed in any spelling builds or refuses like its digit
   assert.equal(tw.name, "Tower Ten Feet");
   assert.match(tw.refused ?? "", /^Yard builds up to 8,000 parts in one plan, and a Tower Ten Feet in wooden toothpicks at 120" tall needs more/);
 });
+
+it("r5 (Critic B): a spelled count before feet / foot is the feet it stands on or a part's length, never the build's size", () => {
+  // The reader: no length in a count of feet or a part's own length; an axis word after it is still a size.
+  for (const q of ["coffee table with four feet", "cabinet on four feet", "table with four foot legs", "bookcase with two foot shelves", "bookcase with five one foot shelves", "stool and three feet"]) {
+    assert.deepEqual(readLengths(q).filter((l) => l.unit === "ft"), [], q);
+  }
+  assert.equal(readLengths("a desk two feet wide")[0]?.inches, 24);
+  assert.equal(readLengths("bookcase with shelves six feet tall")[0]?.inches, 72);
+  assert.equal(typedAxisNumber("nightstand with drawers two feet wide", "width"), 24);
+  const core = (q: string) => {
+    const p = generateFromPrompt(q);
+    return { o: [p.overall.width, p.overall.depth, p.overall.height], refused: p.refused ?? null, usd: p.refused ? 0 : buildPlan(p).totals.estCostUsd };
+  };
+  // The built box does not depend on the count: if the words were read as a size, "one foot" and "eight foot" would build
+  // different boxes. (The price may: class F reads "one foot shelves" as one shelf, as on release.)
+  const HOSTS = ["coffee table", "side table", "table", "cabinet", "dresser", "nightstand", "bench", "stool", "bookcase"];
+  const WORDS = ["one", "two", "three", "four", "five", "six", "eight", "twelve"];
+  const FORMS = ["with N feet", "on N feet", "with N foot legs", "with N foot shelves", "with five N foot shelves"];
+  const seen = new Map<string, ReturnType<typeof core> & { q: string }>();
+  fc.assert(
+    fc.property(fc.constantFrom(...HOSTS), fc.constantFrom(...WORDS), fc.constantFrom(...FORMS), (host, w, form) => {
+      const q = `${host} ${form.replace("N", w)}`, got = core(q), key = `${host}|${form}`;
+      const first = seen.get(key) ?? { ...got, q };
+      seen.set(key, first);
+      assert.deepEqual([got.o, got.refused != null], [first.o, first.refused != null], `${q} vs ${first.q}`);
+    }),
+    { seed: SEED, numRuns: 120 },
+  );
+  for (const host of HOSTS) assert.deepEqual(core(`${host} with four feet`), core(host), host);
+});

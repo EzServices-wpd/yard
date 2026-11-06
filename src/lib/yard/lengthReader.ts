@@ -41,7 +41,12 @@ const LEN = new RegExp(
     String.raw`|\s*-?\s*(${IN})|(?:\s*-?\s*(ft\.?|feet|foot)(?![a-z])|\s*('))(\s*(?:and\s+|-\s*)?(${DIG})(?:\s*${IN}|${AXIS}))?)?`,
   "gi",
 );
-const PER: Record<Unit, number> = { in: 1, ft: 12, mm: 1 / 25.4, cm: 1 / 2.54, m: 1000 / 25.4 };
+const AXIS_NEXT = /^\s*(?:wide|deep|tall|high|long)\b/i;
+/** "with / on / and N feet": the feet it stands on. */
+const COUNT_BEFORE = /\b(?:with|on|and|has|have|plus)\s+$/i;
+/** "N foot legs / shelves / boards": the part's own length, not the build's size. */
+const PART_NEXT = /^\s*-?\s*(?:legs?|feet|shelf|shelves|boards?|planks?|rods?|dowels?|pipes?|posts?|rails?|slats?|sticks?|pieces?|lengths?|sections?|poles?|beams?|studs?|rungs?|steps?|spindles?|uprights?)(?![a-z])/i;
+const PER: Record<Unit, number> ={ in: 1, ft: 12, mm: 1 / 25.4, cm: 1 / 2.54, m: 1000 / 25.4 };
 
 function wordValue(w: string): number {
   const t = w.toLowerCase().replace(/[\s-]+/g, " ").replace(/^(?:a|one) (?=half|quarter)/, "");
@@ -67,6 +72,10 @@ export function readLengths(text: string): Length[] {
     if (tail != null && !joins) LEN.lastIndex = end -= tail.length;
     // A spelled number is a length only with a unit word: "one in each corner" is a count.
     if (!Number.isFinite(value) || (spelled && (!unit || /^\s*-?\s*in\.?$/i.test(inch ?? "") || mark))) continue;
+    // A spelled number before feet / foot is a count of feet or a part's own length, never a length here, unless an
+    // axis word follows ("two feet wide"): "coffee table with four feet", "four foot legs", "five one foot shelves"
+    // (NR-1 r5, Critic B). Release never read these either.
+    if (spelled && unit === "ft" && !AXIS_NEXT.test(s.slice(end)) && (COUNT_BEFORE.test(s.slice(0, m.index)) || PART_NEXT.test(s.slice(end)))) continue;
     const inches = (unit ? value * PER[unit] : value) + (joins ? readNumber(tailNum) : 0);
     out.push({ inches, value, unit, start: m.index, end, raw: s.slice(m.index, end), num, spelled });
   }
