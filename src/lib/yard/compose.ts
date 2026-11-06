@@ -1,6 +1,7 @@
 import { createId } from "@/lib/utils";
 import { looksLikePocket } from "./pocket";
 import { detectWeekendFamily } from "./weekendFamily";
+import { plainFractions, readLengths, releaseReads } from "./lengthReader";
 import type { Panel, Vec3, YardInstance, YardProject } from "./types";
 
 /**
@@ -135,6 +136,20 @@ function partNotProduct(core: string): boolean {
  * Only the typed words decide, never price or stock, so a stock switch keeps the structure (row 745).
  */
 const CARD1 = /^(?:an? |the )?(?:media console|sideboard|credenza|buffet|vanity|desk|nightstand)(?: \d+(?:\.\d+)? (?:wide|tall|deep))* with (?:(?:1|one) (?:(?!wide |tall |deep )[a-z]+ )?shelf|an open shelf)$/;
+
+/**
+ * The text CARD1 reads: a size typed in any spelling the one reader reads ("4 ft wide", "2'6\" wide", "thirty inches
+ * wide", "762 mm wide") is its decimal inches, so the host keeps its own shelf at every spelling of its size, as it does
+ * at "48 wide" (I41: a feature never picks the build). Text the reader leaves to release (releaseReads) is as typed.
+ */
+function card1Text(prompt: string): string {
+  let s = plainFractions(prompt.toLowerCase()).replace(/[″”]/g, '"').replace(/\s+/g, " ").trim();
+  if (releaseReads(s)) return s;
+  for (const l of readLengths(s).reverse()) {
+    if (/^ (?:wide|tall|deep)\b/.test(s.slice(l.end))) s = s.slice(0, l.start) + String(Math.round(l.inches * 10000) / 10000) + s.slice(l.end);
+  }
+  return s;
+}
 
 function stemOf(clause: string): string | null {
   const core = clauseCore(clause);
@@ -300,7 +315,7 @@ export function composeProducts(
   if (kept.length < 2) return null;
   // Class F (row 570, card 1): "host with 1 shelf / an open shelf" builds the host with its own shelf, not a second
   // Shelf product. Only the whole-prompt form above; everything else keeps the release build.
-  if (CARD1.test(prompt.toLowerCase().replace(/\s+/g, " ").trim())) return null;
+  if (CARD1.test(card1Text(prompt))) return null;
 
   // Coat rack + bench is one hall tree. Stacking the wall rack on the seat
   // stretches the bench sides into fins and runs the pegs across the seat.
