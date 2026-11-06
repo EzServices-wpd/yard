@@ -20,6 +20,7 @@ import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
 import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
 import { typedHeadNoun } from "./headNoun";
+import { canonicalMeasures } from "./measureText";
 import { hunt } from "./hunter";
 import { FEATURE_NOUN, countsDropped, featureBuilt, featureNoted, titleHeadNoun, typedCounts, typedFeatures } from "./typedFeatures";
 import { namedFormOwnsHead } from "./formOwnership";
@@ -482,11 +483,15 @@ export function i41(p: YardProject, prompt: string): Violation[] {
   if (p.refused) return [];
   const q = prompt || p.prompt || "";
   const head = typedHeadNoun(q);
+  // A spelled or metric size is not the head ("thirty", "mm"). The one reader says those inches first, then the noun.
+  const headAfterSize = typedHeadNoun(canonicalMeasures(q));
   const feats = typedFeatures(q);
   if (!head || (!feats.length && !Object.keys(typedCounts(q)).length)) return [];
   const out: Violation[] = [];
   const th = titleHeadNoun(p.name ?? "");
-  if (p.kind === "opening" || (th && FEATURE_NOUN.test(th) && !(p.name ?? "").toLowerCase().includes(head))) out.push(v("I41", `the feature picked the build: "${p.name}" for a typed ${head}`));
+  const named = (p.name ?? "").toLowerCase();
+  const headInName = [head, headAfterSize].some((h) => !!h && named.includes(h));
+  if (p.kind === "opening" || (th && FEATURE_NOUN.test(th) && !headInName)) out.push(v("I41", `the feature picked the build: "${p.name}" for a typed ${head}`));
   for (const f of feats) if (!featureBuilt(p, f) && !featureNoted(p, f)) out.push(v("I41", `typed ${f} neither built nor noted`));
   for (const [f, n, b] of countsDropped(p, q)) out.push(v("I41", `typed ${n} ${f}, built ${b}, not noted`));
   return out;

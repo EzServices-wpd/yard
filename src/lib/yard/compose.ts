@@ -134,6 +134,8 @@ function partNotProduct(core: string): boolean {
  * shelf. Anything else (another clause, "desk organizer", a size after the shelf) keeps the release build. Release's
  * casters rule (C13) builds the prompt without its casters words first, so "desk with 1 shelf and casters" is this form.
  * Only the typed words decide, never price or stock, so a stock switch keeps the structure (row 745).
+ * The host list is not the size rule. canonicalMeasures already wrote every axis the one reader reads as inches,
+ * including a separator comma beside this shelf wording, on every host. This list only keeps the shelf on the host.
  */
 const CARD1 = /^(?:an? |the )?(?:media console|sideboard|credenza|buffet|vanity|desk|nightstand)(?: \d+(?:\.\d+)? (?:wide|tall|deep))* with (?:(?:1|one) (?:(?!wide |tall |deep )[a-z]+ )?shelf|an open shelf)$/;
 
