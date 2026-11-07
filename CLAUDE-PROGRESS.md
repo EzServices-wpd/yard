@@ -47,6 +47,19 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 10:00 ET | #269 r2 block — seating status is not a part id, and a thin corner still crosses (same branch, not graded)
+
+- Yard Critic BLOCK on #269 r2, head `b65aace6`, vs release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b`. The r1 notch hole stayed closed. Same branch. Not graded. Not merged. Do not merge. Not parked.
+- Two holes, one class each.
+  - `notchBoard` and `housedGuest` returned a part id and the status `tie` as the same string. A board whose id was `tie` was read as a geometric tie, so the notch and the housed groove were dropped. The display name was still `board` or `shelf`. The status is now a tag (`one` / `tie` / `none`). The part id sits only on `one`. No id and no name is reserved.
+  - `passesThroughFace` asked the other axes for more than 1/16" of overlap, the housed-end band. A post through a 20" × 0.75" × 12" board at (0, 10, 0), overlapping 1/16" or 1/32" in x, was unread. Meeting on those axes is now any positive overlap. Past both thickness faces is still more than 1/16". Zero overlap and a gap stay unread. A mutual pass stays unread. Neither case says both parts are machined.
+- Checked on this head, not an independent grade. Still 12/12 shelf hosts on `utility cart` and `rolling utility cart`. Coop floor-to-leg hosts are the floor. Nest-box notches host the nest bottom and top. The board/post fixture machines the board both ways, including when the board's id is `tie` and there is no cut note. A housed 20" end still derives 3 screws with guest id `shelf` and with guest id `tie`, both declaration orders. Corner overlaps of 1/8, 1/16, and 1/32 machine the board. Zero and a gap do not.
+- Still holding: live `steps` copy `graph.operations`; contact is not a step; fasten counts match the ledger; bookcase 16 derived cuts and the back is placed, not rebated; oak prepare says 61 derived cuts and does not mention 24 or 25; the potting-bench lower shelf is placed, not fastened; cubby rails stay contact; Eiffel and toothpicks stay "No derived cuts" with the whole-craft disclosure.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `lengthReader.ts` and `modelJoints.ts` not edited. No AI reader. No linen wording. No held-out honesty queue. The 0.25" screw-overlap cutoff was not restored. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. This note does not record a Critic PASS.
+- Files: `src/lib/yard/assemblyCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 40/40. `npx tsc --noEmit` pass. `npx eslint` on `assemblyCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 09:44 ET | #269 r1 block — a notch machines the board the other part passes through (same branch, not graded)
 
 - Yard Critic BLOCK on #269 r1, head `379a0ff7acfb395c1eea6e72201e0e69e71ec0e7`, vs release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b`. Same branch. Not graded. Not merged. Do not merge. Not parked.

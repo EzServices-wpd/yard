@@ -88,6 +88,15 @@ type Draft = Omit<DerivedAssemblyStep, "step"> & { at: number };
 
 const END_TOL = 1 / 16;
 const HOUSED_MAX = 0.8;
+/** Float dust. A through-notch meets on the other axes when the overlap is positive. Not the housed-end band. */
+const MEET_EPS = 1e-9;
+
+/** One seated part, a geometric tie, or no reading. The part id is never the status. */
+type SeatPick = { pick: "one"; id: string } | { pick: "tie" } | { pick: "none" };
+
+const SEAT_TIE: SeatPick = { pick: "tie" };
+const SEAT_NONE: SeatPick = { pick: "none" };
+const seatOne = (id: string): SeatPick => ({ pick: "one", id });
 
 const MACHINING: Record<string, AssemblyMachining> = {
   dado: "groove",
@@ -177,12 +186,14 @@ function faceAxes(box: AxisBox): number[] {
  * `passer` runs past both thickness faces of `board`, and the two meet on the other axes.
  * A corner post does this to a shelf. The shelf does not do it to the post, because the
  * shelf stops on the post's outer face.
+ * Past the face is the housed band (more than 1/16"). Meeting on the other axes is any
+ * positive overlap. A 1/16" or 1/32" corner still crosses. A touch of zero, or a gap, does not.
  */
 function passesThroughFace(passer: AxisBox, board: AxisBox): boolean {
   for (const axis of faceAxes(board)) {
     const beyond = passer.min[axis] < board.min[axis] - END_TOL && passer.max[axis] > board.max[axis] + END_TOL;
     if (!beyond) continue;
-    if ([0, 1, 2].every((other) => other === axis || overlapOn(passer, board, other) > END_TOL)) return true;
+    if ([0, 1, 2].every((other) => other === axis || overlapOn(passer, board, other) > MEET_EPS)) return true;
   }
   return false;
 }
@@ -191,14 +202,14 @@ function passesThroughFace(passer: AxisBox, board: AxisBox): boolean {
  * The board a notch is cut into: the one whose face the other part passes through.
  * Both directions is a tie, not a guess that both boards are cut. No pass is unread.
  */
-function notchBoard(a: GraphPart, b: GraphPart): string | undefined | "tie" {
-  if (!axisAligned(a) || !axisAligned(b)) return undefined;
+function notchBoard(a: GraphPart, b: GraphPart): SeatPick {
+  if (!axisAligned(a) || !axisAligned(b)) return SEAT_NONE;
   const throughA = passesThroughFace(axisBox(b), axisBox(a));
   const throughB = passesThroughFace(axisBox(a), axisBox(b));
-  if (throughA && throughB) return "tie";
-  if (throughA) return a.id;
-  if (throughB) return b.id;
-  return undefined;
+  if (throughA && throughB) return SEAT_TIE;
+  if (throughA) return seatOne(a.id);
+  if (throughB) return seatOne(b.id);
+  return SEAT_NONE;
 }
 
 /** A cut note that records the notch, on exactly one of the two parts. Order is not a vote. */
@@ -235,15 +246,15 @@ function insertionOverlap(guest: GraphPart, host: GraphPart): Burial | undefined
  * The part that runs out of the joint. A face that only pokes into the other board
  * is the host. Equal runs are not a guess, and a declaration must not break the tie.
  */
-function housedGuest(a: GraphPart, b: GraphPart): string | undefined | "tie" {
+function housedGuest(a: GraphPart, b: GraphPart): SeatPick {
   const aInB = insertionOverlap(a, b);
   const bInA = insertionOverlap(b, a);
-  if (!aInB && !bInA) return undefined;
+  if (!aInB && !bInA) return SEAT_NONE;
   if (aInB && bInA) {
-    if (Math.abs(aInB.outside - bInA.outside) <= 1e-9) return "tie";
-    return aInB.outside > bInA.outside ? a.id : b.id;
+    if (Math.abs(aInB.outside - bInA.outside) <= 1e-9) return SEAT_TIE;
+    return seatOne(aInB.outside > bInA.outside ? a.id : b.id);
   }
-  return aInB ? a.id : b.id;
+  return seatOne(aInB ? a.id : b.id);
 }
 
 /**
@@ -333,15 +344,16 @@ function seatOf(group: Group, byId: Map<string, GraphPart>): Seat {
   if (patternId === "lap" || patternId === "miter") return { kind: "both", parts, machining, patternId };
   if (patternId === "notch") {
     const passed = notchBoard(a, b);
-    // A pass through one face decides. A tie, or no pass, yields to one part's notch note.
-    // Two notes, or none, are not a vote, and joint.a is not one either.
-    const board = passed !== "tie" && typeof passed === "string" ? passed : notedNotchBoard(a, b);
+    // A unique pass decides. A mutual pass stays unresolved, notes included.
+    // No pass yields to one part's notch note. Two notes, or none, are not a vote, and joint.a is not one either.
+    if (passed.pick === "tie") return { kind: "unresolved", parts, machining, patternId };
+    const board = passed.pick === "one" ? passed.id : notedNotchBoard(a, b);
     if (!board) return { kind: "unresolved", parts, machining, patternId };
     return { kind: "host", host: board, guest: board === group.a ? group.b : group.a, machining, patternId };
   }
   const buried = housedGuest(a, b);
-  if (buried === "tie") return { kind: "unresolved", parts, machining, patternId };
-  const guest = buried ?? declaredGuest(group);
+  if (buried.pick === "tie") return { kind: "unresolved", parts, machining, patternId };
+  const guest = buried.pick === "one" ? buried.id : declaredGuest(group);
   if (!guest) return { kind: "unresolved", parts, machining, patternId };
   return { kind: "host", host: guest === group.a ? group.b : group.a, guest, machining, patternId };
 }

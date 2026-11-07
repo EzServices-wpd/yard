@@ -1966,4 +1966,75 @@ describe("assembly steps come from joints and parts", () => {
     assert.match(tie.assemblyDisclosure ?? "", /unresolved/);
     assert.doesNotMatch(`${tie.assembly.map((step) => step.detail).join("\n")}\n${tie.assemblyDisclosure ?? ""}`, /both parts are machined/i);
   });
+
+  it("keeps a part id out of the seating status, and seats a thin corner crossing", () => {
+    const declare = (graph: YardBuildGraph, first: string, second: string, patternId: "notch" | "dado") => {
+      graph.joints = [{ id: "j", a: first, b: second, basis: "declared", patternId, reviewedJoin: true }];
+    };
+    const textOf = (compiled: ReturnType<typeof compileBuildGraph>) =>
+      `${compiled.assembly.map((step) => step.detail).join("\n")}\n${compiled.assemblyDisclosure ?? ""}`;
+    for (const boardId of ["board", "tie"]) {
+      const board = stockPart(boardId, { width: 20, height: 0.75, depth: 12 }, "plywood-3-4-4x8", "shelf");
+      board.name = "board";
+      board.position = { x: 0, y: 10, z: 0 };
+      const post = stockPart("post", { width: 1.5, height: 30, depth: 1.5 }, "lumber-2x2-8", "upright");
+      post.name = "post";
+      post.position = { x: 0, y: 0, z: 0 };
+      for (const first of [boardId, "post"]) {
+        const graph = stockGraph([board, post]);
+        declare(graph, first, first === boardId ? "post" : boardId, "notch");
+        const compiled = compileBuildGraph(graph);
+        const machine = compiled.assembly.find((step) => step.kind === "machine");
+        assert.deepEqual(machine?.hosts, [boardId], `${boardId} declared ${first}-first`);
+        assert.equal(machine?.machining, "notch");
+        assert.equal(compiled.assemblyDisclosure, undefined, boardId);
+      }
+    }
+    for (const guestId of ["shelf", "tie"]) {
+      const side = stockPart("side", { width: 0.75, height: 10, depth: 20 }, "plywood-3-4-4x8", "upright");
+      side.position = { x: 0, y: 0, z: 0 };
+      const shelf = stockPart(guestId, { width: 8, height: 0.75, depth: 20 });
+      shelf.name = "shelf";
+      shelf.position = { x: 0.5, y: 4, z: 0 };
+      for (const first of ["side", guestId]) {
+        const graph = stockGraph([side, shelf]);
+        declare(graph, first, first === "side" ? guestId : "side", "dado");
+        const compiled = compileBuildGraph(graph);
+        const machine = compiled.assembly.find((step) => step.kind === "machine");
+        assert.equal(machine?.machining, "groove", `${guestId} declared ${first}-first`);
+        assert.deepEqual(machine?.hosts, ["side"], guestId);
+        assert.deepEqual(machine?.guests, [guestId], guestId);
+        assert.equal(compiled.assembly.find((step) => step.kind === "fasten")?.fasteners?.[0]?.qty, 3, guestId);
+      }
+    }
+    for (const [label, overlap, seats] of [
+      ["1/8", 1 / 8, true],
+      ["1/16", 1 / 16, true],
+      ["1/32", 1 / 32, true],
+      ["zero", 0, false],
+      ["gap", -1 / 16, false],
+    ] as const) {
+      const board = stockPart("board", { width: 20, height: 0.75, depth: 12 }, "plywood-3-4-4x8", "shelf");
+      board.name = "board";
+      board.position = { x: 0, y: 10, z: 0 };
+      const post = stockPart("post", { width: 1.5, height: 30, depth: 1.5 }, "lumber-2x2-8", "upright");
+      post.name = "post";
+      post.position = { x: 20 - overlap, y: 0, z: 0 };
+      for (const first of ["board", "post"] as const) {
+        const graph = stockGraph([board, post]);
+        declare(graph, first, first === "board" ? "post" : "board", "notch");
+        const compiled = compileBuildGraph(graph);
+        const machine = compiled.assembly.find((step) => step.kind === "machine");
+        if (seats) {
+          assert.deepEqual(machine?.hosts, ["board"], `${label} ${first}-first`);
+          assert.equal(compiled.assemblyDisclosure, undefined, label);
+        } else {
+          assert.equal(machine, undefined, `${label} ${first}-first`);
+          assert.match(compiled.assemblyDisclosure ?? "", /unresolved/, label);
+          assert.doesNotMatch(textOf(compiled), /both parts are machined/i, label);
+          assert.equal(compiled.assembly.some((step) => step.kind === "fasten"), true, label);
+        }
+      }
+    }
+  });
 });
