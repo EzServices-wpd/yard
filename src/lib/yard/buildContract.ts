@@ -383,8 +383,10 @@ function axisBox(panel: Panel): AxisBox {
   };
 }
 
-function thinAxis(box: AxisBox): number {
-  return box.size.indexOf(Math.min(...box.size));
+/** Axes that are the part's thickness. A tied minimum (a square section) is still a face. */
+function faceAxes(box: AxisBox): number[] {
+  const thin = Math.min(...box.size);
+  return [0, 1, 2].filter((axis) => box.size[axis] - thin <= 1e-9);
 }
 
 const END_TOL = 1 / 16;
@@ -432,25 +434,35 @@ export function readingForPanels(a: Panel, b: Panel): ConstructionReadingId | un
   if (a.yaw || b.yaw || a.polygon || b.polygon) return undefined;
   const A = axisBox(a);
   const B = axisBox(b);
-  const gaps = [0, 1, 2].map((k) => Math.max(A.min[k], B.min[k]) - Math.min(A.max[k], B.max[k]));
-  const axis = gaps.indexOf(Math.max(...gaps));
-  const overlap = -gaps[axis];
-  if (overlap > END_TOL && overlap <= 0.8) {
-    const housed = (part: Panel, host: Panel, partBox: AxisBox, hostBox: AxisBox): ConstructionReadingId | undefined => {
-      if (thinAxis(partBox) === axis || thinAxis(hostBox) !== axis) return undefined;
-      if (!endEnters(partBox, hostBox, axis)) return undefined;
-      if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
-      const sheet = Math.min(...partBox.size) <= 0.3 && (part.type === "back" || part.type === "mirror");
-      if (sheet) return "housed-rabbet";
-      if (HOUSED.has(part.type) && HOST_FACE.has(host.type)) return "housed-dado";
-      return undefined;
-    };
-    const housedEnd = housed(a, b, A, B) ?? housed(b, a, B, A);
-    if (housedEnd) return housedEnd;
-  }
-  if (gaps.every((gap) => -gap > END_TOL) && overlap <= 0.8 && facesCross(A, B)) {
+  // The entered face is the host's thickness. A thinner part can overlap less on its own
+  // thickness than it does on the way in, so that smaller overlap is not the only axis tried.
+  const housedEnd = housedOnEnteredFace(a, b, A, B, notes) ?? housedOnEnteredFace(b, a, B, A, notes);
+  if (housedEnd) return housedEnd;
+  const overlaps = [0, 1, 2].map((axis) => Math.min(A.max[axis], B.max[axis]) - Math.max(A.min[axis], B.min[axis]));
+  if (overlaps.every((overlap) => overlap > END_TOL) && Math.min(...overlaps) <= 0.8 && facesCross(A, B)) {
     const crosses = (divider: Panel, shelf: Panel) => divider.type === "divider" && (shelf.type === "shelf" || shelf.type === "deck");
     if (crosses(a, b) || crosses(b, a)) return "cross-lap";
+  }
+  return undefined;
+}
+
+function housedOnEnteredFace(
+  part: Panel,
+  host: Panel,
+  partBox: AxisBox,
+  hostBox: AxisBox,
+  notes: (panel: Panel) => string,
+): ConstructionReadingId | undefined {
+  if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
+  const partFaces = new Set(faceAxes(partBox));
+  for (const axis of faceAxes(hostBox)) {
+    if (partFaces.has(axis)) continue;
+    const overlap = Math.min(partBox.max[axis], hostBox.max[axis]) - Math.max(partBox.min[axis], hostBox.min[axis]);
+    if (!(overlap > END_TOL && overlap <= 0.8)) continue;
+    if (!endEnters(partBox, hostBox, axis)) continue;
+    const sheet = Math.min(...partBox.size) <= 0.3 && (part.type === "back" || part.type === "mirror");
+    if (sheet) return "housed-rabbet";
+    if (HOUSED.has(part.type) && HOST_FACE.has(host.type)) return "housed-dado";
   }
   return undefined;
 }

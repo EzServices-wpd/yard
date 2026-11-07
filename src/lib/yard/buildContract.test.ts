@@ -458,6 +458,80 @@ describe("construction readings", () => {
       assert.ok(named.every((joint) => joint.basis === "contact" && joint.reading === undefined && joint.patternId === undefined));
     });
   });
+
+  it("reads a housed end on the face entered when the part is thinner than the insertion, in any axis order", () => {
+    const upright: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 8 },
+    };
+    const halfShelf: Panel = {
+      id: "half",
+      type: "shelf",
+      name: "Half shelf",
+      materialId: "plywood-1-2-4x8",
+      position: { x: 0.125, y: 4, z: 0 },
+      size: { width: 8, height: 0.5, depth: 8 },
+    };
+    const sheet = (type: Panel["type"], name: string, x: number): Panel => ({
+      id: name,
+      type,
+      name,
+      materialId: "plywood-1-4-4x8",
+      position: { x, y: 1, z: 3 },
+      size: { width: 8, height: 8, depth: 0.25 },
+    });
+    const turn = (panel: Panel, rot: number): Panel => {
+      const pos = [panel.position.x, panel.position.y, panel.position.z];
+      const size = [panel.size.width, panel.size.height, panel.size.depth];
+      const pick = (xs: number[]) => [xs[rot], xs[(rot + 1) % 3], xs[(rot + 2) % 3]];
+      const nextPos = pick(pos);
+      const nextSize = pick(size);
+      return {
+        ...panel,
+        position: { x: nextPos[0], y: nextPos[1], z: nextPos[2] },
+        size: { width: nextSize[0], height: nextSize[1], depth: nextSize[2] },
+      };
+    };
+    const expectReading = (host: Panel, part: Panel, reading: string) => {
+      for (const rot of [0, 1, 2]) {
+        const turnedHost = turn(host, rot);
+        const turnedPart = turn(part, rot);
+        assert.equal(readingForPanels(turnedHost, turnedPart), reading, `${part.name} rot ${rot}`);
+        assert.equal(readingForPanels(turnedPart, turnedHost), reading, `${part.name} rot ${rot} swapped`);
+      }
+    };
+    expectReading(upright, halfShelf, "housed-dado");
+    expectReading(upright, sheet("back", "Back", 0.5), "housed-rabbet");
+    expectReading(upright, sheet("mirror", "Mirror", 0.5), "housed-rabbet");
+    expectReading(upright, sheet("back", "Deep back", 0.25), "housed-rabbet");
+    expectReading(upright, sheet("mirror", "Deep mirror", 0.25), "housed-rabbet");
+    expectReading(upright, sheet("back", "Deeper back", 0.125), "housed-rabbet");
+    expectReading(upright, sheet("mirror", "Deeper mirror", 0.125), "housed-rabbet");
+    const through: Panel = { ...halfShelf, id: "through", position: { x: 0, y: 4, z: 0 } };
+    assert.equal(readingForPanels(upright, through), undefined);
+    const crossing: Panel = { ...halfShelf, id: "cross", position: { x: -2, y: 4, z: 0 } };
+    assert.equal(readingForPanels(upright, crossing), undefined);
+  });
+
+  it("keeps cubby rails that cross a support as contact", () => {
+    offline(() => {
+      for (const prompt of [
+        "cubby shelf 48 wide 36 tall 12 deep",
+        "cubby shelf 40 wide 36 tall 12 deep",
+        "cubby shelf 44 wide 36 tall 12 deep",
+        "cubby shelf 52 wide 36 tall 12 deep",
+        "cubby shelf 60 wide 48 tall 12 deep",
+        "cubby shelf 48 wide 48 tall 16 deep",
+      ]) {
+        const graph = roundTrip(prompt, "casework").graph;
+        assert.equal(graph.joints.some((joint) => joint.reviewedJoin), false, prompt);
+      }
+    });
+  });
 });
 
 describe("stock substitution keeps the form", () => {

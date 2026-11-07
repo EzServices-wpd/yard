@@ -47,6 +47,15 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 03:25 ET | #260 r2 block — a thin part does not hide the face it entered
+
+- Yard Critic BLOCK on #260 r2, head `d50003c80e47cd457ed6510967bcd29243acc18f`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. B1 and B2 of r1 stayed fixed. Same branch. Not graded. Not merged. Do not merge.
+- The miss was one axis choice. `readingForPanels` kept only the smallest overlap. When the part is thinner than how far it enters, that smallest overlap is the part's own thickness, and the host face actually entered was never tried. A half-inch shelf 0.625" into a 3/4" upright, a 1/4" back or mirror 0.5" into that upright, and the same geometries after a cyclic swap of the axes, all came back undefined. A 1/4" back whose insertion equals its thickness still read as a rabbet unrotated and dropped after the swap, because the tie broke toward whichever axis was first.
+- The entered face is now every host thickness, judged on its own overlap. Insertion still has to be more than 1/16" and at most 0.8". `endEnters` and `facesCross` are unchanged, and a housed end is still decided before a lap. An end that reaches the far face is not housed. A middle overlap with both ends outside is not housed.
+- Still 0 reviewed joints: `cubby shelf 48 wide 36 tall 12 deep` and 40×36×12, 44×36×12, 52×36×12, 60×48×12, 48×48×16. Front rail / center support pairs stay contact. The shelf end 0.25" into a divider is still a dado, the same end in an upright is still a dado, and a mutual crossing is still a lap.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass. Weekend canaries 6/6 unchanged. `walk-canary.ts` linen 31.5×78×16 and pocket green. linen-check PASS.
+
 ### 2026-11-07 03:10 ET | #260 r1 block — a housed end must enter, a lap must pass through
 
 - Yard Critic BLOCK on #260 r1, head `0b1809f447a68a2fdceb1f041ad5df3f598085ea`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. Same branch. Not graded. Not merged. Do not merge.
