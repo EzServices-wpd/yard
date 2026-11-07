@@ -50,7 +50,7 @@ Newest first. Tip, canary status, the rule per change, before/after prompts, fil
 ### 2026-11-07 09:22 ET | shadow assembly steps — in progress (lock held)
 
 - Shadow cut and pack compile is on main `8dad9ecb89d014d703bf1d3bffe62eb9d6b3d545` (#267) and release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b` (#268, merge-back). Do not redo it. The squash message says Critic PASS on #266 r2 head `083e65cb`. This note does not add a PASS entry or a deployment id. The cut-and-pack lock rode in on the merge-back and was not cleared. Replaced on this feature branch only.
-- New lock: shadow assembly steps. Not graded. Not merged. PR into `release/2026-10-24`. Do not merge.
+- New lock: shadow assembly steps. Not graded. Not merged. PR #269 into `release/2026-10-24`. Do not merge.
 - `compileAssembly` (`src/lib/yard/assemblyCompile.ts`) is called from `compileBuildGraph`. It writes `assembly` and, when a part or joint does not become a machining or fastening step, `assemblyDisclosure`. `steps` stays the copied live operations. `generateFromPrompt` and `buildPlan` do not read the graph. `report.ts` is not imported.
 - Order is the reviewed joints and the part groups. A housed end waits for the part it enters. A hinge leaf waits for its carcass part. Parts that share a `drawerId` or a `leaf.id` stay together. Ties go by position, then id. A lap or a miter is machined on both parts. Contact is not a step.
 - The screw count on a fasten step is that pair's fastener-ledger row. The compiler does not recount it. A hinge adds no carcass screws. A hinge count is copied only when the leaf records one. An empty ledger (glue or screwless stock) fastens with no screws. a→b and b→a are one step. A cycle is ordered by position, and the groove still precedes the fasten.
