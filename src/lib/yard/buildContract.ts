@@ -11,6 +11,7 @@
  * touches stays contact. A reviewed pattern is declared only when a construction reading in
  * the joint library matches. Stock substitution keeps that form and is still not the live path.
  */
+import { isBoughtHardwareName } from "./boughtHardware";
 import { getCatalogItem } from "./catalog";
 import { contactReport } from "./contact";
 import { constructionReading, jointPattern, type ConstructionReadingId } from "./jointLibrary";
@@ -458,6 +459,10 @@ function housedOnEnteredFace(
   notes: (panel: Panel) => string,
 ): ConstructionReadingId | undefined {
   if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
+  // A pin-turning or hinged part is that relationship, not a fixed wood end. Purchased hardware
+  // is not an inferred dado. Mirrors, thin backs, and glue housings are not in this set.
+  if (part.turns || host.turns || part.hinged || host.hinged) return undefined;
+  if (isBoughtHardwareName(part.name) || isBoughtHardwareName(host.name)) return undefined;
   const partFaces = new Set(faceAxes(partBox));
   for (const axis of [0, 1, 2]) {
     // Entering along the part's own thickness is a face stacked on a face, not an end in a groove.

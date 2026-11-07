@@ -672,6 +672,92 @@ describe("construction readings", () => {
     }
   });
 
+  it("does not infer a dado for a part that turns on a pin or for purchased hardware", () => {
+    const upright: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 8 },
+    };
+    const arm: Panel = {
+      id: "arm",
+      type: "rail",
+      name: "Pivot arm",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0.5, y: 4, z: 0 },
+      size: { width: 8, height: 0.75, depth: 8 },
+      turns: true,
+      cutNote: "Bore the arm 1/16 over its pivot pin; keep free to rotate.",
+    };
+    const bracket: Panel = {
+      id: "bracket",
+      type: "rail",
+      name: "A-frame bracket 1",
+      materialId: "swing-a-frame-bracket",
+      position: { x: 0.5, y: 4, z: 1 },
+      size: { width: 5, height: 4, depth: 2 },
+    };
+    const turn = (panel: Panel, rot: number): Panel => {
+      const pos = [panel.position.x, panel.position.y, panel.position.z];
+      const size = [panel.size.width, panel.size.height, panel.size.depth];
+      const pick = (xs: number[]) => [xs[rot], xs[(rot + 1) % 3], xs[(rot + 2) % 3]];
+      const nextPos = pick(pos);
+      const nextSize = pick(size);
+      return {
+        ...panel,
+        position: { x: nextPos[0], y: nextPos[1], z: nextPos[2] },
+        size: { width: nextSize[0], height: nextSize[1], depth: nextSize[2] },
+      };
+    };
+    const plan: BuildPlan = {
+      feasibility: { status: "ok", summary: "", issues: [] },
+      cutList: [],
+      bom: [],
+      instructions: [],
+      totals: { pieces: 2, estCostUsd: 0, packs: 0 },
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    };
+    const lift = (panels: Panel[]) => liftBuildGraph({
+      id: "elig",
+      name: "Eligibility",
+      prompt: "",
+      kind: "closet",
+      overall: { width: 10, height: 10, depth: 8 },
+      instances: [],
+      panels,
+      primaryMaterialId: "plywood-3-4-4x8",
+      notes: [],
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    }, plan, "casework");
+    for (const rot of [0, 1, 2]) {
+      const host = turn(upright, rot);
+      const turning = turn(arm, rot);
+      const fixed = turn({ ...arm, id: "fixed", turns: undefined, cutNote: undefined }, rot);
+      const bought = turn(bracket, rot);
+      assert.equal(readingForPanels(host, turning), undefined, `turn rot ${rot}`);
+      assert.equal(readingForPanels(turning, host), undefined, `turn rot ${rot} swapped`);
+      assert.equal(readingForPanels(host, fixed), "housed-dado", `fixed rot ${rot}`);
+      assert.equal(readingForPanels(fixed, host), "housed-dado", `fixed rot ${rot} swapped`);
+      assert.equal(readingForPanels(host, bought), undefined, `bought rot ${rot}`);
+      assert.equal(readingForPanels(bought, host), undefined, `bought rot ${rot} swapped`);
+      for (const panels of [[host, turning], [turning, host]] as Panel[][]) {
+        const graph = lift(panels);
+        assert.equal(graph.joints.some((joint) => joint.reviewedJoin), false, `turn lift rot ${rot}`);
+      }
+      for (const panels of [[host, fixed], [fixed, host]] as Panel[][]) {
+        const joint = lift(panels).joints.find((row) => pair(row) === "fixed|side");
+        assert.equal(joint?.reading, "housed-dado", `fixed lift rot ${rot}`);
+        assert.equal(joint?.reviewedJoin, true);
+      }
+      for (const panels of [[host, bought], [bought, host]] as Panel[][]) {
+        const graph = lift(panels);
+        assert.equal(graph.joints.some((joint) => joint.reviewedJoin), false, `bought lift rot ${rot}`);
+      }
+    }
+  });
+
   it("keeps cubby rails that cross a support as contact", () => {
     offline(() => {
       for (const prompt of [

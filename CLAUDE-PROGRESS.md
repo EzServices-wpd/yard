@@ -47,6 +47,14 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 04:10 ET | #260 r5 block — a moving part and bought hardware are not dados
+
+- Yard Critic BLOCK on #260 r5, head `84468c7691f60ac812cd69c109e48ab546cd76f3`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The r4 band lift stayed fixed. Same branch. Not graded. Not merged. Do not merge.
+- `housedReadings` asked only the geometric reader. A rail with `turns` (Pivot arm, bored 1/16" over its pin) and a purchased `A-frame bracket 1` both sit inside the insertion and transverse bands, so the reader called them housed-dados. `panelJoints` already leaves those out: a part that turns takes no screws, and `isBoughtHardwareName` is not a wood end. That live file was not edited.
+- The geometric reader now refuses a pair when either part turns, is hinged, or is purchased hardware. `readingForPanels` and the lift share that check. The same stationary wood, without `turns`, still lifts as a dado. Mirrors, thin backs, and glue housings are not in this exclusion. The 0.25" screw-overlap filter was not restored.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited. This note does not claim a new canary check.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass.
+
 ### 2026-11-07 03:55 ET | #260 r4 block — a housed end is not gated on the screw finder
 
 - Yard Critic BLOCK on #260 r4, head `55674ad2b6fea30e7f98f931c61d473281c11af8`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The r3 edge-butt and 1.5" face entry stayed fixed, as did the 13 r2 fixtures and B1/B2. Same branch. Not graded. Not merged. Do not merge.
