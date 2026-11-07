@@ -1,6 +1,6 @@
 # Bot load file — read this first on resume
 
-Snapshot 2026-11-07 11:00 ET · release `release/2026-10-24` @ `ea4dffd6` · main `a129a5e5` · shadow assembly steps shipped (#269 / #270 / #271) · shadow conservation checks on this branch (lock held; not merged) · written by Cursor Agent.
+Snapshot 2026-11-07 11:29 ET · release `release/2026-10-24` @ `ea4dffd6` · main `a129a5e5` · shadow assembly steps shipped (#269 / #270 / #271) · shadow conservation checks on PR #272 r2 (r1 block addressed on this branch; lock held; not merged) · written by Cursor Agent.
 
 This is the one page that gets a bot from cold to working. Detail lives in `CLAUDE-PROGRESS.md` (session log, lock, PASS log, landings) and `PARKED-IDEAS.md`. If anything here disagrees with those two, they win; if a canary is red, the canary wins.
 
@@ -28,7 +28,7 @@ This is the one page that gets a bot from cold to working. Detail lives in `CLAU
 | Shadow fastener demand | shipped · #263 into release · squash #264 release → main · merge-back #265 main → release | Main `db7cd4812967096ee82e7f8abc8fa8da31451f24`. Release merge of #263 `43a5cc52f7d78b27ee42eb3bc906a20b07e0867d`. Release tip `7134c41b20ed329a11fc52d36699cbef9c10de71` | Carcass screws come from reviewed shop joints. A thin dowel or a thin polygon buys none. Still shadow. Not the live source of truth. This row does not record a Critic PASS or a deployment id | — |
 | Shadow cut and pack compile | shipped · #266 into release · squash #267 release → main · merge-back #268 main → release | Main `8dad9ecb89d014d703bf1d3bffe62eb9d6b3d545`. Release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b` | Cuts and sheet/lumber packs come from the parts on the graph. Glue-up layers ceil. Whole craft sticks derive no pack. Oak stays 25 against a live 24. Still shadow. The squash message says Critic PASS on #266 r2 head `083e65cb`. This row does not add a PASS entry or a deployment id | — |
 | Shadow assembly steps | shipped · #269 into release · squash #270 release → main · merge-back #271 main → release | Main `a129a5e5927b9853249f2330d7169a75497ebb5d`. Release merge of #269 `f8e5637bb7b3422e86fa1038e2aba2564a337bba`. Release tip `ea4dffd62c204bdace1235694e74597d55af7fbc` | Derived assembly from reviewed joints. An empty part id is still that part. Live steps stay copied. Still shadow. This row does not record a Critic PASS or a deployment id | — |
-| Shadow conservation checks | in progress · PR #272 into `release/2026-10-24` · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | Independent checks on the compiled graph. Live engine does not read them. Still shadow. Not graded | Do not merge |
+| Shadow conservation checks | in progress · PR #272 into `release/2026-10-24` · r2 geometry counts · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | Counts come from part geometry, reviewed joints, and the catalog. Live engine does not read the ledger. Still shadow. Not graded | Do not merge |
 | Critic NR-1 probe | `critic/nr1-base`, `critic/nr1-head` | `62b9bba`, `bbca4d6` | Probe harness, **do not merge** | — |
 | Other open PRs | #231, #203, #202, #121, #120, #119, #118, #11 | — | Not in this queue | — |
 
@@ -36,7 +36,7 @@ Critic PASS entries for #225, CARD1, class F, digit-feet, and stool unit-size, a
 
 ## 3. Next, in order (one at a time)
 
-Ezra's queue, updated 2026-11-07 11:00 ET. Items 1–6, the shadow build graph, construction knowledge, shadow fastener demand, shadow cut and pack compile, and shadow assembly steps are done. Shadow conservation checks are in progress on this branch (lock held). Do not merge from this note. "A linen needs…" still needs Ezra's yes.
+Ezra's queue, updated 2026-11-07 11:29 ET. Items 1–6, the shadow build graph, construction knowledge, shadow fastener demand, shadow cut and pack compile, and shadow assembly steps are done. Shadow conservation checks are PR #272 (r1 compared compiled fields to themselves; r2 counts from the geometry; lock held). Do not merge it from this note. "A linen needs…" still needs Ezra's yes.
 
 1. DONE: `class-card1-any-size` shipped (#238 / #239 / #240).
 2. DONE: output-neutral engine-speed patch shipped (#241 into release, squash #243 to main `a032063e`, merge-back #244, docs #242 on release as `80c3e765`). Production deploy READY.
@@ -50,7 +50,7 @@ Ezra's queue, updated 2026-11-07 11:00 ET. Items 1–6, the shadow build graph, 
 10. DONE: shadow fastener demand. Shipped #263 / #264 / #265. Main `db7cd4812967096ee82e7f8abc8fa8da31451f24`. Release `7134c41b20ed329a11fc52d36699cbef9c10de71`. Still shadow. This note does not record a Critic PASS. Do not switch the graph on.
 11. DONE: shadow cut and pack compile. Shipped #266 / #267 / #268. Main `8dad9ecb89d014d703bf1d3bffe62eb9d6b3d545`. Release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b`. Still shadow. The squash message says Critic PASS on #266 r2 head `083e65cb`. This note does not add a PASS entry. Do not switch the graph on.
 12. DONE: shadow assembly steps. Shipped #269 / #270 / #271. Main `a129a5e5927b9853249f2330d7169a75497ebb5d`. Release `ea4dffd62c204bdace1235694e74597d55af7fbc`. An empty part id is still that part. Live steps stay the copy. Still shadow. This note does not record a Critic PASS. Do not switch the graph on.
-13. IN PROGRESS, do not merge (PR #272): conservation checks on the already-compiled graph. Five relations are recomputed from the geometry and the compiled artifacts, and honest gaps stay disclosed (oak 25 vs copied 24, whole-craft packs stay empty, the potting-bench shelf is placed and not fastened, the bookcase back is placed and not rebated). The live engine does not read the ledger.
+13. IN PROGRESS, do not merge (PR #272; r2): conservation checks. Piece lists, board counts, and screw counts are taken from the part geometry and the reviewed joints, not from the compiled cut list, the fastener row, or the step under test. Honest gaps stay disclosed (oak 25 vs copied 24, whole-craft packs stay empty, the potting-bench shelf is placed and not fastened, the bookcase back is placed and not rebated). The live engine does not read the ledger.
 
 Do not resume SWE 2, Critic 2, or Design.
 

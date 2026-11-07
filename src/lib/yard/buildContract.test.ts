@@ -2254,4 +2254,196 @@ describe("conservation checks the compiled graph without becoming it", () => {
       }
     });
   });
+
+  it("gaps a cut list that is short, split, duplicated, or the wrong thickness", () => {
+    const railPart = stockPart("rail", { width: 30, height: 1.5, depth: 3.5 }, "lumber-2x4-8", "rail");
+    railPart.name = "Rail";
+    const railGraph = stockGraph([railPart], { stock: [] });
+    const rail = compileBuildGraph(railGraph);
+    assertStructuralHolds(rail.conservation, "30 inch rail");
+    const shortened = compileConservation(railGraph, {
+      ...rail,
+      cuts: rail.cuts.map((cut) => ({ ...cut, lengthIn: 1 })),
+    });
+    assert.equal(structuralStatus(shortened, "allocation"), "gap");
+    assert.match(shortened.findings.find((row) => row.id === "allocation")?.detail ?? "", /do not match/);
+
+    const thin = compileConservation(railGraph, {
+      ...rail,
+      cuts: rail.cuts.map((cut) => ({ ...cut, thicknessIn: 0.25 })),
+    });
+    assert.equal(structuralStatus(thin, "allocation"), "gap");
+
+    const side = stockPart("side", { width: 0.75, height: 10, depth: 20 }, "plywood-3-4-4x8", "upright");
+    const shelf = stockPart("shelf", { width: 8, height: 0.75, depth: 20 });
+    side.position = { x: 0, y: 0, z: 0 };
+    shelf.position = { x: 0.5, y: 4, z: 0 };
+    const housedGraph = stockGraph([side, shelf], { stock: [] });
+    housedGraph.joints = [{ id: "j1", a: "shelf", b: "side", basis: "declared", patternId: "dado", reviewedJoin: true }];
+    const housed = compileBuildGraph(housedGraph);
+    assertStructuralHolds(housed.conservation, "housed");
+    const shelfCut = housed.cuts.find((cut) => cut.partId === "shelf");
+    assert.ok(shelfCut);
+    const duplicated = compileConservation(housedGraph, {
+      ...housed,
+      cuts: [...housed.cuts, { ...shelfCut }],
+    });
+    assert.equal(structuralStatus(duplicated, "allocation"), "gap");
+    assert.match(duplicated.findings.find((row) => row.id === "allocation")?.detail ?? "", /asks for/);
+    const split = compileConservation(housedGraph, {
+      ...housed,
+      cuts: housed.cuts.flatMap((cut) => cut.partId === "shelf"
+        ? [{ ...cut, widthIn: cut.widthIn / 2 }, { ...cut, widthIn: cut.widthIn / 2 }]
+        : [cut]),
+    });
+    assert.equal(structuralStatus(split, "allocation"), "gap");
+
+    const bothOne = compileConservation(housedGraph, {
+      ...housed,
+      fasteners: housed.fasteners.map((row) => ({ ...row, screws: 1 })),
+      assembly: housed.assembly.map((step) => step.kind === "fasten"
+        ? { ...step, fasteners: [{ id: "screws-8", qty: 1 }] }
+        : step),
+    });
+    assert.equal(structuralStatus(bothOne, "joint-work"), "gap");
+    assert.match(bothOne.findings.find((row) => row.id === "joint-work")?.detail ?? "", /boxes ask for 3/);
+    assert.equal(structuralStatus(bothOne, "invention"), "gap");
+  });
+
+  it("does not certify a pack from the compiled cuts, or let a copied Buy quantity erase the oak gap", () => {
+    offline(() => {
+      const cart = roundTrip("utility cart", "frame-storage");
+      assert.ok(cart.compiled.cuts.some((cut) => cut.kind === "lumber"));
+      const shortCart = compileConservation(cart.graph, {
+        ...cart.compiled,
+        cuts: cart.compiled.cuts.map((cut) => cut.kind === "lumber" ? { ...cut, lengthIn: 1 } : cut),
+        packs: cart.compiled.packs.map((pack) => pack.kind === "lumber" ? { ...pack, quantity: 1 } : pack),
+      });
+      assert.equal(structuralStatus(shortCart, "allocation"), "gap");
+      assert.equal(structuralStatus(shortCart, "packs"), "gap");
+      assert.match(shortCart.findings.find((row) => row.id === "packs")?.detail ?? "", /geometry needs/);
+
+      const book = roundTrip(CASEWORK, "casework");
+      const sheetCut = book.compiled.cuts.find((cut) => cut.kind === "sheet");
+      assert.ok(sheetCut);
+      const extraSheet = compileConservation(book.graph, {
+        ...book.compiled,
+        cuts: [...book.compiled.cuts, { ...sheetCut }],
+      });
+      assert.equal(structuralStatus(extraSheet, "allocation"), "gap");
+
+      const oak = roundTrip(`${CASEWORK} from oak`, "casework");
+      const rewritten = compileConservation(oak.graph, {
+        ...oak.compiled,
+        packs: oak.compiled.packs.map((pack) => pack.catalogId === "lumber-1x4-8" ? { ...pack, quantity: 24 } : pack),
+      });
+      const oakGap = rewritten.findings.find((row) => row.id === "disclosed:pack:lumber-1x4-8");
+      assert.equal(oakGap?.status, "gap");
+      assert.equal(oakGap?.basis, "geometry");
+      assert.match(oakGap?.detail ?? "", /geometry is 25/);
+      assert.match(oakGap?.detail ?? "", /\b24\b/);
+      assert.equal(structuralStatus(rewritten, "packs"), "gap");
+      assert.match(rewritten.findings.find((row) => row.id === "packs")?.detail ?? "", /needs 25/);
+
+      const long = stockPart("rail", { width: 120, height: 1.5, depth: 3.5 }, "lumber-2x4-8", "rail");
+      long.name = "Long rail";
+      const longGraph = stockGraph([long], { stock: [] });
+      const compiledLong = compileBuildGraph(longGraph);
+      assert.equal(compiledLong.cuts.some((cut) => cut.lengthIn === 120), true);
+      const packedLong = compileConservation(longGraph, {
+        ...compiledLong,
+        cuts: [{ partId: "rail", materialId: "lumber-2x4-8", lengthIn: 120, widthIn: 3.5, thicknessIn: 1.5, kind: "lumber" }],
+        packs: [{ kind: "lumber", catalogId: "lumber-2x4-8", quantity: 2, partIds: ["rail"] }],
+      });
+      assert.equal(structuralStatus(packedLong, "allocation"), "holds");
+      assert.equal(structuralStatus(packedLong, "packs"), "gap");
+      assert.match(packedLong.findings.find((row) => row.id === "packs")?.detail ?? "", /not certified as packed/);
+      assert.equal(packedLong.findings.some((row) => row.id === "disclosed:splice:rail" && row.status === "gap"), true);
+      assert.equal(structuralStatus(compiledLong.conservation, "packs"), "gap");
+    });
+  });
+
+  it("rejects work with no reviewed joint, and does not let that work erase a disclosure", () => {
+    offline(() => {
+      const bench = roundTrip(FRAME, "frame-storage");
+      const shelf = bench.graph.parts.find((part) => part.role === "shelf");
+      assert.ok(shelf);
+      const pinned = compileConservation(bench.graph, {
+        ...bench.compiled,
+        assembly: [...bench.compiled.assembly, {
+          step: bench.compiled.assembly.length + 1,
+          kind: "fasten",
+          partIds: [shelf.id],
+          jointIds: [],
+        }],
+      });
+      assert.equal(structuralStatus(pinned, "joint-work"), "gap");
+      assert.match(pinned.findings.find((row) => row.id === "joint-work")?.detail ?? "", /not justified by a reviewed joint/);
+      const shelfGap = pinned.findings.find((row) => row.subjects.includes(shelf.id) && row.id.startsWith("disclosed:copied:"));
+      assert.match(shelfGap?.detail ?? "", /Pin 1 adjustable shelf/i);
+      assert.match(shelfGap?.detail ?? "", /does not fasten/);
+
+      const book = roundTrip(CASEWORK, "casework");
+      const back = book.graph.parts.find((part) => part.source === "panel" && part.type === "back");
+      assert.ok(back);
+      const rebated = compileConservation(book.graph, {
+        ...book.compiled,
+        assembly: [...book.compiled.assembly, {
+          step: book.compiled.assembly.length + 1,
+          kind: "machine",
+          partIds: [back.id],
+          jointIds: [],
+          machining: "rebate",
+        }],
+      });
+      assert.equal(structuralStatus(rebated, "joint-work"), "gap");
+      const backGap = rebated.findings.find((row) => row.id === `disclosed:back:${back.id}`);
+      assert.equal(backGap?.status, "gap");
+      assert.match(backGap?.detail ?? "", /placed, not rebated/);
+
+      const cart = roundTrip("utility cart", "frame-storage");
+      const leg = cart.graph.parts.find((part) => part.source === "panel" && /\b(?:leg|post)\b/i.test(part.name));
+      assert.ok(leg);
+      const inventedNotch = compileConservation(cart.graph, {
+        ...cart.compiled,
+        assembly: [...cart.compiled.assembly, {
+          step: cart.compiled.assembly.length + 1,
+          kind: "machine",
+          partIds: [leg.id],
+          jointIds: [],
+          machining: "notch",
+        }],
+      });
+      assert.equal(structuralStatus(inventedNotch, "joint-work"), "gap");
+      assert.match(inventedNotch.findings.find((row) => row.id === "joint-work")?.detail ?? "", /not justified by a reviewed joint/);
+
+      const row = cart.compiled.fasteners.find((entry) => entry.screws > 0);
+      assert.ok(row);
+      const dropped = compileConservation(cart.graph, {
+        ...cart.compiled,
+        fasteners: cart.compiled.fasteners.filter((entry) => entry.pair !== row.pair),
+        assembly: cart.compiled.assembly.map((step) => step.kind === "fasten" && step.jointIds.some((id) => {
+          const joint = cart.graph.joints.find((item) => item.id === id);
+          return joint !== undefined && [joint.a, joint.b].sort().join("|") === row.pair;
+        })
+          ? { ...step, fasteners: undefined }
+          : step),
+      });
+      assert.equal(structuralStatus(dropped, "joint-work"), "gap");
+      assert.equal(structuralStatus(dropped, "invention"), "gap");
+      assert.match(dropped.findings.find((entry) => entry.id === "invention")?.detail ?? "", /no fastener row/);
+
+      const cubby = roundTrip("cubby shelf 48 wide 36 tall 12 deep", "casework");
+      assertStructuralHolds(cubby.compiled.conservation, "cubby");
+      const prepareOnly = compileConservation(cubby.graph, {
+        ...cubby.compiled,
+        assembly: cubby.compiled.assembly.filter((step) => step.kind === "prepare"),
+      });
+      assert.equal(structuralStatus(prepareOnly, "cut-identity"), "gap");
+      assert.match(prepareOnly.findings.find((entry) => entry.id === "cut-identity")?.detail ?? "", /besides prepare/);
+      for (const check of STRUCTURAL) {
+        assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === check)?.basis, "geometry", check);
+      }
+    });
+  });
 });

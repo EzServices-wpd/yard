@@ -1,12 +1,12 @@
 /**
  * Shadow conservation check. After the other compiles have written cuts, packs,
- * fasteners, and assembly steps, this reads those artifacts and the part
- * geometry and recomputes whether the relationships still hold.
+ * fasteners, and assembly steps, this compares them to counts taken from the
+ * part geometry, the reviewed joints, and the catalog.
  *
- * It does not call the stock, fastener, or assembly compilers, and it does not
- * read a prompt, a live Buy quantity, or a live step as the answer. A copied
- * quantity that disagrees with a derived pack stays a disclosed gap. The live
- * engine does not read the ledger.
+ * A compiled cut list, fastener row, or assembly step is not the source of the
+ * count it is checked against. Copied operations and copied Buy lines are read
+ * only when a disclosure compares them to that geometry. The live engine does
+ * not read the ledger.
  *
  * Schema success is not design success. A graph can compile and still list gaps.
  */
@@ -24,11 +24,18 @@ export type ConservationCheck =
   | "invention"
   | "disclosed";
 
+export type ConservationBasis = "geometry" | "consistency";
+
 export type ConservationFinding = {
   id: string;
   check: ConservationCheck;
   /** holds: the relation is true. gap: it failed, or it is an honest difference left in the open. */
   status: "holds" | "gap";
+  /**
+   * geometry: the count comes from parts, joints, or the catalog.
+   * consistency: two compiled fields were compared, and this row says so.
+   */
+  basis: ConservationBasis;
   detail: string;
   subjects: string[];
 };
@@ -213,6 +220,185 @@ function boardCross(materialId: string): { face: number; thick: number } | undef
 function sheetThick(materialId: string): number | undefined {
   const thick = getCatalogItem(materialId)?.dims.thickness;
   return thick !== undefined && thick > 0 ? thick : undefined;
+}
+
+type ExpectedPiece = {
+  partId: string;
+  materialId: string;
+  kind: "sheet" | "lumber";
+  lengthIn: number;
+  widthIn: number;
+  thicknessIn: number;
+};
+
+/** Pieces one finished part asks for. Layer and strip counts use the stock-section rule. */
+function expandPieces(part: GraphPart, kind: "sheet" | "lumber", dims: Dims): ExpectedPiece[] {
+  if (kind === "sheet") {
+    const thick = sheetThick(part.materialId) ?? dims.thicknessIn;
+    const layers = stockPieces(dims.thicknessIn, thick);
+    return Array.from({ length: layers }, () => ({
+      partId: part.id,
+      materialId: part.materialId,
+      kind,
+      lengthIn: dims.lengthIn,
+      widthIn: dims.widthIn,
+      thicknessIn: thick > 0 ? thick : dims.thicknessIn,
+    }));
+  }
+  const cross = boardCross(part.materialId);
+  const thick = cross?.thick ?? dims.thicknessIn;
+  const face = cross?.face ?? dims.widthIn;
+  const layers = stockPieces(dims.thicknessIn, thick);
+  const strips = stockPieces(dims.widthIn, face);
+  const pieces: ExpectedPiece[] = [];
+  for (let layer = 0; layer < layers; layer++) {
+    let left = dims.widthIn;
+    for (let strip = 0; strip < strips; strip++) {
+      const widthIn = strips === 1 ? dims.widthIn : Math.min(face, Math.max(round8(left), 0));
+      left -= widthIn;
+      pieces.push({
+        partId: part.id,
+        materialId: part.materialId,
+        kind,
+        lengthIn: dims.lengthIn,
+        widthIn: widthIn > 0 ? widthIn : dims.widthIn,
+        thicknessIn: thick,
+      });
+    }
+  }
+  return pieces;
+}
+
+function geometryPieces(graph: YardBuildGraph): ExpectedPiece[] {
+  const pieces: ExpectedPiece[] = [];
+  for (const part of graph.parts) {
+    const kind = partClass(part);
+    if (kind !== "sheet" && kind !== "lumber") continue;
+    const dims = finishedDims(part);
+    if (!dims) continue;
+    pieces.push(...expandPieces(part, kind, dims));
+  }
+  return pieces;
+}
+
+function pieceKey(piece: { kind: string; materialId: string; lengthIn: number; widthIn: number; thicknessIn: number }): string {
+  return [piece.kind, piece.materialId, round8(piece.lengthIn), round8(piece.widthIn), round8(piece.thicknessIn)].join("|");
+}
+
+/**
+ * How many boards the lengths need. Longest first, first fit, an eighth-inch kerf
+ * between cuts, and one spare board when the leftover is shorter than the longest
+ * cut and that cut does not share a board. This is not the live packer.
+ */
+function boardsForLengths(cuts: readonly number[], stockLen: number): number {
+  const kerf = 0.125;
+  const stock = Math.max(0.5, stockLen);
+  const room: number[] = [];
+  const layout: number[][] = [];
+  const pieces: number[] = [];
+  for (const raw of cuts) {
+    if (!(raw > 0)) continue;
+    let left = raw;
+    while (left > stock + 1e-6) {
+      room.push(0);
+      layout.push([stock]);
+      left -= stock;
+    }
+    pieces.push(left);
+  }
+  for (const length of pieces.sort((a, b) => b - a)) {
+    const fit = room.findIndex((left) => left + 1e-6 >= length);
+    if (fit >= 0) {
+      room[fit] -= length + kerf;
+      layout[fit].push(length);
+    } else {
+      room.push(stock - length - kerf);
+      layout.push([length]);
+    }
+  }
+  const longest = pieces.reduce((max, length) => Math.max(max, length), 0);
+  const leftover = room.reduce((max, length) => Math.max(max, length), 0);
+  const shares = layout.some((board) => board.length > 1 && board.some((cut) => Math.abs(cut - longest) < 1e-6));
+  if (pieces.length > 4 && longest > 0 && leftover + 1e-6 < longest && !shares) room.push(stock);
+  return room.length;
+}
+
+function stockBuysNoScrews(graph: YardBuildGraph): boolean {
+  if (graph.fastener === "glue") return true;
+  const joins = getCatalogItem(graph.primaryMaterialId)?.preferredJoins ?? [];
+  return joins.length > 0 && !joins.includes("screw") && !joins.includes("nail");
+}
+
+function partStockThickness(part: GraphPart): number {
+  const item = getCatalogItem(part.materialId);
+  return item?.dims.thickness ?? item?.dims.height ?? 0.75;
+}
+
+function thinnest(part: GraphPart): number {
+  if (part.source !== "panel") return Infinity;
+  return Math.min(part.size.width, part.size.height, part.size.depth);
+}
+
+function planedGlueOnly(part: GraphPart): boolean {
+  if (part.source !== "panel") return false;
+  const thin = thinnest(part);
+  if (!(thin < 0.7 && thin < partStockThickness(part) - 0.05)) return false;
+  if (/\bback\b/i.test(part.name)) return false;
+  if (/^dowel-/.test(part.materialId)) return false;
+  if (part.polygon) return false;
+  return true;
+}
+
+function sheetThin(part: GraphPart): boolean {
+  if (part.source !== "panel") return false;
+  return thinnest(part) < 0.5 && !/^dowel-/.test(part.materialId) && !part.polygon;
+}
+
+function namedThinBack(part: GraphPart): boolean {
+  return sheetThin(part) && part.source === "panel" && /\bback\b/i.test(part.name);
+}
+
+function thinNotSheet(part: GraphPart): boolean {
+  return part.source === "panel" && thinnest(part) < 0.5 && !sheetThin(part);
+}
+
+function hardwarePart(part: GraphPart): boolean {
+  return part.source === "panel" && (isBoughtHardwareName(part.name) || part.materialId === "swing-a-frame-bracket");
+}
+
+/** Screw count for two panels, from their boxes. At least 2. A wide face is one per 64 sq in; a narrow edge is one per 8 in. */
+function meetingScrews(a: PanelPart, b: PanelPart): number {
+  const overlap = [0, 1, 2].map((axis) => Math.max(0, overlapOn(axisBox(a), axisBox(b), axis)));
+  const thin = overlap.indexOf(Math.min(...overlap));
+  const others = overlap.filter((_, index) => index !== thin).sort((left, right) => right - left);
+  const length = others[0] ?? 0;
+  const across = others[1] ?? 0;
+  if (sheetThin(a) || sheetThin(b)) return Math.max(2, Math.ceil(length / 8));
+  if (across > 3) return Math.max(2, Math.ceil((length * across) / 64));
+  return Math.max(2, Math.ceil(length / 8));
+}
+
+function pairScrewCount(graph: YardBuildGraph, a: GraphPart, b: GraphPart): number {
+  if (stockBuysNoScrews(graph)) return 0;
+  if (a.source !== "panel" || b.source !== "panel") return 0;
+  if (hardwarePart(a) || hardwarePart(b) || planedGlueOnly(a) || planedGlueOnly(b) || thinNotSheet(a) || thinNotSheet(b)) return 0;
+  if ((sheetThin(a) || sheetThin(b)) && !namedThinBack(a) && !namedThinBack(b)) return 0;
+  return meetingScrews(a, b);
+}
+
+/** Undefined when the build buys no carcass screws, so an empty ledger is the expected one. */
+function expectedScrewRows(graph: YardBuildGraph): Map<string, number> | undefined {
+  if (stockBuysNoScrews(graph)) return undefined;
+  const byId = new Map(graph.parts.map((part) => [part.id, part]));
+  const rows = new Map<string, number>();
+  for (const group of groupsOf(graph).groups) {
+    if (jointPattern(patternOf(group.joints))?.role !== "shop") continue;
+    const a = byId.get(group.a);
+    const b = byId.get(group.b);
+    if (!a || !b) continue;
+    rows.set(group.pair, pairScrewCount(graph, a, b));
+  }
+  return rows;
 }
 
 type AxisBox = { min: [number, number, number]; max: [number, number, number]; size: [number, number, number] };
@@ -415,14 +601,13 @@ function joinProblems(rows: Problem[]): { detail: string; subjects: string[] } {
 }
 
 function summary(id: ConservationCheck, rows: Problem[], hold: string): ConservationFinding {
-  if (!rows.length) return { id, check: id, status: "holds", detail: hold, subjects: [] };
+  if (!rows.length) return { id, check: id, status: "holds", basis: "geometry", detail: hold, subjects: [] };
   const joined = joinProblems(rows);
-  return { id, check: id, status: "gap", detail: joined.detail, subjects: joined.subjects };
+  return { id, check: id, status: "gap", basis: "geometry", detail: joined.detail, subjects: joined.subjects };
 }
 
 function cutIdentity(graph: YardBuildGraph, view: ConservationView, byId: Map<string, GraphPart>): Problem[] {
-  const used = new Set(view.assembly.flatMap((step) => step.partIds));
-  const modelIds = new Set([...view.model.panels.map((part) => part.id), ...view.model.members.map((part) => part.id)]);
+  const used = new Set(view.assembly.filter((step) => step.kind !== "prepare").flatMap((step) => step.partIds));
   const problems: Problem[] = [];
   for (const cut of view.cuts) {
     const label = cut.partId === "" ? 'part ""' : cut.partId;
@@ -430,11 +615,8 @@ function cutIdentity(graph: YardBuildGraph, view: ConservationView, byId: Map<st
       problems.push({ detail: `Derived cut ${label} has no graph part.`, subjects: [cut.partId] });
       continue;
     }
-    if (!modelIds.has(cut.partId)) {
-      problems.push({ detail: `Derived cut ${label} is not on the compiled model.`, subjects: [cut.partId] });
-    }
     if (!used.has(cut.partId)) {
-      problems.push({ detail: `Derived cut ${partName(byId.get(cut.partId), cut.partId)} has no assembly step.`, subjects: [cut.partId] });
+      problems.push({ detail: `Derived cut ${partName(byId.get(cut.partId), cut.partId)} has no assembly step besides prepare.`, subjects: [cut.partId] });
     }
   }
   return problems;
@@ -442,74 +624,42 @@ function cutIdentity(graph: YardBuildGraph, view: ConservationView, byId: Map<st
 
 function allocation(graph: YardBuildGraph, view: ConservationView): Problem[] {
   const problems: Problem[] = [];
-  const byPart = new Map<string, ConservationView["cuts"][number][]>();
+  const wantByPart = new Map<string, ExpectedPiece[]>();
+  for (const piece of geometryPieces(graph)) {
+    const list = wantByPart.get(piece.partId) ?? [];
+    list.push(piece);
+    wantByPart.set(piece.partId, list);
+  }
+  const gotByPart = new Map<string, ConservationView["cuts"][number][]>();
   for (const cut of view.cuts) {
-    const list = byPart.get(cut.partId) ?? [];
+    const list = gotByPart.get(cut.partId) ?? [];
     list.push(cut);
-    byPart.set(cut.partId, list);
+    gotByPart.set(cut.partId, list);
   }
   for (const part of graph.parts) {
     const kind = partClass(part);
-    const cuts = byPart.get(part.id) ?? [];
+    const got = gotByPart.get(part.id) ?? [];
     const name = partName(part, part.id);
     if (kind !== "sheet" && kind !== "lumber") {
-      if (cuts.length) problems.push({ detail: `${name} is ${kind} and still has ${cuts.length} derived cuts.`, subjects: [part.id] });
+      if (got.length) problems.push({ detail: `${name} is ${kind} and still has ${got.length} derived cuts.`, subjects: [part.id] });
       continue;
     }
-    if (!cuts.length) {
+    const want = wantByPart.get(part.id) ?? [];
+    if (!got.length) {
       problems.push({ detail: `${name} is ${kind} stock and has no derived cut.`, subjects: [part.id] });
       continue;
     }
-    const dims = finishedDims(part);
-    if (!dims) continue;
-    for (const cut of cuts) {
-      if (cut.materialId !== part.materialId) {
-        problems.push({ detail: `Cut of ${name} is ${cut.materialId}, not ${part.materialId}.`, subjects: [part.id] });
-      }
-      if (cut.kind !== kind) problems.push({ detail: `Cut of ${name} is marked ${cut.kind}, not ${kind}.`, subjects: [part.id] });
+    if (got.length !== want.length) {
+      problems.push({ detail: `${name} has ${got.length} derived cuts; the geometry asks for ${want.length}.`, subjects: [part.id] });
+      continue;
     }
-    if (kind === "sheet") {
-      const thick = sheetThick(part.materialId);
-      if (thick === undefined) {
-        problems.push({ detail: `${name} has no sheet thickness in the catalog.`, subjects: [part.id] });
-        continue;
-      }
-      const layers = stockPieces(dims.thicknessIn, thick);
-      const area = cuts.reduce((sum, cut) => sum + cut.lengthIn * cut.widthIn, 0);
-      if (area + 0.5 < dims.lengthIn * dims.widthIn * layers) {
-        problems.push({ detail: `Cuts of ${name} cover ${round8(area)} sq in, short of ${layers} × the finished face.`, subjects: [part.id] });
-      }
-      for (const cut of cuts) {
-        if (cut.lengthIn > dims.lengthIn + 0.02 || cut.widthIn > dims.widthIn + 0.02) {
-          problems.push({ detail: `A cut of ${name} is larger than the finished face.`, subjects: [part.id] });
-          break;
-        }
-      }
-    } else {
-      const cross = boardCross(part.materialId);
-      if (!cross) {
-        problems.push({ detail: `${name} has no board section in the catalog.`, subjects: [part.id] });
-        continue;
-      }
-      const layers = stockPieces(dims.thicknessIn, cross.thick);
-      const strips = stockPieces(dims.widthIn, cross.face);
-      const widthSum = cuts.reduce((sum, cut) => sum + cut.widthIn, 0);
-      if (cuts.length < layers * strips) {
-        problems.push({ detail: `${name} needs ${layers * strips} board cuts and has ${cuts.length}.`, subjects: [part.id] });
-      }
-      if (widthSum + 0.05 < dims.widthIn * layers) {
-        problems.push({ detail: `Rips of ${name} sum to ${round8(widthSum)} in, short of the finished width.`, subjects: [part.id] });
-      }
-      for (const cut of cuts) {
-        const long = Math.max(cut.lengthIn, cut.widthIn);
-        if (long > dims.lengthIn + 0.02) {
-          problems.push({ detail: `A rip of ${name} is longer than the part.`, subjects: [part.id] });
-          break;
-        }
-      }
+    const wantKeys = want.map(pieceKey).sort();
+    const gotKeys = got.map(pieceKey).sort();
+    if (wantKeys.join("||") !== gotKeys.join("||")) {
+      problems.push({ detail: `${name} cuts do not match the pieces the stock section asks for.`, subjects: [part.id] });
     }
   }
-  for (const [partId, cuts] of byPart) {
+  for (const [partId, cuts] of gotByPart) {
     if (cuts.length && !hasId(graph.parts, partId)) {
       problems.push({ detail: `Derived cuts name ${partId === "" ? '""' : partId}, which is not a part.`, subjects: [partId] });
     }
@@ -517,23 +667,20 @@ function allocation(graph: YardBuildGraph, view: ConservationView): Problem[] {
   return problems;
 }
 
-type PackGroup = { kind: "sheet" | "lumber"; key: string; cuts: ConservationView["cuts"][number][]; packs: ConservationView["packs"][number][] };
+type PackGroup = { kind: "sheet" | "lumber"; key: string; pieces: ExpectedPiece[]; packs: ConservationView["packs"][number][] };
 
-function packGroups(view: ConservationView): PackGroup[] {
+function packGroups(graph: YardBuildGraph, view: ConservationView): PackGroup[] {
   const map = new Map<string, PackGroup>();
   const groupFor = (kind: "sheet" | "lumber", materialId: string) => {
     const key = kind === "sheet" ? sheetFamily(materialId) : materialId;
     const id = `${kind}:${key}`;
     const existing = map.get(id);
     if (existing) return existing;
-    const created: PackGroup = { kind, key, cuts: [], packs: [] };
+    const created: PackGroup = { kind, key, pieces: [], packs: [] };
     map.set(id, created);
     return created;
   };
-  for (const cut of view.cuts) {
-    if (cut.kind !== "sheet" && cut.kind !== "lumber") continue;
-    groupFor(cut.kind, cut.materialId).cuts.push(cut);
-  }
+  for (const piece of geometryPieces(graph)) groupFor(piece.kind, piece.materialId).pieces.push(piece);
   for (const pack of view.packs) {
     if (pack.kind !== "sheet" && pack.kind !== "lumber") continue;
     groupFor(pack.kind, pack.catalogId).packs.push(pack);
@@ -541,25 +688,30 @@ function packGroups(view: ConservationView): PackGroup[] {
   return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
-function packCover(view: ConservationView): Problem[] {
+function packCover(graph: YardBuildGraph, view: ConservationView): Problem[] {
   const problems: Problem[] = [];
-  for (const group of packGroups(view)) {
+  for (const pack of view.packs) {
+    if (graph.parts.some((part) => part.materialId === pack.catalogId && partClass(part) === "whole")) {
+      problems.push({ detail: `Pack ${pack.catalogId} writes whole craft stock into a purchase pack.`, subjects: [pack.catalogId] });
+    }
+  }
+  for (const group of packGroups(graph, view)) {
     const label = group.key;
-    const partIds = [...new Set(group.cuts.map((cut) => cut.partId))].sort();
+    const partIds = [...new Set(group.pieces.map((piece) => piece.partId))].sort();
     const named = [...new Set(group.packs.flatMap((pack) => pack.partIds))].sort();
     if (!group.packs.length) {
-      problems.push({ detail: `No purchase pack covers ${partIds.length} ${label} cuts.`, subjects: partIds });
+      problems.push({ detail: `No purchase pack covers ${group.pieces.length} ${label} pieces from the part geometry.`, subjects: partIds });
       continue;
     }
-    if (!group.cuts.length) {
-      problems.push({ detail: `Pack ${group.packs.map((pack) => pack.catalogId).join(", ")} has no derived cuts.`, subjects: group.packs.map((pack) => pack.catalogId) });
+    if (!group.pieces.length) {
+      problems.push({ detail: `Pack ${group.packs.map((pack) => pack.catalogId).join(", ")} has no piece in the part geometry.`, subjects: group.packs.map((pack) => pack.catalogId) });
       continue;
     }
     for (const id of partIds) {
-      if (!named.includes(id)) problems.push({ detail: `Packs of ${label} do not name cut part ${id === "" ? '""' : id}.`, subjects: [id] });
+      if (!named.includes(id)) problems.push({ detail: `Packs of ${label} do not name part ${id === "" ? '""' : id}.`, subjects: [id] });
     }
     for (const id of named) {
-      if (!partIds.includes(id)) problems.push({ detail: `Packs of ${label} name ${id === "" ? '""' : id}, which has no cut of that stock.`, subjects: [id] });
+      if (!partIds.includes(id)) problems.push({ detail: `Packs of ${label} name ${id === "" ? '""' : id}, which has no piece of that stock.`, subjects: [id] });
     }
     if (group.kind === "sheet") {
       const spans = group.packs.map((pack) => {
@@ -573,13 +725,13 @@ function packCover(view: ConservationView): Problem[] {
         continue;
       }
       const bought = spans.reduce((sum, span) => sum + span.area, 0);
-      const need = group.cuts.reduce((sum, cut) => sum + cut.lengthIn * cut.widthIn, 0);
+      const need = group.pieces.reduce((sum, piece) => sum + piece.lengthIn * piece.widthIn, 0);
       if (need > bought + 0.5) {
-        problems.push({ detail: `${label} cuts are ${round8(need)} sq in and the packs buy ${round8(bought)}.`, subjects: [label] });
+        problems.push({ detail: `${label} pieces from the geometry are ${round8(need)} sq in and the packs buy ${round8(bought)}.`, subjects: [label] });
       }
-      for (const cut of group.cuts) {
-        if (!spans.some((span) => span.pack.quantity > 0 && fitsSheet(cut.lengthIn, cut.widthIn, span.length, span.width))) {
-          problems.push({ detail: `A ${label} cut ${cut.lengthIn}×${cut.widthIn} does not fit a purchased sheet.`, subjects: [cut.partId] });
+      for (const piece of group.pieces) {
+        if (!spans.some((span) => span.pack.quantity > 0 && fitsSheet(piece.lengthIn, piece.widthIn, span.length, span.width))) {
+          problems.push({ detail: `A ${label} piece ${piece.lengthIn}×${piece.widthIn} does not fit a purchased sheet.`, subjects: [piece.partId] });
           break;
         }
       }
@@ -590,10 +742,51 @@ function packCover(view: ConservationView): Problem[] {
         problems.push({ detail: `${label} has no board length in the catalog.`, subjects: [label] });
         continue;
       }
-      const inches = group.cuts.reduce((sum, cut) => sum + Math.max(cut.lengthIn, cut.widthIn), 0);
-      const bought = group.packs.reduce((sum, pack) => sum + Math.max(0, pack.quantity) * stockLen, 0);
-      if (inches > bought + 0.05) {
-        problems.push({ detail: `${label} cuts are ${round8(inches)} in and the packs buy ${round8(bought)}.`, subjects: [label] });
+      const overlong = group.pieces.filter((piece) => Math.max(piece.lengthIn, piece.widthIn) > stockLen + 0.01);
+      if (overlong.length) {
+        const listed = [...new Set(overlong.map((piece) => piece.partId))].join(", ");
+        problems.push({ detail: `${label} has a piece longer than the ${stockLen} in board (${listed}). That is not certified as packed.`, subjects: [...new Set(overlong.map((piece) => piece.partId))] });
+        continue;
+      }
+      const need = boardsForLengths(group.pieces.map((piece) => Math.max(piece.lengthIn, piece.widthIn)), stockLen);
+      const bought = group.packs.reduce((sum, pack) => sum + Math.max(0, pack.quantity), 0);
+      if (bought < need) {
+        problems.push({ detail: `${label} geometry needs ${need} boards and the packs buy ${bought}.`, subjects: [label] });
+      }
+    }
+  }
+  return problems;
+}
+
+function justified(graph: YardBuildGraph, view: ConservationView): Problem[] {
+  const problems: Problem[] = [];
+  const jointById = new Map(graph.joints.map((joint) => [joint.id, joint]));
+  for (const step of view.assembly) {
+    if (step.kind !== "machine" && step.kind !== "fasten" && step.kind !== "hang") continue;
+    const joints = step.jointIds.map((id) => jointById.get(id));
+    const missing = joints.some((joint) => joint === undefined);
+    const contact = joints.filter((joint): joint is GraphJoint => joint !== undefined && !joint.reviewedJoin);
+    if (step.jointIds.length === 0 || missing) {
+      problems.push({ detail: `Assembly step ${step.kind} is not justified by a reviewed joint.`, subjects: [...step.partIds] });
+      continue;
+    }
+    if (contact.length) {
+      for (const joint of contact) {
+        problems.push({ detail: `Assembly step ${step.kind} uses joint ${joint.id}. Contact is not a joint.`, subjects: [joint.id] });
+      }
+      continue;
+    }
+    const reviewed = joints.filter((joint): joint is GraphJoint => joint !== undefined && joint.reviewedJoin);
+    const pairs = new Set(reviewed.map((joint) => pairKey(joint.a, joint.b)));
+    if (pairs.size !== 1) {
+      problems.push({ detail: `Assembly step ${step.kind} names more than one reviewed pair.`, subjects: [...step.jointIds] });
+      continue;
+    }
+    const ends = splitPair([...pairs][0] ?? "");
+    const covered = new Set(ends ?? []);
+    for (const id of step.partIds) {
+      if (!covered.has(id)) {
+        problems.push({ detail: `Assembly step ${step.kind} names ${id === "" ? '""' : id}, which the reviewed pair does not cover.`, subjects: [id] });
       }
     }
   }
@@ -601,19 +794,11 @@ function packCover(view: ConservationView): Problem[] {
 }
 
 function jointWork(graph: YardBuildGraph, view: ConservationView, byId: Map<string, GraphPart>): Problem[] {
-  const problems: Problem[] = [];
-  const contactIds = new Set(graph.joints.filter((joint) => !joint.reviewedJoin).map((joint) => joint.id));
-  for (const step of view.assembly) {
-    if (step.kind !== "machine" && step.kind !== "fasten" && step.kind !== "hang") continue;
-    for (const id of step.jointIds) {
-      if (contactIds.has(id)) {
-        problems.push({ detail: `Assembly step ${step.kind} uses joint ${id}. Contact is not a joint.`, subjects: [id] });
-      }
-    }
-  }
+  const problems: Problem[] = [...justified(graph, view)];
   const { groups, broken } = groupsOf(graph);
   problems.push(...broken);
   const ledger = new Map(view.fasteners.map((row) => [row.pair, row]));
+  const expectRows = !stockBuysNoScrews(graph);
   for (const group of groups) {
     const seat = seatOf(group, byId);
     const jointIds = new Set(group.joints.map((joint) => joint.id));
@@ -664,13 +849,19 @@ function jointWork(graph: YardBuildGraph, view: ConservationView, byId: Map<stri
         problems.push({ detail: `Fasten step for ${names} does not name both parts.`, subjects: [group.a, group.b] });
       }
       const qty = (fasten.fasteners ?? []).reduce((sum, use) => sum + use.qty, 0);
-      const expected = ledger.get(group.pair)?.screws ?? 0;
-      if (qty !== expected) {
-        problems.push({ detail: `Fasten step for ${names} uses ${qty} screws; the ledger row is ${expected}.`, subjects: [group.pair] });
+      const a = byId.get(group.a);
+      const b = byId.get(group.b);
+      const shop = jointPattern(patternOf(group.joints))?.role === "shop";
+      const expected = a && b && shop ? pairScrewCount(graph, a, b) : 0;
+      if (expectRows && shop) {
+        const row = ledger.get(group.pair);
+        if (!row) problems.push({ detail: `Reviewed shop pair ${names} has no fastener row.`, subjects: [group.pair] });
+        else if (row.screws !== expected) {
+          problems.push({ detail: `Fastener row for ${names} says ${row.screws} screws; the boxes ask for ${expected}.`, subjects: [group.pair] });
+        }
       }
-      const machine = machines[0];
-      if (machine && !(machine.step < fasten.step)) {
-        problems.push({ detail: `Machining for ${names} does not precede fastening.`, subjects: [...jointIds] });
+      if (qty !== expected) {
+        problems.push({ detail: `Fasten step for ${names} uses ${qty} screws; the boxes ask for ${expected}.`, subjects: [group.pair] });
       }
     }
     if (seat.kind === "unresolved" || seat.kind === "fasten-only") {
@@ -747,21 +938,27 @@ function invention(graph: YardBuildGraph, view: ConservationView): Problem[] {
       }
     }
   }
-  const shopPairs = new Set(
-    graph.joints
-      .filter((joint) => joint.reviewedJoin && jointPattern(joint.patternId ?? "")?.role === "shop" && joint.a !== joint.b && hasId(graph.parts, joint.a) && hasId(graph.parts, joint.b))
-      .map((joint) => pairKey(joint.a, joint.b)),
-  );
+  const expectedRows = expectedScrewRows(graph);
   const seenPairs = new Set<string>();
   for (const row of view.fasteners) {
     if (seenPairs.has(row.pair)) problems.push({ detail: `Fastener ledger repeats ${row.pair}.`, subjects: [row.pair] });
     seenPairs.add(row.pair);
     const ends = splitPair(row.pair);
-    if (!ends || !shopPairs.has(row.pair)) {
+    if (!ends || !expectedRows || !expectedRows.has(row.pair)) {
       problems.push({ detail: `Fastener row ${row.pair || '""'} is not a reviewed shop pair.`, subjects: [row.pair] });
+      continue;
+    }
+    const expected = expectedRows.get(row.pair) ?? 0;
+    if (row.screws !== expected) {
+      problems.push({ detail: `Fastener row ${row.pair} says ${row.screws} screws; the boxes ask for ${expected}.`, subjects: [row.pair] });
     }
   }
-  const screws = view.fasteners.reduce((sum, row) => sum + (row.screws > 0 ? row.screws : 0), 0);
+  if (expectedRows) {
+    for (const [pair] of expectedRows) {
+      if (!seenPairs.has(pair)) problems.push({ detail: `Reviewed shop pair ${pair} has no fastener row.`, subjects: [pair] });
+    }
+  }
+  const screws = expectedRows ? [...expectedRows.values()].reduce((sum, count) => sum + count, 0) : 0;
   const screwLines = view.buy.filter(carcassScrewLine);
   const boxes = screws > 0 ? Math.ceil(screws / SCREWS_IN_A_BOX) : 0;
   if (boxes === 0 && screwLines.length) {
@@ -814,68 +1011,82 @@ function titleClaims(part: GraphPart, title: string): boolean {
   return role.endsWith("f") && new RegExp(`\\b${role.slice(0, -1)}ves\\b`, "i").test(title);
 }
 
-function disclosed(graph: YardBuildGraph, view: ConservationView): ConservationFinding[] {
+function disclosed(graph: YardBuildGraph): ConservationFinding[] {
   const findings: ConservationFinding[] = [];
-  const worked = new Set(
-    view.assembly
-      .filter((step) => step.kind === "machine" || step.kind === "fasten" || step.kind === "hang")
-      .flatMap((step) => step.partIds),
-  );
-  const rebated = new Set(
-    view.assembly.filter((step) => step.kind === "machine" && step.machining === "rebate").flatMap((step) => step.partIds),
-  );
+  const joined = new Set(graph.joints.filter((joint) => joint.reviewedJoin).flatMap((joint) => [joint.a, joint.b]));
+  const row = (id: string, detail: string, subjects: string[]): ConservationFinding => ({
+    id,
+    check: "disclosed",
+    status: "gap",
+    basis: "geometry",
+    detail,
+    subjects,
+  });
   for (const part of graph.parts) {
     if (part.source !== "panel" || part.type !== "back") continue;
     const rabbet = graph.joints.some((joint) => joint.reviewedJoin && joint.patternId === "rabbet" && (joint.a === part.id || joint.b === part.id));
-    if (rabbet || rebated.has(part.id)) continue;
-    findings.push({
-      id: `disclosed:back:${part.id}`,
-      check: "disclosed",
-      status: "gap",
-      detail: `${part.name || "Back"} is placed, not rebated. No reviewed joint cuts a rebate for it.`,
-      subjects: [part.id],
-    });
+    if (rabbet) continue;
+    findings.push(row(
+      `disclosed:back:${part.id}`,
+      `${part.name || "Back"} is placed, not rebated. No reviewed joint cuts a rebate for it.`,
+      [part.id],
+    ));
   }
   for (const op of graph.operations) {
     if (!/\b(?:pins?|pinned|fastens?|fastened|rebates?|rebated|rabbets?|screws?|screwed)\b/i.test(op.title)) continue;
-    const claimed = graph.parts.filter((part) => op.partIds.includes(part.id) && titleClaims(part, op.title) && !worked.has(part.id));
+    const claimed = graph.parts.filter((part) => op.partIds.includes(part.id) && titleClaims(part, op.title) && !joined.has(part.id));
     if (!claimed.length) continue;
     const names = claimed.map((part) => partName(part, part.id)).join(", ");
-    findings.push({
-      id: `disclosed:copied:${op.id}`,
-      check: "disclosed",
-      status: "gap",
-      detail: `Copied step "${op.title}" says ${names} ${claimed.length === 1 ? "is" : "are"} pinned, fastened, or rebated. Derived assembly places ${claimed.length === 1 ? "it" : "them"} and does not fasten ${claimed.length === 1 ? "it" : "them"}.`,
-      subjects: claimed.map((part) => part.id),
-    });
+    findings.push(row(
+      `disclosed:copied:${op.id}`,
+      `Copied step "${op.title}" says ${names} ${claimed.length === 1 ? "is" : "are"} pinned, fastened, or rebated. No reviewed joint fastens ${claimed.length === 1 ? "it" : "them"}, so derived assembly places ${claimed.length === 1 ? "it" : "them"} and does not fasten ${claimed.length === 1 ? "it" : "them"}.`,
+      claimed.map((part) => part.id),
+    ));
   }
-  for (const pack of view.packs) {
-    const copied = graph.stock.filter((line) => line.catalogId === pack.catalogId);
-    if (!copied.length || copied.every((line) => line.quantity === pack.quantity)) continue;
+  const lumber = new Map<string, ExpectedPiece[]>();
+  for (const piece of geometryPieces(graph)) {
+    if (piece.kind !== "lumber") continue;
+    const list = lumber.get(piece.materialId) ?? [];
+    list.push(piece);
+    lumber.set(piece.materialId, list);
+  }
+  for (const [catalogId, pieces] of lumber) {
+    const stockLen = getCatalogItem(catalogId)?.dims.length ?? 0;
+    const overlong = pieces.some((piece) => stockLen > 0 && Math.max(piece.lengthIn, piece.widthIn) > stockLen + 0.01);
+    if (overlong) continue;
+    if (!(stockLen > 0) || !pieces.length) continue;
+    const need = boardsForLengths(pieces.map((piece) => Math.max(piece.lengthIn, piece.widthIn)), stockLen);
+    const copied = graph.stock.filter((line) => line.catalogId === catalogId);
+    if (!copied.length || copied.every((line) => line.quantity === need)) continue;
     const quoted = copied.map((line) => `${line.quantity} ${line.unit}`).join(", ");
-    findings.push({
-      id: `disclosed:pack:${pack.catalogId}`,
-      check: "disclosed",
-      status: "gap",
-      detail: `Derived pack ${pack.catalogId} is ${pack.quantity}. The copied Buy line is ${quoted}. The copied quantity was not written onto the pack.`,
-      subjects: [pack.catalogId],
-    });
+    findings.push(row(
+      `disclosed:pack:${catalogId}`,
+      `The board count from the part geometry is ${need}. The copied Buy line is ${quoted}. The copied quantity was not written onto the pack.`,
+      [catalogId],
+    ));
+  }
+  const spliced = new Set<string>();
+  for (const piece of geometryPieces(graph)) {
+    if (piece.kind !== "lumber" || spliced.has(piece.partId)) continue;
+    const stockLen = getCatalogItem(piece.materialId)?.dims.length ?? 0;
+    if (!(stockLen > 0) || Math.max(piece.lengthIn, piece.widthIn) <= stockLen + 0.01) continue;
+    spliced.add(piece.partId);
+    findings.push(row(
+      `disclosed:splice:${piece.partId}`,
+      `${partName(graph.parts.find((part) => part.id === piece.partId), piece.partId)} is ${round8(Math.max(piece.lengthIn, piece.widthIn))} in, longer than the ${stockLen} in board. That cut is not certified as packed.`,
+      [piece.partId],
+    ));
   }
   const wholeIds = [...new Set(graph.parts.filter((part) => partClass(part) === "whole").map((part) => part.materialId))].sort();
   for (const materialId of wholeIds) {
-    const cuts = view.cuts.some((cut) => cut.materialId === materialId);
-    const packs = view.packs.some((pack) => pack.catalogId === materialId);
-    if (cuts || packs) continue;
     const copied = graph.stock.filter((line) => line.catalogId === materialId);
     const quoted = copied.length ? copied.map((line) => `${line.quantity} ${line.unit} ${line.name}`).join("; ") : "no copied Buy line";
     const count = graph.parts.filter((part) => part.materialId === materialId).length;
-    findings.push({
-      id: `disclosed:whole:${materialId}`,
-      check: "disclosed",
-      status: "gap",
-      detail: `Whole craft stock ${materialId}: 0 derived cuts and 0 derived packs for ${count} ${count === 1 ? "part" : "parts"}. Copied Buy is ${quoted}. That quantity was not written into packs.`,
-      subjects: [materialId],
-    });
+    findings.push(row(
+      `disclosed:whole:${materialId}`,
+      `Whole craft stock ${materialId}: 0 derived cuts and 0 derived packs for ${count} ${count === 1 ? "part" : "parts"}. Copied Buy is ${quoted}. That quantity was not written into packs.`,
+      [materialId],
+    ));
   }
   return findings.sort((a, b) => a.id.localeCompare(b.id));
 }
@@ -885,17 +1096,21 @@ function holdSentence(check: ConservationCheck, graph: YardBuildGraph, view: Con
   const reviewed = graph.joints.filter((joint) => joint.reviewedJoin).length;
   if (check === "cut-identity") {
     return view.cuts.length
-      ? `${view.cuts.length} derived ${view.cuts.length === 1 ? "cut names" : "cuts name"} a model part and an assembly step.`
+      ? `${view.cuts.length} derived ${view.cuts.length === 1 ? "cut names" : "cuts name"} a graph part and a step other than prepare.`
       : "No derived cuts. Nothing to identify.";
   }
   if (check === "joint-work") {
     return reviewed
-      ? `${reviewed} reviewed ${reviewed === 1 ? "joint has" : "joints have"} the machining or fastening the boxes require. ${contact} contact ${contact === 1 ? "pair is" : "pairs are"} not a joint.`
+      ? `${reviewed} reviewed ${reviewed === 1 ? "joint has" : "joints have"} the machining or fastening the boxes require. Screw counts are read from the boxes. ${contact} contact ${contact === 1 ? "pair is" : "pairs are"} not a joint.`
       : `No reviewed joints. ${contact} contact ${contact === 1 ? "pair is" : "pairs are"} not a joint.`;
   }
-  if (check === "allocation") return "Derived cuts cover the finished sheet and lumber parts, and no other part is cut.";
-  if (check === "packs") return view.cuts.length ? "Purchase packs cover the derived cuts by area or length, and they name those parts." : "No derived cuts, so no purchase pack is required.";
-  return "Compiled parts, packs, fasteners, steps, and Buy lines trace to the graph.";
+  if (check === "allocation") return "Derived cuts match the pieces the part geometry and the stock section ask for.";
+  if (check === "packs") {
+    return geometryPieces(graph).length
+      ? "Purchase packs cover the pieces the part geometry asks for, and each lumber piece fits a board."
+      : "No sheet or lumber pieces, so no purchase pack is required.";
+  }
+  return "Compiled parts, packs, fasteners, steps, and Buy lines trace to the graph. Screw rows are checked against the boxes.";
 }
 
 /**
@@ -908,10 +1123,10 @@ export function compileConservation(graph: YardBuildGraph, view: ConservationVie
     "cut-identity": cutIdentity(graph, view, byId),
     "joint-work": jointWork(graph, view, byId),
     allocation: allocation(graph, view),
-    packs: packCover(view),
+    packs: packCover(graph, view),
     invention: invention(graph, view),
     disclosed: [],
   };
   const structural = CHECKS.map((check) => summary(check, rows[check], holdSentence(check, graph, view)));
-  return { findings: [...structural, ...disclosed(graph, view)] };
+  return { findings: [...structural, ...disclosed(graph)] };
 }
