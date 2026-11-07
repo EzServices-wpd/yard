@@ -9,7 +9,9 @@
  * sheet/lumber purchase packs are derived from the parts on the graph. Assembly steps are derived
  * from reviewed joints and part dependencies; the copied step wording stays on `steps`. Furniture
  * screws are one ledger row per reviewed shop pair: thin backs on the long edge, glue-only and
- * hardware pairs at zero, outdoor nouns on the exterior screw.
+ * hardware pairs at zero, outdoor nouns on the exterior screw. A conservation ledger then
+ * recomputes those relationships from the geometry and the compiled artifacts. It does not
+ * rewrite them, and the live compiler does not read it.
  *
  * The graph is not the live source of truth. generateFromPrompt and buildPlan do not read it.
  * StructureGraph still builds lattices. Recipes still build named objects. A pair that only
@@ -28,13 +30,16 @@ import { isOutdoorPrompt } from "./outdoor";
 import { faceScrewInches } from "./shopJoin";
 import { structureIssues } from "./structureCheck";
 import { compileAssembly, type DerivedAssemblyStep } from "./assemblyCompile";
+import { compileConservation, type ConservationLedger } from "./conservationCompile";
 import { compileStock, type CuttablePiece, type StockPack } from "./stockCompile";
 import type { AssemblyStep, BomLine, BuildPlan, Panel, Vec3, YardInstance, YardProject } from "./types";
 
 export type { CuttablePiece, StockPack };
 export type { DerivedAssemblyStep };
+export type { ConservationFinding, ConservationLedger } from "./conservationCompile";
 export { deriveStockPacks, realizeCuttablePieces } from "./stockCompile";
 export { compileAssembly } from "./assemblyCompile";
+export { compileConservation } from "./conservationCompile";
 
 export const BUILD_GRAPH_VERSION = 1 as const;
 
@@ -265,6 +270,11 @@ export type CompiledBuild = {
   assembly: DerivedAssemblyStep[];
   /** Why a part or joint did not become a machining or fastening step. */
   assemblyDisclosure?: string;
+  /**
+   * Independent checks of the compiled artifacts against the part geometry.
+   * A gap stays recorded. The live compiler does not read this.
+   */
+  conservation: ConservationLedger;
 };
 
 /** Live meeting class for a carcass-screw count. A thin named back is "back" even when the face is wide. */
@@ -998,7 +1008,7 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
     notes: line.notes,
     estimatedCost: line.estimatedCost,
   }));
-  return {
+  const compiled = {
     model: {
       name: graph.name,
       envelope: { ...graph.envelope },
@@ -1014,6 +1024,7 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
     assembly: assembly.steps,
     ...(assembly.disclosure ? { assemblyDisclosure: assembly.disclosure } : {}),
   };
+  return { ...compiled, conservation: compileConservation(graph, compiled) };
 }
 
 /** Roles, envelope, and reviewed patterns. Contact is left out on purpose. */
