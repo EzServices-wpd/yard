@@ -6,9 +6,10 @@
  * compileBuildGraph reads that graph and nothing else: no prompt, no second length reader, no new
  * geometry. The Buy list's copied lines, and the step wording, come back as the deterministic
  * compiler already produced them, except carcass screws, which are derived. Cuttable pieces and
- * sheet/lumber purchase packs are derived from the parts on the graph. Furniture screws are one
- * ledger row per reviewed shop pair: thin backs on the long edge, glue-only and hardware pairs
- * at zero, outdoor nouns on the exterior screw.
+ * sheet/lumber purchase packs are derived from the parts on the graph. Assembly steps are derived
+ * from reviewed joints and part dependencies; the copied step wording stays on `steps`. Furniture
+ * screws are one ledger row per reviewed shop pair: thin backs on the long edge, glue-only and
+ * hardware pairs at zero, outdoor nouns on the exterior screw.
  *
  * The graph is not the live source of truth. generateFromPrompt and buildPlan do not read it.
  * StructureGraph still builds lattices. Recipes still build named objects. A pair that only
@@ -26,11 +27,14 @@ import { panelJoints, stickJoints } from "./modelJoints";
 import { isOutdoorPrompt } from "./outdoor";
 import { faceScrewInches } from "./shopJoin";
 import { structureIssues } from "./structureCheck";
+import { compileAssembly, type DerivedAssemblyStep } from "./assemblyCompile";
 import { compileStock, type CuttablePiece, type StockPack } from "./stockCompile";
 import type { AssemblyStep, BomLine, BuildPlan, Panel, Vec3, YardInstance, YardProject } from "./types";
 
 export type { CuttablePiece, StockPack };
+export type { DerivedAssemblyStep };
 export { deriveStockPacks, realizeCuttablePieces } from "./stockCompile";
+export { compileAssembly } from "./assemblyCompile";
 
 export const BUILD_GRAPH_VERSION = 1 as const;
 
@@ -254,6 +258,13 @@ export type CompiledBuild = {
   packs: StockPack[];
   /** Why packs do not cover every part, including when nothing was cuttable. */
   stockDisclosure?: string;
+  /**
+   * Machining and fastening derived from reviewed joints, in dependency order.
+   * Not the live step text. `steps` stays that copy.
+   */
+  assembly: DerivedAssemblyStep[];
+  /** Why a part or joint did not become a machining or fastening step. */
+  assemblyDisclosure?: string;
 };
 
 /** Live meeting class for a carcass-screw count. A thin named back is "back" even when the face is wide. */
@@ -955,12 +966,20 @@ export function fastenerBuyLines(graph: YardBuildGraph): CompiledBuild["buy"] {
   });
 }
 
-/** Model and steps from the graph. Copied Buy lines stay. Screws, cuts, and sheet/lumber packs are derived. */
+/** Model and copied live steps from the graph. Screws, cuts, packs, and assembly steps are derived. */
 export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
   if (graph.version !== BUILD_GRAPH_VERSION) throw new Error(`build graph version ${graph.version} is not ${BUILD_GRAPH_VERSION}`);
   const illegal = quarterPlyProblems(graph.parts);
   if (illegal.length) throw new Error(`1/4" plywood is a back or a drawer bottom, not: ${illegal.join(", ")}`);
   const stock = compileStock(graph);
+  const fasteners = fastenerDemandLedger(graph);
+  const uses = reviewedFastenerUses(graph);
+  const assembly = compileAssembly(graph, {
+    cuts: stock.cuts,
+    fasteners,
+    ...(uses.length === 1 ? { fastenerId: uses[0].id } : {}),
+    ...(stock.disclosure ? { stockDisclosure: stock.disclosure } : {}),
+  });
   const steps = [...graph.operations]
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
     .map((op, index) => defined({
@@ -988,10 +1007,12 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
     },
     steps,
     buy: [...copied, ...fastenerBuyLines(graph)],
-    fasteners: fastenerDemandLedger(graph),
+    fasteners,
     cuts: stock.cuts,
     packs: stock.packs,
     ...(stock.disclosure ? { stockDisclosure: stock.disclosure } : {}),
+    assembly: assembly.steps,
+    ...(assembly.disclosure ? { assemblyDisclosure: assembly.disclosure } : {}),
   };
 }
 
