@@ -1,4 +1,4 @@
-LOCK: Cursor Agent | item: construction knowledge / substitution | started: 2026-11-07 02:49 ET | status: in-progress
+LOCK: Cursor Agent | item: shadow fastener demand | started: 2026-11-07 06:44 ET | status: in-progress
 
 # Claude progress log
 
@@ -46,6 +46,11 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-07 06:44 ET | construction knowledge shipped; shadow fastener demand — lock held
+
+- Construction knowledge and substitution is on main `10f776525411543ea0fc7d2d13c421d49f3a7c04` (#261) and release `6ef07183c7ca20c0aec85b581df54affbf9b993e` (#262, merge-back of #260). Do not redo it. This note does not record a Critic PASS or a deployment id. The construction-knowledge lock rode in on that merge-back. Replaced on this feature branch only.
+- New lock: shadow fastener demand. Not graded. Not merged. The change is not in this commit.
 
 ### 2026-11-07 04:10 ET | #260 r5 block — a moving part and bought hardware are not dados
 
