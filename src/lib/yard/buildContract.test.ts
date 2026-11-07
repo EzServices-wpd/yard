@@ -609,6 +609,69 @@ describe("construction readings", () => {
     assert.equal(wideGraph.joints.find((joint) => pair(joint) === "entered|wide")?.reading, "housed-dado");
   });
 
+  it("lifts a housed end the screw finder would skip when the face overlap is under 1/4 inch", () => {
+    const host: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 8 },
+    };
+    const shelf: Panel = {
+      id: "shelf",
+      type: "shelf",
+      name: "Shelf",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0.625, y: 9.875, z: 0 },
+      size: { width: 8, height: 0.75, depth: 8 },
+    };
+    const turn = (panel: Panel, rot: number): Panel => {
+      const pos = [panel.position.x, panel.position.y, panel.position.z];
+      const size = [panel.size.width, panel.size.height, panel.size.depth];
+      const pick = (xs: number[]) => [xs[rot], xs[(rot + 1) % 3], xs[(rot + 2) % 3]];
+      const nextPos = pick(pos);
+      const nextSize = pick(size);
+      return {
+        ...panel,
+        position: { x: nextPos[0], y: nextPos[1], z: nextPos[2] },
+        size: { width: nextSize[0], height: nextSize[1], depth: nextSize[2] },
+      };
+    };
+    const plan: BuildPlan = {
+      feasibility: { status: "ok", summary: "", issues: [] },
+      cutList: [],
+      bom: [],
+      instructions: [],
+      totals: { pieces: 2, estCostUsd: 0, packs: 0 },
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    };
+    for (const rot of [0, 1, 2]) {
+      const turnedHost = turn(host, rot);
+      const turnedShelf = turn(shelf, rot);
+      assert.equal(readingForPanels(turnedHost, turnedShelf), "housed-dado", `rot ${rot}`);
+      assert.equal(readingForPanels(turnedShelf, turnedHost), "housed-dado", `rot ${rot} swapped`);
+      for (const panels of [[turnedHost, turnedShelf], [turnedShelf, turnedHost]]) {
+        const graph = liftBuildGraph({
+          id: "band",
+          name: "Band",
+          prompt: "",
+          kind: "closet",
+          overall: { width: 10, height: 11, depth: 8 },
+          instances: [],
+          panels,
+          primaryMaterialId: "plywood-3-4-4x8",
+          notes: [],
+          assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+        }, plan, "casework");
+        const joint = graph.joints.find((row) => pair(row) === "shelf|side");
+        assert.equal(joint?.reading, "housed-dado", `lift rot ${rot}`);
+        assert.equal(joint?.reviewedJoin, true);
+        assert.equal(joint?.basis, "declared");
+      }
+    }
+  });
+
   it("keeps cubby rails that cross a support as contact", () => {
     offline(() => {
       for (const prompt of [

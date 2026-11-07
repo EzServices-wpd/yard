@@ -474,6 +474,33 @@ function housedOnEnteredFace(
   return undefined;
 }
 
+/**
+ * Housed ends the screw finder does not list. panelJoints requires 0.25" of overlap on the
+ * other axes before it will count a screw. The construction band is more than 1/16" and at
+ * most 0.8", with the same transverse bar. Pairs already emitted as contact or a declaration
+ * are left alone. This does not add a contact the screw finder rejected.
+ */
+function housedReadings(panels: readonly Panel[], taken: Set<string>, seq: number): GraphJoint[] {
+  const notes = (panel: Panel) => panel.cutNote ?? "";
+  const usable = panels.filter((panel) => !panel.yaw && !panel.polygon);
+  const out: GraphJoint[] = [];
+  for (let i = 0; i < usable.length; i++) {
+    for (let j = i + 1; j < usable.length; j++) {
+      const a = usable[i];
+      const b = usable[j];
+      const key = pairKey(a.id, b.id);
+      if (taken.has(key)) continue;
+      const A = axisBox(a);
+      const B = axisBox(b);
+      const reading = housedOnEnteredFace(a, b, A, B, notes) ?? housedOnEnteredFace(b, a, B, A, notes);
+      if (!reading || !declareReading(out, a.id, b.id, reading, seq + 1)) continue;
+      taken.add(key);
+      seq += 1;
+    }
+  }
+  return out;
+}
+
 function declareReading(joints: GraphJoint[], a: string, b: string, reading: ConstructionReadingId, seq: number): boolean {
   const patternId = constructionReading(reading)?.patternId;
   if (!patternId || !jointPattern(patternId)) return false;
@@ -629,9 +656,13 @@ export function liftBuildGraph(project: YardProject, plan: BuildPlan, family: Bu
   ];
   const declared = declaredJoints(project.panels);
   const { contact, promoted } = contactJoints(project, declared);
-  const taken = new Set([...declared, ...promoted].map((joint) => pairKey(joint.a, joint.b)));
-  const hinges = hingeReadings(project, taken, declared.length + promoted.length);
-  const joints = [...declared, ...promoted, ...hinges, ...contact];
+  const taken = new Set([...declared, ...promoted, ...contact].map((joint) => pairKey(joint.a, joint.b)));
+  // panelJoints drops a pair whose other-axis overlap is under 0.25" — that cutoff is for screw Buy.
+  // A housed end the construction reading already accepts can be thinner than that, so the shadow
+  // graph asks the reading directly. The live screw finder is not changed.
+  const housed = housedReadings(project.panels, taken, declared.length + promoted.length);
+  const hinges = hingeReadings(project, taken, declared.length + promoted.length + housed.length);
+  const joints = [...declared, ...promoted, ...housed, ...hinges, ...contact];
   const touch = contactReport(project);
   const issues = structureIssues(project).map((issue) => ({ code: issue.code, part: issue.part }));
   const quarter = quarterPlyProblems(parts);

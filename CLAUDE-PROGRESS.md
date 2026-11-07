@@ -47,6 +47,15 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 03:55 ET | #260 r4 block — a housed end is not gated on the screw finder
+
+- Yard Critic BLOCK on #260 r4, head `55674ad2b6fea30e7f98f931c61d473281c11af8`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The r3 edge-butt and 1.5" face entry stayed fixed, as did the 13 r2 fixtures and B1/B2. Same branch. Not graded. Not merged. Do not merge.
+- `readingForPanels` already returned housed-dado for an ordinary 3/4" shelf at (0.625, 9.875, 0), size 8 × 0.75 × 8, into an upright at (0, 0, 0), size 0.75 × 10 × 8. Overlaps 0.125 / 0.125 / 8: insertion 0.125" is inside the more-than-1/16" and at-most-0.8" band, and both face directions overlap by more than 1/16". `liftBuildGraph` emitted no joint. `contactJoints` only asked the reader about pairs from `panelJoints`, and `panelJoints` skips a pair when another axis overlaps by under 0.25". That cutoff is the live screw-Buy finder. It was not edited.
+- The shadow lift now also asks `housedOnEnteredFace` about panel pairs the screw finder did not list. A pair already recorded as contact or a declaration is left alone. Nothing is added unless that reading matches, so an edge butt stays contact and a pair the reader rejects is not invented as contact. Buy quantities and the live compiler are unchanged.
+- The fixture above lifts to a reviewed housed-dado in both panel orders and all three axis cycles. The top-edge butt still lifts as contact. The 1.5" face entry still lifts as a dado.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited. This note does not claim a new canary check.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass.
+
 ### 2026-11-07 03:38 ET | #260 r3 block — an entered face is the face, not the thinnest side
 
 - Yard Critic BLOCK on #260 r3, head `0e6d94b1de7ff87b74ebe2516e6b3de80d4714fb`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The 13 r2 fixtures stayed fixed. Same branch. Not graded. Not merged. Do not merge.
