@@ -34,7 +34,6 @@ const MAX_IN = 240, MAX_PARTS = 2000;
  * engine fix that makes one build drops it from this list.
  */
 const ENGINE_GAP: Record<string, string> = {
-  toolbox: "every toolbox prompt is a stand-in box",
   "bike-rack": "a stand-in box (\"from 2x4\": a shelf unit titled Bike unit)",
   "white-house": "a stand-in box (\"from popsicle sticks\": the barn's house body)",
   "mailbox-post": "Storage unit (bare: a 37-in popsicle body; \"from 4x4\": a four-leg frame, no post)",

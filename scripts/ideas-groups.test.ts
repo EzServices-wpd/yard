@@ -35,7 +35,7 @@ test("every listed build type is in exactly one group; a type no group names fai
   // Every catalog card shows once across the groups (cards plus See all rows): 100 types on 10-25.
   const seen = groupCards(all).flatMap((g) => { const v = groupView(g.cards, true, Infinity); return [...v.top, ...v.rows].map((c) => c.buildType); });
   assert.deepEqual([seen.length, new Set(seen).size], [all.length, all.length]);
-  assert.equal(all.length, 100);
+  assert.equal(all.length, 105);
 });
 
 test("a type no group names is never hidden: it lands in More builds as a row, its New mark kept", () => {
@@ -84,16 +84,19 @@ test("groups: a heading each, in order, content-visibility, See all says the gro
 test("See all opens in place: SECTION_SHOW drawn cards, then the rest as rows ALL_SHOW at a time", () => {
   const furniture = groupCards(all).find((g) => g.id === "furniture")!.cards;
   const drawn = furniture.filter((c) => c.drawing).length;
-  // 58 furniture types on 10-25; how many are drawn follows the manifest (cat tree drawn 10-27), at least SECTION_SHOW.
-  assert.deepEqual([furniture.length, drawn], [58, furniture.filter((c) => drawingForType(c.buildType)).length]);
+  // 59 furniture types on 10-25 (58 Trusted/curated, plus the Unverified utility cart, which keeps no picture).
+  const pictured = furniture.filter((c) => !c.unverified);
+  assert.equal(furniture.length, 59);
+  assert.equal(drawn, pictured.filter((c) => c.drawing).length);
+  assert.equal(drawn, pictured.filter((c) => drawingForType(c.buildType)).length);
   assert.ok(drawn >= SECTION_SHOW);
   const shut = groupView(furniture, false, ALL_SHOW);
-  assert.deepEqual([shut.top.length, shut.rows.length, shut.button, shut.label], [SECTION_SHOW, 0, true, "See all 58"]);
-  assert.ok(shut.top.every((c) => c.drawing), "cards are drawn; undrawn types wait in the rows");
+  assert.deepEqual([shut.top.length, shut.rows.length, shut.button, shut.label], [SECTION_SHOW, 0, true, "See all 59"]);
+  assert.ok(shut.top.every((c) => c.drawing && !c.unverified), "cards are drawn and graded enough to picture; undrawn and Unverified types wait in the rows");
   const open = groupView(furniture, true, ALL_SHOW);
-  assert.deepEqual([open.rows.length, open.left, open.shown], [ALL_SHOW, 58 - SECTION_SHOW - ALL_SHOW, SECTION_SHOW + ALL_SHOW]);
+  assert.deepEqual([open.rows.length, open.left, open.shown], [ALL_SHOW, 59 - SECTION_SHOW - ALL_SHOW, SECTION_SHOW + ALL_SHOW]);
   const more = groupView(furniture, true, 3 * ALL_SHOW);
-  assert.deepEqual([more.rows.length, more.left, more.shown], [58 - SECTION_SHOW, 0, 58]);
+  assert.deepEqual([more.rows.length, more.left, more.shown], [59 - SECTION_SHOW, 0, 59]);
   // Toys: 11 types. Yard Design keeps drawing more (rocket, viking ship on 10-26/27), so the cards are exactly the toys the
   // drawings manifest has (drawingForType, read here, not the page) and the rest are rows; abacus and catapult always draw.
   const toyCards = groupCards(all).find((g) => g.id === "toys")!.cards;

@@ -26,9 +26,17 @@ export function plainClick(e: { button: number; metaKey: boolean; ctrlKey: boole
   return !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 }
 
+/** Picture cards say "New"; catalog rows say "New, not checked yet". A type seen only as Unverified says so, on either. */
+function statusMark(card: Pick<Card, "status" | "unverified">, row: boolean): string | null {
+  if (card.unverified) return "Unverified";
+  if (card.status === "new") return row ? "New, not checked yet" : "New";
+  return null;
+}
+
 /** One card anatomy for every idea: drawing, title, size, one line. The whole card is a link to its build (`href`). */
 /** `onOpen` gets the drawing box, so the tap can morph it into the workspace stage; `onIntent` prefetches the route. */
 export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = false }: { card: Card; href: string; onOpen: (drawing?: HTMLElement | null) => void; onIntent?: () => void; eager?: boolean; showCount?: boolean }) {
+  const mark = statusMark(card, false);
   return (
     <a
       href={href}
@@ -47,7 +55,7 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
       <IdeaDrawing drawing={card.drawing} title={card.title} eager={eager} />
       <span className="mt-2 flex items-baseline gap-2">
         <span className="font-display text-base leading-tight text-ink group-hover:underline sm:text-lg">{card.title}</span>
-        {card.status === "new" ? <span className="shrink-0 text-[13px] text-ink-muted">New</span> : null}
+        {mark ? <span className="shrink-0 text-[13px] text-ink-muted">{mark}</span> : null}
       </span>
       <CardSize card={card} className="mt-0.5 block" fit />
       {card.blurb ? <span className="mt-1.5 line-clamp-2 hidden text-sm leading-snug text-ink sm:block">{card.blurb}</span> : null}
@@ -62,6 +70,7 @@ export function IdeaCard({ card, href, onOpen, onIntent, eager, showCount = fals
  * divider line (taste-inspect "hairline"). No transition: the tone changes at once.
  */
 export function IdeaRow({ card, href, onOpen, onIntent }: { card: Card; href: string; onOpen: () => void; onIntent?: () => void }) {
+  const mark = statusMark(card, true);
   return (
     <a
       href={href}
@@ -79,7 +88,7 @@ export function IdeaRow({ card, href, onOpen, onIntent }: { card: Card; href: st
     >
       <span className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-display text-base leading-tight text-ink group-hover:underline">{card.title}</span>
-        {card.status === "new" ? <span className="text-[13px] text-ink-muted">New, not checked yet</span> : null}
+        {mark ? <span className="text-[13px] text-ink-muted">{mark}</span> : null}
       </span>
       <CardSize card={card} className="mt-0.5" />
     </a>

@@ -1,6 +1,7 @@
 /**
  * All ideas (Chief 10-25, Direction A catalog PR 1): every listed build type once, drawn or not, searchable, from the
- * prompt-free snapshot. One listing rule (listRule) keeps held, generic and Unverified-only types off every section.
+ * prompt-free snapshot. listRule keeps held and generic types off every surface. Unverified-only types stay off
+ * picture sections and show up as catalog rows (search and See all).
  * Seams: liveFeed's output on the saved 10-25 /api/ideas-snapshot, and the Ideas page's server markup.
  */
 import { test } from "node:test";
@@ -34,24 +35,32 @@ test("All ideas lists every Trusted, unheld, non-generic build type exactly once
   const types = all.map((c) => c.buildType);
   assert.deepEqual(types.filter((t, i) => types.indexOf(t) !== i), [], "one row per build type");
   for (const t of want) assert.ok(types.includes(t), `${t} is missing`);
-  const curatedOnly = all.filter((c) => !trusted.has(c.buildType));
+  const curatedOnly = all.filter((c) => !trusted.has(c.buildType) && !c.unverified);
+  const unvRows = all.filter((c) => c.unverified);
   for (const c of curatedOnly) assert.equal(c.count, 0, `${c.slug} has builds but no Trusted row`);
-  assert.equal(all.length, want.length + curatedOnly.length);
-  // 10-25: 85 logged types (38 with no drawing yet; rocket, lighthouse, cat tree and viking ship are baked, and 10-30 dollhouse, trellis and wardrobe) and 15 curated ideas with no build.
-  assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length], [85, 38, 15]);
+  assert.equal(all.length, want.length + curatedOnly.length + unvRows.length);
+  // 10-25: 85 Trusted types (38 with no drawing yet; rocket, lighthouse, cat tree and viking ship are baked, and 10-30 dollhouse, trellis and wardrobe), 15 curated ideas with no build, and 5 Unverified-only rows (each undrawn).
+  assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length, unvRows.length], [85, 43, 15, 5]);
   assert.deepEqual(feedViolations(feed, snap, gradedTypes(base)), []);
 });
 
-test("one rule: Unverified-only, held and generic types are in no section and not in All ideas", () => {
+test("one rule: held and generic types are nowhere; Unverified-only types are catalog rows, not picture cards", () => {
   assert.deepEqual(unverifiedOnly.sort(), ["bird-feeder", "colosseum", "compost-bin", "ferris-wheel", "glider", "jewelry-box", "outdoor-storage-bench", "pergola", "picnic-table", "taj-mahal", "utility-cart"]);
   const shown = [...feed.sections.flatMap((s) => s.cards), ...all];
-  for (const c of shown) {
-    assert.ok(!unverifiedOnly.includes(c.buildType), `${c.slug} (Unverified only) shows`);
-    assert.ok(!isHeldType(c.buildType) && !isHeldType(c.recipeKey) && !GENERIC_TYPES.has(c.buildType), `${c.slug} held or generic`);
+  const rowOnly = unverifiedOnly.filter((t) => !isHeldType(t));
+  assert.deepEqual(rowOnly.sort(), ["bird-feeder", "jewelry-box", "outdoor-storage-bench", "picnic-table", "utility-cart"]);
+  for (const c of shown) assert.ok(!isHeldType(c.buildType) && !isHeldType(c.recipeKey) && !GENERIC_TYPES.has(c.buildType), `${c.slug} held or generic`);
+  for (const c of feed.sections.flatMap((s) => s.cards)) assert.ok(!c.unverified && !rowOnly.includes(c.buildType), `${c.slug} Unverified on a picture section`);
+  for (const t of rowOnly) {
+    const c = all.find((x) => x.buildType === t);
+    assert.ok(c && c.unverified && !c.drawing, `${t} is not an undrawn catalog row`);
   }
-  // The guard names one that slips in.
-  const bad: IdeasFeed = { ...feed, all: [...all, { ...all[0], slug: "utility-cart", buildType: "utility-cart", title: "Utility cart" }] };
-  assert.ok(feedViolations(bad, snap).some((v) => v.startsWith("utility-cart: utility-cart is not listed")));
+  for (const t of unverifiedOnly.filter((t) => isHeldType(t))) assert.ok(!shown.some((c) => c.buildType === t), `${t} held type shows`);
+  // The guard names a generic that slips into the catalog, and an Unverified card that grows a drawing.
+  const bad: IdeasFeed = { ...feed, all: [...all, { ...all[0], slug: "storage-unit", buildType: "storage-unit", title: "Storage unit" }] };
+  assert.ok(feedViolations(bad, snap).some((v) => v.includes("storage-unit") && /held or generic|not in the catalog/.test(v)));
+  const drawn = { ...feed, all: all.map((c) => (c.buildType === "utility-cart" ? { ...c, drawing: all.find((x) => x.drawing)!.drawing } : c)) };
+  assert.ok(feedViolations(drawn, snap).some((v) => v.includes("Unverified row has a drawing")));
 });
 
 test("ungraded types are marked new and stay out of Popular and the hero; undrawn ones keep the engine title and size", () => {
@@ -85,9 +94,10 @@ test("the page: no flat list; every listed type is one link in its group (card o
   const groups = groupCards(all);
   const reach = groups.flatMap((g) => { const v = groupView(g.cards, true, Infinity); return [...v.top, ...v.rows]; });
   assert.deepEqual(reach.map((c) => c.slug).sort(), all.map((c) => c.slug).sort(), "each listed type reachable once");
-  // The labels add up to the catalog: 100 on 10-25, as the flat list said ("24 of 100 shown").
+  // The labels add up to the catalog: 105 on 10-25 (100 Trusted/curated, plus 5 Unverified-only rows).
   const labels = [...html.matchAll(/data-ideas-show-all="See all (\d+)"/g)].reduce((n, m) => n + Number(m[1]), 0);
-  assert.equal(labels, 100);
+  assert.equal(labels, all.length);
+  assert.equal(all.length, 105);
   for (const [, href] of html.matchAll(/<a href="([^"]+)"[^>]*data-idea="/g)) assert.match(href, /^\/workspace\?q=/);
   assert.doesNotMatch(html, /data-idea-no-drawing/, "a card always has its drawing");
   // An undrawn type is a row once See all opens, title, New mark and size kept (the flat list's row).
@@ -101,8 +111,9 @@ test("the page: no flat list; every listed type is one link in its group (card o
 
 test("search reaches every listed type with the page's aliases; an undrawn hit is a row, not a blank card", () => {
   const pool = searchPool(feed);
-  for (const [q, t] of [["soccer", "soccer-goal"], ["utility cabinet", "utility-cabinet"], ["bookshelf", "bookcase"], ["wardrobe", "wardrobe"]]) assert.equal(searchCards(pool, q)[0]?.buildType, t, q);
-  assert.ok(!searchCards(pool, "utility").some((c) => c.buildType === "utility-cart"), "an Unverified-only type is not searchable");
+  for (const [q, t] of [["soccer", "soccer-goal"], ["soccer goal", "soccer-goal"], ["toolbox", "toolbox"], ["utility cabinet", "utility-cabinet"], ["bookshelf", "bookcase"], ["wardrobe", "wardrobe"]]) assert.equal(searchCards(pool, q)[0]?.buildType, t, q);
+  assert.equal(searchCards(pool, "utility cart")[0]?.buildType, "utility-cart", "an Unverified-only type is searchable");
+  assert.ok(searchCards(pool, "picnic table").some((c) => c.buildType === "picnic-table" && c.unverified && !c.drawing));
   // One card per build type in search too: the corner shelf's near-variant "Too small for books" never rides along.
   for (const f of [feed, base]) {
     const types = searchPool(f).map((c) => c.buildType);
@@ -118,4 +129,18 @@ test("search reaches every listed type with the page's aliases; an undrawn hit i
   const card = hit.slice(hit.indexOf("data-ideas-results"));
   assert.match(card, /data-idea="rocket"[^>]*>.*?<img src="\/ideas\/drawings\/rocket\.[0-9a-f]{8}\.svg"/);
   assert.ok(!card.includes('data-idea-row="rocket"'));
+  // Unverified-only: a row labeled Unverified, never a picture, and the search list is not cut at 24.
+  const cart = page(feed, "utility cart");
+  const cartRes = cart.slice(cart.indexOf("data-ideas-results"));
+  assert.match(cartRes, /data-idea-row="recipe-utility-cart"[^>]*>.*?Utility cart.*?Unverified/);
+  assert.doesNotMatch(cartRes, /data-idea="recipe-utility-cart"/);
+  const proto = all[0];
+  const racks = Array.from({ length: 30 }, (_, i) => ({ ...proto, slug: `rack-${i}`, buildType: `rack-${i}`, title: `Rack ${i}`, examplePrompt: `rack ${i}`, drawing: null, status: "new" as const, unverified: false, blurb: "", stock: undefined, section: "Store" }));
+  const wide: IdeasFeed = { ...feed, sections: [{ id: "racks", title: "Racks", order: 0, total: racks.length, cards: racks }], all: racks };
+  const n = searchCards(searchPool(wide), "rack").length;
+  assert.ok(n > 24, `rack search only found ${n}`);
+  const many = page(wide, "rack");
+  const manyRes = many.slice(many.indexOf("data-ideas-results"));
+  assert.equal((manyRes.match(/data-idea-row="rack-/g) ?? []).length, 30);
+  assert.match(manyRes, new RegExp(`>${n} ideas\\. Enter opens the first\\.<`));
 });

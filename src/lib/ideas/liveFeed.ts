@@ -96,13 +96,13 @@ export function gradedTypes(base: IdeasFeed): Set<string> {
 type Group = { type: string; count: number; lastSeen: string; trusted: boolean; rows: SnapshotRow[] };
 
 /**
- * The one listing rule (Chief 10-25 (b)): a build type renders nowhere on Ideas (Popular, Popular recently, a curated
- * section, All ideas, the home strip) when it is a held recipe, a generic fallback, or a type the log has only ever
- * seen Unverified. Its rows stay in the log. liveFeed filters every card through it; feedViolations checks it.
+ * The one listing rule (Chief 10-25 (b), opened for rows 11-07): a held recipe or a generic fallback renders nowhere
+ * on Ideas. A type the log has only ever seen Unverified stays off picture sections (`sections`: Popular, Popular
+ * recently, curated). `catalog` lets that type through as a search / See-all row. Its rows stay in the log.
  */
-export function listRule(groups: Pick<Group, "type" | "trusted">[]): (type: string, recipeKey?: string | null) => boolean {
+export function listRule(groups: Pick<Group, "type" | "trusted">[], where: "sections" | "catalog" = "sections"): (type: string, recipeKey?: string | null) => boolean {
   const unverified = new Set(groups.filter((g) => !g.trusted).map((g) => g.type));
-  return (type, recipeKey) => !GENERIC_TYPES.has(type) && !isHeldType(type) && !isHeldType(recipeKey) && !unverified.has(type);
+  return (type, recipeKey) => !GENERIC_TYPES.has(type) && !isHeldType(type) && !isHeldType(recipeKey) && (where === "catalog" || !unverified.has(type));
 }
 
 /** Log rows that are real visitor builds, folded by build type. */
@@ -231,8 +231,13 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   const curated = new Map<string, IdeaCard>();
   for (const s of base.sections) for (const c of s.cards) if (!curated.has(c.buildType)) curated.set(c.buildType, c);
   const graded = gradedTypes(base);
-  const listed = listRule(groups);
-  const cards = groups.filter((g) => listed(g.type)).map((g) => cardFor(g, curated, graded, draw));
+  const inSections = listRule(groups);
+  const inCatalog = listRule(groups, "catalog");
+  const cards = groups.filter((g) => inCatalog(g.type)).map((g) => {
+    const c = cardFor(g, curated, graded, draw);
+    // Unverified-only: a titled row. Drop the drawing so it cannot take a picture slot.
+    return g.trusted ? c : { ...c, drawing: null, status: "new" as const, unverified: true };
+  });
   const since = new Date(now.getTime() - HERO_DAYS * DAY).toISOString();
   const used = new Set<string>();
   // Only a card a section actually renders is used (Critic row 111: Popular marked every Trusted card used, not just
@@ -246,16 +251,17 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
   };
   const sections = [
     // Popular: Trusted builds Critic graded (row 169), never a type the engine called Trusted on its own.
-    take("popular", "Popular", cards.filter((c) => c.status === "checked" && graded.has(c.buildType))),
-    take("recent", "Popular recently", cards.filter((c) => (c.lastSeen ?? "") >= since)),
+    take("popular", "Popular", cards.filter((c) => inSections(c.buildType, c.recipeKey) && c.status === "checked" && graded.has(c.buildType))),
+    take("recent", "Popular recently", cards.filter((c) => inSections(c.buildType, c.recipeKey) && (c.lastSeen ?? "") >= since)),
     ...base.sections.map((s) => {
-      const counted = s.cards.filter((c) => listed(c.buildType, c.recipeKey)).map((c) => cards.find((x) => x.slug === c.slug) ?? c);
+      const counted = s.cards.filter((c) => inSections(c.buildType, c.recipeKey)).map((c) => cards.find((x) => x.slug === c.slug) ?? c);
       return take(s.id, s.title, counted);
     }),
   ].filter((s) => s.cards.length).map((s, order) => ({ ...s, order }));
-  // All ideas (Chief 10-25): every listed type once, drawn or not, then each curated idea nobody has built yet. No cap.
+  // All ideas (Chief 10-25): every catalog type once, drawn or not, then each curated idea nobody has built yet.
+  // Unverified-only types are in here (search and See all) and in no picture section. No cap.
   const types = new Set<string>();
-  const all = sortCards([...cards, ...base.sections.flatMap((s) => s.cards).filter((c) => listed(c.buildType, c.recipeKey))])
+  const all = sortCards([...cards, ...base.sections.flatMap((s) => s.cards).filter((c) => inCatalog(c.buildType, c.recipeKey))])
     .filter((c) => !isJunkTitle(c.title) && !types.has(c.buildType) && !!types.add(c.buildType));
   return { at: snap.at || now.toISOString(), live: true, countsLive: true, hero: pickHero(cards, now), sections, all };
 }
@@ -296,16 +302,21 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
       for (const k of Object.keys(c)) if (/href|store|offer|affiliate|price|shop/i.test(k)) out.push(`${c.slug}: store field ${k}`);
     }
   }
-  // All ideas: one row per build type, display titles, nothing held or generic; with the snapshot, the listing rule too.
+  // All ideas: one row per build type, display titles, nothing held or generic. Picture sections also drop
+  // Unverified-only types; the catalog may keep those as rows (no drawing).
   const listed = snap && listRule(groupRows(snap.rows));
+  const catalog = snap && listRule(groupRows(snap.rows), "catalog");
   const allTypes = new Set<string>();
   for (const c of feed.all ?? []) {
     if (allTypes.has(c.buildType)) out.push(`all: build type ${c.buildType} twice`);
     allTypes.add(c.buildType);
     if (isJunkTitle(c.title) || /^[a-z]/.test(c.title)) out.push(`all: ${c.slug} title "${c.title}"`);
     if (GENERIC_TYPES.has(c.buildType) || isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`all: ${c.slug} is held or generic`);
+    if (c.unverified && c.drawing) out.push(`${c.slug}: Unverified row has a drawing`);
   }
-  if (listed) for (const c of [...feed.sections.flatMap((s) => s.cards), ...(feed.all ?? [])]) if (!listed(c.buildType, c.recipeKey)) out.push(`${c.slug}: ${c.buildType} is not listed (held, generic or Unverified only)`);
+  for (const s of feed.sections) for (const c of s.cards) if (c.unverified) out.push(`${c.slug}: Unverified on a picture section (${s.id})`);
+  if (listed) for (const c of feed.sections.flatMap((s) => s.cards)) if (!listed(c.buildType, c.recipeKey)) out.push(`${c.slug}: ${c.buildType} is not listed (held, generic or Unverified only)`);
+  if (catalog) for (const c of feed.all ?? []) if (!catalog(c.buildType, c.recipeKey)) out.push(`${c.slug}: ${c.buildType} is not in the catalog (held or generic)`);
   if (!feed.live && feed.hero) out.push("hero on the fallback feed");
   if (feed.hero) {
     const h = feed.sections.flatMap((s) => s.cards).find((c) => c.slug === feed.hero!.slug);
