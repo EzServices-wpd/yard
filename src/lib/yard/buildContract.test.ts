@@ -517,6 +517,98 @@ describe("construction readings", () => {
     assert.equal(readingForPanels(upright, crossing), undefined);
   });
 
+  it("keeps an edge butt as contact and reads an end in a thicker host face", () => {
+    const edgeHost: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 8 },
+    };
+    const edgeShelf: Panel = {
+      id: "shelf",
+      type: "shelf",
+      name: "Edge shelf",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0.5, y: 10, z: 0 },
+      size: { width: 8, height: 0.75, depth: 8 },
+    };
+    const wideHost: Panel = {
+      ...edgeHost,
+      id: "wide",
+      name: "Wide side",
+      size: { width: 1.5, height: 10, depth: 0.75 },
+    };
+    const entered: Panel = {
+      ...edgeShelf,
+      id: "entered",
+      name: "Entered shelf",
+      materialId: "plywood-1-2-4x8",
+      position: { x: 1, y: 4, z: 0 },
+      size: { width: 8, height: 0.5, depth: 8 },
+    };
+    const turn = (panel: Panel, rot: number): Panel => {
+      const pos = [panel.position.x, panel.position.y, panel.position.z];
+      const size = [panel.size.width, panel.size.height, panel.size.depth];
+      const pick = (xs: number[]) => [xs[rot], xs[(rot + 1) % 3], xs[(rot + 2) % 3]];
+      const nextPos = pick(pos);
+      const nextSize = pick(size);
+      return {
+        ...panel,
+        position: { x: nextPos[0], y: nextPos[1], z: nextPos[2] },
+        size: { width: nextSize[0], height: nextSize[1], depth: nextSize[2] },
+      };
+    };
+    for (const rot of [0, 1, 2]) {
+      const host = turn(edgeHost, rot);
+      const shelf = turn(edgeShelf, rot);
+      assert.equal(readingForPanels(host, shelf), undefined, `edge rot ${rot}`);
+      assert.equal(readingForPanels(shelf, host), undefined, `edge rot ${rot} swapped`);
+      const wide = turn(wideHost, rot);
+      const end = turn(entered, rot);
+      assert.equal(readingForPanels(wide, end), "housed-dado", `wide rot ${rot}`);
+      assert.equal(readingForPanels(end, wide), "housed-dado", `wide rot ${rot} swapped`);
+    }
+    const plan: BuildPlan = {
+      feasibility: { status: "ok", summary: "", issues: [] },
+      cutList: [],
+      bom: [],
+      instructions: [],
+      totals: { pieces: 2, estCostUsd: 0, packs: 0 },
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    };
+    const edgeGraph = liftBuildGraph({
+      id: "edge",
+      name: "Edge",
+      prompt: "",
+      kind: "closet",
+      overall: { width: 10, height: 11, depth: 8 },
+      instances: [],
+      panels: [edgeHost, edgeShelf],
+      primaryMaterialId: "plywood-3-4-4x8",
+      notes: [],
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    }, plan, "casework");
+    const edgeJoint = edgeGraph.joints.find((joint) => pair(joint) === "shelf|side");
+    assert.equal(edgeJoint?.basis, "contact");
+    assert.equal(edgeJoint?.patternId, undefined);
+    assert.equal(edgeGraph.joints.some((joint) => joint.reviewedJoin), false);
+    const wideGraph = liftBuildGraph({
+      id: "wide",
+      name: "Wide",
+      prompt: "",
+      kind: "closet",
+      overall: { width: 10, height: 10, depth: 8 },
+      instances: [],
+      panels: [wideHost, entered],
+      primaryMaterialId: "plywood-3-4-4x8",
+      notes: [],
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    }, plan, "casework");
+    assert.equal(wideGraph.joints.find((joint) => pair(joint) === "entered|wide")?.reading, "housed-dado");
+  });
+
   it("keeps cubby rails that cross a support as contact", () => {
     offline(() => {
       for (const prompt of [

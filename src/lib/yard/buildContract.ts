@@ -389,6 +389,10 @@ function faceAxes(box: AxisBox): number[] {
   return [0, 1, 2].filter((axis) => box.size[axis] - thin <= 1e-9);
 }
 
+function overlapOn(a: AxisBox, b: AxisBox, axis: number): number {
+  return Math.min(a.max[axis], b.max[axis]) - Math.max(a.min[axis], b.min[axis]);
+}
+
 const END_TOL = 1 / 16;
 
 /**
@@ -434,8 +438,8 @@ export function readingForPanels(a: Panel, b: Panel): ConstructionReadingId | un
   if (a.yaw || b.yaw || a.polygon || b.polygon) return undefined;
   const A = axisBox(a);
   const B = axisBox(b);
-  // The entered face is the host's thickness. A thinner part can overlap less on its own
-  // thickness than it does on the way in, so that smaller overlap is not the only axis tried.
+  // Any host face can be entered, not only its thinnest side. The part's own thickness can
+  // overlap less than the insertion, so that smaller overlap is not the only axis tried.
   const housedEnd = housedOnEnteredFace(a, b, A, B, notes) ?? housedOnEnteredFace(b, a, B, A, notes);
   if (housedEnd) return housedEnd;
   const overlaps = [0, 1, 2].map((axis) => Math.min(A.max[axis], B.max[axis]) - Math.max(A.min[axis], B.min[axis]));
@@ -455,11 +459,14 @@ function housedOnEnteredFace(
 ): ConstructionReadingId | undefined {
   if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
   const partFaces = new Set(faceAxes(partBox));
-  for (const axis of faceAxes(hostBox)) {
+  for (const axis of [0, 1, 2]) {
+    // Entering along the part's own thickness is a face stacked on a face, not an end in a groove.
     if (partFaces.has(axis)) continue;
-    const overlap = Math.min(partBox.max[axis], hostBox.max[axis]) - Math.max(partBox.min[axis], hostBox.min[axis]);
+    const overlap = overlapOn(partBox, hostBox, axis);
     if (!(overlap > END_TOL && overlap <= 0.8)) continue;
     if (!endEnters(partBox, hostBox, axis)) continue;
+    // The other two axes are the face. Both have to overlap, or the part only meets an edge.
+    if ([0, 1, 2].some((other) => other !== axis && overlapOn(partBox, hostBox, other) <= END_TOL)) continue;
     const sheet = Math.min(...partBox.size) <= 0.3 && (part.type === "back" || part.type === "mirror");
     if (sheet) return "housed-rabbet";
     if (HOUSED.has(part.type) && HOST_FACE.has(host.type)) return "housed-dado";

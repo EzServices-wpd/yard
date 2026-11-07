@@ -90,15 +90,15 @@ export const CONSTRUCTION_READINGS = [
   {
     id: "housed-dado",
     patternId: "dado",
-    when: "A shelf, bottom, top, divider, or rail end lies inside the host face it enters, by more than 1/16\" and at most 0.8\", and the part does not pass through the opposite face. The part's own thickness can be a smaller overlap than that insertion.",
-    notWhen: "A flush butt is not a groove. A part that crosses the host, both ends outside that face, is not a dado. A pin shelf that only touches an upright or a divider stays contact, even when the cut note drills pin holes.",
+    when: "A shelf, bottom, top, divider, or rail end lies inside a host face it enters, by more than 1/16\" and at most 0.8\", and overlaps that face in both directions. The face need not be the host's thinnest side. The part does not pass through the opposite face. The part's own thickness can be a smaller overlap than that insertion.",
+    notWhen: "A flush butt is not a groove. A part that only meets an edge of the host, or crosses it with both ends outside, is not a dado. A pin shelf that only touches an upright or a divider stays contact, even when the cut note drills pin holes.",
     provenance: "Panel.joints kind dado. supportGraph and learnedGate read a dado as the part's host. modelJoints records a flush meeting as a butt.",
   },
   {
     id: "housed-rabbet",
     patternId: "rabbet",
-    when: "A back or a mirror no thicker than 0.3\" has an end inside the host face it enters, by more than 1/16\" and at most 0.8\", and it does not pass through the opposite face. A thinner sheet than the insertion is still that rebate.",
-    notWhen: "A 1/4\" back that sits on the rear plane and only touches an upright's inner face is the screw joint modelJoints calls a back edge, not a rebate. A sheet that crosses a part, both ends outside, is not a rebate.",
+    when: "A back or a mirror no thicker than 0.3\" has an end inside a host face it enters, by more than 1/16\" and at most 0.8\", and overlaps that face in both directions. The face need not be the host's thinnest side. It does not pass through the opposite face. A thinner sheet than the insertion is still that rebate.",
+    notWhen: "A 1/4\" back that sits on the rear plane and only touches an upright's inner face is the screw joint modelJoints calls a back edge, not a rebate. A sheet that only meets an edge, or crosses a part with both ends outside, is not a rebate.",
     provenance: "Panel.joints kind rabbet. fittedBuild sets a mirror into its door with that kind. modelJoints kind back is a screwed sheet edge.",
   },
   {

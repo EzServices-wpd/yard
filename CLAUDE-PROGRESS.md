@@ -47,6 +47,15 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 03:38 ET | #260 r3 block — an entered face is the face, not the thinnest side
+
+- Yard Critic BLOCK on #260 r3, head `0e6d94b1de7ff87b74ebe2516e6b3de80d4714fb`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The 13 r2 fixtures stayed fixed. Same branch. Not graded. Not merged. Do not merge.
+- Two holes, one rule. `housedOnEnteredFace` only tried the host's thinnest axes, and it never required the part to overlap the rest of that face. A shelf sitting on the top edge of a 3/4" upright (overlaps 0.25 / 0 / 8) was called a dado. A shelf end 0.5" inside the 1.5" face of an upright whose stock thickness is 0.75" on another axis was missed.
+- A housed end is now any host face the end enters, not only the minimum-size side. Both directions of that face have to overlap by more than 1/16", so an edge touch stays contact. Insertion is still more than 1/16" and at most 0.8". `endEnters`, `facesCross`, and housed-before-lap are unchanged. An end that reaches the far face, and a middle overlap with both ends outside, stay unreviewed.
+- The top-edge butt stays contact through the lift, in both argument orders and all three axis cycles. The 1.5" face entry is a dado under the same cycles. The 13 r2 fixtures, the cubby family (0 reviewed, rails stay contact), the 0.25" divider end, the upright end, and the mutual crossing are unchanged.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass. Weekend canaries 6/6 unchanged. `walk-canary.ts` linen 31.5×78×16 and pocket green. linen-check PASS.
+
 ### 2026-11-07 03:25 ET | #260 r2 block — a thin part does not hide the face it entered
 
 - Yard Critic BLOCK on #260 r2, head `d50003c80e47cd457ed6510967bcd29243acc18f`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. B1 and B2 of r1 stayed fixed. Same branch. Not graded. Not merged. Do not merge.
