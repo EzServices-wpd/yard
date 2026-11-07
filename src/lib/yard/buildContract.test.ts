@@ -1423,6 +1423,41 @@ describe("shadow cuts and sheet/lumber packs", () => {
     assert.equal(fromMember.packs[0]?.kind, "lumber");
   });
 
+  it("glued layers cover the finished thickness", () => {
+    const covered = (materialId: string, stock: number, thickness: number, face: number) => {
+      const compiled = compileBuildGraph(stockGraph([
+        stockPart("part", { width: 36, height: thickness, depth: face }, materialId),
+      ]));
+      const cuts = compiled.cuts.filter((cut) => cut.partId === "part");
+      const stack = cuts.reduce((sum, cut) => sum + cut.thicknessIn, 0);
+      assert.equal(cuts.length > 0, true, `${thickness} on ${stock}`);
+      assert.ok(stack + 1e-9 >= thickness, `${thickness} on ${stock} covered ${stack}`);
+      assert.ok(stack < thickness + stock + 1e-9, `${thickness} on ${stock} used ${stack}`);
+      return cuts.length;
+    };
+    // Between n and n+0.5 stock thicknesses. Round leaves these short.
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 1.75, 12), 3);
+    assert.equal(covered("lumber-1x4-8", 0.75, 2.5, 3.5), 4);
+    assert.equal(covered("lumber-2x4-8", 1.5, 3.5, 3.5), 3);
+    // Exact multiples, and a 1" part, already landed on a count that covers.
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 1, 12), 2);
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 1.5, 12), 2);
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 2.25, 12), 3);
+    assert.equal(covered("lumber-2x4-8", 1.5, 3, 3.5), 2);
+    for (const [materialId, stock, face] of [
+      ["plywood-3-4-4x8", 0.75, 18],
+      ["lumber-1x4-8", 0.75, 3.5],
+      ["lumber-2x4-8", 1.5, 3.5],
+    ] as const) {
+      const limit = materialId.startsWith("lumber") ? face : stock * 5;
+      for (let n = 1; n <= Math.round((limit - stock) * 8); n++) {
+        const thickness = Math.round((stock + n / 8) * 8) / 8;
+        if (!(thickness > stock + 0.05) || thickness > limit + 1e-9) continue;
+        covered(materialId, stock, thickness, face);
+      }
+    }
+  });
+
   it("keeps a quarter-inch back on its own sheet", () => {
     const back = compileBuildGraph(stockGraph([stockPart("Back", { width: 20, height: 0.25, depth: 10 }, "plywood-1-4-4x8", "back")]));
     assert.deepEqual(back.packs.map((pack) => pack.catalogId), ["plywood-1-4-4x8"]);

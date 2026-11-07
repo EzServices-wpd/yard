@@ -110,13 +110,24 @@ function boardCross(materialId: string): { face: number; thick: number } | null 
   return { face, thick };
 }
 
+/**
+ * How many pieces of `stock` cover `finished`.
+ * Ceil past 0.01", the same count a rip uses. Round stops short when the
+ * thickness sits between n and n+0.5 stock thicknesses (1-3/4" on 3/4" is 2.33,
+ * and round yields 1-1/2").
+ */
+function stockPieces(finished: number, stock: number): number {
+  if (!(stock > 0) || !(finished > stock + 0.05)) return 1;
+  return Math.max(2, Math.ceil((finished - 0.01) / stock));
+}
+
 /** One finished part may be several rips or layers of the sold stock. */
 function expandPart(part: GraphPart, kind: CutKind, dims: { lengthIn: number; widthIn: number; thicknessIn: number }): CuttablePiece[] {
   const name = partName(part);
   const item = getCatalogItem(part.materialId);
   if (kind === "sheet") {
     const thick = item?.dims.thickness ?? dims.thicknessIn;
-    const layers = thick > 0 && dims.thicknessIn > thick + 0.05 ? Math.max(2, Math.round(dims.thicknessIn / thick)) : 1;
+    const layers = stockPieces(dims.thicknessIn, thick);
     return Array.from({ length: layers }, (_, layer) => ({
       id: layers === 1 ? part.id : `${part.id}#layer${layer + 1}`,
       partId: part.id,
@@ -131,8 +142,8 @@ function expandPart(part: GraphPart, kind: CutKind, dims: { lengthIn: number; wi
   const cross = boardCross(part.materialId);
   const thick = cross?.thick ?? dims.thicknessIn;
   const face = cross?.face ?? dims.widthIn;
-  const layers = thick > 0 && dims.thicknessIn > thick + 0.05 ? Math.max(2, Math.round(dims.thicknessIn / thick)) : 1;
-  const strips = face > 0 && dims.widthIn > face + 0.05 ? Math.max(2, Math.ceil((dims.widthIn - 0.01) / face)) : 1;
+  const layers = stockPieces(dims.thicknessIn, thick);
+  const strips = stockPieces(dims.widthIn, face);
   const pieces: CuttablePiece[] = [];
   for (let layer = 0; layer < layers; layer++) {
     let left = dims.widthIn;

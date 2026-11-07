@@ -47,6 +47,21 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 08:40 ET | #266 r1 block — a glue-up must cover the finished thickness (same branch, not graded)
+
+- Yard Critic BLOCK on #266 r1, head `f17b0416c8263bea5b04b9945893863efa9ca952`, vs release `7134c41b20ed329a11fc52d36699cbef9c10de71`. Same branch. Not graded. Not merged. Do not merge.
+- `expandPart` counted glue-up layers with `Math.round(thickness / stock)`. A thickness between n and n+0.5 stock thicknesses came out short. A rip next to it already uses `Math.ceil((width - 0.01) / face)`. Layers now use that same count, on sheet and on lumber.
+  - 1-3/4" on 3/4" plywood was 2 layers (1-1/2"). Now 3 (2-1/4").
+  - 2-1/2" on a 1×4 (3/4") was 3 layers (2-1/4"). Now 4 (3").
+  - 3-1/2" on a 2×4 (1-1/2") was 2 layers (3"). Now 3 (4-1/2").
+  - 1", 1-1/2", and 2-1/4" on 3/4" still cover, at 2, 2, and 3 layers. A 3" part on a 2×4 is still 2 layers.
+- The stack of layers is at least the finished thickness and is under one extra stock thickness. The rule is the count, not a noun. `report.ts` is still not called. `graph.stock` still does not set a pack or a cut count.
+- Agent-run compile-back on this head, not an independent grade. Same packs as r1: bookcase and the 3/4" prompt 16 cuts, 2 × `plywood-3-4-4x8` and 1 × `plywood-1-4-4x8`; 1/2" plywood 16 cuts, 2 × `plywood-1-2-4x8` and 1 × `plywood-1-4-4x8`; oak 61 cuts, 1 × `plywood-1-4-4x8` and 25 × 8 ft `lumber-1x4-8` (live Buy is still 24, not copied); potting bench 9 cuts, 1 × `plywood-3-4-4x8` and 3 × `lumber-2x4-8` (the 1-1/2" top is still two layers); Eiffel 0 cuts / 0 packs, 446 popsicle; toothpicks 0 / 0, 1314 toothpick.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `lengthReader.ts` and `modelJoints.ts` not edited. No AI reader. No new CI gate. No assembly-step compiler. No linen wording. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. This note does not record a canary re-run.
+- Files: `src/lib/yard/stockCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 35/35. `npx tsc --noEmit` pass. `npx eslint` on `stockCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 08:22 ET | shadow cut and pack compile — in progress (lock held)
 
 - Shadow fastener demand is on main `db7cd4812967096ee82e7f8abc8fa8da31451f24` (#264) and release `7134c41b20ed329a11fc52d36699cbef9c10de71` (#265, merge-back of #263, release merge `43a5cc52f7d78b27ee42eb3bc906a20b07e0867d`). Do not redo it. This note does not record a Critic PASS or a deployment id. The fastener lock rode in on the merge-back and was not cleared. Replaced on this feature branch only. Lock commit `f9e50053`.

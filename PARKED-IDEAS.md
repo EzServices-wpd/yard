@@ -49,6 +49,7 @@ Update 2026-11-07 06:48 ET: shadow fastener demand did not fix it. The shelf is 
 Update 2026-11-07 07:13 ET: the #263 r1 ledger fix did not touch this shelf. Still parked.
 Update 2026-11-07 07:30 ET: the authorized r2 round (thin dowel and thin polygon) did not touch this shelf. Still parked.
 Update 2026-11-07 08:22 ET: shadow cut and pack compile did not fix it. The lower shelf is a 3/4" plywood part, so it is one of the cuts on the derived sheet. That does not declare a joint. The glue-and-screw note, the floating structure check, and the pin step stay. Still parked.
+Update 2026-11-07 08:40 ET: the #266 r1 layer-count fix did not touch this shelf. Still parked.
 
 ## 2026-11-07 | Held-out evaluation findings (not this round)
 
