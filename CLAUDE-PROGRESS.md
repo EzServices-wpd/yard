@@ -1,4 +1,4 @@
-LOCK: Cursor Agent | item: shadow build graph | started: 2026-11-07 02:01 ET | status: in-progress
+LOCK: Cursor Agent | item: construction knowledge / substitution | started: 2026-11-07 02:49 ET | status: in-progress
 
 # Claude progress log
 
