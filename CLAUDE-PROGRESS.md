@@ -1,4 +1,4 @@
-LOCK: Cursor Agent | item: shadow build graph | started: 2026-11-07 02:01 ET | status: in-progress
+LOCK: Cursor Agent | item: construction knowledge / substitution | started: 2026-11-07 02:49 ET | status: in-progress
 
 # Claude progress log
 
@@ -46,6 +46,65 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-07 04:10 ET | #260 r5 block — a moving part and bought hardware are not dados
+
+- Yard Critic BLOCK on #260 r5, head `84468c7691f60ac812cd69c109e48ab546cd76f3`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The r4 band lift stayed fixed. Same branch. Not graded. Not merged. Do not merge.
+- `housedReadings` asked only the geometric reader. A rail with `turns` (Pivot arm, bored 1/16" over its pin) and a purchased `A-frame bracket 1` both sit inside the insertion and transverse bands, so the reader called them housed-dados. `panelJoints` already leaves those out: a part that turns takes no screws, and `isBoughtHardwareName` is not a wood end. That live file was not edited.
+- The geometric reader now refuses a pair when either part turns, is hinged, or is purchased hardware. `readingForPanels` and the lift share that check. The same stationary wood, without `turns`, still lifts as a dado. Mirrors, thin backs, and glue housings are not in this exclusion. The 0.25" screw-overlap filter was not restored.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited. This note does not claim a new canary check.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass.
+
+### 2026-11-07 03:55 ET | #260 r4 block — a housed end is not gated on the screw finder
+
+- Yard Critic BLOCK on #260 r4, head `55674ad2b6fea30e7f98f931c61d473281c11af8`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The r3 edge-butt and 1.5" face entry stayed fixed, as did the 13 r2 fixtures and B1/B2. Same branch. Not graded. Not merged. Do not merge.
+- `readingForPanels` already returned housed-dado for an ordinary 3/4" shelf at (0.625, 9.875, 0), size 8 × 0.75 × 8, into an upright at (0, 0, 0), size 0.75 × 10 × 8. Overlaps 0.125 / 0.125 / 8: insertion 0.125" is inside the more-than-1/16" and at-most-0.8" band, and both face directions overlap by more than 1/16". `liftBuildGraph` emitted no joint. `contactJoints` only asked the reader about pairs from `panelJoints`, and `panelJoints` skips a pair when another axis overlaps by under 0.25". That cutoff is the live screw-Buy finder. It was not edited.
+- The shadow lift now also asks `housedOnEnteredFace` about panel pairs the screw finder did not list. A pair already recorded as contact or a declaration is left alone. Nothing is added unless that reading matches, so an edge butt stays contact and a pair the reader rejects is not invented as contact. Buy quantities and the live compiler are unchanged.
+- The fixture above lifts to a reviewed housed-dado in both panel orders and all three axis cycles. The top-edge butt still lifts as contact. The 1.5" face entry still lifts as a dado.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited. This note does not claim a new canary check.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass.
+
+### 2026-11-07 03:38 ET | #260 r3 block — an entered face is the face, not the thinnest side
+
+- Yard Critic BLOCK on #260 r3, head `0e6d94b1de7ff87b74ebe2516e6b3de80d4714fb`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. The 13 r2 fixtures stayed fixed. Same branch. Not graded. Not merged. Do not merge.
+- Two holes, one rule. `housedOnEnteredFace` only tried the host's thinnest axes, and it never required the part to overlap the rest of that face. A shelf sitting on the top edge of a 3/4" upright (overlaps 0.25 / 0 / 8) was called a dado. A shelf end 0.5" inside the 1.5" face of an upright whose stock thickness is 0.75" on another axis was missed.
+- A housed end is now any host face the end enters, not only the minimum-size side. Both directions of that face have to overlap by more than 1/16", so an edge touch stays contact. Insertion is still more than 1/16" and at most 0.8". `endEnters`, `facesCross`, and housed-before-lap are unchanged. An end that reaches the far face, and a middle overlap with both ends outside, stay unreviewed.
+- The top-edge butt stays contact through the lift, in both argument orders and all three axis cycles. The 1.5" face entry is a dado under the same cycles. The 13 r2 fixtures, the cubby family (0 reviewed, rails stay contact), the 0.25" divider end, the upright end, and the mutual crossing are unchanged.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass. Weekend canaries 6/6 unchanged. `walk-canary.ts` linen 31.5×78×16 and pocket green. linen-check PASS.
+
+### 2026-11-07 03:25 ET | #260 r2 block — a thin part does not hide the face it entered
+
+- Yard Critic BLOCK on #260 r2, head `d50003c80e47cd457ed6510967bcd29243acc18f`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. B1 and B2 of r1 stayed fixed. Same branch. Not graded. Not merged. Do not merge.
+- The miss was one axis choice. `readingForPanels` kept only the smallest overlap. When the part is thinner than how far it enters, that smallest overlap is the part's own thickness, and the host face actually entered was never tried. A half-inch shelf 0.625" into a 3/4" upright, a 1/4" back or mirror 0.5" into that upright, and the same geometries after a cyclic swap of the axes, all came back undefined. A 1/4" back whose insertion equals its thickness still read as a rabbet unrotated and dropped after the swap, because the tie broke toward whichever axis was first.
+- The entered face is now every host thickness, judged on its own overlap. Insertion still has to be more than 1/16" and at most 0.8". `endEnters` and `facesCross` are unchanged, and a housed end is still decided before a lap. An end that reaches the far face is not housed. A middle overlap with both ends outside is not housed.
+- Still 0 reviewed joints: `cubby shelf 48 wide 36 tall 12 deep` and 40×36×12, 44×36×12, 52×36×12, 60×48×12, 48×48×16. Front rail / center support pairs stay contact. The shelf end 0.25" into a divider is still a dado, the same end in an upright is still a dado, and a mutual crossing is still a lap.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed. Live path not edited.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on the three graph files pass. Weekend canaries 6/6 unchanged. `walk-canary.ts` linen 31.5×78×16 and pocket green. linen-check PASS.
+
+### 2026-11-07 03:10 ET | #260 r1 block — a housed end must enter, a lap must pass through
+
+- Yard Critic BLOCK on #260 r1, head `0b1809f447a68a2fdceb1f041ad5df3f598085ea`, vs release `6de4631859fbfd7eb467e60c48b312abc60c5715`. Same branch. Not graded. Not merged. Do not merge.
+- The other r1 claims held and were not reopened: live path isolated, hinge / miter / notch / mortise examples, plain bookcase and both Eiffels and the potting bench at 0 reviewed joints, `substituteStock`, compile rejecting an illegal 1/4" part, `projectBuildUse`, the seven compile-backs, canaries including linen 31.5×78×16.
+- B1: `cubby shelf 48 wide 36 tall 12 deep` invented three housed-dados (Front rail / Front rail 2 / Front rail 3 into Center support 4 / 3 / 2). Each rail runs the full width and crosses the support's front. Neither rail end is inside the support. `Panel.joints` is empty. The base graph had 0 reviewed joints. The old predicate promoted an interior overlap from type and thin-axis alone.
+- B2: a shelf end stopped 0.25" inside a divider (it does not reach the far face) was a cross-lap, because any all-axis overlap of a divider and a shelf was a lap and that test ran before the housed end. The same end in an upright was already a dado.
+- Fix, on every pair, not on the cubby noun: a housed end (dado or rabbet) requires one end inside the host and the part leaving through only the other face. A lap requires each board to pass through the other's opposite faces, and it is not considered once an end is housed. After the fix the cubby prompt has 0 reviewed joints; those rail/support pairs stay contact. A housed shelf end in a divider is a dado. A divider and a shelf that each pass through the other stay a lap. A housed end in an upright stays a dado.
+- Potting-bench lower shelf stays parked and disclosed. Not fixed.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on `buildContract.ts`, `buildContract.test.ts`, and `jointLibrary.ts` pass. Weekend canaries 6/6 unchanged. `walk-canary.ts` linen 31.5×78×16 and pocket green. linen-check PASS. `lengthReader.ts` not touched.
+
+### 2026-11-07 02:49 ET | shadow build graph shipped; construction knowledge and substitution — in progress (lock held)
+
+- Shadow build graph version 1 is on main `3966f67f2e2d071c3e0c7d420c5bbb558adec765` (#258) and release `6de4631859fbfd7eb467e60c48b312abc60c5715` (merge-back #259). Do not redo it. `generateFromPrompt` and `buildPlan` still do not read the graph. This note does not record a Critic PASS or a deployment id for that ship. The graph lock rode in on the merge-back. Replaced on this feature branch only.
+- New lock: construction knowledge / substitution. Not graded. Not merged. PR #260 into `release/2026-10-24`. Do not merge.
+- Declared joints, only where one of the seven library patterns already applies. Contact stays contact.
+  - Became declared: a door `doorHingeLayout` already hangs, when `Panel.hinged` was not set, is a hinge to the upright on that edge (`bookcase with a door`, medicine-cabinet door). Two panels whose cut notes both say "bevel the ridge edge 45" are a miter (birdhouse roof panels). `Panel.joints` notch and mortise stay declared (chicken-coop floor, a seated perch) and are not also stored as contact. The r1 dado and lap readings were too loose; the 03:10 ET note is the rule that replaced them.
+  - Stay contact: the plain bookcase (pin shelves are flush butts, the 1/4" back is a screwed back edge, not a rabbet, no reviewed joint). The Eiffel canary and the toothpick tower (glue, frame contact, 0 reviewed joints — no furniture joints on the stick model). A gable that only says "45° to a peak". A pin-hole cut note is not a mortise and not a dado.
+- Stock substitution is a review of two lifted graphs, not a second compiler. `substituteStock` accepts the switch only when roles, envelope, and reviewed patterns hold, 1/4" backs and drawer bottoms stay, and Buy names the new stock instead of the old. Casework (3/4" plywood, 1/2" plywood, oak) keeps the role multiset and the 36×84×12 envelope. The towers keep the role set and an envelope within 1"; the stick count changes. The live stock-switch path does not go through the graph.
+- Contract honesty: `useOf` is now `projectBuildUse` so it is not a React hook name. `compileBuildGraph` throws on a 1/4" plywood part that is not a back or a drawer bottom.
+- Canaries on this branch: weekend geometry 6/6 unchanged; `walk-canary.ts` linen 31.5×78×16 and pocket green; linen-check PASS. `approved-canary-changes.json` not edited. `lengthReader.ts` not touched. No new CI gate. `YARD_AI_READER` / `VITE_PUBLIC_AI_READER` not turned on. No AI planner. No AI Buy list. No user-facing wording change.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `src/lib/yard/jointLibrary.ts`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on those three files pass. Weekend canaries 6/6, walk-canary, linen-check pass.
+- Parked, not started: the potting bench's lower shelf. The graph now copies the contradiction (glue-and-screw note, floating structure check, "Pin 1 adjustable shelf") and does not declare a joint. The shelf does not meet the legs, so it is not contact either. "A linen needs…" wording still needs Ezra's yes.
 
 ### 2026-11-07 02:01 ET | equal bays shipped; shadow build graph — in progress (lock held)
 

@@ -44,6 +44,7 @@ Update 2026-11-07: shipped. Main `e25b82d4f0f96df9619e1324a6e33d829b1d6013` (#25
 ## 2026-11-07 | Potting-bench lower shelf is a pin step, and the structure check calls it floating
 
 "potting bench with a lower shelf" builds four legs, two aprons, a top, and a Lower shelf. The builder note says to glue and screw that shelf into the leg faces. The live structure check reports the shelf floating. The step says "Pin 1 adjustable shelf". Seen while lifting the shadow build graph. Not fixed there. Its own class, if Ezra wants it: a shelf asked for between the legs is a fixed shelf on a declared joint, and the structure check agrees.
+Update 2026-11-07: construction knowledge did not declare a joint for that shelf. The shelf does not meet the legs, so the graph has no contact for it either. The three-way contradiction is copied onto the shadow graph as a parked constraint. Still not fixed.
 
 ## 2026-11-06 | Refusal says "A linen needs at least ..." (user-facing wording, pre-existing)
 
