@@ -4,7 +4,8 @@
  * One finished build — casework panels, a frame with storage, or a StructureGraph lattice already
  * turned into sticks — is lifted into parts, joints, constraints, operations, and stock requirements.
  * compileBuildGraph reads that graph and nothing else: no prompt, no second length reader, no new
- * geometry. Model, steps, and Buy come back as the deterministic compiler already produced them.
+ * geometry. Sheet and lumber Buy, and the step wording, come back as the deterministic compiler
+ * already produced them. Furniture screws are derived from reviewed shop joints on this graph.
  *
  * The graph is not the live source of truth. generateFromPrompt and buildPlan do not read it.
  * StructureGraph still builds lattices. Recipes still build named objects. A pair that only
@@ -14,9 +15,12 @@
 import { isBoughtHardwareName } from "./boughtHardware";
 import { getCatalogItem } from "./catalog";
 import { contactReport } from "./contact";
+import { inchFrac } from "./inchText";
 import { constructionReading, jointPattern, type ConstructionReadingId } from "./jointLibrary";
 import { doorHingeLayout, hingeContext, leavesOf } from "./hingedLeaf";
+import { SCREWS_PER_BOX, screwBoxUnit } from "./joints";
 import { panelJoints, stickJoints } from "./modelJoints";
+import { faceScrewInches } from "./shopJoin";
 import { structureIssues } from "./structureCheck";
 import type { AssemblyStep, BomLine, BuildPlan, Panel, Vec3, YardInstance, YardProject } from "./types";
 
@@ -375,7 +379,7 @@ const LEAF_TYPES = new Set(["door", "drawer", "mirror", "glass_panel"]);
 
 type AxisBox = { min: [number, number, number]; max: [number, number, number]; size: [number, number, number] };
 
-function axisBox(panel: Panel): AxisBox {
+function axisBox(panel: { position: Vec3; size: { width: number; height: number; depth: number } }): AxisBox {
   const size: [number, number, number] = [panel.size.width, panel.size.height, panel.size.depth];
   return {
     min: [panel.position.x, panel.position.y, panel.position.z],
@@ -726,7 +730,7 @@ export function liftBuildGraph(project: YardProject, plan: BuildPlan, family: Bu
     stock: stockFrom(plan),
     assumptions: [
       "Shadow graph, version 1. The live engine does not read it.",
-      "Dimensions, cuts, Buy quantities, and step wording are the deterministic compiler's. This graph addresses them by part id.",
+      "Dimensions, cuts, sheet and lumber Buy, and step wording are the deterministic compiler's. Furniture screws are derived from reviewed joints. This graph addresses parts by id.",
       "A reviewed joint is a construction reading or a panel field. Contact stays contact. substituteStock keeps the form; the live compiler does not read it.",
     ],
   };
@@ -754,7 +758,82 @@ function parkedContradiction(
   };
 }
 
-/** Model, steps, and Buy from the graph alone. Step numbers follow operation order. */
+/**
+ * The live compiler's carcass-screw Buy line (the #8 box, including the outdoor coating).
+ * Glue, shelf pins, hinges, pulls, and an anti-tip kit are not this line.
+ */
+export function isCarcassScrewLine(line: { name: string; catalogId?: string }): boolean {
+  if (line.catalogId === "screws-8" || line.catalogId === "outdoor-screws") return true;
+  return /wood screws?/i.test(line.name);
+}
+
+function stockThicknessInches(graph: YardBuildGraph): number {
+  const item = getCatalogItem(graph.primaryMaterialId);
+  return item?.dims.thickness ?? item?.dims.diameter ?? item?.dims.height ?? 0.75;
+}
+
+/** Glue-only stock, and a material whose joins are not screws or nails, buys no furniture screws. */
+function stockBuysNoScrews(graph: YardBuildGraph): boolean {
+  if (graph.fastener === "glue") return true;
+  const joins = getCatalogItem(graph.primaryMaterialId)?.preferredJoins ?? [];
+  return joins.length > 0 && !joins.includes("screw") && !joins.includes("nail");
+}
+
+/**
+ * Screws for one reviewed shop joint, from the two parts stored on the graph.
+ * The schedule is the one modelJoints already uses: a meeting wider than 3" takes
+ * one screw per 64 sq in, otherwise one every 8" of the long edge, and never fewer
+ * than 2. The smallest overlap is the meeting axis. This does not call panelJoints.
+ * A hinge is not passed here. A stick is not a furniture screw joint.
+ */
+function screwsForReviewedParts(a: GraphPart, b: GraphPart): number {
+  if (a.source !== "panel" || b.source !== "panel") return 0;
+  const overlap = [0, 1, 2].map((axis) => Math.max(0, overlapOn(axisBox(a), axisBox(b), axis)));
+  const meeting = overlap.indexOf(Math.min(...overlap));
+  const others = overlap.filter((_, index) => index !== meeting).sort((left, right) => right - left);
+  const length = others[0] ?? 0;
+  const across = others[1] ?? 0;
+  if (across > 3) return Math.max(2, Math.ceil((length * across) / 64));
+  return Math.max(2, Math.ceil(length / 8));
+}
+
+/**
+ * Piece counts for furniture screws, from reviewed shop joints only.
+ * Contact does not add a screw. A hinge hangs on its own hardware and adds none.
+ * Glue-only and screwless stock add none, including a miniature stick model.
+ */
+export function reviewedFastenerUses(graph: YardBuildGraph): { id: string; qty: number }[] {
+  if (stockBuysNoScrews(graph)) return [];
+  const shop = graph.joints.filter((joint) => joint.reviewedJoin && jointPattern(joint.patternId ?? "")?.role === "shop");
+  if (!shop.length) return [];
+  const byId = new Map(graph.parts.map((part) => [part.id, part]));
+  let screws = 0;
+  for (const joint of shop) {
+    const a = byId.get(joint.a);
+    const b = byId.get(joint.b);
+    if (!a || !b) continue;
+    screws += screwsForReviewedParts(a, b);
+  }
+  if (screws <= 0) return [];
+  return [{ id: "screws-8", qty: screws }];
+}
+
+/** The carcass-screw Buy line for those uses. Quantity is boxes, the way the live list sells them. */
+export function fastenerBuyLines(graph: YardBuildGraph): CompiledBuild["buy"] {
+  return reviewedFastenerUses(graph).flatMap((use) => {
+    if (use.id !== "screws-8" || use.qty <= 0) return [];
+    const boxes = Math.ceil(use.qty / SCREWS_PER_BOX);
+    const length = inchFrac(faceScrewInches(stockThicknessInches(graph))).replace(" ", "-");
+    return [defined({
+      name: `#8 x ${length}" wood screws`,
+      quantity: boxes,
+      unit: screwBoxUnit(boxes),
+      catalogId: "screws-8",
+    })];
+  });
+}
+
+/** Model and steps from the graph. Sheet and lumber Buy are copied. Furniture screws are derived. */
 export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
   if (graph.version !== BUILD_GRAPH_VERSION) throw new Error(`build graph version ${graph.version} is not ${BUILD_GRAPH_VERSION}`);
   const illegal = quarterPlyProblems(graph.parts);
@@ -769,6 +848,14 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
       partsUsed: op.labels,
       fastenersUsed: op.fastenersUsed?.map((use) => ({ id: use.id, qty: use.qty })),
     }));
+  const copied = graph.stock.filter((line) => !isCarcassScrewLine(line)).map((line) => defined({
+    name: line.name,
+    quantity: line.quantity,
+    unit: line.unit,
+    catalogId: line.catalogId,
+    notes: line.notes,
+    estimatedCost: line.estimatedCost,
+  }));
   return {
     model: {
       name: graph.name,
@@ -777,14 +864,7 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
       members: graph.parts.filter((part) => part.source === "member").map((part) => memberFact(part)),
     },
     steps,
-    buy: graph.stock.map((line) => defined({
-      name: line.name,
-      quantity: line.quantity,
-      unit: line.unit,
-      catalogId: line.catalogId,
-      notes: line.notes,
-      estimatedCost: line.estimatedCost,
-    })),
+    buy: [...copied, ...fastenerBuyLines(graph)],
   };
 }
 
