@@ -14,6 +14,7 @@ import { panelJoints, stickJoints } from "./modelJoints.ts";
 import { CONSTRUCTION_READINGS, JOINT_LIBRARY, constructionReading, jointPattern } from "./jointLibrary.ts";
 import {
   BUILD_GRAPH_VERSION,
+  compileAssembly,
   compileBuildGraph,
   deriveStockPacks,
   fastenerBuyLines,
@@ -28,6 +29,7 @@ import {
   reviewedFastenerUses,
   substituteStock,
   type BuildFamily,
+  type DerivedAssemblyStep,
   type GraphPart,
   type YardBuildGraph,
 } from "./buildContract.ts";
@@ -79,7 +81,72 @@ function roundTrip(prompt: string, family: BuildFamily) {
     }
   }
   assert.deepEqual(quarterPlyProblems(graph.parts), []);
+  assertAssembly(graph, compiled, plan);
   return { project, plan, graph, compiled };
+}
+
+function assemblyUses(steps: readonly DerivedAssemblyStep[]): { id: string; qty: number }[] {
+  const by = new Map<string, number>();
+  for (const step of steps) {
+    for (const use of step.fasteners ?? []) by.set(use.id, (by.get(use.id) ?? 0) + use.qty);
+  }
+  return [...by.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([id, qty]) => ({ id, qty }));
+}
+
+/** Derived steps follow the ledger, the cuts, and the reviewed joints. They are not the live step text. */
+function assertAssembly(graph: YardBuildGraph, compiled: ReturnType<typeof compileBuildGraph>, plan?: BuildPlan) {
+  const assembly = compiled.assembly;
+  assert.ok(assembly.length >= 1);
+  assert.deepEqual(assembly.map((step) => step.step), assembly.map((_, index) => index + 1));
+  assert.equal(assembly[0]?.kind, "prepare");
+  const prepare = assembly[0];
+  assert.deepEqual([...prepare.partIds].sort(), [...new Set(compiled.cuts.map((cut) => cut.partId))].sort());
+  if (compiled.cuts.length === 0) assert.equal(prepare.title, "No derived cuts");
+  else {
+    assert.equal(prepare.title, "Cut derived pieces");
+    assert.match(prepare.detail, new RegExp(`\\b${compiled.cuts.length} derived\\b`));
+  }
+  const known = new Set(graph.parts.map((part) => part.id));
+  for (const step of assembly) {
+    for (const id of step.partIds) assert.ok(known.has(id), id);
+    for (const id of [...(step.hosts ?? []), ...(step.guests ?? [])]) assert.ok(known.has(id), id);
+  }
+  assert.deepEqual(assemblyUses(assembly), reviewedFastenerUses(graph));
+  const ledger = new Map(fastenerDemandLedger(graph).map((row) => [row.pair, row]));
+  const reviewed = graph.joints.filter((joint) => joint.reviewedJoin);
+  const pairs = new Set(reviewed.map((joint) => pair(joint)));
+  const covered = assembly.filter((step) => step.kind === "fasten" || step.kind === "hang");
+  assert.equal(covered.length, pairs.size);
+  for (const step of covered) {
+    const key = step.id.slice(step.kind === "hang" ? "hang:".length : "fasten:".length);
+    assert.equal(pairs.has(key), true, step.id);
+    const qty = (step.fasteners ?? []).reduce((sum, use) => sum + use.qty, 0);
+    assert.equal(qty, ledger.get(key)?.screws ?? 0, step.id);
+    const sample = graph.joints.find((joint) => joint.id === step.jointIds[0]);
+    const role = jointPattern(sample?.patternId ?? "")?.role;
+    const machine = assembly.find((row) => row.kind === "machine" && row.jointIds.includes(sample?.id ?? ""));
+    if (role === "shop") {
+      assert.ok(machine, step.id);
+      assert.ok(machine.step < step.step, step.id);
+    } else {
+      assert.equal(machine, undefined, step.id);
+      if (sample?.patternId === "hinge") assert.equal(step.kind, "hang");
+    }
+  }
+  if (pairs.size === 0) {
+    assert.equal(assembly.some((step) => step.kind === "machine" || step.kind === "fasten" || step.kind === "hang"), false);
+    assert.match(compiled.assemblyDisclosure ?? "", /No reviewed joints/);
+    const placed = assembly.filter((step) => step.kind === "place").flatMap((step) => step.partIds);
+    assert.deepEqual(placed.slice().sort(), graph.parts.map((part) => part.id).sort());
+  }
+  const blob = `${assembly.map((step) => `${step.title}\n${step.detail}`).join("\n")}\n${compiled.assemblyDisclosure ?? ""}`;
+  assert.doesNotMatch(blob, /Pin 1 adjustable shelf/);
+  if (plan) {
+    for (const live of plan.instructions) {
+      assert.equal(assembly.some((step) => step.title === live.title), false, live.title);
+      assert.equal(assembly.some((step) => step.detail === live.description), false, live.title);
+    }
+  }
 }
 
 function roles(graph: YardBuildGraph): string[] {
@@ -286,9 +353,16 @@ describe("the shadow graph stays off the live path", () => {
     assert.equal(live.includes("realizeCuttablePieces"), false);
     assert.equal(live.includes("deriveStockPacks"), false);
     assert.equal(live.includes("stockCompile"), false);
+    assert.equal(live.includes("compileAssembly"), false);
+    assert.equal(live.includes("assemblyCompile"), false);
+    assert.equal(report.includes("compileAssembly"), false);
+    assert.equal(report.includes("assemblyCompile"), false);
     const stock = readFileSync(new URL("./stockCompile.ts", import.meta.url), "utf8");
     assert.doesNotMatch(stock, /lengthReader|promptMain|from "\.\/report|modelJoints|YARD_AI_READER|VITE_PUBLIC_AI_READER|VITE_PUBLIC_YARD_AI_READER/);
     assert.doesNotMatch(stock, /graph\.stock/);
+    const assembly = readFileSync(new URL("./assemblyCompile.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(assembly, /lengthReader|promptMain|from ["']\.\/report|modelJoints|panelJoints|stickJoints|YARD_AI_READER|VITE_PUBLIC_AI_READER|VITE_PUBLIC_YARD_AI_READER/);
+    assert.doesNotMatch(assembly, /graph\.operations|graph\.stock|\b0\.25\b/);
   });
 });
 
@@ -789,8 +863,18 @@ describe("construction readings", () => {
         "cubby shelf 60 wide 48 tall 12 deep",
         "cubby shelf 48 wide 48 tall 16 deep",
       ]) {
-        const graph = roundTrip(prompt, "casework").graph;
+        const trip = roundTrip(prompt, "casework");
+        const graph = trip.graph;
         assert.equal(graph.joints.some((joint) => joint.reviewedJoin), false, prompt);
+        assert.equal(trip.compiled.assembly.some((step) => step.kind === "machine"), false, prompt);
+        const rails = graph.joints.filter((joint) => {
+          const a = trip.project.panels.find((panel) => panel.id === joint.a);
+          const b = trip.project.panels.find((panel) => panel.id === joint.b);
+          return /front rail/i.test(`${a?.name} ${b?.name}`) && /center support/i.test(`${a?.name} ${b?.name}`);
+        });
+        if (prompt.startsWith("cubby shelf 48 wide 36")) assert.ok(rails.length >= 3, prompt);
+        assert.ok(rails.every((joint) => joint.basis === "contact" && joint.reviewedJoin === false), prompt);
+        assert.ok(rails.every((joint) => !trip.compiled.assembly.some((step) => step.jointIds.includes(joint.id))), prompt);
       }
     });
   });
@@ -1566,7 +1650,38 @@ describe("shadow cuts and sheet/lumber packs", () => {
         assert.match(row.compiled.stockDisclosure ?? "", /whole craft stock/i, row.prompt);
         assert.doesNotMatch(row.compiled.stockDisclosure ?? "", /1000|800|pack of/, row.prompt);
         assert.ok(row.compiled.buy.some((line) => line.catalogId === row.graph.primaryMaterialId), row.prompt);
+        assert.equal(row.compiled.assembly[0]?.title, "No derived cuts", row.prompt);
+        assert.match(row.compiled.assembly[0]?.detail ?? "", /whole craft stock/i, row.prompt);
+        assert.doesNotMatch(`${row.compiled.assembly[0]?.detail}\n${row.compiled.assemblyDisclosure ?? ""}`, /1000|800|pack of/, row.prompt);
+        assert.equal(row.compiled.assembly.some((step) => step.kind === "machine" || step.kind === "fasten"), false, row.prompt);
       }
+      const assemblyText = (row: (typeof rows)[number]) => [
+        ...row.compiled.assembly.map((step) => `${step.title}\n${step.detail}`),
+        row.compiled.assemblyDisclosure ?? "",
+      ].join("\n");
+      assert.match(book.compiled.assembly[0]?.detail ?? "", /\b16 derived cuts\b/);
+      assert.equal(book.compiled.assembly.some((step) => step.kind === "machine"), false);
+      const bookBack = book.graph.parts.find((part) => part.source === "panel" && part.type === "back");
+      assert.ok(bookBack);
+      assert.ok(book.compiled.assembly.some((step) => step.kind === "place" && step.partIds.includes(bookBack.id)));
+      assert.equal(book.compiled.assembly.some((step) => step.kind === "machine" && step.partIds.includes(bookBack.id)), false);
+      const rewritten = compileBuildGraph({
+        ...book.graph,
+        operations: [{ id: "copied", order: 1, title: "Pin 1 adjustable shelf", description: book.plan.instructions[0]?.description ?? "live", labels: ["*"], partIds: book.graph.parts.map((part) => part.id) }],
+        stock: book.graph.stock.map((line) => ({ ...line, quantity: 99 })),
+      });
+      assert.deepEqual(rewritten.assembly, book.compiled.assembly);
+      assert.equal(rewritten.assemblyDisclosure, book.compiled.assemblyDisclosure);
+      assert.equal(rewritten.steps[0]?.title, "Pin 1 adjustable shelf");
+      assert.notEqual(rewritten.steps[0]?.title, rewritten.assembly[0]?.title);
+      assert.match(oak.compiled.assembly[0]?.detail ?? "", /\b61 derived cuts\b/);
+      assert.doesNotMatch(assemblyText(oak), /\b24\b|\b25\b/);
+      assert.match(assemblyText(bench), /No reviewed joints/);
+      assert.doesNotMatch(assemblyText(bench), /pin 1 adjustable shelf|anti-tip/i);
+      const benchShelf = bench.graph.parts.find((part) => part.role === "shelf");
+      assert.ok(benchShelf);
+      assert.ok(bench.compiled.assembly.some((step) => step.kind === "place" && step.partIds.includes(benchShelf.id)));
+      assert.equal(bench.compiled.assembly.some((step) => step.kind === "fasten" && step.partIds.includes(benchShelf.id)), false);
       const side = stockPart("side", { width: 0.75, height: 10, depth: 20 }, "plywood-3-4-4x8", "upright");
       const shelf = stockPart("shelf", { width: 8, height: 0.75, depth: 20 });
       const screwed = stockGraph([side, shelf]);
@@ -1577,6 +1692,188 @@ describe("shadow cuts and sheet/lumber packs", () => {
       assert.deepEqual(both.buy.filter(isCarcassScrewLine), fastenerBuyLines(screwed));
       assert.equal(both.fasteners[0]?.screws, 3);
       assert.ok(both.packs.some((pack) => pack.kind === "sheet"));
+      assertAssembly(screwed, both);
+      const groove = both.assembly.find((step) => step.kind === "machine");
+      const screwedFasten = both.assembly.find((step) => step.kind === "fasten");
+      assert.equal(groove?.seat, "host");
+      assert.deepEqual(groove?.hosts, ["side"]);
+      assert.deepEqual(groove?.guests, ["shelf"]);
+      assert.ok(groove && screwedFasten && groove.step < screwedFasten.step);
+      assert.deepEqual(screwedFasten?.fasteners, [{ id: "screws-8", qty: 3 }]);
+      assert.equal(both.steps.length, 0);
     });
+  });
+});
+
+describe("assembly steps come from joints and parts", () => {
+  const housed = () => {
+    const side = stockPart("side", { width: 0.75, height: 10, depth: 8 }, "plywood-3-4-4x8", "upright");
+    const shelf = stockPart("shelf", { width: 8, height: 0.75, depth: 8 });
+    side.position = { x: 0, y: 0, z: 0 };
+    shelf.position = { x: 0.5, y: 4, z: 0 };
+    const graph = stockGraph([side, shelf]);
+    graph.joints = [{ id: "j1", a: "side", b: "shelf", basis: "declared", patternId: "dado", reviewedJoin: true }];
+    return graph;
+  };
+
+  it("seats the part that enters, and copies the ledger instead of recounting it", () => {
+    const graph = housed();
+    const compiled = compileBuildGraph(graph);
+    assertAssembly(graph, compiled);
+    const machine = compiled.assembly.find((step) => step.kind === "machine");
+    assert.equal(machine?.machining, "groove");
+    assert.deepEqual(machine?.hosts, ["side"]);
+    assert.deepEqual(machine?.guests, ["shelf"]);
+    const trusted = compileAssembly(graph, {
+      cuts: [{ partId: "shelf" }, { partId: "shelf" }, { partId: "side" }],
+      fasteners: [{ pair: pair({ a: "side", b: "shelf" }), patternId: "dado", screws: 7 }],
+      fastenerId: "screws-8",
+    });
+    assert.equal(trusted.steps.find((step) => step.kind === "fasten")?.fasteners?.[0]?.qty, 7);
+    assert.match(trusted.steps[0]?.detail ?? "", /3 derived cuts for 2 parts/);
+    assert.notEqual(compiled.assembly.find((step) => step.kind === "fasten")?.fasteners?.[0]?.qty, 7);
+    const planed = compileAssembly(graph, {
+      cuts: [],
+      fasteners: [{ pair: pair({ a: "side", b: "shelf" }), patternId: "dado", screws: 0, noScrew: "planed" }],
+    });
+    assert.equal(planed.steps.find((step) => step.kind === "fasten")?.noScrew, "planed");
+    assert.equal(planed.steps.find((step) => step.kind === "fasten")?.fasteners, undefined);
+    const twice: YardBuildGraph = {
+      ...graph,
+      joints: [
+        graph.joints[0],
+        { id: "j2", a: "shelf", b: "side", basis: "declared", patternId: "dado", reviewedJoin: true },
+      ],
+    };
+    const doubled = compileBuildGraph(twice);
+    const fastens = doubled.assembly.filter((step) => step.kind === "fasten");
+    assert.equal(fastens.length, 1);
+    assert.deepEqual(fastens[0]?.jointIds, ["j1", "j2"]);
+    assert.equal(fastens[0]?.fasteners?.[0]?.qty, fastenerDemandLedger(twice)[0]?.screws);
+    assertAssembly(twice, doubled);
+    const contactOnly = stockGraph(graph.parts);
+    contactOnly.joints = [{ id: "c1", a: "shelf", b: "side", basis: "contact", contactClass: "butt", reviewedJoin: false }];
+    assert.equal(compileBuildGraph(contactOnly).assembly.some((step) => step.kind === "machine" || step.kind === "fasten"), false);
+    const cycleBox = (rot: number) => {
+      const pos = [0, 0, 0];
+      const hostSize = [1.5, 10, 0.75];
+      const guestPos = [1, 4, 0];
+      const guestSize = [8, 0.5, 8];
+      const pick = (xs: number[]) => [xs[rot], xs[(rot + 1) % 3], xs[(rot + 2) % 3]];
+      const hostAt = pick(pos);
+      const guestAt = pick(guestPos);
+      const hostBox = pick(hostSize);
+      const guestBox = pick(guestSize);
+      const part = (id: string, at: number[], box: number[], materialId: string, type: Panel["type"]): GraphPart => ({
+        source: "panel",
+        role: type,
+        id,
+        type,
+        name: id,
+        materialId,
+        position: { x: at[0], y: at[1], z: at[2] },
+        size: { width: box[0], height: box[1], depth: box[2] },
+      });
+      const wide = part("wide", hostAt, hostBox, "plywood-3-4-4x8", "upright");
+      const entered = part("entered", guestAt, guestBox, "plywood-1-2-4x8", "shelf");
+      const faced = stockGraph([entered, wide]);
+      faced.joints = [{ id: "w1", a: "wide", b: "entered", basis: "declared", patternId: "dado", reviewedJoin: true }];
+      return faced;
+    };
+    for (const rot of [0, 1, 2]) {
+      const faced = cycleBox(rot);
+      const seated = compileBuildGraph(faced);
+      const groove = seated.assembly.find((step) => step.kind === "machine");
+      assert.deepEqual(groove?.hosts, ["wide"], `rot ${rot}`);
+      assert.deepEqual(groove?.guests, ["entered"], `rot ${rot}`);
+      assert.equal(groove?.seat, "host", `rot ${rot}`);
+    }
+  });
+
+  it("groups a drawer, hangs a counted hinge, and leaves glue without screws", () => {
+    const side = stockPart("side", { width: 0.75, height: 20, depth: 12 }, "plywood-3-4-4x8", "upright");
+    side.position = { x: 0, y: 0, z: 0 };
+    const drawer = (id: string, y: number, materialId = "plywood-3-4-4x8", type: Panel["type"] = "drawer") => {
+      const part = stockPart(id, { width: 8, height: type === "drawer" && id === "bottom" ? 0.25 : 0.75, depth: 8 }, materialId, type);
+      part.position = { x: 1, y, z: 1 };
+      part.drawerId = "box";
+      if (id === "bottom") part.drawerPart = "bottom";
+      return part;
+    };
+    const front = drawer("front", 10);
+    const left = drawer("left", 12);
+    const bottom = drawer("bottom", 14, "plywood-1-4-4x8");
+    const drawerGraph = stockGraph([left, side, bottom, front]);
+    const grouped = compileBuildGraph(drawerGraph);
+    assertAssembly(drawerGraph, grouped);
+    const places = grouped.assembly.filter((step) => step.kind === "place");
+    assert.deepEqual(places.map((step) => step.partIds), [["side"], ["front", "left", "bottom"]]);
+    const group = grouped.assembly.find((step) => step.kind === "group");
+    assert.equal(group?.subassemblyId, "drawer:box");
+    assert.ok(group && places[1] && group.step > places[1].step);
+    assert.equal(group?.fasteners, undefined);
+    assert.equal(grouped.assembly.some((step) => step.kind === "machine"), false);
+
+    const door = stockPart("door", { width: 12, height: 18, depth: 0.75 }, "plywood-3-4-4x8", "door");
+    door.position = { x: 0, y: 1, z: 12 };
+    door.hinged = { to: "side", edge: "left", hinges: 2 };
+    const hingeGraph = stockGraph([door, side]);
+    hingeGraph.joints = [{ id: "h1", a: "door", b: "side", basis: "declared", patternId: "hinge", reviewedJoin: true, reading: "hinge-leaf" }];
+    const hung = compileBuildGraph(hingeGraph);
+    assertAssembly(hingeGraph, hung);
+    const hang = hung.assembly.find((step) => step.kind === "hang");
+    assert.equal(hang?.noScrew, "hinge");
+    assert.deepEqual(hang?.hardware, { kind: "hinge", qty: 2 });
+    assert.deepEqual(hang?.hosts, ["side"]);
+    assert.deepEqual(hang?.guests, ["door"]);
+    assert.equal(hang?.fasteners, undefined);
+    assert.equal(hung.assembly.some((step) => step.kind === "machine"), false);
+    const uncounted = stockPart("leaf", { width: 12, height: 18, depth: 0.75 }, "plywood-3-4-4x8", "door");
+    uncounted.position = { x: 0, y: 1, z: 12 };
+    const bare = stockGraph([uncounted, side]);
+    bare.joints = [{ id: "h2", a: "leaf", b: "side", basis: "declared", patternId: "hinge", reviewedJoin: true, reading: "hinge-leaf" }];
+    const bareHung = compileBuildGraph(bare);
+    assert.match(bareHung.assembly.find((step) => step.kind === "hang")?.detail ?? "", /does not carry a hinge count/);
+    assert.equal(bareHung.assembly.find((step) => step.kind === "hang")?.hardware, undefined);
+
+    const glued = compileBuildGraph({ ...housed(), fastener: "glue" });
+    assert.equal(glued.assembly.find((step) => step.kind === "fasten")?.noScrew, "glue-stock");
+    assert.equal(glued.assembly.find((step) => step.kind === "fasten")?.fasteners, undefined);
+    assert.match(glued.assemblyDisclosure ?? "", /ledger is empty/);
+    assert.deepEqual(reviewedFastenerUses({ ...housed(), fastener: "glue" }), []);
+  });
+
+  it("machines a lap on both parts and still fastens a cycle after the groove", () => {
+    const left = stockPart("left", { width: 8, height: 0.75, depth: 8 });
+    const right = stockPart("right", { width: 8, height: 0.75, depth: 8 });
+    right.position = { x: 1, y: 0, z: 0 };
+    const lap = stockGraph([right, left]);
+    lap.joints = [{ id: "lap", a: "left", b: "right", basis: "declared", patternId: "lap", reviewedJoin: true }];
+    const lapped = compileBuildGraph(lap);
+    assertAssembly(lap, lapped);
+    const machine = lapped.assembly.find((step) => step.kind === "machine");
+    assert.equal(machine?.machining, "half-lap");
+    assert.equal(machine?.seat, "both");
+    assert.deepEqual(machine?.hosts?.slice().sort(), ["left", "right"]);
+    assert.equal(lapped.assemblyDisclosure, undefined);
+
+    const board = (id: string, y: number) => {
+      const part = stockPart(id, { width: 4, height: 0.75, depth: 4 });
+      part.position = { x: 0, y, z: 0 };
+      return part;
+    };
+    const cycle = stockGraph([board("c", 6), board("a", 0), board("b", 3)]);
+    cycle.joints = [
+      { id: "ab", a: "b", b: "a", basis: "declared", patternId: "dado", reviewedJoin: true },
+      { id: "bc", a: "c", b: "b", basis: "declared", patternId: "dado", reviewedJoin: true },
+      { id: "ca", a: "a", b: "c", basis: "declared", patternId: "dado", reviewedJoin: true },
+    ];
+    const cycled = compileBuildGraph(cycle);
+    assert.match(cycled.assemblyDisclosure ?? "", /cycle/);
+    assertAssembly(cycle, cycled);
+    for (const fasten of cycled.assembly.filter((step) => step.kind === "fasten")) {
+      const groove = cycled.assembly.find((step) => step.kind === "machine" && step.id === `machine:${fasten.id.slice("fasten:".length)}`);
+      assert.ok(groove && groove.step < fasten.step, fasten.id);
+    }
   });
 });

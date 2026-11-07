@@ -47,6 +47,25 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 09:22 ET | shadow assembly steps — in progress (lock held)
+
+- Shadow cut and pack compile is on main `8dad9ecb89d014d703bf1d3bffe62eb9d6b3d545` (#267) and release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b` (#268, merge-back). Do not redo it. The squash message says Critic PASS on #266 r2 head `083e65cb`. This note does not add a PASS entry or a deployment id. The cut-and-pack lock rode in on the merge-back and was not cleared. Replaced on this feature branch only.
+- New lock: shadow assembly steps. Not graded. Not merged. PR into `release/2026-10-24`. Do not merge.
+- `compileAssembly` (`src/lib/yard/assemblyCompile.ts`) is called from `compileBuildGraph`. It writes `assembly` and, when a part or joint does not become a machining or fastening step, `assemblyDisclosure`. `steps` stays the copied live operations. `generateFromPrompt` and `buildPlan` do not read the graph. `report.ts` is not imported.
+- Order is the reviewed joints and the part groups. A housed end waits for the part it enters. A hinge leaf waits for its carcass part. Parts that share a `drawerId` or a `leaf.id` stay together. Ties go by position, then id. A lap or a miter is machined on both parts. Contact is not a step.
+- The screw count on a fasten step is that pair's fastener-ledger row. The compiler does not recount it. A hinge adds no carcass screws. A hinge count is copied only when the leaf records one. An empty ledger (glue or screwless stock) fastens with no screws. a→b and b→a are one step. A cycle is ordered by position, and the groove still precedes the fasten.
+- Compile-back, from the graph. Live step titles are not the answer key.
+  - `bookcase 36 wide 84 tall 12 deep`, the 3/4" prompt, and the 1/2" prompt: no reviewed joints, so no groove and no derived carcass screws. The 1/4" back is placed with the other unjoined parts. It is not machined as a rebate. The prepare step says 16 derived cuts. Rewriting the copied operations, including to the live pin-shelf title, leaves `assembly` unchanged. `steps` still copies that title.
+  - `from oak`: 61 derived cuts. The assembly text does not say 24 or 25. The pack is still 25 against a live Buy of 24, and that gap stays on the packs.
+  - `potting bench with a lower shelf`: no reviewed joint, so the lower shelf is placed and not fastened. The derived text does not say "Pin 1 adjustable shelf". That title stays on the copied live step. The parked contradiction stays.
+  - `cubby shelf` sizes already in the graph tests: no reviewed joints, no machine step. Front-rail / center-support pairs stay contact and are not assembly joints.
+  - A shelf end inside an upright, declared with the upright named first: the groove is in the upright, then the shelf is fastened. That holds for the 3/4" face and for a 1.5" face, in any axis order. The part that runs out of the joint is the one fastened; a tie is not guessed. A contact-only copy of the pair is not machined. The ledger count is the step count. A handed ledger of 7 is kept as 7, so the step compiler is not a second schedule. The 20" housed pair still derives 3.
+  - `eiffel tower` and `eiffel tower from toothpicks`: no derived cuts, no machine step, no carcass screws. The prepare step carries the whole-craft disclosure. It does not say 1000 or 800.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `compileAssembly`, `reviewedFastenerUses`, `fastenerBuyLines`, `realizeCuttablePieces`, or `deriveStockPacks`. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. `YARD_AI_READER` / `VITE_PUBLIC_YARD_AI_READER` not turned on. No new CI gate. `approved-canary-changes.json` not edited. No linen wording. No held-out honesty queue. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. User-facing wording not changed. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. The live compiler was not edited.
+- Files: `src/lib/yard/assemblyCompile.ts`, `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 38/38. `npx tsc --noEmit` pass. `npx eslint` on `assemblyCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 08:40 ET | #266 r1 block — a glue-up must cover the finished thickness (same branch, not graded)
 
 - Yard Critic BLOCK on #266 r1, head `f17b0416c8263bea5b04b9945893863efa9ca952`, vs release `7134c41b20ed329a11fc52d36699cbef9c10de71`. Same branch. Not graded. Not merged. Do not merge.
