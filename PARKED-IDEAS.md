@@ -39,6 +39,11 @@ Update 2026-11-06: shipped via #251 / #252 / #253. Yard Critic PASS on #251 head
 
 A long shelf span that the span pass divides into 3 or more bays gave wider end bays than the middle. Divider thickness was subtracted to choose the bay count, then the centres split the whole run, so each end bay was wider by half the divider. On release `c230ab55`: `closet 72 wide` was 23 1/8, 22 3/4, 23 1/8; `cabinet 42 wide 30 tall 15 deep with 3 doors in 1/2 inch plywood` was 13 5/16, 13 1/16, 13 5/16 (an older note of about 13 5/12, 13 1/6, 13 5/12 is not this tip).
 Update 2026-11-06 18:16 ET: in progress on PR #254 (lock held on the feature branch; not merged, not graded). Centres now use the equal clear bay. Closet 72 is 23, 23, 23 and fills 70 1/2". The cabinet is 13 1/4, 13 1/4, 13 1/4 and fills 40 3/4". A two-bay split and builder `Bay divider` layouts stay as they were. Mover list: `scripts/baselines/approvals/equal-bays/`.
+Update 2026-11-07: shipped. Main `e25b82d4f0f96df9619e1324a6e33d829b1d6013` (#255). Release merge-back #256 is `94cc8d6589c42c77fe054111b582af912113f20a`. Do not reopen it. This note does not add a Critic PASS.
+
+## 2026-11-07 | Potting-bench lower shelf is a pin step, and the structure check calls it floating
+
+"potting bench with a lower shelf" builds four legs, two aprons, a top, and a Lower shelf. The builder note says to glue and screw that shelf into the leg faces. The live structure check reports the shelf floating. The step says "Pin 1 adjustable shelf". Seen while lifting the shadow build graph. Not fixed there. Its own class, if Ezra wants it: a shelf asked for between the legs is a fixed shelf on a declared joint, and the structure check agrees.
 
 ## 2026-11-06 | Refusal says "A linen needs at least ..." (user-facing wording, pre-existing)
 
