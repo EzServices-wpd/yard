@@ -47,6 +47,20 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 07:13 ET | #263 r1 block — fastener ledger (same branch, not parked)
+
+- Yard Critic BLOCK on #263 r1, head `80396b8537a3fa2c41a4f9aaf17221b4f1ad8728`, vs release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. Same branch. Not graded. Not merged. Do not merge. Not parked.
+- The shadow ledger now has one row per physical reviewed shop pair. a→b and b→a count once. Each row carries the meeting class, a no-screw reason when the pair buys none, and the screw item follows the build name.
+  - B1: a thin sheet named as a back takes a screw every 8" of the long edge, including when the face is wider than 3". The wide rabbet (side 48×96×0.75, Back 48×96×0.25, both at the origin) was 72 screws / 2 boxes and is now 12 / 1 box, both part orders. Live `panelJoints` calls that pair a back and counts 12. The narrow back-edge rabbet (upright 0.75×96×12, Back at (0.5, 0, 11.25)) stays 12.
+  - B2: a part under 3/4" planed thinner than its stock is glue-only, except a named back and a full-thickness 1/2" sheet. The planed 1/2" shelf in 3/4" stock still lifts as a housed-dado and now buys no carcass screws. Live `panelJoints` is empty and live `buildPlan` has no carcass-screw line. A reviewed shop pair with purchased `A-frame bracket 1` buys none. The joint stays on the graph. Contact still adds none.
+  - B3: host 0.75×10×400 and shelf 8×0.75×400 is 50 screws / 1 box. Both directions of that pair stay 50 / 1 box. Two distinct pairs stay 100 / 2 boxes.
+  - B4: `birdhouse` and `outdoor birdhouse` each have one reviewed miter and now buy `#8 x 1-1/4" exterior-coated or stainless wood screws` (`outdoor-screws`), 2 screws / 1 box. The live line is the same item and is 30 contact screws; that count is not copied. `chicken coop` has six notches and two hinges, derives 12 screws / 1 box of `#8 x 2-1/2" exterior-coated or stainless wood screws`. The live exterior line is 3 boxes (149 contact screws). The structural-screw line stays copied. Hinges add no carcass screws.
+- Kept: a 20" housed end is 3 screws / one box of `#8 x 1-1/4"`. A 32" × 8" lap is 4. The seven compile-back families still derive no screws. Their live contact screw boxes stay unrestored. Graph-level glue and screwless stock still derive none. Sheet goods, lumber, glue, pins, hinges, pulls, anti-tip, and step wording stay copied.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `reviewedFastenerUses`, `fastenerBuyLines`, or `fastenerDemandLedger`. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. No new CI gate. `approved-canary-changes.json` not edited. User-facing wording not changed. This note does not record a canary re-run.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 28/28. `npx tsc --noEmit` pass. `npx eslint` on `buildContract.ts` and `buildContract.test.ts` pass.
+- Parked, not this fix: potting-bench lower shelf; cardboard bunk bed for a child; missing lift-up seat; glass doors as solid plywood; charging valet / kamado placeholders; extra wardrobe pulls; media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 06:48 ET | shadow fastener demand — in progress (lock held)
 
 - Construction knowledge and substitution is on main `10f776525411543ea0fc7d2d13c421d49f3a7c04` (#261) and release `6ef07183c7ca20c0aec85b581df54affbf9b993e` (#262, merge-back of #260). Do not redo it. This note does not record a Critic PASS or a deployment id for that ship. Its lock rode in on the merge-back. Replaced on this feature branch only. Lock commit `5cd8a13a16e1be54d4a503d4daccbf16d97da062`.

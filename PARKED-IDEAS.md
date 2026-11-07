@@ -46,10 +46,11 @@ Update 2026-11-07: shipped. Main `e25b82d4f0f96df9619e1324a6e33d829b1d6013` (#25
 "potting bench with a lower shelf" builds four legs, two aprons, a top, and a Lower shelf. The builder note says to glue and screw that shelf into the leg faces. The live structure check reports the shelf floating. The step says "Pin 1 adjustable shelf". Seen while lifting the shadow build graph. Not fixed there. Its own class, if Ezra wants it: a shelf asked for between the legs is a fixed shelf on a declared joint, and the structure check agrees.
 Update 2026-11-07: construction knowledge did not declare a joint for that shelf. The shelf does not meet the legs, so the graph has no contact for it either. The three-way contradiction is copied onto the shadow graph as a parked constraint. Still not fixed.
 Update 2026-11-07 06:48 ET: shadow fastener demand did not fix it. The shelf is still not a reviewed joint, so it still does not add a screw. The live Buy screw line for that bench is the contact butts, and the shadow compile does not copy it. The contradiction stays.
+Update 2026-11-07 07:13 ET: the #263 r1 ledger fix did not touch this shelf. Still parked.
 
 ## 2026-11-07 | Held-out evaluation findings (not this round)
 
-Still parked. The shadow fastener-demand pass did not investigate them and did not change them:
+Still parked. The #263 r1 block was a shadow-ledger fix, not one of these, and this round did not investigate them:
 - cardboard bunk bed for a child
 - missing lift-up seat
 - glass doors as solid plywood

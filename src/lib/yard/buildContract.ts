@@ -5,7 +5,8 @@
  * turned into sticks — is lifted into parts, joints, constraints, operations, and stock requirements.
  * compileBuildGraph reads that graph and nothing else: no prompt, no second length reader, no new
  * geometry. Sheet and lumber Buy, and the step wording, come back as the deterministic compiler
- * already produced them. Furniture screws are derived from reviewed shop joints on this graph.
+ * already produced them. Furniture screws are one ledger row per reviewed shop pair: thin backs
+ * on the long edge, glue-only and hardware pairs at zero, outdoor nouns on the exterior screw.
  *
  * The graph is not the live source of truth. generateFromPrompt and buildPlan do not read it.
  * StructureGraph still builds lattices. Recipes still build named objects. A pair that only
@@ -20,6 +21,7 @@ import { constructionReading, jointPattern, type ConstructionReadingId } from ".
 import { doorHingeLayout, hingeContext, leavesOf } from "./hingedLeaf";
 import { SCREWS_PER_BOX, screwBoxUnit } from "./joints";
 import { panelJoints, stickJoints } from "./modelJoints";
+import { isOutdoorPrompt } from "./outdoor";
 import { faceScrewInches } from "./shopJoin";
 import { structureIssues } from "./structureCheck";
 import type { AssemblyStep, BomLine, BuildPlan, Panel, Vec3, YardInstance, YardProject } from "./types";
@@ -235,6 +237,25 @@ export type CompiledBuild = {
     notes?: string;
     estimatedCost?: number;
   }[];
+  /**
+   * One row per physical pair of a reviewed shop joint. a→b and b→a are one row.
+   * Contact and hinges are absent. screws is 0 when the pair is glue-only or hardware.
+   */
+  fasteners: FastenerDemand[];
+};
+
+/** Live meeting class for a carcass-screw count. A thin named back is "back" even when the face is wide. */
+export type FastenerMeeting = "back" | "face" | "butt";
+
+export type FastenerDemand = {
+  /** Sorted part ids. The same boards in either order share this key. */
+  pair: string;
+  patternId: string;
+  meeting: FastenerMeeting;
+  /** Piece count for this pair. Zero when the pair buys no carcass screws. */
+  screws: number;
+  /** Set when the pair is kept and is not a carcass-screw connection. */
+  noScrew?: "hardware" | "planed" | "thin-sheet" | "member";
 };
 
 function defined<T extends Record<string, unknown>>(row: T): T {
@@ -772,6 +793,16 @@ function stockThicknessInches(graph: YardBuildGraph): number {
   return item?.dims.thickness ?? item?.dims.diameter ?? item?.dims.height ?? 0.75;
 }
 
+function partStockThickness(part: GraphPart): number {
+  const item = getCatalogItem(part.materialId);
+  return item?.dims.thickness ?? item?.dims.height ?? 0.75;
+}
+
+function thinnestPart(part: GraphPart): number {
+  if (part.source !== "panel") return Infinity;
+  return Math.min(part.size.width, part.size.height, part.size.depth);
+}
+
 /** Glue-only stock, and a material whose joins are not screws or nails, buys no furniture screws. */
 function stockBuysNoScrews(graph: YardBuildGraph): boolean {
   if (graph.fastener === "glue") return true;
@@ -780,55 +811,123 @@ function stockBuysNoScrews(graph: YardBuildGraph): boolean {
 }
 
 /**
- * Screws for one reviewed shop joint, from the two parts stored on the graph.
- * The schedule is the one modelJoints already uses: a meeting wider than 3" takes
- * one screw per 64 sq in, otherwise one every 8" of the long edge, and never fewer
- * than 2. The smallest overlap is the meeting axis. This does not call panelJoints.
- * A hinge is not passed here. A stick is not a furniture screw joint.
+ * Outdoor by the build's own name, the same noun list the live prompt trigger uses.
+ * The screw quantity on the lifted Buy list is not an input.
  */
-function screwsForReviewedParts(a: GraphPart, b: GraphPart): number {
-  if (a.source !== "panel" || b.source !== "panel") return 0;
-  const overlap = [0, 1, 2].map((axis) => Math.max(0, overlapOn(axisBox(a), axisBox(b), axis)));
-  const meeting = overlap.indexOf(Math.min(...overlap));
-  const others = overlap.filter((_, index) => index !== meeting).sort((left, right) => right - left);
-  const length = others[0] ?? 0;
-  const across = others[1] ?? 0;
-  if (across > 3) return Math.max(2, Math.ceil((length * across) / 64));
-  return Math.max(2, Math.ceil(length / 8));
+function outdoorExposure(graph: YardBuildGraph): boolean {
+  return isOutdoorPrompt(`${graph.name} ${graph.spec?.noun ?? ""}`);
+}
+
+function boughtHardware(part: GraphPart): boolean {
+  if (part.source !== "panel") return false;
+  return isBoughtHardwareName(part.name) || part.materialId === "swing-a-frame-bracket";
+}
+
+/** A part under 3/4" planed thinner than its stock is glued. A named back and a full-thickness 1/2" sheet are not. */
+function planedGlueOnly(part: GraphPart): boolean {
+  if (part.source !== "panel") return false;
+  const thin = thinnestPart(part);
+  if (!(thin < 0.7 && thin < partStockThickness(part) - 0.05)) return false;
+  if (/\bback\b/i.test(part.name)) return false;
+  if (/^dowel-/.test(part.materialId)) return false;
+  if (part.polygon) return false;
+  return true;
+}
+
+function sheetThin(part: GraphPart): boolean {
+  if (part.source !== "panel") return false;
+  return thinnestPart(part) < 0.5 && !/^dowel-/.test(part.materialId) && !part.polygon;
+}
+
+function namedThinBack(part: GraphPart): boolean {
+  return sheetThin(part) && part.source === "panel" && /\bback\b/i.test(part.name);
 }
 
 /**
- * Piece counts for furniture screws, from reviewed shop joints only.
- * Contact does not add a screw. A hinge hangs on its own hardware and adds none.
- * Glue-only and screwless stock add none, including a miniature stick model.
+ * Meeting class and piece count for two panels. A thin sheet named as a back takes a screw
+ * every 8" of the long edge even when the face is wider than 3". Any other wide meeting is
+ * one screw per 64 sq in. A narrow meeting is every 8" of the long edge. At least 2.
+ * This does not call panelJoints.
  */
-export function reviewedFastenerUses(graph: YardBuildGraph): { id: string; qty: number }[] {
+function meetingDemand(
+  a: Extract<GraphPart, { source: "panel" }>,
+  b: Extract<GraphPart, { source: "panel" }>,
+): { meeting: FastenerMeeting; screws: number } {
+  const overlap = [0, 1, 2].map((axis) => Math.max(0, overlapOn(axisBox(a), axisBox(b), axis)));
+  const axis = overlap.indexOf(Math.min(...overlap));
+  const others = overlap.filter((_, index) => index !== axis).sort((left, right) => right - left);
+  const length = others[0] ?? 0;
+  const across = others[1] ?? 0;
+  // A thin sheet uses the back-edge count. Eligibility elsewhere drops a thin sheet that is not a back.
+  if (sheetThin(a) || sheetThin(b)) return { meeting: "back", screws: Math.max(2, Math.ceil(length / 8)) };
+  if (across > 3) return { meeting: "face", screws: Math.max(2, Math.ceil((length * across) / 64)) };
+  return { meeting: "butt", screws: Math.max(2, Math.ceil(length / 8)) };
+}
+
+function pairNoScrew(a: GraphPart, b: GraphPart): FastenerDemand["noScrew"] {
+  if (a.source !== "panel" || b.source !== "panel") return "member";
+  if (boughtHardware(a) || boughtHardware(b)) return "hardware";
+  if (planedGlueOnly(a) || planedGlueOnly(b)) return "planed";
+  if ((sheetThin(a) || sheetThin(b)) && !namedThinBack(a) && !namedThinBack(b)) return "thin-sheet";
+  return undefined;
+}
+
+/**
+ * One row per physical reviewed shop pair. Directions of the same two parts count once.
+ * Contact and hinges are not rows. A glue-only or screwless build has no rows.
+ */
+export function fastenerDemandLedger(graph: YardBuildGraph): FastenerDemand[] {
   if (stockBuysNoScrews(graph)) return [];
   const shop = graph.joints.filter((joint) => joint.reviewedJoin && jointPattern(joint.patternId ?? "")?.role === "shop");
-  if (!shop.length) return [];
   const byId = new Map(graph.parts.map((part) => [part.id, part]));
-  let screws = 0;
+  const rows = new Map<string, FastenerDemand>();
   for (const joint of shop) {
+    const pair = pairKey(joint.a, joint.b);
+    if (rows.has(pair)) continue;
     const a = byId.get(joint.a);
     const b = byId.get(joint.b);
     if (!a || !b) continue;
-    screws += screwsForReviewedParts(a, b);
+    const patternId = joint.patternId ?? "";
+    if (a.source !== "panel" || b.source !== "panel") {
+      rows.set(pair, { pair, patternId, meeting: "butt", screws: 0, noScrew: "member" });
+      continue;
+    }
+    const demand = meetingDemand(a, b);
+    const noScrew = pairNoScrew(a, b);
+    rows.set(pair, noScrew
+      ? { pair, patternId, meeting: demand.meeting, screws: 0, noScrew }
+      : { pair, patternId, meeting: demand.meeting, screws: demand.screws });
   }
-  if (screws <= 0) return [];
-  return [{ id: "screws-8", qty: screws }];
+  return [...rows.values()];
 }
 
-/** The carcass-screw Buy line for those uses. Quantity is boxes, the way the live list sells them. */
+/**
+ * Piece counts for furniture screws, summed from the ledger.
+ * Contact does not add a screw. A hinge hangs on its own hardware and adds none.
+ * Glue-only and screwless stock add none, including a miniature stick model.
+ * The id is the screw item: outdoor-screws when the build's name is an outdoor noun.
+ */
+export function reviewedFastenerUses(graph: YardBuildGraph): { id: string; qty: number }[] {
+  const screws = fastenerDemandLedger(graph).reduce((sum, row) => sum + row.screws, 0);
+  if (screws <= 0) return [];
+  return [{ id: outdoorExposure(graph) ? "outdoor-screws" : "screws-8", qty: screws }];
+}
+
+/** The carcass-screw Buy line for those uses. Quantity is boxes. Coating follows the exposure class, not a copied count. */
 export function fastenerBuyLines(graph: YardBuildGraph): CompiledBuild["buy"] {
   return reviewedFastenerUses(graph).flatMap((use) => {
-    if (use.id !== "screws-8" || use.qty <= 0) return [];
+    if (use.qty <= 0 || (use.id !== "screws-8" && use.id !== "outdoor-screws")) return [];
     const boxes = Math.ceil(use.qty / SCREWS_PER_BOX);
     const length = inchFrac(faceScrewInches(stockThicknessInches(graph))).replace(" ", "-");
+    const indoor = `#8 x ${length}" wood screws`;
+    const name = use.id === "outdoor-screws"
+      ? indoor.replace(/\s*(?:wood\s+)?screws?\b/i, " exterior-coated or stainless wood screws")
+      : indoor;
     return [defined({
-      name: `#8 x ${length}" wood screws`,
+      name,
       quantity: boxes,
       unit: screwBoxUnit(boxes),
-      catalogId: "screws-8",
+      catalogId: use.id,
     })];
   });
 }
@@ -865,6 +964,7 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
     },
     steps,
     buy: [...copied, ...fastenerBuyLines(graph)],
+    fasteners: fastenerDemandLedger(graph),
   };
 }
 
