@@ -15,6 +15,7 @@ import { CONSTRUCTION_READINGS, JOINT_LIBRARY, constructionReading, jointPattern
 import {
   BUILD_GRAPH_VERSION,
   compileBuildGraph,
+  deriveStockPacks,
   fastenerBuyLines,
   fastenerDemandLedger,
   isCarcassScrewLine,
@@ -279,6 +280,15 @@ describe("the shadow graph stays off the live path", () => {
     assert.equal(report.includes("reviewedFastenerUses"), false);
     assert.equal(report.includes("fastenerBuyLines"), false);
     assert.equal(report.includes("fastenerDemandLedger"), false);
+    assert.equal(report.includes("realizeCuttablePieces"), false);
+    assert.equal(report.includes("deriveStockPacks"), false);
+    assert.equal(report.includes("stockCompile"), false);
+    assert.equal(live.includes("realizeCuttablePieces"), false);
+    assert.equal(live.includes("deriveStockPacks"), false);
+    assert.equal(live.includes("stockCompile"), false);
+    const stock = readFileSync(new URL("./stockCompile.ts", import.meta.url), "utf8");
+    assert.doesNotMatch(stock, /lengthReader|promptMain|from "\.\/report|modelJoints|YARD_AI_READER|VITE_PUBLIC_AI_READER|VITE_PUBLIC_YARD_AI_READER/);
+    assert.doesNotMatch(stock, /graph\.stock/);
   });
 });
 
@@ -1315,5 +1325,258 @@ describe("fastener demand ledger", () => {
       assert.equal(compiled.buy.some(isCarcassScrewLine), false);
       assert.equal(compiled.model.panels.some((part) => part.id === "back"), true);
     }
+  });
+});
+
+function stockPart(
+  id: string,
+  size: Panel["size"],
+  materialId = "plywood-3-4-4x8",
+  type: Panel["type"] = "shelf",
+): GraphPart {
+  return {
+    source: "panel",
+    role: type,
+    id,
+    type,
+    name: id,
+    materialId,
+    position: { x: 0, y: 0, z: 0 },
+    size,
+  };
+}
+
+function stockGraph(parts: GraphPart[], extra: Partial<YardBuildGraph> = {}): YardBuildGraph {
+  return {
+    version: 1,
+    shadow: true,
+    id: "stock",
+    name: "Stock",
+    family: "casework",
+    use: "human",
+    origin: parts.some((part) => part.source === "member") ? "structure-graph" : "panels",
+    envelope: { width: 48, height: 48, depth: 48 },
+    primaryMaterialId: parts[0]?.materialId ?? "plywood-3-4-4x8",
+    parts,
+    joints: [],
+    constraints: [],
+    operations: [],
+    stock: [{ id: "copied", name: "Copied sheet", quantity: 99, unit: "sheets", catalogId: "plywood-3-4-4x8", partIds: [] }],
+    assumptions: [],
+    ...extra,
+  };
+}
+
+describe("shadow cuts and sheet/lumber packs", () => {
+  it("nests sheet cuts and ignores a copied Buy quantity", () => {
+    const squares = ["a", "b", "c"].map((id) => stockPart(id, { width: 48, height: 0.75, depth: 48 }));
+    const graph = stockGraph(squares);
+    const compiled = compileBuildGraph(graph);
+    assert.equal(compiled.buy.find((line) => line.catalogId === "plywood-3-4-4x8")?.quantity, 99);
+    assert.equal(compiled.packs.length, 1);
+    assert.equal(compiled.packs[0]?.catalogId, "plywood-3-4-4x8");
+    assert.equal(compiled.packs[0]?.kind, "sheet");
+    assert.equal(compiled.packs[0]?.quantity, 3);
+    assert.notEqual(compiled.packs[0]?.quantity, compiled.buy[0]?.quantity);
+    assert.deepEqual(compiled.packs[0]?.partIds, ["a", "b", "c"]);
+    const cleared = compileBuildGraph({ ...graph, stock: [] });
+    assert.deepEqual(cleared.packs, compiled.packs);
+    assert.deepEqual(cleared.cuts, compiled.cuts);
+    assert.deepEqual(deriveStockPacks(compiled.cuts).packs, compiled.packs);
+    const small = compileBuildGraph(stockGraph([
+      stockPart("a", { width: 10, height: 0.75, depth: 8 }),
+      stockPart("b", { width: 12, height: 0.75, depth: 6 }),
+    ]));
+    assert.equal(small.packs[0]?.quantity, 1);
+    assert.equal(small.stockDisclosure, undefined);
+  });
+
+  it("packs lumber from the cut lengths, including edge-glued strips", () => {
+    const sticks = [0, 1, 2, 3, 4].map((n) => stockPart(`b${n}`, { width: 40, height: 1.5, depth: 3.5 }, "lumber-2x4-8", "upright"));
+    const packed = compileBuildGraph(stockGraph(sticks));
+    assert.equal(packed.cuts.length, 5);
+    assert.equal(packed.packs.length, 1);
+    assert.equal(packed.packs[0]?.kind, "lumber");
+    assert.equal(packed.packs[0]?.catalogId, "lumber-2x4-8");
+    assert.equal(packed.packs[0]?.quantity, 3);
+    assert.equal(packed.stockDisclosure, undefined);
+    const one = compileBuildGraph(stockGraph([stockPart("shelf", { width: 30, height: 0.75, depth: 10 }, "lumber-1x4-8")]));
+    assert.equal(one.cuts.length, 3, "a 10 inch face is three rips of a 3 1/2 inch board");
+    assert.equal(one.packs[0]?.quantity, 1);
+    const four = compileBuildGraph(stockGraph([0, 1, 2, 3].map((n) => stockPart(`s${n}`, { width: 30, height: 0.75, depth: 10 }, "lumber-1x4-8"))));
+    assert.equal(four.packs[0]?.quantity, 4);
+    const member: GraphPart = {
+      source: "member",
+      materialId: "lumber-2x4-8",
+      id: "rail",
+      catalogId: "lumber-2x4-8",
+      role: "rail",
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: 40,
+      section: { width: 3.5, height: 1.5 },
+    };
+    const fromMember = compileBuildGraph(stockGraph([member]));
+    assert.equal(fromMember.cuts.length, 1);
+    assert.equal(fromMember.cuts[0]?.partId, "rail");
+    assert.equal(fromMember.packs[0]?.quantity, 1);
+    assert.equal(fromMember.packs[0]?.kind, "lumber");
+  });
+
+  it("glued layers cover the finished thickness", () => {
+    const covered = (materialId: string, stock: number, thickness: number, face: number) => {
+      const compiled = compileBuildGraph(stockGraph([
+        stockPart("part", { width: 36, height: thickness, depth: face }, materialId),
+      ]));
+      const cuts = compiled.cuts.filter((cut) => cut.partId === "part");
+      const stack = cuts.reduce((sum, cut) => sum + cut.thicknessIn, 0);
+      assert.equal(cuts.length > 0, true, `${thickness} on ${stock}`);
+      assert.ok(stack + 1e-9 >= thickness, `${thickness} on ${stock} covered ${stack}`);
+      assert.ok(stack < thickness + stock + 1e-9, `${thickness} on ${stock} used ${stack}`);
+      return cuts.length;
+    };
+    // Between n and n+0.5 stock thicknesses. Round leaves these short.
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 1.75, 12), 3);
+    assert.equal(covered("lumber-1x4-8", 0.75, 2.5, 3.5), 4);
+    assert.equal(covered("lumber-2x4-8", 1.5, 3.5, 3.5), 3);
+    // Exact multiples, and a 1" part, already landed on a count that covers.
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 1, 12), 2);
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 1.5, 12), 2);
+    assert.equal(covered("plywood-3-4-4x8", 0.75, 2.25, 12), 3);
+    assert.equal(covered("lumber-2x4-8", 1.5, 3, 3.5), 2);
+    for (const [materialId, stock, face] of [
+      ["plywood-3-4-4x8", 0.75, 18],
+      ["lumber-1x4-8", 0.75, 3.5],
+      ["lumber-2x4-8", 1.5, 3.5],
+    ] as const) {
+      const limit = materialId.startsWith("lumber") ? face : stock * 5;
+      for (let n = 1; n <= Math.round((limit - stock) * 8); n++) {
+        const thickness = Math.round((stock + n / 8) * 8) / 8;
+        if (!(thickness > stock + 0.05) || thickness > limit + 1e-9) continue;
+        covered(materialId, stock, thickness, face);
+      }
+    }
+  });
+
+  it("keeps a quarter-inch back on its own sheet", () => {
+    const back = compileBuildGraph(stockGraph([stockPart("Back", { width: 20, height: 0.25, depth: 10 }, "plywood-1-4-4x8", "back")]));
+    assert.deepEqual(back.packs.map((pack) => pack.catalogId), ["plywood-1-4-4x8"]);
+    assert.equal(back.packs[0]?.quantity, 1);
+    assert.equal(back.cuts[0]?.kind, "sheet");
+    const mixed = compileBuildGraph(stockGraph([
+      stockPart("Side", { width: 0.75, height: 40, depth: 12 }, "plywood-3-4-4x8", "upright"),
+      stockPart("Back", { width: 30, height: 0.25, depth: 40 }, "plywood-1-4-4x8", "back"),
+    ]));
+    assert.deepEqual(mixed.packs.map((pack) => pack.catalogId).sort(), ["plywood-1-4-4x8", "plywood-3-4-4x8"]);
+    assert.equal(mixed.packs.find((pack) => pack.catalogId === "plywood-3-4-4x8")?.partIds.includes("Back"), false);
+    assert.deepEqual(mixed.packs.find((pack) => pack.catalogId === "plywood-1-4-4x8")?.partIds, ["Back"]);
+  });
+
+  it("leaves packs empty when the parts are not cuttable sheet or lumber", () => {
+    const stick = (id: string, materialId: string): GraphPart => ({
+      source: "member",
+      materialId,
+      id,
+      catalogId: materialId,
+      role: "leg",
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      from: { x: 0, y: 0, z: 0 },
+      to: { x: 4, y: 0, z: 0 },
+      join: "glue",
+    });
+    const craft = compileBuildGraph(stockGraph(
+      [stick("a", "popsicle-standard"), stick("b", "popsicle-standard")],
+      { family: "landmark", use: "miniature", primaryMaterialId: "popsicle-standard" },
+    ));
+    assert.deepEqual(craft.cuts, []);
+    assert.deepEqual(craft.packs, []);
+    assert.match(craft.stockDisclosure ?? "", /No cuttable sheet or lumber parts/);
+    assert.match(craft.stockDisclosure ?? "", /Whole craft stock/);
+    assert.match(craft.stockDisclosure ?? "", /2 popsicle-standard/);
+    assert.doesNotMatch(craft.stockDisclosure ?? "", /1000|pack of/);
+    const hook = compileBuildGraph(stockGraph([stockPart("Coat hook 1", { width: 1.25, height: 2.75, depth: 3.5 }, "hardware")]));
+    assert.deepEqual(hook.packs, []);
+    assert.match(hook.stockDisclosure ?? "", /bought hardware/);
+    const missing = compileBuildGraph(stockGraph([stockPart("Mystery", { width: 10, height: 0.75, depth: 10 }, "not-a-stock")]));
+    assert.deepEqual(missing.packs, []);
+    assert.match(missing.stockDisclosure ?? "", /No catalog stock: 1 not-a-stock/);
+  });
+
+  it("derives the compile-back families from their parts", () => {
+    offline(() => {
+      const prompts = [
+        [CASEWORK, "casework"],
+        [`${CASEWORK} in 3/4 inch plywood`, "casework"],
+        [`${CASEWORK} in 1/2 inch plywood`, "casework"],
+        [`${CASEWORK} from oak`, "casework"],
+        [FRAME, "frame-storage"],
+        [LANDMARK, "landmark"],
+        ["eiffel tower from toothpicks", "landmark"],
+      ] as const;
+      const rows = prompts.map(([prompt, family]) => ({ prompt, ...roundTrip(prompt, family) }));
+      for (const row of rows) {
+        const rewritten = compileBuildGraph({
+          ...row.graph,
+          stock: row.graph.stock.map((line) => ({ ...line, quantity: 99 })),
+        });
+        assert.deepEqual(rewritten.packs, row.compiled.packs, row.prompt);
+        assert.deepEqual(rewritten.cuts, row.compiled.cuts, row.prompt);
+        assert.deepEqual(deriveStockPacks(row.compiled.cuts).packs, row.compiled.packs, row.prompt);
+        for (const pack of row.compiled.packs) {
+          assert.notEqual(pack.quantity, 99, `${row.prompt} ${pack.catalogId}`);
+          assert.match(pack.catalogId, /^(?:plywood|lumber)-/);
+        }
+      }
+      const [book, , half, oak, bench, tower, tooth] = rows;
+      for (const part of book.graph.parts) {
+        assert.ok(book.compiled.cuts.some((cut) => cut.partId === part.id), part.id);
+        assert.ok(book.compiled.packs.some((pack) => pack.partIds.includes(part.id)), part.id);
+      }
+      assert.equal(book.compiled.stockDisclosure, undefined);
+      assert.ok(book.compiled.packs.some((pack) => pack.catalogId === "plywood-3-4-4x8"));
+      assert.ok(book.compiled.packs.some((pack) => pack.catalogId === "plywood-1-4-4x8"));
+      const grown = compileBuildGraph({
+        ...book.graph,
+        parts: book.graph.parts.map((part) => part.source === "panel" && part.role === "shelf"
+          ? { ...part, size: { width: 80, height: 0.75, depth: 40 } }
+          : part),
+      });
+      assert.notDeepEqual(grown.packs, book.compiled.packs);
+      assert.ok(half.compiled.packs.some((pack) => pack.catalogId === "plywood-1-2-4x8"));
+      assert.equal(half.compiled.packs.some((pack) => pack.catalogId === "plywood-3-4-4x8"), false);
+      assert.ok(half.compiled.packs.some((pack) => pack.catalogId === "plywood-1-4-4x8"));
+      const upright = oak.graph.parts.find((part) => part.source === "panel" && part.name === "Left upright");
+      assert.equal(oak.compiled.cuts.filter((cut) => cut.partId === upright?.id).length, 4);
+      const oakBoards = oak.compiled.packs.find((pack) => pack.catalogId === "lumber-1x4-8");
+      assert.equal(oakBoards?.quantity, 25);
+      assert.match(oakBoards?.notes ?? "", /extra piece/);
+      assert.equal(oak.plan.bom.find((line) => line.catalogId === "lumber-1x4-8")?.quantity, 24);
+      assert.ok(oak.compiled.packs.some((pack) => pack.kind === "lumber" && pack.catalogId === "lumber-1x4-8"));
+      assert.ok(oak.compiled.packs.some((pack) => pack.catalogId === "plywood-1-4-4x8"));
+      assert.equal(oak.compiled.packs.some((pack) => pack.catalogId === "plywood-3-4-4x8"), false);
+      const top = bench.graph.parts.find((part) => part.role === "top");
+      assert.equal(bench.compiled.cuts.filter((cut) => cut.partId === top?.id).length, 2);
+      assert.ok(bench.compiled.packs.some((pack) => pack.catalogId === "lumber-2x4-8"));
+      assert.ok(bench.compiled.packs.some((pack) => pack.catalogId === "plywood-3-4-4x8"));
+      for (const row of [tower, tooth]) {
+        assert.deepEqual(row.compiled.cuts, [], row.prompt);
+        assert.deepEqual(row.compiled.packs, [], row.prompt);
+        assert.match(row.compiled.stockDisclosure ?? "", /No cuttable sheet or lumber parts/, row.prompt);
+        assert.match(row.compiled.stockDisclosure ?? "", /whole craft stock/i, row.prompt);
+        assert.doesNotMatch(row.compiled.stockDisclosure ?? "", /1000|800|pack of/, row.prompt);
+        assert.ok(row.compiled.buy.some((line) => line.catalogId === row.graph.primaryMaterialId), row.prompt);
+      }
+      const side = stockPart("side", { width: 0.75, height: 10, depth: 20 }, "plywood-3-4-4x8", "upright");
+      const shelf = stockPart("shelf", { width: 8, height: 0.75, depth: 20 });
+      const screwed = stockGraph([side, shelf]);
+      screwed.joints = [{ id: "j1", a: "shelf", b: "side", basis: "declared", patternId: "dado", reviewedJoin: true }];
+      side.position = { x: 0, y: 0, z: 0 };
+      shelf.position = { x: 0.5, y: 4, z: 0 };
+      const both = compileBuildGraph(screwed);
+      assert.deepEqual(both.buy.filter(isCarcassScrewLine), fastenerBuyLines(screwed));
+      assert.equal(both.fasteners[0]?.screws, 3);
+      assert.ok(both.packs.some((pack) => pack.kind === "sheet"));
+    });
   });
 });
