@@ -7,12 +7,14 @@
  * geometry. Model, steps, and Buy come back as the deterministic compiler already produced them.
  *
  * The graph is not the live source of truth. generateFromPrompt and buildPlan do not read it.
- * StructureGraph still builds lattices. Recipes still build named objects. This file does not
- * substitute stock and does not invent joinery from two boxes that happen to touch.
+ * StructureGraph still builds lattices. Recipes still build named objects. A pair that only
+ * touches stays contact. A reviewed pattern is declared only when a construction reading in
+ * the joint library matches. Stock substitution keeps that form and is still not the live path.
  */
 import { getCatalogItem } from "./catalog";
 import { contactReport } from "./contact";
-import { jointPattern } from "./jointLibrary";
+import { constructionReading, jointPattern, type ConstructionReadingId } from "./jointLibrary";
+import { doorHingeLayout, hingeContext, leavesOf } from "./hingedLeaf";
 import { panelJoints, stickJoints } from "./modelJoints";
 import { structureIssues } from "./structureCheck";
 import type { AssemblyStep, BomLine, BuildPlan, Panel, Vec3, YardInstance, YardProject } from "./types";
@@ -102,6 +104,11 @@ export type GraphJoint = {
   contactClass?: "butt" | "face" | "back" | "frame";
   /** True only for a declared library pattern. Contact is never a reviewed joint. */
   reviewedJoin: boolean;
+  /**
+   * Which construction reading promoted a contact, when the panel field did not already say so.
+   * Panel.joints and Panel.hinged leave this unset.
+   */
+  reading?: ConstructionReadingId;
 };
 
 export type GraphConstraint = {
@@ -178,6 +185,26 @@ export type YardBuildGraph = {
   operations: GraphOperation[];
   stock: StockRequirement[];
   assumptions: string[];
+  /**
+   * Form, apart from which stock realized it: roles, envelope, and the reviewed patterns.
+   * Contact is not part of the form. A landmark's role list is a multiset; substitution
+   * compares the set, because a shorter stick changes the count.
+   */
+  form?: BuildForm;
+  /** Set only by substituteStock, when a second graph kept this form under a new stock. */
+  substitution?: { fromMaterialId: string; toMaterialId: string; kept: BuildForm };
+};
+
+/** What stays when the stock changes. Reviewed patterns only — contact is not construction intent. */
+export type BuildForm = {
+  family: BuildFamily;
+  use: BuildUse;
+  origin: BuildOrigin;
+  roles: string[];
+  envelope: { width: number; height: number; depth: number };
+  reviewedPatterns: string[];
+  /** Roles of parts that are 1/4" plywood and a back or a drawer bottom. */
+  quarterInchRoles: string[];
 };
 
 export type CompiledBuild = {
@@ -255,7 +282,7 @@ export function quarterPlyProblems(parts: readonly GraphPart[]): string[] {
   return bad;
 }
 
-function useOf(project: YardProject): BuildUse {
+function projectBuildUse(project: YardProject): BuildUse {
   const item = getCatalogItem(project.primaryMaterialId);
   if (item && (item.category === "craft_wood" || item.category === "paper_tube" || item.category === "cardboard" || item.category === "foam")) return "miniature";
   if (project.assumptions?.use === "toy" || project.assumptions?.use === "display") return "miniature";
@@ -338,20 +365,100 @@ function declaredJoints(panels: readonly Panel[]): GraphJoint[] {
   return out;
 }
 
-function contactJoints(project: YardProject, declared: readonly GraphJoint[]): GraphJoint[] {
+const RIDGE_BEVEL = /bevel the ridge edge 45/i;
+const MITER_ENDS = /miter both ends/i;
+const PIN_HOLE = /pin hole/i;
+const HOUSED = new Set(["shelf", "bottom", "top", "divider", "rail"]);
+const HOST_FACE = new Set(["upright", "side", "divider", "back"]);
+const LEAF_TYPES = new Set(["door", "drawer", "mirror", "glass_panel"]);
+
+type AxisBox = { min: [number, number, number]; max: [number, number, number]; size: [number, number, number] };
+
+function axisBox(panel: Panel): AxisBox {
+  const size: [number, number, number] = [panel.size.width, panel.size.height, panel.size.depth];
+  return {
+    min: [panel.position.x, panel.position.y, panel.position.z],
+    max: [panel.position.x + size[0], panel.position.y + size[1], panel.position.z + size[2]],
+    size,
+  };
+}
+
+function thinAxis(box: AxisBox): number {
+  return box.size.indexOf(Math.min(...box.size));
+}
+
+/**
+ * A contact pair becomes a reviewed pattern only when a construction reading matches.
+ * A flush butt, a pin shelf, a screwed back, and a stick node return nothing.
+ */
+export function readingForPanels(a: Panel, b: Panel): ConstructionReadingId | undefined {
+  const notes = (panel: Panel) => panel.cutNote ?? "";
+  // The ridge note is the builder's miter, including on a polygon roof. A gable's "45° to a peak" does not match.
+  if ((RIDGE_BEVEL.test(notes(a)) && RIDGE_BEVEL.test(notes(b))) || (MITER_ENDS.test(notes(a)) && MITER_ENDS.test(notes(b)))) {
+    return "ridge-miter";
+  }
+  if (a.yaw || b.yaw || a.polygon || b.polygon) return undefined;
+  const A = axisBox(a);
+  const B = axisBox(b);
+  const gaps = [0, 1, 2].map((k) => Math.max(A.min[k], B.min[k]) - Math.min(A.max[k], B.max[k]));
+  const axis = gaps.indexOf(Math.max(...gaps));
+  const overlap = -gaps[axis];
+  if (gaps.every((gap) => -gap > 1 / 16) && overlap <= 0.8) {
+    const crosses = (divider: Panel, shelf: Panel) => divider.type === "divider" && (shelf.type === "shelf" || shelf.type === "deck");
+    if (crosses(a, b) || crosses(b, a)) return "cross-lap";
+  }
+  if (overlap <= 1 / 16 || overlap > 0.8) return undefined;
+  const housed = (part: Panel, host: Panel, partBox: AxisBox, hostBox: AxisBox): ConstructionReadingId | undefined => {
+    if (thinAxis(partBox) === axis || thinAxis(hostBox) !== axis) return undefined;
+    if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
+    const sheet = Math.min(...partBox.size) <= 0.3 && (part.type === "back" || part.type === "mirror");
+    if (sheet) return "housed-rabbet";
+    if (HOUSED.has(part.type) && HOST_FACE.has(host.type)) return "housed-dado";
+    return undefined;
+  };
+  return housed(a, b, A, B) ?? housed(b, a, B, A);
+}
+
+function declareReading(joints: GraphJoint[], a: string, b: string, reading: ConstructionReadingId, seq: number): boolean {
+  const patternId = constructionReading(reading)?.patternId;
+  if (!patternId || !jointPattern(patternId)) return false;
+  joints.push({
+    id: `declared-${seq}`,
+    a,
+    b,
+    basis: "declared",
+    patternId,
+    reviewedJoin: true,
+    reading,
+  });
+  return true;
+}
+
+function contactJoints(project: YardProject, declared: readonly GraphJoint[]): { contact: GraphJoint[]; promoted: GraphJoint[] } {
   const taken = new Set(declared.map((joint) => pairKey(joint.a, joint.b)));
+  const panels = new Map(project.panels.map((panel) => [panel.id, panel]));
   const raw = [
     ...panelJoints(project.panels).map((joint) => ({ ...joint, contactClass: joint.kind })),
     ...stickJoints(project.instances).map((joint) => ({ ...joint, contactClass: joint.kind })),
   ];
-  const out: GraphJoint[] = [];
+  const contact: GraphJoint[] = [];
+  const promoted: GraphJoint[] = [];
   const seen = new Set<string>();
+  let declaredCount = declared.length;
   for (const joint of raw) {
     const key = pairKey(joint.a, joint.b);
     if (taken.has(key) || seen.has(key)) continue;
     seen.add(key);
-    out.push({
-      id: `contact-${out.length + 1}`,
+    const a = panels.get(joint.a);
+    const b = panels.get(joint.b);
+    const reading = a && b ? readingForPanels(a, b) : undefined;
+    if (reading && declareReading(promoted, joint.a, joint.b, reading, declaredCount + 1)) {
+      declaredCount += 1;
+      taken.add(key);
+      continue;
+    }
+    contact.push({
+      id: `contact-${contact.length + 1}`,
       a: joint.a,
       b: joint.b,
       basis: "contact",
@@ -359,7 +466,50 @@ function contactJoints(project: YardProject, declared: readonly GraphJoint[]): G
       reviewedJoin: false,
     });
   }
+  return { contact, promoted };
+}
+
+/** A door the Buy list hangs, meeting the one carcass part on its hinge edge. Glue-only stock stays unhinged. */
+function hingeReadings(project: YardProject, taken: Set<string>, seq: number): GraphJoint[] {
+  if (!project.panels.length || hingeContext(project).screwless) return [];
+  const layout = doorHingeLayout(project);
+  const out: GraphJoint[] = [];
+  for (const leaf of leavesOf(project)) {
+    if (leaf.role !== "door" || leaf.part.hinged || !layout.has(leaf.part.id) || leaf.part.yaw) continue;
+    const host = hingeHost(leaf.part, leaf.edge, project.panels);
+    if (!host) continue;
+    const key = pairKey(leaf.part.id, host.id);
+    if (taken.has(key)) continue;
+    if (!declareReading(out, leaf.part.id, host.id, "hinge-leaf", seq + 1)) continue;
+    taken.add(key);
+    seq += 1;
+  }
   return out;
+}
+
+function hingeHost(door: Panel, edge: NonNullable<Panel["hinged"]>["edge"], panels: readonly Panel[]): Panel | undefined {
+  const doorBox = axisBox(door);
+  const axis = edge === "left" || edge === "right" ? 0 : edge === "top" || edge === "bottom" ? 1 : 2;
+  const coord = edge === "right" || edge === "top" || edge === "front" ? doorBox.max[axis] : doorBox.min[axis];
+  const others = [0, 1, 2].filter((k) => k !== axis);
+  const hits = panels.filter((panel) => {
+    if (panel.id === door.id || LEAF_TYPES.has(panel.type) || panel.yaw) return false;
+    const box = axisBox(panel);
+    if (coord < box.min[axis] - 0.2 || coord > box.max[axis] + 0.2) return false;
+    // A door hangs on the front edge, so the depth meeting is a touch (gap 0), not an overlap.
+    return others.every((k) => Math.min(doorBox.max[k], box.max[k]) - Math.max(doorBox.min[k], box.min[k]) > -0.15);
+  });
+  const prefer = hits.filter((panel) => /^(?:upright|side|stile|rail|back)$/.test(panel.type));
+  const pool = prefer.length ? prefer : hits;
+  const ranked = pool
+    .map((panel) => {
+      const box = axisBox(panel);
+      return { panel, dist: Math.min(Math.abs(box.min[axis] - coord), Math.abs(box.max[axis] - coord)) };
+    })
+    .sort((a, b) => a.dist - b.dist || a.panel.id.localeCompare(b.panel.id));
+  if (!ranked.length) return undefined;
+  if (ranked.length > 1 && ranked[1].dist - ranked[0].dist < 0.05) return undefined;
+  return ranked[0].panel;
 }
 
 function operationsFrom(plan: BuildPlan, parts: readonly GraphPart[]): GraphOperation[] {
@@ -414,7 +564,7 @@ function buyFact(line: BomLine): CompiledBuild["buy"][number] {
  * `family` is the representative this spike is proving. It is not read off the prompt.
  */
 export function liftBuildGraph(project: YardProject, plan: BuildPlan, family: BuildFamily): YardBuildGraph {
-  const use = useOf(project);
+  const use = projectBuildUse(project);
   const parts: GraphPart[] = [
     ...project.panels.map((panel) => ({ ...panelFact(panel), source: "panel" as const, role: panel.type })),
     ...project.instances.map((inst) => {
@@ -423,7 +573,10 @@ export function liftBuildGraph(project: YardProject, plan: BuildPlan, family: Bu
     }),
   ];
   const declared = declaredJoints(project.panels);
-  const joints = [...declared, ...contactJoints(project, declared)];
+  const { contact, promoted } = contactJoints(project, declared);
+  const taken = new Set([...declared, ...promoted].map((joint) => pairKey(joint.a, joint.b)));
+  const hinges = hingeReadings(project, taken, declared.length + promoted.length);
+  const joints = [...declared, ...promoted, ...hinges, ...contact];
   const touch = contactReport(project);
   const issues = structureIssues(project).map((issue) => ({ code: issue.code, part: issue.part }));
   const quarter = quarterPlyProblems(parts);
@@ -461,7 +614,9 @@ export function liftBuildGraph(project: YardProject, plan: BuildPlan, family: Bu
       detail: `${touch.components} touching component(s) of ${touch.pieces} pieces. Contact is not joinery.`,
     },
   ];
-  return {
+  const parked = parkedContradiction(project, plan, issues);
+  if (parked) constraints.push(parked);
+  const graph: YardBuildGraph = {
     version: BUILD_GRAPH_VERSION,
     shadow: true,
     id: project.id,
@@ -481,14 +636,38 @@ export function liftBuildGraph(project: YardProject, plan: BuildPlan, family: Bu
     assumptions: [
       "Shadow graph, version 1. The live engine does not read it.",
       "Dimensions, cuts, Buy quantities, and step wording are the deterministic compiler's. This graph addresses them by part id.",
-      "Switching stock is still the live engine's job. This graph can hold two stocks of one form; it does not resubstitute.",
+      "A reviewed joint is a construction reading or a panel field. Contact stays contact. substituteStock keeps the form; the live compiler does not read it.",
     ],
+  };
+  return { ...graph, form: buildForm(graph) };
+}
+
+/**
+ * The potting-bench lower shelf says three different things. Recorded here so a later joint
+ * reading cannot hide it. Not resolved.
+ */
+function parkedContradiction(
+  project: YardProject,
+  plan: BuildPlan,
+  issues: { code: string; part: string }[],
+): GraphConstraint | undefined {
+  const note = (project.notes ?? []).some((line) => /glue and screw it into the leg faces/i.test(line));
+  const floating = issues.some((issue) => issue.code === "floating" && /lower shelf/i.test(issue.part));
+  const pin = plan.instructions.some((step) => /pin 1 adjustable shelf/i.test(step.title));
+  if (!note || !floating || !pin) return undefined;
+  return {
+    id: "potting-shelf",
+    kind: "structure",
+    ok: false,
+    detail: "Parked: the builder note glues and screws the lower shelf into the legs, the structure check calls it floating, and the step calls it an adjustable pin shelf.",
   };
 }
 
 /** Model, steps, and Buy from the graph alone. Step numbers follow operation order. */
 export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
   if (graph.version !== BUILD_GRAPH_VERSION) throw new Error(`build graph version ${graph.version} is not ${BUILD_GRAPH_VERSION}`);
+  const illegal = quarterPlyProblems(graph.parts);
+  if (illegal.length) throw new Error(`1/4" plywood is a back or a drawer bottom, not: ${illegal.join(", ")}`);
   const steps = [...graph.operations]
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
     .map((op, index) => defined({
@@ -515,6 +694,75 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
       notes: line.notes,
       estimatedCost: line.estimatedCost,
     })),
+  };
+}
+
+/** Roles, envelope, and reviewed patterns. Contact is left out on purpose. */
+export function buildForm(graph: YardBuildGraph): BuildForm {
+  return {
+    family: graph.family,
+    use: graph.use,
+    origin: graph.origin,
+    roles: graph.parts.map((part) => part.role).sort(),
+    envelope: { ...graph.envelope },
+    reviewedPatterns: graph.joints.filter((joint) => joint.reviewedJoin && joint.patternId).map((joint) => joint.patternId!).sort(),
+    quarterInchRoles: graph.parts
+      .filter((part) => part.source === "panel" && /^plywood-1-4/i.test(part.materialId) && (part.type === "back" || part.drawerPart === "bottom"))
+      .map((part) => part.role)
+      .sort(),
+  };
+}
+
+export type SubstitutionReview = {
+  ok: boolean;
+  reasons: string[];
+  fromMaterialId: string;
+  toMaterialId: string;
+  kept: BuildForm;
+};
+
+const ENVELOPE_TOLERANCE: Record<BuildFamily, number> = { casework: 0, "frame-storage": 0, landmark: 1 };
+
+/**
+ * A switched stock keeps the form when roles, envelope, and reviewed joints agree,
+ * 1/4" backs and drawer bottoms stay, and Buy names the new stock instead of the old.
+ * Landmark role counts may change with the stick. Contact counts are not the form.
+ */
+export function reviewStockSubstitution(base: YardBuildGraph, switched: YardBuildGraph): SubstitutionReview {
+  const reasons: string[] = [];
+  const kept = buildForm(base);
+  const next = buildForm(switched);
+  if (base.family !== switched.family) reasons.push("family");
+  if (base.use !== switched.use) reasons.push("use");
+  if (base.origin !== switched.origin) reasons.push("origin");
+  const roleKey = (roles: string[]) => (base.family === "landmark" ? [...new Set(roles)].sort() : roles).join("|");
+  if (roleKey(kept.roles) !== roleKey(next.roles)) reasons.push("roles");
+  const tolerance = ENVELOPE_TOLERANCE[base.family];
+  for (const axis of ["width", "height", "depth"] as const) {
+    if (Math.abs(kept.envelope[axis] - next.envelope[axis]) > tolerance) reasons.push(`envelope.${axis}`);
+  }
+  if (kept.reviewedPatterns.join("|") !== next.reviewedPatterns.join("|")) reasons.push("construction");
+  if (kept.quarterInchRoles.join("|") !== next.quarterInchRoles.join("|")) reasons.push("quarter-inch");
+  if (base.primaryMaterialId === switched.primaryMaterialId) reasons.push("stock-unchanged");
+  if (!switched.stock.some((line) => line.catalogId === switched.primaryMaterialId)) reasons.push("buy");
+  if (switched.stock.some((line) => line.catalogId === base.primaryMaterialId)) reasons.push("buy-keeps-old-stock");
+  return { ok: reasons.length === 0, reasons, fromMaterialId: base.primaryMaterialId, toMaterialId: switched.primaryMaterialId, kept };
+}
+
+/**
+ * Accept a switched graph only when the form holds. The result is that graph, with the kept form recorded.
+ * It does not rebuild geometry and it does not call the live compiler.
+ */
+export function substituteStock(base: YardBuildGraph, switched: YardBuildGraph): YardBuildGraph {
+  const review = reviewStockSubstitution(base, switched);
+  if (!review.ok) throw new Error(`stock substitution rejected: ${review.reasons.join(", ")}`);
+  return {
+    ...switched,
+    substitution: { fromMaterialId: review.fromMaterialId, toMaterialId: review.toMaterialId, kept: review.kept },
+    assumptions: [
+      ...switched.assumptions,
+      `Stock substitution ${review.fromMaterialId} → ${review.toMaterialId} kept the form. Buy follows ${review.toMaterialId}. The live compiler does not read this.`,
+    ],
   };
 }
 

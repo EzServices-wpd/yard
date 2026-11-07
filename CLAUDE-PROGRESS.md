@@ -47,6 +47,20 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 02:49 ET | shadow build graph shipped; construction knowledge and substitution — in progress (lock held)
+
+- Shadow build graph version 1 is on main `3966f67f2e2d071c3e0c7d420c5bbb558adec765` (#258) and release `6de4631859fbfd7eb467e60c48b312abc60c5715` (merge-back #259). Do not redo it. `generateFromPrompt` and `buildPlan` still do not read the graph. This note does not record a Critic PASS or a deployment id for that ship. The graph lock rode in on the merge-back. Replaced on this feature branch only.
+- New lock: construction knowledge / substitution. Not graded. Not merged. PR into `release/2026-10-24`. Do not merge.
+- Declared joints, only where one of the seven library patterns already applies. Contact stays contact.
+  - Became declared: a door `doorHingeLayout` already hangs, when `Panel.hinged` was not set, is a hinge to the upright on that edge (`bookcase with a door`, medicine-cabinet door). Two panels whose cut notes both say "bevel the ridge edge 45" are a miter (birdhouse roof panels). An end let into a face by more than 1/16" and at most 0.8" is a dado; a thin back or mirror let in the same way is a rabbet; a divider that actually crosses a shelf is a lap. `Panel.joints` notch and mortise stay declared (chicken-coop floor, a seated perch) and are not also stored as contact.
+  - Stay contact: the plain bookcase (pin shelves are flush butts, the 1/4" back is a screwed back edge, not a rabbet, no reviewed joint). The Eiffel canary and the toothpick tower (glue, frame contact, 0 reviewed joints — no furniture joints on the stick model). A gable that only says "45° to a peak". A pin-hole cut note is not a mortise and not a dado.
+- Stock substitution is a review of two lifted graphs, not a second compiler. `substituteStock` accepts the switch only when roles, envelope, and reviewed patterns hold, 1/4" backs and drawer bottoms stay, and Buy names the new stock instead of the old. Casework (3/4" plywood, 1/2" plywood, oak) keeps the role multiset and the 36×84×12 envelope. The towers keep the role set and an envelope within 1"; the stick count changes. The live stock-switch path does not go through the graph.
+- Contract honesty: `useOf` is now `projectBuildUse` so it is not a React hook name. `compileBuildGraph` throws on a 1/4" plywood part that is not a back or a drawer bottom.
+- Canaries on this branch: weekend geometry 6/6 unchanged; `walk-canary.ts` linen 31.5×78×16 and pocket green; linen-check PASS. `approved-canary-changes.json` not edited. `lengthReader.ts` not touched. No new CI gate. `YARD_AI_READER` / `VITE_PUBLIC_AI_READER` not turned on. No AI planner. No AI Buy list. No user-facing wording change.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `src/lib/yard/jointLibrary.ts`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` pass. `npx tsc --noEmit` pass. `npx eslint` on those three files pass. Weekend canaries 6/6, walk-canary, linen-check pass.
+- Parked, not started: the potting bench's lower shelf. The graph now copies the contradiction (glue-and-screw note, floating structure check, "Pin 1 adjustable shelf") and does not declare a joint. The shelf does not meet the legs, so it is not contact either. "A linen needs…" wording still needs Ezra's yes.
+
 ### 2026-11-07 02:01 ET | equal bays shipped; shadow build graph — in progress (lock held)
 
 - Equal clear bays is on main `e25b82d4f0f96df9619e1324a6e33d829b1d6013` (#255) and release `94cc8d6589c42c77fe054111b582af912113f20a` (merge-back #256). Do not reopen it. The equal-bays lock rode in on that tip. Replaced on this feature branch only. No new Critic PASS is recorded here. Ezra: that ship is live. This note does not record a deployment id.
