@@ -90,22 +90,22 @@ export const CONSTRUCTION_READINGS = [
   {
     id: "housed-dado",
     patternId: "dado",
-    when: "A shelf, bottom, top, divider, or rail is let into the face of an upright, side, divider, or back by more than 1/16\" and at most 0.8\".",
-    notWhen: "A flush butt is not a groove. A pin shelf that only touches an upright or a divider stays contact, even when the cut note drills pin holes.",
+    when: "A shelf, bottom, top, divider, or rail end lies inside the face it enters, by more than 1/16\" and at most 0.8\", and the part does not pass through the opposite face.",
+    notWhen: "A flush butt is not a groove. A part that crosses the host, both ends outside that face, is not a dado. A pin shelf that only touches an upright or a divider stays contact, even when the cut note drills pin holes.",
     provenance: "Panel.joints kind dado. supportGraph and learnedGate read a dado as the part's host. modelJoints records a flush meeting as a butt.",
   },
   {
     id: "housed-rabbet",
     patternId: "rabbet",
-    when: "A back or a mirror no thicker than 0.3\" is let into the face of the part it meets, along that host's thickness, by more than 1/16\" and at most 0.8\".",
-    notWhen: "A 1/4\" back that sits on the rear plane and only touches an upright's inner face is the screw joint modelJoints calls a back edge, not a rebate.",
+    when: "A back or a mirror no thicker than 0.3\" has an end inside the face it enters, along that host's thickness, by more than 1/16\" and at most 0.8\", and it does not pass through the opposite face.",
+    notWhen: "A 1/4\" back that sits on the rear plane and only touches an upright's inner face is the screw joint modelJoints calls a back edge, not a rebate. A sheet that crosses a part, both ends outside, is not a rebate.",
     provenance: "Panel.joints kind rabbet. fittedBuild sets a mirror into its door with that kind. modelJoints kind back is a screwed sheet edge.",
   },
   {
     id: "cross-lap",
     patternId: "lap",
-    when: "A divider and a shelf or deck cross, overlapping on all three axes by more than 1/16\", with the smallest overlap at most 0.8\".",
-    notWhen: "Shelves that stop against a divider do not cross. That meeting stays a butt.",
+    when: "A divider and a shelf or deck each pass through the other's opposite faces: one runs past the other's two faces, and the other runs past the first's two faces.",
+    notWhen: "An end that stops inside a divider is a dado, not a lap. Shelves that stop against a divider do not cross. That meeting stays a butt.",
     provenance: "solve.crossLap declares an egg-crate half-lap when a divider passes through a fixed shelf. A meeting that does not cross is not that lap.",
   },
   {

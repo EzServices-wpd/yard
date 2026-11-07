@@ -387,9 +387,41 @@ function thinAxis(box: AxisBox): number {
   return box.size.indexOf(Math.min(...box.size));
 }
 
+const END_TOL = 1 / 16;
+
+/**
+ * One end of `part` sits inside `host` on `axis`, and the part leaves through only the other face.
+ * Both ends outside is a crossing. An end that reaches the far face has passed through.
+ */
+function endEnters(part: AxisBox, host: AxisBox, axis: number): boolean {
+  const p0 = part.min[axis];
+  const p1 = part.max[axis];
+  const h0 = host.min[axis];
+  const h1 = host.max[axis];
+  const outLow = p0 < h0 - END_TOL;
+  const outHigh = p1 > h1 + END_TOL;
+  if (outLow === outHigh) return false;
+  const buried = outHigh ? p0 : p1;
+  return buried > h0 + END_TOL && buried < h1 - END_TOL;
+}
+
+/** Each board runs past the other's two faces on some axis. Stopping inside a face is not a crossing. */
+function facesCross(a: AxisBox, b: AxisBox): boolean {
+  const contains = (outer: AxisBox, inner: AxisBox, axis: number) =>
+    outer.min[axis] < inner.min[axis] - END_TOL && outer.max[axis] > inner.max[axis] + END_TOL;
+  let aThroughB = false;
+  let bThroughA = false;
+  for (let axis = 0; axis < 3; axis++) {
+    if (contains(a, b, axis)) aThroughB = true;
+    if (contains(b, a, axis)) bThroughA = true;
+  }
+  return aThroughB && bThroughA;
+}
+
 /**
  * A contact pair becomes a reviewed pattern only when a construction reading matches.
  * A flush butt, a pin shelf, a screwed back, and a stick node return nothing.
+ * A housed end is an end inside the host. A lap is each board passing through the other.
  */
 export function readingForPanels(a: Panel, b: Panel): ConstructionReadingId | undefined {
   const notes = (panel: Panel) => panel.cutNote ?? "";
@@ -403,20 +435,24 @@ export function readingForPanels(a: Panel, b: Panel): ConstructionReadingId | un
   const gaps = [0, 1, 2].map((k) => Math.max(A.min[k], B.min[k]) - Math.min(A.max[k], B.max[k]));
   const axis = gaps.indexOf(Math.max(...gaps));
   const overlap = -gaps[axis];
-  if (gaps.every((gap) => -gap > 1 / 16) && overlap <= 0.8) {
+  if (overlap > END_TOL && overlap <= 0.8) {
+    const housed = (part: Panel, host: Panel, partBox: AxisBox, hostBox: AxisBox): ConstructionReadingId | undefined => {
+      if (thinAxis(partBox) === axis || thinAxis(hostBox) !== axis) return undefined;
+      if (!endEnters(partBox, hostBox, axis)) return undefined;
+      if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
+      const sheet = Math.min(...partBox.size) <= 0.3 && (part.type === "back" || part.type === "mirror");
+      if (sheet) return "housed-rabbet";
+      if (HOUSED.has(part.type) && HOST_FACE.has(host.type)) return "housed-dado";
+      return undefined;
+    };
+    const housedEnd = housed(a, b, A, B) ?? housed(b, a, B, A);
+    if (housedEnd) return housedEnd;
+  }
+  if (gaps.every((gap) => -gap > END_TOL) && overlap <= 0.8 && facesCross(A, B)) {
     const crosses = (divider: Panel, shelf: Panel) => divider.type === "divider" && (shelf.type === "shelf" || shelf.type === "deck");
     if (crosses(a, b) || crosses(b, a)) return "cross-lap";
   }
-  if (overlap <= 1 / 16 || overlap > 0.8) return undefined;
-  const housed = (part: Panel, host: Panel, partBox: AxisBox, hostBox: AxisBox): ConstructionReadingId | undefined => {
-    if (thinAxis(partBox) === axis || thinAxis(hostBox) !== axis) return undefined;
-    if (PIN_HOLE.test(`${notes(part)} ${notes(host)}`)) return undefined;
-    const sheet = Math.min(...partBox.size) <= 0.3 && (part.type === "back" || part.type === "mirror");
-    if (sheet) return "housed-rabbet";
-    if (HOUSED.has(part.type) && HOST_FACE.has(host.type)) return "housed-dado";
-    return undefined;
-  };
-  return housed(a, b, A, B) ?? housed(b, a, B, A);
+  return undefined;
 }
 
 function declareReading(joints: GraphJoint[], a: string, b: string, reading: ConstructionReadingId, seq: number): boolean {

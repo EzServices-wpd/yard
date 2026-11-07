@@ -421,6 +421,43 @@ describe("construction readings", () => {
     assert.equal(dado?.reviewedJoin, true);
     assert.equal(graph.joints.some((joint) => joint.basis === "contact" && pair(joint) === "shelf|side"), false);
   });
+
+  it("requires an end inside the host, and a lap only when each board passes through the other", () => {
+    const divider: Panel = {
+      id: "divider",
+      type: "divider",
+      name: "Divider",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 8 },
+    };
+    const housedEnd: Panel = {
+      id: "shelf",
+      type: "shelf",
+      name: "Shelf",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0.5, y: 4, z: 0 },
+      size: { width: 8, height: 0.75, depth: 8 },
+    };
+    assert.equal(readingForPanels(divider, housedEnd), "housed-dado");
+    const upright: Panel = { ...divider, id: "side", type: "upright", name: "Side" };
+    assert.equal(readingForPanels(upright, housedEnd), "housed-dado");
+    const crossingDivider: Panel = { ...divider, position: { x: 4, y: 0, z: 0 } };
+    const crossingShelf: Panel = { ...housedEnd, position: { x: 0, y: 4, z: 0 }, size: { width: 8, height: 0.75, depth: 8 } };
+    assert.equal(readingForPanels(crossingDivider, crossingShelf), "cross-lap");
+    offline(() => {
+      const cubby = roundTrip("cubby shelf 48 wide 36 tall 12 deep", "casework");
+      assert.equal(cubby.project.panels.some((panel) => panel.joints?.length), false);
+      assert.equal(cubby.graph.joints.some((joint) => joint.reviewedJoin), false);
+      const named = cubby.graph.joints.filter((joint) => {
+        const a = cubby.project.panels.find((panel) => panel.id === joint.a);
+        const b = cubby.project.panels.find((panel) => panel.id === joint.b);
+        return /front rail/i.test(`${a?.name} ${b?.name}`) && /center support/i.test(`${a?.name} ${b?.name}`);
+      });
+      assert.ok(named.length >= 3);
+      assert.ok(named.every((joint) => joint.basis === "contact" && joint.reading === undefined && joint.patternId === undefined));
+    });
+  });
 });
 
 describe("stock substitution keeps the form", () => {
