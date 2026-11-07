@@ -1,4 +1,4 @@
-LOCK: YARD Chief | item: equal clear bays | started: 2026-11-06 18:16 ET | status: in-progress
+LOCK: Cursor Agent | item: shadow build graph | started: 2026-11-07 02:01 ET | status: in-progress
 
 # Claude progress log
 
@@ -46,6 +46,11 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-07 02:01 ET | equal bays shipped; shadow build graph — lock taken
+
+- Equal clear bays is on main `e25b82d4f0f96df9619e1324a6e33d829b1d6013` (#255) and release `94cc8d6589c42c77fe054111b582af912113f20a` (merge-back #256). Do not reopen it. The equal-bays lock rode in on that tip. Replaced on this feature branch only. No new Critic PASS is recorded here.
+- New lock: shadow build graph. One versioned graph so model, steps, and Buy can compile from the same facts. Shadow mode only. Not graded. Not merged.
 
 ### 2026-11-06 18:16 ET | stool unit-size shipped; equal clear bays — in progress (lock held)
 
