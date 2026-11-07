@@ -117,8 +117,6 @@ const MACHINING: Record<string, string> = {
   notch: "notch",
 };
 
-const CHECKS: ConservationCheck[] = ["cut-identity", "joint-work", "allocation", "packs", "invention"];
-
 type PanelPart = Extract<GraphPart, { source: "panel" }>;
 type Seat =
   | { kind: "host"; host: string; guest: string; machining: string }
@@ -149,9 +147,13 @@ function hasId(parts: readonly GraphPart[], id: string | undefined): boolean {
   return id !== undefined && parts.some((part) => part.id === id);
 }
 
-function carcassScrewLine(line: { name: string; catalogId?: string }): boolean {
-  if (line.catalogId === "screws-8" || line.catalogId === "outdoor-screws") return true;
-  return /wood screws?/i.test(line.name);
+function screwCatalog(id: string | undefined): boolean {
+  return id === "screws-8" || id === "outdoor-screws";
+}
+
+/** Stock lines the compile omits before it writes its own carcass-screw line. */
+function omittedScrewStock(line: { name: string; catalogId?: string }): boolean {
+  return screwCatalog(line.catalogId) || /wood screws?/i.test(line.name);
 }
 
 function sheetFamily(materialId: string): string {
@@ -286,40 +288,28 @@ function pieceKey(piece: { kind: string; materialId: string; lengthIn: number; w
 }
 
 /**
- * How many boards the lengths need. Longest first, first fit, an eighth-inch kerf
- * between cuts, and one spare board when the leftover is shorter than the longest
- * cut and that cut does not share a board. This is not the live packer.
+ * How many boards a first-fit needs. Longest first, an eighth-inch kerf between cuts.
+ * A spare board after a fit that already holds the pieces is packer policy, not this count.
  */
 function boardsForLengths(cuts: readonly number[], stockLen: number): number {
   const kerf = 0.125;
   const stock = Math.max(0.5, stockLen);
   const room: number[] = [];
-  const layout: number[][] = [];
   const pieces: number[] = [];
   for (const raw of cuts) {
     if (!(raw > 0)) continue;
     let left = raw;
     while (left > stock + 1e-6) {
       room.push(0);
-      layout.push([stock]);
       left -= stock;
     }
     pieces.push(left);
   }
   for (const length of pieces.sort((a, b) => b - a)) {
     const fit = room.findIndex((left) => left + 1e-6 >= length);
-    if (fit >= 0) {
-      room[fit] -= length + kerf;
-      layout[fit].push(length);
-    } else {
-      room.push(stock - length - kerf);
-      layout.push([length]);
-    }
+    if (fit >= 0) room[fit] -= length + kerf;
+    else room.push(stock - length - kerf);
   }
-  const longest = pieces.reduce((max, length) => Math.max(max, length), 0);
-  const leftover = room.reduce((max, length) => Math.max(max, length), 0);
-  const shares = layout.some((board) => board.length > 1 && board.some((cut) => Math.abs(cut - longest) < 1e-6));
-  if (pieces.length > 4 && longest > 0 && leftover + 1e-6 < longest && !shares) room.push(stock);
   return room.length;
 }
 
@@ -600,10 +590,10 @@ function joinProblems(rows: Problem[]): { detail: string; subjects: string[] } {
   return { detail: rows.map((row) => row.detail).join(" "), subjects };
 }
 
-function summary(id: ConservationCheck, rows: Problem[], hold: string): ConservationFinding {
-  if (!rows.length) return { id, check: id, status: "holds", basis: "geometry", detail: hold, subjects: [] };
+function summary(id: string, check: ConservationCheck, rows: Problem[], hold: string, basis: ConservationBasis): ConservationFinding {
+  if (!rows.length) return { id, check, status: "holds", basis, detail: hold, subjects: [] };
   const joined = joinProblems(rows);
-  return { id, check: id, status: "gap", basis: "geometry", detail: joined.detail, subjects: joined.subjects };
+  return { id, check, status: "gap", basis, detail: joined.detail, subjects: joined.subjects };
 }
 
 function cutIdentity(graph: YardBuildGraph, view: ConservationView, byId: Map<string, GraphPart>): Problem[] {
@@ -793,10 +783,11 @@ function justified(graph: YardBuildGraph, view: ConservationView): Problem[] {
   return problems;
 }
 
-function jointWork(graph: YardBuildGraph, view: ConservationView, byId: Map<string, GraphPart>): Problem[] {
-  const problems: Problem[] = [...justified(graph, view)];
+function jointWork(graph: YardBuildGraph, view: ConservationView, byId: Map<string, GraphPart>): { geometry: Problem[]; order: Problem[] } {
+  const geometry: Problem[] = [...justified(graph, view)];
+  const order: Problem[] = [];
   const { groups, broken } = groupsOf(graph);
-  problems.push(...broken);
+  geometry.push(...broken);
   const ledger = new Map(view.fasteners.map((row) => [row.pair, row]));
   const expectRows = !stockBuysNoScrews(graph);
   for (const group of groups) {
@@ -809,93 +800,102 @@ function jointWork(graph: YardBuildGraph, view: ConservationView, byId: Map<stri
     const names = `${partName(byId.get(group.a), group.a)} / ${partName(byId.get(group.b), group.b)}`;
     if (seat.kind === "hang" || seat.kind === "hang-unresolved") {
       if (machines.length || fastens.length) {
-        problems.push({ detail: `${names} is a hinge and also has a carcass machine or fasten step.`, subjects: [...jointIds] });
+        geometry.push({ detail: `${names} is a hinge and also has a carcass machine or fasten step.`, subjects: [...jointIds] });
       }
       if (hangs.length !== 1) {
-        problems.push({ detail: `${names} needs one hang step and has ${hangs.length}.`, subjects: [...jointIds] });
+        geometry.push({ detail: `${names} needs one hang step and has ${hangs.length}.`, subjects: [...jointIds] });
         continue;
       }
       const hang = hangs[0];
       if (seat.kind === "hang") {
         if (!includesId(hang.partIds, seat.host) || !includesId(hang.partIds, seat.leaf)) {
-          problems.push({ detail: `Hang step for ${names} does not name the leaf and its carcass part.`, subjects: [seat.leaf, seat.host] });
+          geometry.push({ detail: `Hang step for ${names} does not name the leaf and its carcass part.`, subjects: [seat.leaf, seat.host] });
         }
         if (hang.hosts !== undefined && !includesId(hang.hosts, seat.host)) {
-          problems.push({ detail: `Hang step for ${names} does not seat ${partName(byId.get(seat.host), seat.host)}.`, subjects: [seat.host] });
+          geometry.push({ detail: `Hang step for ${names} does not seat ${partName(byId.get(seat.host), seat.host)}.`, subjects: [seat.host] });
         }
         const leaf = byId.get(seat.leaf);
         const recorded = leaf?.source === "panel" && typeof leaf.hinged?.hinges === "number" && leaf.hinged.hinges > 0
           ? leaf.hinged.hinges
           : undefined;
         if (recorded !== undefined && hang.hardware?.qty !== recorded) {
-          problems.push({ detail: `Hang step for ${partName(leaf, seat.leaf)} records ${hang.hardware?.qty ?? 0} hinges; the leaf has ${recorded}.`, subjects: [seat.leaf] });
+          geometry.push({ detail: `Hang step for ${partName(leaf, seat.leaf)} records ${hang.hardware?.qty ?? 0} hinges; the leaf has ${recorded}.`, subjects: [seat.leaf] });
         }
         if (recorded === undefined && hang.hardware) {
-          problems.push({ detail: `Hang step for ${names} invents a hinge count the leaf does not record.`, subjects: [seat.leaf] });
+          geometry.push({ detail: `Hang step for ${names} invents a hinge count the leaf does not record.`, subjects: [seat.leaf] });
         }
       } else if (hang.hosts !== undefined && hang.hosts.length === 1) {
-        problems.push({ detail: `Hang step for ${names} names a carcass part the leaf record does not.`, subjects: [...jointIds] });
+        geometry.push({ detail: `Hang step for ${names} names a carcass part the leaf record does not.`, subjects: [...jointIds] });
       }
-      const screws = (hang.fasteners ?? []).reduce((sum, use) => sum + use.qty, 0);
-      if (screws > 0) problems.push({ detail: `Hang step for ${names} adds ${screws} carcass screws.`, subjects: [...jointIds] });
+      const screws = (hang.fasteners ?? []).filter((use) => screwCatalog(use.id)).reduce((sum, use) => sum + use.qty, 0);
+      const other = (hang.fasteners ?? []).filter((use) => !screwCatalog(use.id));
+      if (other.length) geometry.push({ detail: `Hang step for ${names} counts ${other.map((use) => use.id).join(", ")}, which is not a carcass screw.`, subjects: [...jointIds] });
+      if (screws > 0) geometry.push({ detail: `Hang step for ${names} adds ${screws} carcass screws.`, subjects: [...jointIds] });
       continue;
     }
-    if (hangs.length) problems.push({ detail: `${names} is not a hinge and has a hang step.`, subjects: [...jointIds] });
+    if (fastens.length && machines.length && machines.some((step) => !(step.step < Math.min(...fastens.map((row) => row.step))))) {
+      order.push({ detail: `Machining for ${names} does not precede fastening.`, subjects: [...jointIds] });
+    }
+    if (hangs.length) geometry.push({ detail: `${names} is not a hinge and has a hang step.`, subjects: [...jointIds] });
     if (fastens.length !== 1) {
-      problems.push({ detail: `${names} needs one fasten step and has ${fastens.length}.`, subjects: [...jointIds] });
+      geometry.push({ detail: `${names} needs one fasten step and has ${fastens.length}.`, subjects: [...jointIds] });
     } else {
       const fasten = fastens[0];
       if (!includesId(fasten.partIds, group.a) || !includesId(fasten.partIds, group.b)) {
-        problems.push({ detail: `Fasten step for ${names} does not name both parts.`, subjects: [group.a, group.b] });
+        geometry.push({ detail: `Fasten step for ${names} does not name both parts.`, subjects: [group.a, group.b] });
       }
-      const qty = (fasten.fasteners ?? []).reduce((sum, use) => sum + use.qty, 0);
+      const foreign = (fasten.fasteners ?? []).filter((use) => !screwCatalog(use.id));
+      if (foreign.length) {
+        geometry.push({ detail: `Fasten step for ${names} counts ${foreign.map((use) => `${use.qty} ${use.id}`).join(", ")}, which is not a carcass screw.`, subjects: [group.pair] });
+      }
+      const qty = (fasten.fasteners ?? []).filter((use) => screwCatalog(use.id)).reduce((sum, use) => sum + use.qty, 0);
       const a = byId.get(group.a);
       const b = byId.get(group.b);
       const shop = jointPattern(patternOf(group.joints))?.role === "shop";
       const expected = a && b && shop ? pairScrewCount(graph, a, b) : 0;
       if (expectRows && shop) {
         const row = ledger.get(group.pair);
-        if (!row) problems.push({ detail: `Reviewed shop pair ${names} has no fastener row.`, subjects: [group.pair] });
+        if (!row) geometry.push({ detail: `Reviewed shop pair ${names} has no fastener row.`, subjects: [group.pair] });
         else if (row.screws !== expected) {
-          problems.push({ detail: `Fastener row for ${names} says ${row.screws} screws; the boxes ask for ${expected}.`, subjects: [group.pair] });
+          geometry.push({ detail: `Fastener row for ${names} says ${row.screws} screws; the boxes ask for ${expected}.`, subjects: [group.pair] });
         }
       }
       if (qty !== expected) {
-        problems.push({ detail: `Fasten step for ${names} uses ${qty} screws; the boxes ask for ${expected}.`, subjects: [group.pair] });
+        geometry.push({ detail: `Fasten step for ${names} uses ${qty} carcass screws; the boxes ask for ${expected}.`, subjects: [group.pair] });
       }
     }
     if (seat.kind === "unresolved" || seat.kind === "fasten-only") {
       if (machines.length) {
-        problems.push({ detail: `${names} has a machine step, and the boxes do not show a single machined part.`, subjects: [...jointIds] });
+        geometry.push({ detail: `${names} has a machine step, and the boxes do not show a single machined part.`, subjects: [...jointIds] });
       }
       if (fastens.some((step) => step.hosts !== undefined && step.hosts.length === 1)) {
-        problems.push({ detail: `${names} has a fasten step that names one machined part, and the boxes do not.`, subjects: [...jointIds] });
+        geometry.push({ detail: `${names} has a fasten step that names one machined part, and the boxes do not.`, subjects: [...jointIds] });
       }
       continue;
     }
     if (machines.length !== 1) {
-      problems.push({ detail: `${names} needs one machine step and has ${machines.length}.`, subjects: [...jointIds] });
+      geometry.push({ detail: `${names} needs one machine step and has ${machines.length}.`, subjects: [...jointIds] });
       continue;
     }
     const machine = machines[0];
     if (machine.machining !== seat.machining) {
-      problems.push({ detail: `${names} is machined as ${machine.machining ?? "nothing"}, not ${seat.machining}.`, subjects: [...jointIds] });
+      geometry.push({ detail: `${names} is machined as ${machine.machining ?? "nothing"}, not ${seat.machining}.`, subjects: [...jointIds] });
     }
     if (seat.kind === "host") {
       if (!includesId(machine.partIds, seat.host)) {
-        problems.push({ detail: `${partName(byId.get(seat.host), seat.host)} is the part the boxes machine for ${names}, and the machine step does not name it.`, subjects: [seat.host] });
+        geometry.push({ detail: `${partName(byId.get(seat.host), seat.host)} is the part the boxes machine for ${names}, and the machine step does not name it.`, subjects: [seat.host] });
       }
-      if (includesId(machine.partIds, seat.guest) && !includesId(machine.partIds, seat.host)) {
-        problems.push({ detail: `Machine step for ${names} cuts the guest.`, subjects: [seat.guest] });
+      if (includesId(machine.partIds, seat.guest)) {
+        geometry.push({ detail: `Machine step for ${names} names ${partName(byId.get(seat.guest), seat.guest)}, and the boxes machine only ${partName(byId.get(seat.host), seat.host)}.`, subjects: [seat.guest] });
       }
       if (machine.hosts !== undefined && (!includesId(machine.hosts, seat.host) || includesId(machine.hosts, seat.guest))) {
-        problems.push({ detail: `Machine step for ${names} seats ${machine.hosts.join(", ") || "nobody"}, not ${partName(byId.get(seat.host), seat.host)}.`, subjects: [seat.host] });
+        geometry.push({ detail: `Machine step for ${names} seats ${machine.hosts.join(", ") || "nobody"}, not ${partName(byId.get(seat.host), seat.host)}.`, subjects: [seat.host] });
       }
     } else if (!includesId(machine.partIds, seat.parts[0]) || !includesId(machine.partIds, seat.parts[1])) {
-      problems.push({ detail: `${names} is machined on both parts, and the machine step does not name both.`, subjects: [...seat.parts] });
+      geometry.push({ detail: `${names} is machined on both parts, and the machine step does not name both.`, subjects: [...seat.parts] });
     }
   }
-  return problems;
+  return { geometry, order };
 }
 
 function invention(graph: YardBuildGraph, view: ConservationView): Problem[] {
@@ -959,12 +959,18 @@ function invention(graph: YardBuildGraph, view: ConservationView): Problem[] {
     }
   }
   const screws = expectedRows ? [...expectedRows.values()].reduce((sum, count) => sum + count, 0) : 0;
-  const screwLines = view.buy.filter(carcassScrewLine);
+  const screwLines = view.buy.filter((line) => screwCatalog(line.catalogId));
+  for (const line of view.buy) {
+    if (screwCatalog(line.catalogId)) continue;
+    if (/wood screws?/i.test(line.name)) {
+      problems.push({ detail: `Buy line "${line.name}" is catalog ${line.catalogId ?? "none"}, which is not a carcass screw.`, subjects: [line.catalogId ?? line.name] });
+    }
+  }
   const boxes = screws > 0 ? Math.ceil(screws / SCREWS_IN_A_BOX) : 0;
   if (boxes === 0 && screwLines.length) {
-    problems.push({ detail: `Compiled Buy has a carcass-screw line and the ledger has no screws.`, subjects: screwLines.map((line) => line.catalogId ?? line.name) });
+    problems.push({ detail: `Compiled Buy has a carcass-screw line and the boxes ask for none.`, subjects: screwLines.map((line) => line.catalogId ?? line.name) });
   } else if (boxes > 0 && (screwLines.length !== 1 || screwLines[0]?.quantity !== boxes)) {
-    problems.push({ detail: `Compiled Buy has ${screwLines.map((line) => line.quantity).join(", ") || "no"} carcass-screw boxes; the ledger is ${screws} screws.`, subjects: ["screws"] });
+    problems.push({ detail: `Compiled Buy has ${screwLines.map((line) => line.quantity).join(", ") || "no"} carcass-screw boxes; the boxes ask for ${screws} screws.`, subjects: ["screws"] });
   }
   const ops = [...graph.operations].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
   if (ops.length !== view.steps.length) {
@@ -979,8 +985,8 @@ function invention(graph: YardBuildGraph, view: ConservationView): Problem[] {
       problems.push({ detail: `Compiled step ${index + 1} does not match operation ${op.id}.`, subjects: [op.id] });
     }
   });
-  const stockLines = graph.stock.filter((line) => !carcassScrewLine(line));
-  const buyLines = view.buy.filter((line) => !carcassScrewLine(line));
+  const stockLines = graph.stock.filter((line) => !omittedScrewStock(line));
+  const buyLines = view.buy.filter((line) => !screwCatalog(line.catalogId) && !/wood screws?/i.test(line.name));
   if (stockLines.length !== buyLines.length) {
     problems.push({ detail: `Compiled Buy has ${buyLines.length} non-screw lines; the graph stock has ${stockLines.length}.`, subjects: [] });
   }
@@ -1011,14 +1017,14 @@ function titleClaims(part: GraphPart, title: string): boolean {
   return role.endsWith("f") && new RegExp(`\\b${role.slice(0, -1)}ves\\b`, "i").test(title);
 }
 
-function disclosed(graph: YardBuildGraph): ConservationFinding[] {
+function disclosed(graph: YardBuildGraph, view: ConservationView): ConservationFinding[] {
   const findings: ConservationFinding[] = [];
   const joined = new Set(graph.joints.filter((joint) => joint.reviewedJoin).flatMap((joint) => [joint.a, joint.b]));
-  const row = (id: string, detail: string, subjects: string[]): ConservationFinding => ({
+  const row = (id: string, detail: string, subjects: string[], basis: ConservationBasis): ConservationFinding => ({
     id,
     check: "disclosed",
     status: "gap",
-    basis: "geometry",
+    basis,
     detail,
     subjects,
   });
@@ -1030,6 +1036,7 @@ function disclosed(graph: YardBuildGraph): ConservationFinding[] {
       `disclosed:back:${part.id}`,
       `${part.name || "Back"} is placed, not rebated. No reviewed joint cuts a rebate for it.`,
       [part.id],
+      "geometry",
     ));
   }
   for (const op of graph.operations) {
@@ -1041,6 +1048,7 @@ function disclosed(graph: YardBuildGraph): ConservationFinding[] {
       `disclosed:copied:${op.id}`,
       `Copied step "${op.title}" says ${names} ${claimed.length === 1 ? "is" : "are"} pinned, fastened, or rebated. No reviewed joint fastens ${claimed.length === 1 ? "it" : "them"}, so derived assembly places ${claimed.length === 1 ? "it" : "them"} and does not fasten ${claimed.length === 1 ? "it" : "them"}.`,
       claimed.map((part) => part.id),
+      "consistency",
     ));
   }
   const lumber = new Map<string, ExpectedPiece[]>();
@@ -1055,14 +1063,20 @@ function disclosed(graph: YardBuildGraph): ConservationFinding[] {
     const overlong = pieces.some((piece) => stockLen > 0 && Math.max(piece.lengthIn, piece.widthIn) > stockLen + 0.01);
     if (overlong) continue;
     if (!(stockLen > 0) || !pieces.length) continue;
-    const need = boardsForLengths(pieces.map((piece) => Math.max(piece.lengthIn, piece.widthIn)), stockLen);
+    const fit = boardsForLengths(pieces.map((piece) => Math.max(piece.lengthIn, piece.widthIn)), stockLen);
     const copied = graph.stock.filter((line) => line.catalogId === catalogId);
-    if (!copied.length || copied.every((line) => line.quantity === need)) continue;
+    const packs = view.packs.filter((pack) => pack.catalogId === catalogId);
+    const packQty = packs.reduce((sum, pack) => sum + pack.quantity, 0);
+    if (!copied.length || !packs.length || copied.every((line) => line.quantity === packQty)) continue;
     const quoted = copied.map((line) => `${line.quantity} ${line.unit}`).join(", ");
+    const extra = packQty > fit
+      ? ` A first-fit of the part lengths fits on ${fit} boards. The extra board is packer policy, not geometry.`
+      : "";
     findings.push(row(
       `disclosed:pack:${catalogId}`,
-      `The board count from the part geometry is ${need}. The copied Buy line is ${quoted}. The copied quantity was not written onto the pack.`,
+      `Compiled pack ${catalogId} is ${packQty}.${extra} The copied Buy line is ${quoted}. The copied quantity was not written onto the pack.`,
       [catalogId],
+      "consistency",
     ));
   }
   const spliced = new Set<string>();
@@ -1075,6 +1089,7 @@ function disclosed(graph: YardBuildGraph): ConservationFinding[] {
       `disclosed:splice:${piece.partId}`,
       `${partName(graph.parts.find((part) => part.id === piece.partId), piece.partId)} is ${round8(Math.max(piece.lengthIn, piece.widthIn))} in, longer than the ${stockLen} in board. That cut is not certified as packed.`,
       [piece.partId],
+      "geometry",
     ));
   }
   const wholeIds = [...new Set(graph.parts.filter((part) => partClass(part) === "whole").map((part) => part.materialId))].sort();
@@ -1086,6 +1101,7 @@ function disclosed(graph: YardBuildGraph): ConservationFinding[] {
       `disclosed:whole:${materialId}`,
       `Whole craft stock ${materialId}: 0 derived cuts and 0 derived packs for ${count} ${count === 1 ? "part" : "parts"}. Copied Buy is ${quoted}. That quantity was not written into packs.`,
       [materialId],
+      "consistency",
     ));
   }
   return findings.sort((a, b) => a.id.localeCompare(b.id));
@@ -1119,14 +1135,21 @@ function holdSentence(check: ConservationCheck, graph: YardBuildGraph, view: Con
  */
 export function compileConservation(graph: YardBuildGraph, view: ConservationView): ConservationLedger {
   const byId = new Map(graph.parts.map((part) => [part.id, part]));
-  const rows: Record<ConservationCheck, Problem[]> = {
-    "cut-identity": cutIdentity(graph, view, byId),
-    "joint-work": jointWork(graph, view, byId),
-    allocation: allocation(graph, view),
-    packs: packCover(graph, view),
-    invention: invention(graph, view),
-    disclosed: [],
-  };
-  const structural = CHECKS.map((check) => summary(check, rows[check], holdSentence(check, graph, view)));
-  return { findings: [...structural, ...disclosed(graph)] };
+  const joint = jointWork(graph, view, byId);
+  const jointHold = holdSentence("joint-work", graph, view);
+  const findings: ConservationFinding[] = [
+    summary("cut-identity", "cut-identity", cutIdentity(graph, view, byId), holdSentence("cut-identity", graph, view), "consistency"),
+    joint.order.length && !joint.geometry.length
+      ? summary("joint-work", "joint-work", joint.order, jointHold, "consistency")
+      : summary("joint-work", "joint-work", joint.geometry, jointHold, "geometry"),
+    summary("allocation", "allocation", allocation(graph, view), holdSentence("allocation", graph, view), "geometry"),
+    summary("packs", "packs", packCover(graph, view), holdSentence("packs", graph, view), "geometry"),
+    summary("invention", "invention", invention(graph, view), holdSentence("invention", graph, view), "consistency"),
+  ];
+  if (joint.order.length && joint.geometry.length) {
+    findings.push(summary("step-order", "joint-work", joint.order, "Machining precedes fastening.", "consistency"));
+  } else if (!joint.order.length) {
+    findings.push(summary("step-order", "joint-work", [], "Machining precedes fastening on every reviewed pair that has both steps.", "consistency"));
+  }
+  return { findings: [...findings, ...disclosed(graph, view)] };
 }

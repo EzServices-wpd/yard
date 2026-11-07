@@ -47,6 +47,18 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 12:10 ET | #272 r2 block — spare board, step order, fastener identity, and the geometry label (same branch, not graded)
+
+- Yard Critic BLOCK on #272 r2, head `5b2d932a`, vs release `ea4dffd6`. Same branch. Not graded. Not merged. Do not merge. Not parked. The r1 holes stay closed.
+- `basis` is no longer stamped geometry on every row. Cut-identity compares compiled cuts with compiled assembly steps, and invention compares compiled steps and Buy lines with the copied operations and stock, so those findings are `consistency`. Allocation, packs, joint seating, and screw counts from the boxes stay `geometry`. A copied Buy comparison, including the oak pack note, is `consistency`.
+- The spare board after a first-fit is packer policy, not a required board count. Oak's part lengths first-fit on 24 boards of `lumber-1x4-8`. A pack of 24 holds. A pack of 25, which the stock compile still emits, also holds, and the disclosure says the extra board is packer policy, not geometry. Five 60 inch rails on five 96 inch 2×4s hold. A piece longer than one board still gaps and stays a disclosed splice.
+- When a reviewed pair has both a machine step and a fasten step, machining has to precede fastening. Swapping those step numbers gaps that check, and the finding is `consistency` because it compares the two compiled step numbers.
+- A fasten step counts only `screws-8` and `outdoor-screws`. `hinge-pair` is not a carcass screw. A Buy line whose name still says wood screws but whose catalog id is not one of those two ids gaps, and that finding is `consistency`.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `stockCompile.ts` and `assemblyCompile.ts` not edited. No AI reader. No linen wording. The 0.25 inch screw-overlap cutoff was not restored. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. `walk-canary.ts` green. Weekend geometry 6/6 unchanged. This note does not record a Critic PASS.
+- Files: `src/lib/yard/conservationCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 47/47. `npx tsc --noEmit` pass. `npx eslint` on `conservationCompile.ts` and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 11:29 ET | #272 r1 block — conservation holds were reading the compile under test (same branch, not graded)
 
 - Yard Critic BLOCK on #272 r1, head `ef5fe49e`, vs release `ea4dffd62c204bdace1235694e74597d55af7fbc`. Same branch. Not graded. Not merged. Do not merge. Not parked.

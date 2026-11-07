@@ -2218,9 +2218,12 @@ describe("conservation checks the compiled graph without becoming it", () => {
       assert.equal(oak.graph.stock.find((line) => line.catalogId === "lumber-1x4-8")?.quantity, 24);
       const oakGap = oak.compiled.conservation.findings.find((row) => row.id === "disclosed:pack:lumber-1x4-8");
       assert.equal(oakGap?.status, "gap");
+      assert.equal(oakGap?.basis, "consistency");
       assert.match(oakGap?.detail ?? "", /\b25\b/);
       assert.match(oakGap?.detail ?? "", /\b24\b/);
+      assert.match(oakGap?.detail ?? "", /packer policy, not geometry/);
       assert.match(oakGap?.detail ?? "", /not written onto the pack/);
+      assert.doesNotMatch(oakGap?.detail ?? "", /geometry is 25|geometry needs 25/);
       const oakAssembly = [...oak.compiled.assembly.map((step) => `${step.title}\n${step.detail}`), oak.compiled.assemblyDisclosure ?? ""].join("\n");
       assert.doesNotMatch(oakAssembly, /\b24\b|\b25\b/);
       assert.equal(oak.compiled.conservation.findings.find((row) => row.id === "packs")?.status, "holds");
@@ -2337,13 +2340,17 @@ describe("conservation checks the compiled graph without becoming it", () => {
         ...oak.compiled,
         packs: oak.compiled.packs.map((pack) => pack.catalogId === "lumber-1x4-8" ? { ...pack, quantity: 24 } : pack),
       });
-      const oakGap = rewritten.findings.find((row) => row.id === "disclosed:pack:lumber-1x4-8");
-      assert.equal(oakGap?.status, "gap");
-      assert.equal(oakGap?.basis, "geometry");
-      assert.match(oakGap?.detail ?? "", /geometry is 25/);
-      assert.match(oakGap?.detail ?? "", /\b24\b/);
-      assert.equal(structuralStatus(rewritten, "packs"), "gap");
-      assert.match(rewritten.findings.find((row) => row.id === "packs")?.detail ?? "", /needs 25/);
+      assert.equal(structuralStatus(rewritten, "packs"), "holds");
+      assert.equal(rewritten.findings.some((row) => /geometry is 25|geometry needs 25|needs 25/.test(row.detail)), false);
+      const rails = [0, 1, 2, 3, 4].map((n) => stockPart(`r${n}`, { width: 60, height: 1.5, depth: 3.5 }, "lumber-2x4-8", "rail"));
+      const railGraph = stockGraph(rails, { stock: [] });
+      const railCompiled = compileBuildGraph(railGraph);
+      const five = compileConservation(railGraph, {
+        ...railCompiled,
+        packs: railCompiled.packs.map((pack) => pack.kind === "lumber" ? { ...pack, quantity: 5 } : pack),
+      });
+      assert.equal(structuralStatus(five, "packs"), "holds");
+      assert.equal(five.findings.some((row) => /needs 6|geometry is 6/.test(row.detail)), false);
 
       const long = stockPart("rail", { width: 120, height: 1.5, depth: 3.5 }, "lumber-2x4-8", "rail");
       long.name = "Long rail";
@@ -2441,9 +2448,101 @@ describe("conservation checks the compiled graph without becoming it", () => {
       });
       assert.equal(structuralStatus(prepareOnly, "cut-identity"), "gap");
       assert.match(prepareOnly.findings.find((entry) => entry.id === "cut-identity")?.detail ?? "", /besides prepare/);
-      for (const check of STRUCTURAL) {
-        assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === check)?.basis, "geometry", check);
-      }
+      assert.equal(prepareOnly.findings.find((entry) => entry.id === "cut-identity")?.basis, "consistency");
+      assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === "allocation")?.basis, "geometry");
+      assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === "packs")?.basis, "geometry");
+      assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === "joint-work")?.basis, "geometry");
+      assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === "cut-identity")?.basis, "consistency");
+      assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === "invention")?.basis, "consistency");
+      assert.equal(cubby.compiled.conservation.findings.find((entry) => entry.id === "step-order")?.basis, "consistency");
+    });
+  });
+
+  it("labels copied-field checks as consistency, keeps machining before fastening, and does not count a hinge as a screw", () => {
+    const side = stockPart("side", { width: 0.75, height: 10, depth: 20 }, "plywood-3-4-4x8", "upright");
+    const shelf = stockPart("shelf", { width: 8, height: 0.75, depth: 20 });
+    side.position = { x: 0, y: 0, z: 0 };
+    shelf.position = { x: 0.5, y: 4, z: 0 };
+    const graph = stockGraph([side, shelf]);
+    graph.operations = [{ id: "op", order: 1, title: "Stand the side", description: "Stand it.", labels: ["side"], partIds: ["side"] }];
+    graph.joints = [{ id: "j1", a: "shelf", b: "side", basis: "declared", patternId: "dado", reviewedJoin: true }];
+    const compiled = compileBuildGraph(graph);
+    assertStructuralHolds(compiled.conservation, "housed order");
+    const titled = compileConservation(graph, {
+      ...compiled,
+      steps: compiled.steps.map((step, index) => index === 0 ? { ...step, title: "Tampered title" } : step),
+    });
+    assert.equal(structuralStatus(titled, "invention"), "gap");
+    assert.equal(titled.findings.find((row) => row.id === "invention")?.basis, "consistency");
+    const renamed = compileConservation(graph, {
+      ...compiled,
+      buy: compiled.buy.map((line, index) => index === 0 ? { ...line, name: "Tampered buy" } : line),
+    });
+    assert.equal(structuralStatus(renamed, "invention"), "gap");
+    assert.equal(renamed.findings.find((row) => row.id === "invention")?.basis, "consistency");
+
+    const machine = compiled.assembly.find((step) => step.kind === "machine");
+    const fasten = compiled.assembly.find((step) => step.kind === "fasten");
+    assert.ok(machine && fasten && machine.step < fasten.step);
+    const swapped = compileConservation(graph, {
+      ...compiled,
+      assembly: compiled.assembly.map((step) => {
+        if (step.kind === "machine") return { ...step, step: fasten.step };
+        if (step.kind === "fasten") return { ...step, step: machine.step };
+        return step;
+      }),
+    });
+    const order = swapped.findings.find((row) => row.id === "joint-work");
+    assert.equal(order?.status, "gap");
+    assert.equal(order?.basis, "consistency");
+    assert.match(order?.detail ?? "", /does not precede fastening/);
+
+    const hingeNamed = compileConservation(graph, {
+      ...compiled,
+      assembly: compiled.assembly.map((step) => step.kind === "fasten"
+        ? { ...step, fasteners: [{ id: "hinge-pair", qty: 3 }] }
+        : step),
+    });
+    assert.equal(structuralStatus(hingeNamed, "joint-work"), "gap");
+    assert.match(hingeNamed.findings.find((row) => row.id === "joint-work")?.detail ?? "", /hinge-pair/);
+    assert.match(hingeNamed.findings.find((row) => row.id === "joint-work")?.detail ?? "", /not a carcass screw/);
+    const screwLine = compiled.buy.find((line) => line.catalogId === "screws-8");
+    assert.ok(screwLine);
+    const hingeBuy = compileConservation(graph, {
+      ...compiled,
+      buy: compiled.buy.map((line) => line.catalogId === "screws-8" ? { ...line, catalogId: "hinge-pair" } : line),
+    });
+    assert.equal(structuralStatus(hingeBuy, "invention"), "gap");
+    assert.equal(hingeBuy.findings.find((row) => row.id === "invention")?.basis, "consistency");
+    assert.match(hingeBuy.findings.find((row) => row.id === "invention")?.detail ?? "", /hinge-pair/);
+    assert.match(hingeBuy.findings.find((row) => row.id === "invention")?.detail ?? "", /not a carcass screw/);
+
+    const bothNamed = compileConservation(graph, {
+      ...compiled,
+      assembly: compiled.assembly.map((step) => step.kind === "machine"
+        ? { ...step, partIds: ["side", "shelf"], hosts: undefined }
+        : step),
+    });
+    assert.equal(structuralStatus(bothNamed, "joint-work"), "gap");
+    assert.match(bothNamed.findings.find((row) => row.id === "joint-work")?.detail ?? "", /boxes machine only/);
+
+    offline(() => {
+      const cart = roundTrip("utility cart", "frame-storage");
+      const cartHinge = compileConservation(cart.graph, {
+        ...cart.compiled,
+        assembly: cart.compiled.assembly.map((step) => step.kind === "fasten" && step.fasteners?.length
+          ? { ...step, fasteners: step.fasteners.map((use) => ({ ...use, id: "hinge-pair" })) }
+          : step),
+      });
+      assert.equal(structuralStatus(cartHinge, "joint-work"), "gap");
+      assert.match(cartHinge.findings.find((row) => row.id === "joint-work")?.detail ?? "", /hinge-pair/);
+      const cartBuy = compileConservation(cart.graph, {
+        ...cart.compiled,
+        buy: cart.compiled.buy.map((line) => line.catalogId === "screws-8" ? { ...line, catalogId: "hinge-pair" } : line),
+      });
+      assert.equal(structuralStatus(cartBuy, "invention"), "gap");
+      assert.equal(cartBuy.findings.find((row) => row.id === "invention")?.basis, "consistency");
+      assert.match(cartBuy.findings.find((row) => row.id === "invention")?.detail ?? "", /not a carcass screw/);
     });
   });
 });
