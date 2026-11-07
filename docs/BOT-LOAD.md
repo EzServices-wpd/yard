@@ -1,6 +1,6 @@
 # Bot load file — read this first on resume
 
-Snapshot 2026-11-07 08:22 ET · release `release/2026-10-24` @ `7134c41b` · main `db7cd481` · shadow fastener demand shipped (#263 / #264 / #265) · shadow cut and pack compile in progress (lock held; not merged) · written by Cursor Agent.
+Snapshot 2026-11-07 08:22 ET · release `release/2026-10-24` @ `7134c41b` · main `db7cd481` · shadow fastener demand shipped (#263 / #264 / #265) · shadow cut and pack compile on PR #266 (lock held; not merged) · written by Cursor Agent.
 
 This is the one page that gets a bot from cold to working. Detail lives in `CLAUDE-PROGRESS.md` (session log, lock, PASS log, landings) and `PARKED-IDEAS.md`. If anything here disagrees with those two, they win; if a canary is red, the canary wins.
 
@@ -26,7 +26,7 @@ This is the one page that gets a bot from cold to working. Detail lives in `CLAU
 | Shadow build graph (version 1) | shipped · #257 into release · squash #258 release → main · merge-back #259 main → release | Main `3966f67f2e2d071c3e0c7d420c5bbb558adec765`. Release `6de4631859fbfd7eb467e60c48b312abc60c5715` | One shadow graph. Model, steps, and Buy compile back for a bookcase, a potting bench with a lower shelf, and the Eiffel canary. Not the live source of truth. This row does not record a Critic PASS or a deployment id | — |
 | Construction knowledge and substitution | shipped · #260 into release · squash #261 release → main · merge-back #262 main → release | Main `10f776525411543ea0fc7d2d13c421d49f3a7c04`. Release `6ef07183c7ca20c0aec85b581df54affbf9b993e` | Declared joints only where a reviewed pattern already applies. Stock substitution keeps the form. Still shadow. Not the live source of truth. This row does not record a Critic PASS or a deployment id | — |
 | Shadow fastener demand | shipped · #263 into release · squash #264 release → main · merge-back #265 main → release | Main `db7cd4812967096ee82e7f8abc8fa8da31451f24`. Release merge of #263 `43a5cc52f7d78b27ee42eb3bc906a20b07e0867d`. Release tip `7134c41b20ed329a11fc52d36699cbef9c10de71` | Carcass screws come from reviewed shop joints. A thin dowel or a thin polygon buys none. Still shadow. Not the live source of truth. This row does not record a Critic PASS or a deployment id | — |
-| Shadow cut and pack compile | in progress · one PR into `release/2026-10-24` · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | Cuts and sheet/lumber packs are derived from graph parts. Whole craft sticks derive no pack. Still shadow. Not graded | Do not merge |
+| Shadow cut and pack compile | in progress · PR #266 into `release/2026-10-24` · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | Cuts and sheet/lumber packs are derived from graph parts. Whole craft sticks derive no pack. Still shadow. Not graded | Do not merge |
 | Critic NR-1 probe | `critic/nr1-base`, `critic/nr1-head` | `62b9bba`, `bbca4d6` | Probe harness, **do not merge** | — |
 | Other open PRs | #231, #203, #202, #121, #120, #119, #118, #11 | — | Not in this queue | — |
 
@@ -34,7 +34,7 @@ Critic PASS entries for #225, CARD1, class F, digit-feet, and stool unit-size, a
 
 ## 3. Next, in order (one at a time)
 
-Ezra's queue, updated 2026-11-07 08:22 ET. Items 1–6, the shadow build graph, construction knowledge, and shadow fastener demand are done. Shadow cut and pack compile is the open PR (lock held). Do not merge it from this note. "A linen needs…" still needs Ezra's yes.
+Ezra's queue, updated 2026-11-07 08:22 ET. Items 1–6, the shadow build graph, construction knowledge, and shadow fastener demand are done. Shadow cut and pack compile is PR #266 (lock held). Do not merge it from this note. "A linen needs…" still needs Ezra's yes.
 
 1. DONE: `class-card1-any-size` shipped (#238 / #239 / #240).
 2. DONE: output-neutral engine-speed patch shipped (#241 into release, squash #243 to main `a032063e`, merge-back #244, docs #242 on release as `80c3e765`). Production deploy READY.
@@ -46,7 +46,7 @@ Ezra's queue, updated 2026-11-07 08:22 ET. Items 1–6, the shadow build graph, 
 8. DONE: shadow build graph version 1. Shipped #257 / #258 / #259. Main `3966f67f2e2d071c3e0c7d420c5bbb558adec765`. Release `6de4631859fbfd7eb467e60c48b312abc60c5715`. Not the live source of truth. This note does not record a Critic PASS.
 9. DONE: construction knowledge and substitution on that graph. Shipped #260 / #261 / #262. Main `10f776525411543ea0fc7d2d13c421d49f3a7c04`. Release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. Still shadow. This note does not record a Critic PASS.
 10. DONE: shadow fastener demand. Shipped #263 / #264 / #265. Main `db7cd4812967096ee82e7f8abc8fa8da31451f24`. Release `7134c41b20ed329a11fc52d36699cbef9c10de71`. Still shadow. This note does not record a Critic PASS. Do not switch the graph on.
-11. IN PROGRESS, do not merge: compile cuttable pieces from graph parts, then sheet and lumber packs from that allocation. Whole craft sticks derive no pack. The live engine does not read the graph.
+11. IN PROGRESS, do not merge (PR #266): compile cuttable pieces from graph parts, then sheet and lumber packs from that allocation. Whole craft sticks derive no pack. The live engine does not read the graph.
 
 Do not resume SWE 2, Critic 2, or Design.
 

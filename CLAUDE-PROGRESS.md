@@ -50,7 +50,7 @@ Newest first. Tip, canary status, the rule per change, before/after prompts, fil
 ### 2026-11-07 08:22 ET | shadow cut and pack compile — in progress (lock held)
 
 - Shadow fastener demand is on main `db7cd4812967096ee82e7f8abc8fa8da31451f24` (#264) and release `7134c41b20ed329a11fc52d36699cbef9c10de71` (#265, merge-back of #263, release merge `43a5cc52f7d78b27ee42eb3bc906a20b07e0867d`). Do not redo it. This note does not record a Critic PASS or a deployment id. The fastener lock rode in on the merge-back and was not cleared. Replaced on this feature branch only. Lock commit `f9e50053`.
-- New lock: shadow cut and pack compile. Not graded. Not merged. One PR into `release/2026-10-24`. Do not merge.
+- New lock: shadow cut and pack compile. Not graded. Not merged. PR #266 into `release/2026-10-24`. Do not merge.
 - `compileBuildGraph` realizes cuttable pieces from the parts on the graph, then derives sheet and lumber packs from that allocation. The sheet count is `planSheetNest`. The board count is `packLengths`. A part thicker than its stock is layers of that stock. A part wider than the board face is rips of that face. `report.ts` is not called. Its closet Buy mixes family rules with the live quantities, so calling it would copy a Buy line instead of allocating the parts.
 - The lifted Buy lines on `buy` stay, including the carcass screws from the last ship. `cuts` and `packs` do not read `graph.stock`. Setting every lifted quantity to 99 leaves the packs as they were. `generateFromPrompt` and `buildPlan` still do not read the graph.
 - Compile-back, from the parts. Where a count matches the live Buy, that is the nest or the packer, not a copied row.
