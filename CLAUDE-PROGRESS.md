@@ -47,6 +47,22 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 09:44 ET | #269 r1 block — a notch machines the board the other part passes through (same branch, not graded)
+
+- Yard Critic BLOCK on #269 r1, head `379a0ff7acfb395c1eea6e72201e0e69e71ec0e7`, vs release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b`. Same branch. Not graded. Not merged. Do not merge. Not parked.
+- The housed-end path was reused for a notch. A through-notch is not an end buried in a face, so the boxes never seated it. `declaredGuest` then treated `joint.a` as the part let into the other, and the machine step cut the other part. Writers put the notched board in `joint.a`, so the post or the leg was machined. Declaring the same pair the other way swapped the cut. The two nest-box notches landed on the board only because the leg panel was listed first.
+- A notch is now the board whose thickness face the other part passes through. The part named first is not an input. A corner post passes through the shelf; the shelf does not pass through the post, because it stops on the post's outer face. If both pass through, or neither the boxes nor one part's notch note decides, the machined part is unresolved. That step does not cut both parts.
+- Checked on this head, not an independent grade.
+  - `utility cart` and `rolling utility cart`: every notch step machines the part whose cut note carries the notch. Those are the shelves, not the posts.
+  - `chicken coop`: each floor-to-leg notch machines the floor, one per leg. The nest-box notches follow the same rule. They do not follow which panel is listed first.
+  - A board and a post, declared board-first and post-first, both machine the board.
+  - Two boards that each pass through the other, and a pair the boxes do not seat and whose notes do not name a notch, stay unresolved. The text does not say both parts are machined.
+- Still holding: live `steps` copy `graph.operations`; rewriting operations leaves `assembly` unchanged; a copied stock quantity of 99 leaves cuts, packs, and assembly unchanged; contact is not a step; fasten counts match the fastener ledger; a housed 20" end still derives 3 screws and the guest waits for the host; bookcase 16 derived cuts and the back is placed, not rebated; oak prepare says 61 derived cuts and does not mention 24 or 25; the potting-bench lower shelf is placed, not fastened; Eiffel and toothpicks stay "No derived cuts" with the whole-craft disclosure.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `lengthReader.ts` and `modelJoints.ts` not edited. No AI reader. No linen wording. No held-out honesty queue. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. This note does not record a Critic PASS.
+- Files: `src/lib/yard/assemblyCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 39/39. `npx tsc --noEmit` pass. `npx eslint` on `assemblyCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 09:22 ET | shadow assembly steps — in progress (lock held)
 
 - Shadow cut and pack compile is on main `8dad9ecb89d014d703bf1d3bffe62eb9d6b3d545` (#267) and release `d0553ff5b91e52ac63e68c3431dd76f54f17d28b` (#268, merge-back). Do not redo it. The squash message says Critic PASS on #266 r2 head `083e65cb`. This note does not add a PASS entry or a deployment id. The cut-and-pack lock rode in on the merge-back and was not cleared. Replaced on this feature branch only.

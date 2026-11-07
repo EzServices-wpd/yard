@@ -126,8 +126,13 @@ function assertAssembly(graph: YardBuildGraph, compiled: ReturnType<typeof compi
     const role = jointPattern(sample?.patternId ?? "")?.role;
     const machine = assembly.find((row) => row.kind === "machine" && row.jointIds.includes(sample?.id ?? ""));
     if (role === "shop") {
-      assert.ok(machine, step.id);
-      assert.ok(machine.step < step.step, step.id);
+      if (step.seat === "unresolved") {
+        assert.equal(machine, undefined, step.id);
+        assert.doesNotMatch(`${step.detail}\n${compiled.assemblyDisclosure ?? ""}`, /both parts are machined/i, step.id);
+      } else {
+        assert.ok(machine, step.id);
+        assert.ok(machine.step < step.step, step.id);
+      }
     } else {
       assert.equal(machine, undefined, step.id);
       if (sample?.patternId === "hinge") assert.equal(step.kind, "hang");
@@ -1875,5 +1880,90 @@ describe("assembly steps come from joints and parts", () => {
       const groove = cycled.assembly.find((step) => step.kind === "machine" && step.id === `machine:${fasten.id.slice("fasten:".length)}`);
       assert.ok(groove && groove.step < fasten.step, fasten.id);
     }
+  });
+
+  it("machines the board a notch passes through, not the part named first", () => {
+    const carries = (part: GraphPart | undefined) => part?.source === "panel" && /\bnotch(?:ed|es|ing)?\b/i.test(part.cutNote ?? "");
+    const notedBoard = (graph: YardBuildGraph, joint: YardBuildGraph["joints"][number]) => {
+      const parts = [joint.a, joint.b].map((id) => graph.parts.find((part) => part.id === id));
+      const noted = parts.filter(carries);
+      assert.equal(noted.length, 1, `${parts.map((part) => (part?.source === "panel" ? part.name : part?.id)).join(" / ")}`);
+      return noted[0]!.id;
+    };
+    const assertNotchRule = (label: string, graph: YardBuildGraph, compiled: ReturnType<typeof compileBuildGraph>) => {
+      const notches = graph.joints.filter((joint) => joint.reviewedJoin && joint.patternId === "notch");
+      assert.ok(notches.length > 0, label);
+      const seen = new Set<string>();
+      for (const joint of notches) {
+        const key = pair(joint);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const board = notedBoard(graph, joint);
+        const machine = compiled.assembly.find((step) => step.kind === "machine" && step.jointIds.includes(joint.id));
+        assert.deepEqual(machine?.hosts, [board], `${label} ${key}`);
+        assert.equal(machine?.machining, "notch", label);
+        const other = joint.a === board ? joint.b : joint.a;
+        assert.equal(machine?.hosts?.includes(other), false, label);
+        assert.doesNotMatch(`${machine?.detail}\n${compiled.assemblyDisclosure ?? ""}`, /both parts are machined/i, label);
+      }
+    };
+    offline(() => {
+      for (const prompt of ["utility cart", "rolling utility cart"]) {
+        const trip = roundTrip(prompt, "frame-storage");
+        assertNotchRule(prompt, trip.graph, trip.compiled);
+      }
+      const coop = roundTrip("chicken coop", "frame-storage");
+      assertNotchRule("chicken coop", coop.graph, coop.compiled);
+      const floor = coop.graph.parts.find((part) => part.source === "panel" && part.name === "Floor");
+      const legs = coop.graph.parts.filter((part) => part.source === "panel" && /^Leg /.test(part.name));
+      assert.ok(floor && legs.length >= 4);
+      const floorNotches = coop.compiled.assembly.filter((step) => step.kind === "machine" && step.machining === "notch" && step.hosts?.includes(floor.id));
+      assert.equal(floorNotches.length, legs.length);
+      assert.ok(floorNotches.every((step) => step.hosts?.length === 1 && !step.guests?.some((id) => coop.graph.parts.find((part) => part.id === id && part.source === "panel" && part.name === "Floor"))));
+    });
+
+    const board = stockPart("board", { width: 20, height: 0.75, depth: 12 }, "plywood-3-4-4x8", "shelf");
+    board.position = { x: 0, y: 10, z: 0 };
+    board.cutNote = "Notch the corner 1 1/2\" × 1 1/2\" so the board fits around the post.";
+    const post = stockPart("post", { width: 1.5, height: 30, depth: 1.5 }, "lumber-2x2-8", "upright");
+    post.position = { x: 0, y: 0, z: 0 };
+    for (const first of ["board", "post"] as const) {
+      const graph = stockGraph([board, post]);
+      graph.joints = [{
+        id: "n1",
+        a: first,
+        b: first === "board" ? "post" : "board",
+        basis: "declared",
+        patternId: "notch",
+        reviewedJoin: true,
+      }];
+      const compiled = compileBuildGraph(graph);
+      assertNotchRule(`declared ${first}-first`, graph, compiled);
+      assert.deepEqual(compiled.assembly.find((step) => step.kind === "machine")?.hosts, ["board"]);
+    }
+
+    const idle = stockPart("idle", { width: 8, height: 0.75, depth: 8 });
+    idle.position = { x: 0, y: 0, z: 0 };
+    const apart = stockPart("apart", { width: 1.5, height: 20, depth: 1.5 }, "lumber-2x2-8", "upright");
+    apart.position = { x: 30, y: 0, z: 0 };
+    const unread = stockGraph([idle, apart]);
+    unread.joints = [{ id: "n2", a: "idle", b: "apart", basis: "declared", patternId: "notch", reviewedJoin: true }];
+    const open = compileBuildGraph(unread);
+    assert.equal(open.assembly.some((step) => step.kind === "machine"), false);
+    assert.match(open.assemblyDisclosure ?? "", /unresolved/);
+    assert.doesNotMatch(`${open.assembly.map((step) => step.detail).join("\n")}\n${open.assemblyDisclosure ?? ""}`, /both parts are machined/i);
+
+    const flat = stockPart("flat", { width: 10, height: 0.75, depth: 2 });
+    flat.position = { x: 0, y: 4, z: 0 };
+    flat.cutNote = "Notch where the boards cross.";
+    const upright = stockPart("upright", { width: 0.75, height: 10, depth: 2 }, "plywood-3-4-4x8", "divider");
+    upright.position = { x: 4, y: 0, z: 0 };
+    upright.cutNote = "Notch where the boards cross.";
+    const tied = stockGraph([flat, upright]);
+    tied.joints = [{ id: "n3", a: "flat", b: "upright", basis: "declared", patternId: "notch", reviewedJoin: true }];
+    const tie = compileBuildGraph(tied);
+    assert.equal(tie.assembly.find((step) => step.kind === "machine")?.hosts, undefined);
+    assert.match(tie.assemblyDisclosure ?? "", /unresolved/);
+    assert.doesNotMatch(`${tie.assembly.map((step) => step.detail).join("\n")}\n${tie.assemblyDisclosure ?? ""}`, /both parts are machined/i);
   });
 });

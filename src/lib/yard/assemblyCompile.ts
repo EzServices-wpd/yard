@@ -167,6 +167,46 @@ function axisAligned(part: GraphPart): part is Extract<GraphPart, { source: "pan
   return part.source === "panel" && !part.yaw && !part.polygon;
 }
 
+/** Axes that are the part's thickness. A square section has more than one. */
+function faceAxes(box: AxisBox): number[] {
+  const thin = Math.min(...box.size);
+  return [0, 1, 2].filter((axis) => box.size[axis] - thin <= 1e-9);
+}
+
+/**
+ * `passer` runs past both thickness faces of `board`, and the two meet on the other axes.
+ * A corner post does this to a shelf. The shelf does not do it to the post, because the
+ * shelf stops on the post's outer face.
+ */
+function passesThroughFace(passer: AxisBox, board: AxisBox): boolean {
+  for (const axis of faceAxes(board)) {
+    const beyond = passer.min[axis] < board.min[axis] - END_TOL && passer.max[axis] > board.max[axis] + END_TOL;
+    if (!beyond) continue;
+    if ([0, 1, 2].every((other) => other === axis || overlapOn(passer, board, other) > END_TOL)) return true;
+  }
+  return false;
+}
+
+/**
+ * The board a notch is cut into: the one whose face the other part passes through.
+ * Both directions is a tie, not a guess that both boards are cut. No pass is unread.
+ */
+function notchBoard(a: GraphPart, b: GraphPart): string | undefined | "tie" {
+  if (!axisAligned(a) || !axisAligned(b)) return undefined;
+  const throughA = passesThroughFace(axisBox(b), axisBox(a));
+  const throughB = passesThroughFace(axisBox(a), axisBox(b));
+  if (throughA && throughB) return "tie";
+  if (throughA) return a.id;
+  if (throughB) return b.id;
+  return undefined;
+}
+
+/** A cut note that records the notch, on exactly one of the two parts. Order is not a vote. */
+function notedNotchBoard(a: GraphPart, b: GraphPart): string | undefined {
+  const noted = [a, b].filter((part) => part.source === "panel" && /\bnotch(?:ed|es|ing)?\b/i.test(part.cutNote ?? ""));
+  return noted.length === 1 ? noted[0].id : undefined;
+}
+
 type Burial = { overlap: number; outside: number };
 
 /**
@@ -291,6 +331,14 @@ function seatOf(group: Group, byId: Map<string, GraphPart>): Seat {
   const machining = MACHINING[patternId];
   if (!machining) return { kind: "unknown", parts, patternId };
   if (patternId === "lap" || patternId === "miter") return { kind: "both", parts, machining, patternId };
+  if (patternId === "notch") {
+    const passed = notchBoard(a, b);
+    // A pass through one face decides. A tie, or no pass, yields to one part's notch note.
+    // Two notes, or none, are not a vote, and joint.a is not one either.
+    const board = passed !== "tie" && typeof passed === "string" ? passed : notedNotchBoard(a, b);
+    if (!board) return { kind: "unresolved", parts, machining, patternId };
+    return { kind: "host", host: board, guest: board === group.a ? group.b : group.a, machining, patternId };
+  }
   const buried = housedGuest(a, b);
   if (buried === "tie") return { kind: "unresolved", parts, machining, patternId };
   const guest = buried ?? declaredGuest(group);
@@ -418,16 +466,13 @@ function prepareStep(order: readonly string[], cuts: readonly { partId: string }
   };
 }
 
-function machineDetail(seat: Extract<Seat, { kind: "host" | "both" | "unresolved" }>, names: (id: string) => string, jointIds: string[]): string {
+function machineDetail(seat: Extract<Seat, { kind: "host" | "both" }>, names: (id: string) => string, jointIds: string[]): string {
   const listed = jointIds.join(", ");
   const word = MACHINE_TITLE[seat.machining].slice("Machine ".length);
   if (seat.kind === "host") {
     return `${word} in ${names(seat.host)} for ${listed} (${seat.patternId}). ${names(seat.guest)} is fastened after this.`;
   }
-  if (seat.kind === "both") {
-    return `${word} on ${seat.parts.map(names).join(" and ")} for ${listed} (${seat.patternId}). Both parts are machined, then fastened.`;
-  }
-  return `The boxes do not show which part is housed for ${listed} (${seat.patternId}). Both parts are machined before the joint is fastened.`;
+  return `${word} on ${seat.parts.map(names).join(" and ")} for ${listed} (${seat.patternId}). Both parts are machined, then fastened.`;
 }
 
 /**
@@ -491,8 +536,27 @@ export function compileAssembly(graph: YardBuildGraph, inputs: AssemblyInputs): 
     const { extra } = primaryPattern(group);
     if (extra.length) extraPatterns.push(`${group.pair} (${[seat.patternId, ...extra].filter(Boolean).join(", ")})`);
     const row = ledger.get(group.pair);
-    if (seat.kind === "host" || seat.kind === "both" || seat.kind === "unresolved") {
-      if (seat.kind === "unresolved") unresolved.push(jointIds.join(", "));
+    if (seat.kind === "unresolved") {
+      unresolved.push(jointIds.join(", "));
+      const screws = screwFields(row, inputs.fastenerId, ledgerEmpty);
+      if (screws.missingId) missingId = true;
+      if (!row && ledgerEmpty) shopWithoutLedger = true;
+      if (!row && !ledgerEmpty) missingRows.push(group.pair);
+      const fastenIds = inOrder(seat.parts, indexOf);
+      add({
+        at: Math.max(...seat.parts.map((id) => indexOf.get(id) ?? 0)),
+        kind: "fasten",
+        id: `fasten:${group.pair}`,
+        title: FASTEN_TITLE[seat.patternId] ?? "Fasten joint",
+        detail: `${seat.patternId || "joint"} ${jointIds.join(", ")}. The boxes do not show which part is machined, so that part is unresolved. ${screws.sentence}`,
+        partIds: fastenIds,
+        jointIds,
+        subassemblyId: sharedSubassembly(fastenIds, subOf),
+        seat: "unresolved",
+        fasteners: screws.fasteners,
+        noScrew: screws.noScrew,
+      });
+    } else if (seat.kind === "host" || seat.kind === "both") {
       const machined = seat.kind === "host" ? [seat.host] : [...seat.parts];
       const ends = seat.kind === "host" ? [seat.host, seat.guest] : [...seat.parts];
       const partIds = inOrder(machined, indexOf);
@@ -507,7 +571,7 @@ export function compileAssembly(graph: YardBuildGraph, inputs: AssemblyInputs): 
         subassemblyId: sharedSubassembly(partIds, subOf),
         machining: seat.machining,
         seat: seat.kind,
-        hosts: seat.kind === "unresolved" ? undefined : inOrder(seat.kind === "host" ? [seat.host] : seat.parts, indexOf),
+        hosts: inOrder(seat.kind === "host" ? [seat.host] : seat.parts, indexOf),
         guests: seat.kind === "host" ? [seat.guest] : undefined,
       });
       const screws = screwFields(row, inputs.fastenerId, ledgerEmpty);
@@ -651,7 +715,7 @@ export function compileAssembly(graph: YardBuildGraph, inputs: AssemblyInputs): 
   }
   if (shopWithoutLedger) gaps.push("The fastener ledger is empty, so fasten steps derive no carcass screws.");
   if (unresolved.length) {
-    gaps.push(`The boxes do not show which part is housed for ${unresolved.join("; ")}. Both parts are machined before the joint is fastened.`);
+    gaps.push(`The boxes do not show which part is machined for ${unresolved.join("; ")}. That part is unresolved.`);
   }
   if (hangUnresolved.length) gaps.push(`The leaf was not read for ${hangUnresolved.join("; ")}. No carcass screws are derived.`);
   if (unknown.length) gaps.push(`No library pattern for ${unknown.join("; ")}.`);
