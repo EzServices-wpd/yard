@@ -213,9 +213,9 @@ function notchBoard(a: GraphPart, b: GraphPart): SeatPick {
 }
 
 /** A cut note that records the notch, on exactly one of the two parts. Order is not a vote. */
-function notedNotchBoard(a: GraphPart, b: GraphPart): string | undefined {
+function notedNotchBoard(a: GraphPart, b: GraphPart): SeatPick {
   const noted = [a, b].filter((part) => part.source === "panel" && /\bnotch(?:ed|es|ing)?\b/i.test(part.cutNote ?? ""));
-  return noted.length === 1 ? noted[0].id : undefined;
+  return noted.length === 1 ? seatOne(noted[0].id) : SEAT_NONE;
 }
 
 type Burial = { overlap: number; outside: number };
@@ -261,24 +261,24 @@ function housedGuest(a: GraphPart, b: GraphPart): SeatPick {
  * Panel.joints records the part that is let into the other as joint.a.
  * A reading does not. Opposite declarations on one pair are not a guess.
  */
-function declaredGuest(group: Group): string | undefined {
+function declaredGuest(group: Group): SeatPick {
   const guests = new Set(group.joints.filter((joint) => joint.basis === "declared" && !joint.reading).map((joint) => joint.a));
-  if (guests.size !== 1) return undefined;
+  if (guests.size !== 1) return SEAT_NONE;
   const guest = [...guests][0];
-  return guest === group.a || guest === group.b ? guest : undefined;
+  return guest !== undefined && (guest === group.a || guest === group.b) ? seatOne(guest) : SEAT_NONE;
 }
 
-function hingeLeaf(group: Group, a: GraphPart, b: GraphPart): string | undefined {
-  if (a.source === "panel" && a.hinged?.to === b.id) return a.id;
-  if (b.source === "panel" && b.hinged?.to === a.id) return b.id;
+function hingeLeaf(group: Group, a: GraphPart, b: GraphPart): SeatPick {
+  if (a.source === "panel" && a.hinged?.to === b.id) return seatOne(a.id);
+  if (b.source === "panel" && b.hinged?.to === a.id) return seatOne(b.id);
   const leaves = new Set(
     group.joints
       .filter((joint) => joint.patternId === "hinge" && (joint.basis === "declared" || joint.reading === "hinge-leaf"))
       .map((joint) => joint.a),
   );
-  if (leaves.size !== 1) return undefined;
+  if (leaves.size !== 1) return SEAT_NONE;
   const leaf = [...leaves][0];
-  return leaf === a.id || leaf === b.id ? leaf : undefined;
+  return leaf !== undefined && (leaf === a.id || leaf === b.id) ? seatOne(leaf) : SEAT_NONE;
 }
 
 function hingeCount(part: GraphPart | undefined): number | undefined {
@@ -336,8 +336,8 @@ function seatOf(group: Group, byId: Map<string, GraphPart>): Seat {
   if (!pattern) return { kind: "unknown", parts, patternId };
   if (pattern.role === "hardware") {
     const leaf = hingeLeaf(group, a, b);
-    if (!leaf) return { kind: "hang-unresolved", parts, patternId };
-    return { kind: "hang", host: leaf === group.a ? group.b : group.a, leaf, patternId };
+    if (leaf.pick !== "one") return { kind: "hang-unresolved", parts, patternId };
+    return { kind: "hang", host: leaf.id === group.a ? group.b : group.a, leaf: leaf.id, patternId };
   }
   const machining = MACHINING[patternId];
   if (!machining) return { kind: "unknown", parts, patternId };
@@ -347,15 +347,15 @@ function seatOf(group: Group, byId: Map<string, GraphPart>): Seat {
     // A unique pass decides. A mutual pass stays unresolved, notes included.
     // No pass yields to one part's notch note. Two notes, or none, are not a vote, and joint.a is not one either.
     if (passed.pick === "tie") return { kind: "unresolved", parts, machining, patternId };
-    const board = passed.pick === "one" ? passed.id : notedNotchBoard(a, b);
-    if (!board) return { kind: "unresolved", parts, machining, patternId };
-    return { kind: "host", host: board, guest: board === group.a ? group.b : group.a, machining, patternId };
+    const board = passed.pick === "one" ? passed : notedNotchBoard(a, b);
+    if (board.pick !== "one") return { kind: "unresolved", parts, machining, patternId };
+    return { kind: "host", host: board.id, guest: board.id === group.a ? group.b : group.a, machining, patternId };
   }
   const buried = housedGuest(a, b);
   if (buried.pick === "tie") return { kind: "unresolved", parts, machining, patternId };
-  const guest = buried.pick === "one" ? buried.id : declaredGuest(group);
-  if (!guest) return { kind: "unresolved", parts, machining, patternId };
-  return { kind: "host", host: guest === group.a ? group.b : group.a, guest, machining, patternId };
+  const guest = buried.pick === "one" ? buried : declaredGuest(group);
+  if (guest.pick !== "one") return { kind: "unresolved", parts, machining, patternId };
+  return { kind: "host", host: guest.id === group.a ? group.b : group.a, guest: guest.id, machining, patternId };
 }
 
 function groupsOf(graph: YardBuildGraph, byId: Map<string, GraphPart>, gaps: string[]): Group[] {

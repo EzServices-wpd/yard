@@ -1973,7 +1973,7 @@ describe("assembly steps come from joints and parts", () => {
     };
     const textOf = (compiled: ReturnType<typeof compileBuildGraph>) =>
       `${compiled.assembly.map((step) => step.detail).join("\n")}\n${compiled.assemblyDisclosure ?? ""}`;
-    for (const boardId of ["board", "tie"]) {
+    for (const boardId of ["board", "tie", ""]) {
       const board = stockPart(boardId, { width: 20, height: 0.75, depth: 12 }, "plywood-3-4-4x8", "shelf");
       board.name = "board";
       board.position = { x: 0, y: 10, z: 0 };
@@ -1985,12 +1985,12 @@ describe("assembly steps come from joints and parts", () => {
         declare(graph, first, first === boardId ? "post" : boardId, "notch");
         const compiled = compileBuildGraph(graph);
         const machine = compiled.assembly.find((step) => step.kind === "machine");
-        assert.deepEqual(machine?.hosts, [boardId], `${boardId} declared ${first}-first`);
+        assert.deepEqual(machine?.hosts, [boardId], `${JSON.stringify(boardId)} declared ${JSON.stringify(first)}-first`);
         assert.equal(machine?.machining, "notch");
         assert.equal(compiled.assemblyDisclosure, undefined, boardId);
       }
     }
-    for (const guestId of ["shelf", "tie"]) {
+    for (const guestId of ["shelf", "tie", ""]) {
       const side = stockPart("side", { width: 0.75, height: 10, depth: 20 }, "plywood-3-4-4x8", "upright");
       side.position = { x: 0, y: 0, z: 0 };
       const shelf = stockPart(guestId, { width: 8, height: 0.75, depth: 20 });
@@ -2001,10 +2001,37 @@ describe("assembly steps come from joints and parts", () => {
         declare(graph, first, first === "side" ? guestId : "side", "dado");
         const compiled = compileBuildGraph(graph);
         const machine = compiled.assembly.find((step) => step.kind === "machine");
-        assert.equal(machine?.machining, "groove", `${guestId} declared ${first}-first`);
-        assert.deepEqual(machine?.hosts, ["side"], guestId);
-        assert.deepEqual(machine?.guests, [guestId], guestId);
-        assert.equal(compiled.assembly.find((step) => step.kind === "fasten")?.fasteners?.[0]?.qty, 3, guestId);
+        assert.equal(machine?.machining, "groove", `${JSON.stringify(guestId)} declared ${JSON.stringify(first)}-first`);
+        assert.deepEqual(machine?.hosts, ["side"], JSON.stringify(guestId));
+        assert.deepEqual(machine?.guests, [guestId], JSON.stringify(guestId));
+        assert.equal(compiled.assembly.find((step) => step.kind === "fasten")?.fasteners?.[0]?.qty, 3, JSON.stringify(guestId));
+      }
+    }
+    for (const doorId of ["door", ""]) {
+      const side = stockPart("side", { width: 0.75, height: 20, depth: 12 }, "plywood-3-4-4x8", "upright");
+      side.position = { x: 0, y: 0, z: 0 };
+      const door = stockPart(doorId, { width: 12, height: 18, depth: 0.75 }, "plywood-3-4-4x8", "door");
+      door.name = "door";
+      door.position = { x: 0, y: 1, z: 12 };
+      door.hinged = { to: "side", edge: "left", hinges: 2 };
+      for (const first of [doorId, "side"]) {
+        const graph = stockGraph([door, side]);
+        graph.joints = [{
+          id: "h",
+          a: first,
+          b: first === doorId ? "side" : doorId,
+          basis: "declared",
+          patternId: "hinge",
+          reviewedJoin: true,
+          reading: "hinge-leaf",
+        }];
+        const compiled = compileBuildGraph(graph);
+        const hang = compiled.assembly.find((step) => step.kind === "hang");
+        assert.deepEqual(hang?.hosts, ["side"], `${JSON.stringify(doorId)} declared ${JSON.stringify(first)}-first`);
+        assert.deepEqual(hang?.guests, [doorId], JSON.stringify(doorId));
+        assert.deepEqual(hang?.hardware, { kind: "hinge", qty: 2 }, JSON.stringify(doorId));
+        assert.equal(hang?.noScrew, "hinge");
+        assert.equal(compiled.assembly.some((step) => step.kind === "machine"), false);
       }
     }
     for (const [label, overlap, seats] of [
