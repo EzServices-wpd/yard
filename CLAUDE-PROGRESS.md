@@ -50,7 +50,7 @@ Newest first. Tip, canary status, the rule per change, before/after prompts, fil
 ### 2026-11-07 11:00 ET | shadow conservation checks — in progress (lock held)
 
 - Shadow assembly steps are on main `a129a5e5` (#270) and release `ea4dffd6` (#271, merge-back of #269, release merge `f8e5637b`). Do not redo them. This note does not add a PASS entry or a deployment id. The assembly lock rode in on the merge-back and was not cleared. Replaced on this feature branch only.
-- New lock: shadow conservation checks. Not graded. Not merged. PR into `release/2026-10-24`. Do not merge.
+- New lock: shadow conservation checks. Not graded. Not merged. PR #272 into `release/2026-10-24`. Do not merge.
 - `compileConservation` (`src/lib/yard/conservationCompile.ts`) is called from `compileBuildGraph`. It writes `conservation` on the compiled build. It does not rewrite cuts, packs, fasteners, assembly, steps, or Buy. `generateFromPrompt` and `buildPlan` do not read the graph. The checker does not import `lengthReader`, `promptMain`, `report`, `modelJoints`, `panelJoints`, or `stickJoints`. It does not call the stock compiler, the assembly compiler, the sheet nest, or the board packer.
 - The ledger recomputes five relations from the part geometry and the compiled artifacts. A hold is not a compiled field agreeing with itself. Contact is not a joint. An empty part id is still that part. `""` is not read as missing.
   - Each derived cut names a model part and an assembly step.
