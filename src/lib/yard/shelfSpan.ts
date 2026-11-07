@@ -619,8 +619,11 @@ function placeBayDividers(panels: Panel[], added: Panel[], take: (plate: Panel) 
       if (b - a <= limit + EPS) continue;
       let k = Math.max(2, Math.ceil((b - a) / limit));
       while (k < 8 && (b - a - (k - 1) * t) / k > limit + EPS) k++;
+      // Equal clear bays: the opening minus the dividers, split by the bay count.
+      // Divider i is centred half its thickness past i of those bays and the dividers before it.
+      const clear = (b - a - (k - 1) * t) / k;
       for (let i = 1; i < k; i++) {
-        const at = a + ((b - a) * i) / k;
+        const at = a + i * clear + (i - 0.5) * t;
         stations.set(Math.round(at * 8) / 8, at);
       }
     }
