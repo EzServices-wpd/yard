@@ -30,10 +30,11 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
   useEffect(() => setQuery(incoming), [incoming]);
   const q = query.trim();
   const pool = useMemo(() => searchPool(feed), [feed]);
-  const hits = useMemo(() => searchCards(pool, q).slice(0, 24), [pool, q]);
+  const hits = useMemo(() => searchCards(pool, q), [pool, q]);
   const plans = useMemo(() => (q ? searchPlans(q, pool) : []), [q, pool]);
-  // Drawn hits show first as cards, then hits with no drawing as rows; Enter opens the first one shown.
-  const drawn = hits.filter((c) => c.drawing), text = hits.filter((c) => !c.drawing);
+  // Drawn hits show first as cards, then hits with no drawing as rows. An Unverified-only type is always a row.
+  // Enter opens the first one shown. No hit cap: a listed type past 24 stays reachable.
+  const drawn = hits.filter((c) => c.drawing && !c.unverified), text = hits.filter((c) => !c.drawing || c.unverified);
   const flagQuery = new URLSearchParams(Object.entries(flags).map(([k, v]) => [k, String(v)])).toString();
   const root = useRef<HTMLElement>(null);
   // Drawings start in pencil only once JS can ink them (no-JS and SSR show wood).
