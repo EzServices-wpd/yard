@@ -15,12 +15,16 @@ import { CONSTRUCTION_READINGS, JOINT_LIBRARY, constructionReading, jointPattern
 import {
   BUILD_GRAPH_VERSION,
   compileBuildGraph,
+  fastenerBuyLines,
+  fastenerDemandLedger,
+  isCarcassScrewLine,
   liftBuildGraph,
   memberFact,
   panelFact,
   planFacts,
   quarterPlyProblems,
   readingForPanels,
+  reviewedFastenerUses,
   substituteStock,
   type BuildFamily,
   type GraphPart,
@@ -48,7 +52,8 @@ function roundTrip(prompt: string, family: BuildFamily) {
   assert.deepEqual(compiled.model.members, project.instances.map(memberFact));
   assert.deepEqual(compiled.steps, facts.steps);
   assert.deepEqual(plan.instructions.map((step) => step.step), facts.steps.map((step) => step.step));
-  assert.deepEqual(compiled.buy, facts.buy);
+  assert.deepEqual(compiled.buy.filter((line) => !isCarcassScrewLine(line)), facts.buy.filter((line) => !isCarcassScrewLine(line)));
+  assert.deepEqual(compiled.buy.filter(isCarcassScrewLine), fastenerBuyLines(graph));
   assert.equal(graph.constraints.find((row) => row.kind === "contact")?.safeJoinery, false);
   for (const joint of graph.joints) {
     if (joint.basis === "contact") {
@@ -265,9 +270,15 @@ describe("the shadow graph stays off the live path", () => {
     const live = readFileSync(new URL("./promptMain.ts", import.meta.url), "utf8");
     assert.equal(live.includes("liftBuildGraph"), false);
     assert.equal(live.includes("compileBuildGraph"), false);
+    assert.equal(live.includes("reviewedFastenerUses"), false);
+    assert.equal(live.includes("fastenerBuyLines"), false);
+    assert.equal(live.includes("fastenerDemandLedger"), false);
     const report = readFileSync(new URL("./report.ts", import.meta.url), "utf8");
     assert.equal(report.includes("liftBuildGraph"), false);
     assert.equal(report.includes("compileBuildGraph"), false);
+    assert.equal(report.includes("reviewedFastenerUses"), false);
+    assert.equal(report.includes("fastenerBuyLines"), false);
+    assert.equal(report.includes("fastenerDemandLedger"), false);
   });
 });
 
@@ -804,7 +815,12 @@ describe("stock substitution keeps the form", () => {
       assert.ok(halfSwitch.stock.some((line) => line.catalogId === "plywood-1-2-4x8"));
       assert.equal(halfSwitch.stock.some((line) => line.catalogId === "plywood-3-4-4x8"), false);
       assert.ok(halfSwitch.stock.some((line) => /^plywood-1-4/.test(line.catalogId ?? "")));
-      assert.deepEqual(compileBuildGraph(halfSwitch).buy, planFacts(buildPlan(generateFromPrompt(`${CASEWORK} in 1/2 inch plywood`))).buy);
+      const halfLive = planFacts(buildPlan(generateFromPrompt(`${CASEWORK} in 1/2 inch plywood`)));
+      assert.deepEqual(
+        compileBuildGraph(halfSwitch).buy.filter((line) => !isCarcassScrewLine(line)),
+        halfLive.buy.filter((line) => !isCarcassScrewLine(line)),
+      );
+      assert.deepEqual(reviewedFastenerUses(halfSwitch), []);
       assert.equal(oakSwitch.substitution?.toMaterialId, "lumber-1x4-8");
       assert.deepEqual(oakSwitch.substitution?.kept.roles, oak.form?.roles);
       assert.deepEqual(oakSwitch.envelope, ply.envelope);
@@ -886,6 +902,418 @@ describe("the potting-bench lower shelf stays a disclosed contradiction", () => 
       const shelfJoints = frame.graph.joints.filter((joint) => joint.a === shelf.id || joint.b === shelf.id);
       assert.equal(shelfJoints.length, 0);
       assert.equal(frame.graph.joints.some((joint) => joint.reviewedJoin), false);
+      assert.deepEqual(reviewedFastenerUses(frame.graph), []);
+      assert.deepEqual(frame.compiled.buy.filter(isCarcassScrewLine), []);
     });
+  });
+});
+
+describe("furniture screws come from reviewed joints", () => {
+  const panel = (id: string, type: Panel["type"], position: Panel["position"], size: Panel["size"]): GraphPart => ({
+    source: "panel",
+    role: type,
+    id,
+    type,
+    name: id,
+    materialId: "plywood-3-4-4x8",
+    position,
+    size,
+  });
+
+  const base = (parts: GraphPart[], joints: YardBuildGraph["joints"], stock: YardBuildGraph["stock"] = []): YardBuildGraph => ({
+    version: 1,
+    shadow: true,
+    id: "screws",
+    name: "Screws",
+    family: "casework",
+    use: "human",
+    origin: "panels",
+    envelope: { width: 32, height: 10, depth: 20 },
+    primaryMaterialId: "plywood-3-4-4x8",
+    parts,
+    joints,
+    constraints: [],
+    operations: [{ id: "op", order: 1, title: "Assemble", description: "Glue and screw the joint.", labels: ["*"], partIds: parts.map((part) => part.id) }],
+    stock,
+    assumptions: [],
+  });
+
+  it("counts a reviewed shop joint on the live screw schedule and ignores contact and hinges", () => {
+    const side = panel("side", "upright", { x: 0, y: 0, z: 0 }, { width: 0.75, height: 10, depth: 20 });
+    const shelf = panel("shelf", "shelf", { x: 0.5, y: 4, z: 0 }, { width: 8, height: 0.75, depth: 20 });
+    const dado = base([side, shelf], [{ id: "j1", a: "shelf", b: "side", basis: "declared", patternId: "dado", reviewedJoin: true }]);
+    assert.deepEqual(reviewedFastenerUses(dado), [{ id: "screws-8", qty: 3 }]);
+    assert.deepEqual(fastenerBuyLines(dado), [{
+      name: '#8 x 1-1/4" wood screws',
+      quantity: 1,
+      unit: "box (50 ct)",
+      catalogId: "screws-8",
+    }]);
+    const withContact = base(dado.parts, [
+      ...dado.joints,
+      { id: "c1", a: "shelf", b: "side", basis: "contact", contactClass: "butt", reviewedJoin: false },
+    ]);
+    assert.deepEqual(reviewedFastenerUses(withContact), reviewedFastenerUses(dado));
+    const contactOnly = base(dado.parts, [{ id: "c1", a: "shelf", b: "side", basis: "contact", contactClass: "back", reviewedJoin: false }]);
+    assert.deepEqual(reviewedFastenerUses(contactOnly), []);
+    const hinge = base(dado.parts, [{ id: "h1", a: "shelf", b: "side", basis: "declared", patternId: "hinge", reviewedJoin: true }]);
+    assert.deepEqual(reviewedFastenerUses(hinge), []);
+    const faceA = panel("a", "upright", { x: 0, y: 0, z: 0 }, { width: 32, height: 0.75, depth: 8 });
+    const faceB = panel("b", "upright", { x: 0, y: 0, z: 0 }, { width: 32, height: 0.75, depth: 8 });
+    const lap = base([faceA, faceB], [{ id: "lap", a: "a", b: "b", basis: "declared", patternId: "lap", reviewedJoin: true }]);
+    assert.deepEqual(reviewedFastenerUses(lap), [{ id: "screws-8", qty: 4 }]);
+    const glued = { ...dado, fastener: "glue" as const };
+    assert.deepEqual(reviewedFastenerUses(glued), []);
+    const miniature = { ...dado, use: "miniature" as const, primaryMaterialId: "popsicle-standard" };
+    assert.deepEqual(reviewedFastenerUses(miniature), []);
+    const copied = base(dado.parts, dado.joints, [{ id: "copied", name: '#8 x 1-1/4" wood screws', quantity: 9, unit: "box (50 ct)", catalogId: "screws-8", partIds: [] }]);
+    const compiled = compileBuildGraph(copied);
+    assert.deepEqual(compiled.buy.filter(isCarcassScrewLine), fastenerBuyLines(dado));
+    assert.equal(compiled.buy.filter(isCarcassScrewLine)[0]?.quantity, 1);
+    assert.equal(compiled.steps[0]?.title, "Assemble");
+  });
+
+  it("checks derived screws against the live Buy fastener lines on the compile-back families", () => {
+    offline(() => {
+      const prompts: { prompt: string; family: BuildFamily; liveScrews: number }[] = [
+        { prompt: CASEWORK, family: "casework", liveScrews: 1 },
+        { prompt: `${CASEWORK} in 3/4 inch plywood`, family: "casework", liveScrews: 1 },
+        { prompt: `${CASEWORK} in 1/2 inch plywood`, family: "casework", liveScrews: 1 },
+        { prompt: `${CASEWORK} from oak`, family: "casework", liveScrews: 1 },
+        { prompt: FRAME, family: "frame-storage", liveScrews: 1 },
+        { prompt: LANDMARK, family: "landmark", liveScrews: 0 },
+        { prompt: "eiffel tower from toothpicks", family: "landmark", liveScrews: 0 },
+      ];
+      const rows = prompts.map(({ prompt, family }) => {
+        const trip = roundTrip(prompt, family);
+        return { prompt, ...trip };
+      });
+      const [book, threeQuarter, half, oak, bench, tower, tooth] = rows;
+      for (const row of rows) {
+        assert.equal(row.graph.joints.some((joint) => joint.reviewedJoin), false, row.prompt);
+        assert.ok(row.graph.joints.some((joint) => joint.basis === "contact"), row.prompt);
+        assert.deepEqual(reviewedFastenerUses(row.graph), [], row.prompt);
+        assert.deepEqual(row.compiled.buy.filter(isCarcassScrewLine), [], row.prompt);
+        assert.equal(row.plan.bom.filter(isCarcassScrewLine).length, prompts.find((item) => item.prompt === row.prompt)?.liveScrews, row.prompt);
+      }
+      assert.deepEqual(book.plan.bom.filter(isCarcassScrewLine), threeQuarter.plan.bom.filter(isCarcassScrewLine));
+      const bookScrew = book.plan.bom.find(isCarcassScrewLine)!;
+      const halfScrew = half.plan.bom.find(isCarcassScrewLine)!;
+      const oakScrew = oak.plan.bom.find(isCarcassScrewLine)!;
+      const benchScrew = bench.plan.bom.find(isCarcassScrewLine)!;
+      assert.equal(bookScrew.name, '#8 x 1-1/4" wood screws');
+      assert.equal(bookScrew.quantity, 1);
+      assert.match(bookScrew.notes ?? "", /44 screws/);
+      assert.match(bookScrew.notes ?? "", /butt/);
+      assert.match(bookScrew.notes ?? "", /back/);
+      assert.equal(halfScrew.name, '#8 x 1" wood screws');
+      assert.match(halfScrew.notes ?? "", /33 screws/);
+      assert.equal(oakScrew.name, bookScrew.name);
+      assert.match(oakScrew.notes ?? "", /44 screws/);
+      assert.equal(benchScrew.name, '#8 x 2-1/2" wood screws');
+      assert.match(benchScrew.notes ?? "", /28 screws/);
+      assert.match(benchScrew.notes ?? "", /butt/);
+      for (const row of [book, threeQuarter, half, oak]) {
+        const back = row.graph.parts.find((part) => part.source === "panel" && part.type === "back");
+        assert.ok(back && /^plywood-1-4/.test(back.materialId), row.prompt);
+        assert.ok(row.compiled.buy.some((line) => /^plywood-1-4/.test(line.catalogId ?? "")), row.prompt);
+        assert.ok(row.compiled.buy.some((line) => /glue/i.test(line.name)), row.prompt);
+      }
+      assert.ok(book.compiled.buy.some((line) => line.catalogId === "plywood-3-4-4x8"));
+      assert.ok(half.compiled.buy.some((line) => line.catalogId === "plywood-1-2-4x8"));
+      assert.ok(oak.compiled.buy.some((line) => line.catalogId === "lumber-1x4-8"));
+      assert.ok(bench.compiled.buy.some((line) => line.catalogId === "lumber-2x4-8"));
+      assert.ok(bench.compiled.buy.some((line) => /glue/i.test(line.name)));
+      for (const row of [tower, tooth]) {
+        assert.equal(row.graph.use, "miniature");
+        assert.equal(row.graph.fastener, "glue");
+        assert.deepEqual(row.plan.bom.filter(isCarcassScrewLine), []);
+        assert.deepEqual(row.compiled.buy.filter(isCarcassScrewLine), row.plan.bom.filter(isCarcassScrewLine));
+        assert.ok(row.compiled.buy.some((line) => /glue/i.test(line.name)), row.prompt);
+      }
+      assert.ok(tower.compiled.buy.some((line) => line.catalogId === "popsicle-standard"));
+      assert.ok(tooth.compiled.buy.some((line) => line.catalogId === "toothpick"));
+      assert.equal(book.compiled.steps.find((step) => /anti-tip/i.test(step.title))?.fastenersUsed?.[0]?.id, "buy:Furniture anti-tip kit");
+    });
+  });
+});
+
+describe("fastener demand ledger", () => {
+  const board = (
+    id: string,
+    type: Panel["type"],
+    name: string,
+    position: Panel["position"],
+    size: Panel["size"],
+    materialId = "plywood-3-4-4x8",
+    extra: Partial<Panel> = {},
+  ): GraphPart => ({
+    source: "panel",
+    role: type,
+    id,
+    type,
+    name,
+    materialId,
+    position,
+    size,
+    ...extra,
+  });
+
+  const graph = (
+    parts: GraphPart[],
+    joints: YardBuildGraph["joints"],
+    extra: Partial<YardBuildGraph> = {},
+  ): YardBuildGraph => ({
+    version: 1,
+    shadow: true,
+    id: "ledger",
+    name: "Ledger",
+    family: "casework",
+    use: "human",
+    origin: "panels",
+    envelope: { width: 48, height: 96, depth: 12 },
+    primaryMaterialId: "plywood-3-4-4x8",
+    parts,
+    joints,
+    constraints: [],
+    operations: [],
+    stock: [
+      { id: "struct", name: "GRK RSS #9 x 3-1/8 structural screws", quantity: 1, unit: "box", catalogId: "structural-screws", partIds: [] },
+    ],
+    assumptions: [],
+    ...extra,
+  });
+
+  const shop = (a: string, b: string, patternId: string, id = `${a}-${b}`): YardBuildGraph["joints"][number] => ({
+    id,
+    a,
+    b,
+    basis: "declared",
+    patternId,
+    reviewedJoin: true,
+  });
+
+  it("counts a wide thin back on the long edge, and keeps a narrow back edge at the same count", () => {
+    const side = board("side", "upright", "Side", { x: 0, y: 0, z: 0 }, { width: 48, height: 96, depth: 0.75 });
+    const wide = board("back", "back", "Back", { x: 0, y: 0, z: 0 }, { width: 48, height: 96, depth: 0.25 }, "plywood-1-4-4x8");
+    const liveWide = panelJoints([
+      { id: "side", type: "upright", name: "Side", materialId: "plywood-3-4-4x8", position: side.position, size: side.size },
+      { id: "back", type: "back", name: "Back", materialId: "plywood-1-4-4x8", position: wide.position, size: wide.size },
+    ]);
+    assert.equal(liveWide[0]?.kind, "back");
+    assert.equal(liveWide[0]?.screws, 12);
+    for (const joint of [shop("side", "back", "rabbet"), shop("back", "side", "rabbet")]) {
+      const row = fastenerDemandLedger(graph([side, wide], [joint]));
+      assert.equal(row.length, 1);
+      assert.equal(row[0]?.meeting, "back");
+      assert.equal(row[0]?.screws, 12);
+      assert.equal(row[0]?.noScrew, undefined);
+      assert.deepEqual(reviewedFastenerUses(graph([side, wide], [joint])), [{ id: "screws-8", qty: 12 }]);
+      assert.equal(fastenerBuyLines(graph([side, wide], [joint]))[0]?.quantity, 1);
+      const compiled = compileBuildGraph(graph([side, wide], [joint]));
+      assert.equal(compiled.fasteners[0]?.screws, 12);
+      assert.equal(compiled.buy.find((line) => line.catalogId === "structural-screws")?.quantity, 1);
+    }
+    const upright = board("side", "upright", "Side", { x: 0, y: 0, z: 0 }, { width: 0.75, height: 96, depth: 12 });
+    const edge = board("back", "back", "Back", { x: 0.5, y: 0, z: 11.25 }, { width: 48, height: 96, depth: 0.25 }, "plywood-1-4-4x8");
+    for (const joint of [shop("side", "back", "rabbet"), shop("back", "side", "rabbet")]) {
+      const row = fastenerDemandLedger(graph([upright, edge], [joint]));
+      assert.equal(row[0]?.meeting, "back");
+      assert.equal(row[0]?.screws, 12);
+    }
+  });
+
+  it("buys no carcass screws for a planed glue housing or purchased hardware, and keeps the joint", () => {
+    const host: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 20 },
+    };
+    const shelf: Panel = {
+      id: "shelf",
+      type: "shelf",
+      name: "Shelf",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0.5, y: 4, z: 0 },
+      size: { width: 8, height: 0.5, depth: 20 },
+      cutNote: "Plane to 1/2 inch thickness; glue into its dado, no screws",
+    };
+    assert.deepEqual(panelJoints([host, shelf]), []);
+    assert.equal(readingForPanels(host, shelf), "housed-dado");
+    const plan: BuildPlan = {
+      feasibility: { status: "ok", summary: "", issues: [] },
+      cutList: [],
+      bom: [],
+      instructions: [],
+      totals: { pieces: 2, estCostUsd: 0, packs: 0 },
+      generatedAt: "1970-01-01T00:00:00.000Z",
+    };
+    const project: YardProject = {
+      id: "planed",
+      name: "Planed shelf",
+      prompt: "",
+      kind: "closet",
+      overall: { width: 10, height: 10, depth: 20 },
+      instances: [],
+      panels: [host, shelf],
+      primaryMaterialId: "plywood-3-4-4x8",
+      notes: [],
+      assumptions: { load: "medium", units: "inches", installMode: "freestanding", wallType: "wood_stud" },
+    };
+    assert.equal(buildPlan(project).bom.some(isCarcassScrewLine), false);
+    const lifted = liftBuildGraph(project, plan, "casework");
+    const dado = lifted.joints.find((joint) => joint.patternId === "dado");
+    assert.equal(dado?.reading, "housed-dado");
+    assert.equal(dado?.reviewedJoin, true);
+    const compiled = compileBuildGraph(lifted);
+    assert.equal(compiled.fasteners.find((row) => row.pair === pair(dado!))?.noScrew, "planed");
+    assert.equal(compiled.fasteners.find((row) => row.pair === pair(dado!))?.screws, 0);
+    assert.deepEqual(reviewedFastenerUses(lifted), []);
+    assert.ok(lifted.joints.some((joint) => joint.patternId === "dado" && joint.reviewedJoin));
+
+    const fullHalf = board("shelf", "shelf", "Shelf", { x: 0.5, y: 4, z: 0 }, { width: 8, height: 0.5, depth: 20 }, "plywood-1-2-4x8");
+    const upright = board("side", "upright", "Side", { x: 0, y: 0, z: 0 }, { width: 0.75, height: 10, depth: 20 }, "plywood-1-2-4x8");
+    const halfGraph = graph([upright, fullHalf], [shop("shelf", "side", "dado")], { primaryMaterialId: "plywood-1-2-4x8" });
+    assert.equal(fastenerDemandLedger(halfGraph)[0]?.noScrew, undefined);
+    assert.equal(fastenerDemandLedger(halfGraph)[0]?.screws, 3);
+
+    const bracket = board("bracket", "rail", "A-frame bracket 1", { x: 0.5, y: 4, z: 0 }, { width: 5, height: 4, depth: 2 }, "swing-a-frame-bracket");
+    const bought = graph([upright, bracket], [shop("bracket", "side", "dado")]);
+    assert.equal(fastenerDemandLedger(bought)[0]?.noScrew, "hardware");
+    assert.equal(fastenerDemandLedger(bought)[0]?.screws, 0);
+    assert.deepEqual(reviewedFastenerUses(bought), []);
+    assert.equal(bought.joints[0]?.reviewedJoin, true);
+    const contact = graph([upright, bracket], [{ id: "c", a: "bracket", b: "side", basis: "contact", contactClass: "butt", reviewedJoin: false }]);
+    assert.deepEqual(fastenerDemandLedger(contact), []);
+  });
+
+  it("counts each physical pair once and still adds distinct pairs", () => {
+    const host = board("side", "upright", "Side", { x: 0, y: 0, z: 0 }, { width: 0.75, height: 10, depth: 400 });
+    const shelf = board("shelf", "shelf", "Shelf", { x: 0.5, y: 4, z: 0 }, { width: 8, height: 0.75, depth: 400 });
+    const one = graph([host, shelf], [shop("shelf", "side", "dado")]);
+    assert.equal(fastenerDemandLedger(one)[0]?.screws, 50);
+    assert.equal(fastenerBuyLines(one)[0]?.quantity, 1);
+    const bothWays = graph([host, shelf], [shop("shelf", "side", "dado", "ab"), shop("side", "shelf", "dado", "ba")]);
+    assert.equal(fastenerDemandLedger(bothWays).length, 1);
+    assert.equal(fastenerDemandLedger(bothWays)[0]?.screws, 50);
+    assert.equal(fastenerBuyLines(bothWays)[0]?.quantity, 1);
+    const other = board("shelf2", "shelf", "Shelf 2", { x: 0.5, y: 6, z: 0 }, { width: 8, height: 0.75, depth: 400 });
+    const two = graph([host, shelf, other], [shop("shelf", "side", "dado"), shop("shelf2", "side", "dado")]);
+    assert.equal(fastenerDemandLedger(two).length, 2);
+    assert.equal(reviewedFastenerUses(two)[0]?.qty, 100);
+    assert.equal(fastenerBuyLines(two)[0]?.quantity, 2);
+  });
+
+  it("chooses the outdoor screw item from the build name, not the copied screw count", () => {
+    offline(() => {
+      for (const prompt of ["birdhouse", "outdoor birdhouse"]) {
+        const project = generateFromPrompt(prompt);
+        const plan = buildPlan(project);
+        const lifted = liftBuildGraph(project, plan, "casework");
+        const live = plan.bom.find((line) => line.catalogId === "outdoor-screws");
+        assert.ok(live);
+        assert.match(live.notes ?? "", /30 screws/);
+        assert.equal(lifted.joints.filter((joint) => joint.patternId === "miter" && joint.reviewedJoin).length, 1);
+        assert.deepEqual(reviewedFastenerUses(lifted), [{ id: "outdoor-screws", qty: 2 }]);
+        const derived = fastenerBuyLines(lifted);
+        assert.equal(derived.length, 1);
+        assert.equal(derived[0]?.catalogId, "outdoor-screws");
+        assert.equal(derived[0]?.name, '#8 x 1-1/4" exterior-coated or stainless wood screws');
+        assert.equal(derived[0]?.quantity, 1);
+        assert.equal(derived[0]?.notes, undefined);
+        const compiled = compileBuildGraph(lifted);
+        assert.deepEqual(compiled.buy.filter(isCarcassScrewLine), derived);
+        assert.equal(compiled.fasteners.length, 1);
+        assert.equal(compiled.fasteners[0]?.screws, 2);
+      }
+      const project = generateFromPrompt("chicken coop");
+      const plan = buildPlan(project);
+      const lifted = liftBuildGraph(project, plan, "frame-storage");
+      const live = plan.bom.find((line) => line.catalogId === "outdoor-screws");
+      const structural = plan.bom.find((line) => line.catalogId === "structural-screws");
+      assert.equal(live?.quantity, 3);
+      assert.equal(structural?.quantity, 1);
+      assert.equal(lifted.joints.filter((joint) => joint.patternId === "notch" && joint.reviewedJoin).length, 6);
+      assert.equal(lifted.joints.filter((joint) => joint.patternId === "hinge").length, 2);
+      assert.deepEqual(reviewedFastenerUses(lifted), [{ id: "outdoor-screws", qty: 12 }]);
+      const derived = fastenerBuyLines(lifted);
+      assert.equal(derived[0]?.catalogId, "outdoor-screws");
+      assert.equal(derived[0]?.name, '#8 x 2-1/2" exterior-coated or stainless wood screws');
+      assert.equal(derived[0]?.quantity, 1);
+      const compiled = compileBuildGraph(lifted);
+      assert.deepEqual(compiled.buy.filter(isCarcassScrewLine), derived);
+      assert.equal(compiled.buy.find((line) => line.catalogId === "structural-screws")?.quantity, 1);
+      assert.equal(compiled.buy.find((line) => line.catalogId === "structural-screws")?.name, structural?.name);
+      assert.equal(compiled.fasteners.filter((row) => row.patternId === "hinge").length, 0);
+      assert.equal(compiled.fasteners.reduce((sum, row) => sum + row.screws, 0), 12);
+    });
+  });
+
+  it("buys no carcass screws for a thin dowel or a thin polygon, and keeps the joint", () => {
+    const upright: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 20 },
+    };
+    const perch: Panel = {
+      id: "perch",
+      type: "rail",
+      name: "Perch",
+      materialId: "dowel-1-4-36",
+      position: { x: 0.5, y: 4, z: 2 },
+      size: { width: 8, height: 0.25, depth: 0.25 },
+    };
+    const shaped: Panel = {
+      id: "back",
+      type: "back",
+      name: "Shaped Back",
+      materialId: "plywood-1-4-4x8",
+      position: { x: 0.5, y: 4, z: 0 },
+      size: { width: 8, height: 0.25, depth: 20 },
+      polygon: { plane: "xz", pts: [[0, 0], [8, 0], [8, 20], [0, 20]] },
+    };
+    const side = board("side", "upright", "Side", upright.position, upright.size);
+    const dowel = board("perch", "rail", "Perch", perch.position, perch.size, "dowel-1-4-36");
+    const back = board("back", "back", "Shaped Back", shaped.position, shaped.size, "plywood-1-4-4x8", { polygon: shaped.polygon });
+    for (const panels of [[upright, perch], [perch, upright]] as Panel[][]) {
+      assert.deepEqual(panelJoints(panels), []);
+    }
+    for (const panels of [[upright, shaped], [shaped, upright]] as Panel[][]) {
+      assert.deepEqual(panelJoints(panels), []);
+    }
+    for (const joint of [shop("perch", "side", "mortise"), shop("side", "perch", "mortise")]) {
+      const row = graph([side, dowel], [joint]);
+      assert.equal(row.joints[0]?.reviewedJoin, true);
+      const ledger = fastenerDemandLedger(row);
+      assert.equal(ledger.length, 1);
+      assert.equal(ledger[0]?.screws, 0);
+      assert.equal(ledger[0]?.noScrew, "thin-not-sheet");
+      assert.deepEqual(reviewedFastenerUses(row), []);
+      assert.deepEqual(fastenerBuyLines(row), []);
+      const compiled = compileBuildGraph(row);
+      assert.equal(compiled.fasteners[0]?.screws, 0);
+      assert.equal(compiled.fasteners[0]?.noScrew, "thin-not-sheet");
+      assert.equal(compiled.buy.some(isCarcassScrewLine), false);
+    }
+    for (const joint of [shop("back", "side", "rabbet"), shop("side", "back", "rabbet")]) {
+      const row = graph([side, back], [joint]);
+      assert.equal(row.joints[0]?.reviewedJoin, true);
+      assert.equal(quarterPlyProblems(row.parts).length, 0);
+      const ledger = fastenerDemandLedger(row);
+      assert.equal(ledger.length, 1);
+      assert.equal(ledger[0]?.screws, 0);
+      assert.equal(ledger[0]?.noScrew, "thin-not-sheet");
+      assert.deepEqual(reviewedFastenerUses(row), []);
+      const compiled = compileBuildGraph(row);
+      assert.equal(compiled.fasteners[0]?.noScrew, "thin-not-sheet");
+      assert.equal(compiled.buy.some(isCarcassScrewLine), false);
+      assert.equal(compiled.model.panels.some((part) => part.id === "back"), true);
+    }
   });
 });

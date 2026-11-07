@@ -1,6 +1,6 @@
 # Bot load file — read this first on resume
 
-Snapshot 2026-11-07 02:49 ET · release `release/2026-10-24` @ `6de46318` · main `3966f67f` · shadow build graph shipped (#257 / #258 / #259) · construction knowledge and substitution in progress on this branch (lock held; not merged) · written by Cursor Agent.
+Snapshot 2026-11-07 07:30 ET · release `release/2026-10-24` @ `6ef07183` · main `10f77652` · construction knowledge shipped (#260 / #261 / #262) · shadow fastener demand on PR #263 (r2 parked hole authorized and addressed on this branch; lock held; not merged) · written by Cursor Agent.
 
 This is the one page that gets a bot from cold to working. Detail lives in `CLAUDE-PROGRESS.md` (session log, lock, PASS log, landings) and `PARKED-IDEAS.md`. If anything here disagrees with those two, they win; if a canary is red, the canary wins.
 
@@ -24,7 +24,8 @@ This is the one page that gets a bot from cold to working. Detail lives in `CLAU
 | Stool plus a feature word keeps a unit-marked size | shipped · #251 into release · squash #252 release → main · merge-back #253 main → release | Engine head the grade named stayed `c6cccd6673289e40d23b1aba5672d0ce4e30aa85`. Main `ea287eb75361fbfa3a13354257cd84ee0f84048b`. Merge-back #253 `c230ab55348aa963937de462a6eb162460a41a1e` | Yard Critic PASS on #251 head `c6cccd6673289e40d23b1aba5672d0ce4e30aa85`, lean bar (model, steps, parts). A width or depth on a stool, or the chair on the same reader, keeps a unit mark. Production READY (`dpl_5ypakZABbcku8KrdqHTfkUhSfQjh` / yard-ds1vwu7ep, aliases include yard.wiki) | — |
 | Equal clear bays | shipped · #254 into release · squash #255 release → main · merge-back #256 main → release | Main `e25b82d4f0f96df9619e1324a6e33d829b1d6013`. Release `94cc8d6589c42c77fe054111b582af912113f20a` | An auto-divided shelf run of 3+ clear bays is equal within 1/64", and the bays plus the dividers fill the run between the sides. Ezra: live. This row does not record a Critic PASS or a deployment id. Do not reopen it | — |
 | Shadow build graph (version 1) | shipped · #257 into release · squash #258 release → main · merge-back #259 main → release | Main `3966f67f2e2d071c3e0c7d420c5bbb558adec765`. Release `6de4631859fbfd7eb467e60c48b312abc60c5715` | One shadow graph. Model, steps, and Buy compile back for a bookcase, a potting bench with a lower shelf, and the Eiffel canary. Not the live source of truth. This row does not record a Critic PASS or a deployment id | — |
-| Construction knowledge and substitution | in progress · PR #260 into `release/2026-10-24` · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | Declared joints only where a reviewed pattern already applies. Stock substitution keeps the form. Still shadow. Not graded | Do not merge |
+| Construction knowledge and substitution | shipped · #260 into release · squash #261 release → main · merge-back #262 main → release | Main `10f776525411543ea0fc7d2d13c421d49f3a7c04`. Release `6ef07183c7ca20c0aec85b581df54affbf9b993e` | Declared joints only where a reviewed pattern already applies. Stock substitution keeps the form. Still shadow. Not the live source of truth. This row does not record a Critic PASS or a deployment id | — |
+| Shadow fastener demand | in progress · PR #263 into `release/2026-10-24` · r2 parked hole in this round · do not merge | Lock held. See `CLAUDE-PROGRESS.md` | A thin dowel or a thin polygon buys no carcass screws. r1 ledger cases stay closed. Still shadow. Not graded | Do not merge |
 | Critic NR-1 probe | `critic/nr1-base`, `critic/nr1-head` | `62b9bba`, `bbca4d6` | Probe harness, **do not merge** | — |
 | Other open PRs | #231, #203, #202, #121, #120, #119, #118, #11 | — | Not in this queue | — |
 
@@ -32,7 +33,7 @@ Critic PASS entries for #225, CARD1, class F, digit-feet, and stool unit-size, a
 
 ## 3. Next, in order (one at a time)
 
-Ezra's queue, updated 2026-11-07 02:49 ET. Items 1–6 and the shadow build graph are done. Construction knowledge and substitution is a spike on this branch (lock held). Do not merge it from this note. "A linen needs…" still needs Ezra's yes.
+Ezra's queue, updated 2026-11-07 07:30 ET. Items 1–6, the shadow build graph, and construction knowledge are done. Shadow fastener demand is PR #263 (r2 was parked; Chief authorized this round; lock held). Do not merge it from this note. "A linen needs…" still needs Ezra's yes.
 
 1. DONE: `class-card1-any-size` shipped (#238 / #239 / #240).
 2. DONE: output-neutral engine-speed patch shipped (#241 into release, squash #243 to main `a032063e`, merge-back #244, docs #242 on release as `80c3e765`). Production deploy READY.
@@ -42,7 +43,8 @@ Ezra's queue, updated 2026-11-07 02:49 ET. Items 1–6 and the shadow build grap
 6. DONE: equal clear bays. Shipped #254 / #255 / #256. Main `e25b82d4f0f96df9619e1324a6e33d829b1d6013`. Release `94cc8d6589c42c77fe054111b582af912113f20a`. Do not reopen it.
 7. "A linen needs…" wording still needs Ezra's yes.
 8. DONE: shadow build graph version 1. Shipped #257 / #258 / #259. Main `3966f67f2e2d071c3e0c7d420c5bbb558adec765`. Release `6de4631859fbfd7eb467e60c48b312abc60c5715`. Not the live source of truth. This note does not record a Critic PASS.
-9. IN PROGRESS, do not merge: construction knowledge and substitution on that graph (PR #260). A contact becomes a declared joint only when one of the seven reviewed patterns already applies. Switching stock keeps roles, envelope, and those joints, and Buy follows the new stock. Still shadow. Do not switch the graph on.
+9. DONE: construction knowledge and substitution on that graph. Shipped #260 / #261 / #262. Main `10f776525411543ea0fc7d2d13c421d49f3a7c04`. Release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. Still shadow. This note does not record a Critic PASS.
+10. IN PROGRESS, do not merge (PR #263; r2 thin-dowel / thin-polygon hole was parked and Chief authorized this round): that pair buys no carcass screws. A plain thin back still uses the long edge. Do not switch the graph on.
 
 Do not resume SWE 2, Critic 2, or Design.
 

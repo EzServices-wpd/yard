@@ -1,4 +1,4 @@
-LOCK: Cursor Agent | item: construction knowledge / substitution | started: 2026-11-07 02:49 ET | status: in-progress
+LOCK: Cursor Agent | item: shadow fastener demand | started: 2026-11-07 06:44 ET | status: in-progress
 
 # Claude progress log
 
@@ -46,6 +46,48 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-07 07:30 ET | #263 r2 parked hole — thin dowel and thin polygon (Chief authorized)
+
+- Yard Critic BLOCK on #263 r2, head `a544fd24defd16876b049276abce2437df296ebb`, vs release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. r1 holes stayed closed. The remaining hole was parked. Chief authorized this round. Same branch. Not graded. Not merged. Do not merge.
+- Live `panelJoints` skips a pair, before it counts screws, when either part is thinner than 1/2" and is not a thin sheet. A thin sheet is thinner than 1/2", not a dowel, and has no polygon. A 1/4" dowel and a quarter-inch back with a polygon are that skip. The shadow ledger checked hardware, planed stock, and a non-back thin sheet, and then counted a butt. It now records `thin-not-sheet` and zero screws before the positive count. The reviewed joint stays on the graph.
+  - Perch, `dowel-1-4-36`, at (0.5, 4, 2), size 8×0.25×0.25, mortised into a 3/4" upright: was 2 screws / 1 box `screws-8`, meeting butt, no reason. Now 0, `thin-not-sheet`, both orders. Live `panelJoints` is `[]`.
+  - Shaped Back, `plywood-1-4-4x8`, type back, at (0.5, 4, 0), size 8×0.25×20, with an xz polygon: legal quarter-inch back. Was 3 screws / 1 box `screws-8`, meeting butt, no reason. Now 0, `thin-not-sheet`, both orders. Live `panelJoints` is `[]`. The 0.25" overlap cutoff was not restored.
+- Still holding: wide thin back and the narrow back edge at 12; planed 1/2" shelf and the A-frame bracket at 0, joints kept; native 1/2" sheet at 3; one 400" pair 50 and both directions 50; two pairs 100; birdhouses 2 `outdoor-screws`; chicken coop 12 `outdoor-screws` / 1 box, structural line copied, hinges none; 20" housed end 3; 32×8 lap 4. The seven compile-back families still derive no screws.
+- `generateFromPrompt` and `buildPlan` still do not call the graph. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. No new CI gate. `approved-canary-changes.json` not edited. User-facing wording not changed. This note does not record a canary re-run.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 29/29. `npx tsc --noEmit` pass. `npx eslint` on `buildContract.ts` and `buildContract.test.ts` pass.
+- Still parked, not this fix: potting-bench lower shelf; cardboard bunk bed for a child; missing lift-up seat; glass doors as solid plywood; charging valet / kamado placeholders; extra wardrobe pulls; media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
+
+### 2026-11-07 07:13 ET | #263 r1 block — fastener ledger (same branch, not parked)
+
+- Yard Critic BLOCK on #263 r1, head `80396b8537a3fa2c41a4f9aaf17221b4f1ad8728`, vs release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. Same branch. Not graded. Not merged. Do not merge. Not parked.
+- The shadow ledger now has one row per physical reviewed shop pair. a→b and b→a count once. Each row carries the meeting class, a no-screw reason when the pair buys none, and the screw item follows the build name.
+  - B1: a thin sheet named as a back takes a screw every 8" of the long edge, including when the face is wider than 3". The wide rabbet (side 48×96×0.75, Back 48×96×0.25, both at the origin) was 72 screws / 2 boxes and is now 12 / 1 box, both part orders. Live `panelJoints` calls that pair a back and counts 12. The narrow back-edge rabbet (upright 0.75×96×12, Back at (0.5, 0, 11.25)) stays 12.
+  - B2: a part under 3/4" planed thinner than its stock is glue-only, except a named back and a full-thickness 1/2" sheet. The planed 1/2" shelf in 3/4" stock still lifts as a housed-dado and now buys no carcass screws. Live `panelJoints` is empty and live `buildPlan` has no carcass-screw line. A reviewed shop pair with purchased `A-frame bracket 1` buys none. The joint stays on the graph. Contact still adds none.
+  - B3: host 0.75×10×400 and shelf 8×0.75×400 is 50 screws / 1 box. Both directions of that pair stay 50 / 1 box. Two distinct pairs stay 100 / 2 boxes.
+  - B4: `birdhouse` and `outdoor birdhouse` each have one reviewed miter and now buy `#8 x 1-1/4" exterior-coated or stainless wood screws` (`outdoor-screws`), 2 screws / 1 box. The live line is the same item and is 30 contact screws; that count is not copied. `chicken coop` has six notches and two hinges, derives 12 screws / 1 box of `#8 x 2-1/2" exterior-coated or stainless wood screws`. The live exterior line is 3 boxes (149 contact screws). The structural-screw line stays copied. Hinges add no carcass screws.
+- Kept: a 20" housed end is 3 screws / one box of `#8 x 1-1/4"`. A 32" × 8" lap is 4. The seven compile-back families still derive no screws. Their live contact screw boxes stay unrestored. Graph-level glue and screwless stock still derive none. Sheet goods, lumber, glue, pins, hinges, pulls, anti-tip, and step wording stay copied.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `reviewedFastenerUses`, `fastenerBuyLines`, or `fastenerDemandLedger`. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. No new CI gate. `approved-canary-changes.json` not edited. User-facing wording not changed. This note does not record a canary re-run.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 28/28. `npx tsc --noEmit` pass. `npx eslint` on `buildContract.ts` and `buildContract.test.ts` pass.
+- Parked, not this fix: potting-bench lower shelf; cardboard bunk bed for a child; missing lift-up seat; glass doors as solid plywood; charging valet / kamado placeholders; extra wardrobe pulls; media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
+
+### 2026-11-07 06:48 ET | shadow fastener demand — in progress (lock held)
+
+- Construction knowledge and substitution is on main `10f776525411543ea0fc7d2d13c421d49f3a7c04` (#261) and release `6ef07183c7ca20c0aec85b581df54affbf9b993e` (#262, merge-back of #260). Do not redo it. This note does not record a Critic PASS or a deployment id for that ship. Its lock rode in on the merge-back. Replaced on this feature branch only. Lock commit `5cd8a13a16e1be54d4a503d4daccbf16d97da062`.
+- New lock: shadow fastener demand. Not graded. Not merged. PR #263 into `release/2026-10-24`. Do not merge.
+- Hypothesis held. `compileBuildGraph` was copying `graph.stock`, and `liftBuildGraph` had copied that from the live Buy. Carcass-screw lines are no longer copied. `reviewedFastenerUses` counts screws from reviewed shop joints only (dado, rabbet, lap, mortise, miter, notch). The schedule is the live one, read off the parts on the graph: one screw per 64 sq in when the meeting is wider than 3", otherwise every 8" of the long edge, and never fewer than 2. It does not call `panelJoints`. A hinge adds no carcass screws. Contact adds none. Glue-only stock, and a material whose joins are not screws or nails, adds none. The Buy line is a box of 50 (`screws-8`), named with that stock's face-screw length. Sheet goods, lumber, glue, shelf pins, hinges, pulls, anti-tip, and step wording stay the live compiler's, including a step's `fastenersUsed`. Part ids on those lines are unchanged.
+- Compile-back, checked against the live Buy fastener line. None of these graphs has a reviewed joint, so the derived screw list is empty. Contact was present on every one and added no screws.
+  - `bookcase 36 wide 84 tall 12 deep`, the same prompt in 3/4" plywood, and `from oak`: live Buy still has 1 box of `#8 x 1-1/4" wood screws` (44 screws, butts and back edges). The shadow Buy does not copy that line. The 1/4" back stays. 3/4" sheets or oak 1×4, pins, glue, and the anti-tip kit stay. The default and the 3/4" prompt have the same live screw line.
+  - The same bookcase in 1/2" plywood: live line is 1 box of `#8 x 1" wood screws` (33 screws). Derived none. The 1/2" sheets and the 1/4" back stay.
+  - `potting bench with a lower shelf`: live line is 1 box of `#8 x 2-1/2" wood screws` (28 screws, 10 butts). Derived none. The plywood sheet, the 2×4s, and the glue stay.
+  - `eiffel tower` and `eiffel tower from toothpicks`: glue, miniature, 0 reviewed joints. Live Buy has no wood-screw line. Derived none. Those two lists match. Sticks and wood glue stay.
+- A housed end 20" long derives 3 screws, one box of `#8 x 1-1/4"`. A 32" × 8" reviewed lap derives 4. A screw quantity sitting on the lifted stock is ignored. Adding a contact joint does not change the count. A hinge joint does not add screws. Glue, and popsicle stock, derive none.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `reviewedFastenerUses`, or `fastenerBuyLines`. The graph is not the live source of truth. `YARD_AI_READER` / `VITE_PUBLIC_AI_READER` / `VITE_PUBLIC_YARD_AI_READER` not turned on. No AI planner. No AI Buy list. `lengthReader.ts` not touched. `modelJoints.ts` not edited. No new CI gate. `approved-canary-changes.json` not edited. 1/4" plywood still throws unless it is a back or a drawer bottom. User-facing wording not changed. This note does not record a canary re-run. The live compiler was not edited.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 24/24. `npx tsc --noEmit` pass. `npx eslint` on `buildContract.ts` and `buildContract.test.ts` pass.
+- Parked, not started: the potting-bench lower shelf (glue-and-screw note, floating structure check, pin-shelf step). Held-out findings stay parked: cardboard bunk bed for a child, missing lift-up seat, glass doors as solid plywood, charging valet / kamado placeholders, extra wardrobe pulls, media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
 
 ### 2026-11-07 04:10 ET | #260 r5 block — a moving part and bought hardware are not dados
 
