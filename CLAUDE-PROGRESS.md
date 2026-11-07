@@ -1,4 +1,4 @@
-LOCK: Cursor Agent | item: shadow fastener demand | started: 2026-11-07 06:44 ET | status: in-progress
+LOCK: Cursor Agent | item: shadow cut and pack compile | started: 2026-11-07 08:10 ET | status: in-progress
 
 # Claude progress log
 
@@ -46,6 +46,39 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-07 08:40 ET | #266 r1 block — a glue-up must cover the finished thickness (same branch, not graded)
+
+- Yard Critic BLOCK on #266 r1, head `f17b0416c8263bea5b04b9945893863efa9ca952`, vs release `7134c41b20ed329a11fc52d36699cbef9c10de71`. Same branch. Not graded. Not merged. Do not merge.
+- `expandPart` counted glue-up layers with `Math.round(thickness / stock)`. A thickness between n and n+0.5 stock thicknesses came out short. A rip next to it already uses `Math.ceil((width - 0.01) / face)`. Layers now use that same count, on sheet and on lumber.
+  - 1-3/4" on 3/4" plywood was 2 layers (1-1/2"). Now 3 (2-1/4").
+  - 2-1/2" on a 1×4 (3/4") was 3 layers (2-1/4"). Now 4 (3").
+  - 3-1/2" on a 2×4 (1-1/2") was 2 layers (3"). Now 3 (4-1/2").
+  - 1", 1-1/2", and 2-1/4" on 3/4" still cover, at 2, 2, and 3 layers. A 3" part on a 2×4 is still 2 layers.
+- The stack of layers is at least the finished thickness and is under one extra stock thickness. The rule is the count, not a noun. `report.ts` is still not called. `graph.stock` still does not set a pack or a cut count.
+- Agent-run compile-back on this head, not an independent grade. Same packs as r1: bookcase and the 3/4" prompt 16 cuts, 2 × `plywood-3-4-4x8` and 1 × `plywood-1-4-4x8`; 1/2" plywood 16 cuts, 2 × `plywood-1-2-4x8` and 1 × `plywood-1-4-4x8`; oak 61 cuts, 1 × `plywood-1-4-4x8` and 25 × 8 ft `lumber-1x4-8` (live Buy is still 24, not copied); potting bench 9 cuts, 1 × `plywood-3-4-4x8` and 3 × `lumber-2x4-8` (the 1-1/2" top is still two layers); Eiffel 0 cuts / 0 packs, 446 popsicle; toothpicks 0 / 0, 1314 toothpick.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `lengthReader.ts` and `modelJoints.ts` not edited. No AI reader. No new CI gate. No assembly-step compiler. No linen wording. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. This note does not record a canary re-run.
+- Files: `src/lib/yard/stockCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 35/35. `npx tsc --noEmit` pass. `npx eslint` on `stockCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
+### 2026-11-07 08:22 ET | shadow cut and pack compile — in progress (lock held)
+
+- Shadow fastener demand is on main `db7cd4812967096ee82e7f8abc8fa8da31451f24` (#264) and release `7134c41b20ed329a11fc52d36699cbef9c10de71` (#265, merge-back of #263, release merge `43a5cc52f7d78b27ee42eb3bc906a20b07e0867d`). Do not redo it. This note does not record a Critic PASS or a deployment id. The fastener lock rode in on the merge-back and was not cleared. Replaced on this feature branch only. Lock commit `f9e50053`.
+- New lock: shadow cut and pack compile. Not graded. Not merged. PR #266 into `release/2026-10-24`. Do not merge.
+- `compileBuildGraph` realizes cuttable pieces from the parts on the graph, then derives sheet and lumber packs from that allocation. The sheet count is `planSheetNest`. The board count is `packLengths`. A part thicker than its stock is layers of that stock. A part wider than the board face is rips of that face. `report.ts` is not called. Its closet Buy mixes family rules with the live quantities, so calling it would copy a Buy line instead of allocating the parts.
+- The lifted Buy lines on `buy` stay, including the carcass screws from the last ship. `cuts` and `packs` do not read `graph.stock`. Setting every lifted quantity to 99 leaves the packs as they were. `generateFromPrompt` and `buildPlan` still do not read the graph.
+- Compile-back, from the parts. Where a count matches the live Buy, that is the nest or the packer, not a copied row.
+  - `bookcase 36 wide 84 tall 12 deep` and the same prompt in 3/4" plywood: 16 cuts. 2 sheets of `plywood-3-4-4x8` and 1 sheet of `plywood-1-4-4x8`. The live sheet counts are those numbers. Growing the shelves changes the derived pack.
+  - The same bookcase in 1/2" plywood: 16 cuts. 2 sheets of `plywood-1-2-4x8` and 1 sheet of `plywood-1-4-4x8`. The 3/4" sheet is not derived.
+  - `from oak`: 61 cuts. The back is 1 sheet of `plywood-1-4-4x8`. The 15 oak parts are 60 rips of `lumber-1x4-8`, packed as 25 × 8 ft. Live Buy is 24 boards named Oak 1×4. The packer buys one spare because the longest rips sit alone and the leftover is shorter than that rip. The 24 was not copied. The pack name is the catalog board, not the live Oak line. A 12" upright is four rips.
+  - `potting bench with a lower shelf`: 9 cuts. The 1-1/2" top is two layers of 3/4". Those two plus the lower shelf are 1 sheet of `plywood-3-4-4x8`. Four legs and two aprons are 6 cuts, packed as 3 × 8 ft `lumber-2x4-8`. Live Buy is 1 sheet and 3 studs.
+  - `eiffel tower`: 446 popsicle members. 0 cuts. 0 packs. Disclosure: whole craft stock, not sheet or lumber. Live Buy is 1 pack of 1000. That row stays on the copied `buy` and is not written into `packs`.
+  - `eiffel tower from toothpicks`: 1314 members. 0 cuts. 0 packs. The same disclosure. Live Buy is 2 packs of 800. Not written into `packs`.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `realizeCuttablePieces`, or `deriveStockPacks`. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. `YARD_AI_READER` / `VITE_PUBLIC_YARD_AI_READER` not turned on. No new CI gate. `approved-canary-changes.json` not edited. No assembly-step compiler. No linen wording. No held-out honesty queue. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. User-facing wording not changed. This note does not record a canary re-run. The live compiler was not edited.
+- Files: `src/lib/yard/stockCompile.ts`, `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 34/34. `npx tsc --noEmit` pass. `npx eslint` on `stockCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked, not this fix: potting-bench lower shelf; cardboard bunk bed for a child; missing lift-up seat; glass doors as solid plywood; charging valet / kamado placeholders; extra wardrobe pulls; media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
 
 ### 2026-11-07 07:30 ET | #263 r2 parked hole — thin dowel and thin polygon (Chief authorized)
 

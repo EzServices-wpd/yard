@@ -4,9 +4,11 @@
  * One finished build — casework panels, a frame with storage, or a StructureGraph lattice already
  * turned into sticks — is lifted into parts, joints, constraints, operations, and stock requirements.
  * compileBuildGraph reads that graph and nothing else: no prompt, no second length reader, no new
- * geometry. Sheet and lumber Buy, and the step wording, come back as the deterministic compiler
- * already produced them. Furniture screws are one ledger row per reviewed shop pair: thin backs
- * on the long edge, glue-only and hardware pairs at zero, outdoor nouns on the exterior screw.
+ * geometry. The Buy list's copied lines, and the step wording, come back as the deterministic
+ * compiler already produced them, except carcass screws, which are derived. Cuttable pieces and
+ * sheet/lumber purchase packs are derived from the parts on the graph. Furniture screws are one
+ * ledger row per reviewed shop pair: thin backs on the long edge, glue-only and hardware pairs
+ * at zero, outdoor nouns on the exterior screw.
  *
  * The graph is not the live source of truth. generateFromPrompt and buildPlan do not read it.
  * StructureGraph still builds lattices. Recipes still build named objects. A pair that only
@@ -24,7 +26,11 @@ import { panelJoints, stickJoints } from "./modelJoints";
 import { isOutdoorPrompt } from "./outdoor";
 import { faceScrewInches } from "./shopJoin";
 import { structureIssues } from "./structureCheck";
+import { compileStock, type CuttablePiece, type StockPack } from "./stockCompile";
 import type { AssemblyStep, BomLine, BuildPlan, Panel, Vec3, YardInstance, YardProject } from "./types";
+
+export type { CuttablePiece, StockPack };
+export { deriveStockPacks, realizeCuttablePieces } from "./stockCompile";
 
 export const BUILD_GRAPH_VERSION = 1 as const;
 
@@ -242,6 +248,12 @@ export type CompiledBuild = {
    * Contact and hinges are absent. screws is 0 when the pair is glue-only or hardware.
    */
   fasteners: FastenerDemand[];
+  /** Physical cuts realized from graph parts. Empty when nothing on the graph is sheet or lumber. */
+  cuts: CuttablePiece[];
+  /** Sheet and lumber packs that cover those cuts. Not a copy of the lifted Buy lines. */
+  packs: StockPack[];
+  /** Why packs do not cover every part, including when nothing was cuttable. */
+  stockDisclosure?: string;
 };
 
 /** Live meeting class for a carcass-screw count. A thin named back is "back" even when the face is wide. */
@@ -943,11 +955,12 @@ export function fastenerBuyLines(graph: YardBuildGraph): CompiledBuild["buy"] {
   });
 }
 
-/** Model and steps from the graph. Sheet and lumber Buy are copied. Furniture screws are derived. */
+/** Model and steps from the graph. Copied Buy lines stay. Screws, cuts, and sheet/lumber packs are derived. */
 export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
   if (graph.version !== BUILD_GRAPH_VERSION) throw new Error(`build graph version ${graph.version} is not ${BUILD_GRAPH_VERSION}`);
   const illegal = quarterPlyProblems(graph.parts);
   if (illegal.length) throw new Error(`1/4" plywood is a back or a drawer bottom, not: ${illegal.join(", ")}`);
+  const stock = compileStock(graph);
   const steps = [...graph.operations]
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
     .map((op, index) => defined({
@@ -976,6 +989,9 @@ export function compileBuildGraph(graph: YardBuildGraph): CompiledBuild {
     steps,
     buy: [...copied, ...fastenerBuyLines(graph)],
     fasteners: fastenerDemandLedger(graph),
+    cuts: stock.cuts,
+    packs: stock.packs,
+    ...(stock.disclosure ? { stockDisclosure: stock.disclosure } : {}),
   };
 }
 
