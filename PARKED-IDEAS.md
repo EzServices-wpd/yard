@@ -54,10 +54,13 @@ Update 2026-11-07 09:22 ET: shadow assembly steps did not fasten it. The shelf s
 Update 2026-11-07 09:44 ET: the #269 r1 notch round did not touch this shelf. Still parked.
 Update 2026-11-07 10:00 ET: the #269 r2 seating round did not touch this shelf. Still parked.
 Update 2026-11-07 10:13 ET: the #269 r3 empty-id round did not touch this shelf. Still parked.
+Update 2026-11-07 11:00 ET: shadow conservation checks did not fasten it. The shelf still has no reviewed joint, so the derived step places it and does not fasten it. The copied live step still says "Pin 1 adjustable shelf". The ledger records that difference and does not rewrite the step. The glue note and the floating check stay. Still parked.
+Update 2026-11-07 11:29 ET: the #272 r1 round did not fasten it either. The disclosure is read from the missing reviewed joint, so pasting the pin step into the derived assembly does not clear it. Still parked.
+Update 2026-11-07 12:10 ET: the #272 r2 round did not fasten it. Still parked.
 
 ## 2026-11-07 | Held-out evaluation findings (not this round)
 
-Still parked. The #269 r3 empty-id round did not investigate them. The #269 r2 seating round did not investigate them. The #269 r1 notch round did not investigate them. The assembly-step compile did not investigate them. The cut and pack compile did not investigate them either. The #263 r2 hole was a thin dowel or a thin polygon buying carcass screws. Chief authorized that round; it is not one of these, and that round did not investigate them:
+Still parked. The conservation-check compile did not investigate them. The #269 r3 empty-id round did not investigate them. The #269 r2 seating round did not investigate them. The #269 r1 notch round did not investigate them. The assembly-step compile did not investigate them. The cut and pack compile did not investigate them either. The #263 r2 hole was a thin dowel or a thin polygon buying carcass screws. Chief authorized that round; it is not one of these, and that round did not investigate them:
 - cardboard bunk bed for a child
 - missing lift-up seat
 - glass doors as solid plywood

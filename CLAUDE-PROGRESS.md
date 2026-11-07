@@ -1,4 +1,4 @@
-LOCK: Cursor Agent | item: shadow assembly steps | started: 2026-11-07 09:06 ET | status: in-progress
+LOCK: Cursor Agent | item: shadow conservation checks | started: 2026-11-07 10:40 ET | status: in-progress
 
 # Claude progress log
 
@@ -46,6 +46,56 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 ## Session notes
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
+
+### 2026-11-07 12:10 ET | #272 r2 block — spare board, step order, fastener identity, and the geometry label (same branch, not graded)
+
+- Yard Critic BLOCK on #272 r2, head `5b2d932a`, vs release `ea4dffd6`. Same branch. Not graded. Not merged. Do not merge. Not parked. The r1 holes stay closed.
+- `basis` is no longer stamped geometry on every row. Cut-identity compares compiled cuts with compiled assembly steps, and invention compares compiled steps and Buy lines with the copied operations and stock, so those findings are `consistency`. Allocation, packs, joint seating, and screw counts from the boxes stay `geometry`. A copied Buy comparison, including the oak pack note, is `consistency`.
+- The spare board after a first-fit is packer policy, not a required board count. Oak's part lengths first-fit on 24 boards of `lumber-1x4-8`. A pack of 24 holds. A pack of 25, which the stock compile still emits, also holds, and the disclosure says the extra board is packer policy, not geometry. Five 60 inch rails on five 96 inch 2×4s hold. A piece longer than one board still gaps and stays a disclosed splice.
+- When a reviewed pair has both a machine step and a fasten step, machining has to precede fastening. Swapping those step numbers gaps that check, and the finding is `consistency` because it compares the two compiled step numbers.
+- A fasten step counts only `screws-8` and `outdoor-screws`. `hinge-pair` is not a carcass screw. A Buy line whose name still says wood screws but whose catalog id is not one of those two ids gaps, and that finding is `consistency`.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `stockCompile.ts` and `assemblyCompile.ts` not edited. No AI reader. No linen wording. The 0.25 inch screw-overlap cutoff was not restored. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. `walk-canary.ts` green. Weekend geometry 6/6 unchanged. This note does not record a Critic PASS.
+- Files: `src/lib/yard/conservationCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 47/47. `npx tsc --noEmit` pass. `npx eslint` on `conservationCompile.ts` and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
+### 2026-11-07 11:29 ET | #272 r1 block — conservation holds were reading the compile under test (same branch, not graded)
+
+- Yard Critic BLOCK on #272 r1, head `ef5fe49e`, vs release `ea4dffd62c204bdace1235694e74597d55af7fbc`. Same branch. Not graded. Not merged. Do not merge. Not parked.
+- The r1 ledger compared compiled fields with copies the same pipeline had written: cut area against the compiled cuts, pack inches against those cuts, a fasten step's screws against the fastener row, and a disclosure against the assembly step being checked. A shortened cut, a pack set to the copied Buy quantity, a fasten step with no joint, and a prepare-only assembly could still read as holds. That is the class this round closes.
+- Every finding is `basis: "geometry"`. Nothing is left as consistency-only. The count comes from the part geometry, the reviewed joints, or the catalog. Copied operations and copied Buy lines are read only for a disclosure against that count. The checker still does not call the stock compiler, the assembly compiler, the sheet nest, or the board packer, and it does not import them.
+  - Allocation asks the stock section for the exact pieces (layer and strip counts) and requires that multiset both ways. A short rail, a cart of 1 inch lumber cuts, a split or duplicated housed end, a duplicated bookcase sheet cut, and a 0.25 inch lumber thickness are gaps.
+  - Pack need is those same pieces. Each lumber piece has to fit one board, or the pack check gaps and a splice is disclosed. A 120 inch 2×4 on two boards is not a hold. Sheet coverage is the area of those pieces, not the compiled cut list. Oak's board count is read from the geometry, so writing the copied 24 onto the pack does not remove `disclosed:pack:lumber-1x4-8`, and the pack check gaps because the geometry still asks for 25.
+  - A machine, fasten, or hang step must name a reviewed joint, and every part on the step must be in that pair. A pin step pasted onto the potting bench with no joint, a rebate pasted onto the bookcase back, and a notch pasted onto a cart post are gaps. The shelf and back disclosures are read from the joints, so those pasted steps do not erase them.
+  - A prepare step does not count as an assembly use. Reducing the cubby to prepare gaps cut-identity. Screw counts are read from the boxes. Setting a housed end's step and ledger both to 1 gaps, because the boxes still ask for 3. Deleting a cart fastener row gaps even when that step's screws are cleared with it.
+- Still holding, and not rewritten to match a family: oak stays 25 against a copied Buy of 24; Eiffel and toothpicks stay at 0 derived cuts and 0 packs, with the copied Buy quantity quoted; the potting-bench lower shelf is placed and not fastened while the copied step says it is pinned; the bookcase back is placed, not rebated. A sheet part whose id is `""` still loses its cut in `stockCompile`. That remains an allocation gap. The empty id is not rejected.
+- `generateFromPrompt` and `buildPlan` still do not read the graph. `stockCompile.ts` and `assemblyCompile.ts` not edited. `lengthReader.ts` and `modelJoints.ts` not edited. No AI reader. No linen wording. The 0.25 inch screw-overlap cutoff was not restored. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. `walk-canary.ts` green. Weekend geometry 6/6 unchanged. This note does not record a Critic PASS.
+- Files: `src/lib/yard/conservationCompile.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 46/46. `npx tsc --noEmit` pass. `npx eslint` on `conservationCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
+
+### 2026-11-07 11:00 ET | shadow conservation checks — in progress (lock held)
+
+- Shadow assembly steps are on main `a129a5e5` (#270) and release `ea4dffd6` (#271, merge-back of #269, release merge `f8e5637b`). Do not redo them. This note does not add a PASS entry or a deployment id. The assembly lock rode in on the merge-back and was not cleared. Replaced on this feature branch only.
+- New lock: shadow conservation checks. Not graded. Not merged. PR #272 into `release/2026-10-24`. Do not merge.
+- `compileConservation` (`src/lib/yard/conservationCompile.ts`) is called from `compileBuildGraph`. It writes `conservation` on the compiled build. It does not rewrite cuts, packs, fasteners, assembly, steps, or Buy. `generateFromPrompt` and `buildPlan` do not read the graph. The checker does not import `lengthReader`, `promptMain`, `report`, `modelJoints`, `panelJoints`, or `stickJoints`. It does not call the stock compiler, the assembly compiler, the sheet nest, or the board packer.
+- The ledger recomputes five relations from the part geometry and the compiled artifacts. A hold is not a compiled field agreeing with itself. Contact is not a joint. An empty part id is still that part. `""` is not read as missing.
+  - Each derived cut names a model part and an assembly step.
+  - Each reviewed joint has the machining or fastening the boxes require. A hinge hangs. An unresolved seat is not given a host. The screw count on a fasten step is that pair's ledger row. The checker does not recount screws.
+  - Sheet area and lumber rips cover the finished part. Hardware, unknown stock, and whole craft sticks are not cut.
+  - Purchased sheet area or board length covers those cuts, and the pack names the cut parts. The bound is inches or area, not a second nest.
+  - Compiled model parts, pack names, fastener rows, copied steps, and non-screw Buy lines trace to the graph.
+- Disclosed gaps stay gaps. They do not flip the five checks, and they are not repaired by copying a live quantity or a live step.
+  - `bookcase 36 wide 84 tall 12 deep`, the 3/4" prompt, and the 1/2" prompt: the back is placed, not rebated. The copied pin-shelf step still says the shelves are pinned. Derived assembly places them. Sheet pack quantities that match the copied Buy are not listed as a pack gap.
+  - `from oak`: derived `lumber-1x4-8` is 25. The copied Buy is 24 boards. The 24 was not written onto the pack. Assembly text still does not say 24 or 25. The pack check holds because 25 covers the cut length.
+  - `potting bench with a lower shelf`: the lower shelf is placed and not fastened. The copied step still says "Pin 1 adjustable shelf". The parked contradiction stays. Copied steps that say Fasten for an apron are disclosed the same way. Those parts have no reviewed joint.
+  - `eiffel tower` and `eiffel tower from toothpicks`: 0 derived cuts and 0 derived packs. The copied Buy quantity is quoted on the ledger and was not written into packs. Stock disclosure and assembly text still do not say 1000 or 800.
+  - `utility cart`: reviewed notches still machine the board the other part passes through. The five checks hold.
+- A sheet part whose id is `""` still loses its cut in `stockCompile` (`parentId ? byId.get(parentId)`). That miss is out of scope and was not fixed by forbidding an empty id. The ledger records it as an allocation gap and does not call the id invalid. A lumber part whose id is `""` keeps its cut, and the five checks hold.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `compileConservation`, `compileAssembly`, `reviewedFastenerUses`, `fastenerBuyLines`, `fastenerDemandLedger`, `realizeCuttablePieces`, or `deriveStockPacks`. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. `YARD_AI_READER` / `VITE_PUBLIC_YARD_AI_READER` not turned on. No new CI gate. `approved-canary-changes.json` not edited. No linen wording. No held-out honesty queue. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. User-facing wording not changed. Linen closet `31.5 wide 78 tall 16 deep` is still $193.68 / 11 parts / 8 Buy / 9 steps. `linen-check` PASS. `walk-canary.ts` green. Weekend geometry 6/6 unchanged. This note does not record a Critic PASS.
+- Files: `src/lib/yard/conservationCompile.ts`, `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 43/43. `npx tsc --noEmit` pass. `npx eslint` on `conservationCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked: potting-bench lower shelf; the held-out list; "A linen needs…" still needs Ezra's yes.
 
 ### 2026-11-07 10:13 ET | #269 r3 block — an empty part id is still that part (same branch, not graded)
 
