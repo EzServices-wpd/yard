@@ -47,6 +47,24 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 08:22 ET | shadow cut and pack compile — in progress (lock held)
+
+- Shadow fastener demand is on main `db7cd4812967096ee82e7f8abc8fa8da31451f24` (#264) and release `7134c41b20ed329a11fc52d36699cbef9c10de71` (#265, merge-back of #263, release merge `43a5cc52f7d78b27ee42eb3bc906a20b07e0867d`). Do not redo it. This note does not record a Critic PASS or a deployment id. The fastener lock rode in on the merge-back and was not cleared. Replaced on this feature branch only. Lock commit `f9e50053`.
+- New lock: shadow cut and pack compile. Not graded. Not merged. One PR into `release/2026-10-24`. Do not merge.
+- `compileBuildGraph` realizes cuttable pieces from the parts on the graph, then derives sheet and lumber packs from that allocation. The sheet count is `planSheetNest`. The board count is `packLengths`. A part thicker than its stock is layers of that stock. A part wider than the board face is rips of that face. `report.ts` is not called. Its closet Buy mixes family rules with the live quantities, so calling it would copy a Buy line instead of allocating the parts.
+- The lifted Buy lines on `buy` stay, including the carcass screws from the last ship. `cuts` and `packs` do not read `graph.stock`. Setting every lifted quantity to 99 leaves the packs as they were. `generateFromPrompt` and `buildPlan` still do not read the graph.
+- Compile-back, from the parts. Where a count matches the live Buy, that is the nest or the packer, not a copied row.
+  - `bookcase 36 wide 84 tall 12 deep` and the same prompt in 3/4" plywood: 16 cuts. 2 sheets of `plywood-3-4-4x8` and 1 sheet of `plywood-1-4-4x8`. The live sheet counts are those numbers. Growing the shelves changes the derived pack.
+  - The same bookcase in 1/2" plywood: 16 cuts. 2 sheets of `plywood-1-2-4x8` and 1 sheet of `plywood-1-4-4x8`. The 3/4" sheet is not derived.
+  - `from oak`: 61 cuts. The back is 1 sheet of `plywood-1-4-4x8`. The 15 oak parts are 60 rips of `lumber-1x4-8`, packed as 25 × 8 ft. Live Buy is 24 boards named Oak 1×4. The packer buys one spare because the longest rips sit alone and the leftover is shorter than that rip. The 24 was not copied. The pack name is the catalog board, not the live Oak line. A 12" upright is four rips.
+  - `potting bench with a lower shelf`: 9 cuts. The 1-1/2" top is two layers of 3/4". Those two plus the lower shelf are 1 sheet of `plywood-3-4-4x8`. Four legs and two aprons are 6 cuts, packed as 3 × 8 ft `lumber-2x4-8`. Live Buy is 1 sheet and 3 studs.
+  - `eiffel tower`: 446 popsicle members. 0 cuts. 0 packs. Disclosure: whole craft stock, not sheet or lumber. Live Buy is 1 pack of 1000. That row stays on the copied `buy` and is not written into `packs`.
+  - `eiffel tower from toothpicks`: 1314 members. 0 cuts. 0 packs. The same disclosure. Live Buy is 2 packs of 800. Not written into `packs`.
+- `generateFromPrompt` and `buildPlan` still do not call `liftBuildGraph`, `compileBuildGraph`, `realizeCuttablePieces`, or `deriveStockPacks`. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. `YARD_AI_READER` / `VITE_PUBLIC_YARD_AI_READER` not turned on. No new CI gate. `approved-canary-changes.json` not edited. No assembly-step compiler. No linen wording. No held-out honesty queue. The 0.25" screw-overlap cutoff was not restored. 1/4" plywood still throws unless it is a back or a drawer bottom. User-facing wording not changed. This note does not record a canary re-run. The live compiler was not edited.
+- Files: `src/lib/yard/stockCompile.ts`, `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 34/34. `npx tsc --noEmit` pass. `npx eslint` on `stockCompile.ts`, `buildContract.ts`, and `buildContract.test.ts` pass.
+- Still parked, not this fix: potting-bench lower shelf; cardboard bunk bed for a child; missing lift-up seat; glass doors as solid plywood; charging valet / kamado placeholders; extra wardrobe pulls; media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 07:30 ET | #263 r2 parked hole — thin dowel and thin polygon (Chief authorized)
 
 - Yard Critic BLOCK on #263 r2, head `a544fd24defd16876b049276abce2437df296ebb`, vs release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. r1 holes stayed closed. The remaining hole was parked. Chief authorized this round. Same branch. Not graded. Not merged. Do not merge.

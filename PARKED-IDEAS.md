@@ -48,10 +48,11 @@ Update 2026-11-07: construction knowledge did not declare a joint for that shelf
 Update 2026-11-07 06:48 ET: shadow fastener demand did not fix it. The shelf is still not a reviewed joint, so it still does not add a screw. The live Buy screw line for that bench is the contact butts, and the shadow compile does not copy it. The contradiction stays.
 Update 2026-11-07 07:13 ET: the #263 r1 ledger fix did not touch this shelf. Still parked.
 Update 2026-11-07 07:30 ET: the authorized r2 round (thin dowel and thin polygon) did not touch this shelf. Still parked.
+Update 2026-11-07 08:22 ET: shadow cut and pack compile did not fix it. The lower shelf is a 3/4" plywood part, so it is one of the cuts on the derived sheet. That does not declare a joint. The glue-and-screw note, the floating structure check, and the pin step stay. Still parked.
 
 ## 2026-11-07 | Held-out evaluation findings (not this round)
 
-Still parked. The #263 r2 hole was a thin dowel or a thin polygon buying carcass screws. Chief authorized that round; it is not one of these, and this round did not investigate them:
+Still parked. The cut and pack compile did not investigate them. The #263 r2 hole was a thin dowel or a thin polygon buying carcass screws. Chief authorized that round; it is not one of these, and that round did not investigate them:
 - cardboard bunk bed for a child
 - missing lift-up seat
 - glass doors as solid plywood
