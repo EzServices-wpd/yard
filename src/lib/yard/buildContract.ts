@@ -255,7 +255,7 @@ export type FastenerDemand = {
   /** Piece count for this pair. Zero when the pair buys no carcass screws. */
   screws: number;
   /** Set when the pair is kept and is not a carcass-screw connection. */
-  noScrew?: "hardware" | "planed" | "thin-sheet" | "member";
+  noScrew?: "hardware" | "planed" | "thin-sheet" | "thin-not-sheet" | "member";
 };
 
 function defined<T extends Record<string, unknown>>(row: T): T {
@@ -864,10 +864,19 @@ function meetingDemand(
   return { meeting: "butt", screws: Math.max(2, Math.ceil(length / 8)) };
 }
 
+/**
+ * Thinner than 1/2" and not a thin sheet: a dowel, or a part with a polygon.
+ * Live panelJoints skips that pair before it will count screws. A plain thin sheet is not this case.
+ */
+function thinNotSheet(part: GraphPart): boolean {
+  return part.source === "panel" && thinnestPart(part) < 0.5 && !sheetThin(part);
+}
+
 function pairNoScrew(a: GraphPart, b: GraphPart): FastenerDemand["noScrew"] {
   if (a.source !== "panel" || b.source !== "panel") return "member";
   if (boughtHardware(a) || boughtHardware(b)) return "hardware";
   if (planedGlueOnly(a) || planedGlueOnly(b)) return "planed";
+  if (thinNotSheet(a) || thinNotSheet(b)) return "thin-not-sheet";
   if ((sheetThin(a) || sheetThin(b)) && !namedThinBack(a) && !namedThinBack(b)) return "thin-sheet";
   return undefined;
 }
@@ -892,11 +901,13 @@ export function fastenerDemandLedger(graph: YardBuildGraph): FastenerDemand[] {
       rows.set(pair, { pair, patternId, meeting: "butt", screws: 0, noScrew: "member" });
       continue;
     }
-    const demand = meetingDemand(a, b);
     const noScrew = pairNoScrew(a, b);
-    rows.set(pair, noScrew
-      ? { pair, patternId, meeting: demand.meeting, screws: 0, noScrew }
-      : { pair, patternId, meeting: demand.meeting, screws: demand.screws });
+    if (noScrew) {
+      rows.set(pair, { pair, patternId, meeting: meetingDemand(a, b).meeting, screws: 0, noScrew });
+      continue;
+    }
+    const demand = meetingDemand(a, b);
+    rows.set(pair, { pair, patternId, meeting: demand.meeting, screws: demand.screws });
   }
   return [...rows.values()];
 }

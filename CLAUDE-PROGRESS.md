@@ -47,6 +47,18 @@ Format: `- <YYYY-MM-DD HH:MM ET> | <item> | PR #<n> | main <sha> | regrade: cana
 
 Newest first. Tip, canary status, the rule per change, before/after prompts, files, tests, parked items.
 
+### 2026-11-07 07:30 ET | #263 r2 parked hole — thin dowel and thin polygon (Chief authorized)
+
+- Yard Critic BLOCK on #263 r2, head `a544fd24defd16876b049276abce2437df296ebb`, vs release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. r1 holes stayed closed. The remaining hole was parked. Chief authorized this round. Same branch. Not graded. Not merged. Do not merge.
+- Live `panelJoints` skips a pair, before it counts screws, when either part is thinner than 1/2" and is not a thin sheet. A thin sheet is thinner than 1/2", not a dowel, and has no polygon. A 1/4" dowel and a quarter-inch back with a polygon are that skip. The shadow ledger checked hardware, planed stock, and a non-back thin sheet, and then counted a butt. It now records `thin-not-sheet` and zero screws before the positive count. The reviewed joint stays on the graph.
+  - Perch, `dowel-1-4-36`, at (0.5, 4, 2), size 8×0.25×0.25, mortised into a 3/4" upright: was 2 screws / 1 box `screws-8`, meeting butt, no reason. Now 0, `thin-not-sheet`, both orders. Live `panelJoints` is `[]`.
+  - Shaped Back, `plywood-1-4-4x8`, type back, at (0.5, 4, 0), size 8×0.25×20, with an xz polygon: legal quarter-inch back. Was 3 screws / 1 box `screws-8`, meeting butt, no reason. Now 0, `thin-not-sheet`, both orders. Live `panelJoints` is `[]`. The 0.25" overlap cutoff was not restored.
+- Still holding: wide thin back and the narrow back edge at 12; planed 1/2" shelf and the A-frame bracket at 0, joints kept; native 1/2" sheet at 3; one 400" pair 50 and both directions 50; two pairs 100; birdhouses 2 `outdoor-screws`; chicken coop 12 `outdoor-screws` / 1 box, structural line copied, hinges none; 20" housed end 3; 32×8 lap 4. The seven compile-back families still derive no screws.
+- `generateFromPrompt` and `buildPlan` still do not call the graph. `modelJoints.ts` and `lengthReader.ts` not edited. No AI reader. No new CI gate. `approved-canary-changes.json` not edited. User-facing wording not changed. This note does not record a canary re-run.
+- Files: `src/lib/yard/buildContract.ts`, `src/lib/yard/buildContract.test.ts`, `CLAUDE-PROGRESS.md`, `PARKED-IDEAS.md`, `docs/BOT-LOAD.md`.
+- Tests: `npx tsx --test src/lib/yard/buildContract.test.ts` 29/29. `npx tsc --noEmit` pass. `npx eslint` on `buildContract.ts` and `buildContract.test.ts` pass.
+- Still parked, not this fix: potting-bench lower shelf; cardboard bunk bed for a child; missing lift-up seat; glass doors as solid plywood; charging valet / kamado placeholders; extra wardrobe pulls; media-console joint and span issues. "A linen needs…" still needs Ezra's yes.
+
 ### 2026-11-07 07:13 ET | #263 r1 block — fastener ledger (same branch, not parked)
 
 - Yard Critic BLOCK on #263 r1, head `80396b8537a3fa2c41a4f9aaf17221b4f1ad8728`, vs release `6ef07183c7ca20c0aec85b581df54affbf9b993e`. Same branch. Not graded. Not merged. Do not merge. Not parked.

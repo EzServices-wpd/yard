@@ -1251,4 +1251,69 @@ describe("fastener demand ledger", () => {
       assert.equal(compiled.fasteners.reduce((sum, row) => sum + row.screws, 0), 12);
     });
   });
+
+  it("buys no carcass screws for a thin dowel or a thin polygon, and keeps the joint", () => {
+    const upright: Panel = {
+      id: "side",
+      type: "upright",
+      name: "Side",
+      materialId: "plywood-3-4-4x8",
+      position: { x: 0, y: 0, z: 0 },
+      size: { width: 0.75, height: 10, depth: 20 },
+    };
+    const perch: Panel = {
+      id: "perch",
+      type: "rail",
+      name: "Perch",
+      materialId: "dowel-1-4-36",
+      position: { x: 0.5, y: 4, z: 2 },
+      size: { width: 8, height: 0.25, depth: 0.25 },
+    };
+    const shaped: Panel = {
+      id: "back",
+      type: "back",
+      name: "Shaped Back",
+      materialId: "plywood-1-4-4x8",
+      position: { x: 0.5, y: 4, z: 0 },
+      size: { width: 8, height: 0.25, depth: 20 },
+      polygon: { plane: "xz", pts: [[0, 0], [8, 0], [8, 20], [0, 20]] },
+    };
+    const side = board("side", "upright", "Side", upright.position, upright.size);
+    const dowel = board("perch", "rail", "Perch", perch.position, perch.size, "dowel-1-4-36");
+    const back = board("back", "back", "Shaped Back", shaped.position, shaped.size, "plywood-1-4-4x8", { polygon: shaped.polygon });
+    for (const panels of [[upright, perch], [perch, upright]] as Panel[][]) {
+      assert.deepEqual(panelJoints(panels), []);
+    }
+    for (const panels of [[upright, shaped], [shaped, upright]] as Panel[][]) {
+      assert.deepEqual(panelJoints(panels), []);
+    }
+    for (const joint of [shop("perch", "side", "mortise"), shop("side", "perch", "mortise")]) {
+      const row = graph([side, dowel], [joint]);
+      assert.equal(row.joints[0]?.reviewedJoin, true);
+      const ledger = fastenerDemandLedger(row);
+      assert.equal(ledger.length, 1);
+      assert.equal(ledger[0]?.screws, 0);
+      assert.equal(ledger[0]?.noScrew, "thin-not-sheet");
+      assert.deepEqual(reviewedFastenerUses(row), []);
+      assert.deepEqual(fastenerBuyLines(row), []);
+      const compiled = compileBuildGraph(row);
+      assert.equal(compiled.fasteners[0]?.screws, 0);
+      assert.equal(compiled.fasteners[0]?.noScrew, "thin-not-sheet");
+      assert.equal(compiled.buy.some(isCarcassScrewLine), false);
+    }
+    for (const joint of [shop("back", "side", "rabbet"), shop("side", "back", "rabbet")]) {
+      const row = graph([side, back], [joint]);
+      assert.equal(row.joints[0]?.reviewedJoin, true);
+      assert.equal(quarterPlyProblems(row.parts).length, 0);
+      const ledger = fastenerDemandLedger(row);
+      assert.equal(ledger.length, 1);
+      assert.equal(ledger[0]?.screws, 0);
+      assert.equal(ledger[0]?.noScrew, "thin-not-sheet");
+      assert.deepEqual(reviewedFastenerUses(row), []);
+      const compiled = compileBuildGraph(row);
+      assert.equal(compiled.fasteners[0]?.noScrew, "thin-not-sheet");
+      assert.equal(compiled.buy.some(isCarcassScrewLine), false);
+      assert.equal(compiled.model.panels.some((part) => part.id === "back"), true);
+    }
+  });
 });

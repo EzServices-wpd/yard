@@ -47,10 +47,11 @@ Update 2026-11-07: shipped. Main `e25b82d4f0f96df9619e1324a6e33d829b1d6013` (#25
 Update 2026-11-07: construction knowledge did not declare a joint for that shelf. The shelf does not meet the legs, so the graph has no contact for it either. The three-way contradiction is copied onto the shadow graph as a parked constraint. Still not fixed.
 Update 2026-11-07 06:48 ET: shadow fastener demand did not fix it. The shelf is still not a reviewed joint, so it still does not add a screw. The live Buy screw line for that bench is the contact butts, and the shadow compile does not copy it. The contradiction stays.
 Update 2026-11-07 07:13 ET: the #263 r1 ledger fix did not touch this shelf. Still parked.
+Update 2026-11-07 07:30 ET: the authorized r2 round (thin dowel and thin polygon) did not touch this shelf. Still parked.
 
 ## 2026-11-07 | Held-out evaluation findings (not this round)
 
-Still parked. The #263 r1 block was a shadow-ledger fix, not one of these, and this round did not investigate them:
+Still parked. The #263 r2 hole was a thin dowel or a thin polygon buying carcass screws. Chief authorized that round; it is not one of these, and this round did not investigate them:
 - cardboard bunk bed for a child
 - missing lift-up seat
 - glass doors as solid plywood
