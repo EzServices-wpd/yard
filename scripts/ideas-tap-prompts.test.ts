@@ -90,7 +90,9 @@ test("LOG_PROMPT: each fix is used by its card, names no gap, and carries the en
 
 test("the guard catches the 10-26 class: generic, runaway and stand-in taps", () => {
   const card = (slug: string, title: string, examplePrompt: string) => ({ slug, title, examplePrompt });
-  assert.match(wrongBuild(card("soccer-goal", "Soccer goal", "soccer goal 48 wide 36 tall 12 deep"))!, /generic "Storage unit/);
+  // Generic-fallback specimen of the 10-26 class: a sized windmill still builds "Storage unit".
+  // The soccer-goal prompt is the learned recipe key "goal" (PVC Soccer Goal).
+  assert.match(wrongBuild(card("windmill", "Windmill", "windmill 24 wide 48 tall 24 deep"))!, /generic "Storage unit/);
   assert.match(wrongBuild(card("lighthouse", "Lighthouse", "lighthouse 8 wide 12 tall 8 deep"))!, /generic "Storage unit/);
   // The 10-26 runaway (1731 5/8" wide) builds its typed 138 1/2" now (bridge cap); a typed tower height still runs past 240".
   assert.equal(wrongBuild(card("brooklyn-bridge", "Brooklyn bridge", "brooklyn bridge 138.5 wide 11.5 tall 6 deep")), null);
