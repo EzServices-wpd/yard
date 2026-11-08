@@ -20,6 +20,7 @@
 
 import { withArticle } from "./article";
 import { inchFrac } from "./inchText";
+import { canonicalMeasures } from "./measureText";
 import { createId } from "@/lib/utils";
 import { panelWorldCorners } from "./geometry";
 import { shelfInstallHeightsClause } from "./voiceHonesty";
@@ -335,13 +336,39 @@ function buildCornerDiagonal(lower: string): Build {
 
 // ───────────────────────────── sloped ─────────────────────────────
 
+type EndSpan = { start: number; end: number; n: number };
+type SlopeEnds = { left: number | null; right: number | null; high: number | null; low: number | null; spans: EndSpan[] };
+
+/** A high/low role after this number, with no number of its own, wants this number. */
+function followingRoleWantsNumber(rest: string): boolean {
+  const gap = String.raw`(?:\s*tall)?\s*(?:(?:at|on)\s+)?(?:the\s+)?`;
+  const role = String.raw`(?:high|tall|low|short)(?:est)?\s+(?:side|end)`;
+  const head = new RegExp(String.raw`^${gap}${role}\b`);
+  const withNum = new RegExp(String.raw`^${gap}${role}\s*(?:of|is|=|:|at)?\s*${N}`);
+  return head.test(rest) && !withNum.test(rest);
+}
+
+/** "24 tall" keeps its tall; "24 high side" does not swallow the next role. */
+function trailingTall(lower: string, end: number): number {
+  const rest = lower.slice(end);
+  if (!/^\s*tall\b/.test(rest) || /^\s*tall\s+(?:side|end)\b/.test(rest)) return end;
+  return end + (/^\s*tall\b/.exec(rest)?.[0].length ?? 0);
+}
+
 /**
- * Typed end heights on a slope. Read in this order, and never let a later phrase steal a side:
- * "42 tall on the left", then a side that introduces the next height ("left 24 tall"),
- * then "60 tall right". One leftover "N tall" fills the end nobody named.
+ * Typed end heights on a slope. One reader for left/right and high/low, both orders
+ * ("42 tall on the left", "left 24 tall", "low side 24", "24 at the low side").
+ * Left/right first, so a later phrase cannot steal a side: "42 tall on the left",
+ * then a side that introduces the next height ("left 24 tall"), then "60 tall right".
+ * One leftover "N tall" fills the end nobody named.
+ * High/low: a number between two roles stays with the role in front when the next role
+ * has its own number ("low side 24 high side 48"), and moves to the role after it when
+ * that role has none ("24 low side 48 high side").
+ * A side and a rank on the same number both stick ("high side 60 tall on the left" is
+ * left and high). Overlap drops a claim only when the other span is a different number.
  * A typed end is never replaced by the 12" low-end default.
  */
-function slopeSideHeights(lower: string): { left: number | null; right: number | null; spans: [number, number][] } {
+function readSlopeEnds(lower: string): SlopeEnds {
   type Hit = { side: "left" | "right"; n: number; start: number; end: number };
   const hits = (re: RegExp, sideGroup: number, nGroup: number): Hit[] => {
     const out: Hit[] = [];
@@ -359,31 +386,66 @@ function slopeSideHeights(lower: string): { left: number | null; right: number |
     ...hits(new RegExp(String.raw`\b${N}${U}\s+(?:on|at)\s+the\s+(left|right)(?:\s+(?:end|side|edge))?\b`, "g"), 2, 1),
   ];
   const plainSide = hits(new RegExp(String.raw`\b${N}${U}\s*(?:tall|high)\s+(left|right)(?:\s+(?:end|side|edge))?\b`, "g"), 2, 1);
-  const taken = { left: null as number | null, right: null as number | null };
-  const spans: [number, number][] = [];
-  const overlaps = (h: Hit) => spans.some(([s, e]) => h.start < e && s < h.end);
+  const taken: SlopeEnds = { left: null, right: null, high: null, low: null, spans: [] };
+  const overlaps = (start: number, end: number) => taken.spans.some((sp) => start < sp.end && sp.start < end);
+  // A rank may share its number with a side. A different number still cannot.
+  const overlapsOther = (start: number, end: number, n: number) => taken.spans.some((sp) => start < sp.end && sp.start < end && Math.abs(sp.n - n) >= 1 / 32);
   for (const list of [onSide, sideLead, plainSide]) {
     for (const h of [...list].sort((a, b) => a.start - b.start)) {
-      if (taken[h.side] != null || overlaps(h)) continue;
+      if (taken[h.side] != null || overlaps(h.start, h.end)) continue;
       taken[h.side] = h.n;
-      spans.push([h.start, h.end]);
+      taken.spans.push({ start: h.start, end: h.end, n: h.n });
     }
   }
-  return { ...taken, spans };
+  const rank = (word: string): "high" | "low" => (/^(?:high|tall)/.test(word) ? "high" : "low");
+  const claim = (role: "high" | "low", n: number, start: number, end: number) => {
+    if (taken[role] != null || overlapsOther(start, end, n)) return;
+    taken[role] = n;
+    taken.spans.push({ start, end, n });
+  };
+  // "low side 24" / "high side of 48". Skip a number the following role still needs.
+  const roleThen = new RegExp(String.raw`\b(?:the\s+)?(high|tall|low|short)(?:est)?\s+(?:side|end)\s*(?:of|is|=|:|at)?\s*${N}${U}`, "g");
+  for (const m of [...lower.matchAll(roleThen)].sort((a, b) => a.index! - b.index!)) {
+    const n = num(m[2]);
+    if (n == null || m.index == null) continue;
+    const end0 = m.index + m[0].length;
+    if (followingRoleWantsNumber(lower.slice(end0))) continue;
+    claim(rank(m[1]), n, m.index, trailingTall(lower, end0));
+  }
+  // "24 at the low side" / "60 tall at the high side" / "24 low side".
+  const numThen = new RegExp(String.raw`\b${N}${U}\s*(?:tall|high)?\s*(?:at|on)?\s*(?:the\s+)?(high|tall|low|short)(?:est)?\s+(?:side|end)\b`, "g");
+  for (const m of [...lower.matchAll(numThen)].sort((a, b) => a.index! - b.index!)) {
+    const n = num(m[1]);
+    if (n == null || m.index == null) continue;
+    claim(rank(m[2]), n, m.index, m.index + m[0].length);
+  }
+  return taken;
 }
 
 /** A "N tall" that was not itself an end phrase, so it can fill the end nobody named. */
-function unboundTall(lower: string, spans: [number, number][]): number | null {
+function unboundTall(lower: string, spans: { start: number; end: number }[]): number | null {
   const re = new RegExp(String.raw`\b${N}${U}\s*(?:tall|high|height)\b`, "g");
   for (const m of lower.matchAll(re)) {
     if (m.index == null) continue;
     const start = m.index;
     const end = start + m[0].length;
-    if (spans.some(([s, e]) => start < e && s < end)) continue;
+    if (spans.some((sp) => start < sp.end && sp.start < end)) continue;
     const n = num(m[1]);
     if (n != null) return n;
   }
   return null;
+}
+
+/** Typed slope-end numbers, including a leftover "N tall" that fills the side nobody named. */
+export function slopeTypedEndHeights(prompt: string): number[] {
+  const lower = canonicalMeasures(prompt).toLowerCase();
+  const ends = readSlopeEnds(lower);
+  const nums = [ends.left, ends.right, ends.high, ends.low].filter((n): n is number => n != null);
+  if ((ends.left == null) !== (ends.right == null)) {
+    const loose = unboundTall(lower, ends.spans);
+    if (loose != null) nums.push(loose);
+  }
+  return nums;
 }
 
 function buildSloped(lower: string): Build {
@@ -395,20 +457,18 @@ function buildSloped(lower: string): Build {
     : book ? "Sloped-ceiling bookcase" : "Sloped-ceiling shelves";
   const W0 = typedAxis(lower, "wide|width|long");
   const D0 = typedAxis(lower, "deep|depth");
-  const hi = lower.match(new RegExp(`${N}${U}\\s*(?:tall|high)?\\s*(?:at|on)?\\s*(?:the\\s+)?(?:high|tall)(?:est)?\\s+(?:side|end)`)) ||
-    lower.match(new RegExp(`(?:high|tall)(?:est)?\\s+(?:side|end)\\s*(?:of|is|=|:|at)?\\s*${N}`));
-  const lo = lower.match(new RegExp(`${N}${U}\\s*(?:tall|high)?\\s*(?:at|on)?\\s*(?:the\\s+)?(?:low|short)(?:est)?\\s+(?:side|end)`)) ||
-    lower.match(new RegExp(`(?:low|short)(?:est)?\\s+(?:side|end)\\s*(?:of|is|=|:|at)?\\s*${N}`));
-  let hiH = hi ? num(hi[1]) : null;
-  let loH = lo ? num(lo[1]) : null;
+  const ends = readSlopeEnds(lower);
+  let hiH = ends.high;
+  let loH = ends.low;
+  const hi = ends.high != null;
+  const lo = ends.low != null;
   const plainH = !hi && !lo ? typedAxis(lower, "tall|high|height") : null;
   const pitch = lower.match(/\b(\d{1,2})\s*(?:°|deg(?:ree)?s?)\s*(?:slope|pitch|angle)?/);
   const W = W0 ?? (stairs ? 72 : 48);
   const D = D0 ?? (stairs ? 24 : 12);
   const notes: string[] = [];
-  const sides = slopeSideHeights(lower);
-  let hL: number | null = sides.left;
-  let hR: number | null = sides.right;
+  let hL: number | null = ends.left;
+  let hR: number | null = ends.right;
   let assumedSide: "left" | "right" | null = null;
   let heightFromEnds = false;
   const sidePath = hL != null || hR != null;
@@ -418,7 +478,7 @@ function buildSloped(lower: string): Build {
   const assumedHigh = (low: number, explicitLow: boolean) => low + (pitched ?? (explicitLow ? 30 : knee ? 24 : 30));
   const sameEnd = (a: number, b: number) => Math.abs(a - b) < 1 / 32;
   if (sidePath) {
-    const loose = unboundTall(lower, sides.spans);
+    const loose = unboundTall(lower, ends.spans);
     if ((hL == null) !== (hR == null) && loose != null) {
       if (hL == null) hL = loose;
       else hR = loose;
