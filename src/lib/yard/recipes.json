@@ -9516,6 +9516,226 @@
     "Three plywood shelves on four 2×2 corner posts, rolling on four 2\" locking swivel casters (3\" of the height).",
     "Screw each shelf into the posts from outside; a lip on the shelves keeps things from sliding off."
    ]
+  },
+  {
+   "key": "goal",
+   "synonyms": [
+    "soccer-goal",
+    "mini-goal"
+   ],
+   "version": 1,
+   "trust": "candidate",
+   "title": "PVC Soccer Goal",
+   "size": {
+    "width": 48,
+    "height": 36,
+    "depth": 12
+   },
+   "feet": true,
+   "outdoor": true,
+   "wall": false,
+   "stock": "pvc-3-4-sch40",
+   "defining": [
+    "post",
+    "rail"
+   ],
+   "parts": [
+    {
+     "role": "post",
+     "name": "Left front post",
+     "box": [
+      0,
+      0,
+      0,
+      0.021,
+      1,
+      0.083
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right front post",
+     "box": [
+      0.979,
+      0,
+      0,
+      0.021,
+      1,
+      0.083
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Left rear post",
+     "box": [
+      0,
+      0,
+      0.917,
+      0.021,
+      1,
+      0.08299999999999996
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "post",
+     "name": "Right rear post",
+     "box": [
+      0.979,
+      0,
+      0.917,
+      0.021,
+      1,
+      0.08299999999999996
+     ],
+     "kind": "member"
+    },
+    {
+     "role": "rail",
+     "name": "Front crossbar",
+     "box": [
+      0.021,
+      0.972,
+      0,
+      0.958,
+      0.028,
+      0.083
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Right front post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear crossbar",
+     "box": [
+      0.021,
+      0.972,
+      0.917,
+      0.958,
+      0.028,
+      0.08299999999999996
+     ],
+     "kind": "member",
+     "on": [
+      "Left rear post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left top rail",
+     "box": [
+      0,
+      0.972,
+      0.083,
+      0.021,
+      0.028,
+      0.834
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Left rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right top rail",
+     "box": [
+      0.979,
+      0.972,
+      0.083,
+      0.021,
+      0.028,
+      0.834
+     ],
+     "kind": "member",
+     "on": [
+      "Right front post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Left bottom rail",
+     "box": [
+      0,
+      0,
+      0.083,
+      0.021,
+      0.028,
+      0.834
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Left rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Right bottom rail",
+     "box": [
+      0.979,
+      0,
+      0.083,
+      0.021,
+      0.028,
+      0.834
+     ],
+     "kind": "member",
+     "on": [
+      "Right front post",
+      "Right rear post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Front bottom rail",
+     "box": [
+      0.021,
+      0,
+      0,
+      0.958,
+      0.028,
+      0.083
+     ],
+     "kind": "member",
+     "on": [
+      "Left front post",
+      "Right front post"
+     ]
+    },
+    {
+     "role": "rail",
+     "name": "Rear bottom rail",
+     "box": [
+      0.021,
+      0,
+      0.917,
+      0.958,
+      0.028,
+      0.08299999999999996
+     ],
+     "kind": "member",
+     "on": [
+      "Left rear post",
+      "Right rear post"
+     ]
+    }
+   ],
+   "moving": [],
+   "notes": [
+    "Frame built from 3/4 inch Schedule 40 PVC pipe and fittings",
+    "Open front face for ball entry",
+    "Net omitted from structural parts"
+   ],
+   "learned": true
   }
  ]
 }
