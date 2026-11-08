@@ -412,24 +412,69 @@ function buildSloped(lower: string): Build {
   let assumedSide: "left" | "right" | null = null;
   let heightFromEnds = false;
   const sidePath = hL != null || hR != null;
+  const pitched = pitch ? W * Math.tan((parseFloat(pitch[1]) * Math.PI) / 180) : null;
+  // Explicit "at the high side" drops 30". A plain height on a stair uses the stair pitch. A knee's plain height rises 24".
+  const assumedLow = (high: number, explicitHigh: boolean) => Math.max(12, high - (pitched ?? (explicitHigh ? 30 : stairs ? W * 0.72 : 30)));
+  const assumedHigh = (low: number, explicitLow: boolean) => low + (pitched ?? (explicitLow ? 30 : knee ? 24 : 30));
+  const sameEnd = (a: number, b: number) => Math.abs(a - b) < 1 / 32;
   if (sidePath) {
     const loose = unboundTall(lower, sides.spans);
     if ((hL == null) !== (hR == null) && loose != null) {
       if (hL == null) hL = loose;
       else hR = loose;
     }
+    // One named end: the other comes from a typed high/low number, then high/low words, then the kind.
+    // Stairs rise to the right. A knee's typed height is the low side. A ceiling's typed height is the high side.
     if ((hL == null) !== (hR == null)) {
+      const knownSide: "left" | "right" = hL != null ? "left" : "right";
       const known = (hL ?? hR)!;
-      const rise = pitch ? W * Math.tan((parseFloat(pitch[1]) * Math.PI) / 180) : 30;
-      const other = known + rise;
-      assumedSide = hL == null ? "left" : "right";
-      if (assumedSide === "left") hL = other;
+      const wordHigh = new RegExp(String.raw`\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${knownSide}\b|\b${knownSide}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high\b`).test(lower);
+      const wordLow = new RegExp(String.raw`\b(?:low|short)\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${knownSide}\b|\b${knownSide}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?(?:low|short)\b`).test(lower);
+      let other = 0;
+      let knownIsHigh = false;
+      let otherTyped = false;
+      if (hiH != null && loH != null && sameEnd(known, hiH)) {
+        other = loH;
+        knownIsHigh = true;
+        otherTyped = true;
+      } else if (hiH != null && loH != null && sameEnd(known, loH)) {
+        other = hiH;
+        knownIsHigh = false;
+        otherTyped = true;
+      } else if (loH != null && !sameEnd(known, loH)) {
+        other = loH;
+        knownIsHigh = true;
+        otherTyped = true;
+      } else if (hiH != null && !sameEnd(known, hiH)) {
+        other = hiH;
+        knownIsHigh = false;
+        otherTyped = true;
+      } else if (loH != null && sameEnd(known, loH)) {
+        knownIsHigh = false;
+        other = assumedHigh(known, true);
+      } else if (hiH != null && sameEnd(known, hiH)) {
+        knownIsHigh = true;
+        other = assumedLow(known, true);
+      } else {
+        knownIsHigh = wordHigh ? true : wordLow ? false : stairs ? knownSide === "right" : knee ? false : true;
+        other = knownIsHigh ? assumedLow(known, false) : assumedHigh(known, false);
+      }
+      if (hL == null) hL = other;
       else hR = other;
-      notes.push(`Assumed ${fmtIn(other)}" on the ${assumedSide} — type "${fmtIn(other)} on the ${assumedSide}" to lock it.`);
+      if (!otherTyped) {
+        assumedSide = knownSide === "left" ? "right" : "left";
+        notes.push(
+          knownIsHigh
+            ? `Your ${fmtIn(known)}" is the high side. Assumed ${fmtIn(other)}" at the low side — type "30 at the low side" to lock it.`
+            : knee
+              ? `Your ${fmtIn(known)}" is the knee-wall (low) side. Assumed ${fmtIn(other)}" at the high side — type "60 at the high side" to lock it.`
+              : `Assumed ${fmtIn(other)}" at the high side — type it to lock the slope.`,
+        );
+      }
     }
     hiH = Math.max(hL!, hR!);
     loH = Math.min(hL!, hR!);
-    const tallerAssumed = assumedSide === "left" ? hL! >= hR! : assumedSide === "right" ? hR! >= hL! : false;
+    const tallerAssumed = assumedSide === "left" ? hL! > hR! : assumedSide === "right" ? hR! > hL! : false;
     heightFromEnds = !tallerAssumed;
   } else if (hiH == null && loH == null) {
     if (plainH != null && knee) {
