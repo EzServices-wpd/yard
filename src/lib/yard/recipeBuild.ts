@@ -1600,12 +1600,19 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...rowNotes, ...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? [CONTACT.test(`${prompt} ${recipe.title}`) ? `Outdoors: untreated cedar (it touches food, skin or a nest) and exterior screws.` : "Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...rowNotes, ...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? outdoorNoteForStock(panels, prompt, recipe.title) : [])],
     sizedByBuilder: true,
     ...(cardNote ? { cardNote } : {}),
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
   return { project, count, size };
+}
+
+/** Wood outdoor sentence, from the stock the parts are cut from. A typed pipe word on a lumber build does not drop it. */
+function outdoorNoteForStock(panels: Panel[], prompt: string, title: string): string[] {
+  const c = getCatalogItem(mainStock(panels) ?? "");
+  if (c && (c.formFactor === "pipe" || c.formFactor === "tube" || c.category === "pvc_plumbing" || c.category === "plastic")) return [];
+  return [CONTACT.test(`${prompt} ${title}`) ? `Outdoors: untreated cedar (it touches food, skin or a nest) and exterior screws.` : "Outdoors: cedar or pressure-treated stock and exterior screws."];
 }
 
 function mainStock(panels: Panel[]): string | undefined {

@@ -6,8 +6,12 @@ import { faceScrewInches } from "./shopJoin";
 import { inchFrac } from "./inchText";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { screwTalk, stickJoints } from "./modelJoints";
-import type { BomLine, CatalogItem, JoinMethod, Vec3, YardInstance } from "./types";
+import { getCatalogItem } from "./catalog";
+import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
+
+/** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45"]);
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -113,6 +117,168 @@ export function classifyJoint(node: JointNode): JointClass {
   if (dot < -0.82) return "coupling";
   if (dot < -0.35) return "elbow45";
   return "elbow90";
+}
+
+function longAxis(p: Panel): "x" | "y" | "z" {
+  const ax = [
+    ["x", p.size.width],
+    ["y", p.size.height],
+    ["z", p.size.depth],
+  ] as const;
+  return ax.slice().sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function centerline(p: Panel): { id: string; axis: "x" | "y" | "z"; a: Vec3; b: Vec3 } {
+  const axis = longAxis(p);
+  const mid = {
+    x: p.position.x + p.size.width / 2,
+    y: p.position.y + p.size.height / 2,
+    z: p.position.z + p.size.depth / 2,
+  };
+  const len = axis === "x" ? p.size.width : axis === "y" ? p.size.height : p.size.depth;
+  return {
+    id: p.id,
+    axis,
+    a: { ...mid, [axis]: mid[axis] - len / 2 },
+    b: { ...mid, [axis]: mid[axis] + len / 2 },
+  };
+}
+
+/**
+ * A rail that stops on a fat drawn face is still aimed at the other centerline.
+ * Extend it along its own axis, at most eight diameters, when the miss the other way is within one diameter.
+ */
+function aimedCenterline(
+  s: { axis: "x" | "y" | "z"; a: Vec3; b: Vec3 },
+  end: Vec3,
+  o: { axis: "x" | "y" | "z"; a: Vec3; b: Vec3 },
+  tol: number,
+): Vec3 | null {
+  if (s.axis === o.axis) return null;
+  const third = (["x", "y", "z"] as const).find((a) => a !== s.axis && a !== o.axis)!;
+  if (Math.abs(s.a[third] - o.a[third]) > tol) return null;
+  const onO = s.a[o.axis];
+  const o0 = Math.min(o.a[o.axis], o.b[o.axis]);
+  const o1 = Math.max(o.a[o.axis], o.b[o.axis]);
+  if (onO < o0 - tol || onO > o1 + tol) return null;
+  const target = o.a[s.axis];
+  const endAtMin = Math.abs(end[s.axis] - Math.min(s.a[s.axis], s.b[s.axis])) < 1e-4;
+  const ext = endAtMin ? end[s.axis] - target : target - end[s.axis];
+  if (ext <= tol || ext > 8 * tol) return null;
+  return { ...o.a, [o.axis]: onO };
+}
+
+function closestOnSegment(p: Vec3, a: Vec3, b: Vec3): { d: number; q: Vec3 } {
+  const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+  const L2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+  if (L2 < 1e-8) return { d: dist(p, a), q: a };
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y + (p.z - a.z) * ab.z) / L2));
+  const q = { x: a.x + ab.x * t, y: a.y + ab.y * t, z: a.z + ab.z * t };
+  return { d: dist(p, q), q };
+}
+
+/**
+ * Recipe members are panels. Slip joints are where centerlines meet, within one catalog
+ * pipe diameter — not the drawn box and not a board-joint threshold. Corners a frame-depth
+ * apart stay separate; a fatter drawn post does not pull them together.
+ * ponytail: straight centerlines of the box. A curved pipe waits until a recipe draws one.
+ */
+export function slipInstancesFromPanels(panels: Panel[], catalogId: string): YardInstance[] {
+  const od = getCatalogItem(catalogId)?.dims.diameter ?? 1.05;
+  const tol = Math.max(0.5, od);
+  const mine = panels.filter((p) => p.materialId === catalogId && !p.polygon);
+  if (mine.length < 2) return [];
+  const segs = mine.map(centerline);
+  const gap = (u: Vec3, v: Vec3) => dist(u, v);
+  type Hit = { point: Vec3; ids: string[] };
+  const hits: Hit[] = [];
+  for (const s of segs) {
+    for (const end of [s.a, s.b]) {
+      const ids = [s.id];
+      const snaps: Vec3[] = [];
+      for (const o of segs) {
+        if (o.id === s.id) continue;
+        const hit = closestOnSegment(end, o.a, o.b);
+        const aimed = hit.d <= tol + 1e-6 ? null : aimedCenterline(s, end, o, tol);
+        if (hit.d <= tol + 1e-6 || aimed) {
+          ids.push(o.id);
+          snaps.push(aimed ?? hit.q);
+        }
+      }
+      if (ids.length < 2) continue;
+      const point = snaps.length === 1 ? snaps[0] : {
+        x: snaps.reduce((n, q) => n + q.x, 0) / snaps.length,
+        y: snaps.reduce((n, q) => n + q.y, 0) / snaps.length,
+        z: snaps.reduce((n, q) => n + q.z, 0) / snaps.length,
+      };
+      hits.push({ point, ids });
+    }
+  }
+  if (!hits.length) return [];
+  const seen = hits.map(() => -1);
+  const clusters: { point: Vec3; ids: Set<string> }[] = [];
+  for (let i = 0; i < hits.length; i++) {
+    if (seen[i] >= 0) continue;
+    const stack = [i];
+    seen[i] = clusters.length;
+    const group: Hit[] = [];
+    while (stack.length) {
+      const k = stack.pop()!;
+      group.push(hits[k]);
+      for (let j = 0; j < hits.length; j++) {
+        if (seen[j] < 0 && gap(hits[k].point, hits[j].point) <= tol) {
+          seen[j] = clusters.length;
+          stack.push(j);
+        }
+      }
+    }
+    const ids = new Set(group.flatMap((g) => g.ids));
+    if (ids.size < 2) continue;
+    clusters.push({
+      point: {
+        x: group.reduce((s, g) => s + g.point.x, 0) / group.length,
+        y: group.reduce((s, g) => s + g.point.y, 0) / group.length,
+        z: group.reduce((s, g) => s + g.point.z, 0) / group.length,
+      },
+      ids,
+    });
+  }
+  const out: YardInstance[] = [];
+  for (const p of mine) {
+    const axis = longAxis(p);
+    const pts: Vec3[] = [];
+    for (const q of clusters.filter((c) => c.ids.has(p.id)).map((c) => c.point).sort((u, v) => u[axis] - v[axis])) {
+      if (!pts.some((u) => gap(u, q) <= tol)) pts.push(q);
+    }
+    // One meeting: the other end is free, so the shared point still classifies (an elbow, not a cap).
+    if (pts.length === 1) {
+      const seg = segs.find((s) => s.id === p.id)!;
+      const far = gap(seg.a, pts[0]) >= gap(seg.b, pts[0]) ? seg.a : seg.b;
+      if (gap(pts[0], far) >= 0.5) {
+        out.push({
+          id: `${p.id}~0`,
+          catalogId,
+          position: pts[0],
+          rotation: { x: 0, y: 0, z: 0 },
+          from: pts[0],
+          to: far,
+        });
+      }
+      continue;
+    }
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (gap(pts[i], pts[i + 1]) < 0.5) continue;
+      out.push({
+        id: `${p.id}~${i}`,
+        catalogId,
+        position: pts[i],
+        rotation: { x: 0, y: 0, z: 0 },
+        from: pts[i],
+        to: pts[i + 1],
+      });
+    }
+  }
+  return out;
 }
 
 export function countSlipFittings(instances: YardInstance[], radius: number) {

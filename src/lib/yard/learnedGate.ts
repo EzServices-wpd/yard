@@ -4,6 +4,7 @@
  * Seed recipes keep the standard validateRecipe checks; this gate is what the bot's auto-merge waits on.
  */
 import { getCatalogItem } from "./catalog";
+import { binderKind, SLIP_FITTING_IDS } from "./joints";
 import { bearingFailures, glueUpFailures, boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
@@ -72,7 +73,16 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   for (const c of overlongCuts(plan)) if (!spliced) fail.push(`${c.name}: ${c.lengthIn}" is longer than its ${c.material} with no splice step`);
   const cutStock = new Set(plan.cutList.map((c) => c.material));
   const cutIds = new Set(plan.cutList.map((c) => c.id.split("|")[0]));
-  for (const b of plan.bom) if (!SUPPLY.test(b.name) && !cutStock.has(b.name) && !(b.catalogId && cutIds.has(b.catalogId))) fail.push(`Buy ${b.name}: no part is cut from it`);
+  // Cement and slip fittings belong to a pipe on the cut list. They are not cut parts, and a name match would let any unmatched row through.
+  const slipCut = [...cutIds].some((id) => {
+    const item = getCatalogItem(id);
+    return !!item && binderKind(item) === "slip";
+  });
+  for (const b of plan.bom) {
+    if (SUPPLY.test(b.name) || cutStock.has(b.name) || (b.catalogId && cutIds.has(b.catalogId))) continue;
+    if (slipCut && b.catalogId && SLIP_FITTING_IDS.has(b.catalogId)) continue;
+    fail.push(`Buy ${b.name}: no part is cut from it`);
+  }
   // Wording: a freestanding recipe prints no closet / footprint / opening text.
   if (!recipe.wall) {
     const text = [built.project.name, ...built.project.notes, plan.feasibility?.summary ?? "", ...(plan.feasibility?.issues ?? []).map((i) => i.message), ...plan.instructions.map((s) => `${s.title} ${s.description}`)].join("\n");
