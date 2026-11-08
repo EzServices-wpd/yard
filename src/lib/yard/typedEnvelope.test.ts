@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
+import { buildPlan } from "./report";
+import { headerTitle } from "./pdf";
+import type { Panel, YardProject } from "./types";
 
 const notes = (p: { notes?: string[] }) => (p.notes ?? []).join(" ");
 
@@ -73,5 +76,63 @@ describe("a front feature typed both ways: the later cue wins and a note says so
   it("no conflict, no note", () => {
     const p = generateFromPrompt("media console with no doors");
     assert.doesNotMatch(notes(p), /later cue/);
+  });
+});
+
+/** Top of the sloped back at each end: the height the cut list and the model share. */
+function slopeEnds(project: YardProject): { left: number; right: number } {
+  const back = project.panels.find((p) => p.name === "Sloped back") as Panel;
+  const pts = back.polygon?.pts ?? [];
+  const xs = pts.map((p) => p[0]);
+  const at = (x: number) => Math.max(...pts.filter((p) => Math.abs(p[0] - x) < 1e-6).map((p) => p[1]));
+  return { left: at(Math.min(...xs)), right: at(Math.max(...xs)) };
+}
+
+describe("typed slope ends win over a default low end", () => {
+  it("under stairs shelves 72 wide 16 deep 60 tall left 24 tall right is 24 on the left and 60 on the right", () => {
+    const prompt = "under stairs shelves 72 wide 16 deep 60 tall left 24 tall right";
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const ends = slopeEnds(project);
+    const text = [project.name, headerTitle(project), ...(project.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description}`), ...project.panels.map((p) => p.cutNote ?? "")].join("\n");
+    assert.deepEqual([project.overall.width, project.overall.depth, project.overall.height], [72, 16, 60]);
+    assert.deepEqual(ends, { left: 24, right: 60 });
+    assert.match(headerTitle(project), /72" wide/);
+    assert.match(headerTitle(project), /24" on the left/);
+    assert.match(headerTitle(project), /60" on the right/);
+    assert.match(headerTitle(project), /72" W × 16" D × 60" H/);
+    assert.match(plan.instructions[0].description, /24" on the left and 60" on the right/);
+    assert.match(project.panels.find((p) => p.name === "Sloped back")?.cutNote ?? "", /24" tall on the left edge, 60" on the right/);
+    assert.doesNotMatch(text, /Assumed 12"|12" at the low side|12" tall on the left|to 12"/);
+    assert.equal(project.opening?.width, 72);
+    assert.equal(project.opening?.height, 60);
+    assert.equal(project.opening?.depth, 16);
+  });
+
+  it("the same end words on a sloped ceiling and a knee wall keep each typed end", () => {
+    const ceiling = generateFromPrompt("bookshelf under a sloped ceiling 50 wide 10 deep 42 tall on the left 28 tall on the right");
+    assert.deepEqual(slopeEnds(ceiling), { left: 42, right: 28 });
+    assert.deepEqual([ceiling.overall.width, ceiling.overall.depth, ceiling.overall.height], [50, 10, 42]);
+    const knee = generateFromPrompt("knee-wall shelves 36 wide left 20 tall right 44 tall");
+    assert.deepEqual(slopeEnds(knee), { left: 20, right: 44 });
+    assert.equal(knee.overall.width, 36);
+    assert.equal(knee.overall.height, 44);
+    const ordered = generateFromPrompt("under stairs shelves 40 wide 12 deep left 18 tall and right 36 tall");
+    assert.deepEqual(slopeEnds(ordered), { left: 18, right: 36 });
+  });
+
+  it("high side and low side still place the ends, and an untyped low end is still announced", () => {
+    const named = generateFromPrompt("under stairs shelves 72 wide 16 deep 60 tall at the high side 24 at the low side");
+    assert.deepEqual(slopeEnds(named), { left: 24, right: 60 });
+    assert.match(named.name, /60" to 24" tall/);
+    const dream = generateFromPrompt("bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side");
+    assert.equal(dream.name, 'Sloped-ceiling bookcase 48" wide · 60" to 30" tall');
+    assert.deepEqual(slopeEnds(dream), { left: 60, right: 30 });
+    const assumed = generateFromPrompt("under stairs shelves 72 wide 16 deep 60 tall");
+    assert.match(assumed.notes.join(" "), /Your 60" is the high side\. Assumed 12" at the low side/);
+    assert.deepEqual(slopeEnds(assumed), { left: 12, right: 60 });
+    const knee = generateFromPrompt("knee wall shelves 48 wide 32 tall");
+    assert.match(knee.notes.join(" "), /Your 32" is the knee-wall \(low\) side/);
+    assert.equal((knee.fitted?.unit?.odd?.params as { loH?: number }).loH, 32);
   });
 });
