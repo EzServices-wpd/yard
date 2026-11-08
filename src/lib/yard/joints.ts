@@ -5,9 +5,13 @@
 import { faceScrewInches } from "./shopJoin";
 import { inchFrac } from "./inchText";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
-import { panelJoints, screwTalk, stickJoints } from "./modelJoints";
+import { screwTalk, stickJoints } from "./modelJoints";
+import { getCatalogItem } from "./catalog";
 import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
+
+/** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45"]);
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -124,45 +128,93 @@ function longAxis(p: Panel): "x" | "y" | "z" {
   return ax.slice().sort((a, b) => b[1] - a[1])[0][0];
 }
 
-function contactPoint(a: Panel, b: Panel): Vec3 {
-  const box = (p: Panel) => ({
-    min: [p.position.x, p.position.y, p.position.z],
-    max: [p.position.x + p.size.width, p.position.y + p.size.height, p.position.z + p.size.depth],
-  });
-  const A = box(a);
-  const B = box(b);
-  const pt = [0, 1, 2].map((k) => {
-    const lo = Math.max(A.min[k], B.min[k]);
-    const hi = Math.min(A.max[k], B.max[k]);
-    if (hi + 1e-6 >= lo) return (lo + hi) / 2;
-    return A.max[k] < B.min[k] ? (A.max[k] + B.min[k]) / 2 : (B.max[k] + A.min[k]) / 2;
-  });
-  return { x: pt[0], y: pt[1], z: pt[2] };
+function centerline(p: Panel): { id: string; axis: "x" | "y" | "z"; a: Vec3; b: Vec3 } {
+  const axis = longAxis(p);
+  const mid = {
+    x: p.position.x + p.size.width / 2,
+    y: p.position.y + p.size.height / 2,
+    z: p.position.z + p.size.depth / 2,
+  };
+  const len = axis === "x" ? p.size.width : axis === "y" ? p.size.height : p.size.depth;
+  return {
+    id: p.id,
+    axis,
+    a: { ...mid, [axis]: mid[axis] - len / 2 },
+    b: { ...mid, [axis]: mid[axis] + len / 2 },
+  };
 }
 
 /**
- * Recipe members are panels, not welded sticks. Each place two of them meet is one slip joint
- * (a corner where a post meets two rails is one tee, not a fitting per part). Contacts within
- * two cross-sections are the same fitting; meetings farther apart stay separate.
- * ponytail: box members only — a curved pipe still uses its box until a recipe draws a centerline.
+ * A rail that stops on a fat drawn face is still aimed at the other centerline.
+ * Extend it along its own axis, at most eight diameters, when the miss the other way is within one diameter.
+ */
+function aimedCenterline(
+  s: { axis: "x" | "y" | "z"; a: Vec3; b: Vec3 },
+  end: Vec3,
+  o: { axis: "x" | "y" | "z"; a: Vec3; b: Vec3 },
+  tol: number,
+): Vec3 | null {
+  if (s.axis === o.axis) return null;
+  const third = (["x", "y", "z"] as const).find((a) => a !== s.axis && a !== o.axis)!;
+  if (Math.abs(s.a[third] - o.a[third]) > tol) return null;
+  const onO = s.a[o.axis];
+  const o0 = Math.min(o.a[o.axis], o.b[o.axis]);
+  const o1 = Math.max(o.a[o.axis], o.b[o.axis]);
+  if (onO < o0 - tol || onO > o1 + tol) return null;
+  const target = o.a[s.axis];
+  const endAtMin = Math.abs(end[s.axis] - Math.min(s.a[s.axis], s.b[s.axis])) < 1e-4;
+  const ext = endAtMin ? end[s.axis] - target : target - end[s.axis];
+  if (ext <= tol || ext > 8 * tol) return null;
+  return { ...o.a, [o.axis]: onO };
+}
+
+function closestOnSegment(p: Vec3, a: Vec3, b: Vec3): { d: number; q: Vec3 } {
+  const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+  const L2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+  if (L2 < 1e-8) return { d: dist(p, a), q: a };
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y + (p.z - a.z) * ab.z) / L2));
+  const q = { x: a.x + ab.x * t, y: a.y + ab.y * t, z: a.z + ab.z * t };
+  return { d: dist(p, q), q };
+}
+
+/**
+ * Recipe members are panels. Slip joints are where centerlines meet, within one catalog
+ * pipe diameter — not the drawn box and not a board-joint threshold. Corners a frame-depth
+ * apart stay separate; a fatter drawn post does not pull them together.
+ * ponytail: straight centerlines of the box. A curved pipe waits until a recipe draws one.
  */
 export function slipInstancesFromPanels(panels: Panel[], catalogId: string): YardInstance[] {
-  const mine = panels.filter((p) => p.materialId === catalogId);
+  const od = getCatalogItem(catalogId)?.dims.diameter ?? 1.05;
+  const tol = Math.max(0.5, od);
+  const mine = panels.filter((p) => p.materialId === catalogId && !p.polygon);
   if (mine.length < 2) return [];
-  const byId = new Map(mine.map((p) => [p.id, p]));
-  const pairs = panelJoints(mine).filter((j) => byId.has(j.a) && byId.has(j.b));
-  if (!pairs.length) return [];
-  const section = Math.max(
-    ...mine.map((p) => {
-      const s = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
-      return s[1];
-    }),
-    0.5,
-  );
-  const radius = Math.max(1.25, section * 2);
-  const dist = (u: Vec3, v: Vec3) => Math.hypot(u.x - v.x, u.y - v.y, u.z - v.z);
-  type Hit = Vec3 & { ids: string[] };
-  const hits: Hit[] = pairs.map((j) => ({ ...contactPoint(byId.get(j.a)!, byId.get(j.b)!), ids: [j.a, j.b] }));
+  const segs = mine.map(centerline);
+  const gap = (u: Vec3, v: Vec3) => dist(u, v);
+  type Hit = { point: Vec3; ids: string[] };
+  const hits: Hit[] = [];
+  for (const s of segs) {
+    for (const end of [s.a, s.b]) {
+      const ids = [s.id];
+      const snaps: Vec3[] = [];
+      for (const o of segs) {
+        if (o.id === s.id) continue;
+        const hit = closestOnSegment(end, o.a, o.b);
+        const aimed = hit.d <= tol + 1e-6 ? null : aimedCenterline(s, end, o, tol);
+        if (hit.d <= tol + 1e-6 || aimed) {
+          ids.push(o.id);
+          snaps.push(aimed ?? hit.q);
+        }
+      }
+      if (ids.length < 2) continue;
+      const point = snaps.length === 1 ? snaps[0] : {
+        x: snaps.reduce((n, q) => n + q.x, 0) / snaps.length,
+        y: snaps.reduce((n, q) => n + q.y, 0) / snaps.length,
+        z: snaps.reduce((n, q) => n + q.z, 0) / snaps.length,
+      };
+      hits.push({ point, ids });
+    }
+  }
+  if (!hits.length) return [];
   const seen = hits.map(() => -1);
   const clusters: { point: Vec3; ids: Set<string> }[] = [];
   for (let i = 0; i < hits.length; i++) {
@@ -174,7 +226,7 @@ export function slipInstancesFromPanels(panels: Panel[], catalogId: string): Yar
       const k = stack.pop()!;
       group.push(hits[k]);
       for (let j = 0; j < hits.length; j++) {
-        if (seen[j] < 0 && dist(hits[k], hits[j]) <= radius) {
+        if (seen[j] < 0 && gap(hits[k].point, hits[j].point) <= tol) {
           seen[j] = clusters.length;
           stack.push(j);
         }
@@ -184,9 +236,9 @@ export function slipInstancesFromPanels(panels: Panel[], catalogId: string): Yar
     if (ids.size < 2) continue;
     clusters.push({
       point: {
-        x: group.reduce((s, g) => s + g.x, 0) / group.length,
-        y: group.reduce((s, g) => s + g.y, 0) / group.length,
-        z: group.reduce((s, g) => s + g.z, 0) / group.length,
+        x: group.reduce((s, g) => s + g.point.x, 0) / group.length,
+        y: group.reduce((s, g) => s + g.point.y, 0) / group.length,
+        z: group.reduce((s, g) => s + g.point.z, 0) / group.length,
       },
       ids,
     });
@@ -196,19 +248,13 @@ export function slipInstancesFromPanels(panels: Panel[], catalogId: string): Yar
     const axis = longAxis(p);
     const pts: Vec3[] = [];
     for (const q of clusters.filter((c) => c.ids.has(p.id)).map((c) => c.point).sort((u, v) => u[axis] - v[axis])) {
-      if (!pts.some((u) => dist(u, q) < 0.05)) pts.push(q);
+      if (!pts.some((u) => gap(u, q) <= tol)) pts.push(q);
     }
     // One meeting: the other end is free, so the shared point still classifies (an elbow, not a cap).
     if (pts.length === 1) {
-      const mid = {
-        x: p.position.x + p.size.width / 2,
-        y: p.position.y + p.size.height / 2,
-        z: p.position.z + p.size.depth / 2,
-      };
-      const len = axis === "x" ? p.size.width : axis === "y" ? p.size.height : p.size.depth;
-      const ends = [mid[axis] - len / 2, mid[axis] + len / 2].map((n) => ({ ...mid, [axis]: n }));
-      const far = dist(ends[0], pts[0]) >= dist(ends[1], pts[0]) ? ends[0] : ends[1];
-      if (dist(pts[0], far) >= 0.5) {
+      const seg = segs.find((s) => s.id === p.id)!;
+      const far = gap(seg.a, pts[0]) >= gap(seg.b, pts[0]) ? seg.a : seg.b;
+      if (gap(pts[0], far) >= 0.5) {
         out.push({
           id: `${p.id}~0`,
           catalogId,
@@ -220,9 +266,8 @@ export function slipInstancesFromPanels(panels: Panel[], catalogId: string): Yar
       }
       continue;
     }
-    if (pts.length < 2) continue;
     for (let i = 0; i < pts.length - 1; i++) {
-      if (dist(pts[i], pts[i + 1]) < 0.5) continue;
+      if (gap(pts[i], pts[i + 1]) < 0.5) continue;
       out.push({
         id: `${p.id}~${i}`,
         catalogId,

@@ -5,6 +5,8 @@ import { buildPlan } from "../src/lib/yard/report.ts";
 import { packLengths, kerfFor } from "../src/lib/yard/linearPack.ts";
 import { getCatalogItem } from "../src/lib/yard/catalog.ts";
 import { binderBom, slipInstancesFromPanels } from "../src/lib/yard/joints.ts";
+import { learnedRecipeFailures } from "../src/lib/yard/learnedGate.ts";
+import { RECIPES } from "../src/lib/yard/recipes.ts";
 import type { BuildPlan, Panel } from "../src/lib/yard/types.ts";
 
 const WOOD_OUTDOOR = /cedar|pressure-treated|exterior screws/i;
@@ -44,7 +46,17 @@ function assertPvcGoalBuy(prompt: string) {
   assert.ok(fittingQty < pieces, "one fitting per joint, not one per cut");
   const steps = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
   assert.match(steps, /solvent cement/);
+  assert.match(steps, /Stand the posts in the slip fittings/);
+  assert.match(steps, /Every pipe meets a fitting/);
   assert.ok(plan.bom.some((b) => b.catalogId === "pvc-cement"), "steps call for cement, so Buy lists it");
+  const pipes = project.panels.filter((p) => p.materialId === "pvc-3-4-sch40");
+  for (const part of pipes) {
+    const step = plan.instructions.find((s) => (s.partsUsed ?? []).includes(part.name) && /solvent cement/.test(s.description));
+    assert.ok(step, `${part.name} is cemented in a step`);
+  }
+  const bottoms = plan.instructions.filter((s) => /bottom rail/i.test(`${s.title} ${(s.partsUsed ?? []).join(" ")}`));
+  assert.ok(bottoms.length >= 1, "bottom rails have a step");
+  assert.ok(bottoms.every((s) => /solvent cement/.test(s.description)), "bottom corners are cemented");
   assert.doesNotMatch((project.notes ?? []).join("\n"), WOOD_OUTDOOR);
   assert.doesNotMatch(steps, WOOD_OUTDOOR);
   return { project, plan, fittingQty };
@@ -102,6 +114,49 @@ test("a stick recipe keeps its pack buy and is not bought again as sticks", () =
 });
 
 test("a wood outdoor recipe keeps the cedar outdoor note", () => {
-  const { project } = planOf("compost bin");
+  const { project, plan } = planOf("compost bin");
   assert.match((project.notes ?? []).join("\n"), /Outdoors: cedar or pressure-treated stock and exterior screws/);
+  assert.ok(plan.bom.some((b) => /pressure-treated/.test(b.name)));
+});
+
+test("a typed pipe word on a lumber recipe keeps the outdoor wood note and pressure-treated Buy", () => {
+  for (const q of ["pvc compost bin", "compost bin from pvc pipe"]) {
+    const { project, plan } = planOf(q);
+    assert.equal(project.primaryMaterialId, "lumber-1x6-8", q);
+    assert.match((project.notes ?? []).join("\n"), /Outdoors: cedar or pressure-treated stock and exterior screws/, q);
+    assert.ok(plan.bom.some((b) => /1×6 pressure-treated/.test(b.name)), q);
+    assert.ok(plan.bom.some((b) => /4×4 pressure-treated/.test(b.name)), q);
+  }
+});
+
+test("learned recipe gate accepts slip fittings bought for pipe on the cut list", () => {
+  const goal = RECIPES.recipes.find((r) => r.key === "goal");
+  assert.ok(goal);
+  assert.deepEqual(learnedRecipeFailures(goal), []);
+  assert.deepEqual(learnedRecipeFailures(goal, "soccer goal"), []);
+  assert.deepEqual(learnedRecipeFailures(goal, "pvc soccer goal 6 ft wide 4 ft tall"), []);
+});
+
+test("soccer goal fittings hold across short and wide sizes", () => {
+  const fittingQty = (plan: BuildPlan) =>
+    plan.bom.filter((b) => /PVC (?:tee|cross|90° elbow|45° elbow)/.test(b.name)).reduce((s, b) => s + b.quantity, 0);
+  const widths = [2, 4, 6, 12, 20, 24];
+  const heights = [1, 2, 3, 4, 8];
+  for (const w of widths) {
+    for (const h of heights) {
+      const q = `pvc soccer goal ${w} ft wide ${h} ft tall`;
+      const { plan } = planOf(q);
+      const n = fittingQty(plan);
+      assert.equal(n, 8, `${q} merges or drops corners`);
+      assert.ok(plan.bom.some((b) => b.catalogId === "pvc-cement"), q);
+      assert.equal(plan.bom.some((b) => /glue/i.test(b.name)) && n === 0, false, q);
+    }
+  }
+  const short = planOf("pvc soccer goal 4 ft wide 2 ft tall");
+  assert.ok(fittingQty(short.plan) > 0);
+  assert.ok(short.plan.bom.some((b) => b.catalogId === "pvc-cement"));
+  assert.equal(short.plan.bom.every((b) => /glue/i.test(b.name) || b.catalogId === "pvc-3-4-sch40") && !short.plan.bom.some((b) => b.catalogId === "pvc-cement"), false);
+  const wide = planOf("pvc soccer goal 24 ft wide 8 ft tall");
+  assert.equal(fittingQty(wide.plan), 8);
+  assert.equal(wide.plan.bom.find((b) => /PVC tee/.test(b.name))?.quantity, 8);
 });
