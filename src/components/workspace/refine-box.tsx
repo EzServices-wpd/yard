@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useYard } from "@/lib/yard/store";
 import { refineChips, refineProject, type RefineResult } from "@/lib/yard/refine";
+import { noteRefine } from "./refine-note";
 
 /**
  * Spec 003: free Refine box under the model. One change at a time to the build on the bench (size, a count,
  * the stock), shown with Undo. Never a new build, never an AI call.
  */
-export function RefineBox() {
+/** `trailing` sits on the input row (Open the plan, More); chips show only when `showChips` (the tray). */
+export function RefineBox({ trailing, showChips = true }: { trailing?: ReactNode; showChips?: boolean } = {}) {
   const [value, setValue] = useState("");
   const [msg, setMsg] = useState<RefineResult | null>(null);
   const project = useYard((s) => s.project);
@@ -23,6 +25,7 @@ export function RefineBox() {
     if (!phrase.trim() || !s.project.prompt.trim()) return;
     const r = refineProject(s.project, phrase);
     if (r.project) {
+      noteRefine();
       s.commit(r.project);
       s.makePlan();
       setValue("");
@@ -31,23 +34,24 @@ export function RefineBox() {
   }
   return (
     <div data-yard-refine="1" className="border-t border-border/60 px-3 py-2">
-      <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); apply(value); }}>
-        <label htmlFor="yard-refine" className="shrink-0 text-xs font-medium text-fg">Refine</label>
+      <form className="flex flex-wrap items-center gap-2 sm:flex-nowrap" onSubmit={(e) => { e.preventDefault(); apply(value); }}>
+        <label htmlFor="yard-refine" className="sr-only">Refine</label>
         <input
           id="yard-refine"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="make it 6 inches taller · add a drawer · use plywood"
+          placeholder="Taller, add a drawer, use pine…"
+          aria-label="Refine this build"
           autoComplete="off"
           enterKeyHint="done"
-          className="yard-glass h-8 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2"
+          className="yard-glass h-11 min-w-0 basis-full rounded-full sm:basis-auto sm:flex-1 border border-border/80 bg-surface px-4 text-base text-fg outline-none ring-fg/15 placeholder:text-faint focus:ring-2 sm:text-sm"
         />
-        <button type="submit" className="h-8 shrink-0 rounded-full bg-accent px-3 text-xs font-medium text-accent-fg">Apply</button>
+        {trailing ? <div className="flex w-full items-center gap-2 sm:w-auto">{trailing}</div> : null}
       </form>
-      {chips.length > 0 && (
-        <div data-yard-refine-chips="1" className="mt-1.5 flex flex-wrap gap-1.5">
+      {showChips && chips.length > 0 && (
+        <div data-yard-refine-chips="1" className="yard-tray mt-2 flex flex-wrap gap-1.5">
           {chips.map((c) => (
-            <button key={c.label} type="button" onClick={() => apply(c.phrase)} className="rounded-full border border-border px-2.5 py-0.5 text-xs text-fg hover:bg-elevated">
+            <button key={c.label} type="button" onClick={() => apply(c.phrase)} className="inline-flex h-11 items-center rounded-full border border-border px-4 text-sm text-fg hover:bg-elevated">
               {c.label}
             </button>
           ))}
@@ -58,7 +62,7 @@ export function RefineBox() {
           {msg.applied.length > 0 && (
             <p className="flex items-center gap-2">
               <span className="min-w-0 flex-1 text-fg">Changed: {msg.applied.join(" · ")}</span>
-              <button type="button" className="shrink-0 rounded-full px-2 py-0.5 text-fg hover:bg-elevated" onClick={() => { const s = useYard.getState(); s.undo(); s.makePlan(); setMsg(null); }}>
+              <button type="button" className="inline-flex h-11 shrink-0 items-center rounded-full px-3 text-fg hover:bg-elevated" onClick={() => { const s = useYard.getState(); s.undo(); s.makePlan(); setMsg(null); }}>
                 Undo
               </button>
             </p>

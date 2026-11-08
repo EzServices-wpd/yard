@@ -1,0 +1,4 @@
+{
+ "note": "Prompts allowed to be newly failing (grade down vs main) in the eval gate. Each entry needs a reason (who owns the follow-up, which PR); an entry with no reason does not count. Delete entries once main has moved past them.",
+ "newlyFailing": []
+}

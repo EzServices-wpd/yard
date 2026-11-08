@@ -1,5 +1,7 @@
 # Bot — read this first
 
+> **Resuming? Read [`docs/BOT-LOAD.md`](BOT-LOAD.md) first.** It has the current queue and all standing rules; the NEXT list below is from September.
+
 Yard is house-first. **Built for the corner the room forgot.** You write voice, not SKUs.
 
 Full briefing (vision + queue + worked examples): [`docs/BOT-BRIEF.md`](BOT-BRIEF.md).

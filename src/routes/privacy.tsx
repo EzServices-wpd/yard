@@ -3,15 +3,26 @@ import { SiteChrome } from "@/components/site/chrome";
 
 const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
 
+/**
+ * The day the current privacy wording went live (main 49aa20f, #95, 19 Oct 2026). Never a future date: a guard
+ * (scripts/quick-wins.test.ts) fails if it is after today or before the wording's own commit (ca8cf29, 17 Oct).
+ * Change both lines with the wording.
+ */
+export const PRIVACY_UPDATED = "2026-10-19";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const [py, pm, pd] = PRIVACY_UPDATED.split("-").map(Number);
+/** Same text on the server and in the browser (no locale formatting): "19 Oct 2026". */
+const PRIVACY_UPDATED_TEXT = `${pd} ${MONTHS[pm - 1]} ${py}`;
+
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
       { title: "Privacy · Yard" },
       {
         name: "description",
-        content: "How Yard uses cookies, analytics, and affiliate referral tracking.",
+        content: "How Yard uses cookies, analytics, affiliate links, and the prompts and feedback you send.",
       },
-      { property: "og:description", content: "How Yard uses cookies, analytics, and affiliate referral tracking." },
+      { property: "og:description", content: "How Yard uses cookies, analytics, affiliate links, and the prompts and feedback you send." },
       { property: "og:title", content: "Privacy · Yard" },
       { property: "og:url", content: `https://${host}/privacy` },
     ],
@@ -28,7 +39,7 @@ function PrivacyPage() {
         <h1 className="mt-3 font-display text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">
           Privacy Policy
         </h1>
-        <p className="mt-4 text-sm text-ink-muted">Last updated 14 Oct 2026.</p>
+        <p className="mt-4 text-sm text-ink-muted">Last updated {PRIVACY_UPDATED_TEXT}.</p>
 
         <div className="mt-8 space-y-8 text-base leading-relaxed text-ink-muted">
           <section>
@@ -57,9 +68,47 @@ function PrivacyPage() {
             <p className="mt-2">
               Most of a plan — the model, cut list, and buy list — is worked out in your browser. When
               you ask for more detailed instructions or a rendered picture, the text of your build is
-              sent to xAI (the Grok API) to write that text or image. Fonts load from Google Fonts,
-              which sees your IP address like any web font request.
+              sent to xAI (the Grok API) to write that text or image. Fonts are served from our own site,
+              so no third party sees you when a page loads.
             </p>
+            <p className="mt-2">
+              If a page crashes, Yard sends the error and the kind of build to Sentry, our error service,
+              through our own site. It never sends what you typed, your IP address or a recording of your
+              screen.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl text-ink">Prompts and feedback we keep</h2>
+            <p className="mt-2">
+              When you ask Yard for a build, the browser sends the text you typed, with email addresses
+              and phone numbers stripped out first, along with the build it made and its size. The
+              saved prompt isn&apos;t tied to an account, a name or anything else that identifies you.
+            </p>
+            <p className="mt-2">
+              Each build also has a &quot;Something&apos;s off? Tell the shop&quot; box. If you use it,
+              Yard saves the reason you picked and your note (140 characters at most), plus that
+              build&apos;s request, size, part count and the version of Yard that made it. The same
+              personal-detail scrub runs first, and the feedback isn&apos;t linked to you either. To
+              prevent spam, a random id kept in your browser limits feedback to 10 sends a day. That
+              count is deleted after a day and is never saved with your feedback, and there&apos;s also
+              an overall daily cap across everyone. Saving a prompt or feedback note never reads your
+              IP address or browser details, and no IP address, name or email is stored with them. The
+              one place we use your IP address is the daily limit on AI lookups: see Analytics below.
+            </p>
+            <p className="mt-2">
+              We use saved prompts and feedback only to make builds better. We don&apos;t sell them,
+              share them with advertisers or use them for marketing. They&apos;re stored with our
+              database provider, Upstash.
+            </p>
+            <p className="mt-2">
+              We delete saved prompts and feedback notes within 90 days (the system removes them at
+              85). Before then, a build that&apos;s popular or rated highly may be saved as an
+              anonymous recipe in Yard&apos;s Ideas library.
+              A recipe holds only the shape, sizes and parts, never the words you typed or anything
+              about your browser. Recipes stay in the library until we retire them.
+            </p>
+            <p className="mt-2">Please don&apos;t put personal information in your prompt or note.</p>
           </section>
 
           <section>
@@ -67,9 +116,11 @@ function PrivacyPage() {
             <p className="mt-2">
               Yard uses Vercel Web Analytics to count visits in aggregate: page views, referrers,
               country and device class. It sets no cookies and does not track you across other sites.
-              AI lookups are limited to a fair number per visitor each day; to apply that limit, the
-              server counts lookups by IP address for that day only and keeps nothing else. Vercel&apos;s
-              policy is at{" "}
+              AI lookups are limited to a fair number per visitor each day. Yard keeps a counter of
+              your AI lookups for that day, filed under your IP address. It&apos;s a number only,
+              expires after 24 hours and is never stored with your prompts or feedback. Like most
+              websites, our host, Vercel, may keep
+              IP addresses in its own server logs. Vercel&apos;s policy is at{" "}
               <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline decoration-rule underline-offset-4 hover:decoration-ink">
                 vercel.com/docs/analytics/privacy-policy
               </a>
@@ -81,8 +132,7 @@ function PrivacyPage() {
             <h2 className="font-display text-xl text-ink">Affiliate partners</h2>
             <p className="mt-2">
               Some Buy links go through affiliate programs so Yard can earn a commission when you buy.
-              Partners may include Amazon Associates, Impact (Home Depot, Walmart, and others), and CJ
-              Affiliate. When those programs are active, clicking a shop link may set a cookie or
+              Partners include Amazon Associates and CJ Affiliate. When those programs are active, clicking a shop link may set a cookie or
               similar identifier on the partner&apos;s domain so they can credit the referral. Yard
               does not control those cookies; the partner&apos;s own privacy policy applies once you
               leave yard.wiki.
@@ -103,8 +153,8 @@ function PrivacyPage() {
           <section>
             <h2 className="font-display text-xl text-ink">What we do not sell</h2>
             <p className="mt-2">
-              Yard does not sell your personal information. We do not run advertising networks on the
-              site.
+              Yard does not sell your personal information. Saved prompts and build feedback are never
+              sold. We do not run advertising networks on the site.
             </p>
           </section>
 

@@ -1,6 +1,7 @@
 /** Kit-manual PDF tokens and text helpers — one type scale, one grid, WinAnsi-safe text. */
 
 import { inchFrac } from "./inchText";
+import { userText } from "./userText";
 
 export type RGB = [number, number, number];
 
@@ -45,7 +46,8 @@ const FRACTION_CHARS: Record<string, string> = {
 /** Keep every glyph inside the PDF's built-in fonts (WinAnsi). */
 export function clean(s: string | null | undefined): string {
   if (!s) return "";
-  let t = String(s);
+  // Quick win (d): engine wording never reaches the PDF either (userText is the one scrub).
+  let t = userText(String(s));
   t = t.replace(/(\d)\s*([¼½¾⅛⅜⅝⅞⅓⅔])/g, (_m, d: string, f: string) => `${d} ${FRACTION_CHARS[f]}`);
   t = t.replace(/[¼½¾⅛⅜⅝⅞⅓⅔]/g, (f) => FRACTION_CHARS[f] ?? f);
   t = t

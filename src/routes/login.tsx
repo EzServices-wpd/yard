@@ -6,7 +6,7 @@ export const Route = createFileRoute("/login")({ component: Login });
 
 function Login() {
   return (
-    <main className="grid min-h-screen place-items-center bg-paper px-6 text-ink">
+    <main className="yard-site grid min-h-screen place-items-center bg-paper px-6 text-ink">
       <div className="w-full max-w-sm space-y-6">
         <Link to="/" className="inline-flex">
           <Logo inverted />
@@ -24,7 +24,7 @@ function Login() {
                 key={p.providerId}
                 type="button"
                 onClick={() => signIn(p.providerId, { callbackURL: "/workspace" })}
-                className="w-full rounded-md border border-rule bg-white px-4 py-2.5 text-sm font-medium text-ink transition hover:border-ink/30"
+                className="w-full rounded-md border border-rule bg-[var(--yard-fill)] px-4 py-2.5 text-sm font-medium text-ink transition hover:border-ink/30"
               >
                 Continue with {p.label}
               </button>

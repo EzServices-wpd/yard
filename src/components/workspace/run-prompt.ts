@@ -1,11 +1,15 @@
+import { UNIT_ITEM_NOTE } from "@/lib/yard/unitItems";
 import { findRecipe, RECIPES } from "@/lib/yard/recipes";
 import { recipePrompt } from "@/lib/yard/recipeIdeas";
 "use client";
+import { noteBuildingPrompt } from "@/components/workspace/building-prompt";
 
 import { hintSubject, interpretPrompt, lookupRecipe } from "@/lib/ai/grok";
 import { proposeRecipeFn } from "@/lib/ai/recipeBot";
-import { lookupAndBuild, needsRecipeLookup, roughBlock, roughNote, timedLookup } from "@/lib/yard/recipeBuild";
+import { boundPrompt } from "@/lib/yard/promptLimits";
+import { lookupAndBuild, roughBlock, roughNote, timedLookup, TRY_SAMPLE } from "@/lib/yard/recipeBuild";
 import { briefHousePrompt } from "@/lib/ai/houseBrief";
+import { engineKeepsPrompt, routesToLearner, typedSizeComplete } from "@/lib/yard/formOwnership";
 import { recipeFromAnatomy, isLockedForm, engineOwnsForm } from "@/lib/yard/form";
 import { looksLikeFitted, parseBrief } from "@/lib/yard/fitted";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, isPottingBench, isStandingShopTop, isPlanterBox, isOutdoorSideTable, isPorchSwingFrame, isAdirondackChair, isDoorPortal, mediaIdentityLabel, sitBenchTitleStem, tableTopShape, tableShapeTitlePrefix } from "@/lib/yard/family";
@@ -16,7 +20,12 @@ import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import { isBareProductPrompt } from "@/lib/yard/productModel";
 import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
 import { tableSpanFromPrompt } from "@/lib/yard/voiceHonesty";
-import type { FittedSpec } from "@/lib/yard/types";
+import type { FittedSpec, YardProject } from "@/lib/yard/types";
+import { readPromptSpec } from "@/lib/ai/readPrompt";
+import { chooseBuildPrompt } from "@/lib/yard/aiReader/rewrite";
+import { needsReader, READER_TIMEOUT_MS } from "@/lib/yard/aiReader/core";
+import { currentTestFlags } from "@/lib/ideas/testFlags";
+import { looksLikeFollowOn } from "@/lib/yard/promptHelpers";
 
 const HOUSE_HINT =
   /closet|desk|vanity|table|prep\s*table|folding\s*table|butcher|cart|console|\btv\b|cabinet|bookcase|pantry|wardrobe|bench|media|storage|shelving|shelf|system|dresser|nightstand|bedside|sideboard|credenza|hutch|alcove|built-?in|linen|mudroom|island|drawer|rack|crate|headboard|shoe|coat|range\s*hood|\bhood\b|workbench|pegboard|tool\s*rail|lumber\s*rack|wall\s*panel|ironing|laundry\s*sorter|sorter|drying\s*rack|utility\s*shel|planter|outdoor\s*side\s*table|side\s*table/i;
@@ -309,19 +318,132 @@ function mergeHouseBrief(prompt: string, parsed: FittedSpec | null, brief: Fitte
   };
 }
 
-function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+function withDeadline<T>(p: Promise<T>, ms: number, signal?: AbortSignal): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("timeout")), ms)));
-  return Promise.race([p, late]).finally(() => clearTimeout(timer));
+  let onAbort: (() => void) | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), ms);
+    // A newer prompt aborts this run: its pending await gives up at once instead of waiting out the bound.
+    if (signal) {
+      onAbort = () => reject(new Error(STALE));
+      if (signal.aborted) onAbort();
+      else signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
+  return Promise.race([p, late]).finally(() => {
+    clearTimeout(timer);
+    if (signal && onAbort) signal.removeEventListener("abort", onAbort);
+  });
+}
+
+/**
+ * Hotfix (Critic B2 race): only the latest prompt's run may write. Every run gets a monotonically increasing id;
+ * a newer prompt aborts the older run's in-flight calls, and every write after an await (house brief, learner
+ * recipe, the grey 'no parts' block, hint, interpret, the 22s busy timer, the finally) first checks that its run
+ * is still the latest. A slow learner lookup (up to 160s) can no longer land over the build showing now.
+ */
+const STALE = "stale prompt run";
+let latestRun = 0;
+let latestAbort: AbortController | null = null;
+type PromptRun = { id: number; live: () => boolean; signal?: AbortSignal };
+function startRun(): PromptRun {
+  const id = ++latestRun;
+  latestAbort?.abort();
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  latestAbort = ctrl;
+  return { id, live: () => id === latestRun, signal: ctrl?.signal };
+}
+/** The id of the newest prompt run (tests and callers that write after runYardPrompt resolves). */
+export function latestPromptRun(): number {
+  return latestRun;
+}
+
+/** Built with the reader off (YARD_AI_READER unset), no tab asks; the server saying off (no key, cap hit) stops this tab asking. */
+let readerOff = false;
+/**
+ * AI prompt reader (I49): only for words the regex parser cannot read, never offline/local test runs, never a
+ * follow-on edit to the bench. Off, failed, capped, late or a different object → the typed words build, as today.
+ */
+/** The build-time flag (vite define from YARD_AI_READER): fixed at build, so turning the reader on needs a redeploy. */
+const builtFlag = (): string | undefined => (typeof import.meta.env === "undefined" ? undefined : import.meta.env.VITE_PUBLIC_AI_READER);
+export function readerWanted(typed: string, fresh: boolean | undefined, flag = builtFlag()): boolean {
+  if (readerOff || typeof window === "undefined" || flag !== "on" || !needsReader(typed)) return false;
+  const f = currentTestFlags();
+  const bench = useYard.getState().project.prompt;
+  return !f.offline && !f.local && !(!fresh && bench.trim() && looksLikeFollowOn(typed, bench));
+}
+async function readerPrompt(typed: string, run: PromptRun): Promise<string> {
+  const r = await withDeadline(readPromptSpec({ data: { prompt: typed, test: !!currentTestFlags().test }, signal: run.signal }), READER_TIMEOUT_MS + 500, run.signal).catch(() => null);
+  if (r && !r.ok && r.off) readerOff = true;
+  return chooseBuildPrompt(typed, r && r.ok ? r.spec : null).buildPrompt;
 }
 
 /** Homepage ?q= and the bench prompt bar share this so house prompts never fall through to craft interpret. */
 const AI = { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn };
 
-export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number } = {}) {
-  const prompt = raw.trim();
+type RunOpts = { fresh?: boolean; ai?: Partial<typeof AI>; boundMs?: number };
+
+/**
+ * Runs one prompt. Resolves true when this run is still the latest prompt (its build is the one on the bench),
+ * false when a newer prompt superseded it; a caller that writes after it resolves must skip on false.
+ */
+export async function runYardPrompt(raw: string, opts: RunOpts = {}): Promise<boolean> {
+  if (!boundPrompt(raw).prompt) return false;
+  const run = startRun();
+  await runOnce(raw, opts, run);
+  return run.live();
+}
+
+/** Whether the bench skips the hint/interpret/house-brief calls for these words (they could only reshape a locked build). */
+function llmGate(prompt: string, next: YardProject, parsed: ReturnType<typeof parseBrief> | null, half: boolean) {
+  // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
+  const wonky =
+    !!next.pocket ||
+    looksLikePocket(prompt) ||
+    (parsed?.walls != null &&
+      ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
+  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
+  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
+  const weak = half;
+  const houseLike =
+    !weak &&
+    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
+  const skipLlm =
+    // C10: a house prompt with every size typed (the linen canary) keeps the engine's build and price: the brief
+    // could only re-guess typed sizes and reprice the plan ($183.70 → ~$202.67) after an ~11s lamp.
+    (houseLike && typedSizeComplete(parsed)) ||
+    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
+    // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
+    !!findRecipe(prompt) ||
+    // Cost leak: an engine-owned shape (Big Ben, trebuchet, submarine) is locked, so the hint (Wikidata/Wikipedia)
+    // and interpret (Wikidata/Wikipedia + xAI chat) server calls could never change it. Skip them.
+    engineKeepsPrompt(prompt, next, half);
+  return { houseLike, skipLlm };
+}
+
+/**
+ * The words build on the bench with no AI call that could reshape or reprice them: no reader rewrite, no learner,
+ * no house brief, hint or interpret. Only such a build gets its own share card (lib/og/card.ts): the card is the
+ * engine's build, so it equals the page only when the page is the engine's build too.
+ */
+export function benchSkipsAi(prompt: string, next: YardProject, flag = builtFlag()): boolean {
+  if (flag === "on" && needsReader(prompt)) return false;
+  const parsed = detectWeekendMech(prompt) || wantsMediaTipHold(prompt) ? null : parseBrief(prompt);
+  return llmGate(prompt, next, parsed, ignoredTypedWords(next, prompt).length > 0).skipLlm;
+}
+
+async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
+  noteBuildingPrompt(raw);
+  // Sizes and length bounded before any geometry: "bookshelf 9999 wide" or a pasted essay never freezes the tab.
+  const bounded = boundPrompt(raw);
+  const typed = bounded.prompt;
   const { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn } = { ...AI, ...opts.ai };
-  if (!prompt) return;
+  if (!typed) return;
+  let prompt = typed;
+  if (readerWanted(typed, opts.fresh)) {
+    prompt = await readerPrompt(typed, run);
+    if (!run.live()) return;
+  }
 
   const generate = useYard.getState().generate;
   const makePlan = useYard.getState().makePlan;
@@ -336,15 +458,22 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
   // The bar builds exactly what the engine builds from the typed words: generateFromPrompt reads the
   // fitted brief itself when the prompt is a carcase, so a pre-parsed brief would only steal real classes.
   generate(prompt, undefined, undefined, { fresh: opts.fresh });
+  // The bar keeps showing the words typed, never the reader's rewrite (I35).
+  if (prompt !== typed) useYard.getState().setProject({ ...useYard.getState().project, typedPrompt: typed });
+  if (bounded.note) {
+    const p = useYard.getState().project;
+    useYard.getState().setProject({ ...p, notes: [bounded.note, ...p.notes] });
+  }
 
   const next = useYard.getState().project;
   // A noun the engine does not own goes to the learner, from every entry point (bar, ?q=, share link, idea):
   // while it learns, and if it fails, the bench shows the display-only block, never the engine's guess
   // (a stick cloud or thin frame with a price and piece count).
   const half = ignoredTypedWords(next, prompt).length > 0;
-  // Craft stock nobody asked for (a popsicle stick cloud) is never the answer: that noun goes to the learner too.
-  const craftGuess = /popsicle|craft|stick/i.test(next.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
-  const learn0 = (craftGuess || needsRecipeLookup(next, prompt, engineOwnsForm(prompt, next), half)) && !findRecipe(prompt) && !next.pocket && !looksLikePocket(prompt);
+  // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
+  const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
+  // L1 + hotfix #41: an engine-owned shape always wins; the learner runs only when the engine has no form.
+  const learn0 = !unitItem && !engineKeepsPrompt(prompt, next, half) && routesToLearner(prompt, next, half) && !looksLikePocket(prompt);
   // A bare starter noun whose recipe needs a modifier ("sandbox", recipe "sandbox with seat") builds that
   // starter instead of going to the learner, but only when the engine has nothing of its own for it.
   const bare = learn0 ? RECIPES.recipes.find((r) => !r.learned && r.modifiers?.length && r.key.replace(/-/g, " ") === prompt.toLowerCase()) : undefined;
@@ -360,16 +489,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     return { ...b, notes: [roughNote(b.name, why ?? []), ...(b.notes ?? [])] };
   };
   if (learn) useYard.getState().setProject({ ...roughBlock(prompt, next), notes: [`Yard is learning the ${prompt.toLowerCase()}: the real parts come next.`] });
-  // Trapezoid / "pocket vanity" chip: parsePocket already filled the measured bathroom.
-  const wonky =
-    !!next.pocket ||
-    looksLikePocket(prompt) ||
-    (parsed?.walls != null &&
-      ((parsed.walls.leftAngleDeg ?? 0) > 0.2 || (parsed.walls.rightAngleDeg ?? 0) > 0.2));
-  const skipLlm =
-    next.kind === "opening" || isLockedForm(next.kind) || !!next.flat || wonky || isBareProductPrompt(prompt) ||
-    // A saved recipe is the whole answer: no hint or interpret calls that could only reshape it.
-    !!findRecipe(prompt);
+  const weak = half;
+  const { houseLike, skipLlm } = llmGate(prompt, next, parsed, half);
   if (skipLlm && !learn) {
     revealBench();
     makePlan();
@@ -387,22 +508,20 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     return;
   }
 
-  // The house brief refines a carcase (or a build the engine did not own); never a dedicated builder's form.
-  // A compound noun the engine only half-read (lap desk, chicken tractor) is never a house brief or a fitted build.
-  const weak = ignoredTypedWords(next, prompt).length > 0;
-  const houseLike =
-    !weak &&
-    isHousePrompt(prompt, next.kind, next.fitted) && (next.kind === "closet" || !!next.fitted || !engineOwnsForm(prompt, next));
   useYard.getState().beginBuild();
   useYard.setState({ grokBusy: true });
   const timeout = window.setTimeout(() => {
+    // A superseded run's timer must not clear the newer run's busy state or reveal over it.
+    if (!run.live()) return;
     useYard.setState({ grokBusy: false });
     revealBench();
   }, 22000);
+  const signal = run.signal;
 
   try {
     if (houseLike && !learn) {
-      const house = await withDeadline(briefHousePrompt({ data: { prompt } }), 30_000);
+      const house = await withDeadline(briefHousePrompt({ data: { prompt }, signal }), 30_000, signal);
+      if (!run.live()) return;
       if (house.ok && house.brief) {
         generate(prompt, undefined, undefined, {
           fresh: true,
@@ -424,18 +543,22 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     if (learn) {
       let lookupId: string | undefined;
       const lookup = timedLookup(async (feedback) => {
-        const r = await lookupRecipe({ data: { prompt, feedback } });
+        // A superseded run never spends a (retry) lookup call.
+        if (!run.live()) throw new Error(STALE);
+        const r = await lookupRecipe({ data: { prompt, feedback }, signal });
         if (r.ok && "lookupId" in r) lookupId = r.lookupId as string;
         return r;
       });
       // A compound noun never falls back to its last word's build: the rough shape is a plain labelled block.
       const engine = () => roughBlock(prompt, next);
       // Two tries at 75s each, one bound on the whole lookup so the bench never waits on it.
-      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000).catch(
+      const out = await withDeadline(lookupAndBuild(prompt, lookup, engine, namedStock), opts.boundMs ?? 160_000, signal).catch(
         () => ({ project: block(["the lookup ran out of time"]), recipe: null, rough: true }) as const,
       );
+      // The learner's recipe, rough shape and grey 'no parts' block only land for the latest prompt.
+      if (!run.live()) return;
       if (!out.recipe && !out.rough) {
-        useYard.getState().setProject(block(out.unavailable ? ["no AI here"] : []));
+        useYard.getState().setProject(out.unavailable ? { ...roughBlock(prompt, next), notes: [TRY_SAMPLE] } : block([]));
         makePlan();
         return;
       }
@@ -455,7 +578,8 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
       }
     }
     // Every AI call is bounded: a slow hint or interpret reply never holds the Building overlay over a finished bench.
-    const hint = await withDeadline(hintSubject({ data: { prompt } }), opts.boundMs ?? 20_000);
+    const hint = await withDeadline(hintSubject({ data: { prompt }, signal }), opts.boundMs ?? 20_000, signal);
+    if (!run.live()) return;
     const bound = engineOwnsForm(prompt, useYard.getState().project);
     if (
       !bound &&
@@ -476,7 +600,9 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     }
     const interp = await withDeadline(interpretPrompt({
       data: { prompt, heightIn: next.overall.height, widthIn: next.overall.width },
-    }), opts.boundMs ?? 20_000);
+      signal,
+    }), opts.boundMs ?? 20_000, signal);
+    if (!run.live()) return;
     const after = useYard.getState().project;
     const locked =
       // Tip-angled media-hold anatomy is deterministic — LLM form must not wipe lean+lip.
@@ -510,14 +636,16 @@ export async function runYardPrompt(raw: string, opts: { fresh?: boolean; ai?: P
     }
   } catch {
     // Deterministic already on the bench, except a half-read compound noun, which shows its labelled block.
-    if (weak) {
+    if (weak && run.live()) {
       const block = roughBlock(prompt, next);
       useYard.getState().setProject({ ...block, notes: [roughNote(block.name, [])] });
       makePlan();
     }
   } finally {
     window.clearTimeout(timeout);
-    useYard.setState({ grokBusy: false });
-    revealBench();
+    if (run.live()) {
+      useYard.setState({ grokBusy: false });
+      revealBench();
+    }
   }
 }

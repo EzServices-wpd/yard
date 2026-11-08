@@ -32,8 +32,17 @@ export type DrawerCutPart = {
   depth: number;
 };
 
+/**
+ * The stock a drawer box part is cut from: the ¼" bottom comes off the ¼" sheet whenever the box is sheet or board
+ * stock (the cut list's row), so the cut step and the cut list name one stock.
+ */
+export function drawerPartStock(boxMaterialId: string, part: { type: string; width: number; height: number; depth: number }): string {
+  const thin = Math.min(part.width, part.height, part.depth) <= 0.26;
+  return part.type === "drawer-bottom" && thin && (/plywood/i.test(boxMaterialId) || /^lumber-1x\d+-/.test(boxMaterialId)) ? "plywood-1-4-4x8" : boxMaterialId;
+}
+
 export function isBoundingDrawerPanel(name: string, type?: string): boolean {
-  return type === "drawer" && !/drawer\s*front/i.test(name);
+  return type === "drawer" && !/drawer\s*(?:front|side|back|bottom)/i.test(name);
 }
 
 /** Glass vanity/door mirror (and drawn hardware) — bought, kept off the plywood nest. */
@@ -213,9 +222,16 @@ export function cutListName(name: string, type?: string): string {
   if (type === "top") {
     if (/^seat$/i.test(name.trim())) return "Seat";
     if (/^lid$/i.test(name.trim())) return "Lid";
+    if (/^roof$/i.test(name.trim())) return "Roof"; // enclosure class: roof ≠ nest top (F12)
+    if (/nest/i.test(name)) return "Nest box top";
     return "Top";
   }
-  if (type === "bottom") return /boot tray/i.test(name) ? "Boot tray" : "Bottom";
+  if (type === "bottom") {
+    if (/boot tray/i.test(name)) return "Boot tray";
+    if (/nest/i.test(name)) return "Nest box bottom";
+    if (/^floor$/i.test(name.trim())) return "Floor";
+    return "Bottom";
+  }
   if (type === "back") return "Back";
   if (type === "door") return "Door";
   if (type === "rail") {

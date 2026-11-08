@@ -1,0 +1,21 @@
+[
+  {"id": "wardrobe-037", "prompt": "wardrobe"},
+  {"id": "wardrobe-038", "prompt": "wardrobe 40 wide 24 deep 72 tall"},
+  {"id": "wardrobe-039", "prompt": "wardrobe 46x26x66"},
+  {"id": "wardrobe-040", "prompt": "wardrobe 36 wide"},
+  {"id": "wardrobe-041", "prompt": "wardrobe 76 tall"},
+  {"id": "wardrobe-042", "prompt": "wardrobe 26 deep"},
+  {"id": "wardrobe-061", "prompt": "wardrobe 40 1/2 wide"},
+  {"id": "wardrobe-062", "prompt": "wardrobe 15 3/4 deep"},
+  {"id": "wardrobe-077", "prompt": "wardrobe 6ft 2 1/2in tall"},
+  {"id": "wardrobe-078", "prompt": "wardrobe 3ft 4in wide"},
+  {"id": "wardrobe-093", "prompt": "wardrobe from 1x12s"},
+  {"id": "wardrobe-094", "prompt": "wardrobe from MDF"},
+  {"id": "wardrobe-100", "prompt": "wardrobe 40 wide 72 tall"},
+  {"id": "wardrobe-131", "prompt": "wardrobe with 2 drawers"},
+  {"id": "wardrobe-132", "prompt": "wardrobe with 1 door"},
+  {"id": "wardrobe-133", "prompt": "wardrobe with 3 shelves", "shelves": 3},
+  {"id": "wardrobe-134", "prompt": "wardrobe on casters"},
+  {"id": "wardrobe-147", "prompt": "wardrobe 8 deep"},
+  {"id": "wardrobe-156", "prompt": "wardrobe 4 feet wide, 6 feet tall, 2 feet deep with a hanging rod"}
+]

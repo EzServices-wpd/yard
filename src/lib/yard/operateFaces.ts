@@ -30,9 +30,10 @@ export function operateFaceKinds(panels: readonly Panel[]): OperateFaceKinds {
   let doors = 0;
   let drawers = 0;
   let lids = 0;
+  const seen = new Set<string>();
   for (const p of panels) {
     if (p.type === "door") doors += 1;
-    else if (p.type === "drawer") drawers += 1;
+    else if (p.type === "drawer") { if (!p.drawerId || !seen.has(p.drawerId)) drawers += 1; if (p.drawerId) seen.add(p.drawerId); }
     else if (isHingedLidPanel(p)) lids += 1;
   }
   return { doors, drawers, lids };

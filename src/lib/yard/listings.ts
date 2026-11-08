@@ -5,16 +5,20 @@
  * Every offer href goes through outboundHref (outbound.ts) — inert until an affiliate ID is set.
  */
 
-import type { BomLine, ShopOffer } from "./types";
+import type { BomLine, BuildPlan, ShopOffer } from "./types";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import {
   affiliateUrl,
   shopLinks,
+  amazonSearchUrl,
+  homeDepotSearchUrl,
+  lowesSearchUrl,
+  walmartSearchUrl,
   type ShopRetailer,
 } from "./shop";
 import { hardwareCatalogIdFromHay } from "./voiceHonesty";
-import { affiliateDisclosure, outboundHref } from "./outbound";
+import { affiliateDisclosure, outboundHref, storeOf, type Store } from "./outbound";
 
 export type ListingOffer = {
   catalogId: string;
@@ -238,7 +242,7 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "plywood-3-4-4x8",
     retailer: "homedepot",
-    title: "3/4\" x 4x8 Sande sanded plywood",
+    title: "3/4\" x 4x8 Sande plywood",
     href: "https://www.homedepot.com/p/SANDEPLY-18mm-Sande-Plywood-3-4-in-Category-x-4-ft-x-8-ft-Actual-0-709-in-x-48-in-x-96-in-454559/203414066",
     packQty: 1,
     packPrice: 38.43,
@@ -515,6 +519,66 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "drawer-slides-10",
+    retailer: "amazon",
+    title: "10\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=10+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 12.99,
+    lengthIn: 10,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-10",
+    retailer: "homedepot",
+    title: "10\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/10%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 10,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-12",
+    retailer: "amazon",
+    title: "12\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=12+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 12.99,
+    lengthIn: 12,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-12",
+    retailer: "homedepot",
+    title: "12\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/12%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 12,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-14",
+    retailer: "amazon",
+    title: "14\" side-mount drawer slides, pair",
+    href: "https://www.amazon.com/s?k=14+inch+side+mount+drawer+slides",
+    packQty: 1,
+    packPrice: 12.99,
+    lengthIn: 14,
+    checkedAt: CHECK,
+  },
+  {
+    catalogId: "drawer-slides-14",
+    retailer: "homedepot",
+    title: "14\" side-mount drawer slides",
+    href: "https://www.homedepot.com/s/14%20inch%20side%20mount%20drawer%20slides",
+    packQty: 1,
+    packPrice: 14.98,
+    lengthIn: 14,
+    checkedAt: CHECK,
+  },
+  {
     catalogId: "drawer-slides-16",
     retailer: "amazon",
     title: "16\" side-mount drawer slides, pair",
@@ -779,8 +843,8 @@ export const LISTINGS: ListingOffer[] = [
   {
     catalogId: "shelf-pins",
     retailer: "amazon",
-    title: "5 mm shelf pins, 50 pack",
-    href: "https://www.amazon.com/s?k=5mm+shelf+pins",
+    title: '3/16" shelf pins, 50 pack',
+    href: "https://www.amazon.com/s?k=3%2F16%22+shelf+pins",
     packQty: 50,
     packPrice: 6.49,
     lengthIn: 0,
@@ -1209,6 +1273,7 @@ function guessCatalogId(line: BomLine): string | null {
   if (/slide/.test(hay)) {
     if (/\b22\b/.test(hay)) return "drawer-slides-22";
     if (/\b18\b/.test(hay)) return "drawer-slides-18";
+    for (const n of [14, 12, 10]) if (new RegExp(`\\b${n}\\b`).test(hay)) return `drawer-slides-${n}`;
     return "drawer-slides-16";
   }
   // Hardware class match — piano / lid-stay / utility before soft-close concealed.
@@ -1280,8 +1345,12 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
     // fall through to searchOffers with BOM name + estimatedCost.
     const canPriceFromCatalog = Boolean(id && (hasListings || item));
     const prim = item ? toPrimitive(item) : undefined;
-    const packMatch = line.unit.match(/pack of (\d+)/i);
-    const pieces = packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
+    // "13 packs of 100" is 1,300 pieces: the plural is matched too, or a 1,000-count listing would sell 13 sticks' worth.
+    const packMatch = line.unit.match(/\bpacks? of (\d+)/i);
+    // A whole-stock line says how many pieces it uses ("7 packs of 250 (1570 pieces used)"): the listing buys for those,
+    // not for the catalog packs rounded up (1,750 would be 3 × 800 where 2 × 800 holds 1,570). Sheet lines count parts cut.
+    const usedMatch = item?.formFactor === "sheet" ? null : line.unit.match(/\((\d+) [a-z ]*used\)/i);
+    const pieces = usedMatch ? parseInt(usedMatch[1], 10) : packMatch ? line.quantity * parseInt(packMatch[1], 10) : line.quantity;
     // #8 screw Buy lines name the length; match listings by that length (1", 1-1/4", 2-1/2").
     const screwLen = /#8|wood screw/i.test(line.name)
       ? (() => {
@@ -1351,3 +1420,110 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
     };
   });
 }
+
+/**
+ * C12 (store terms follow the Buy name): every store search a Buy row links to (Amazon, Home Depot, Lowe's,
+ * Walmart, and the "Also at" stores) searches the row's own Buy name. A catalog href or an earlier searchQuery can
+ * no longer drift from what the row says ('3/16" shelf pins' searching "5mm shelf pins"). Product links (an Amazon
+ * /dp/ ASIN, a store product page) are a fixed item, not a search, and stay as they are. Prices are untouched.
+ */
+
+/**
+ * The search phrase for a Buy row: its display name. A worded aside ("(backer)", "(waterproof, exterior)") is dropped;
+ * a measured one keeps its words ("1×4 Board (8 ft)" → "1x4 Board 8 ft"). "×" is typed as a plain x. Spaces collapsed.
+ */
+export function buyQuery(name: string): string {
+  return name
+    .replace(/\s*\(([^)]*)\)/g, (_m, inner: string) => (/\d/.test(inner) ? ` ${inner}` : ""))
+    // Stores search a plain x ("1x6"), the same size the row says as "1×6".
+    .replace(/×/g, "x")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** The raw store URL behind an href (an Impact wrapper carries it URL-encoded in a query param). */
+export function rawStoreHref(href: string): string {
+  if (storeOf(href) !== "other") return href;
+  try {
+    for (const val of new URL(href).searchParams.values()) if (storeOf(val) !== "other") return val;
+  } catch {
+    /* not a URL */
+  }
+  return href;
+}
+
+/** The search term a store href searches, or null when it is a product page (not a search). */
+export function storeSearchTerm(href: string): string | null {
+  const raw = rawStoreHref(href);
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return null;
+  }
+  const store = storeOf(raw);
+  if (store === "amazon") return u.pathname === "/s" || u.pathname === "/s/" ? (u.searchParams.get("k") ?? "") : null;
+  if (store === "homedepot") {
+    const m = u.pathname.match(/^\/s\/(.+)$/);
+    return m ? decodeURIComponent(m[1]).replace(/\+/g, " ") : null;
+  }
+  if (store === "lowes") return u.pathname.startsWith("/search") ? (u.searchParams.get("searchTerm") ?? "") : null;
+  if (store === "walmart") return u.pathname.startsWith("/search") ? (u.searchParams.get("q") ?? "") : null;
+  if (store === "rockler" || store === "woodcraft") return u.searchParams.get("q") ?? u.searchParams.get("query") ?? null;
+  return null;
+}
+
+const SEARCH: Partial<Record<Store, (q: string) => string>> = {
+  amazon: (q) => amazonSearchUrl(q, ""),
+  homedepot: homeDepotSearchUrl,
+  lowes: lowesSearchUrl,
+  walmart: walmartSearchUrl,
+};
+
+/** One offer's href re-pointed at the Buy name when it is a store search; product pages stay. */
+function alignOffer(o: ShopOffer, q: string): ShopOffer {
+  const term = storeSearchTerm(o.href);
+  if (term == null || term === q) return o;
+  const make = SEARCH[storeOf(rawStoreHref(o.href))];
+  return make ? { ...o, href: outboundHref(make(q)) } : o;
+}
+
+export function alignStoreTerms(line: BomLine): BomLine {
+  const q = buyQuery(line.name);
+  if (!q) return line;
+  return { ...line, searchQuery: q, offers: line.offers?.map((o) => alignOffer(o, q)) };
+}
+
+/** Every Buy row's store searches say the row's name (the last pass on a plan). */
+export function storeTermsFromBuy(plan: BuildPlan): BuildPlan {
+  return { ...plan, bom: plan.bom.map(alignStoreTerms) };
+}
+
+/** C12 drift on one plan: rows whose searchQuery or any store search differs from the Buy name. */
+export function storeTermDrift(plan: Pick<BuildPlan, "bom">): string[] {
+  const out: string[] = [];
+  for (const b of plan.bom) {
+    const q = buyQuery(b.name);
+    if (b.searchQuery != null && b.searchQuery !== q) out.push(`"${b.name}" searchQuery "${b.searchQuery}"`);
+    for (const o of b.offers ?? []) {
+      const term = storeSearchTerm(o.href);
+      if (term != null && term !== q) out.push(`"${b.name}" ${o.label} searches "${term}"`);
+    }
+  }
+  return out;
+}
+
+/** C15/C16: one checked store listing (checkedStock.ts) as a Buy row's offer, its href through outboundHref like every Buy link. */
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** One Home Depot offer for `count` items from a checked listing (packs rounded up), and its line total. */
+export function checkedOffer(c: { title: string; href: string; packQty: number; packPrice: number }, count: number): { offers: ShopOffer[]; lineTotal: number; packs: number } {
+  const packs = Math.max(1, Math.ceil(count / c.packQty));
+  const lineTotal = r2(packs * c.packPrice);
+  return {
+    packs,
+    lineTotal,
+    offers: [{ retailer: "homedepot", label: "Home Depot", title: c.title, href: outboundHref(c.href), packQty: c.packQty, packPrice: c.packPrice, unitPrice: r2(c.packPrice / c.packQty), packsNeeded: packs, lineTotal, best: true, checkedAt: "2026-10-16" }],
+  };
+}
+

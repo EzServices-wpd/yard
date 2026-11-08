@@ -172,8 +172,29 @@ export type Panel = {
   polygon?: { plane: "xz" | "xy" | "zy"; pts: [number, number][]; /** Round through-holes (drilled), same local frame as pts. */ holes?: { x: number; y: number; r: number }[] };
   /** Turns or rides on a pin (wheel, lid, arm): its joints take no screws, it is bored 1/16" over its pin. */
   turns?: boolean;
+  /** Stands proud of the stated size on purpose (a recipe's pegs), like a door with a proud note: partsWithinHeight skips it. */
+  proud?: boolean;
+  /** Hangs on hinges from another part (a lid, a roof, a door): it takes no screws, and a step hangs it. */
+  /** Frame member joined with structural screws or bolts (counted on Buy from the notes, not as #8 screws). */
+  structural?: boolean;
+  hinged?: {
+    to: string;
+    edge: "top" | "bottom" | "left" | "right" | "back" | "front";
+    hinges: number;
+    latch?: string;
+    /** Chosen by hingedLeaf.hingeSpec (size and weight): Buy, notes and steps all read it. */
+    kind?: "concealed" | "utility" | "butt" | "butt-galv" | "t-hinge" | "piano";
+    stay?: boolean;
+  };
   /** Plain-shop cut note for this piece (angle, legs, heights) — lands on the cut list. */
   cutNote?: string;
+  /**
+   * The drawer this part belongs to (hollowDrawers): every part of one drawer (front, two sides, back, bottom) carries
+   * the same id, so the bench slides them out together and a See-inside view can group them.
+   */
+  drawerId?: string;
+  /** Which of the drawer's five parts this is. */
+  drawerPart?: "front" | "side" | "back" | "bottom";
   /** Rectangular blank the shape is cut from, when the bounding box is not the blank (sloped boards, mitered pieces). */
   blank?: { lengthIn: number; widthIn: number; thicknessIn: number };
   /**
@@ -353,6 +374,8 @@ export type YardProject = {
    * ("lemonade stand" → "table 48 wide 42 tall 24 deep"). The prompt box shows this, never the remap.
    */
   typedPrompt?: string;
+  /** The one spec object per prompt (spec.ts), built once at intake. */
+  spec?: import("./spec").YardSpec;
   /** Built as a stand-in primitive (table, shelf, box) for a noun no builder owns; the recipe lookup may replace it. */
   standIn?: boolean;
   /** A lookup-fallback block: drawn only, with no cut list, Buy, price or steps. */
@@ -366,6 +389,10 @@ export type YardProject = {
   /** Shop join the person picked. Buy and steps follow this, not the stock default. */
   shopJoin?: "screw" | "pocket" | "dowel" | "biscuit" | "glue";
   notes: string[];
+  /** Nothing was built, and why, in plain words (I32): a typed count that can't fit its typed size. */
+  refused?: string;
+  /** One plain line the result card shows under the title: what the build changed from the ask (I32). */
+  cardNote?: string;
   /** Stock that can hold this load. The plan offers a one-tap switch to it. */
   holdStockId?: string;
   historic?: boolean;
@@ -442,6 +469,8 @@ export type CutLine = {
   notes?: string;
   label?: string;
   whole?: boolean;
+  /** The 3D model part ids this row covers (Panel.id / instance id, the same as planOverviewSvg's data-part). */
+  partIds?: string[];
 };
 
 export type ShopOffer = {
@@ -472,11 +501,19 @@ export type BomLine = {
   offers?: ShopOffer[];
 };
 
+/** A Buy fastener line a step drives, by id, with how many of them the step drives. */
+export type FastenerUse = { id: string; qty: number };
+
 export type AssemblyStep = {
   step: number;
   title: string;
   description: string;
   partsUsed?: string[];
+  /**
+   * The Buy fastener lines this step drives, by id (fastenerId: the line's catalogId, else "buy:" + its name). It ties a
+   * Buy line to the step that installs it exactly, never by a word in the step text (Critic #127 row 291).
+   */
+  fastenersUsed?: FastenerUse[];
   tips?: string;
   imageDataUrl?: string;
 };

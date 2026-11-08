@@ -16,8 +16,15 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as WorkspaceRouteImport } from './routes/workspace'
+import { Route as ApiErrRouteImport } from './routes/api/err'
+import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
+import { Route as ApiIdeasRouteImport } from './routes/api/ideas'
+import { Route as ApiIdeasLogRouteImport } from './routes/api/ideas-log'
+import { Route as ApiIdeasSnapshotRouteImport } from './routes/api/ideas-snapshot'
+import { Route as ApiOgRouteImport } from './routes/api/og'
 import { Route as GalleryIndexRouteImport } from './routes/gallery/index'
 import { Route as GallerySlugRouteImport } from './routes/gallery/$slug'
+import { Route as PlansSlugRouteImport } from './routes/plans/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -55,6 +62,36 @@ const WorkspaceRoute = WorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiErrRoute = ApiErrRouteImport.update({
+  id: '/api/err',
+  path: '/api/err',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
+  id: '/api/feedback',
+  path: '/api/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIdeasRoute = ApiIdeasRouteImport.update({
+  id: '/api/ideas',
+  path: '/api/ideas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIdeasLogRoute = ApiIdeasLogRouteImport.update({
+  id: '/api/ideas-log',
+  path: '/api/ideas-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIdeasSnapshotRoute = ApiIdeasSnapshotRouteImport.update({
+  id: '/api/ideas-snapshot',
+  path: '/api/ideas-snapshot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOgRoute = ApiOgRouteImport.update({
+  id: '/api/og',
+  path: '/api/og',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GalleryIndexRoute = GalleryIndexRouteImport.update({
   id: '/gallery/',
   path: '/gallery/',
@@ -63,6 +100,11 @@ const GalleryIndexRoute = GalleryIndexRouteImport.update({
 const GallerySlugRoute = GallerySlugRouteImport.update({
   id: '/gallery/$slug',
   path: '/gallery/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlansSlugRoute = PlansSlugRouteImport.update({
+  id: '/plans/$slug',
+  path: '/plans/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -79,7 +121,14 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/err': typeof ApiErrRoute
+  '/api/feedback': typeof ApiFeedbackRoute
+  '/api/ideas': typeof ApiIdeasRoute
+  '/api/ideas-log': typeof ApiIdeasLogRoute
+  '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
+  '/api/og': typeof ApiOgRoute
   '/gallery/$slug': typeof GallerySlugRoute
+  '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -91,7 +140,14 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/err': typeof ApiErrRoute
+  '/api/feedback': typeof ApiFeedbackRoute
+  '/api/ideas': typeof ApiIdeasRoute
+  '/api/ideas-log': typeof ApiIdeasLogRoute
+  '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
+  '/api/og': typeof ApiOgRoute
   '/gallery/$slug': typeof GallerySlugRoute
+  '/plans/$slug': typeof PlansSlugRoute
   '/gallery': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -104,7 +160,14 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/workspace': typeof WorkspaceRoute
+  '/api/err': typeof ApiErrRoute
+  '/api/feedback': typeof ApiFeedbackRoute
+  '/api/ideas': typeof ApiIdeasRoute
+  '/api/ideas-log': typeof ApiIdeasLogRoute
+  '/api/ideas-snapshot': typeof ApiIdeasSnapshotRoute
+  '/api/og': typeof ApiOgRoute
   '/gallery/$slug': typeof GallerySlugRoute
+  '/plans/$slug': typeof PlansSlugRoute
   '/gallery/': typeof GalleryIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -118,7 +181,14 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/err'
+    | '/api/feedback'
+    | '/api/ideas'
+    | '/api/ideas-log'
+    | '/api/ideas-snapshot'
+    | '/api/og'
     | '/gallery/$slug'
+    | '/plans/$slug'
     | '/gallery/'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
@@ -130,7 +200,14 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/err'
+    | '/api/feedback'
+    | '/api/ideas'
+    | '/api/ideas-log'
+    | '/api/ideas-snapshot'
+    | '/api/og'
     | '/gallery/$slug'
+    | '/plans/$slug'
     | '/gallery'
     | '/api/auth/$'
   id:
@@ -142,7 +219,14 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/workspace'
+    | '/api/err'
+    | '/api/feedback'
+    | '/api/ideas'
+    | '/api/ideas-log'
+    | '/api/ideas-snapshot'
+    | '/api/og'
     | '/gallery/$slug'
+    | '/plans/$slug'
     | '/gallery/'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -155,7 +239,14 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   WorkspaceRoute: typeof WorkspaceRoute
+  ApiErrRoute: typeof ApiErrRoute
+  ApiFeedbackRoute: typeof ApiFeedbackRoute
+  ApiIdeasRoute: typeof ApiIdeasRoute
+  ApiIdeasLogRoute: typeof ApiIdeasLogRoute
+  ApiIdeasSnapshotRoute: typeof ApiIdeasSnapshotRoute
+  ApiOgRoute: typeof ApiOgRoute
   GallerySlugRoute: typeof GallerySlugRoute
+  PlansSlugRoute: typeof PlansSlugRoute
   GalleryIndexRoute: typeof GalleryIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -211,6 +302,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/err': {
+      id: '/api/err'
+      path: '/api/err'
+      fullPath: '/api/err'
+      preLoaderRoute: typeof ApiErrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/feedback': {
+      id: '/api/feedback'
+      path: '/api/feedback'
+      fullPath: '/api/feedback'
+      preLoaderRoute: typeof ApiFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ideas': {
+      id: '/api/ideas'
+      path: '/api/ideas'
+      fullPath: '/api/ideas'
+      preLoaderRoute: typeof ApiIdeasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ideas-log': {
+      id: '/api/ideas-log'
+      path: '/api/ideas-log'
+      fullPath: '/api/ideas-log'
+      preLoaderRoute: typeof ApiIdeasLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ideas-snapshot': {
+      id: '/api/ideas-snapshot'
+      path: '/api/ideas-snapshot'
+      fullPath: '/api/ideas-snapshot'
+      preLoaderRoute: typeof ApiIdeasSnapshotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/og': {
+      id: '/api/og'
+      path: '/api/og'
+      fullPath: '/api/og'
+      preLoaderRoute: typeof ApiOgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gallery/': {
       id: '/gallery/'
       path: '/gallery'
@@ -223,6 +356,13 @@ declare module '@tanstack/react-router' {
       path: '/gallery/$slug'
       fullPath: '/gallery/$slug'
       preLoaderRoute: typeof GallerySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plans/$slug': {
+      id: '/plans/$slug'
+      path: '/plans/$slug'
+      fullPath: '/plans/$slug'
+      preLoaderRoute: typeof PlansSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -243,7 +383,14 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   WorkspaceRoute: WorkspaceRoute,
+  ApiErrRoute: ApiErrRoute,
+  ApiFeedbackRoute: ApiFeedbackRoute,
+  ApiIdeasRoute: ApiIdeasRoute,
+  ApiIdeasLogRoute: ApiIdeasLogRoute,
+  ApiIdeasSnapshotRoute: ApiIdeasSnapshotRoute,
+  ApiOgRoute: ApiOgRoute,
   GallerySlugRoute: GallerySlugRoute,
+  PlansSlugRoute: PlansSlugRoute,
   GalleryIndexRoute: GalleryIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
@@ -252,10 +399,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

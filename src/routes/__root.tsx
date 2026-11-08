@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { NotFound } from "@/components/site/not-found";
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, retainSearchParams } from "@tanstack/react-router";
+import { TEST_FLAGS, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { installErrorReporter, reportError } from "@/lib/err/report";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Yard";
@@ -11,6 +13,23 @@ const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "ya
 const ogImage = `https://${host}/og.jpg`;
 const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
 
+
+/**
+ * The fonts (Figtree, Newsreader) load after first paint with display=optional: text paints in the metric-matched
+ * fallback and never swaps late (a late swap was the occasional 0.11 CLS). Self-hosted under /fonts (row 113), so
+ * no page makes a third-party request; the CSP allows none.
+ */
+const FONTS_CSS = "/fonts/fonts-07382ae63a.css";
+function LateFonts() {
+  useEffect(() => {
+    if (document.querySelector(`link[rel="stylesheet"][href="${FONTS_CSS}"]`)) return;
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = FONTS_CSS;
+    document.head.appendChild(l);
+  }, []);
+  return null;
+}
 
 /** Vercel Web Analytics (free tier): Vercel's own script, served from this site's /_vercel path. No cookies. */
 function VercelAnalytics() {
@@ -25,12 +44,24 @@ function VercelAnalytics() {
   return null;
 }
 
+/** Crashes go to our own /api/err (scrubbed there and here); no Sentry script loads in the browser. */
+function ErrorReporter() {
+  useEffect(installErrorReporter, []);
+  return null;
+}
+
 export const Route = createRootRoute({
+  onCatch: (error) => reportError(error),
+  // The test flags (offline=1, local=1, test=1) ride along on every navigation (links, navigate(), redirects),
+  // whatever the target route; test=1 also holds for the tab session (testSession).
+  validateSearch: (s: Record<string, unknown>): TestFlags => pickTestFlags(s),
+  search: { middlewares: [retainSearchParams([...TEST_FLAGS])] },
   // Only the root matched: the 404 page, which gets its own single title and description.
   head: ({ matches }) => (matches.length === 1 ? {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "referrer", content: "strict-origin" },
       { title: "Page not found · Yard" },
       { name: "description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { property: "og:title", content: "Page not found · Yard" },
@@ -42,38 +73,33 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "referrer", content: "strict-origin" },
       { title: APP_NAME },
       {
         name: "description",
-        content: "Think it up. Yard works it out. One model. Every cut, part and step.",
+        content: "Type what you want to build. Yard draws the real model and prices every part and cut, in plywood, popsicle sticks, PVC or cardboard. Free, no account.",
       },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
       { name: "fo-verify", content: "f9285177-d9e6-455d-926e-ec1f01732cec" },
-      { name: "theme-color", content: "#12100e" },
+      { name: "theme-color", content: "#131518" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: APP_NAME },
-      { name: "twitter:description", content: "Think it up. Yard works it out. One model. Every cut, part and step." },
+      { name: "twitter:description", content: "Type what you want to build. Yard draws the real model and prices every part and cut, in plywood, popsicle sticks, PVC or cardboard. Free, no account." },
       { property: "og:type", content: "website" },
       { property: "og:title", content: APP_NAME },
       {
         property: "og:description",
-        content: "Think it up. Yard works it out. One model. Every cut, part and step.",
+        content: "Type what you want to build. Yard draws the real model and prices every part and cut, in plywood, popsicle sticks, PVC or cardboard. Free, no account.",
       },
       { property: "og:image", content: ogImage },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:url", content: `https://${host}/` },
       { property: "x:game:image", content: xBanner },
       { property: "x:game:image:width", content: "1200" },
       { property: "x:game:image:height", content: "264" },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap",
-      },
+      { rel: "preload", as: "style", href: FONTS_CSS },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "icon", href: "/favicon.ico", sizes: "any" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/icon-32.png" },
@@ -81,8 +107,8 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
-      { rel: "canonical", href: `https://${host}/` },
     ],
+    // No canonical or og:url here: each page's own head sets one (src/lib/canonical.ts); a root "/" was a second canonical.
   }),
   notFoundComponent: NotFound,
   component: () => (
@@ -97,6 +123,8 @@ export const Route = createRootRoute({
         </AuthProvider>
         <Scripts />
         <VercelAnalytics />
+        <ErrorReporter />
+        <LateFonts />
       </body>
     </html>
   ),

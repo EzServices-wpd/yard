@@ -1,0 +1,3190 @@
+{
+ "note": "Per-run corpus for the nightly arm-B check: the 118 prompts of the 2026-10-19 Grok intake A/B (100 from verify-grok100-2026-10-17b + 18 yard-review persona prompts) with their validated intake specs, frozen from that run (no intake calls at night).",
+ "prompts": [
+  {
+   "id": "g1",
+   "prompt": "queen platform bed 60 by 80",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "queen platform bed",
+     "quote": "queen platform bed"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60"
+     },
+     {
+      "axis": "D",
+      "value_in": 80,
+      "quote": "80"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g2",
+   "prompt": "walnut headboard for king bed",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "headboard",
+     "quote": "headboard"
+    },
+    "sizes": [],
+    "fit_targets": [
+     {
+      "object": "king bed",
+      "value_in": null,
+      "is_space": false,
+      "quote": "king bed"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g3",
+   "prompt": "TV stand for 65 inch screen",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "TV stand",
+     "quote": "TV stand"
+    },
+    "sizes": [],
+    "fit_targets": [
+     {
+      "object": "screen",
+      "value_in": 65,
+      "is_space": false,
+      "quote": "65 inch screen"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g4",
+   "prompt": "rolling bar cart painted black",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bar cart",
+     "quote": "bar cart"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "rolling",
+      "quote": "rolling"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted black",
+      "quote": "painted black"
+     }
+    ],
+    "style": []
+   }
+  },
+  {
+   "id": "g5",
+   "prompt": "shoe rack by the door 36 inches wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "shoe rack",
+     "quote": "shoe rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 inches wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g6",
+   "prompt": "console table 48 long 12 deep",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "console table",
+     "quote": "console table"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "48 long"
+     },
+     {
+      "axis": "D",
+      "value_in": 12,
+      "quote": "12 deep"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g7",
+   "prompt": "ottoman with storage 30 by 30",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "ottoman",
+     "quote": "ottoman"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 by 30"
+     },
+     {
+      "axis": "D",
+      "value_in": 30,
+      "quote": "30 by 30"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "with storage"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g8",
+   "prompt": "armoire with doors 36 wide 24 deep 72 tall",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "armoire",
+     "quote": "armoire"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     },
+     {
+      "axis": "D",
+      "value_in": 24,
+      "quote": "24 deep"
+     },
+     {
+      "axis": "H",
+      "value_in": 72,
+      "quote": "72 tall"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g9",
+   "prompt": "king headboard painted white 76 inches",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "king headboard",
+     "quote": "king headboard"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 76,
+      "quote": "76 inches"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted white",
+      "quote": "painted white"
+     }
+    ],
+    "style": []
+   }
+  },
+  {
+   "id": "g10",
+   "prompt": "nightstand with 2 drawers walnut",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "nightstand",
+     "quote": "nightstand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 2,
+      "quote": "2 drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g11",
+   "prompt": "coffee table with storage black",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "coffee table",
+     "quote": "coffee table"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "with storage"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "black",
+      "quote": "black"
+     }
+    ],
+    "style": []
+   }
+  },
+  {
+   "id": "g12",
+   "prompt": "bookshelf with doors painted white 30 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bookshelf",
+     "quote": "bookshelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "doors"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted white",
+      "quote": "painted white"
+     }
+    ],
+    "style": []
+   }
+  },
+  {
+   "id": "g13",
+   "prompt": "kitchen island on casters 60 long",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "kitchen island",
+     "quote": "kitchen island"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 60,
+      "quote": "60 long"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "casters",
+      "quote": "on casters"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g14",
+   "prompt": "dining table 8 ft long",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "dining table",
+     "quote": "dining table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 96,
+      "quote": "8 ft"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g15",
+   "prompt": "platform bed twin 39 by 75",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "platform bed",
+     "quote": "platform bed"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 39,
+      "quote": "39 by 75"
+     },
+     {
+      "axis": "D",
+      "value_in": 75,
+      "quote": "39 by 75"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g16",
+   "prompt": "TV console 55 inch walnut",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "TV console",
+     "quote": "TV console"
+    },
+    "sizes": [],
+    "fit_targets": [
+     {
+      "object": "TV",
+      "value_in": 55,
+      "is_space": false,
+      "quote": "55 inch"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g17",
+   "prompt": "rolling cart for bar 24 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "rolling cart",
+     "quote": "rolling cart"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 wide"
+     }
+    ],
+    "fit_targets": [
+     {
+      "object": "bar",
+      "value_in": null,
+      "is_space": false,
+      "quote": "for bar"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "rolling",
+      "quote": "rolling"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g18",
+   "prompt": "spice rack wall mounted 24 inches",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "spice rack",
+     "quote": "spice rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 inches"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g19",
+   "prompt": "bar stools 30 inch seat height pair",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bar stools",
+     "quote": "bar stools"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 30,
+      "quote": "30 inch"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "pair"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g20",
+   "prompt": "butcher block island 48 by 24",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "butcher block island",
+     "quote": "butcher block island"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "48 by 24"
+     },
+     {
+      "axis": "D",
+      "value_in": 24,
+      "quote": "48 by 24"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g21",
+   "prompt": "plate rack wall mounted",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "plate rack",
+     "quote": "plate rack"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g22",
+   "prompt": "bread box",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bread box",
+     "quote": "bread box"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g23",
+   "prompt": "banquette for dining nook 60 inches",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "banquette",
+     "quote": "banquette"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60 inches"
+     }
+    ],
+    "fit_targets": [
+     {
+      "object": "dining nook",
+      "value_in": null,
+      "is_space": true,
+      "quote": "dining nook"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g24",
+   "prompt": "step stool for kitchen 2 steps",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "step stool",
+     "quote": "step stool"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "steps",
+      "n": 2,
+      "quote": "2 steps"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g25",
+   "prompt": "wall mounted spice rack 18 inches",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "spice rack",
+     "quote": "spice rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 18,
+      "quote": "18 inches"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g26",
+   "prompt": "butcher block countertop 6 foot",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "butcher block countertop",
+     "quote": "butcher block countertop"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g27",
+   "prompt": "bookcase with doors 36 wide 72 tall",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bookcase",
+     "quote": "bookcase"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     },
+     {
+      "axis": "H",
+      "value_in": 72,
+      "quote": "72 tall"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "with doors"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g28",
+   "prompt": "monitor stand for dual screens",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "monitor stand",
+     "quote": "monitor stand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "dual"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g29",
+   "prompt": "filing cabinet 2 drawers",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "filing cabinet",
+     "quote": "filing cabinet"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 2,
+      "quote": "2 drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g30",
+   "prompt": "sewing table 48 long",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "sewing table",
+     "quote": "sewing table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 48,
+      "quote": "48 long"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g31",
+   "prompt": "easel for painting 5 foot tall",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "easel",
+     "quote": "easel"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 60,
+      "quote": "5 foot tall"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "painting",
+      "quote": "for painting"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g32",
+   "prompt": "vinyl record shelf 36 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "vinyl record shelf",
+     "quote": "vinyl record shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g33",
+   "prompt": "guitar stand floor",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "guitar stand",
+     "quote": "guitar stand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "floor",
+      "quote": "floor"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g34",
+   "prompt": "record shelf 24 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "record shelf",
+     "quote": "record shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g35",
+   "prompt": "towel ladder 5 ft tall",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "towel ladder",
+     "quote": "towel ladder"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 60,
+      "quote": "5 ft tall"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g36",
+   "prompt": "over-toilet shelf",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "over-toilet shelf",
+     "quote": "over-toilet shelf"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g37",
+   "prompt": "laundry sorter 3 bins",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "laundry sorter",
+     "quote": "laundry sorter"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "bins",
+      "n": 3,
+      "quote": "3 bins"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g38",
+   "prompt": "folding table 6 foot",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "folding table",
+     "quote": "folding table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "folding",
+      "quote": "folding"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g39",
+   "prompt": "medicine cabinet wall mounted 16 deep",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "medicine cabinet",
+     "quote": "medicine cabinet"
+    },
+    "sizes": [
+     {
+      "axis": "D",
+      "value_in": 16,
+      "quote": "16 deep"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g40",
+   "prompt": "over toilet cabinet",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "over toilet cabinet",
+     "quote": "over toilet cabinet"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g41",
+   "prompt": "deck box outdoor 4 foot",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "deck box",
+     "quote": "deck box"
+    },
+    "sizes": [
+     {
+      "axis": "unknown",
+      "value_in": 48,
+      "quote": "4 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "outdoor",
+      "quote": "outdoor"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g42",
+   "prompt": "outdoor deck box 5 ft",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "deck box",
+     "quote": "outdoor deck box"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 60,
+      "quote": "5 ft"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g43",
+   "prompt": "cornhole boards set",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "cornhole boards",
+     "quote": "cornhole boards"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g44",
+   "prompt": "compost bin outdoor",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "compost bin",
+     "quote": "compost bin"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "outdoor",
+      "quote": "outdoor"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g45",
+   "prompt": "chicken coop 4 by 6",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "chicken coop",
+     "quote": "chicken coop"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "4 by 6"
+     },
+     {
+      "axis": "D",
+      "value_in": 72,
+      "quote": "4 by 6"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g46",
+   "prompt": "pergola 10x10",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "pergola",
+     "quote": "pergola"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 120,
+      "quote": "10x10"
+     },
+     {
+      "axis": "D",
+      "value_in": 120,
+      "quote": "10x10"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g47",
+   "prompt": "mailbox post",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "mailbox post",
+     "quote": "mailbox post"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g48",
+   "prompt": "firewood rack outdoor",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "firewood rack",
+     "quote": "firewood rack"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "outdoor",
+      "quote": "outdoor"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g49",
+   "prompt": "kids playhouse for a 5 year old",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "playhouse",
+     "quote": "playhouse"
+    },
+    "sizes": [],
+    "fit_targets": [
+     {
+      "object": "5 year old",
+      "value_in": null,
+      "is_space": false,
+      "quote": "for a 5 year old"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": {
+     "who": "kids",
+     "age_years": 5,
+     "group_size": null,
+     "quote": "kids"
+    },
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g50",
+   "prompt": "pencil box",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "pencil box",
+     "quote": "pencil box"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g51",
+   "prompt": "phone stand",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "phone stand",
+     "quote": "phone stand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g52",
+   "prompt": "key holder wall mounted",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "key holder",
+     "quote": "key holder"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g53",
+   "prompt": "candle holder",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "candle holder",
+     "quote": "candle holder"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g54",
+   "prompt": "desk organizer",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "desk organizer",
+     "quote": "desk organizer"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g55",
+   "prompt": "birdhouse cedar",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "birdhouse",
+     "quote": "birdhouse"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "cedar",
+      "quote": "cedar"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g56",
+   "prompt": "napkin holder",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "napkin holder",
+     "quote": "napkin holder"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g57",
+   "prompt": "Taj Mahal model",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "Taj Mahal model",
+     "quote": "Taj Mahal model"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g58",
+   "prompt": "Space Needle model",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "Space Needle model",
+     "quote": "Space Needle model"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g59",
+   "prompt": "a covered bridge",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "covered bridge",
+     "quote": "covered bridge"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "covered",
+      "quote": "covered"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g60",
+   "prompt": "a steam train",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "steam train",
+     "quote": "a steam train"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g61",
+   "prompt": "a Viking ship",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "Viking ship",
+     "quote": "Viking ship"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g62",
+   "prompt": "Empire State Building model",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "Empire State Building model",
+     "quote": "Empire State Building model"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g63",
+   "prompt": "a barn model",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "barn model",
+     "quote": "barn model"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g64",
+   "prompt": "a dinosaur skeleton",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "dinosaur skeleton",
+     "quote": "dinosaur skeleton"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g65",
+   "prompt": "a roller coaster",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "roller coaster",
+     "quote": "a roller coaster"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g66",
+   "prompt": "the White House model",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "White House model",
+     "quote": "the White House model"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g67",
+   "prompt": "somewhere to put my shoes by the door",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "somewhere to put my shoes",
+     "quote": "somewhere to put my shoes"
+    },
+    "sizes": [],
+    "fit_targets": [
+     {
+      "object": "by the door",
+      "value_in": null,
+      "is_space": false,
+      "quote": "by the door"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g68",
+   "prompt": "a thing to raise my laptop",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "thing to raise my laptop",
+     "quote": "a thing to raise my laptop"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g69",
+   "prompt": "storage for board games",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "storage",
+     "quote": "storage"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g70",
+   "prompt": "queen platform bed with drawers",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "queen platform bed",
+     "quote": "queen platform bed"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g71",
+   "prompt": "walnut TV stand 60 inch",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "TV stand",
+     "quote": "TV stand"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60 inch"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g72",
+   "prompt": "black rolling bar cart",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bar cart",
+     "quote": "bar cart"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "rolling",
+      "quote": "rolling"
+     },
+     {
+      "value": "black",
+      "quote": "black"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g73",
+   "prompt": "entry shoe rack 24 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "shoe rack",
+     "quote": "shoe rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g74",
+   "prompt": "living room console 60 long painted white",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "console",
+     "quote": "living room console"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 60,
+      "quote": "60 long"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted white",
+      "quote": "painted white"
+     }
+    ],
+    "style": []
+   }
+  },
+  {
+   "id": "g75",
+   "prompt": "storage ottoman 36 square",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "storage ottoman",
+     "quote": "storage ottoman"
+    },
+    "sizes": [
+     {
+      "axis": "unknown",
+      "value_in": 36,
+      "quote": "36"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "storage"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g76",
+   "prompt": "bedroom armoire 40 wide with doors",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bedroom armoire",
+     "quote": "bedroom armoire"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 40,
+      "quote": "40 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "with doors"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g77",
+   "prompt": "spice rack for kitchen wall 30 inches",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "spice rack",
+     "quote": "spice rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 inches"
+     }
+    ],
+    "fit_targets": [
+     {
+      "object": "kitchen wall",
+      "value_in": null,
+      "is_space": true,
+      "quote": "kitchen wall"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g78",
+   "prompt": "pair of 30 inch bar stools",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bar stools",
+     "quote": "bar stools"
+    },
+    "sizes": [
+     {
+      "axis": "unknown",
+      "value_in": 30,
+      "quote": "30 inch"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "pair"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g79",
+   "prompt": "butcher block island on wheels 42 by 30",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "butcher block island",
+     "quote": "butcher block island"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 42,
+      "quote": "42"
+     },
+     {
+      "axis": "D",
+      "value_in": 30,
+      "quote": "30"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "on wheels",
+      "quote": "on wheels"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g80",
+   "prompt": "wall plate rack",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "wall plate rack",
+     "quote": "wall plate rack"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": [
+     {
+      "value": "wall mounted",
+      "quote": "wall"
+     }
+    ]
+   }
+  },
+  {
+   "id": "g81",
+   "prompt": "wooden bread box",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bread box",
+     "quote": "bread box"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "wooden",
+      "quote": "wooden"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g82",
+   "prompt": "dining banquette 72 inches",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "dining banquette",
+     "quote": "dining banquette"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 72,
+      "quote": "72 inches"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g83",
+   "prompt": "two-step kitchen stool",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "kitchen stool",
+     "quote": "kitchen stool"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "steps",
+      "n": 2,
+      "quote": "two-step"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g84",
+   "prompt": "office bookcase with doors 42 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bookcase",
+     "quote": "bookcase"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 42,
+      "quote": "42 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "with doors"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g85",
+   "prompt": "dual monitor stand",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "monitor stand",
+     "quote": "monitor stand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "dual"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g86",
+   "prompt": "3-drawer filing cabinet",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "filing cabinet",
+     "quote": "filing cabinet"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 3,
+      "quote": "3-drawer"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g87",
+   "prompt": "sewing table 5 foot",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "sewing table",
+     "quote": "sewing table"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "5 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g88",
+   "prompt": "painting easel 6 ft",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "painting easel",
+     "quote": "painting easel"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 72,
+      "quote": "6 ft"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g89",
+   "prompt": "record storage shelf 30 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "record storage shelf",
+     "quote": "record storage shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g90",
+   "prompt": "floor guitar stand",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "guitar stand",
+     "quote": "guitar stand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "floor",
+      "quote": "floor"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g91",
+   "prompt": "bathroom towel ladder 4 ft",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "towel ladder",
+     "quote": "bathroom towel ladder"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 48,
+      "quote": "4 ft"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g92",
+   "prompt": "over-toilet storage shelf",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "over-toilet storage shelf",
+     "quote": "over-toilet storage shelf"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "storage"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g93",
+   "prompt": "3-bin laundry sorter",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "laundry sorter",
+     "quote": "laundry sorter"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "bins",
+      "n": 3,
+      "quote": "3-bin"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g94",
+   "prompt": "8 foot folding table",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "folding table",
+     "quote": "folding table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 96,
+      "quote": "8 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "folding",
+      "quote": "folding"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g95",
+   "prompt": "wall medicine cabinet 12 deep",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "medicine cabinet",
+     "quote": "wall medicine cabinet"
+    },
+    "sizes": [
+     {
+      "axis": "D",
+      "value_in": 12,
+      "quote": "12 deep"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g96",
+   "prompt": "outdoor deck storage box 6 foot",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "outdoor deck storage box",
+     "quote": "outdoor deck storage box"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g97",
+   "prompt": "cornhole set of boards",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "cornhole set of boards",
+     "quote": "cornhole set of boards"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g98",
+   "prompt": "outdoor compost bin 3x3",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "compost bin",
+     "quote": "outdoor compost bin"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "3x3"
+     },
+     {
+      "axis": "D",
+      "value_in": 36,
+      "quote": "3x3"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g99",
+   "prompt": "small chicken coop 3 by 4",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "chicken coop",
+     "quote": "chicken coop"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "3 by 4"
+     },
+     {
+      "axis": "D",
+      "value_in": 48,
+      "quote": "3 by 4"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "g100",
+   "prompt": "12x12 pergola",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "pergola",
+     "quote": "pergola"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 144,
+      "quote": "12x12"
+     },
+     {
+      "axis": "D",
+      "value_in": 144,
+      "quote": "12x12"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P1.1",
+   "prompt": "simple bookshelf for my kids room",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bookshelf",
+     "quote": "bookshelf"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": {
+     "who": "kids",
+     "age_years": null,
+     "group_size": null,
+     "quote": "kids"
+    },
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P1.2",
+   "prompt": "floating shelf 36 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "floating shelf",
+     "quote": "floating shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P1.3",
+   "prompt": "shoe rack by the door",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "shoe rack",
+     "quote": "shoe rack"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P2.1",
+   "prompt": "walnut dresser 6 drawers 60 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "dresser",
+     "quote": "dresser"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 6,
+      "quote": "6 drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P2.2",
+   "prompt": "blanket chest with dovetails 40 wide",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "blanket chest",
+     "quote": "blanket chest"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 40,
+      "quote": "40 wide"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "dovetails",
+      "quote": "dovetails"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P2.3",
+   "prompt": "workbench 6 foot with a vise",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "workbench",
+     "quote": "workbench"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "vise",
+      "quote": "vise"
+     }
+    ],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P3.1",
+   "prompt": "cardboard castle for a 5 year old",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "cardboard castle",
+     "quote": "cardboard castle"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": {
+     "who": "5 year old",
+     "age_years": 5,
+     "group_size": null,
+     "quote": "for a 5 year old"
+    },
+    "material": [
+     {
+      "value": "cardboard",
+      "quote": "cardboard"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P3.2",
+   "prompt": "PVC pipe fort for kids",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "fort",
+     "quote": "fort"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "pvc pipe",
+      "quote": "PVC pipe"
+     }
+    ],
+    "budget": null,
+    "audience": {
+     "who": "kids",
+     "age_years": null,
+     "group_size": null,
+     "quote": "for kids"
+    },
+    "material": [],
+    "finish": [],
+    "style": [
+     {
+      "value": "pvc pipe",
+      "quote": "PVC pipe"
+     }
+    ]
+   }
+  },
+  {
+   "id": "P3.3",
+   "prompt": "popsicle stick bridge",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "bridge",
+     "quote": "bridge"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "popsicle sticks",
+      "quote": "popsicle stick"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P4.1",
+   "prompt": "cheap raised garden bed 4x8",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "raised garden bed",
+     "quote": "raised garden bed"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "4x8"
+     },
+     {
+      "axis": "D",
+      "value_in": 96,
+      "quote": "4x8"
+     }
+    ],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": {
+     "max_usd": null,
+     "tier": "low",
+     "quote": "cheap"
+    },
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P4.2",
+   "prompt": "2x4 bench under $40",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "bench",
+     "quote": "bench"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": {
+     "max_usd": 40,
+     "tier": "low",
+     "quote": "under $40"
+    },
+    "audience": null,
+    "material": [
+     {
+      "value": "2x4",
+      "quote": "2x4"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P4.3",
+   "prompt": "nightstand with 2 drawers",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "nightstand",
+     "quote": "nightstand"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 2,
+      "quote": "2 drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P5.1",
+   "prompt": "Eiffel tower out of popsicle sticks",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "Eiffel tower",
+     "quote": "Eiffel tower"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "popsicle sticks",
+      "quote": "popsicle sticks"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P5.2",
+   "prompt": "pirate ship",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "pirate ship",
+     "quote": "pirate ship"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P5.3",
+   "prompt": "treehouse",
+   "spec": {
+    "vague": true,
+    "head_noun": {
+     "value": "treehouse",
+     "quote": "treehouse"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P6.1",
+   "prompt": "catapult from popsicle sticks",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "catapult",
+     "quote": "catapult"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "popsicle sticks",
+      "quote": "popsicle sticks"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P6.2",
+   "prompt": "birdhouse from one 1x6",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "birdhouse",
+     "quote": "birdhouse"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "1x6",
+      "quote": "one 1x6"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  },
+  {
+   "id": "P6.3",
+   "prompt": "PVC marshmallow launcher",
+   "spec": {
+    "vague": false,
+    "head_noun": {
+     "value": "PVC marshmallow launcher",
+     "quote": "PVC marshmallow launcher"
+    },
+    "sizes": [],
+    "fit_targets": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "audience": null,
+    "material": [
+     {
+      "value": "PVC",
+      "quote": "PVC"
+     }
+    ],
+    "finish": [],
+    "style": []
+   }
+  }
+ ]
+}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain";
 import { spokenShelfCount, spokenTierCount, typedDoorCount } from "./fittedShared";
+import { shelfLineCount } from "./shelfSpan";
 
 const maxTop = (p: ReturnType<typeof generateFromPrompt>) => Math.max(...p.panels.map((x) => x.position.y + x.size.height));
 
@@ -14,7 +15,10 @@ describe("feature counts bind to their own noun", () => {
     assert.equal(spokenShelfCount("10 inch deep 4 shelves"), 4, "a size number never becomes the count");
     assert.equal(spokenTierCount("2 doors 3 tiers"), 3);
     const p = generateFromPrompt("pantry cabinet with 2 doors and 6 shelves");
-    assert.equal(p.panels.filter((x) => /^Shelf \d+$/.test(x.name)).length, 6);
+    const shelves = p.panels.filter((x) => /^Shelf \d+$/.test(x.name));
+    // Six shelf levels. A 36" case is past the 30" stock span, so each level is two bay pieces.
+    assert.equal(shelfLineCount(shelves), 6);
+    assert.equal(shelves.length, 12);
     assert.equal(p.panels.filter((x) => /door$/i.test(x.name)).length, 2);
   });
 });

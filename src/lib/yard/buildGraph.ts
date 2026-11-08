@@ -275,7 +275,8 @@ export function buildFormGraph(
 
   // A vehicle or vessel is a body along the typed length, not a standing leg armature.
   const liesAlong = kind === "vehicle" || kind === "vessel";
-  const ops = liesAlong ? bodyAlongLength(recipe) : recipe.ops;
+  // C1 root cause: every vessel was collapsed to the generic spine; a form-library body keeps its own members.
+  const ops = liesAlong && !recipe.ownBody ? bodyAlongLength(recipe) : recipe.ops;
   const snapped = snapStrokes(liesAlong ? [] : (recipe.strokes ?? []), Math.max(policy.thick * 2, 0.35));
   for (const stroke of snapped) {
     apply({ op: "poly", points: stroke.points, role: stroke.role || "leg" });
@@ -346,7 +347,7 @@ export function buildFormGraph(
       recipe.source ? `Source: ${recipe.source}` : "Proportions from the form query (published measures when they exist).",
       policy.fat || recipe.wholeMembers
         ? `${item.name} ${policy.fat ? "is column stock — " : "follows the real members — "}each long member is one piece${policy.fat ? "" : ", lapped where it runs past one stick"}.`
-        : `${item.name} is thin — long members are laced into a truss.`,
+        : `${item.name} is thin, so each long piece is built from short sticks braced together.`,
       `Resolution · ${item.name} is the mosaic cell: face step ≈ ${policy.faceStep.toFixed(1)}", bay ≈ ${policy.bay.toFixed(1)}" (${policy.stock.toFixed(1)}" × ${policy.thick.toFixed(2)}").`,
       "Frame first. Braces stay on the form — never through openings or outside the silhouette.",
       ...(kind === "vehicle" || kind === "vessel"

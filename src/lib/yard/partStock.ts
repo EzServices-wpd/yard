@@ -3,6 +3,7 @@
  * The cut list names each part's stock with it, and the 3D bench paints each part from it,
  * so walnut legs on an oak table cut as Walnut 1×4 and render walnut.
  */
+import { typedFinish } from "./typedFinish";
 import { getCatalogItem } from "./catalog";
 import {
   CATALOG_LUMBER_BIND,
@@ -130,6 +131,16 @@ export type PartRenderLook = PartStock & {
 
 /** Bench material for one panel — from the same stock the cut list prints for it. */
 export function panelRenderLook(prompt: string, panel: Pick<Panel, "name" | "materialId" | "size">): PartRenderLook {
+  const look = woodRenderLook(prompt, panel);
+  // C18: a typed finish ("black", "white", "stained") is the colour every wood part renders in.
+  const finish = WOOD_CATEGORIES.has(getCatalogItem(look.catalogId)?.category ?? "") ? typedFinish(prompt) : null;
+  return finish ? { ...look, tone: finish.tone, color: (t) => (t ? grainTintFor(finish.tone) : finish.tone) } : look;
+}
+
+/** Stock a finish can go on: wood, never hardware, plastic, pipe or glass. */
+export const WOOD_CATEGORIES = new Set(["lumber", "sheet_goods", "craft_wood", "dowel_rod"]);
+
+function woodRenderLook(prompt: string, panel: Pick<Panel, "name" | "materialId" | "size">): PartRenderLook {
   const stock = panelStock(prompt, panel);
   const thin = Math.min(panel.size.width, panel.size.height, panel.size.depth) <= 0.26;
   // A ¼" part on a ply or named-board build is cut from ¼" plywood (the cut list says so too).

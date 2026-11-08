@@ -1,0 +1,9 @@
+{
+ "note": "Prompts the eval gate expects Yard to refuse (YARD-SPEC: honest refusals). A refusal passes only for a prompt listed here, naming this minimum, and only when that minimum builds cleanly; a refusal of any other prompt, or a listed prompt that builds, fails (X-refusal). Minimums are hand-worked, not read from the engine.",
+ "refusals": {
+  "abacus 2 wide": { "minimum": "2 1/16 wide", "why": "1 rod: 2 ends of 3/4\" + 9/16\" per rod (1/2\" beads) = 2 1/16\" > 2\"" },
+  "abacus 3 wide 3 rods": { "minimum": "3 3/16 wide", "why": "3 rods: 1 1/2\" of ends + 3 x 9/16\" = 3 3/16\" > 3\"; typed count kept, never reduced" },
+  "abacus 4 wide 13 rods": { "minimum": "8 13/16 wide", "why": "13 rods: 1 1/2\" + 13 x 9/16\" = 8 13/16\" > 4\"" },
+  "abacus 8 wide 12 rods": { "minimum": "8 1/4 wide", "why": "12 rods: 1 1/2\" + 12 x 9/16\" = 8 1/4\" > 8\"" }
+ }
+}

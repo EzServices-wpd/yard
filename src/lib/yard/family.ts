@@ -387,6 +387,7 @@ export function isSeatingLoungeClass(lower: string) {
  */
 export function namesSitChair(lower: string) {
   const hay = lower.replace(/chair[\s-]+space/g, " ");
+  if (/\bvanity\b/.test(hay)) return false;
   return /\bchair\b|\bstool\b/.test(hay);
 }
 

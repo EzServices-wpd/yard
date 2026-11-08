@@ -22,6 +22,13 @@ test("injects before </head>", () => {
   assert.ok(out.indexOf("manifest") < out.indexOf("</head>"));
 });
 
+test("injects no third-party script (no grok.com extensions.js), with or without a project id", () => {
+  for (const out of [injectGrokPwaHead("<html><head></head></html>"), injectGrokPwaHead("<html><head></head></html>", "Yard", "p1"), Buffer.concat(createHeadInjector("Yard", "p1").push("<html><head></head>")).toString("utf8")]) {
+    assert.doesNotMatch(out, /extensions\.js|grok\.com/);
+    assert.match(out, /rel="manifest" href="\/__grok\/manifest\.webmanifest"/);
+  }
+});
+
 test("streaming injector handles </head> split across chunks", () => {
   const injector = createHeadInjector("Yard");
   const chunks = [...injector.push("<html><head><title>x</title></he"), ...injector.push("ad><body>hello</body></html>")];

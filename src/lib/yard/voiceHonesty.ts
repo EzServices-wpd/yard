@@ -2,6 +2,8 @@
 
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
+import { feetLengthAt, releaseReads } from "./lengthReader";
+import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
 
@@ -17,6 +19,8 @@ export function hardwareCatalogIdFromHay(hay: string): string | null {
   if (/cup\s*pulls?/.test(h)) return "cup-pulls";
   if (/bar\s*pulls?|door\s*pulls?|cabinet\s*pulls?|cabinet\s*bar\s*pulls?/.test(h)) return "cabinet-bar-pulls";
   if (/coat\s*hooks?/.test(h)) return "coat-hooks";
+  // Exterior leaf hardware has no listing yet: it keeps the hinged-leaf module's own price, never a cabinet hinge's.
+  if (/\bt-?hinges?\b|strap\s*hinge|galvanized\s*butt/.test(h)) return null;
   if (/soft-?close|concealed|cup\s*hinge/.test(h)) return "cabinet-hinges";
   if (/utility\s*hinge|butt\s*hinge|support-?leg\s*hinge/.test(h)) return "utility-hinges";
   if (/\bhinge/.test(h)) return "cabinet-hinges";
@@ -66,7 +70,7 @@ export function speciesSubstituteNote(prompt: string, stockLabel: string): strin
   const sp = namedLumberFromPrompt(prompt);
   if (!sp) return null;
   if (!/ply|plywood|sheet/i.test(stockLabel)) return null;
-  return `Prompt names ${sp.display} — densify uses ${stockLabel} as the structural substitute (not a silent drop). Stock stays ply; buy ${sp.display} boards or lining/finish if you want the named-species story.`;
+  return `You named ${sp.display}; this builds from ${stockLabel} instead. Stock stays ply; buy ${sp.display} boards or lining/finish if you want the named-species story.`;
 }
 
 /** Prefer plain stranger words in step/PDF/glossary body — never carcase/toekick. */
@@ -296,10 +300,14 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
       const words = phrase.split(/\s+/);
       if (words.length < 2) return full;
       const named = entries.find((e) => e.name.toLowerCase() === phrase.toLowerCase());
+      // A part name carries no article: "Hang the door — 2 concealed hinges" is a step, not a dimension line.
+      if (!named && /\b(?:the|a|an)\b/i.test(phrase)) return full;
       const found = named ?? findPlate(entries, words[words.length - 1]);
       if (!found) return full;
-      const dim = parseFloat(whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)/)?.[1] ?? "");
-      const plate = named ?? sizedPlate(entries, found, dim);
+      // Several cut lines share this exact name (center supports of two heights): its own size picks the letter.
+      const dims = whole.slice(offset + full.length).match(/^\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?(?:\s*[×x]\s*(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?)?/);
+      const num = (w?: string, a?: string, b?: string) => (w ? parseFloat(w) + (a && b ? Number(a) / Number(b) : 0) : NaN);
+      const plate = sizedPlate(entries, found, num(dims?.[1], dims?.[2], dims?.[3]), num(dims?.[4], dims?.[5], dims?.[6]));
       return `${lead}${plate.label} ${phrase}${qty ?? ""}${dash}`;
     },
   );
@@ -497,6 +505,8 @@ export function densifyOneJoinInstructions(
         return instructions.some(
           (o) =>
             o !== step &&
+            // Hanging the build on studs drives screws through the back into the wall; it does not join the back.
+            !/\bstuds?\b/i.test(o.title) &&
             (o.partsUsed ?? []).length > 0 &&
             (o.partsUsed ?? []).every((n) => findPlate(entries, n)?.label === e.label),
         );
@@ -591,8 +601,10 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
   if (/hang\s+\d*\s*doors?/i.test(hayTitle) && !/one join:/i.test(d)) {
     const door = entries.find((e) => e.family === "door");
     const dTalk = door ? plateRef(door, "Door") : "door";
-    if (/(?:2|two)\s+(?:concealed\s+)?hinges/i.test(d + hayTitle)) {
-      d = `One join per door: hang each ${dTalk} with 2 concealed hinges. ${d}`;
+    const each = (d + hayTitle).match(/\b(2|3|4|two|three|four)\s+concealed\s+hinges\s+(?:each|per door)/i) ?? (d + hayTitle).match(/(?:^|[^\d])(2|two)\s+(?:concealed\s+)?hinges/i);
+    if (each) {
+      const n = ({ two: 2, three: 3, four: 4 } as Record<string, number>)[each[1].toLowerCase()] ?? Number(each[1]);
+      d = `One join per door: hang each ${dTalk} with ${n} concealed hinges. ${d}`;
     }
   }
 
@@ -923,14 +935,14 @@ export function spokenDiameterInches(prompt: string): number {
 export function deskWidthFromPrompt(prompt: string): number {
   const t = normalizeUserPrompt(prompt).replace(/×/g, "x").replace(/[″""]/g, '"');
   const ahead = t.match(
-    /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
+    /(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*(?:in|inch|inches|")?\s+(?:writing\s+)?desk\b/i,
   );
   if (ahead) {
     const n = parseFloat(ahead[1]);
     if (Number.isFinite(n) && n >= 18 && n <= 120) return n;
   }
   const after = t.match(
-    /\b(?:writing\s+)?desk\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))/i,
+    /\b(?:writing\s+)?desk\s+(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(?!\s*(?:in|inch|inches|")?\s*(?:wide|width|deep|depth|tall|high|height|long|length|knee))\s*(?:in|inch|inches|")?/i,
   );
   if (after) {
     const n = parseFloat(after[1]);
@@ -945,7 +957,7 @@ export function deskWidthFromPrompt(prompt: string): number {
  * "3 foot catapult" stays a weekend prompt.
  */
 export function normalizeUserPrompt(prompt: string): string {
-  let s = prompt.replace(/[″”]/g, '"').replace(/[‘’]/g, "'");
+  let s = canonicalMeasures(prompt).replace(/[″”]/g, '"').replace(/[‘’]/g, "'");
   s = s.replace(/(\d+(?:\.\d+)?)\s*''/g, '$1"');
   s = s.replace(/(\d+(?:\.\d+)?)in\./gi, "$1 in");
   s = s.replace(/(\d+(?:\.\d+)?)\s+in\./gi, "$1 in");
@@ -956,28 +968,38 @@ export function normalizeUserPrompt(prompt: string): string {
       s,
     );
   if (house) {
+    // Release's counts for releaseReads text (NR-1 r3): no lookbehind there, and the rewrite stays release's.
+    // Everywhere else a feet span becomes inches only when the one reader still calls it a length. A count of
+    // feet ("with 4 feet") or a part's length ("4 foot legs") is left as typed, same as the spelled form.
+    const asRelease = releaseReads(s);
+    const lb = asRelease ? "" : String.raw`(?<![\d./])`;
+    const keepFeet = (whole: string, offset: number) => asRelease || feetLengthAt(whole, offset);
     // "2x4x8 bench" names the stock (a 2×4, 8 ft long) — not a 2" × 4" × 8" piece of furniture.
     s = s.replace(/\b([12])\s*[x×]\s*(2|3|4|6|8|10|12)\s*[x×]\s*(6|8|10|12|14|16)\b(?!\s*(?:in\b|inch|"|[x×.]|\d))(?:\s*(?:ft|feet|foot|')\b)?/gi, "$1x$2");
-    // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8.
-    s = s.replace(/(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})(?!\d)/g, (_, ft, inch) => {
+    // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8. A count never starts inside a number
+    // ("2 1/2 ft 3" is never "2 1/27", row 658).
+    s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})` + (lb ? String.raw`(?![\d/])` : String.raw`(?!\d)`), "g"), (all, ft, inch, offset: number, whole: string) => {
+      if (!keepFeet(whole, offset)) return all;
       const f = parseFloat(ft);
       const i = parseFloat(inch);
-      if (!Number.isFinite(f) || f > 40 || i >= 12) return _;
+      if (!Number.isFinite(f) || f > 40 || i >= 12) return all;
       return `${f * 12 + i} inch`;
     });
     s = s.replace(
       /(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\s+(\d{1,2})(?!\d)(?!\s*[x×])/gi,
-      (_, ft, inch) => {
+      (all, ft, inch, offset: number, whole: string) => {
+        if (!keepFeet(whole, offset)) return all;
         const f = parseFloat(ft);
         const i = parseFloat(inch);
-        if (!Number.isFinite(f) || f > 40 || i >= 12) return _;
+        if (!Number.isFinite(f) || f > 40 || i >= 12) return all;
         return `${f * 12 + i} inch`;
       },
     );
-    s = s.replace(/(\d+(?:\.\d+)?)\s*-?\s*'(?!')/g, (_, n) => `${parseFloat(n) * 12} inch`);
-    s = s.replace(/(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\b/gi, (_, n) => {
+    s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*-?\s*'(?!')`, "g"), (all, n, offset: number, whole: string) => (keepFeet(whole, offset) ? `${parseFloat(n) * 12} inch` : all));
+    s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*-?\s*(?:ft|feet|foot)\b`, "gi"), (all, n, offset: number, whole: string) => {
+      if (!keepFeet(whole, offset)) return all;
       const v = parseFloat(n);
-      if (!Number.isFinite(v) || v > 40) return _;
+      if (!Number.isFinite(v) || v > 40) return all;
       return `${v * 12} inch`;
     });
   }
@@ -1000,7 +1022,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
+      String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,6}?table\b`,
       "i",
     ),
   );
@@ -1010,7 +1032,7 @@ export function tableSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`,
+      String.raw`\btable\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}${notAxis}`,
       "i",
     ),
   );
@@ -1024,7 +1046,7 @@ export function tableSpanFromPrompt(prompt: string): number {
     " ",
   );
   const leftover = stripped.match(
-    new RegExp(String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}${notAxis}`, "i"),
+    new RegExp(String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}${notAxis}`, "i"),
   );
   if (leftover && /\btable\b/i.test(stripped)) {
     const n = parseFloat(leftover[1]);
@@ -1048,7 +1070,7 @@ export function nounSpanFromPrompt(prompt: string): number {
   const ok = (n: number) => Number.isFinite(n) && n >= 12 && n <= 144;
   const ahead = t.match(
     new RegExp(
-      String.raw`(\d+(?:\.\d+)?)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
+      String.raw`(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}\s+${notAxis}(?:\S+\s+){0,4}?(?:${noun})\b`,
       "i",
     ),
   );
@@ -1058,7 +1080,7 @@ export function nounSpanFromPrompt(prompt: string): number {
   }
   const after = t.match(
     new RegExp(
-      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(\d+(?:\.\d+)?)\s*-?\s*${unit}`,
+      String.raw`\b(?:${noun})\s+(?:that(?:'s|\s+is)\s+|of\s+|about\s+|around\s+)?(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*-?\s*${unit}`,
       "i",
     ),
   );
@@ -1078,6 +1100,28 @@ export function nounSpanFromPrompt(prompt: string): number {
  * (halves welcome). Do not steal axis-labeled measures ("16 inch deep linen closet").
  * Returns NaN when no bare opening width is spoken.
  */
+
+/**
+ * A name with any size already stamped on its end taken off, in every form inchFrac writes ('15 1/2"', '3/4"',
+ * '24.5"', 'W" × H" × D"', '15 1/2" deep'), so a re-stamp never prints the size twice (Critic row 240:
+ * 'Wardrobe 15 1/2" deep 15 1/2" deep'). Every title re-stamp goes through here.
+ */
+export function stripSizeStamp(name: string): string {
+  // A size in any form a stamp or a typed name carries it: 19 3/4, 21¾, 21 ¾, 24.5, 3/4, with an inch mark (" or ″),
+  // "in"/"inch(es)" or none before the axis word (rows 240 and 279: 'Wardrobe 19 3/4" deep 19 3/4" deep').
+  const NUM = String.raw`(?:\d+(?:\.\d+)?(?:\s*[¼½¾⅛⅜⅝⅞]|\s+\d+\/\d+)?|\d+\/\d+|[¼½¾⅛⅜⅝⅞])`;
+  const N = String.raw`${NUM}\s*["″]`;
+  const AXN = String.raw`${NUM}\s*(?:["″]|in\b|inch(?:es)?\b)?`;
+  const pair = new RegExp(String.raw`\s+${N}\s*[×x]\s*${N}(?:\s*[×x]\s*${N})?\s*$`);
+  const axis = new RegExp(String.raw`\s+${AXN}\s+(?:wide|tall|deep)\s*$`, "i");
+  let out = name;
+  // Repeat, so a name already stamped twice comes back as its bare stem.
+  for (let prev = ""; prev !== out; ) {
+    prev = out;
+    out = out.replace(pair, "").replace(axis, "").trim();
+  }
+  return out;
+}
 
 /**
  * Title stamp from axes the stranger actually typed — never invent stock H/D into the title.
@@ -1286,7 +1330,7 @@ export function openingWidthFromPrompt(prompt: string): number {
   const ahead = t.match(
     new RegExp(
       // "48x18 opening" is a W×H pair — the width is the first number, never the trailing 18.
-      String.raw`(?:(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
+      String.raw`(?:(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*(?:in|inch|inches|")?\s*(?:x|by)\s*)?(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)\s*(?:in|inch|inches|")?\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)` +
         storageNoun,
       "i",
     ),
@@ -1296,11 +1340,12 @@ export function openingWidthFromPrompt(prompt: string): number {
     // Opening / carcase widths — reject hardware ("2 inch closet rod").
     if (Number.isFinite(n) && n >= 12 && n <= 120) return n;
   }
+  // (?!\.?\d) keeps the whole decimal. "19.75 deep" must not backtrack to a 19.7" width.
   const after = t.match(
     new RegExp(
       String.raw`\b` +
         storageNoun +
-        String.raw`\s+(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?(?!\s*(?:wide|width|deep|depth|tall|high|height|long|length))`,
+        String.raw`\s+(?<![\d.])(\d+(?:\.\d+)?)(?!\.?\d)(?!\s*(?:in|inch|inches|")?\s*(?:wide|width|deep|depth|tall|high|height|long|length))\s*(?:in|inch|inches|")?`,
       "i",
     ),
   );

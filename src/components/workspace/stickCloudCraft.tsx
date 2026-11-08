@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
 import { meshKind, visualPrimitive } from "@/lib/yard/geometry";
 import { stockLook } from "@/lib/yard/stockLook";
+import { shopLook } from "@/components/workspace/shop-light";
 import { useYard } from "@/lib/yard/store";
 import {
   applyMemberPose,
@@ -258,7 +259,7 @@ function CloudKind({
   };
 
   if (!live.length) return null;
-  const look = stockLook(live[0]?.item);
+  const look = shopLook(stockLook(live[0]?.item), live[0]?.item);
   const innerFrac =
     hollow && live[0]?.prim.radius
       ? (live[0].prim.innerRadius ?? live[0].prim.radius * 0.72) / live[0].prim.radius

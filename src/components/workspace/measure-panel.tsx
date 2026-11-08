@@ -1,8 +1,10 @@
 "use client";
 
 import { mainMaterialId } from "@/lib/yard/mainMaterial";
+import { NOTHING_BUILT_STOCK, nothingBuilt } from "@/lib/yard/stockPill";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
+import { restockKeepingFaces } from "@/components/workspace/restock-faces";
 import { fitBadge } from "@/lib/yard/fitBadge";
 import { saveBuild, shareFrom, shareUrl } from "@/lib/yard/shareBuild";
 import type { JoinMethod, SpaceKind } from "@/lib/yard/types";
@@ -14,6 +16,7 @@ import { getCatalogItem, FORGE_CATALOG } from "@/lib/yard/catalog";
 import { planDiffLine } from "@/lib/yard/shopJoin";
 import { applySpaceCuts, type SpaceAsk } from "@/lib/yard/spaceCuts";
 import { applyInsideCount } from "@/lib/yard/insideCount";
+import { shelfLineCount } from "@/lib/yard/shelfSpan";
 import type { ShopJoin } from "@/lib/yard/shopJoin";
 import {
   bayClearTalk,
@@ -86,7 +89,7 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
   function snap(): ChangeSnap {
     const live = useYard.getState();
     return {
-      shelves: live.project.panels.filter((p) => p.type === "shelf").length,
+      shelves: shelfLineCount(live.project.panels.filter((p) => p.type === "shelf")),
       sheets: sheetCountOf(live.plan?.sheetNest),
       steps: live.plan?.instructions.length ?? 0,
     };
@@ -588,7 +591,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
 
       {shown === "stock" && (
         <section className="mt-4" data-yard-measure-section="stock">
-          <p className="text-sm text-fg">{stock?.name ?? "Stock"}{thickness ? ` · ${fieldInch(thickness)} thick` : ""}</p>
+          <p className="text-sm text-fg">{nothingBuilt(project) ? NOTHING_BUILT_STOCK : <>{stock?.name ?? "Stock"}{thickness ? ` · ${fieldInch(thickness)} thick` : ""}</>}</p>
+          {/* A refusal built nothing, so it offers no stock to choose (the same rule as the material pill). */}
+          {!nothingBuilt(project) && (<>
           <p className="mt-1 text-[11px] text-muted">Pick a class. The build keeps its size and its noun.</p>
           <div className="mt-2 flex flex-wrap gap-1">
             {stockChoices.map((item) => (
@@ -598,8 +603,9 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
                 data-yard-stock={item.id}
                 onClick={() => {
                   const before = snap();
-                  generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true });
+                  restockKeepingFaces(() => generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true }));
                   makePlan();
+                  useYard.getState().revealBench(); // the restock lit the Building lamp; put it out as the Stock panel does
                   setSummary(changeLine(before, snap()) || `Stock is ${item.name}`);
                 }}
                 className={`h-12 rounded-full border px-3 text-xs ${item.formFactor === mainStock?.formFactor ? "border-fg/40 text-fg" : "border-border text-muted"}`}
@@ -613,14 +619,16 @@ export function MeasurePanel({ onBuilt }: { onBuilt: () => void }) {
             {thicknessChoices.map((item) => (
               <button key={item.id} type="button" data-yard-thickness={item.id} className={`h-11 min-h-11 rounded-full border px-3 text-xs ${item.id === project.primaryMaterialId ? "border-fg/40 text-fg" : "border-border text-muted"}`} onClick={() => {
                 const before = snap();
-                generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true });
+                restockKeepingFaces(() => generate(project.prompt || project.name, item.id, undefined, { restock: true, keepView: true }));
                 makePlan();
+                useYard.getState().revealBench();
                 setSummary(changeLine(before, snap()) || `Thickness is ${fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}`);
               }}>
                 {fieldInch(item.dims.thickness ?? item.dims.diameter ?? 0)}"
               </button>
             ))}
           </div>
+          </>)}
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-faint">Joints</p>
           <div className="mt-1 flex flex-wrap gap-1">
             {(["screw", "pocket", "dowel", "biscuit", "glue"] as ShopJoin[]).map((id) => (

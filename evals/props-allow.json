@@ -1,0 +1,29 @@
+{
+ "note": "Expected-fail properties for scripts/props.test.ts. Each needs a reason; it reports in the eval-gate comment but does not fail. When the fix lands (#103 for the size formats, #90 for abacus rods) the suite prints STALE: delete the entry in that PR or right after.",
+ "expectedFail": [
+  {
+   "name": "size: mixed fractions (24 1/2)",
+   "reason": "fixed by #103 (class-size-parse, I35): \"24 1/2\" is read as 2 on main"
+  },
+  {
+   "name": "size: unicode fractions (24½)",
+   "reason": "fixed by #103 (class-size-parse, I35): \"24½\" is not read as 24 1/2 on main (\"bookcase 30½ wide 60 tall\" builds 60 wide)"
+  },
+  {
+   "name": "size: hyphen fractions (24-1/2)",
+   "reason": "fixed by #103 (class-size-parse, I35): \"24-1/2\" is read as 2 on main"
+  },
+  {
+   "name": "size: feet-inches (2' 6\", 2 ft 6 in)",
+   "reason": "fixed by #103 (class-size-parse, I35): feet-inches are not read on main (\"bookcase 2' 6\\\" wide 60 tall\" builds 60 wide)"
+  },
+  {
+   "name": "size: W×D×H strings with fractions",
+   "reason": "fixed by #103 (class-size-parse, I35): fractions inside W×D×H strings (\"30 1/2x12x60\") are misread on main"
+  },
+  {
+   "name": "count: abacus rods built or refused",
+   "reason": "Typed-count rule (#90, Critic regrade at 90c0deb): main silently builds fewer rods than typed (\"abacus 10 wide 15 rods\" → 12); #90 builds the count or refuses with the minimum width"
+  }
+ ]
+}

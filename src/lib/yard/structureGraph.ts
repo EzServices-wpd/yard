@@ -1,3 +1,4 @@
+import { stableId } from "../stableId";
 /**
  * StructureGraph — discrete, buildable topology for Forge.
  * Nodes + edges map 1:1 onto catalog stock after subdivision.
@@ -351,5 +352,5 @@ function collinearLegPaths(
 }
 
 export function createId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+  return stableId(prefix);
 }

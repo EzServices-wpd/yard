@@ -1,4 +1,5 @@
 import { inchFrac } from "./inchText";
+import { counterPlies } from "./plyLayers";
 import { toPrimitive } from "./geometry";
 /**
  * Weekend / hobbyist stock honesty — named stock is the only stock.
@@ -125,6 +126,9 @@ export function namedStockDisplayName(prompt: string, item: CatalogItem | undefi
   }
   // If the spoken alias is already the catalog title (popsicle…), keep catalog name.
   if (item.name.toLowerCase().includes(spoken.toLowerCase().split(/\s+/)[0])) return item.name;
+  // C11: the first word of a multi-word name ("zip tie", "pipe cleaner", "ten foot 2x10") is not a material:
+  // only a one-word name (Titebond) or a wood species prefixes the stock ("Material: Zip" never shows).
+  if (/\s/.test(spoken.trim()) && !isNamedLumberSpeciesId(species)) return item.name;
   return `${species} · ${item.name}`;
 }
 
@@ -558,9 +562,15 @@ export function applyExplicitSheetCarcase(project: YardProject, item: CatalogIte
     : thinPick
       ? `Stock: ${item.name}. Every plywood face is this sheet.`
       : `Stock: ${item.name}. Every ¾" face is this sheet. ¼" backs stay ¼" unless they only fit a longer sheet.`;
+  // Row 626: a note names the picked sheet, not the ¾" plywood it replaced.
+  const thin34 = Math.abs(thick - 0.75) > 0.02;
+  // Row 690: a note's counter layers are re-read off the re-stocked part (three ½" on ½"), like its step and cut list.
+  const was = new Map(project.panels.filter((p) => p.type === "counter").map((p) => [p.id, counterPlies(p)]));
+  const relayer = (n: string) => panels.reduce((t, p) => (was.has(p.id) ? t.replace(was.get(p.id)!, counterPlies(p)) : t), n);
   const notes = (project.notes ?? [])
+    .map(relayer)
     .filter((n) => !/^Stock:/.test(n) && !/does not replace the sheet/i.test(n) && !/thinner than this carcase/i.test(n))
-    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : n));
+    .map((n) => (craftSheet ? n.replace(/¾["″]?\s*plywood/gi, item.name).replace(/\bplywood\b/gi, item.name) : thin34 ? n.replace(/¾["″]?\s*plywood/gi, item.name) : n));
   return {
     ...project,
     primaryMaterialId: item.id,
@@ -622,6 +632,15 @@ function joinForbidden(item: CatalogItem, name: string): boolean {
   }
   if (kind === "tape" && /(?:wood screws|#8\s*[x×]|titebond)/.test(n)) return true;
   return false;
+}
+
+/**
+ * GUARD CHANGE (row 612): craft stock over 8" that a builder snips (12" bamboo skewers, giant 12" craft sticks) is cut
+ * to its spans when it is a stick graph, so Buy counts sticks by cut yield. Shorter craft stock (popsicle, mini, jumbo,
+ * toothpicks), straws, and long pieces that are not snipped (pipe cleaners, shoelaces: canCut false) keep the whole-stick rule.
+ */
+export function cutsToSpans(project: YardProject, item: CatalogItem): boolean {
+  return item.category === "craft_wood" && item.canCut === true && toPrimitive(item).length > 8 && project.instances.some((i) => i.catalogId === item.id && !!i.from);
 }
 
 export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | null): WeekendReport {
@@ -696,7 +715,17 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
         }
       }
     }
-    if (isWholeStock(stock)) {
+    if (isWholeStock(stock) && cutsToSpans(project, stock)) {
+      // GUARD CHANGE (row 612): long craft stock in a stick graph is cut to its spans, but never past one whole stick.
+      const len = toPrimitive(stock).length;
+      const over = project.instances.filter((i) => i.catalogId === stock.id && i.cutLength != null && i.cutLength > len + 0.15);
+      if (over.length) {
+        issues.push({
+          guard: "whole",
+          message: `${over.length} ${stock.name} pieces are cut longer than one ${len}" stick.`,
+        });
+      }
+    } else if (isWholeStock(stock)) {
       const cuts = project.instances.filter((i) => i.cutLength != null);
       if (cuts.length) {
         issues.push({
@@ -993,7 +1022,7 @@ export function inspectWeekendHonesty(project: YardProject, plan?: BuildPlan | n
       if (project.instances.length && !riseRunTalk) {
         issues.push({
           guard: "anatomy",
-          message: "Climb step must use rise/run (weight-bearing human step) language; densify from named stock; kid stands on the tread.",
+          message: "Climb step must use rise/run (weight-bearing human step) language; kid stands on the tread.",
         });
       }
       const nSteps = Math.max(1, climbStepCount(prompt));
@@ -1113,7 +1142,9 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
     // Animals in long craft stock (12" skewers) are drawn at each part's true length too (a skewer is longer than a snout).
     const S0 = Math.max(0.5, toPrimitive(item).length);
     const exactCut = project.shape?.classId === "humanoid" || project.shape?.classId === "flat-frame" || project.shape?.classId === "blocks" || (project.shape?.classId === "quadruped" && S0 > 8);
-    if (isWholeStock(item) && (project.kind === "tower" || exactCut || project.shape?.classId === "small-house")) {
+    // Long craft stock (12" skewers) in a stick graph: a span well under one skewer is cut from one, not a whole skewer each (row 598).
+    const longLattice = cutsToSpans(project, item);
+    if (isWholeStock(item) && (project.kind === "tower" || exactCut || longLattice || project.shape?.classId === "small-house")) {
       const S = S0;
       let cut = 0;
       instances = instances.map((i) => {
@@ -1126,7 +1157,7 @@ export function enforceWeekendHonesty(project: YardProject): YardProject {
         return { ...i, cutLength: Math.max(0.25, Math.round(L * 16) / 16) };
       });
       if (cut) for (let k = notes.length - 1; k >= 0; k--) if (/Do not cut\.?$/.test(notes[k])) notes.splice(k, 1);
-      if (cut) notes.push(`${cut} short members are cut from whole ${namedStockDisplayName(project.prompt ?? "", item)}s — the stick list gives each length.`);
+      if (cut) notes.push(`${cut} short pieces are cut from whole ${namedStockDisplayName(project.prompt ?? "", item)}s — the stick list gives each length.`);
     }
   }
 

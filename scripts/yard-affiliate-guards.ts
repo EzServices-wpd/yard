@@ -245,7 +245,8 @@ withEnv({ VITE_PUBLIC_AMAZON_ASSOCIATE_TAG: FAKE.amazon }, () => {
 
 // baseline snapshot (no env) matches the frozen file if present
 clearAffiliateEnv();
-const snapPath = "/workspace/affiliate/baseline_noenv.json";
+// Tracked in the repo so CI checks it too (was /workspace/affiliate/baseline_noenv.json, box-only).
+const snapPath = new URL("../evals/affiliate-baseline-noenv.json", import.meta.url).pathname;
 if (fs.existsSync(snapPath)) {
   const frozen = JSON.parse(fs.readFileSync(snapPath, "utf8")) as Record<string, Snap[]>;
   // Only check the prompts we share with the frozen set

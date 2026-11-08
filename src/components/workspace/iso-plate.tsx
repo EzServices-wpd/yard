@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { isoCaption, isoDims, isoFaces, isoMarks, isoViewBox } from "@/lib/yard/iso";
+import { isoCaption, isoDims, isoFacePath, isoFaces, isoMarks, isoViewBox } from "@/lib/yard/iso";
 import { stepInstanceIds } from "@/lib/yard/assembly";
 import type { AssemblyStep, YardProject } from "@/lib/yard/types";
 
@@ -30,14 +30,24 @@ export function IsoPlate({
         className="h-full min-h-0 w-full rounded-sm bg-paper"
         aria-hidden
       >
-        {faces.map((f, i) => (
-          <polygon
-            key={`f${i}`}
-            points={f.points}
-            fill={f.hot ? "#d9cbb0" : "#ece6da"}
-            opacity={f.hot ? 0.9 : 0.4}
-          />
-        ))}
+        {faces.map((f, i) =>
+          f.holes ? (
+            <path
+              key={`f${i}`}
+              d={isoFacePath(f)}
+              fillRule="evenodd"
+              fill={f.hot ? "#d9cbb0" : "#ece6da"}
+              opacity={f.hot ? 0.9 : 0.4}
+            />
+          ) : (
+            <polygon
+              key={`f${i}`}
+              points={f.points}
+              fill={f.hot ? "#d9cbb0" : "#ece6da"}
+              opacity={f.hot ? 0.9 : 0.4}
+            />
+          ),
+        )}
         {marks.map((m, i) => (
           <line
             key={i}

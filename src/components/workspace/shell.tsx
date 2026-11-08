@@ -1,25 +1,40 @@
 "use client";
+import { userText } from "@/lib/yard/userText";
 import { headerTitle } from "@/lib/yard/pdf";
+import { setErrContext } from "@/lib/err/report";
+import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
   ChevronRight,
   MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { PromptBar } from "@/components/workspace/prompt-bar";
 import { RefineBox } from "@/components/workspace/refine-box";
+import { DecisionLine } from "@/components/workspace/decision-line";
+import { priceReason, type PriceReason } from "@/components/workspace/price-reason";
+import { MorphButton } from "@/components/workspace/morph-button";
+import { RevealStatus } from "@/components/workspace/reveal-status";
+import { BuildScrubber } from "@/components/workspace/build-scrubber";
+import { ShareButton } from "@/components/workspace/share-button";
 import { BuildInfoPanel } from "@/components/workspace/build-info";
+import { ShopFeedback } from "@/components/workspace/shop-feedback";
 import { DockFrame } from "@/components/workspace/dock-frame";
 import { CatalogPanel } from "@/components/workspace/catalog-panel";
 import { MeasurePanel } from "@/components/workspace/measure-panel";
+import { MeasureSheetGap } from "@/components/workspace/measure-sheet-card";
+import { BenchHost, PanelBackdrop } from "@/components/workspace/measure-sheet-gap";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { WorkspaceCanvas } from "@/components/workspace/canvas";
 import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { BenchTools } from "@/components/workspace/bench-tools";
+import { ShopDrawingSheet } from "@/components/workspace/shop-drawing-print";
+import { setShopDrawing, useShopDrawingOn } from "@/components/workspace/shop-drawing";
 import { hydrateYard, useYard } from "@/lib/yard/store";
 import { decodeShare, loadSaved } from "@/lib/yard/shareBuild";
 import { applyInsideCount } from "@/lib/yard/insideCount";
@@ -33,20 +48,26 @@ import { woodCutPieceCount } from "@/lib/yard/shopPlural";
 import { isWireStock } from "@/lib/yard/promptHelpers";
 import { inches } from "@/lib/utils";
 import { inchDims, inchFrac, partCardDims } from "@/lib/yard/inchText";
-import { fmtUnitEnvelopeInches, openingStorageMeasureEmptyTalk } from "@/lib/yard/voiceHonesty";
-import { modelFinishedDepth, modelProudNote } from "@/lib/yard/modelSize";
+import { MeasureReadout } from "@/components/workspace/measure-readout";
 import { runYardPrompt } from "@/components/workspace/run-prompt";
 import { loadIssues } from "@/lib/yard/function";
 import { withSupports } from "@/lib/yard/spanCheck";
 import { holdWalkKey } from "@/components/workspace/walk-rig";
 
+/** (b) A build still pending after this long stops the lamp and offers builds that always work. */
+export const STALL_MS = 45_000;
+const STALL_IDEAS = ["linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide", "nightstand with 2 drawers"];
+
 export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: string; shareToken?: string }) {
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
+  const closeSide = useCallback(() => setSide(null), []);
   // The span/spine offer: dismissible per build; on a phone it lives in the Edit sheet, never over the model.
   const [offerDismissed, setOfferDismissed] = useState<string | null>(null);
   const [planOpen, setPlanOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [promptDirty, setPromptDirty] = useState(true);
+  const [trayOpen, setTrayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const project = useYard((s) => s.project);
@@ -78,7 +99,75 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const setMeasure = useYard((s) => s.setMeasure);
   const pending = building || grokBusy || (Boolean(initialPrompt?.trim()) && !ready);
+  // From the press (yard-build-start) until the build is under way, the old title must not show for
+  // the new build: the solve runs in the same task, so `building` alone paints a beat too late.
+  const [starting, setStarting] = useState(false);
+  useEffect(() => {
+    const on = () => setStarting(true);
+    window.addEventListener("yard-build-start", on);
+    return () => window.removeEventListener("yard-build-start", on);
+  }, []);
+  useEffect(() => {
+    if (!starting) return;
+    if (building || grokBusy) return setStarting(false);
+    const t = window.setTimeout(() => setStarting(false), 3000);
+    return () => window.clearTimeout(t);
+  }, [starting, building, grokBusy]);
+  const titlePending = pending || starting;
+  // Chief's item: why this build's price differs from the plain build. Worked out at idle (never
+  // before the model) into a line slot the card always keeps, so it never pushes the card (CLS 0).
+  const [priceWhy, setPriceWhy] = useState<PriceReason | null>(null);
+  useEffect(() => {
+    setPriceWhy(null);
+    if (!plan) return;
+    const forPlan = plan;
+    const run = () => setPriceWhy(priceReason(useYard.getState().project, forPlan));
+    const w = window as Window & { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const id = w.requestIdleCallback ? w.requestIdleCallback(run, { timeout: 1500 }) : window.setTimeout(run, 50);
+    return () => { if (w.cancelIdleCallback) w.cancelIdleCallback(id); else window.clearTimeout(id); };
+  }, [plan]);
+
   const orbited = useYard((s) => s.orbited);
+  // A fresh lamp (new nearby preview) per build; it stays mounted briefly after to crossfade out.
+  const [lampKey, setLampKey] = useState(0);
+  const [wasPending, setWasPending] = useState(pending);
+  if (pending !== wasPending) {
+    setWasPending(pending);
+    if (pending) setLampKey((k) => k + 1);
+  }
+  // Quick win (a): the lamp covers the bench only while the engine solves. An AI check over a priced model is a
+  // small chip, never a veil over parts and a price. (b): a build still pending after STALL_MS fades the lamp and
+  // says so, with three builds to try, instead of an endless "Building".
+  const benchPieces = plan?.totals.pieces ?? woodCutPieceCount(project);
+  const priced = ready && benchPieces > 0 && !project.displayOnly;
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    setStalled(false);
+    if (!pending) return;
+    const t = window.setTimeout(() => setStalled(true), STALL_MS);
+    return () => window.clearTimeout(t);
+  }, [pending, lampKey]);
+  const lampOn = pending && !stalled && (building || !priced);
+  const aiChip = grokBusy && !building && priced && !stalled;
+  // Full tab titles: the tab says the header the page shows (never the terse "Build 48x36" from the URL). A refused
+  // build has no pieces but still names itself: "Abacus · nothing built · Yard", not "Workspace · Yard".
+  useEffect(() => {
+    if (titlePending || (benchPieces <= 0 && !project.refused)) return;
+    document.title = `${headerTitle(project)} · Yard`;
+  }, [titlePending, benchPieces, project]);
+  // Shop drawing: a new prompt clears it (a stock switch keeps the prompt, so it keeps the mode). While on, only its
+  // sheet prints.
+  const shopDrawing = useShopDrawingOn();
+  useEffect(() => setShopDrawing(false), [project.prompt]);
+  // A crash report names only the engine's build family (its fixed kind id), never a title, size or the words typed.
+  useEffect(() => {
+    setErrContext(() => {
+      const p = useYard.getState().project;
+      return p.panels.length > 0 ? p.kind : "";
+    });
+    return () => setErrContext(() => "");
+  }, []);
+
   const [orbitHint, setOrbitHint] = useState(false);
   useEffect(() => {
     try {
@@ -102,8 +191,13 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     if (prompt) {
       void (async () => {
         try {
-          await runYardPrompt(prompt, { fresh: true });
-          if (shared) {
+          const live = await runYardPrompt(prompt, { fresh: true });
+          // A newer prompt typed while the link's build was still looking up owns the bench now.
+          // A link with no edits (the build-info permalink, a ?y= of the bare words) opens as the fresh build, the
+          // same build its link card prices (lib/og/card.ts); re-applying an empty Measure draft re-sized and re-priced it.
+          const fresh = useYard.getState().project;
+          const edits = Object.keys(shared?.measure ?? {}).length > 0 || (shared?.stockId != null && shared.stockId !== fresh.primaryMaterialId) || (shared?.join != null && shared.join !== fresh.shopJoin) || shared?.shelves != null || shared?.cubbies != null || shared?.drawers != null;
+          if (shared && live && edits) {
             useYard.getState().setMeasure(shared.measure);
             let next = useYard.getState().project;
             if (shared.stockId || shared.join) next = { ...next, primaryMaterialId: shared.stockId ?? next.primaryMaterialId, shopJoin: (shared.join as never) ?? next.shopJoin };
@@ -242,42 +336,36 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
     </>
   );
   return (
-    <div className="flex h-dvh flex-col bg-bg text-fg" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <>
+    <div className={`flex h-dvh flex-col bg-bg text-fg${shopDrawing ? " print:hidden" : ""}`} style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-2 sm:h-14 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link to="/" className="shrink-0">
             <Logo />
           </Link>
-          <span className="hidden truncate font-display text-sm text-muted md:inline">
-            {headerTitle(project)}
+          <span className="hidden truncate font-display text-sm text-muted md:inline" data-yard-workbench-title>
+            {/* With a build, the title is the plan's header itself (same as the PDF); a refused build names what was asked
+                for and says nothing was built; a not-learned placeholder names the typed object; "Workbench" only on an empty bench. */}
+            {pieceCount > 0 || project.refused
+              ? headerTitle(project)
+              : project.displayOnly // the typed object, never "Workbench" (the tab keeps the plain title: row 578)
+                ? `${project.name.split(/[,\d]/)[0].trim() || project.name} · not learned yet`
+                : "Workbench"}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Link to="/ideas" className="hidden px-2 text-sm text-muted hover:text-fg sm:inline">
             Ideas
           </Link>
-          <button
-            type="button"
-            onClick={() => {
+          <MorphButton
+            pending={pending}
+            built={pieceCount > 0}
+            dirty={promptDirty}
+            onPlan={() => {
               makePlan();
               setPlanOpen(true);
             }}
-            className="inline-flex h-9 items-center rounded-full bg-accent px-3.5 text-sm font-medium text-accent-fg"
-          >
-            Get the plan
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              makePlan();
-              setExportOpen(true);
-            }}
-            className="inline-flex h-9 items-center rounded-full px-3 text-sm text-muted hover:text-fg"
-            aria-label="Save the plan as PDF"
-            title="Save the plan as PDF"
-          >
-            PDF
-          </button>
+          />
           <div className="relative">
             <button
               type="button"
@@ -325,6 +413,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     />
                   </>
                 )}
+                <MoreItem
+                  label="Save the plan as PDF"
+                  disabled={pieceCount === 0}
+                  onClick={() => {
+                    makePlan();
+                    setExportOpen(true);
+                    setMoreOpen(false);
+                  }}
+                />
                 <div className="my-1 border-t border-border/70" />
                 <Link
                   to="/ideas"
@@ -366,31 +463,49 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
 
       <PromptBar
         onBuilt={() => {
-          setPlanOpen(false);
+          // An open plan stays open across a new submit: it holds the last plan until the new build
+          // (and any house brief) lands, then swaps in place. Closing it here was the 0.33 s close.
           setSide(null);
         }}
         onStock={() => setSide("catalog")}
         onMeasure={() => setSide("measure")}
+        onDirty={setPromptDirty}
       />
 
       <div className="relative flex min-h-0 flex-1">
         {side && (
           <>
-            <button
-              type="button"
-              aria-label="Close panel"
-              onClick={() => setSide(null)}
-              className={`absolute z-10 md:hidden ${side === "measure" ? "inset-x-0 top-0 h-[50vh] bg-transparent" : "inset-0 bg-bg/50"}`}
-            />
+            <PanelBackdrop sheet={side === "measure"} onClose={closeSide} />
             <aside className={`absolute z-20 overflow-y-auto border-border bg-surface md:static md:inset-y-0 md:left-0 md:w-80 md:shrink-0 md:border-r ${side === "measure" ? "inset-x-0 bottom-0 top-auto h-[50vh] w-full border-t md:h-auto md:w-80" : "inset-y-0 left-0 w-[min(20rem,92vw)] border-r"}`} data-yard-panel={side === "measure" ? "half" : "side"}>
               {side === "catalog" ? <CatalogPanel /> : <MeasurePanel onBuilt={() => setPlanOpen(false)} />}
             </aside>
           </>
         )}
 
-        <div className="relative min-w-0 flex-1" data-bench-host>
+        <BenchHost sheetOpen={side === "measure"} onClose={closeSide}>
           <WorkspaceCanvas />
-          {pending && <LavaLamp caption={grokBusy ? "Fitting the opening" : "Building"} />}
+          <MeasureSheetGap show={side === "measure"} />
+          <RevealStatus />
+          <BuildScrubber />
+          <ShareButton />
+          <LavaLamp key={lampKey} show={lampOn} prompt={initialPrompt ?? project.prompt} caption="Building" />
+          {aiChip && (
+            <p data-yard-ai-chip="1" className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-border/70 bg-surface/85 px-3 py-1 text-[11px] text-muted backdrop-blur">
+              Checking the fit…
+            </p>
+          )}
+          {stalled && (
+            <div data-yard-stalled="1" data-bench-overlay="stalled" className="absolute left-1/2 top-3 z-20 w-[min(28rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-xl border border-border bg-surface/95 px-4 py-3 text-center text-sm text-fg shadow-lg backdrop-blur">
+              <p>Yard couldn&apos;t finish this build. Try one of these, or change a word and build again.</p>
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                {STALL_IDEAS.map((q) => (
+                  <a key={q} href={`/workspace?q=${encodeURIComponent(q)}`} className="rounded-full border border-border px-3 py-1 text-xs text-fg hover:bg-bg">
+                    {q[0].toUpperCase() + q.slice(1)}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           {showOffer && (
             <div
               data-bench-overlay="offer"
@@ -415,7 +530,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 {steps.find((s) => s.step === activeStep)?.title}
               </p>
               <p className="mt-1 max-h-28 overflow-y-auto text-xs leading-relaxed text-muted">
-                {steps.find((s) => s.step === activeStep)?.description}
+                {userText(steps.find((s) => s.step === activeStep)?.description)}
               </p>
               <p className="mt-1 text-[11px] text-faint sm:mt-2">
                 Lit pieces are this step.
@@ -439,7 +554,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           )}
           {ready && /^Unverified:/.test(project.notes?.[0] ?? "") && (
             <p data-yard-unverified="1" className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-md -translate-x-1/2 rounded-xl border border-border bg-surface/90 px-4 py-2 text-center text-sm text-fg backdrop-blur">
-              {project.notes[0]}
+              {userText(project.notes[0].replace(/^Unverified:\s*/, ""))}
             </p>
           )}
           {ready && project.displayOnly && (
@@ -449,7 +564,15 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 : `Yard couldn't learn the ${project.name.toLowerCase()} yet. The grey block is a placeholder: no parts, price or stock.`}
             </p>
           )}
-          {ready && pieceCount === 0 && !project.displayOnly && !side && !pending && (
+          {ready && pieceCount === 0 && project.refused && !pending && (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">
+              <div data-yard-refused="1" role="status" className="max-w-md text-center">
+                <p className="font-display text-2xl text-fg">Nothing built</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{project.refused}</p>
+              </div>
+            </div>
+          )}
+          {ready && pieceCount === 0 && !project.refused && !project.displayOnly && !side && !pending && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center px-6">
               <div className="max-w-sm text-center">
                 <p className="font-display text-2xl text-fg">Empty bench</p>
@@ -510,13 +633,31 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
           )}
 
           {/* One dock: tools, the step, and the size. The model stays clear above it. */}
-          {pieceCount > 0 && (
+          {/* LCP + CLS 0: the card's text (name, Refine input) paints at first render, even while the build runs;
+              only the tray waits for the build, so the card never grows in place. Motion is gated on the reveal, content never. */}
+          {(pieceCount > 0 || (pending && Boolean(initialPrompt?.trim()))) && (
           <div
             className={`pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3 sm:bottom-4 ${
               planOpen ? "max-xl:hidden xl:pr-[36rem]" : ""
             }`}
           >
-            <DockFrame className="yard-glass pointer-events-auto w-[min(34rem,100%)] overflow-hidden rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            <div className="relative w-[min(35rem,100%)]">
+            {/* Price reason: rides above the card (out of flow), so it never makes a card taller and never
+                shifts it (CLS 0). Opacity/transform only; present only when there is a reason. */}
+            {workMode !== "walk" && priceWhy && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-full mb-2 flex justify-center">
+                <p
+                  data-yard-price-why={pending ? "0" : "1"}
+                  title={priceWhy.text}
+                  className="yard-price-why yard-glass pointer-events-auto max-w-full truncate rounded-full border border-border/70 bg-surface/90 px-3 py-1 text-[12px] tabular-nums text-muted"
+                  style={{ opacity: pending ? 0 : 1, transform: pending ? "translateY(4px)" : "none" }}
+                  aria-hidden={pending}
+                >
+                  {priceWhy.text}
+                </p>
+              </div>
+            )}
+            <DockFrame className="yard-glass pointer-events-auto w-full overflow-y-auto overscroll-contain max-sm:max-h-[40dvh] rounded-2xl border border-border/80 bg-surface/90 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-md">
               {picked && !pending && (
                 <div data-bench-overlay="piece" className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -541,22 +682,62 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                 </div>
               )}
-              {pieceCount > 0 && !pending && workMode !== "walk" && (
-                <BenchTools
-                  side={side}
-                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
-                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
-                  bare
-                />
-              )}
               {showOffer && (
                 <div data-bench-overlay="offer-sheet" className="flex items-center gap-2 border-b border-border/60 px-3 py-2 text-xs text-fg md:hidden">
                   <span className="line-clamp-3 min-w-0 flex-1 leading-snug">{project.supportOffer!.reason}</span>
                   {offerButtons}
                 </div>
               )}
-              {!pending && workMode !== "walk" && !project.displayOnly && <RefineBox />}
-              {!pending && workMode !== "walk" && <BuildInfoPanel />}
+              {/* Item 2: the result card. Row 1 says what it is and what it costs, row 2 is the one
+                  decision (Refine or open the plan), everything else waits behind "More". */}
+              {workMode !== "walk" && (
+                <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
+                  {/* The title lands with the model: a same-height skeleton holds its place while the lamp is up (CLS 0). */}
+                  <p className="min-w-0 truncate font-display text-[15px] text-fg">
+                    {titlePending ? (
+                      <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
+                    ) : headerTitle(project, { features: false })}
+                  </p>
+                  <DecisionLine />
+                </div>
+              )}
+              {/* I32: what the build changed from the ask, in plain words, on the card itself (not only in the plan). */}
+              {workMode !== "walk" && !titlePending && project.cardNote && (
+                <p data-yard-card-note="1" className="px-3.5 pt-1 text-[12px] leading-snug text-muted">
+                  {project.cardNote}
+                </p>
+              )}
+              {workMode !== "walk" && (
+                project.displayOnly ? null : (
+                  <RefineBox
+                    showChips={trayOpen}
+                    trailing={
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { makePlan(); setPlanOpen(true); }}
+                          disabled={pending}
+                          data-yard-open-plan="1"
+                          className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-full border border-border px-3.5 text-sm text-fg hover:bg-elevated disabled:opacity-50 sm:flex-none"
+                        >
+                          Open the plan <ChevronRight className="size-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          aria-expanded={trayOpen}
+                          aria-controls="yard-tray"
+                          onClick={() => setTrayOpen((v) => !v)}
+                          data-yard-more="1"
+                          className="inline-flex h-11 shrink-0 items-center gap-0.5 rounded-full px-2.5 text-sm text-muted hover:text-fg"
+                        >
+                          More <ChevronDown className={`size-4 transition-transform ${trayOpen ? "rotate-180" : ""}`} aria-hidden />
+                        </button>
+                      </>
+                    }
+                  />
+                )
+              )}
+              <div id="yard-tray" hidden={pending || (workMode !== "walk" && pieceCount > 0 && !trayOpen)} className={trayOpen ? "yard-tray" : ""}>
               {steps.length > 0 && !pending && (
                 <div
                   data-bench-overlay="step-pill"
@@ -564,7 +745,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 >
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={stepIndex <= 0}
                     onClick={() => {
                       if (stepIndex <= 0) return;
@@ -577,7 +758,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   <button
                     type="button"
                     onClick={() => setPlanOpen(true)}
-                    className="min-w-0 flex-1 truncate text-left"
+                    className="min-h-11 min-w-0 flex-1 truncate text-left"
                     aria-label={
                       activeStep
                         ? `Open the plan, step ${activeStep} of ${steps.length}`
@@ -595,7 +776,7 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                   <button
                     type="button"
-                    className="grid size-9 place-items-center text-muted hover:text-fg disabled:opacity-30"
+                    className="grid size-11 place-items-center text-muted hover:text-fg disabled:opacity-30"
                     disabled={stepIndex >= steps.length - 1 && stepIndex >= 0}
                     onClick={() => {
                       const i = stepIndex < 0 ? 0 : Math.min(steps.length - 1, stepIndex + 1);
@@ -607,6 +788,16 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                   </button>
                 </div>
               )}
+              {pieceCount > 0 && !pending && workMode !== "walk" && (
+                <BenchTools
+                  side={side}
+                  onStock={() => setSide((s) => (s === "catalog" ? null : "catalog"))}
+                  onMeasure={() => setSide((s) => (s === "measure" ? null : "measure"))}
+                  bare
+                />
+              )}
+              {!pending && workMode !== "walk" && <BuildInfoPanel />}
+              {!pending && workMode !== "walk" && <ShopFeedback />}
               <div
                 data-yard-house={housePath ? "1" : "0"}
                 data-yard-pieces={pieceCount}
@@ -633,7 +824,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                     ? paperCraft
                       ? `${pieceCount} whole sticks`
                       : `${pieceCount} ${pieceCount === 1 ? "piece" : "pieces"}`
-                    : wire
+                    : project.refused && !project.panels.length
+                      ? NOTHING_BUILT_STOCK
+                      : wire
                       ? "Pick a real stock"
                       : nestSheetLabel
                         ? nestSheetLabel
@@ -649,49 +842,20 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
                 <button
                   type="button"
                   onClick={() => setSide((s) => (s === "measure" ? null : "measure"))}
-                  className="shrink-0 font-mono text-[11px] text-faint hover:text-fg"
+                  className="min-h-11 shrink-0 font-mono text-[11px] text-faint hover:text-fg"
                   aria-label={project.pocket ?? project.recastFrom?.pocket ? "Measure the hole, the piece, and the shelves" : "Measure this build"}
                   title="Measure"
+                  data-yard-measure-readout
                 >
-                  {(() => {
-                    const pocketUnit = (project.pocket ?? project.recastFrom?.pocket)?.unit;
-                    const inch = inchFrac;
-                    const proud = pocketUnit ? "" : modelProudNote(project.panels, project.overall.depth);
-                    const finished = pocketUnit
-                      ? pocketUnit.depth
-                      : modelFinishedDepth(project.panels, project.overall.depth);
-                    const envelope = pocketUnit
-                      ? `${inch(pocketUnit.width)}" × ${inch(pocketUnit.height)}" × ${inch(pocketUnit.depth)}"`
-                      : fmtUnitEnvelopeInches(project.overall.width, project.overall.height, finished, {
-                          shape: project.fitted?.unit?.shape,
-                          prompt: project.prompt,
-                          name: project.name,
-                          legs: project.fitted?.unit?.legs,
-                        });
-                    const emptyTalk = pocketUnit ? null : openingStorageMeasureEmptyTalk(project.prompt);
-                    const companion = emptyTalk
-                      ? emptyTalk.hudCompanion
-                      : wire
-                        ? ""
-                        : workMode === "walk"
-                          ? " · on the road"
-                          : workMode === "build"
-                            ? " · snap to the glow"
-                            : "";
-                    return (
-                      <>
-                        {envelope}
-                        {proud ? ` · ${proud}` : ""}
-                        {companion}
-                      </>
-                    );
-                  })()}
+                  <MeasureReadout project={project} wire={wire} workMode={workMode} />
                 </button>
               </div>
+              </div>
             </DockFrame>
+            </div>
           </div>
           )}
-        </div>
+        </BenchHost>
       </div>
 
       <PlanDrawer open={planOpen} onClose={() => setPlanOpen(false)} />
@@ -699,6 +863,8 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         <ExportDialog project={project} plan={plan} onClose={() => setExportOpen(false)} />
       )}
     </div>
+    <ShopDrawingSheet on={shopDrawing} project={project} />
+    </>
   );
 }
 

@@ -1,0 +1,20 @@
+{
+ "score": 1321,
+ "max": 1334,
+ "prompts": 46,
+ "failing": [
+  "I13|sandbox",
+  "I14|pergola 10 by 12",
+  "I1|deck stairs",
+  "I1|ferris wheel",
+  "I1|murphy bed",
+  "I1|water wheel",
+  "I3|Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
+  "I3|bathroom medicine cabinet 16 wide 24 high 4 deep",
+  "I3|coat rack 36 wide 12 high 4 deep",
+  "I6|Andersen 100 Series 36 by 48 double hung window, frame the rough opening",
+  "I7|corner bookshelf 60 wide 84 tall",
+  "I7|kitchen island 60x36x36",
+  "I8|bunk bed 82 long 44 wide"
+ ]
+}

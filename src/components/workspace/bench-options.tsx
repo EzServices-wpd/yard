@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { hasHistoricProfile } from "@/lib/yard/ghost";
 import { hasOperableFaces, operateFaceKinds, operateFacesLabel } from "@/lib/yard/operateFaces";
@@ -10,44 +10,78 @@ import { MeasureFields } from "./measure-overlay";
 import { YardsMenu } from "./yards-menu";
 import { useBenchToolsShown } from "./bench-tools";
 import { useStockLabel } from "./use-stock-label";
+import { FIGURES, setScale, useScale } from "./scale-props";
+import { ViewInRoomButton } from "./view-in-room-button";
+import { setShopDrawing, shopDrawable, useShopDrawing } from "./shop-drawing";
 import type { WorkMode } from "@/lib/yard/types";
 
-/** The one toggle on the bar. Shows the chosen material under "Options" so nobody misses it. */
+/** A refusal's material chip: it names that nothing was built and opens nothing (there is no stock to choose). */
+function NothingBuiltChip({ label }: { label: string }) {
+  return (
+    <span data-yard-material-none className="inline-flex h-11 max-w-full shrink items-center rounded-full border border-border px-3.5 text-sm sm:max-w-[16rem]">
+      <span className="text-muted">Material:&nbsp;</span>
+      <span className="text-fg" data-yard-stock-label>{label}</span>
+    </span>
+  );
+}
+
+/**
+ * The bar's two controls. Live walk 10-19: "Material: ¾″ plywood ▾" opened a View/Camera/Drawers menu. Rule: a
+ * control's label names what it opens. "Material: …" opens the stock picker (onStock); the options menu (size,
+ * view, build options, saved yards) has its own "Options" toggle.
+ */
 export function BenchOptionsToggle({
   open,
   onToggle,
+  onStock,
   panelId,
   buttonRef,
 }: {
   open: boolean;
   onToggle: () => void;
+  onStock: () => void;
   panelId: string;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
-  const { label, wire } = useStockLabel();
+  const { label, wire, offersStock } = useStockLabel();
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      aria-controls={panelId}
-      aria-haspopup="true"
-      aria-label={`Options. Material: ${label}`}
-      data-yard-options-toggle
-      className={`inline-flex h-11 max-w-[7.5rem] shrink-0 items-center gap-1.5 rounded-full border px-3 text-left sm:max-w-[15rem] ${
-        open ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:border-fg/30"
-      }`}
-    >
-      <SlidersHorizontal className="hidden size-4 shrink-0 text-muted sm:block" aria-hidden />
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="text-xs font-medium sm:text-sm">Options</span>
-        <span className={`truncate text-[10px] sm:text-[11px] ${wire ? "text-accent" : "text-muted"}`} data-yard-stock-label>
-          {label}
+    <div className="flex max-w-full shrink-0 items-center gap-1.5">
+      {offersStock ? (
+      <button
+        type="button"
+        onClick={onStock}
+        aria-label={`Material: ${label}. Change material`}
+        data-yard-material-chip
+        className="inline-flex h-11 max-w-full shrink items-center gap-1.5 rounded-full border border-border px-3.5 text-left text-fg hover:border-fg/30 sm:max-w-[16rem]"
+      >
+        <span className="min-w-0 truncate text-sm">
+          <span className="text-muted">Material: </span>
+          <span className={wire ? "text-accent" : "text-fg"} data-yard-stock-label>
+            {label}
+          </span>
         </span>
-      </span>
-      <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
-    </button>
+        <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />
+      </button>
+      ) : (
+        <NothingBuiltChip label={label} />
+      )}
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-haspopup="true"
+        aria-label="Options: size, view and build options"
+        data-yard-options-toggle
+        className={`inline-flex h-11 shrink-0 items-center gap-1 rounded-full border px-3.5 text-sm ${
+          open ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:border-fg/30"
+        }`}
+      >
+        Options
+        <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -94,8 +128,10 @@ export function BenchOptionsPanel({
   const setMeasureOpen = useYard((s) => s.setMeasureOpen);
   const reset = useYard((s) => s.reset);
   const plan = useYard((s) => s.plan);
-  const { label: stockLabel, wire } = useStockLabel();
+  const { label: stockLabel, wire, offersStock } = useStockLabel();
   const [toolsShown] = useBenchToolsShown();
+  const scale = useScale();
+  const shopDrawing = useShopDrawing();
 
   useEffect(() => {
     if (!open) return;
@@ -183,6 +219,7 @@ export function BenchOptionsPanel({
             <span className={`block truncate ${wire ? "text-accent" : "text-fg"}`}>{wire ? "No real stock yet" : stockLabel}</span>
             {pieces ? <span className="block text-xs text-muted">{pieces} pieces</span> : null}
           </p>
+          {offersStock && (
           <button
             type="button"
             data-yard-stock
@@ -194,6 +231,7 @@ export function BenchOptionsPanel({
           >
             Choose stock
           </button>
+          )}
         </div>
       </Section>
       )}
@@ -226,14 +264,33 @@ export function BenchOptionsPanel({
             {(housePath || project.pocket) && <Toggle on={measureOpen} onClick={() => setMeasureOpen(!measureOpen)} label="Opening outline" />}
             {historicOk && !housePath && <Toggle on={showHistoric} onClick={() => setShowHistoric(!showHistoric)} label="Form" />}
             {showLoadBtn && <Toggle on={showLoad} onClick={() => setShowLoad(!showLoad)} label="Load" />}
+            {/* Outlines only on the bench; the browser's own print gives the black-on-white drawing (shop-drawing-print.tsx). */}
+            {shopDrawable(project) && <Toggle touch on={shopDrawing} onClick={() => setShopDrawing(!shopDrawing)} label="Shop drawing" />}
           </div>
           {!housePath && (
             <Row label="Move">
               <Seg items={modes.map((m) => ({ id: m.id, label: m.label }))} value={workMode} onChange={(v) => setWorkMode(v as WorkMode)} />
             </Row>
           )}
+          {/* True scale (plan concept 8): a figure beside the build and props on its shelves; never parts. */}
+          {/* Scale, Props and Camera are 44 px touch targets (Critic 2, #176): `touch` on Seg and Toggle. */}
+          <Row label="Scale">
+            <Seg
+              touch
+              items={[{ id: "off", label: "Off" }, ...(["person", "kid"] as const).map((id) => ({ id, label: FIGURES[id].label }))]}
+              value={scale.figure}
+              onChange={(v) => setScale({ figure: v as typeof scale.figure })}
+            />
+          </Row>
+          {project.panels.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5" data-yard-scale-props>
+              <Toggle touch on={scale.props} onClick={() => setScale({ props: !scale.props })} label="Props" />
+            </div>
+          )}
+          <ViewInRoomButton />
           <Row label="Camera">
             <Seg
+              touch
               items={(["iso", "front", "side", "top"] as const).map((c) => ({ id: c, label: c === "iso" ? "3/4" : c[0].toUpperCase() + c.slice(1) }))}
               value={camera}
               onChange={(v) => setCamera(v as typeof camera)}
@@ -412,13 +469,14 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Toggle({ on, onClick, label, plain }: { on: boolean; onClick: () => void; label: string; plain?: boolean }) {
+/** `touch`: a 44 px minimum hit area both ways (WCAG 2.5.5); without it the compact release size. */
+function Toggle({ on, onClick, label, plain, touch }: { on: boolean; onClick: () => void; label: string; plain?: boolean; touch?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={plain ? undefined : on}
-      className={`rounded-md border px-3 py-2 text-xs ${on && !plain ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:bg-elevated"}`}
+      className={`rounded-md border px-3 py-2 text-xs ${touch ? "min-h-11 min-w-11" : ""} ${on && !plain ? "border-fg/30 bg-elevated text-fg" : "border-border text-fg hover:bg-elevated"}`}
     >
       {label}
     </button>
@@ -429,10 +487,13 @@ function Seg({
   items,
   value,
   onChange,
+  touch,
 }: {
   items: { id: string; label: string; disabled?: boolean }[];
   value: string;
   onChange: (id: string) => void;
+  /** 44 px tall segments (min-w-11 is already 44 px wide); without it the compact release height. */
+  touch?: boolean;
 }) {
   return (
     <div className="flex overflow-hidden rounded-md border border-border text-xs" role="group">
@@ -443,7 +504,7 @@ function Seg({
           disabled={it.disabled}
           aria-pressed={value === it.id}
           onClick={() => onChange(it.id)}
-          className={`h-9 min-w-11 px-2.5 disabled:opacity-30 ${value === it.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
+          className={`${touch ? "h-11" : "h-9"} min-w-11 px-2.5 disabled:opacity-30 ${value === it.id ? "bg-elevated text-fg" : "text-muted hover:text-fg"}`}
         >
           {it.label}
         </button>

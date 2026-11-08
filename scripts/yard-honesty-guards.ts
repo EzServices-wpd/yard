@@ -1,3 +1,4 @@
+import { shelfLineCount } from "../src/lib/yard/shelfSpan";
 import { planSolidBoards } from "../src/lib/yard/solidStock";
 import { placementIndex } from "../src/lib/yard/placeEveryPart";
 import { generateFromPrompt } from "../src/lib/yard/prompt";
@@ -35,7 +36,7 @@ import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
 import { guardFail, guardStart } from "./guard-known-failures";
 import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac, nestLabelLayout, nestPartDims, partCardDims } from "../src/lib/yard/inchText";
-import { DRAINAGE_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt } from "../src/lib/yard/outdoor";
+import { DRAINAGE_NOTE, OUTDOOR_FIXED_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt } from "../src/lib/yard/outdoor";
 import { panelRenderLook, speciesOfStockLabel, SPECIES_TONE } from "../src/lib/yard/partStock";
 import { NAMED_LUMBER_SPECIES } from "../src/lib/yard/namedLumberSpecies";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
@@ -47,6 +48,7 @@ import { inspectTemplate, frameHangs, frameGlazing } from "../src/lib/yard/formT
 import { boxGap, contactReport, projectBoxes } from "../src/lib/yard/contact";
 import { analyzePieces } from "../src/lib/yard/connect";
 import { getCatalogItem } from "../src/lib/yard/catalog";
+import { i52 } from "../src/lib/yard/invariants";
 import { toPrimitive as toPrimitiveG } from "../src/lib/yard/geometry";
 import { isoCaption } from "../src/lib/yard/iso";
 import {
@@ -68,6 +70,8 @@ import {
 } from "../src/lib/yard/operateFaces";
 import { detectMaterial, hasExplicitStock } from "../src/lib/yard/promptHelpers";
 import { drawerBoxFromOpening, explodeDrawerBoxCuts, cutListName, woodCutPieceCount, isBuyMirrorPanel, isBoundingDrawerPanel } from "../src/lib/yard/shopPlural";
+import { drawerBoxes } from "../src/lib/yard/hollowDrawers";
+import { slideForDepth } from "../src/lib/yard/stockLook";
 import { findInterference } from "../src/lib/yard/interference";
 import { uniqueSteps } from "../src/lib/yard/uniqueSteps";
 import { buildPlanPdf, planStepParts, typedAxesTalk } from "../src/lib/yard/pdf";
@@ -1457,12 +1461,44 @@ if (bambooBridge.instances.some((i) => i.catalogId !== "bamboo-skewer-12")) {
   failWeekend("bamboo bridge foreign members");
 }
 const bambooPlan = buildPlan(bambooBridge);
-if (bambooPlan.partsKind !== "whole") failWeekend("bamboo bridge plan not whole", bambooPlan.partsKind);
+// GUARD CHANGE (row 612): 12" skewers in a stick graph are cut to their spans (was: the plan stays whole, one skewer a piece).
+// The plan is a cut list, the pieces carry cut lengths, Buy counts whole skewers by cut yield (no under- or over-buy),
+// the words say cut (never "used whole" / "Do not cut"), and the honesty check passes.
+const longCut = (label: string, p: typeof bambooBridge, pl: typeof bambooPlan, stockId: string) => {
+  if (pl.partsKind === "whole") failWeekend(`${label} plan is whole, not cut to span`, pl.partsKind);
+  if (!p.instances.some((i) => i.catalogId === stockId && i.cutLength != null)) failWeekend(`${label} pieces carry no cut length`);
+  const line = pl.bom.find((b) => b.catalogId === stockId);
+  const m = line?.unit.match(/\bpacks? of (\d+)\s*\((\d+) [a-z ]*used\)/i);
+  if (!line || !m) failWeekend(`${label} Buy has no whole-stock pack line`, line?.unit);
+  else {
+    const used = Number(m[2]);
+    if (used >= p.instances.filter((i) => i.catalogId === stockId).length) failWeekend(`${label} Buy counts pieces, not sticks by cut yield`, line.unit);
+    if (line.quantity !== Math.ceil(used / Number(m[1]))) failWeekend(`${label} Buy packs != ceil(used / pack)`, line.unit);
+  }
+  const over = i52(pl);
+  if (over.length) failWeekend(`${label} I52 under- or over-buy`, over.map((v) => v.msg));
+  const said = [...p.notes, ...pl.instructions.flatMap((s) => [s.title, s.description])];
+  if (said.some((t) => /used whole|Do not cut/i.test(t))) failWeekend(`${label} says used whole / Do not cut but cuts`);
+  if (!said.some((t) => /\d+ short pieces are cut from whole/.test(t))) failWeekend(`${label} notes do not say how many pieces are cut`);
+  const ins = inspectWeekendHonesty(p, pl);
+  if (!ins.ok) failWeekend(`${label} inspect`, ins.issues);
+};
+longCut("bamboo bridge", bambooBridge, bambooPlan, "bamboo-skewer-12");
 if (!bambooPlan.bom.some((b) => /glue/i.test(b.name))) {
   failWeekend("bamboo bridge missing glue", bambooPlan.bom.map((b) => b.name));
 }
-const bambooInspect = inspectWeekendHonesty(bambooBridge, bambooPlan);
-if (!bambooInspect.ok) failWeekend("bamboo bridge inspect", bambooInspect.issues);
+const skewerTower = generateFromPrompt("skewer tower");
+longCut("skewer tower", skewerTower, buildPlan(skewerTower), "bamboo-skewer-12");
+const giantBridge = generateFromPrompt("brooklyn bridge from giant craft sticks");
+longCut("giant-stick brooklyn", giantBridge, buildPlan(giantBridge), "popsicle-giant");
+// NEGATIVE: the exemption is for long craft stock only. Short craft stock with a cut length still fails the whole-stick check.
+for (const q of ["brooklyn bridge from popsicle sticks", "4 foot lattice tower from jumbo craft sticks", "toothpick tower", "castle from drinking straws"]) {
+  const p = generateFromPrompt(q);
+  const k = p.instances.findIndex((i) => i.catalogId === p.primaryMaterialId);
+  if (k < 0) { failWeekend(`negative ${q}: no primary-stock piece`); continue; }
+  const cutOne = { ...p, instances: p.instances.map((i, j) => (j === k ? { ...i, cutLength: 1 } : i)) };
+  if (!inspectWeekendHonesty(cutOne, buildPlan(p)).issues.some((x) => x.guard === "whole")) failWeekend(`negative ${q}: a cut short-stock piece passes the whole-stick check`);
+}
 
 console.log("WEEKEND STRUCTURE FAMILIES OK", {
   eiffel: { family: detectWeekendFamily("3 foot Eiffel Tower from popsicle sticks")?.family, override: "eiffel", kind: eiffel.kind },
@@ -1744,7 +1780,7 @@ if (!laundryFoldPlan.bom.some((b) => /piano hinge/i.test(b.name))) {
 if (laundryFoldPlan.bom.some((b) => /ironing board cover/i.test(b.name))) {
   failHonesty("laundry fold-down sold ironing cover", laundryFoldPlan.bom.map((b) => b.name));
 }
-if (!laundryFoldPlan.instructions.some((s) => /piano-hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
+if (!laundryFoldPlan.instructions.some((s) => /piano[- ]hinge|fold-down board/i.test(`${s.title} ${s.description}`))) {
   failHonesty("laundry fold-down steps missing hinge", laundryFoldPlan.instructions.map((s) => s.title));
 }
 if (!inspectHonesty(laundryFold, laundryFoldPlan).ok) {
@@ -2715,7 +2751,7 @@ const nightSlides = nightPlan.bom.filter((b) => /slide/i.test(b.name));
 if (nightSlides.some((b) => b.quantity !== 1 && /pair/i.test(b.unit ?? ""))) {
   // one drawer → one pair; fronts must not double the slide count
 }
-const nightDrawerBoxes = night.panels.filter((p) => p.type === "drawer" && !/front/i.test(p.name));
+const nightDrawerBoxes = drawerBoxes(night.panels);
 const nightSlideQty = nightPlan.bom.find((b) => /slide/i.test(b.name))?.quantity;
 if (nightSlideQty != null && nightSlideQty !== nightDrawerBoxes.length) {
   failHonesty("nightstand slides doubled by drawer fronts", { nightSlideQty, boxes: nightDrawerBoxes.length });
@@ -3500,7 +3536,7 @@ console.log("SOFT-TRUST OK", {
   if (!chestPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 toy chest Piano hinge BOM", chestPlan.bom.map((b) => b.name));
   }
-  if (!chestPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+  if (!chestPlan.instructions.some((s) => /piano[- ]hinge|hinge the lid/i.test(`${s.title} ${s.description}`))) {
     failHonesty(
       "b31 toy chest piano-hinge step",
       chestPlan.instructions.map((s) => s.title).join(" | "),
@@ -3528,7 +3564,7 @@ console.log("SOFT-TRUST OK", {
   if (!cedarPlan.bom.some((b) => /Piano hinge|piano hinge/i.test(b.name))) {
     failHonesty("b31 cedar Piano hinge BOM", cedarPlan.bom.map((b) => b.name));
   }
-  if (!cedarPlan.instructions.some((s) => /piano-hinge|hinge the lid|Piano-hinge/i.test(`${s.title} ${s.description}`))) {
+  if (!cedarPlan.instructions.some((s) => /piano[- ]hinge|hinge the lid/i.test(`${s.title} ${s.description}`))) {
     failHonesty(
       "b31 cedar piano-hinge step",
       cedarPlan.instructions.map((s) => s.title).join(" | "),
@@ -3580,7 +3616,8 @@ console.log("SOFT-TRUST OK", {
   if (!/24/.test(monBlob) || !/monitor/i.test(monBlob)) failHonesty("b32 monitor 24 envelope", monBlob.slice(0, 500));
   if (!/4/.test(monBlob) || !/rise/i.test(monBlob)) failHonesty("b32 monitor 4 rise", monBlob.slice(0, 500));
   if (!/envelope|rise/i.test(monBlob)) failHonesty("b32 monitor densify talk", monBlob.slice(0, 400));
-  if (!/not orbit/i.test(monBlob)) failHonesty("b32 monitor stand hush (no orbit)", monBlob.slice(0, 500));
+  // I11: the note never names engine chrome ("orbit-chrome"); the stand simply fits the monitor.
+  if (/orbit/i.test(monBlob) || !/stand fits the monitor/i.test(monBlob)) failHonesty("b32 monitor stand hush (no orbit)", monBlob.slice(0, 500));
 
   const filePrompt = "house: filing shelf 36″ wide × 12″ deep × 48″ tall with four open bays";
   if (!isFilingShelf(filePrompt.toLowerCase())) failHonesty("b32 isFilingShelf");
@@ -3846,7 +3883,7 @@ console.log("SOFT-TRUST OK", {
   if (!/6/.test(lampBlob) || !/lamp/i.test(lampBlob)) failHonesty("b35 lamp 6 envelope", lampBlob.slice(0, 500));
   if (!/60/.test(lampBlob) && Math.abs(lamp.overall.height - 60) > 1.5) failHonesty("b35 lamp 60 densify", lampBlob.slice(0, 400));
   if (!/envelope|lamp-base|lamp base/i.test(lampBlob)) failHonesty("b35 lamp envelope talk", lampBlob.slice(0, 400));
-  if (!/not orbit/i.test(lampBlob)) failHonesty("b35 lamp stand hush (no orbit)", lampBlob.slice(0, 500));
+  if (/orbit/i.test(lampBlob)) failHonesty("b35 lamp stand hush (no orbit)", lampBlob.slice(0, 500));
   if (!/oak|Oak/i.test(lamp.prompt ?? lampPrompt)) failHonesty("b35 Buy Oak prompt");
   // Bare lamp stand (no floor) still Lamp stand — not Lattice.
   const bareLamp = "weekend craft: pine lamp stand that holds a real lamp base 8″ diameter upright, 54″ tall";
@@ -3879,7 +3916,7 @@ console.log("SOFT-TRUST OK", {
   if (!/Monitor stand/i.test(mon.name)) failHonesty("b35 protect monitor", mon.name);
   if (/Lattice|Orbit/i.test(mon.name)) failHonesty("b35 monitor lattice/orbit name", mon.name);
   const monBlob = [mon.name, ...(mon.notes ?? [])].join("\n");
-  if (!/not orbit/i.test(monBlob)) failHonesty("b35 protect monitor hush", monBlob.slice(0, 400));
+  if (/orbit/i.test(monBlob)) failHonesty("b35 protect monitor hush", monBlob.slice(0, 400));
   // Lattice tower still lattice — do not steal real towers into lamp stands.
   const tower = generateFromPrompt("3 foot tower from popsicle sticks");
   if (tower.kind !== "lattice") failHonesty("b35 protect lattice tower kind", tower.kind);
@@ -4548,7 +4585,8 @@ console.log("SOFT-TRUST OK", {
     const p = generateFromPrompt(q);
     const plan = buildPlan(p);
     const wall = p.assumptions?.installMode === "wall";
-    if (!p.notes.includes(OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
+    // I9: a hung build has no feet, so its note names no glides (same predicate as Buy).
+    if (!p.notes.includes(wall ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
     const glue = glueRows(plan.bom);
     if (glue.length !== 1 || glue[0].catalogId !== "outdoor-glue") failOut("exactly one glue — the exterior one", { q, glue: glue.map((b) => b.name) });
     const screws = woodScrewRows(plan.bom);
@@ -5164,7 +5202,8 @@ console.log("SOFT-TRUST OK", {
   const book = generateFromPrompt("bookcase 36 wide 12 deep 72 tall with three shelves");
   if (!/Bookcase/i.test(book.name)) failHonesty("b39 protect bookcase title", book.name);
   const bookShelves = book.panels.filter((p) => p.type === "shelf" || /^Shelf\b/i.test(p.name));
-  if (bookShelves.length !== 3) failHonesty("b39 protect bookcase Shelf×3", bookShelves.length);
+  // Three shelf levels. 36" of 3/4" is past the 30" stock span, so each level is two bay pieces.
+  if (shelfLineCount(bookShelves) !== 3 || bookShelves.length !== 6) failHonesty("b39 protect bookcase Shelf×3", bookShelves.length);
   if (Math.abs(book.overall.width - 36) > 1.0 || Math.abs(book.overall.height - 72) > 2.0 || Math.abs(book.overall.depth - 12) > 1.0) {
     failHonesty("b39 protect bookcase envelope", book.overall);
   }
@@ -5463,11 +5502,11 @@ console.log("SOFT-TRUST OK", {
     const book = generateFromPrompt("house: bookshelf 36 wide 12 deep 72 tall five shelves");
     const bookPlan = buildPlan(book);
     const shelfPanels = book.panels.filter((p) => p.type === "shelf");
-    if (shelfPanels.length !== 5) {
+    if (shelfLineCount(shelfPanels) !== 5 || shelfPanels.length !== 10) {
       failVoice("shelfHeight bookcase shelf count ≠ 5", shelfPanels.map((p) => p.name));
     }
     const pinStep = bookPlan.instructions.find(
-      (s) => /Pin \d+ adjustable shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
+      (s) => /Pin \d+ (?:adjustable )?shel/i.test(s.title) || /Set the shelves/i.test(s.title) || /Glue \d+ fixed shel/i.test(s.title),
     );
     if (!pinStep) failVoice("shelfHeight bookcase missing pin/glue shelf step", bookPlan.instructions.map((s) => s.title));
     const pinBlob = `${pinStep!.title} ${pinStep!.description}`;
@@ -5576,7 +5615,7 @@ console.log("SOFT-TRUST OK", {
     failHonesty("drawerCutlist nightstand cut step still lies Drawer side as Upright", cutBlob.slice(0, 500));
   }
   // Opening honesty: box W = clear bay − ~1″ slide; helper matches densify.
-  const box = ns.panels.find((p) => p.type === "drawer" && !/front/i.test(p.name));
+  const box = drawerBoxes(ns.panels)[0];
   if (!box) failHonesty("drawerCutlist nightstand missing drawer envelope panel", ns.panels.map((p) => p.name));
   else {
     const openingW = ns.overall.width - 1.5; // 2×¾″ uprights
@@ -5584,8 +5623,10 @@ console.log("SOFT-TRUST OK", {
     if (Math.abs(box.size.width - expect.boxW) > 0.2) {
       failHonesty("drawerCutlist nightstand box W ≠ opening-derived", { boxW: box.size.width, expect: expect.boxW, openingW });
     }
-    if (Math.abs(box.size.depth - expect.boxD) > 0.2) {
-      failHonesty("drawerCutlist nightstand box D ≠ opening-derived", { boxD: box.size.depth, expect: expect.boxD });
+    // Box depth is the longest standard slide that fits the inside depth (behind the ¼″ back).
+    const expectD = slideForDepth(ns.overall.depth - 0.25);
+    if (Math.abs(box.size.depth - expectD) > 0.2) {
+      failHonesty("drawerCutlist nightstand box D ≠ longest slide that fits", { boxD: box.size.depth, expect: expectD, opening: expect.boxD });
     }
   }
   // cutListName: drawer-side name wins over upright type (cut-step explode remap).
@@ -5672,8 +5713,9 @@ console.log("SOFT-TRUST OK", {
       cutNames: nsPlan.cutList.map((c) => `${c.quantity} ${c.name}`),
     });
   }
-  if (ns.panels.length >= nsChip) {
-    failChip("nightstand raw panel count should under-count vs exploded chip", {
+  // Drawers are modelled hollow (front, two sides, back, bottom), so every cut piece is a model part.
+  if (ns.panels.length !== nsChip) {
+    failChip("nightstand hollow drawer parts ≠ cut-list chip", {
       rawPanels: ns.panels.length,
       chip: nsChip,
     });
@@ -5710,7 +5752,7 @@ console.log("SOFT-TRUST OK", {
   if (deskChip > deskPlan.totals.pieces) {
     failChip("desk chip over-counts cut list", { chip: deskChip, cut: deskPlan.totals.pieces });
   }
-  if (desk.panels.some((p) => p.type === "drawer") && deskChip <= desk.panels.length) {
+  if (desk.panels.some((p) => p.type === "drawer") && deskChip < desk.panels.length) {
     failChip("desk drawer explode not reflected in chip helper", {
       chip: deskChip,
       raw: desk.panels.length,
@@ -5997,8 +6039,9 @@ console.log("SOFT-TRUST OK", {
   const nsPlan = buildPlan(ns);
   const nsCut = nsPlan.totals.pieces;
   if (nsCut !== 11) failEff("nightstand cut expect 11", { cut: nsCut, raw: ns.panels.length });
-  if (ns.panels.length >= nsCut) {
-    failEff("nightstand raw panels should under-count exploded cut", {
+  // Hollow drawers: the model carries every cut piece, so raw parts and the cut list agree.
+  if (ns.panels.length !== nsCut) {
+    failEff("nightstand hollow drawer parts ≠ cut pieces", {
       raw: ns.panels.length,
       cut: nsCut,
     });
@@ -7371,7 +7414,7 @@ console.log("STRANGER PLAN OK", {
   ]) {
     const proj = generateFromPrompt(noPrompt);
     const plan = buildPlan(proj);
-    const drawers = (proj.panels || []).filter((p) => p.type === "drawer");
+    const drawers = drawerBoxes(proj.panels || []);
     if (drawers.length !== 0) {
       failHonesty("no-drawers must densify zero drawers", { prompt: noPrompt, drawers: drawers.map((d) => d.name) });
     }
@@ -7394,7 +7437,7 @@ console.log("STRANGER PLAN OK", {
   // Protect: bare desk still defaults drawer banks; typed drawer counts held.
   {
     const bare = generateFromPrompt("desk 60 wide 30 deep 29 tall");
-    const bareDrawers = (bare.panels || []).filter((p) => p.type === "drawer");
+    const bareDrawers = drawerBoxes(bare.panels || []);
     if (bareDrawers.length < 2) {
       failHonesty("bare desk must still densify drawer banks", bareDrawers.length);
     }
@@ -7405,13 +7448,13 @@ console.log("STRANGER PLAN OK", {
   }
   {
     const two = generateFromPrompt("desk 60 wide 30 deep 29 tall with two drawers");
-    const n = (two.panels || []).filter((p) => p.type === "drawer").length;
+    const n = drawerBoxes(two.panels || []).length;
     if (n !== 2) failHonesty("typed two drawers desk", n);
     console.log("PASS typed two drawers desk", n);
   }
   {
     const one = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-    const n = (one.panels || []).filter((p) => p.type === "drawer").length;
+    const n = drawerBoxes(one.panels || []).length;
     if (n !== 1) failHonesty("nightstand one drawer protect", n);
     if (operateFacesLabel(false, operateFaceKinds(one.panels || [])) !== "Open drawer") {
       failHonesty("nightstand Open drawer protect", operateFacesLabel(false, operateFaceKinds(one.panels || [])));
@@ -7547,7 +7590,7 @@ console.log("STRANGER PLAN OK", {
     const vk = operateFaceKinds(vanity.panels || []);
     if (vk.doors < 2) failHonesty("vanity doors protect after media open-front", vk);
     const noDr = generateFromPrompt("desk 60 wide 30 deep 29 tall with no drawers");
-    if ((noDr.panels || []).filter((p) => p.type === "drawer").length !== 0) {
+    if (drawerBoxes(noDr.panels || []).length !== 0) {
       failHonesty("no-drawers protect after media open-front", noDr.panels?.map((p) => p.name));
     }
     const multi = generateFromPrompt("hope chest with two hinged lids");
@@ -7574,7 +7617,7 @@ console.log("STRANGER PLAN OK", {
       failHonesty("round Dia×H protect after media open-front", round.overall);
     }
     const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-    if ((night.panels || []).filter((p) => p.type === "drawer").length !== 1) {
+    if (drawerBoxes(night.panels || []).length !== 1) {
       failHonesty("nightstand one drawer protect after media open-front", night.panels?.map((p) => p.name));
     }
     console.log("PASS media-open-front protect vanity/no-drawers/multi/lift/ledge/coat/round/nightstand");
@@ -7614,7 +7657,7 @@ console.log("STRANGER PLAN OK", {
     const vanity = generateFromPrompt("bathroom vanity 36 wide 21 deep 32 tall with two doors");
     if (operateFaceKinds(vanity.panels || []).doors < 2) failHonesty("vanity doors protect after paper Dia×H");
     const noDr = generateFromPrompt("desk 60 wide 30 deep 29 tall with no drawers");
-    if ((noDr.panels || []).filter((x) => x.type === "drawer").length !== 0) failHonesty("no-drawers protect after paper Dia×H");
+    if (drawerBoxes(noDr.panels || []).length !== 0) failHonesty("no-drawers protect after paper Dia×H");
     const media = generateFromPrompt("media console 60 wide 18 deep 24 tall with two doors");
     if (operateFaceKinds(media.panels || []).doors < 2) failHonesty("media doors protect after paper Dia×H");
     if ((media.notes || []).some((n) => /Open front|No leftover doors/i.test(n))) {
@@ -7627,7 +7670,7 @@ console.log("STRANGER PLAN OK", {
     const ledge = generateFromPrompt("picture ledge 36 wide");
     if (!/36"\s*wide/i.test(ledge.name) || /30"|×\s*16/.test(ledge.name)) failHonesty("ledge protect after paper Dia×H", ledge.name);
     const night = generateFromPrompt("nightstand 20 wide 16 deep 24 tall with one drawer");
-    if ((night.panels || []).filter((x) => x.type === "drawer").length !== 1) failHonesty("nightstand one protect after paper Dia×H");
+    if (drawerBoxes(night.panels || []).length !== 1) failHonesty("nightstand one protect after paper Dia×H");
     console.log("PASS paper Dia×H bare-H height + protect vanity/no-drawers/media/multi/lift/ledge/night");
   }
 }
@@ -7698,7 +7741,7 @@ console.log("STRANGER PLAN OK", {
     if (!c.quarter && !/diagonal/i.test(blob)) failHonesty(`corner steps missing diagonal cut ${c.prompt}`);
     if (c.quarter && !/arc/i.test(blob)) failHonesty(`corner steps missing arc cut ${c.prompt}`);
     if (!/both walls/i.test(blob) || !/stud/i.test(blob)) failHonesty(`corner steps missing screw into both walls / studs ${c.prompt}`);
-    if (/shelf pin|5 ?mm|Pin \d+ adjustable|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
+    if (/shelf pin|5 ?mm|Pin \d+ (?:adjustable shel|shelves \()|Stand the main box|Mark the footprint/i.test(blob)) failHonesty(`corner steps speak rectangle bookcase ${c.prompt}`);
     if (!c.wall && !/Wall panel A/.test(blob)) failHonesty(`corner steps missing wall panels ${c.prompt}`);
   }
   // Protect: rectangle bookcase, bookcase placed in a corner with a typed width, floating shelf with brackets.
@@ -7872,7 +7915,7 @@ console.log("STRANGER PLAN OK", {
   const stand = vanPlan.instructions.findIndex((s) => /stand the main box/i.test(s.title));
   // The box stands on its bottom first; the thin back goes on last, along every edge, once the box is square.
   const back = vanPlan.instructions.findIndex((s) => /back of the box/i.test(s.title));
-  if (stand < 0 || lt(sp[stand].fresh) !== "BE") failHonesty("pdf vanity stand step must light only B, E", stand >= 0 ? lt(sp[stand].fresh) : "missing");
+  if (stand < 0 || lt(sp[stand].fresh) !== "BD") failHonesty("pdf vanity stand step must light only B, D (bottom + uprights; doors re-letter to E once they carry the 1/16\" reveal)", stand >= 0 ? lt(sp[stand].fresh) : "missing");
   if (back <= stand || lt(sp[back].fresh) !== "A") failHonesty("pdf vanity back step lights A after the box stands", back >= 0 ? sp[back] : "missing");
   const seen = new Set<string>();
   for (const st of sp) for (const id of st.fresh) {
@@ -8373,6 +8416,13 @@ console.log("STRANGER PLAN OK", {
   ] as const) {
     const p = generateFromPrompt(prompt);
     if (!titleRe.test(p.name)) failHonesty("shelf-count-carcase sibling title", prompt, p.name);
+    if (p.refused) {
+      // 36" cannot hold 5 shelves at 7" clear. The shared minimum is 48" (closetShelfMinHeight).
+      if (!/kids bookcase/.test(prompt) || !/at least 48" tall for 5 shelves with 7" clear/.test(p.refused) || p.panels.length) {
+        failHonesty("shelf-count-carcase sibling refusal", prompt, p.refused, p.panels.length);
+      }
+      continue;
+    }
     if (Math.abs(p.overall.width - wantW) > 2 || Math.abs(p.overall.height - wantH) > 2) {
       failHonesty("shelf-count-carcase sibling envelope", prompt, p.overall);
     }
@@ -8380,8 +8430,11 @@ console.log("STRANGER PLAN OK", {
     if (wantD >= 12 && Math.abs(p.overall.depth - wantD) > 2) {
       failHonesty("shelf-count-carcase sibling depth", prompt, p.overall);
     }
-    const n = p.panels.filter((x) => /^Shelf\s+\d+/i.test(x.name) || x.type === "shelf").length;
+    const shelvesN = p.panels.filter((x) => /^Shelf\s+\d+/i.test(x.name) || x.type === "shelf");
+    const n = shelfLineCount(shelvesN);
     if (n !== wantN) failHonesty("shelf-count-carcase sibling Shelf×N", prompt, n, p.panels.map((x) => x.name));
+    const pieces = prompt.startsWith("bookcase 36") ? wantN * 2 : wantN;
+    if (shelvesN.length !== pieces) failHonesty("shelf-count-carcase sibling Shelf×N", prompt, shelvesN.length, p.panels.map((x) => x.name));
     if (p.panels.some((x) => /Stand post/i.test(x.name))) {
       failHonesty("shelf-count-carcase sibling not stand", prompt, p.panels.map((x) => x.name));
     }

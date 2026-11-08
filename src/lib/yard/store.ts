@@ -3,6 +3,7 @@ import { findRecipe } from "./recipes";
 import { solveModel } from "./solve";
 import { create } from "zustand";
 import { createId } from "@/lib/utils";
+import { withEditedSpec } from "./spec";
 import type { BuildPlan, BuildScale, DetailLevel, JoinMethod, MeasureDraft, PocketNotch, PocketSpec, Vec3, WorkMode, YardProject } from "./types";
 import { emptyProject, generateFromPrompt } from "./prompt";
 import { applyFollowOnSize, followOnNamesStock, hasExplicitStock, isRepeatPrompt, looksLikeFollowOn, materialUnlessNamed, refinedPrompt } from "./promptHelpers";
@@ -22,9 +23,10 @@ import { fitPocketAsk } from "./pocket";
 import { buildFitted } from "./fitted";
 import { liftFlatTo3d } from "./flatLayout";
 import { fieldInch, inchFrac, parseInch } from "./inchText";
+import { logIdea } from "./ideaLogClient";
 
 /** Keep the forge lamp up long enough to watch it. A new build cancels a pending reveal. */
-const LAMP_HOLD_MS = 4000;
+const LAMP_HOLD_MS = 700;
 let lampTimer = 0;
 let lampGen = 0;
 
@@ -41,6 +43,15 @@ function armBuilding() {
 
 function panelCutSig(project: YardProject): string {
   return project.panels.map((panel) => `${panel.name}|${panel.cutNote ?? ""}|${panel.cutouts?.length ?? 0}|${panel.polygon ? 1 : 0}|${panel.size.height.toFixed(2)}`).join(";");
+}
+
+/** C10: the inputs a plan's price is built from are the same objects (a notes-only spread). */
+export function samePricedBuild(a: YardProject, b: YardProject): boolean {
+  return a === b || (
+    a.panels === b.panels && a.instances === b.instances && a.overall === b.overall && a.kind === b.kind &&
+    a.primaryMaterialId === b.primaryMaterialId && a.shopJoin === b.shopJoin && a.joinMethod === b.joinMethod &&
+    a.fitted === b.fitted && a.displayOnly === b.displayOnly && a.prompt === b.prompt
+  );
 }
 
 function sameMeasureBuild(a: YardProject, b: YardProject): boolean {
@@ -275,7 +286,11 @@ export const useYard = create<YardState>((set, get) => ({
     persist(stamped);
   },
   setProject: (next) => {
-    set({ project: next });
+    // C10: every total swaps at once. A shown plan never outlives the build it priced: a new build reprices it in
+    // the same update (a notes-only change keeps the plan).
+    const { project: prev, plan } = get();
+    const repriced = plan && !samePricedBuild(prev, next) ? buildPlan(next) : plan;
+    set({ project: next, plan: repriced });
     persist(next);
   },
   generate: (prompt, materialId, form, opts) => {
@@ -288,7 +303,9 @@ export const useYard = create<YardState>((set, get) => ({
     // Re-typing a fallback noun ("lemonade stand" on a bench built as "table 48 wide …") rebuilds the
     // same primitive: the typed noun with the bench stock would skip the fallback and lose the build.
     // A saved or just-learned recipe always wins: the bench's fallback prompt (a closet under a learning block) never replaces it.
-    const retypedFallback = !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
+    // Row 517: never on a not-learned placeholder. Its bench prompt is the engine's discarded guess (a planter box under
+    // "toolbox"), so re-running the typed words there would silently price a different object.
+    const retypedFallback = !current.displayOnly && !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
     let used = !prompt.trim() || retypedFallback ? current.prompt : prompt;
     const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
     let mode: "auto" | "cut" | "whole" = get().cutMode;
@@ -338,7 +355,8 @@ export const useYard = create<YardState>((set, get) => ({
     // Keep prior stock for ". Then:" refinements, exact repeats, Measure restock,
     // or when the typed words name stock (hasExplicitStock / detectMaterial).
     if (!materialId) {
-      const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat);
+      // A placeholder's plywood is display only (roughBlock), never stock the visitor chose (row 517).
+      const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat && !current.displayOnly);
       if (keepPrior || hasExplicitStock(used)) {
         materialId = materialUnlessNamed(current.primaryMaterialId, used);
       }
@@ -352,7 +370,11 @@ export const useYard = create<YardState>((set, get) => ({
         : current.typedPrompt && follow
           ? refinedPrompt(current.typedPrompt, prompt)
           : undefined);
-    const next = typedPrompt ? { ...built, typedPrompt } : built;
+    const next0 = typedPrompt ? { ...built, typedPrompt } : built;
+    // A restock or a follow-on edits the build on the bench: its spec is the bench's, edited (spec.ts). A restock sets
+    // no axis (rule 4: thickness only); a follow-on sets only the axes its words resized.
+    const resized = (["width", "height", "depth"] as const).filter((a) => !!genOpts.sizeOverride && Math.abs(genOpts.sizeOverride[a] - current.overall[a]) >= 1 / 32);
+    const next = (opts?.restock || follow) && current.spec ? withEditedSpec(current, next0, opts?.restock ? [] : resized) : next0;
     const flags = defaultGhostFlags(next.kind, prompt, next.historic);
     const srcPocket = next.pocket ?? next.recastFrom?.pocket;
     const srcFitted = next.fitted ?? next.recastFrom?.fitted;
@@ -360,6 +382,8 @@ export const useYard = create<YardState>((set, get) => ({
     if (srcPocket) flags.showHull = true;
     if (srcFitted?.opening.kind === "alcove") flags.showHull = true;
     get().commit(next);
+    // Endless Ideas (004): anonymous, at idle, server decides status; restocks are not new ideas.
+    if (!opts?.restock) logIdea(used);
     const angled = angleMeasureFromProject(next);
     set({
       ...flags,
@@ -780,7 +804,7 @@ export const useYard = create<YardState>((set, get) => ({
       );
       if (fit.note) fit.spec.clampNote = fit.note;
       // Same stock as the build on the bench: a pocket switched to 2×4 or popsicle stays that stock.
-      const builtRaw = generateFromPrompt(prompt, rebuildStock(project), undefined, { pocketOverride: fit.spec });
+      const builtRaw = withEditedSpec(project, generateFromPrompt(prompt, rebuildStock(project), undefined, { pocketOverride: fit.spec }));
       const fittedSrc0 = project.fitted ?? project.recastFrom?.fitted;
       const built = builtRaw && fittedSrc0 && builtRaw.pocket
         ? {
@@ -809,14 +833,14 @@ export const useYard = create<YardState>((set, get) => ({
     if (fittedSrc) {
       // Stolen Bench fitted on a climb/step stool — rebuild weekend form, keep Measure size.
       if (climbIdentityLabel((project.prompt || prompt).toLowerCase())) {
-        const built = generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
+        const built = withEditedSpec(project, generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
           sizeOverride: {
             width: widthIn,
             height: heightIn,
             depth: depth ?? fittedSrc.unit.depth,
           },
           joinMethod: project.joinMethod,
-        });
+        }));
         if (built) get().commit(built);
         return;
       }
@@ -847,7 +871,7 @@ export const useYard = create<YardState>((set, get) => ({
           rightDepth: Number.isFinite(right) ? right : spec.walls.rightDepth,
         };
       }
-      const built = generateFromPrompt(prompt, rebuildStock(project), undefined, { fittedOverride: spec, honorUnit: true });
+      const built = withEditedSpec(project, generateFromPrompt(prompt, rebuildStock(project), undefined, { fittedOverride: spec, honorUnit: true }));
       if (built) get().commit(built);
       return;
     }
@@ -859,7 +883,7 @@ export const useYard = create<YardState>((set, get) => ({
       !!project.pocket ||
       !!project.windowPkg;
     if (!houseCarcase && (project.instances.length > 0 || project.panels.length > 0)) {
-      const built = generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
+      const built = withEditedSpec(project, generateFromPrompt(prompt, project.primaryMaterialId, undefined, {
         sizeOverride: {
           width: widthIn,
           height: heightIn,
@@ -868,7 +892,7 @@ export const useYard = create<YardState>((set, get) => ({
         joinMethod: project.joinMethod,
         includeSpine: project.supportOffer?.included,
         scale: get().buildScale,
-      });
+      }));
       if (built) {
         get().commit(built);
         const n = fieldInch;

@@ -1,6 +1,7 @@
 /**
  * Specialty fitted carcase builders (bench, hung, beds, litter, …).
  */
+import { doorHingeCount, doorLeaves, doorRise } from "./hingedLeaf";
 import { createId } from "@/lib/utils";
 import { typedAxisNumber } from "./typedAxis";
 import { inchFrac } from "./inchText";
@@ -40,6 +41,7 @@ import {
   isWineRack, isShoeStorage, isOverToilet, isSpiceRack, isSpiceCabinet, isIroningCabinet,
   isMedicineCabinet, spokenTierCount, spokenBottleCount, shallowWallCabinetFace, SHELF_MIN_CLEAR,
 } from "./fittedShared";
+import { lippedShelfYs } from "./shelfLips";
 import { inch16, wineRackLayout, wineCapacityVoice, WINE_BOTTLE_CLEAR } from "./fittedWine";
 import { mattressDeck, framedSleep } from "./fittedParse";
 
@@ -259,7 +261,7 @@ export function buildPicnic(spec: FittedSpec, prompt: string): YardProject {
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Picnic table — ${length}" top, two attached benches at ${benchH}". Not a dining table.`,
+      `${name}. Picnic table — ${length}" top, two attached benches at ${benchH}".`,
       `The benches sit outside the top, ${gap}" clear of the table legs so you can sit. 2×2 legs, ¾" top and seats.`,
       "Each end is one frame: a 2×4 top cleat under the top and a 2×4 seat support under both seats, bolted to the legs; the stretcher runs between the top cleats.",
     ],
@@ -773,8 +775,10 @@ export function buildHungOpen(spec: FittedSpec, prompt: string, affordances: Hou
   const panels: Panel[] = [];
   panels.push(panel("upright", "Left upright", x0, 0, 0, P, H, D));
   panels.push(panel("upright", "Right upright", x0 + W - P, 0, 0, P, H, D));
+  // Lips ride on every shelf, the top one included: that shelf drops so its lip is flush with the uprights' tops.
+  const ys = lips ? lippedShelfYs(H, shelfN, P, 1.25) : null;
   for (let i = 0; i < shelfN; i++) {
-    const y = shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
+    const y = ys ? ys[i] : shelfN === 1 ? 0 : (i * (H - P)) / (shelfN - 1);
     panels.push(panel("shelf", `Shelf ${i + 1}`, x0 + P, y, backT, innerW, P, D - backT));
     if (lips) {
       panels.push(panel("rail", `Jar lip ${i + 1}`, x0 + P, y + P, D - P, innerW, 1.25, P));
@@ -942,18 +946,8 @@ export function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: 
     panels.push(panel("deck", "Support leg", x0 + P + (innerW - 1.5) / 2, P, D - P * 3, 1.5, legLen, P));
   }
   const doorN = fold ? 1 : typedDoorCount(prompt) ?? (W > 28 ? 2 : 1);
-  if (fold) {
-    panels.push(panel("door", "Door", x0 + 0.08, 0.08, face.doorZ, W - 0.16, H - 0.16, face.doorT));
-  } else {
-    const leafH = H - 0.16;
-    const bayW = W / doorN;
-    const leafW = bayW - 0.2;
-    for (let i = 0; i < doorN; i++) {
-      const label =
-        doorN === 1 ? "Door" : doorN === 2 ? (i === 0 ? "Left door" : "Right door") : `Door ${i + 1}`;
-      panels.push(panel("door", label, x0 + i * bayW + 0.1, 0.08, face.doorZ, leafW, leafH, face.doorT));
-    }
-  }
+  const rise = doorRise(0, H);
+  for (const leaf of doorLeaves({ x: x0, w: W, count: doorN })) panels.push(panel("door", leaf.name, leaf.x, rise.y, face.doorZ, leaf.w, rise.h, face.doorT));
   const lowerPrompt = prompt.toLowerCase();
   const name = isKitchenUpper(lowerPrompt)
     ? spec.name.match(/upper/i)
@@ -984,7 +978,7 @@ export function buildHungCabinet(spec: FittedSpec, prompt: string, affordances: 
       fold
         ? "The board stores upright and hinges down on a piano hinge. A support leg kicks out to the floor. Hang the carcase on studs through the back."
         : doorN > 1
-          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorN} hinge pairs). Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`
+          ? `Hang the carcase on studs through the back. ${doorN} doors with concealed hinges (${doorHingeCount({ size: { width: W / doorN, height: H, depth: face.doorT } })} per door). Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`
           : `Hang the carcase on studs through the back. Concealed hinges on the door. Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so the hinge arm can close. Glue the shelves; do not pin them.`,
     ],
     historic: false,
@@ -1430,8 +1424,8 @@ export function buildOttoman(spec: FittedSpec, prompt: string, affordances: Hous
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Ottoman — solid top over a sit frame at ${H}" tall, square ${W}" × ${D}" plan. Not Storage, not a Yard House wire skeleton. ¾" plywood.`,
-      `Solid top densify — sit-load apron frame. Guidance only — confirm ${H}" seat height.`,
+      `${name}. Ottoman — solid top over a sit frame at ${H}" tall, square ${W}" × ${D}" plan. Not Storage. ¾" plywood.`,
+      `Solid top on an apron frame that carries the sitting load. Guidance only — confirm ${H}" seat height.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: H, depth: D, kind: "room" },
@@ -1594,7 +1588,7 @@ export function buildRockingChair(spec: FittedSpec, prompt: string, affordances:
     primaryMaterialId: PLY,
     notes: [
       `${name}. Rocking chair — seat height ${seatH}" held. Curved rocker rails under the legs (Rocker 1 / Rocker 2) — not skis, not a sled, not Yard House wire. ¾" plywood.`,
-      `Rocker densify: two curved rocker rails carry the legs. Sit-test the ${seatH}" seat height before you finish.`,
+      `Two curved rocker rails carry the legs. Sit-test the ${seatH}" seat height before you finish.`,
     ],
     historic: false,
     opening: { ...spec.opening, width: W, height: seatH, depth: D, kind: "room" },

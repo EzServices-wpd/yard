@@ -1,5 +1,6 @@
 import { xaiFetch } from "./xai.server";
-import { cacheSet } from "./dailyCap.server";
+import { cacheGet, cacheSet } from "./dailyCap.server";
+import { designKey } from "@/lib/yard/designKey";
 import { createServerFn } from "@tanstack/react-start";
 import { FORGE_CATALOG } from "@/lib/yard/catalog";
 import { isFormOp, isFormStroke, subjectFromPrompt, type FormOp, type FormRecipe, type FormStroke } from "@/lib/yard/form";
@@ -180,6 +181,15 @@ const RECIPE_SYSTEM = [
 export const lookupRecipe = createServerFn({ method: "POST" })
   .validator((input: { prompt: string; feedback?: string[] }) => input)
   .handler(async ({ data }) => {
+    // A design that already passed for this prompt (same words, same size) comes back without an AI call.
+    if (!data.feedback?.length) {
+      const hit = await cacheGet<string>(`yard-design:${designKey(data.prompt)}`);
+      if (hit) {
+        const lookupId = crypto.randomUUID();
+        await cacheSet(`yard-lookup:${lookupId}`, JSON.stringify({ prompt: data.prompt, recipeJson: hit }), 3600);
+        return { ok: true as const, recipeJson: hit, lookupId, cached: true };
+      }
+    }
     const user = data.feedback?.length ? `${data.prompt}\nThe last recipe failed these checks; fix them: ${data.feedback.join("; ")}` : data.prompt;
     // grok-4.5 spends part of max_tokens on reasoning: 1600 cut long recipes off mid-JSON, which read as
     // "missing fields". Give the reply room for a full part list. Medium effort (default is high): cornhole and
@@ -189,7 +199,7 @@ export const lookupRecipe = createServerFn({ method: "POST" })
     const recipeJson = JSON.stringify(parseModelJson(result.text));
     // The recipe bot proposes only this server-held copy, by id; it never takes recipe JSON from the client.
     const lookupId = crypto.randomUUID();
-    await cacheSet(`yard-lookup:${lookupId}`, recipeJson, 3600);
+    await cacheSet(`yard-lookup:${lookupId}`, JSON.stringify({ prompt: data.prompt, recipeJson }), 3600);
     return { ok: true as const, recipeJson, lookupId };
   });
 

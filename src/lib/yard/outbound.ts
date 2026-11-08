@@ -30,7 +30,8 @@ const NODE_ALIASES: Record<keyof AffiliateConfig, string[]> = {
   lowesTemplate: ["LOWES_AFFILIATE_TEMPLATE"],
 };
 
-export const OUTBOUND_REL = "sponsored noopener";
+/** Paid links: nofollow + sponsored (Google's rel for affiliate links), noopener for the new tab. */
+export const OUTBOUND_REL = "nofollow sponsored noopener";
 export const OUTBOUND_TARGET = "_blank";
 
 function clean(v: unknown): string {
@@ -90,7 +91,7 @@ export function affiliateDisclosure(cfg: AffiliateConfig = affiliateConfig()): s
   return parts.join(" ");
 }
 
-export type Store = "amazon" | "homedepot" | "lowes" | "walmart" | "other";
+export type Store = "amazon" | "homedepot" | "lowes" | "walmart" | "rockler" | "woodcraft" | "other";
 
 export function storeOf(href: string): Store {
   let host = "";
@@ -103,6 +104,9 @@ export function storeOf(href: string): Store {
   if (/(^|\.)homedepot\.com$/.test(host)) return "homedepot";
   if (/(^|\.)lowes\.com$/.test(host)) return "lowes";
   if (/(^|\.)walmart\.com$/.test(host)) return "walmart";
+  // Specialty woodworking stores ("Also at" on the Buy list).
+  if (/(^|\.)rockler\.com$/.test(host)) return "rockler";
+  if (/(^|\.)woodcraft\.com$/.test(host)) return "woodcraft";
   return "other";
 }
 
@@ -142,13 +146,45 @@ export function wrapTemplate(href: string, template: string): string {
  * Central outbound link. Every Buy row href goes through here. Idempotent:
  * an already-tagged Amazon URL stays the same; an already-wrapped URL is no longer a store host.
  */
-export function outboundHref(href: string, cfg: AffiliateConfig = affiliateConfig()): string {
+export function outboundHref(href: string, cfg: AffiliateConfig = affiliateConfig(), subId?: string): string {
   if (!href) return href;
   const store = storeOf(href);
-  if (store === "amazon") return amazonTagged(href, cfg.amazonTag);
-  if (store === "homedepot") return wrapTemplate(href, cfg.homedepotTemplate);
-  if (store === "lowes") return wrapTemplate(href, cfg.lowesTemplate);
+  if (store === "amazon") return amazonTagged(href, cfg.amazonTag); // F49: Associates links carry no sub-ID
+  if (store === "homedepot") return withSubId(wrapTemplate(href, cfg.homedepotTemplate), "impact", cfg.homedepotTemplate ? subId : undefined);
+  if (store === "lowes") return withSubId(wrapTemplate(href, cfg.lowesTemplate), "impact", cfg.lowesTemplate ? subId : undefined);
   return href;
+}
+
+/** F49: the sub-ID parameter per network. Only Impact (Home Depot, Lowe's) takes one; Amazon Associates, Rockler, Woodcraft and unknown stores get none. */
+export type SubIdNetwork = "impact" | "amazon" | "rockler" | "woodcraft" | "other";
+const SUB_ID_PARAM: Record<SubIdNetwork, string> = { impact: "subId1", amazon: "", rockler: "", woodcraft: "", other: "" };
+
+const SUB_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** A sub-ID safe for a tracking param: letters, digits, _ and -, up to 64; anything else is dropped. */
+export function cleanSubId(subId: string | undefined): string {
+  const t = (subId ?? "").trim().replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+  return SUB_RE.test(t) ? t : "";
+}
+
+/**
+ * Sub-ID tracking: which surface (and build) a paid click came from. Only Impact (Home Depot, Lowe's)
+ * reads one (subId1); see SUB_ID_PARAM. Only on a link that is already earning: with no affiliate ID set the
+ * href stays byte-for-byte unchanged.
+ */
+export function withSubId(href: string, network: SubIdNetwork, subId?: string): string {
+  const param = SUB_ID_PARAM[network];
+  if (!param) return href;
+  const sub = cleanSubId(subId);
+  if (!sub) return href;
+  let u: URL;
+  try {
+    u = new URL(href);
+  } catch {
+    return href;
+  }
+  u.searchParams.set(param, sub);
+  return u.toString();
 }
 
 /** Is this particular link earning (drives data-yard-affiliate). */

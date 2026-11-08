@@ -181,6 +181,7 @@ export function spokenDrawerCount(text: string): number | null {
   // "a pencil drawer" / bare pencil drawer → one front
   if (/\bpencil\s+drawers?\b/.test(lower)) return 1;
   if (/\bwith\s+a\s+drawers?\b/.test(lower)) return 1;
+  if (/\b(?:a|an)\s+drawer\b/.test(lower)) return 1;
   return null;
 }
 
@@ -233,6 +234,21 @@ export function spokenTierCount(text: string): number | null {
   if (!m) return null;
   const n = /\d/.test(m[1]) ? parseInt(m[1], 10) : words[m[1]];
   return n >= 1 && n <= 12 ? n : null;
+}
+
+/** The digit count parseBrief reads for shelfCount (any size; 13+ is not clamped there). */
+export const SHELF_COUNT_DIGITS = /(\d+)\s*shel(?:f|ves|ving)/i;
+
+/**
+ * Whether the prompt carries a shelf count, read from the same two sources parseBrief uses for
+ * `unit.shelfCount` (spoken count, else the digit count). Any typed count counts, 13 and up included;
+ * only a count nobody typed is a default that a build may trim.
+ */
+export function shelfCountTyped(text: string): boolean {
+  if (spokenShelfCount(text) != null) return true;
+  // parseBrief keeps `shelfCount || undefined`, so a typed 0 is not a count it builds (row 211 is spec 009's).
+  const n = parseFloat(text.match(SHELF_COUNT_DIGITS)?.[1] ?? "");
+  return Number.isFinite(n) && n > 0;
 }
 
 /** Spoken/typed shelf count — digits or words; honor "one lower shelf" / adjective between count and shelf. */

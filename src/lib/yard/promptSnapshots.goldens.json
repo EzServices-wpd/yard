@@ -27,7 +27,7 @@
       "Top"
     ],
     "notesHead": [
-      "Linen 31 1/2\" × 78\" × 16 3/4\" (finished depth — doors stand proud). Freestanding carcase — still square, still a cut list.",
+      "Linen 31 1/2\" × 78\" × 16 3/4\" (finished depth — doors stand proud). Stands on its own on the floor.",
       "Unit 31 1/2\" W × 16 3/4\" D × 78\" H. ¾\" plywood. Front reads straight."
     ],
     "signals": {
@@ -50,36 +50,26 @@
       "height": 34,
       "depth": 21
     },
-    "panels": 23,
+    "panels": 13,
     "instances": 0,
     "uniqueParts": [
       "Back",
+      "Bottom (open back)",
       "Counter",
-      "Left bottom",
-      "Left drawer 1",
-      "Left drawer 2",
-      "Left drawer 3",
-      "Left drawer front 1",
-      "Left drawer front 2",
-      "Left drawer front 3",
-      "Left knee divider",
-      "Left toekick",
+      "False front 1",
+      "False front 2",
+      "Kick support",
+      "Left door",
       "Left upright",
-      "Mirror",
-      "Right bottom",
-      "Right drawer 1",
-      "Right drawer 2",
-      "Right drawer 3",
-      "Right drawer front 1",
-      "Right drawer front 2",
-      "Right drawer front 3",
-      "Right knee divider",
-      "Right toekick",
-      "Right upright"
+      "Right door",
+      "Right upright",
+      "Toekick 1",
+      "Toekick 2",
+      "bathroom trash can pocket wall"
     ],
     "notesHead": [
-      "Vanity. Freestanding carcase — still square, still a cut list.",
-      "Unit 36\" W × 21 3/4\" D × 34\" H (finished depth — drawer fronts stand proud). ¾\" plywood. Front reads straight."
+      "Vanity. Stands on its own on the floor.",
+      "Unit 36\" W × 21 3/4\" D × 34\" H (finished depth — doors stand proud). ¾\" plywood."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -100,34 +90,52 @@
       "height": 29,
       "depth": 30
     },
-    "panels": 22,
+    "panels": 40,
     "instances": 0,
     "uniqueParts": [
       "Back",
       "Desktop",
       "Left bottom",
-      "Left drawer 1",
-      "Left drawer 2",
-      "Left drawer 3",
+      "Left drawer back 1",
+      "Left drawer back 2",
+      "Left drawer back 3",
+      "Left drawer bottom 1",
+      "Left drawer bottom 2",
+      "Left drawer bottom 3",
       "Left drawer front 1",
       "Left drawer front 2",
       "Left drawer front 3",
+      "Left drawer side 1 (left)",
+      "Left drawer side 1 (right)",
+      "Left drawer side 2 (left)",
+      "Left drawer side 2 (right)",
+      "Left drawer side 3 (left)",
+      "Left drawer side 3 (right)",
       "Left knee divider",
       "Left toekick",
       "Left upright",
       "Right bottom",
-      "Right drawer 1",
-      "Right drawer 2",
-      "Right drawer 3",
+      "Right drawer back 1",
+      "Right drawer back 2",
+      "Right drawer back 3",
+      "Right drawer bottom 1",
+      "Right drawer bottom 2",
+      "Right drawer bottom 3",
       "Right drawer front 1",
       "Right drawer front 2",
       "Right drawer front 3",
+      "Right drawer side 1 (left)",
+      "Right drawer side 1 (right)",
+      "Right drawer side 2 (left)",
+      "Right drawer side 2 (right)",
+      "Right drawer side 3 (left)",
+      "Right drawer side 3 (right)",
       "Right knee divider",
       "Right toekick",
       "Right upright"
     ],
     "notesHead": [
-      "Desk 60\" × 29\" × 30 3/4\" (finished depth — drawer fronts stand proud). Freestanding carcase — still square, still a cut list.",
+      "Desk 60\" × 29\" × 30 3/4\" (finished depth — drawer fronts stand proud). Stands on its own on the floor.",
       "Read 60x30x29 as width × depth × height. Type wide / deep / tall to change it."
     ],
     "signals": {
@@ -207,7 +215,7 @@
       "Top"
     ],
     "notesHead": [
-      "Pantry 24\" × 84\" × 14 3/4\" (finished depth — doors stand proud). Freestanding carcase — still square, still a cut list.",
+      "Pantry 24\" × 84\" × 14 3/4\" (finished depth — doors stand proud). Stands on its own on the floor.",
       "Unit 24\" W × 14 3/4\" D × 84\" H. ¾\" plywood. Front reads straight."
     ],
     "signals": {
@@ -278,7 +286,7 @@
       "Top"
     ],
     "notesHead": [
-      "Bookcase 30\" × 48\" × 11\". Freestanding carcase — still square, still a cut list.",
+      "Bookcase 30\" × 48\" × 11\". Stands on its own on the floor.",
       "Unit 30\" W × 11\" D × 48\" H. ¾\" plywood. Front reads straight."
     ],
     "signals": {
@@ -318,7 +326,7 @@
       "Top"
     ],
     "notesHead": [
-      "Media console 60\" × 24\" × 16 3/4\" (finished depth — doors stand proud). Freestanding carcase — still square, still a cut list.",
+      "Media console 60\" × 24\" × 16 3/4\" (finished depth — doors stand proud). Stands on its own on the floor.",
       "Unit 60\" W × 16 3/4\" D × 24\" H. ¾\" plywood. Front reads straight."
     ],
     "signals": {
@@ -498,7 +506,7 @@
       "Top"
     ],
     "notesHead": [
-      "Litter box cabinet 30\" wide × 28\" tall × 20\" deep. A carcase that hides the litter box: the left front is a fixed entry panel with an 8\" cat hole, the right front is a scoop door on two hinges. ¾\" plywood.",
+      "Litter box cabinet 30\" wide × 28\" tall × 20\" deep. a main box that hides the litter box: the left front is a fixed entry panel with an 8\" cat hole, the right front is a scoop door on two hinges. ¾\" plywood.",
       "Inside 28 1/2\" wide × 19 3/4\" deep × 26 1/2\" tall — sized for a large 19\" × 15\" × 11\" litter box with room for the cat to step in and crouch."
     ],
     "signals": {
@@ -604,7 +612,7 @@
     ],
     "notesHead": [
       "Class anatomy: low bed. Dog bed 36\" × 28\", 7 3/4\" tall, at dog scale from Pallet board. A floor of boards side by side, walls stacked on its edges, and a lower front so the dog steps in. Add a cushion about 34\" × 26\".",
-      "Walk around it on the bench (WASD + mouse look)."
+      "Assumed 36\" wide (default size) — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -625,10 +633,12 @@
       "height": 29,
       "depth": 72
     },
-    "panels": 28,
+    "panels": 30,
     "instances": 0,
     "uniqueParts": [
       "Center brace",
+      "Diagonal brace far",
+      "Diagonal brace near",
       "Left seat board 1",
       "Left seat board 2",
       "Left seat board 3",
@@ -722,7 +732,7 @@
       "support"
     ],
     "notesHead": [
-      "18 joints · 18 members",
+      "18 glue joints hold 18 pieces",
       "3/4\" Schedule 40 PVC Pipe is column stock — each long member is one piece."
     ],
     "signals": {
@@ -775,11 +785,12 @@
       "height": 84,
       "depth": 9.25
     },
-    "panels": 10,
+    "panels": 16,
     "instances": 0,
     "uniqueParts": [
       "Back",
       "Bottom",
+      "Center divider",
       "Left upright",
       "Right upright",
       "Shelf 1",
@@ -791,7 +802,7 @@
     ],
     "notesHead": [
       "The ¾\" parts are one 1×10 wide (9 1/4\"), not 12\" glued up from boards. Type a depth to build them deeper.",
-      "Bookcase. Freestanding carcase — still square, still a cut list."
+      "Bookcase. Stands on its own on the floor."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -823,8 +834,8 @@
       "support"
     ],
     "notesHead": [
-      "Plant stand · upright pot envelope for a real pot — densify keeps the whole stand at the named stock; pot sits upright, not a Tree silhouette.",
-      "30 joints · 34 members"
+      "Plant stand · upright pot envelope for a real pot — pot sits upright.",
+      "30 glue joints hold 34 pieces"
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -970,7 +981,7 @@
     ],
     "notesHead": [
       "Class anatomy: box figure. Built from folded cardboard boxes: two leg tubes, a body box, a head box and two arm tubes, joined with hot glue. Each face is cut from the sheet; fold each box on scored lines with a 1\" glue tab.",
-      "Walk around it on the bench (WASD + mouse look)."
+      "Assumed 15 3/8\" wide (default size) — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1062,8 +1073,8 @@
       "rail"
     ],
     "notesHead": [
-      "374 joints · 519 members",
-      "Plastic Drinking Straw is thin — long members are laced into a truss."
+      "374 glue joints hold 519 pieces",
+      "Plastic Drinking Straw is thin, so each long piece is built from short sticks braced together."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1094,7 +1105,7 @@
     ],
     "notesHead": [
       "Lattice tower · 12\" high",
-      "Corner chords first. Story hoops next. Face lace last — densified at the named stock."
+      "Corner posts first. Rings next. Cross-bracing on each face last."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1123,8 +1134,8 @@
       "support"
     ],
     "notesHead": [
-      "13 joints · 12 members",
-      "Standard Popsicle Stick is thin — long members are laced into a truss."
+      "13 glue joints hold 12 pieces",
+      "Standard Popsicle Stick is thin, so each long piece is built from short sticks braced together."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1170,22 +1181,20 @@
     "id": "lemonade-stand",
     "prompt": "lemonade stand",
     "bucket": "unknown-fallback",
-    "name": "Lemonade stand 4' × 6'",
+    "name": "Lemonade stand 4' × 2' 6\"",
     "kind": "custom",
     "material": "lumber-2x4-8",
     "overall": {
       "width": 48,
       "height": 72.5,
-      "depth": 24
+      "depth": 30
     },
-    "panels": 18,
+    "panels": 16,
     "instances": 0,
     "uniqueParts": [
       "Awning",
       "Center support 1",
       "Center support 2",
-      "Center support 3",
-      "Center support 4",
       "Counter",
       "Counter apron back",
       "Counter apron front",
@@ -1201,7 +1210,7 @@
       "Top rail front"
     ],
     "notesHead": [
-      "Lemonade stand 4' × 6': four 2×4 corner posts from the floor to the roof. 2×4 aprons between them carry a 45\" × 24\" counter at 37\", a comfortable serving height.",
+      "Lemonade stand 4' × 2' 6\": four 2×4 corner posts from the floor to the roof. 2×4 aprons between them carry a 45\" × 24\" counter at 37\", a comfortable serving height.",
       "A 1/2\" plywood skirt screws to the front posts below the counter; top rails tie the posts at the roof and carry a 1/2\" plywood awning that overhangs 6\" in front for shade."
     ],
     "signals": {
@@ -1382,29 +1391,35 @@
     "id": "bird-feeder",
     "prompt": "bird feeder",
     "bucket": "unknown-fallback",
-    "name": "Bird Feeder 10\" × 10\" × 8\"",
-    "kind": "closet",
-    "material": "plywood-3-4-4x8",
+    "name": "Bird feeder",
+    "kind": "custom",
+    "material": "lumber-1x6-8",
     "overall": {
       "width": 10,
-      "height": 10,
-      "depth": 8
+      "height": 10.6,
+      "depth": 7.7
     },
-    "panels": 5,
+    "panels": 11,
     "instances": 0,
     "uniqueParts": [
-      "Back",
-      "Bottom",
-      "Front",
-      "Left side",
-      "Right side"
+      "Back pane",
+      "Back roof",
+      "Back tray lip",
+      "Front pane",
+      "Front roof",
+      "Front tray lip",
+      "Left gable",
+      "Right gable",
+      "Screw eye 1",
+      "Screw eye 2",
+      "Seed tray"
     ],
     "notesHead": [
-      "Yard built a bird feeder as a simple open box sized for it. Change any size in Measure.",
-      "Bird Feeder 10\" × 10\" × 8\". ¾\" plywood."
+      "Bird feeder: built from its defining parts (tray, rim, gable, pane, roof, hanger).",
+      "A hopper feeder: seed sits in the hopper between two clear panes and spills out of a 1/2\" gap at the bottom onto the tray."
     ],
     "signals": {
-      "mentionsYardBuilt": true,
+      "mentionsYardBuilt": false,
       "craftStock": false,
       "hasKnee24": false,
       "partBudgetOk": true

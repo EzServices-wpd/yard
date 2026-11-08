@@ -1,3 +1,19 @@
+import { seedIds } from "../stableId";
+import { hollowDrawers } from "./hollowDrawers";
+import { withFeatureNotes } from "./typedFeatures";
+import { resolvePurpose } from "./purposeForms";
+import { canonicalMeasures, rewritesMeasures } from "./measureText";
+import { readLengths, releaseReads } from "./lengthReader";
+import { hangingDepthRefusal, hangingTalk, rodCountRefusal, supportHangingBays, withRodPairs } from "./hangingClearance";
+import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
+import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
+import { suspensionRatioRefusal } from "./formLandmarks";
+import { withArticle } from "./article";
+import { sizePhrases } from "./sizePhrases";
+import { buildUnitItem, unitItemAsk } from "./unitItems";
+import { boundPrompt } from "./promptLimits";
+import { builderOwnText, READ_MODIFIER } from "./builderName";
+import { FORM_NEUTRAL } from "./genericBox";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
 import { withFoldingLegs } from "./foldingLegs";
@@ -7,14 +23,16 @@ import { withFrontCuesBuilt } from "./cueRules";
 import { buildBoxFigure, buildPetBed, classAnatomy } from "./classAnatomy";
 import { withPairedLeafReveals } from "./pairedLeaves";
 import { hooksShowInModel } from "./boughtHardware";
+import { bedCourses, CASTER_H, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
 import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
-import { getCatalogItem } from "./catalog";
+import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
+import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
@@ -25,9 +43,9 @@ import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
 import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
-import { normalizeUserPrompt, untypedAxisAssumedNotes } from "./voiceHonesty";
+import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
-import { enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
+import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
 import { withHome } from "./assembly";
 import { detectForm, engineOwnsForm, isLockedForm, landmarkAspect, subjectFromPrompt, withAspect, type FormRecipe } from "./form";
@@ -54,6 +72,7 @@ import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
 import { buildRealObject, realObjectKind } from "./realObjects";
+import { dollhouseTyped, isDollhouse, PLY_THICKNESS } from "./dollhouse";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
 import { positiveSentence } from "./positiveWording";
 import { purposeOf, titleWithPurpose } from "./purpose";
@@ -65,8 +84,9 @@ import { buildAccessRamp, buildPetEnclosure, buildScratchingPost, isPetEnclosure
 import { localStockQuery } from "./stockQuery";
 import { placeCutOrder } from "./cutOrder";
 import { rememberCatalogItem } from "./foundStock";
-import { isOutdoorPrompt, withOutdoorNotes } from "./outdoor";
+import { isOutdoorPrompt, outdoorBuild, withOutdoorNotes } from "./outdoor";
 import { notesWithFinishedDepth } from "./modelSize";
+import { buildSpec } from "./spec";
 
 export function emptyProject(): YardProject {
   return {
@@ -91,7 +111,7 @@ export function emptyProject(): YardProject {
 function withWireNote(project: YardProject, item: CatalogItem): YardProject {
   if (!isWireStock(item)) return project;
   const tip =
-    "Wire frame — no stock was named. Open Stock and pick popsicle, PVC, straw, lumber… to densify this form.";
+    "Wire frame — no stock was named. Open Stock and pick popsicle, PVC, straw, lumber… to build this form from it.";
   return {
     ...project,
     notes: [tip, ...project.notes.filter((n) => !n.startsWith("Wire frame"))],
@@ -118,6 +138,17 @@ function requestedStock(prompt: string, materialOverride?: string): CatalogItem 
   // A named board section is the member stock even without "from". The species default is not a section.
   if (named.category === "lumber" && named.formFactor === "board" && named.id !== CATALOG_LUMBER_BIND) return named;
   return null;
+}
+
+/**
+ * A dollhouse's sheet: a switched or typed 1/2" or 3/4" plywood, else 1/2" plywood (what dollhouse kits use). Thinner
+ * plywood takes no screws, so it builds in 1/2" and says so; a craft or board ask keeps its own build.
+ */
+function dollhouseStock(prompt: string, materialOverride?: string): CatalogItem | null {
+  const typed = hasExplicitStock(prompt) ? detectMaterial(prompt) : null;
+  if (typed && !/^plywood-/.test(typed.id)) return null;
+  const ok = (id?: string) => (id && /^plywood-(?:1-2|3-4)-/.test(id) ? getCatalogItem(id) ?? null : null);
+  return ok(materialOverride) ?? ok(typed?.id) ?? getCatalogItem("plywood-1-2-4x8") ?? null;
 }
 
 function carcaseKind(item: CatalogItem | null): "board" | "sheet" | null {
@@ -274,11 +305,11 @@ function typedStockId(prompt: string): string | undefined {
 }
 
 /** Stock switch: a stock the build can't use is refused in plain words, never ignored silently. */
-function refuseUnusedStock(project: YardProject, ask?: string, force = false): YardProject {
+function refuseUnusedStock(project: YardProject, ask?: string, force = false, pick?: string): YardProject {
   const item = ask && getCatalogItem(ask);
   if (!item || (!force && (/^lumber-/.test(item.id) || (project.panels ?? []).some((p) => p.materialId === ask)))) return project;
   const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
-  const note = `${item.name} can't build this ${project.name.toLowerCase().replace(/\s+\d.*$/, "")}, so it stays ${kept} at the same size. Pick ${force ? "a sheet stock" : "a lumber stock"} to switch it.`;
+  const note = `${item.name} can't build this ${project.name.toLowerCase().replace(/\s+\d.*$/, "")}, so it stays ${kept} at the same size. Pick ${pick ?? (force ? "a sheet stock" : "a lumber stock")} to switch it.`;
   return { ...project, notes: [...(project.notes ?? []), note] };
 }
 
@@ -354,6 +385,9 @@ const OUTDOOR_STOCK: [RegExp, string][] = [
 function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardProject {
   const lower = prompt.toLowerCase();
   if (!SEAT_OR_TABLE.test(lower) || !(OUTDOOR_SEAT_CLASS.test(lower) || isOutdoorPrompt(lower))) return project;
+  // An outdoor frame build (picnic table, deck) already chose exterior stock per member: never re-pick it by name
+  // (a "Top cleat" is not a top slat, and a table has no arms).
+  if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n))) return project;
   const pick = (label: string) => OUTDOOR_STOCK.find(([re]) => re.test(label))?.[1];
   let changed = false;
   const instances = (project.instances ?? []).map((i) => {
@@ -376,12 +410,120 @@ function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardPr
 }
 
 /** Built → solved. A sized weekend build then lands on the three numbers, same as a closet. */
+let idDepth = 0;
+/**
+ * I25: part ids come from a stream seeded by the outermost call's own input, so the same prompt gives identical
+ * parts and steps on every run (nested calls share the outer stream). A generated project id (proj-…) stays fresh
+ * per call so the workspace still sees each build as new; a form's own fixed id is kept.
+ */
 export function generateFromPrompt(...args: Parameters<typeof generateRaw>): YardProject {
+  if (idDepth === 0) seedIds(args);
+  const typedAtIntake = args[0] ?? "";
+  idDepth++;
+  try {
+    // A fixed-ratio bridge typed with a length and a height that disagree is refused, naming both sizes that build.
+    const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
+    if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
+    // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
+    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
+    const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
+    // Row 438: a typed rod count over the finished bays is built as double hang, trimmed to the count.
+    const raw = (idDepth === 1 ? withRodPairs(raw0, args[0] ?? "", (q) => withFeatureNotes(hollowDrawers(rebuild(q)), args[0])) : null) ?? raw0;
+    const small = idDepth === 1 ? tooSmallRefusal(raw, args[0] ?? "", rebuild) : null;
+    const shelves = !small && idDepth === 1 ? shelfCountRefusal(raw, args[0] ?? "", rebuild) : null;
+    // A clothes rod in a box a hanger cannot use is refused, naming the depth that hangs; so is a typed rod count that does not fit (row 433).
+    const hung = idDepth === 1 ? hangingDepthRefusal(small ?? shelves ?? raw, args[0] ?? "") ?? rodCountRefusal(small ?? shelves ?? raw, args[0] ?? "") : null;
+    const built0 = hung ?? small ?? shelves ?? raw;
+    // I35: the engine reads "24 1/2" as 24.5; the prompt bar keeps showing the words typed (fractions, never decimals).
+    const typed = args[0] ?? "";
+    const built1 = idDepth === 1 && !built0.typedPrompt && rewritesMeasures(typed) ? { ...built0, typedPrompt: typed } : built0;
+    // One spec object per prompt (spec.ts), built once here at intake; a bench edit types every axis.
+    const o = args[3];
+    const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
+    const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
+    return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+  } catch (e) {
+    if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
+    return partsRefusal(args, e);
+  } finally {
+    idDepth--;
+  }
+}
+
+/**
+ * Over the part ceiling (partCeiling.ts): nothing is built, and the note names the largest size that builds: the typed
+ * size words scaled down, or, for a bench edit or follow-on ("make it taller") that sent a size, that W x D x H.
+ */
+function partsRefusal(args: Parameters<typeof generateRaw>, err?: TooManyParts): YardProject {
+  const [prompt = "", mat, form, o] = args;
+  let stock: string | undefined;
+  const builds = (q: string, opts = o) => {
+    try {
+      const p = generateFromPrompt(q, mat, form, opts);
+      if (p.refused) return false;
+      stock ??= p.primaryMaterialId;
+      return true;
+    } catch (x) {
+      if (x instanceof TooManyParts) return false;
+      throw x;
+    }
+  };
+  const ov = o?.sizeOverride;
+  const down = (b: { width: number; height: number; depth: number }, k: number) => {
+    const f = (n: number) => Math.max(1 / 16, Math.floor(n * k * 16 + 1e-6) / 16);
+    return { width: f(b.width), height: f(b.height), depth: f(b.depth) };
+  };
+  const said = (b: { width: number; height: number; depth: number }) => [`${inchFrac(b.width)}" wide`, `${inchFrac(b.depth)}" deep`, `${inchFrac(b.height)}" tall`];
+  let typed: string[] | undefined;
+  let fit: string[] | null;
+  if (ov) {
+    typed = said(ov);
+    const k = largestScale((k) => builds(prompt, { ...o, sizeOverride: down(ov, k) }));
+    fit = k == null ? null : said(down(ov, k));
+  } else {
+    typed = scaledSizes(prompt, 1)?.words;
+    // No size typed: the default build is over the ceiling, so name the tallest typed height that builds.
+    const asked = typed ? prompt : `${prompt} ${inchFrac(err?.height && err.height > 1 ? Math.ceil(err.height) : 1200)}" tall`;
+    fit = largestBuilding(asked, (q) => builds(q));
+  }
+  const item = getCatalogItem(stock ?? mat ?? "") ?? detectMaterial(prompt);
+  const name = (subjectFromPrompt(/\bcastle\b/i.test(prompt) && !releaseReads(prompt) ? canonicalMeasures(prompt) : prompt) || "this build").replace(/\b\w/g, (c) => c.toUpperCase());
+  const sized = typed ? ` at ${typed.join(", ")}` : "";
+  const why = `Yard builds up to ${MAX_PARTS.toLocaleString("en-US")} parts in one plan, and ${withArticle(name)} in ${item.name.replace(/\s*\(.*?\)/g, "").toLowerCase().replace(/s?$/, "s")}${sized} needs more, so nothing is built. ${fit ? `It builds up to ${fit.join(", ")}: type ${fit.join(", ")} or smaller.` : "Type a smaller size to build it."}`;
+  return { ...emptyProject(), name, prompt, kind: "custom", primaryMaterialId: item.id, refused: why, cardNote: why };
+}
+
+function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // Every pass after the build reads the same words the build read ("2x4x8 bench" → "2x4 bench").
   const said = args[0] ?? "";
-  args[0] = normalizeUserPrompt(said);
+  // C2: size phrases are parsed and stripped before any noun match, then said back as typed axes.
+  // C1: a purpose ("something to hang my keys") resolves to the form built for it before any noun match.
+  // I35: every typed size is read one way first ("24 1/2", "24½", "2' 1/2\"", "2 ft 6 in" → decimal inches).
+  const phrased = sizePhrases(boundPrompt(canonicalMeasures(said)).prompt).prompt;
+  args[0] = normalizeUserPrompt(resolvePurpose(phrased)?.prompt ?? phrased);
   const prompt = args[0];
-  let typedBuild = hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt));
+  // F47: a unit item is built at its real size; the furniture passes below (lumber members, 1/16" snapping) never touch it.
+  // The bench may carry the last build's stock forward; only a different stock (a switch) skips this.
+  const unitAsk = unitItemAsk(prompt);
+  if (unitAsk && (!args[1] || args[1] === unitAsk.unit.catalogId || !hasExplicitStock(prompt)) && !args[2] && !args[3]?.sizeOverride && !args[3]?.fittedOverride) {
+    const unitItem = buildUnitItem(prompt);
+    if (unitItem) return said !== prompt ? { ...unitItem, typedPrompt: said } : unitItem;
+  }
+  // C13: a typed mobility word ("rolling", "on casters") is a modifier, not part of the noun: build the noun, then
+  // put it on casters. A build that cannot take casters (a toy, a landmark, something hung) is built as typed.
+  // The rolling ask rides every rebuild: the bar's build options (scale, cut mode), a stock switch and a size step
+  // (C19 keeps what does not follow from size, so the casters stay). A size override is the overall size on the
+  // casters, so the base is built 3" shorter. Only a given form or a fitted/pocket hole skips this.
+  const reshaped = !!(args[3]?.fittedOverride || args[3]?.pocketOverride);
+  const roll = !args[2] && !reshaped && !findRecipe(prompt) ? mobilityAsk(prompt) : null;
+  if (roll) {
+    const size = args[3]?.sizeOverride;
+    const opts = args[3] && size ? { ...args[3], sizeOverride: { ...size, height: Math.max(1, size.height - CASTER_H) } } : args[3];
+    const base = generateSeeded(roll.base, args[1], undefined, opts);
+    if (takesCasters(base)) return withCasters(base, prompt);
+  }
+  let typedBuild = withMount(hooksShowInModel(withFoldingLegs(generateTyped(...args), prompt)), prompt);
   // A stock switch never changes the form: a sheet-cutout figure switched to a stock that would rebuild it
   // as a stick figure keeps the cutout from its typed sheet, and says so.
   if (args[1] && typedBuild.kind === "figure" && !(typedBuild.panels ?? []).length && hasExplicitStock(prompt)) {
@@ -390,7 +532,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
   }
   const members0 = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
   // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
-  const members = isOutdoorPrompt(prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
+  const members = outdoorBuild(members0, prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
     args,
@@ -405,8 +547,10 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     ...(landmark ? { name: landmark } : {}),
     notes: tidyNotes(done.notes ?? [])
       .filter((n) => !ENGINE_NOTE.test(n))
-      .map((n) => n.replace(/^(\d+ joints? · )\d+ members? after weld$/, (_m, j: string) => `${j}${pieces} member${pieces === 1 ? "" : "s"}`))
-      .map(positiveSentence),
+      .map((n) => n.replace(/^(\d+ glue joints?) hold \d+ pieces?$/, (_m, j: string) => `${j} hold ${pieces} piece${pieces === 1 ? "" : "s"}`))
+      .map(positiveSentence)
+      // Notes are said in plain shop words, the same as the steps ("the carcase" → "the main box").
+      .map(strangerPlainShopTalk),
   };
   const built = done.typedPrompt ? { ...tidy, typedPrompt: said } : tidy;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
@@ -537,16 +681,20 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
 
 export const UNVERIFIED = "Unverified: Yard learned this build but it has not passed review yet. Check every part before you cut.";
 
+const CRAFT_STICK_OWNED = new Set(["bird-feeder", "jewelry-box"]);
+
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
   // recipe build is already sized, so only the outdoor package is added to it.
-  const recipe = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  const found = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
+  // A craft-stick model ("craft stick bird feeder") is the engine's stick build, never the full-size wood recipe.
+  const recipe = found && /\b(?:craft|popsicle|lolly)\s*sticks?\b/i.test(args[0]) && CRAFT_STICK_OWNED.has(found.key) ? null : found;
   // A learned recipe never replaces a built-in shape: when the engine itself builds the noun (a fitted
   // medicine cabinet, a locked family), the engine's build wins and the recipe is ignored.
   const engine = recipe?.learned ? engineCore(...args) : null;
   if (engine && builtInShape(args[0], engine, recipe!.key.replace(/-/g, " "))) return engine;
   if (recipe) {
-    const p = withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]);
+    const p = bedCourses(withOutdoorNotes(buildRecipe(recipe, normalizeUserPrompt(args[0]), args[1], args[3]?.sizeOverride).project, args[0]), args[0]);
     // A held recipe never builds silently: it says plainly that review is still pending.
     return recipe.held ? { ...p, notes: [UNVERIFIED, ...p.notes] } : p;
   }
@@ -569,13 +717,25 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
     const solved = solveModel(generateRaw(...a));
     return solved.panels.length ? applySpokenFace(solved, a[0], "body") : solved;
   };
-  const project = built(args);
   const override = args[3]?.sizeOverride;
+  let project: YardProject;
+  try {
+    project = built(args);
+  } catch (e) {
+    // A whole-stick module ignores a bare typed size ('toothpick pyramid 12"'), and its default can be over the part
+    // ceiling when the typed size is not: build at the typed size, as the fit below would have.
+    const box = e instanceof TooManyParts && !override ? e.box : undefined;
+    const want = box && typedEnvelope(args[0], box);
+    if (!box || !want || !misses(box, want)) throw e;
+    project = built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: typedTarget(want, box) }]);
+  }
   // A size the builder missed: rebuild at the typed envelope (module counts follow), then fit.
   const rebuild = (box: Box3) => fitWeekendSize(built([args[0], args[1], args[2], { ...(args[3] ?? {}), sizeOverride: box }]), args[0], box, undefined, undefined, true);
   const natural = () => {
     const bare = stripEnvelopeWords(args[0]);
-    return bare && bare !== args[0] ? built([bare, args[1], args[2], args[3]]) : null;
+    if (!bare || bare === args[0]) return null;
+    // The no-size build only lends its proportions: over the part ceiling it lends none, and the typed build stands.
+    try { return built([bare, args[1], args[2], args[3]]); } catch (e) { if (e instanceof TooManyParts) return null; throw e; }
   };
   const sized = addFigureBookend(fitWeekendSize(project, args[0], override, override ? undefined : rebuild, natural), args[0]);
   const tabled0 = honorTableTriple(sized, args[0]);
@@ -597,7 +757,8 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A door style frames each front only after its slab size, reveal and position are final, so a style
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
-  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(autoSupportSpans(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0])), args[0]), args[0])))));
+  const spanned = (p: YardProject) => hangingTalk(supportHangingBays(separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]))), args[0]);
+  return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(spanned(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0]))))))));
 }
 
 /** The header names the stock the frame is cut from: a sheet primary on a mostly-lumber build (a ply seat or
@@ -836,7 +997,8 @@ function wholeStickBuild(project: YardProject): boolean {
   const item = getCatalogItem(project.primaryMaterialId);
   if (!item || !isWholeStock(item)) return false;
   const own = project.instances.filter((i) => i.catalogId === project.primaryMaterialId);
-  return own.length > 0 && own.every((i) => i.cutLength == null);
+  // Long craft stock cut to its spans (12" skewers, giant sticks) is still a stick module that reads no bare size (row 622).
+  return own.length > 0 && (own.every((i) => i.cutLength == null) || cutsToSpans(project, item));
 }
 
 const misses = (o: Box3, want: Partial<Box3>, slack = 0.04) =>
@@ -850,7 +1012,12 @@ function realSizeNote(project: YardProject, want: Partial<Box3>): YardProject {
   const word = { width: "wide", height: "tall", depth: "deep" } as const;
   const asked = AXES.filter((a) => want[a] != null).map((a) => `${inchFrac(want[a]!)}" ${word[a]}`).join(" × ");
   const o = project.overall;
-  const note = `You typed ${asked}. Whole ${stick}s build it ${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows. Type "cut the sticks" to build it to the exact size.`;
+  const built = `${inchFrac(o.width)}" wide × ${inchFrac(o.height)}" tall × ${inchFrac(o.depth)}" deep — the closest the stick allows.`;
+  // Pieces already cut to their spans (12" skewers, giant sticks): never call them whole or offer "cut the sticks" (row 653).
+  const cut = project.instances.some((i) => i.catalogId === project.primaryMaterialId && i.cutLength != null);
+  const note = cut
+    ? `You typed ${asked}. ${stick}s cut to their spans build it ${built}`
+    : `You typed ${asked}. Whole ${stick}s build it ${built} Type "cut the sticks" to build it to the exact size.`;
   return { ...project, notes: [note, ...(project.notes ?? []).filter((n) => !/^You typed .* the closest the stick allows/.test(n))] };
 }
 
@@ -893,15 +1060,21 @@ function fitWeekendSize(
   const nat = whole ? natural?.() : null;
   const base = nat && nat.kind === project.kind && nat.overall.width > 0.2 ? nat.overall : project.overall;
   const typedAxes = AXES.filter((a) => want[a] != null);
-  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
-  const r2 = (n: number) => Math.round(n * 16) / 16;
-  const target: Box3 = { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
+  const target = typedTarget(want, base);
   const proportionsOff = whole && typedAxes.length < 3 && misses(project.overall, target, 0.25);
   if (!misses(project.overall, want) && !proportionsOff) return project;
   if (!whole) return scaleToBox(project, target);
   const r = rebuild?.(target);
   const pick = r && missBy(r.overall, want) <= missBy(project.overall, want) + 1e-6 ? r : project;
   return misses(pick.overall, want) ? realSizeNote(pick, want) : pick;
+}
+
+/** The typed axes, and the untyped ones scaled from `base` by the typed ones (to 1/16"). */
+function typedTarget(want: Partial<Box3>, base: Box3): Box3 {
+  const typedAxes = AXES.filter((a) => want[a] != null);
+  const k = Math.exp(typedAxes.reduce((s, a) => s + Math.log(want[a]! / Math.max(base[a], 0.1)), 0) / typedAxes.length);
+  const r2 = (n: number) => Math.round(n * 16) / 16;
+  return { width: r2(want.width ?? base.width * k), height: r2(want.height ?? base.height * k), depth: r2(want.depth ?? base.depth * k) };
 }
 
 /** Parts already inside the typed box — envelope padding is not a reason to shrink them. */
@@ -1247,6 +1420,45 @@ function generateRaw(
     if (composed) return composed;
   }
   const lower = prompt.toLowerCase().trim();
+  // F47: one curated craft item (or a chain, stack or bracelet of them) builds at its real size from the unit table.
+  if (!formOverride && !opts.fittedOverride && !opts.sizeOverride && !materialOverride) {
+    const unitItem = buildUnitItem(prompt);
+    if (unitItem) return unitItem;
+  }
+  // A dollhouse is the real open-front house in sheet stock; a switch to a stock it can't use keeps the house and says so.
+  if (!formOverride && !opts.fittedOverride && isDollhouse(prompt)) {
+    // A W x D x H size is never a stock ("36x14x40" holds "4x4").
+    // "ply" is plywood: the head-noun reader takes "dollhouse 3/4 ply" as a dollhouse, so the stock reader does too.
+    const bare = prompt.replace(/\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?/g, " ").replace(/\bply\b/gi, "plywood");
+    // The typed thickness is read as a number ("3/4", "0.5", ".25"): a 4×8 plywood of that thickness is the typed
+    // sheet; one not on the list (1/8", 5/8") is said, never swapped silently, and thinner than 1/2" builds in 1/2",
+    // like 1/4". A picker switch to 1/2" or 3/4" wins; any other switch keeps the typed sheet and says so.
+    // A mixed number is one thickness ("1 1/2" is 1.5, I35); a whole inch count is a thickness only as 1" or 2" with its
+    // unit ("1 inch", "2\""): a bare "2" is a count, and "21 inch" or "36\"" is the house's size (PLY_THICKNESS).
+    // A whole count over 2 before "plywood" that the size reader did not take as the height ("dollhouse 36 tall 3 inch
+    // plywood") can only be a thickness: it is said, never dropped silently.
+    const lw = bare.toLowerCase();
+    // Release's reading for releaseReads text (NR-1 r3).
+    const rw = releaseReads(lw) ? lw.match(/(?<![\d./])(\d+)\s*(?:"|-?\s*in(?:ch(?:es)?)?\b)\s*(?:thick\s+)?plywood\b/) : null;
+    const whole = rw ? { value: Number(rw[1]), num: rw[1] } : releaseReads(lw) ? undefined : readLengths(lw).find((l) => l.unit === "in" && /^\s*(?:thick\s+)?plywood\b/.test(lw.slice(l.end)));
+    const tm = lw.match(PLY_THICKNESS)?.[1] ?? (whole && whole.value !== dollhouseTyped(prompt).height ? whole.num : null);
+    const num = (s: string) => s.trim().split(/\s+/).reduce((a, w) => a + (w.includes("/") ? Number(w.split("/")[0]) / Number(w.split("/")[1]) : Number(w)), 0);
+    const tIn = tm ? num(tm.replace(/\s*\/\s*/g, "/")) : NaN;
+    const typed = Number.isFinite(tIn);
+    const listed = typed ? FORGE_CATALOG.find((i) => /^plywood-.*-4x8$/.test(i.id) && Math.abs((i.dims?.thickness ?? -1) - tIn) < 1e-3) : undefined;
+    const fits = (i?: CatalogItem | null) => (i && /^plywood-(?:1-2|3-4)-/.test(i.id) ? i : null);
+    const route = dollhouseStock(bare, materialOverride);
+    const typedSheet = typed ? fits(listed) ?? getCatalogItem(tIn < 0.5 ? "plywood-1-2-4x8" : "plywood-3-4-4x8") ?? null : dollhouseStock(bare);
+    const stock = route && (fits(materialOverride ? getCatalogItem(materialOverride) : null) ?? typedSheet);
+    const built = stock && buildTemplateProject(prompt, stock, opts, "dollhouse");
+    const ask = materialOverride ?? (typed ? listed?.id : typedStockId(bare));
+    if (built && ask && ask !== stock.id) return refuseUnusedStock(built, ask, true, `1/2" or 3/4" plywood`);
+    // Said the way a builder writes it: a mixed fraction in 16ths ("1 1/2", "5/8"; "1.5" is 1 1/2), else as typed ("15/32").
+    const said = (() => { const n = Math.round(tIn * 16); if (Math.abs(tIn * 16 - n) > 1e-6) return tm!.replace(/\s*\/\s*/g, "/").trim(); const w = Math.floor(n / 16), r = n % 16, g = (a: number, b: number): number => (b ? g(b, a % b) : a), k = g(r, 16); return r ? `${w ? `${w} ` : ""}${r / k}/${16 / k}` : `${w}`; })();
+    if (built && !materialOverride && typed && !listed)
+      return { ...built, notes: [...(built.notes ?? []), `${said}" plywood isn't on the stock list, so this dollhouse is cut from ${stock.name}. Pick 1/2" or 3/4" plywood to switch it.`] };
+    if (built) return built;
+  }
   // A human climb (step stool, kitchen steps, library/loft ladder) is one panel model with real treads
   // at the typed height. A craft or toy stock pick stays on its craft path.
   {
@@ -1544,9 +1756,10 @@ function buildTemplateProject(
   const sized = lower.replace(/\d[\d\s\/.x×-]*\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:diameter\s+|dia\.?\s+|round\s+)?(?:entry\s+|entrance\s+)?hole/g, "hole").replace(/(?:for\s+(?:an?\s+)?)?\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:photo|picture|print|pic)/g, "photo");
   const raw = hasExplicitSize(sized) ? parseSize(sized) : undefined;
   const said = (n: number) => (n !== 24 || /\b24\b|\b2\s*-?\s*(?:foot|feet|ft)\b|\btwo\s*-?\s*(?:foot|feet)\b/.test(sized) ? n : undefined);
-  const typed = opts.sizeOverride ?? (raw ? { width: said(raw.width), height: said(raw.height), depth: said(raw.depth) } : {});
+  const typed = opts.sizeOverride ?? (id === "dollhouse" ? dollhouseTyped(sized) : raw ? { width: said(raw.width), height: said(raw.height), depth: said(raw.depth) } : {});
   const built: TemplateBuild | null = buildTemplate(id, prompt, item, typed, whole);
   if (!built) return null;
+  if (built.refused) return { ...emptyProject(), name: built.label, prompt, refused: built.refused, cardNote: built.refused };
   let project: YardProject;
   if (built.segs) {
     const join = (item.preferredJoins && item.preferredJoins[0]) || "glue";
@@ -1723,7 +1936,7 @@ function buildBlocksProject(
     },
     notes: [
       ...built.notes,
-      ...(instances.length ? [connected ? `Connected structure · ${stats.joints} joints · every piece meets another` : `Joined in ${stats.components} clusters — glue each cluster to the next where they touch.`] : []),
+      ...(instances.length ? [connected ? `Every piece touches another: ${stats.joints} glue joints.` : `Built in ${stats.components} groups: glue each group to the next where they touch.`] : []),
     ],
   };
   return enforceWeekendHonesty(withWireNote(project, stockItem));
@@ -1823,8 +2036,8 @@ function finalize(
       : "kid stands";
     notes.unshift(
       n >= 2
-        ? `${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread; not a vehicle incline.`
-        : `Weight-bearing climb step at ${riseRun} — ${who} on the tread; densify from named stock; not a vehicle incline.`,
+        ? `${n} weight-bearing human steps (each ${riseRun}) — ${who} on the top tread.`
+        : `Weight-bearing climb step at ${riseRun} — ${who} on the tread.`,
     );
     if (wantsClimbHandrail(prompt)) {
       notes.unshift(
@@ -1843,7 +2056,7 @@ function finalize(
   const pl = prompt.toLowerCase();
   if (isPorchSwingFrame(pl)) {
     notes.unshift(
-      `Porch swing frame for a hanging seat — clear swing densify; honor typed frame size. Not a sittable Bench or Storage unit.`,
+      `Porch swing frame for a hanging seat, with clear swing room at the typed frame size.`,
     );
   }
   if (isAdirondackChair(pl)) {
@@ -1868,7 +2081,7 @@ function finalize(
   }
   if (isOttoman(pl)) {
     notes.unshift(
-      `Ottoman — solid top densify; square W=D when typed equal; honor height. Never Storage / Yard House wire.`,
+      `Ottoman — solid top, square when the width and depth typed are equal, at the typed height.`,
     );
   }
   let next = notes === project.notes ? project : { ...project, notes };
@@ -2125,8 +2338,8 @@ function projectFromGraph(
         : "No splices — each member fits in one stock piece",
     `Joins: ${mapped.joinSummary.join(", ") || joinUsed}`,
     stats.components <= 1 && stats.loose === 0
-      ? `Connected structure · ${stats.joints} joints · every piece meets another`
-      : `Mostly connected · ${stats.joints} joints · ${stats.loose} loose · ${stats.components} cluster${stats.components === 1 ? "" : "s"}`,
+      ? `Every piece touches another: ${stats.joints} glue joints.`
+      : `${stats.joints} glue joints; ${stats.loose} piece${stats.loose === 1 ? "" : "s"} still loose in ${stats.components} group${stats.components === 1 ? "" : "s"}: glue each group to the next where they touch.`,
     "Frame first, then support, then brace. The frame will fail without bracing.",
   ];
   if (offer?.needed && !offer.included) notes.push(offer.reason);
@@ -2252,9 +2465,18 @@ function buildGeneralTubeProject(
   return project;
 }
 
-/** Words that set size, style, room or stock, never which object it is. */
-// "over"/"under" set a bunk's layout (twin over full), never the object.
-const FORM_NEUTRAL = /^(?:over|under|small|big|large|tall|short|wide|deep|long|mini|tiny|giant|toy|toys|model|miniature|scale|simple|basic|easy|modern|rustic|farmhouse|shaker|classic|plain|kids?|child|children|toddler|baby|twin|full|queen|king|double|single|wall|corner|floating|pocket|outdoor|indoor|garden|backyard|patio|porch|kitchen|bathroom|bedroom|garage|office|living|entry|entryway|hall|hallway|mudroom|laundry|room|cedar|pine|oak|maple|walnut|plywood|lumber|wood|wooden|scrap|pallet|popsicle|sticks?|dowels?|straws?|toothpicks?|cardboard|pvc|pipe|balsa|skewers?|inch|inches|feet|foot|high|top|open|fronts?|doors?|drawers?|shelves|shelf|one|two|three|four|five|six|white|black|red|blue|green|the|and)$/;
+// FORM_NEUTRAL (words that set size, style, room or stock, never the object) lives in genericBox.ts.
+
+// Row 51: READ_MODIFIER (builderName.ts) lists the words that never say which object it is.
+const FITTED_CARCASE_NOUN = /^(?:cabinet|organizer|organiser|shelves|shelving|unit|system)$/;
+const SIZE_CUE = /\b(?:about\s+)?(?:knee|waist|hip|chest|shoulder|eye)[\s-]+(?:high|height|tall)\b|\bas\s+(?:wide|long|big)\s+as\s+an?\s+(?:twin|full|queen|king)(?:\s+size)?\s+(?:bed|mattress)\b|\b(?:a\s+)?(?:full|whole|half)\s+sheet\s+of\s+plywood\b/g;
+/** Two words for one object: a "rocket ship" is the rocket. */
+const SAME_OBJECT = /\b(rocket)\s+ship\b/g;
+/** A top or stock named in two words ("butcher block island") is the stock, never the object. */
+const STOCK_PHRASE = /\bbutcher[\s-]+block\b/g;
+/** Common misspellings of a builder's own name. */
+const SPELLING: [RegExp, string][] = [[/\banderson\b/g, "andersen"]];
+const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
 
 /**
  * A weak noun match: a word of the typed object ("lap" desk, "chicken" tractor, tabletop "loom") that the
@@ -2262,10 +2484,19 @@ const FORM_NEUTRAL = /^(?:over|under|small|big|large|tall|short|wide|deep|long|m
  * not carry. Such a build is a template, not the thing, so the recipe lookup gets the noun.
  */
 export function ignoredTypedWords(project: YardProject, prompt: string): string[] {
-  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
-  const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}`;
-  const own = `${project.kind} ${project.fitted?.family ?? ""}`.toLowerCase();
-  const words = phrase.split(/[^a-z]+/).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w));
+  // Row 51: a same-object compound ("rocket ship") reads as its one noun.
+  // Row 51: a body or bed size cue ("knee high", "as wide as a king bed", "a full sheet of plywood") is a size, never the object.
+  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").replace(SIZE_CUE, " ").replace(SAME_OBJECT, "$1").replace(STOCK_PHRASE, " ")
+    .replace(/[a-z]+/g, (w) => SPELLING.reduce((x, [re, to]) => x.replace(re, to), w)).split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
+  // Row 51: the size is part of the signature. A word read as a size ("knee high", "as wide as a queen bed", "a full
+  // sheet of plywood") changes the build's overall size, so it is read, not ignored.
+  const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}|${q.overall.width}|${q.overall.height}|${q.overall.depth}`;
+  // Row 51 widened: the builder owns its own name (not a title that only echoes the typed words) and its kind's nouns.
+  const own = builderOwnText(project, prompt);
+  // Row 51: on a fitted carcase, a carcase noun ("closet organizer", "over the toilet cabinet") names the carcase itself.
+  // Only storage carcases: a "desk organizer" is a tray, never a 48" desk.
+  const carcase = project.fitted && STORAGE_PROGRAM.test(project.fitted.program) && !project.standIn && !project.unmatched ? FITTED_CARCASE_NOUN : null;
+  const words = phrase.split(/[^a-z]+/).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w) && !READ_MODIFIER.test(w) && !carcase?.test(w));
   // The head noun and the word right before it name the object; outer words refine a style (Warren truss bridge).
   // Compare like with like: the bare phrase against the phrase with the word blanked (sizes and stock
   // after it change the build either way, so the typed build itself is never the baseline).

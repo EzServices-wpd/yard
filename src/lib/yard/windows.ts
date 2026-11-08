@@ -4,6 +4,7 @@
  */
 
 import { inchFrac } from "./inchText";
+import { headPhrase, typedHeadNoun } from "./headNoun";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import type {
@@ -17,6 +18,9 @@ import type {
   WindowStyle,
   YardProject,
 } from "./types";
+
+/** The framing fastener Buy line; the steps that nail the kings and the header carry it by this id. */
+const FRAMING_FASTENER_ID = "framing-nails";
 
 const STUD = "lumber-2x4-8";
 
@@ -593,7 +597,7 @@ export function windowBom(project: YardProject): BomLine[] {
   }
   bom.push(
     { name: "Wood shims", quantity: 1, unit: "bundle", catalogId: "shims", searchQuery: "wood shims", estimatedCost: stickCost("shims", 4) },
-    { name: "16d framing nails or structural screws", quantity: 1, unit: "box", catalogId: "framing-nails", searchQuery: "16d framing nails", estimatedCost: stickCost("framing-nails", 10) },
+    { name: "16d framing nails or structural screws", quantity: 1, unit: "box", catalogId: FRAMING_FASTENER_ID, searchQuery: "16d framing nails", estimatedCost: stickCost("framing-nails", 10) },
   );
   if (!door || /exterior|entry|front|french/i.test(`${w?.line ?? ""} ${project.prompt}`)) {
     bom.push({
@@ -693,6 +697,8 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
       title: `Stand the kings — ${kingLen}"`,
       description: `Two kings, full height between plates (${kingLen}"). They run past the header to the top plate. Nail into the plates, then the jacks will sit inside them.`,
       partsUsed: ["Left king", "Right king", "king"],
+      // The framing line on Buy, carried by id (Critic #127 precheck check 4): 3 per king end.
+      fastenersUsed: [{ id: FRAMING_FASTENER_ID, qty: 12 }],
     },
     {
       step: 4,
@@ -712,6 +718,8 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
       title: "Set the header on the jacks",
       description: `The header bears on both jacks, tight to the kings. Check it is level before you nail. The RO below must still read ${w.roW}" × ${w.roH}".`,
       partsUsed: ["header", "jack", "king"],
+      // Through each king into the header ends, 4 a side.
+      fastenersUsed: [{ id: FRAMING_FASTENER_ID, qty: 8 }],
     },
     {
       step: 7,
@@ -756,10 +764,23 @@ export function windowSteps(project: YardProject): AssemblyStep[] {
 const FURNITURE_LEAF_NOUN =
   /cabinet|vanity|drawer|crate|ironing|cupboard|hutch|bookcase|bookshel|shel(?:f|ves)|wardrobe|armoire|pantry|closet|console|sideboard|buffet|credenza|stereo|media|tv\s*(?:stand|unit)|entertainment|dresser|nightstand|chest|trunk|locker|desk|bench|table|cubby|organizer|stand\b/;
 
+/**
+ * A door is the build only when the typed noun phrase names it ("prehung door unit 36x80", "door jamb", "36in by 80in
+ * door") or its head noun is a door opening or the framed wall it sits in ("framing for a 36 inch door", "2x4 wall with a door"). A
+ * door typed after another head noun is a feature of that build ("kitchen cart with 2 doors on casters": a cart with
+ * doors) or where it stands ("shoe rack by the door"), never a house door picked by a count or a size.
+ */
+const DOOR_OPENING_PART = /^(?:opening|frame|framing|header|jamb|rough|wall|partition)$/;
+export function doorIsTheBuild(lower: string): boolean {
+  const head = typedHeadNoun(lower);
+  return !head || /\bdoors?\b/.test(headPhrase(lower)) || DOOR_OPENING_PART.test(head);
+}
+
 /** A sized door ("32 inches wide by 80 tall", "36in by 80in") is a prehung opening, not a tower. */
 function bareSizedDoor(lower: string): boolean {
   if (/\bwindows?\b/.test(lower)) return false;
   if (!/\bdoors?\b/.test(lower)) return false;
+  if (!doorIsTheBuild(lower)) return false;
   if (
     FURNITURE_LEAF_NOUN.test(lower) &&
     !/prehung|(?:exterior|entry|front|french)\s+doors?/.test(lower)
@@ -772,6 +793,7 @@ function bareSizedDoor(lower: string): boolean {
 export function looksLikeDoorFrame(prompt: string) {
   const lower = prompt.toLowerCase();
   if (/\bwindows?\b/.test(lower)) return false;
+  if (!doorIsTheBuild(lower)) return false;
   if (
     !/prehung|(?:exterior|entry|front|french|passage|interior|slab)\s+doors?|door\s+rough\s+opening|frame\s+(?:a\s+|the\s+)?door|door\s+frame|bypass\s+doors?|pocket\s+doors?/.test(
       lower,

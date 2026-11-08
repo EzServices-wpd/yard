@@ -412,6 +412,33 @@ export function buildPicnicTable(prompt: string, size?: { width: number; height:
     const b = frameZ[k + 1] + (k + 1 === frames - 1 ? 0 : 1.5);
     panels.push(panel("rail", "Center brace", -0.75, h - 3.5, a, 1.5, 3.5, b - a, L.two4));
   }
+  // Diagonal braces: 2×4s on the centre line from a seat support up to the center brace, one each way, so the
+  // table cannot rack end to end. Odd frame count: both leave the middle seat support; even: each end frame's.
+  {
+    const cbBottom = h - 3.5;
+    const end = 4.95; // a 2×4 (3 1/2") cut at 45° has a 4 15/16" end
+    const sup = (k: number) => ({ y0: seatTop - bt - 5.5, y1: seatTop - bt, near: frameZ[k] + (k === frames - 1 ? 0 : 1.5), far: frameZ[k] + (k === frames - 1 ? 1.5 : 3) });
+    const legs: { face: number; dir: 1 | -1; name: string }[] = frames % 2
+      ? [{ face: sup((frames - 1) / 2).near, dir: -1, name: "Diagonal brace near" }, { face: sup((frames - 1) / 2).far, dir: 1, name: "Diagonal brace far" }]
+      : [{ face: sup(0).far, dir: 1, name: "Diagonal brace near" }, { face: sup(frames - 1).near, dir: -1, name: "Diagonal brace far" }];
+    const y1 = seatTop - bt; // top of the seat support
+    const y0 = y1 - end;
+    for (const d of legs) {
+      const runLo = cbBottom - y0; // lower edge rises from the support face to the brace underside
+      const runHi = cbBottom - y1;
+      const zs = [d.face, d.face + d.dir * runLo, d.face + d.dir * runHi];
+      const zMin = Math.min(...zs), zMax = Math.max(...zs);
+      const loc = (z: number, y: number): [number, number] => [z - zMin, y - y0];
+      const pts: [number, number][] = [loc(d.face, y0), loc(d.face + d.dir * runLo, cbBottom), loc(d.face + d.dir * runHi, cbBottom), loc(d.face, y1)];
+      panels.push(
+        panel("rail", d.name, -0.75, y0, zMin, 1.5, cbBottom - y0, zMax - zMin, L.two4, {
+          polygon: { plane: "zy", pts },
+          blank: { lengthIn: Math.ceil(runLo * Math.SQRT2 * 8) / 8, widthIn: 3.5, thicknessIn: 1.5 },
+          cutNote: `Cut ${inchFrac(Math.ceil(runLo * Math.SQRT2 * 8) / 8)}" long on its long edge with both ends at 45°, the ends parallel.`,
+        }),
+      );
+    }
+  }
   topBoards.forEach((b, i) => {
     panels.push(panel("deck", `Tabletop board ${i + 1}`, -topW / 2 + b.x, h, 0, b.w, bt, len, board.id));
   });
@@ -427,8 +454,8 @@ export function buildPicnicTable(prompt: string, size?: { width: number; height:
   const notes = [
     `${name}: ${nTop} ${board.label} top boards (${inchFrac(topW)}" wide) and ${nSeat} ${board.label} seat boards per side, ¼" gaps, top ${inchFrac(H)}" and seats ${seatTop}" high, the seats ${stepIn}" out from the top's edge so you can step in and sit.`,
     `Each of the ${frames} A-frames: two 2×6 legs splayed ${inchFrac(footOuter * 2)}" apart at the floor and meeting under the top, a 2×4 top cleat under the top boards and a 2×6 seat support under both seats, held to both legs with ${frames * 6} 3/8" carriage bolts in all — two through each leg at the seat support and one at the top cleat.${frames > 2 ? ` The ${frames - 2 === 1 ? "middle frame keeps" : "middle frames keep"} every seat span within ${inchFrac(reach)}", what 1 1/2" stock holds for a person.` : ""}`,
-    `A 2×4 center brace on edge runs under the middle of the top from cleat to cleat and keeps the frames from racking.${notTyped}`,
-    "Screw each board down to every cleat and seat support it crosses, 2 exterior screws per crossing. Pressure-treated or cedar lumber. Guidance only.",
+    `A 2×4 center brace on edge runs under the middle of the top from cleat to cleat, and two 2×4 diagonal braces run from ${frames % 2 ? "the middle seat support" : "the end seat supports"} up to it at 45°, so the table cannot rack.${notTyped}`,
+    "Screw each board down to every cleat and seat support it crosses, 2 exterior screws per crossing. Pressure-treated lumber (priced on Buy); cedar works too. Guidance only.",
   ];
   return project(prompt, name, panels, W, H, len, notes, board.id);
 }

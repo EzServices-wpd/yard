@@ -38,6 +38,8 @@ export type FormRecipe = {
   unmatched?: boolean;
   /** Every op is one real member (a pole, a slat): keep it as drawn — no lacing or face braces on thin stock. */
   wholeMembers?: boolean;
+  /** C1: the form library drew this body member by member (a ship's hull, masts, yards); never replace it with the generic spine. */
+  ownBody?: boolean;
   /** An open frame sized to a typed opening: its members stay whole on member stock; on sheet it is faces of the opening. */
   openingFrame?: boolean;
 };

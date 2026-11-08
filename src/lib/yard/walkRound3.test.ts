@@ -112,7 +112,7 @@ describe("A birdhouse with no stock typed is real board at real size", () => {
       const project = generateFromPrompt(prompt);
       assert.equal(project.primaryMaterialId, "lumber-1x6-8");
       assert.ok(project.overall.height >= 10, `real size, got ${project.overall.height}`);
-      assert.ok(buildPlan(project).bom.some((b) => /1×6 Board/.test(b.name)), "Buy list buys the 1×6");
+      assert.ok(buildPlan(project).bom.some((b) => /1×6 (Board|cedar)/.test(b.name)), "Buy list buys the 1×6");
     });
   }
   it("typed craft stock or a toy stays a model", () => {

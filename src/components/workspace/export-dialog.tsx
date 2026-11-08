@@ -1,6 +1,8 @@
 "use client";
 
+import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
+import { cutListIntro } from "@/lib/yard/wholeItems";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
@@ -185,7 +187,7 @@ export function ExportDialog({
           <p className="mt-2 font-mono text-sm tracking-tight text-ink">
             {sizeLine}
           </p>
-          {project.prompt && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.prompt}</p>}
+          {(project.typedPrompt || project.prompt) && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{project.typedPrompt || project.prompt}</p>}
           {kept === "new" && (
             <p className="mt-3 text-sm text-ink">
               New idea. It’s on{" "}
@@ -245,9 +247,7 @@ export function ExportDialog({
             <section className="mt-8">
               <h2 className="font-display text-xl text-ink">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h2>
               <p className="mt-1 text-xs text-ink-muted">
-                {plan.partsKind === "whole"
-                  ? "Full pieces from the pack. Glue them. Do not cut."
-                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+                {cutListIntro(plan)}
               </p>
               <table className="mt-3 w-full text-left text-sm">
                 <thead className="text-xs uppercase tracking-wider text-ink-muted">
@@ -313,8 +313,8 @@ export function ExportDialog({
                     <p className="font-medium">
                       <span className="font-mono text-ink-muted">{String(s.step).padStart(2, "0")}</span> {s.title}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{s.description}</p>
-                    {s.tips && <p className="mt-1 text-xs text-ink-muted">{s.tips}</p>}
+                    <p className="mt-1 text-sm leading-relaxed text-ink-muted">{userText(s.description)}</p>
+                    {userText(s.tips) && <p className="mt-1 text-xs text-ink-muted">{userText(s.tips)}</p>}
                   </div>
                 </li>
               ))}

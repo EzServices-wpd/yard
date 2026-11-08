@@ -1,3 +1,5 @@
+import { sentenceCase, typedHeadNoun } from "./headNoun";
+import { featureTail, typedFeatures } from "./typedFeatures";
 import type { StructureKind, Vec3 } from "./types";
 import { classifyAnatomy } from "./anatomy";
 import { stripTypedSizes } from "./inchText";
@@ -57,7 +59,7 @@ import {
   planeOps,
   wagonOps,
   bikeOps,
-  boatOps,
+  boatOps, shipOps, longshipOps,
   ferrisOps,
   treeOps,
   dinoOps,
@@ -82,6 +84,7 @@ type Hit = {
   buildFor?: (prompt: string) => (s: Size3) => FormOp[];
   /** Ops are real members (poles, slats), kept whole on any stock. */
   wholeMembers?: boolean;
+  ownBody?: boolean;
   /** Said when the landmark is built from its nearest family rather than its own spec. */
   note?: string;
   /** Published plan proportions, width and depth as fractions of the height (untyped axes follow them). */
@@ -161,6 +164,10 @@ const HITS: Hit[] = [
   { re: /marble run|marble maze/, kind: "custom", name: "Marble run", build: (s) => guessOps("marble", s) },
   { re: /\bcar\b|\btruck\b|\bwagon\b|\bcart\b|\bvehicle\b/, kind: "vehicle", name: "Wagon", build: wagonOps },
   { re: /bike|bicycle/, kind: "vehicle", name: "Bicycle", build: bikeOps },
+  // C1: a named sailing ship is a hull, masts and yards, not the generic boat.
+  // Spec 007 C3: a longship is its own form (long low hull, one mast, upswept stem and stern), never the galleon.
+  { re: /viking\s+(?:long\s*)?ships?|long\s*ships?|drakkar/, kind: "vessel", name: "Longship", build: longshipOps, aspect: { w: 1.6, d: 0.22 }, ownBody: true },
+  { re: /pirate ship|galleon|tall ship|sailing ship|^\s*(?:a\s+|model\s+)?ships?\s*$|schooner|clipper ship|frigate|man[- ]o[f'] war/, kind: "vessel", name: "Sailing ship", build: shipOps, aspect: { w: 1.15, d: 0.3 }, ownBody: true },
   { re: /boat|ship|canoe|sailboat|yacht/, kind: "vessel", name: "Boat", build: boatOps },
   { re: /ferris/, kind: "custom", name: "Ferris wheel", build: ferrisOps },
   { re: /tree|cactus|plant(?!\s*stand)/, kind: "plant", name: "Tree", build: treeOps },
@@ -205,6 +212,42 @@ function fitArchBridge(s: Size3, prompt: string): Size3 {
   const ratio = 503 / 134;
   const h = /tall|high|height/.test(lower) && n ? n : (n || 60) / ratio;
   return { width: h * ratio, height: h, depth: Math.max(4, Math.min(h * 0.35, 12)) };
+}
+
+/** C1: the form-library entry a prompt names (catch-all frames excluded), or null. */
+export function namedFormOf(prompt: string): string | null {
+  const hit = matchHit(prompt);
+  return hit && !/^(?:Frame|Lattice)$/.test(hit.name) ? hit.name : null;
+}
+
+/**
+ * The matched library form reaches the typed head noun (last content word): "Big Ben", "galleon 30 inches long"
+ * yes; "wall clock" no — the Wall hit only read a modifier. Same class as figureWordModifiesHead.
+ */
+export function namedFormReachesHead(prompt: string, head: string | null): boolean {
+  const hit = matchHit(prompt);
+  if (!hit || /^(?:Frame|Lattice)$/.test(hit.name)) return false;
+  const lower = prompt.toLowerCase();
+  // A landmark's proper name is the whole thing ("Eiffel" owns "Eiffel Tower").
+  if (!head || hit.historic || /looks like/.test(lower)) return true;
+  const m = new RegExp(hit.re.source, hit.re.flags.replace("g", "")).exec(lower);
+  const at = lower.lastIndexOf(head);
+  return !m || at < 0 || m.index + m[0].length > at;
+}
+
+/**
+ * Spec 007 C3 (I24): the title keeps the typed head noun. When the library form's own name lacks it ("Sailing ship"
+ * for "pirate ship" / "galleon"), the title is the typed form words, sentence case. Landmarks keep their proper name.
+ */
+function typedFormName(hit: Hit, prompt: string): string | null {
+  const head = typedHeadNoun(prompt);
+  if (!head || hit.historic || GENERIC_HITS.has(hit.name)) return null;
+  const lower = prompt.toLowerCase();
+  const m = new RegExp(hit.re.source, hit.re.flags.replace("g", "")).exec(lower);
+  if (!m || !m[0].includes(head)) return null;
+  const words = m[0].replace(/^\s*(?:a|an|the|model)\s+/, "").trim();
+  // The form's own name already says what was typed ("Longship" for "longship"): keep it.
+  return words && words !== hit.name.toLowerCase() ? sentenceCase(words) : null;
 }
 
 function matchHit(prompt: string): Hit | null {
@@ -309,7 +352,7 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
       subject.toLowerCase().includes(hit.name.toLowerCase())
         ? subject.replace(/\b\w/g, (c) => c.toUpperCase())
         : null;
-    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : specific ?? hit.name);
+    const name = figLabel ?? seatLabel ?? (pole ? poleFrameName(pole) : specific ?? typedFormName(hit, prompt) ?? hit.name);
     return {
       name,
       kind: hit.kind,
@@ -329,6 +372,7 @@ export function detectForm(prompt: string, size: Size3): FormRecipe {
             : []),
       ],
       ...(hit.wholeMembers ? { wholeMembers: true } : {}),
+      ...(hit.ownBody ? { ownBody: true } : {}),
       ops: strokes && strokes.length >= 3 ? ops.filter((o) => o.op === "taper" || o.op === "shell" || o.op === "arch") : ops,
       strokes,
     };
@@ -365,7 +409,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       notes: [
         hit.override === "eiffel"
           ? "Eiffel override — four arches, four piers, one shaft."
-          : `${hit.name} · lattice densified at the named stock's stick length / section.`,
+          : `${hit.name} · lattice sized to the stick you named.`,
       ],
       ops: [],
     };
@@ -387,7 +431,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
       notes: [
         named
           ? "Published / historic proportions, scaled to the size you asked for."
-          : "Warren truss · continuous chords, densified at the named stock.",
+          : "Truss bridge · long top and bottom rails, sized to the stick you named.",
       ],
       ops: named ? (/brooklyn/.test(prompt.toLowerCase()) ? suspensionOps(fitSuspensionTo(BROOKLYN)(size, prompt), BROOKLYN) : suspensionOps(fitSuspensionTo(GOLDEN_GATE)(size, prompt), GOLDEN_GATE)) : bridgeOps(size),
     };
@@ -450,11 +494,11 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
               return climbSteps >= 2
                 ? `${hit.name} · ${climbSteps} weight-bearing human steps` +
                   (rr ? ` (each ${rr.rise}" rise × ${rr.run}" run)` : "") +
-                  ` — ${who} on the top tread; not a vehicle incline.` +
+                  ` — ${who} on the top tread.` +
                   hand
                 : `${hit.name} · one weight-bearing climb step` +
                   (rr ? ` (${rr.rise}" rise × ${rr.run}" run)` : "") +
-                  ` — ${who} on the tread; densify from named stock; not a vehicle incline.` +
+                  ` — ${who} on the tread.` +
                   hand;
             })(),
           ]
@@ -462,7 +506,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
             (() => {
               const n = spokenRungCount(prompt);
               return n != null
-                ? `${hit.name} · ${n} rungs at the named stock (cut list OK for lumber) — not a Drying rack.`
+                ? `${hit.name} · ${n} rungs at the named stock (cut list OK for lumber).`
                 : `${hit.name} · side rails + rungs at the named stock (cut list OK for lumber).`;
             })(),
           ]
@@ -479,21 +523,21 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                 `${hit.name} · Y-fork and pouch — a handheld slingshot, not a catapult arm or axle.`,
               ]
             : [
-              `${hit.name} · base, axle pivot, throwing arm, and payload cup — densify keeps that anatomy.`,
+              `${hit.name} · base, axle pivot, throwing arm, and payload cup.`,
               "Glue the base, seat the axle, hang the throwing arm, then brace the A-frame faces.",
             ]
         : mech === "pot-hold" || wantsPotHold(prompt)
           ? [
               isHoseReelHold(prompt)
-                ? `${hit.name} · ${reelEnvelopeTalk(prompt)} — densify keeps the stand around the upright hose reel (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                ? `${hit.name} · ${reelEnvelopeTalk(prompt)} — the stand fits the upright hose reel.`
                 : isUmbrellaHold(prompt)
-                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — densify keeps the stand around the upright umbrellas (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                ? `${hit.name} · ${umbrellaEnvelopeTalk(prompt)} — the stand fits the upright umbrellas.`
                 : isMonitorHold(prompt)
-                ? `${hit.name} · ${monitorEnvelopeTalk(prompt)} — densify keeps the stand under the monitor at the typed rise (Buy named stock), not a Storage carcase and not orbit-chrome.`
+                ? `${hit.name} · ${monitorEnvelopeTalk(prompt)} — the stand fits the monitor at the typed rise.`
                 : isFloorLampHold(prompt)
-                ? `${hit.name} · ${lampEnvelopeTalk(prompt)} — densify keeps the stand around the upright lamp base (Buy named stock), not a Lattice tower / Eiffel and not orbit-chrome.`
+                ? `${hit.name} · ${lampEnvelopeTalk(prompt)} — the stand fits the upright lamp base.`
                 : isHamperHold(prompt)
-                ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — densify keeps the stand around the basket (Buy named stock), not a Storage carcase of basket size and not a Tree silhouette.`
+                ? `${hit.name} · upright basket envelope for a real ${basketEnvelopeTalk(prompt)} — the stand fits the basket.`
                 : `${hit.name} · upright pot envelope` +
                   (potDia != null && potH != null
                       ? /figurine/.test(prompt.toLowerCase())
@@ -506,7 +550,7 @@ function recipeFromWeekend(hit: WeekendHit, prompt: string, size: Size3): FormRe
                         : /figurine/.test(prompt.toLowerCase())
                           ? " for a real figurine"
                           : " for a real pot") +
-                  ` — densify keeps the whole stand at the named stock; ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}, not a Tree silhouette.`,
+                  ` — ${/figurine/.test(prompt.toLowerCase()) ? "figurine sits upright on the base" : "pot sits upright"}.`,
             ]
         : mech === "media-hold"
           ? wantsMediaTipHold(prompt)
@@ -591,8 +635,8 @@ export function recipeFromAnatomy(prompt: string, size: Size3, titleFrom?: strin
         name: hit.named || typedTitle(),
         kind: "lattice",
         notes: [
-          `${hit.named || typedTitle()} · lattice densified at the named stock.`,
-          "Four chords, Warren faces, hoops at the stock's bay. Not a hollow taper.",
+          `${hit.named || typedTitle()} · lattice sized to the stick you named.`,
+          "Four corner posts, zigzag bracing on each face, and rings spaced to the stick length.",
         ],
         ops: [],
       };
@@ -685,6 +729,8 @@ export function subjectFromPrompt(prompt: string): string {
   let s = prompt.toLowerCase();
   const looks = s.match(/looks like (?:an? |the )?([a-z0-9][a-z0-9\s'-]{1,60})/);
   if (looks) s = looks[1];
+  // C41: feature words typed after the head noun ("trunk with doors", "wall unit with 2 doors") are never its name.
+  if (typedFeatures(s).length) s = s.slice(0, s.length - featureTail(s).length);
   // Word-bounded units, fractions and all: "12 inch" must not leave "ch", "1/4 inch" must not leave "1/".
   s = stripTypedSizes(s).replace(/(?<![\w/])\d+(?:\.\d+)?\s*(?:cm|mm|meters?|metres?|m)\b/g, " ");
   // A title is the subject only: the stock clause, sizes, stock and species words are not its name.

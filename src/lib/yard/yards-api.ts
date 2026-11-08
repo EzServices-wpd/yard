@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { yardIsSavable } from "./savable";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { dbSource, getSql } from "@/lib/db";
 import type { YardProject } from "./types";
@@ -46,6 +47,8 @@ export const saveRemoteYard = createServerFn({ method: "POST" })
   .validator((project: YardProject) => project)
   .handler(async ({ context, data }) => {
     if (dbSource === "none") return { ok: false as const, reason: "no-db" };
+    // A refusal built nothing: it is never saved to the account (the same rule as Saved yards on this device).
+    if (!yardIsSavable(data)) return { ok: false as const, reason: "nothing-built" };
     const sql = await getSql();
     await sql.query(
       `insert into yards (id, user_id, name, prompt, kind, project, saved_at)

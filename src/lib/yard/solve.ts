@@ -239,13 +239,22 @@ function notchAround(board: Panel, post: Panel): boolean {
   const P0 = worldBox(post);
   const t = INTERFERENCE_TOL;
   if (!(P0.y0 < B.y0 - t && P0.y1 > B.y1 + t)) return false; // post must pass through
-  if (!(P0.x0 >= B.x0 - t && P0.x1 <= B.x1 + t && P0.z0 >= B.z0 - t && P0.z1 <= B.z1 + t)) return false;
+  // The post sits in the board's outline on an edge, or (F38) straddles one of its corners: a board that spans
+  // to the walls past a leg is notched around it, never cut short of the wall.
+  const O = { x0: Math.max(P0.x0, B.x0), x1: Math.min(P0.x1, B.x1), z0: Math.max(P0.z0, B.z0), z1: Math.min(P0.z1, B.z1) };
+  if (!(O.x1 - O.x0 > t && O.z1 - O.z0 > t)) return false;
+  const inside = P0.x0 >= B.x0 - t && P0.x1 <= B.x1 + t && P0.z0 >= B.z0 - t && P0.z1 <= B.z1 + t;
   const onEdge = Math.abs(P0.x0 - B.x0) < t || Math.abs(P0.x1 - B.x1) < t || Math.abs(P0.z0 - B.z0) < t || Math.abs(P0.z1 - B.z1) < t;
-  if (!onEdge) return false;
+  const atX = Math.abs(O.x0 - B.x0) < t || Math.abs(O.x1 - B.x1) < t;
+  const atZ = Math.abs(O.z0 - B.z0) < t || Math.abs(O.z1 - B.z1) < t;
+  const corner = !inside && atX && atZ && (O.x1 - O.x0) < (B.x1 - B.x0) / 2 && (O.z1 - O.z0) < (B.z1 - B.z0) / 2;
+  if (!(inside && onEdge) && !corner) return false;
   board.joints = [...(board.joints ?? []), { with: post.id, kind: "notch" }];
   post.joints = [...(post.joints ?? []), { with: board.id, kind: "notch" }];
-  const note = `Notch the corners ${fmt16(P0.x1 - P0.x0)}" × ${fmt16(P0.z1 - P0.z0)}" so the board fits around the legs.`;
-  if (!board.cutNote?.includes("Notch the corners")) board.cutNote = board.cutNote ? `${board.cutNote} ${note}` : note;
+  const note = inside
+    ? `Notch the corners ${fmt16(P0.x1 - P0.x0)}" × ${fmt16(P0.z1 - P0.z0)}" so the board fits around the legs.`
+    : `Notch the corner ${fmt16(O.x1 - O.x0)}" × ${fmt16(O.z1 - O.z0)}" so the board fits around the leg and reaches the walls.`;
+  if (!/Notch the corners?/.test(board.cutNote ?? "")) board.cutNote = board.cutNote ? `${board.cutNote} ${note}` : note;
   return true;
 }
 
@@ -278,7 +287,7 @@ function overlayFaces(panels: Panel[]) {
 function seatDrawerBoxes(panels: Panel[]) {
   for (const f of panels.filter((p) => /drawer\s*front/i.test(p.name) && !p.yaw)) {
     const fb = worldBox(f);
-    for (const d of panels.filter((p) => p.type === "drawer" && !p.yaw)) {
+    for (const d of panels.filter((p) => p.type === "drawer" && !p.drawerId && !p.yaw)) {
       const b = worldBox(d);
       const gap = fb.z0 - b.z1;
       if (gap > 1e-6 && gap <= 1 && b.x1 > fb.x0 + 0.5 && b.x0 < fb.x1 - 0.5 && b.y1 > fb.y0 + 0.5 && b.y0 < fb.y1 - 0.5) d.position = { ...d.position, z: d.position.z + gap };
@@ -395,7 +404,8 @@ function addDrawerFronts(panels: Panel[]) {
 function snapSizes(panels: Panel[]) {
   for (const p of panels) {
     if (shaped(p) || p.blank) continue;
-    const r = (v: number) => (Math.abs(v * 8 - Math.round(v * 8)) < 1e-6 ? v : Math.round(v * 8) / 8);
+    // Never snap a real part to nothing: a stock thinner than the grid (0.06" chipboard) keeps its own size.
+    const r = (v: number) => (Math.abs(v * 8 - Math.round(v * 8)) < 1e-6 || Math.round(v * 8) <= 0 ? v : Math.round(v * 8) / 8);
     const size = { width: r(p.size.width), height: r(p.size.height), depth: r(p.size.depth) };
     if (p.yaw) {
       const c = { x: p.position.x + p.size.width / 2, z: p.position.z + p.size.depth / 2 };

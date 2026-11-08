@@ -1,0 +1,2359 @@
+{
+ "source": "grok100",
+ "note": "Grok's 100 (verify-grok100-2026-10-17b), from grok-intake-ab/prompts118.json. spec = the validated Grok intake demand checklist from that paid run (no new calls); quotes are re-validated against the prompt on load.",
+ "prompts": [
+  {
+   "id": "g1",
+   "prompt": "queen platform bed 60 by 80",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "queen platform bed",
+     "quote": "queen platform bed"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60"
+     },
+     {
+      "axis": "D",
+      "value_in": 80,
+      "quote": "80"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g2",
+   "prompt": "walnut headboard for king bed",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "headboard",
+     "quote": "headboard"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": []
+   }
+  },
+  {
+   "id": "g3",
+   "prompt": "TV stand for 65 inch screen",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "TV stand",
+     "quote": "TV stand"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g4",
+   "prompt": "rolling bar cart painted black",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bar cart",
+     "quote": "bar cart"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "rolling",
+      "quote": "rolling"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted black",
+      "quote": "painted black"
+     }
+    ]
+   }
+  },
+  {
+   "id": "g5",
+   "prompt": "shoe rack by the door 36 inches wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "shoe rack",
+     "quote": "shoe rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 inches wide"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g6",
+   "prompt": "console table 48 long 12 deep",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "console table",
+     "quote": "console table"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "48 long"
+     },
+     {
+      "axis": "D",
+      "value_in": 12,
+      "quote": "12 deep"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g7",
+   "prompt": "ottoman with storage 30 by 30",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "ottoman",
+     "quote": "ottoman"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 by 30"
+     },
+     {
+      "axis": "D",
+      "value_in": 30,
+      "quote": "30 by 30"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "with storage"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g8",
+   "prompt": "armoire with doors 36 wide 24 deep 72 tall",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "armoire",
+     "quote": "armoire"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     },
+     {
+      "axis": "D",
+      "value_in": 24,
+      "quote": "24 deep"
+     },
+     {
+      "axis": "H",
+      "value_in": 72,
+      "quote": "72 tall"
+     }
+    ],
+    "counts": [
+     {
+      "thing": "doors",
+      "n": 1,
+      "quote": "doors"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g9",
+   "prompt": "king headboard painted white 76 inches",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "king headboard",
+     "quote": "king headboard"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 76,
+      "quote": "76 inches"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted white",
+      "quote": "painted white"
+     }
+    ]
+   }
+  },
+  {
+   "id": "g10",
+   "prompt": "nightstand with 2 drawers walnut",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "nightstand",
+     "quote": "nightstand"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 2,
+      "quote": "2 drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": []
+   }
+  },
+  {
+   "id": "g11",
+   "prompt": "coffee table with storage black",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "coffee table",
+     "quote": "coffee table"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "with storage"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "black",
+      "quote": "black"
+     }
+    ]
+   }
+  },
+  {
+   "id": "g12",
+   "prompt": "bookshelf with doors painted white 30 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bookshelf",
+     "quote": "bookshelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 wide"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "doors"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted white",
+      "quote": "painted white"
+     }
+    ]
+   }
+  },
+  {
+   "id": "g13",
+   "prompt": "kitchen island on casters 60 long",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "kitchen island",
+     "quote": "kitchen island"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 60,
+      "quote": "60 long"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "casters",
+      "quote": "on casters"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g14",
+   "prompt": "dining table 8 ft long",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "dining table",
+     "quote": "dining table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 96,
+      "quote": "8 ft"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g15",
+   "prompt": "platform bed twin 39 by 75",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "platform bed",
+     "quote": "platform bed"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 39,
+      "quote": "39 by 75"
+     },
+     {
+      "axis": "D",
+      "value_in": 75,
+      "quote": "39 by 75"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g16",
+   "prompt": "TV console 55 inch walnut",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "TV console",
+     "quote": "TV console"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": []
+   }
+  },
+  {
+   "id": "g17",
+   "prompt": "rolling cart for bar 24 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "rolling cart",
+     "quote": "rolling cart"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 wide"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "rolling",
+      "quote": "rolling"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g18",
+   "prompt": "spice rack wall mounted 24 inches",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "spice rack",
+     "quote": "spice rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 inches"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g19",
+   "prompt": "bar stools 30 inch seat height pair",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bar stools",
+     "quote": "bar stools"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 30,
+      "quote": "30 inch"
+     }
+    ],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "pair"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g20",
+   "prompt": "butcher block island 48 by 24",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "butcher block island",
+     "quote": "butcher block island"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "48 by 24"
+     },
+     {
+      "axis": "D",
+      "value_in": 24,
+      "quote": "48 by 24"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g21",
+   "prompt": "plate rack wall mounted",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "plate rack",
+     "quote": "plate rack"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g22",
+   "prompt": "bread box",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bread box",
+     "quote": "bread box"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g23",
+   "prompt": "banquette for dining nook 60 inches",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "banquette",
+     "quote": "banquette"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60 inches"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g24",
+   "prompt": "step stool for kitchen 2 steps",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "step stool",
+     "quote": "step stool"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "steps",
+      "n": 2,
+      "quote": "2 steps"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g25",
+   "prompt": "wall mounted spice rack 18 inches",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "spice rack",
+     "quote": "spice rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 18,
+      "quote": "18 inches"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g26",
+   "prompt": "butcher block countertop 6 foot",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "butcher block countertop",
+     "quote": "butcher block countertop"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g27",
+   "prompt": "bookcase with doors 36 wide 72 tall",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bookcase",
+     "quote": "bookcase"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     },
+     {
+      "axis": "H",
+      "value_in": 72,
+      "quote": "72 tall"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "with doors"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g28",
+   "prompt": "monitor stand for dual screens",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "monitor stand",
+     "quote": "monitor stand"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "dual"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g29",
+   "prompt": "filing cabinet 2 drawers",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "filing cabinet",
+     "quote": "filing cabinet"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 2,
+      "quote": "2 drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g30",
+   "prompt": "sewing table 48 long",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "sewing table",
+     "quote": "sewing table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 48,
+      "quote": "48 long"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g31",
+   "prompt": "easel for painting 5 foot tall",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "easel",
+     "quote": "easel"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 60,
+      "quote": "5 foot tall"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "painting",
+      "quote": "for painting"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g32",
+   "prompt": "vinyl record shelf 36 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "vinyl record shelf",
+     "quote": "vinyl record shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "36 wide"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g33",
+   "prompt": "guitar stand floor",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "guitar stand",
+     "quote": "guitar stand"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "floor",
+      "quote": "floor"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g34",
+   "prompt": "record shelf 24 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "record shelf",
+     "quote": "record shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 wide"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g35",
+   "prompt": "towel ladder 5 ft tall",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "towel ladder",
+     "quote": "towel ladder"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 60,
+      "quote": "5 ft tall"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g36",
+   "prompt": "over-toilet shelf",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "over-toilet shelf",
+     "quote": "over-toilet shelf"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g37",
+   "prompt": "laundry sorter 3 bins",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "laundry sorter",
+     "quote": "laundry sorter"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "bins",
+      "n": 3,
+      "quote": "3 bins"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g38",
+   "prompt": "folding table 6 foot",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "folding table",
+     "quote": "folding table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "folding",
+      "quote": "folding"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g39",
+   "prompt": "medicine cabinet wall mounted 16 deep",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "medicine cabinet",
+     "quote": "medicine cabinet"
+    },
+    "sizes": [
+     {
+      "axis": "D",
+      "value_in": 16,
+      "quote": "16 deep"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g40",
+   "prompt": "over toilet cabinet",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "over toilet cabinet",
+     "quote": "over toilet cabinet"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g41",
+   "prompt": "deck box outdoor 4 foot",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "deck box",
+     "quote": "deck box"
+    },
+    "sizes": [
+     {
+      "axis": "unknown",
+      "value_in": 48,
+      "quote": "4 foot"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "outdoor",
+      "quote": "outdoor"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g42",
+   "prompt": "outdoor deck box 5 ft",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "deck box",
+     "quote": "outdoor deck box"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 60,
+      "quote": "5 ft"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g43",
+   "prompt": "cornhole boards set",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "cornhole boards",
+     "quote": "cornhole boards"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "set"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g44",
+   "prompt": "compost bin outdoor",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "compost bin",
+     "quote": "compost bin"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "outdoor",
+      "quote": "outdoor"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g45",
+   "prompt": "chicken coop 4 by 6",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "chicken coop",
+     "quote": "chicken coop"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 48,
+      "quote": "4 by 6"
+     },
+     {
+      "axis": "D",
+      "value_in": 72,
+      "quote": "4 by 6"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g46",
+   "prompt": "pergola 10x10",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "pergola",
+     "quote": "pergola"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 120,
+      "quote": "10x10"
+     },
+     {
+      "axis": "D",
+      "value_in": 120,
+      "quote": "10x10"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g47",
+   "prompt": "mailbox post",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "mailbox post",
+     "quote": "mailbox post"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g48",
+   "prompt": "firewood rack outdoor",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "firewood rack",
+     "quote": "firewood rack"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "outdoor",
+      "quote": "outdoor"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g49",
+   "prompt": "kids playhouse for a 5 year old",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "playhouse",
+     "quote": "playhouse"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g50",
+   "prompt": "pencil box",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "pencil box",
+     "quote": "pencil box"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g51",
+   "prompt": "phone stand",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "phone stand",
+     "quote": "phone stand"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g52",
+   "prompt": "key holder wall mounted",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "key holder",
+     "quote": "key holder"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall mounted"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g53",
+   "prompt": "candle holder",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "candle holder",
+     "quote": "candle holder"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g54",
+   "prompt": "desk organizer",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "desk organizer",
+     "quote": "desk organizer"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g55",
+   "prompt": "birdhouse cedar",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "birdhouse",
+     "quote": "birdhouse"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [
+     {
+      "value": "cedar",
+      "quote": "cedar"
+     }
+    ],
+    "finish": []
+   }
+  },
+  {
+   "id": "g56",
+   "prompt": "napkin holder",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "napkin holder",
+     "quote": "napkin holder"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g57",
+   "prompt": "Taj Mahal model",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "Taj Mahal model",
+     "quote": "Taj Mahal model"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g58",
+   "prompt": "Space Needle model",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "Space Needle model",
+     "quote": "Space Needle model"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g59",
+   "prompt": "a covered bridge",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "covered bridge",
+     "quote": "covered bridge"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "covered",
+      "quote": "covered"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g60",
+   "prompt": "a steam train",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "steam train",
+     "quote": "a steam train"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g61",
+   "prompt": "a Viking ship",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "Viking ship",
+     "quote": "Viking ship"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g62",
+   "prompt": "Empire State Building model",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "Empire State Building model",
+     "quote": "Empire State Building model"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g63",
+   "prompt": "a barn model",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "barn model",
+     "quote": "barn model"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g64",
+   "prompt": "a dinosaur skeleton",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "dinosaur skeleton",
+     "quote": "dinosaur skeleton"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g65",
+   "prompt": "a roller coaster",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "roller coaster",
+     "quote": "a roller coaster"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g66",
+   "prompt": "the White House model",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "White House model",
+     "quote": "the White House model"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g67",
+   "prompt": "somewhere to put my shoes by the door",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "somewhere to put my shoes",
+     "quote": "somewhere to put my shoes"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g68",
+   "prompt": "a thing to raise my laptop",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "thing to raise my laptop",
+     "quote": "a thing to raise my laptop"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g69",
+   "prompt": "storage for board games",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "storage",
+     "quote": "storage"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g70",
+   "prompt": "queen platform bed with drawers",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "queen platform bed",
+     "quote": "queen platform bed"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 2,
+      "quote": "drawers"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g71",
+   "prompt": "walnut TV stand 60 inch",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "TV stand",
+     "quote": "TV stand"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "60 inch"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [
+     {
+      "value": "walnut",
+      "quote": "walnut"
+     }
+    ],
+    "finish": []
+   }
+  },
+  {
+   "id": "g72",
+   "prompt": "black rolling bar cart",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bar cart",
+     "quote": "bar cart"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "rolling",
+      "quote": "rolling"
+     },
+     {
+      "value": "black",
+      "quote": "black"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g73",
+   "prompt": "entry shoe rack 24 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "shoe rack",
+     "quote": "shoe rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 24,
+      "quote": "24 wide"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g74",
+   "prompt": "living room console 60 long painted white",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "console",
+     "quote": "living room console"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 60,
+      "quote": "60 long"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": [
+     {
+      "value": "painted white",
+      "quote": "painted white"
+     }
+    ]
+   }
+  },
+  {
+   "id": "g75",
+   "prompt": "storage ottoman 36 square",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "storage ottoman",
+     "quote": "storage ottoman"
+    },
+    "sizes": [
+     {
+      "axis": "unknown",
+      "value_in": 36,
+      "quote": "36"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "storage"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g76",
+   "prompt": "bedroom armoire 40 wide with doors",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bedroom armoire",
+     "quote": "bedroom armoire"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 40,
+      "quote": "40 wide"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "with doors"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g77",
+   "prompt": "spice rack for kitchen wall 30 inches",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "spice rack",
+     "quote": "spice rack"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 inches"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g78",
+   "prompt": "pair of 30 inch bar stools",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bar stools",
+     "quote": "bar stools"
+    },
+    "sizes": [
+     {
+      "axis": "unknown",
+      "value_in": 30,
+      "quote": "30 inch"
+     }
+    ],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "pair"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g79",
+   "prompt": "butcher block island on wheels 42 by 30",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "butcher block island",
+     "quote": "butcher block island"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 42,
+      "quote": "42"
+     },
+     {
+      "axis": "D",
+      "value_in": 30,
+      "quote": "30"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "on wheels",
+      "quote": "on wheels"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g80",
+   "prompt": "wall plate rack",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "wall plate rack",
+     "quote": "wall plate rack"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g81",
+   "prompt": "wooden bread box",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bread box",
+     "quote": "bread box"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [
+     {
+      "value": "wooden",
+      "quote": "wooden"
+     }
+    ],
+    "finish": []
+   }
+  },
+  {
+   "id": "g82",
+   "prompt": "dining banquette 72 inches",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "dining banquette",
+     "quote": "dining banquette"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 72,
+      "quote": "72 inches"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g83",
+   "prompt": "two-step kitchen stool",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "kitchen stool",
+     "quote": "kitchen stool"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "steps",
+      "n": 2,
+      "quote": "two-step"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g84",
+   "prompt": "office bookcase with doors 42 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "bookcase",
+     "quote": "bookcase"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 42,
+      "quote": "42 wide"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "doors",
+      "quote": "with doors"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g85",
+   "prompt": "dual monitor stand",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "monitor stand",
+     "quote": "monitor stand"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "dual"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g86",
+   "prompt": "3-drawer filing cabinet",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "filing cabinet",
+     "quote": "filing cabinet"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "drawers",
+      "n": 3,
+      "quote": "3-drawer"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g87",
+   "prompt": "sewing table 5 foot",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "sewing table",
+     "quote": "sewing table"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 60,
+      "quote": "5 foot"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g88",
+   "prompt": "painting easel 6 ft",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "painting easel",
+     "quote": "painting easel"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 72,
+      "quote": "6 ft"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g89",
+   "prompt": "record storage shelf 30 wide",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "record storage shelf",
+     "quote": "record storage shelf"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 30,
+      "quote": "30 wide"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g90",
+   "prompt": "floor guitar stand",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "guitar stand",
+     "quote": "guitar stand"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "floor",
+      "quote": "floor"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g91",
+   "prompt": "bathroom towel ladder 4 ft",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "towel ladder",
+     "quote": "bathroom towel ladder"
+    },
+    "sizes": [
+     {
+      "axis": "H",
+      "value_in": 48,
+      "quote": "4 ft"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g92",
+   "prompt": "over-toilet storage shelf",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "over-toilet storage shelf",
+     "quote": "over-toilet storage shelf"
+    },
+    "sizes": [],
+    "counts": [],
+    "features": [
+     {
+      "value": "storage",
+      "quote": "storage"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g93",
+   "prompt": "3-bin laundry sorter",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "laundry sorter",
+     "quote": "laundry sorter"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "bins",
+      "n": 3,
+      "quote": "3-bin"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g94",
+   "prompt": "8 foot folding table",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "folding table",
+     "quote": "folding table"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 96,
+      "quote": "8 foot"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "folding",
+      "quote": "folding"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g95",
+   "prompt": "wall medicine cabinet 12 deep",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "medicine cabinet",
+     "quote": "wall medicine cabinet"
+    },
+    "sizes": [
+     {
+      "axis": "D",
+      "value_in": 12,
+      "quote": "12 deep"
+     }
+    ],
+    "counts": [],
+    "features": [
+     {
+      "value": "wall mounted",
+      "quote": "wall"
+     }
+    ],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g96",
+   "prompt": "outdoor deck storage box 6 foot",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "outdoor deck storage box",
+     "quote": "outdoor deck storage box"
+    },
+    "sizes": [
+     {
+      "axis": "L",
+      "value_in": 72,
+      "quote": "6 foot"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g97",
+   "prompt": "cornhole set of boards",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "cornhole set of boards",
+     "quote": "cornhole set of boards"
+    },
+    "sizes": [],
+    "counts": [
+     {
+      "thing": "other",
+      "n": 2,
+      "quote": "set of"
+     }
+    ],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g98",
+   "prompt": "outdoor compost bin 3x3",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "compost bin",
+     "quote": "outdoor compost bin"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "3x3"
+     },
+     {
+      "axis": "D",
+      "value_in": 36,
+      "quote": "3x3"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g99",
+   "prompt": "small chicken coop 3 by 4",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "chicken coop",
+     "quote": "chicken coop"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 36,
+      "quote": "3 by 4"
+     },
+     {
+      "axis": "D",
+      "value_in": 48,
+      "quote": "3 by 4"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  },
+  {
+   "id": "g100",
+   "prompt": "12x12 pergola",
+   "demandsFrom": "grok-spec-2026-10-19",
+   "spec": {
+    "head_noun": {
+     "value": "pergola",
+     "quote": "pergola"
+    },
+    "sizes": [
+     {
+      "axis": "W",
+      "value_in": 144,
+      "quote": "12x12"
+     },
+     {
+      "axis": "D",
+      "value_in": 144,
+      "quote": "12x12"
+     }
+    ],
+    "counts": [],
+    "features": [],
+    "budget": null,
+    "material": [],
+    "finish": []
+   }
+  }
+ ]
+}

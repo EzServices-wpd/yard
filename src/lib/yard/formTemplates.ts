@@ -11,9 +11,11 @@ import { createId } from "@/lib/utils";
 import { toPrimitive, isWholeStock } from "./geometry";
 import { getCatalogItem } from "./catalog";
 import { inchFrac } from "./inchText";
+import { readLengths, releaseReads } from "./lengthReader";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types";
+import { buildDollhouse, dollhouseIssues, DOLLHOUSE_STEPS } from "./dollhouse";
 
-export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower" | "blocks";
+export type TemplateClassId = "small-house" | "flat-frame" | "launcher" | "humanoid" | "platform-tower" | "blocks" | "dollhouse";
 export type TemplatePartName =
   | "wall"
   | "floor"
@@ -51,6 +53,8 @@ export type TemplateBuild = {
   stockId?: string;
   /** The builder already sized it to the typed size: no rescale after (the notes and title stay its own). */
   sized?: boolean;
+  /** Nothing is built, and why (a typed size or count the class can't hold). */
+  refused?: string;
 };
 
 export type TemplateStep = { role: string; title: string; why: string; /** Count noun for the step title ("12 wall slats"). */ word?: string; /** Replaces the stock join text (a pivot is not glued). */ hold?: string };
@@ -81,22 +85,37 @@ export function parseInches(s: string): number | null {
 
 const NUM = String.raw`(\d+(?:\.\d+)?(?:[\s-]+\d+\/\d+)?|\d+\/\d+)`;
 
-/** Typed overall size in inches: "12 inches long", "18 in tall", "5 feet tall", "2-foot", "30\" long". */
+/** Typed overall size in inches: "12 inches long", "18 in tall", "5 feet tall", "2-foot", "30\" long", "20 1/2\"" (NR-1 reader). */
 export function typedSizeIn(prompt: string): { length?: number; height?: number } {
   const l = prompt.toLowerCase();
-  const unit = String.raw`(?:\s*-?\s*)(inches|inch|in\b|"|''|feet|foot|ft\b|')`;
-  const toIn = (n: string, u: string) => parseFloat(n) * (/^(?:feet|foot|ft|')$/.test(u.trim()) ? 12 : 1);
   const out: { length?: number; height?: number } = {};
-  for (const m of l.matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)` + unit + String.raw`\s*(long|tall|high|length|height|in length|in height)?`, "g"))) {
-    const v = toIn(m[1], m[2]);
-    if (!(v > 1 && v < 400)) continue;
+  if (releaseReads(l)) {
+    // Release's reading, kept for releaseReads text (NR-1 r3; NR-2/NR-3 own it).
+    const unit = String.raw`(?:\s*-?\s*)(inches|inch|in\b|"|''|feet|foot|ft\b|')`;
+    const toIn = (n: string, u: string) => parseFloat(n) * (/^(?:feet|foot|ft|')$/.test(u.trim()) ? 12 : 1);
+    for (const m of l.matchAll(new RegExp(String.raw`(\d+(?:\.\d+)?)` + unit + String.raw`\s*(long|tall|high|length|height|in length|in height)?`, "g"))) {
+      const v = toIn(m[1], m[2]);
+      if (!(v > 1 && v < 400)) continue;
+      const before = l.slice(Math.max(0, (m.index ?? 0) - 2), m.index);
+      const after = l.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 14);
+      if (/[x×/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
+      const ax = m[3];
+      if (ax && /tall|high|height/.test(ax)) out.height ??= v;
+      else if (ax) out.length ??= v;
+      else if (out.length == null && out.height == null) out.length = v;
+    }
+    return out;
+  }
+  for (const n of readLengths(l)) {
+    const v = n.inches;
+    if ((n.unit !== "in" && n.unit !== "ft") || !(v > 1 && v < 400)) continue;
+    const ax = l.slice(n.end).match(/^\s*(long|tall|high|length|height|in length|in height)?/)!;
     // Skip stock names (2x4, 1/4" plywood, 12" skewers) and hole/photo sizes.
-    const before = l.slice(Math.max(0, (m.index ?? 0) - 2), m.index);
-    const after = l.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 14);
+    const before = l.slice(Math.max(0, n.start - 2), n.start);
+    const after = l.slice(n.end + ax[0].length, n.end + ax[0].length + 14);
     if (/[x×\/]\s*$/.test(before) || /^\s*(?:x|×|plywood|ply|skewer|dowel|stick|board|hole|diameter|dia|photo|picture|print|opening|entrance)/.test(after)) continue;
-    const ax = m[3];
-    if (ax && /tall|high|height/.test(ax)) out.height ??= v;
-    else if (ax) out.length ??= v;
+    if (ax[1] && /tall|high|height/.test(ax[1])) out.height ??= v;
+    else if (ax[1]) out.length ??= v;
     else if (out.length == null && out.height == null) out.length = v;
   }
   return out;
@@ -1437,6 +1456,7 @@ export const TEMPLATE_STEPS: Record<TemplateClassId, TemplateStep[]> = {
     { role: "rim", word: "rim piece", title: "Glue the low rim around the top perch", why: "It keeps a sleeping cat on the perch." },
     { role: "member", title: "Place remaining members", why: "No floating pieces." },
   ],
+  dollhouse: [],
   blocks: [
     { role: "base", word: "base piece", title: "Cut and glue the base", why: "Everything stands on it." },
     { role: "cradle", word: "saddle piece", title: "Glue up the two saddles", why: "They hold the hull level on the floor." },
@@ -1491,6 +1511,7 @@ export function buildTemplate(
   if (id === "launcher") return buildLauncher(prompt, item, typed, whole);
   if (id === "platform-tower") return buildPlatformTower(prompt, item, typed, whole);
   if (id === "humanoid") return buildHumanoid(prompt, item, typed, whole);
+  if (id === "dollhouse") return buildDollhouse(prompt, item, typed);
   return null;
 }
 
@@ -1573,6 +1594,7 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
   const issues: TemplateIssue[] = [];
   const shape = project.shape;
   if (!shape) return [{ code: "no-shape", detail: `${project.name} has no template class` }];
+  if (shape.classId === "dollhouse") return dollhouseIssues(project);
   const P = shape.params ?? {};
   const roles = new Map<string, YardProject["instances"]>();
   for (const i of project.instances) {
@@ -1807,11 +1829,12 @@ export function inspectTemplate(project: YardProject, prompt = project.prompt ??
 /** Template panel names keep their own words on the cut list (not the carcase type alias). */
 export function templateCutName(name: string): string | null {
   if (/^Side spacer (?:left|right)$/.test(name)) return "Side spacer";
-  return /^(?:Front gable|Back gable|Side wall|Roof panel|Perch|Tier shelf|Back wall|Back board|Lower front board|Upper front board|Roof board|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
+  return /^(?:Front gable|Back gable|Side wall|Roof panel|Base floor|Upper floor|Attic floor|Room divider|Perch|Tier shelf|Back wall|Back board|Lower front board|Upper front board|Roof board|Body profile|Frame (?:rail|stile)|Backer|Easel stand|Launcher (?:base|upright|arm)|Cup|Base platform|Top platform|Platform|Post|Base|Sisal post|Top perch|Perch rim)$/.test(name) ? name : null;
 }
 
 type PanelStepSpec = { match: RegExp; title: string; why: string };
 const TEMPLATE_PANEL_STEPS: Partial<Record<TemplateClassId, PanelStepSpec[]>> = {
+  dollhouse: DOLLHOUSE_STEPS,
   "flat-frame": [
     { match: /^Frame (rail|stile)$/, title: "Glue and clamp the four mitered members", why: "Dry-fit, then glue the miters and band-clamp; check the diagonals match." },
     { match: /^(Glass|Acrylic)$/, title: "Set the glazing into the rabbet", why: "Clean both faces; it goes in first, against the lip." },

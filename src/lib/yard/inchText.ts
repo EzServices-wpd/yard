@@ -12,6 +12,8 @@ function gcd(a: number, b: number): number {
 export function inchFrac(n: number): string {
   if (!Number.isFinite(n)) return "—";
   const neg = n < 0;
+  // A real part thinner than 1/32" (a rubber band, a wire) never reads as 0": say it in thousandths.
+  if (n !== 0 && Math.abs(n) < 1 / 32) return `${neg ? "-" : ""}${String(Math.round(Math.abs(n) * 1000) / 1000).replace(/^0/, "0")}`;
   const sixteenths = Math.round(Math.abs(n) * 16);
   const whole = Math.floor(sixteenths / 16);
   const rem = sixteenths % 16;
@@ -199,4 +201,16 @@ export function speakDecimals(text: string): string {
     })
     .replace(/0\.4\d* of the height/g, "about two-fifths of the height")
     .replace(/\b0\.42\b/g, "about two-fifths");
+}
+
+/**
+ * Spec 008: plan text is inches only. Every metric size ("4.8 mm × 1.3 mm", "9 × 6 mm", "Φ2.5 mm") is said as
+ * inch fractions to the nearest 1/16" (a thinner size in thousandths), so no "mm" reaches a maker.
+ */
+export function mmToInches(text: string): string {
+  const inch = (mm: string) => `${inchFrac(Number(mm) / 25.4)}"`;
+  return text
+    .replace(/[Φ⌀]\s*(?=\d)/g, "")
+    .replace(/(\d+(?:\.\d+)?)\s*(?:mm\s*)?[×x]\s*(\d+(?:\.\d+)?)\s*mm\b/g, (_, a, b) => `${inch(a)} × ${inch(b)}`)
+    .replace(/(\d+(?:\.\d+)?)\s*mm\b/g, (_, a) => inch(a));
 }

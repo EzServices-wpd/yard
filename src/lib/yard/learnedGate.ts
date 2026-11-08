@@ -48,7 +48,8 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     const it = getCatalogItem(p.materialId);
     if (!it) { fail.push(`${p.name}: no catalogue item (${p.materialId})`); continue; }
     if (it.category === "lumber" && it.dims.width && it.dims.height) {
-      const [a, b] = [p.size.width, p.size.height, p.size.depth].sort((m, n) => m - n);
+      // A shaped part (a paddle turned round the wheel) is cut from its rectangular blank.
+      const [a, b] = (p.blank ? [p.blank.thicknessIn, p.blank.widthIn, p.blank.lengthIn] : [p.size.width, p.size.height, p.size.depth]).sort((m, n) => m - n);
       if (a > it.dims.height + 0.01 && b > it.dims.width + 0.01) fail.push(`${p.name}: ${a.toFixed(2)}×${b.toFixed(2)} is wider than one ${it.name}`);
     }
   }

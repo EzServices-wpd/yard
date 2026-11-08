@@ -1,0 +1,12 @@
+{
+  "soccer-goal": {"prompt": "soccer goal 48 wide 36 tall 12 deep from 3/4 PVC pipe", "dims": {"width": 48, "depth": 12, "height": 36}},
+  "lighthouse": {"prompt": "2 foot lighthouse from popsicle sticks", "dims": {"width": 8, "depth": 8, "height": 24.5}},
+  "brooklyn-bridge": {"prompt": "4 foot Brooklyn Bridge from popsicle sticks", "dims": {"width": 49, "depth": 5, "height": 4.3}},
+  "windmill": {"prompt": "2 foot windmill from popsicle sticks", "dims": {"width": 17.8, "depth": 8.7, "height": 26.2}},
+  "cat-tree": {"prompt": "cat tree", "dims": {"width": 20, "depth": 20, "height": 48}},
+  "barn": {"prompt": "2 foot barn from popsicle sticks", "dims": {"width": 25, "depth": 19.3, "height": 22.1}},
+  "empire-state-building": {"prompt": "2 foot Empire State Building from popsicle sticks", "dims": {"width": 11.6, "depth": 11.6, "height": 24.5}},
+  "viking-ship": {"prompt": "2 foot viking ship from popsicle sticks", "dims": {"width": 23.1, "depth": 8, "height": 15.5}},
+  "space-needle": {"prompt": "2 foot Space Needle from popsicle sticks", "dims": {"width": 8.7, "depth": 8.7, "height": 24.5}},
+  "firewood-unit": {"prompt": "firewood rack 96 wide 48 tall", "dims": {"width": 96, "depth": 18.5, "height": 48}}
+}

@@ -2,6 +2,7 @@
  * One picture path for every plan step: the same renderProject / parts-plate drawing the PDF uses,
  * recorded into SVG for the plan drawer and print preview. No JPEG photos, no IsoPlate crop.
  */
+import { leafSvgAttrs } from "./hingedLeaf";
 import type { jsPDF } from "jspdf";
 import { planStepParts } from "./stepParts";
 import { stepPlacements } from "./placement";
@@ -10,7 +11,38 @@ import { drawPartsPlate } from "./pdf";
 import { KIT, clean } from "./pdfKit";
 import { cutListName } from "./shopPlural";
 import { SvgDoc, type SvgDocStats } from "./svgDoc";
-import type { BuildPlan, YardProject } from "./types";
+import type { AssemblyStep, BuildPlan, Panel, YardProject } from "./types";
+import { getCatalogItem } from "./catalog";
+import { stockT } from "./face";
+
+const longest = (p: Panel) => Math.max(p.size.width, p.size.height, p.size.depth);
+const thinnest = (p: Panel) => (p.blank ? p.blank.thicknessIn : Math.min(p.size.width, p.size.height, p.size.depth));
+
+/**
+ * A bench step (splice, glue-up, sheet join) works on named members before they go on the build:
+ * light exactly those, never the whole model and never nothing.
+ */
+export function benchStepHot(project: YardProject, s: AssemblyStep): string[] {
+  const t = clean(s.title).toLowerCase();
+  const panels = project.panels;
+  if (/^splice the long members\b/.test(t)) {
+    return panels.filter((p) => { const len = getCatalogItem(p.materialId)?.dims.length; return /^lumber-/.test(p.materialId) && !!len && longest(p) > len + 0.01; }).map((p) => p.id);
+  }
+  if (/^glue up the thick parts\b/.test(t)) {
+    return panels.filter((p) => /^(?:plywood|lumber)-/.test(p.materialId) && thinnest(p) > stockT(p.materialId) + 0.05).map((p) => p.id);
+  }
+  if (/^join sheet splices\b/.test(t)) {
+    return panels.filter((p) => { const d = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b); return /^plywood-/.test(p.materialId) && (d[1] > 48.01 || d[2] > 120.01); }).map((p) => p.id);
+  }
+  return [];
+}
+
+/** "Level it" works on what stands on the floor: light the feet, posts and legs, not every part. */
+export function levelStepHot(project: YardProject, s: AssemblyStep, ids: string[]): string[] {
+  if (!/^level it\b/i.test(clean(s.title))) return [];
+  const want = new Set(ids);
+  return project.panels.filter((p) => want.has(p.id) && p.position.y < 0.5).map((p) => p.id);
+}
 
 function asPdf(doc: SvgDoc): jsPDF {
   return doc as unknown as jsPDF;
@@ -41,12 +73,14 @@ export function stepTones(
   const steps = plan.instructions;
   const stepParts = planStepParts(project, steps, letters);
   const placements = stepPlacements(project, steps, plan.cutList, plan.partsKind === "whole");
+  const owner = stepOwners(project, steps, stepParts);
   const placed = new Set<string>();
   for (let i = 0; i < stepIndex; i++) {
     const sp = stepParts[i];
     if (sp.kind !== "build") continue;
     const drawn = sp.said ? [...placed, ...sp.fresh, ...sp.onto] : [...placed, ...sp.ids];
     drawn.forEach((id) => placed.add(id));
+    for (const [id, at] of owner) if (at === i) placed.add(id);
   }
   const s = steps[stepIndex];
   const sp = stepParts[stepIndex];
@@ -58,10 +92,16 @@ export function stepTones(
     return { kind, tones: new Map(), cutLines };
   }
   if (kind === "prep") {
-    return { kind, tones: allTones(project, "built"), cutLines: [] };
+    const tones = allTones(project, "built");
+    for (const id of [...benchStepHot(project, s), ...levelStepHot(project, s, allIds(project))]) tones.set(id, "hot");
+    return { kind, tones, cutLines: [] };
   }
   const tones = new Map<string, Tone>();
-  let hot = sp.fresh;
+  const level = levelStepHot(project, s, sp.ids);
+  // F12: a step lights only the parts it adds. A step whose part list names model parts owns those it adds
+  // first; a part merely mentioned in a "Where" line (or a later neighbour) is not lit here.
+  const owned = [...owner].filter(([, at]) => at === stepIndex).map(([id]) => id);
+  let hot = level.length ? level : explicitParts(project, s) ? owned : sp.fresh;
   if (!sp.said && !hot.length) {
     const t = clean(s.title).toLowerCase();
     hot = sp.ids.filter((id) => {
@@ -78,6 +118,9 @@ export function stepTones(
   if (!hot.length) hot = sp.ids.filter((id) => tones.has(id));
   for (const id of hot) tones.set(id, "hot");
   if (!hot.length) for (const id of tones.keys()) tones.set(id, "built");
+  // F12 cutaway (any build): a thin panel nearer the camera that covers a hot part's centre is cut away,
+  // so a part inside a box (a roost, a nest, a shelf behind a side) is seen, not hidden behind the wall.
+  for (const id of cutaway(project, hot, [...tones.keys()])) tones.delete(id);
   return { kind, tones, cutLines: [], measures: placements[stepIndex]?.arrows };
 }
 
@@ -146,6 +189,8 @@ export function planOverviewSvg(project: YardProject, w = 480, h = 300): StepPic
     tones: allTones(project, "built"),
     dims: true,
     pad: 30,
+    // Operate hooks: every part is a <g data-part>, doors and lids also carry data-role and data-hinge-axis.
+    partGroup: leafSvgAttrs(project),
   });
   return { svg: doc.toSvg(KIT.paper), stats: doc.stats, kind: "overview" };
 }
@@ -168,4 +213,73 @@ export function pictureFramed(
     stats.maxX <= frame.x + frame.w + margin &&
     stats.maxY <= frame.y + frame.h + margin;
   return { ok: inside && fill >= minFill && stats.ops >= 2, fill, ops: stats.ops };
+}
+
+/** Iso camera looks down (1,1,1): screen = ((x−z)·cos30, −y + (x+z)·sin30); larger x+y+z is nearer. */
+const C30 = Math.cos(Math.PI / 6), S30 = 0.5;
+type P2 = { x: number; y: number };
+const scr = (x: number, y: number, z: number): P2 => ({ x: (x - z) * C30, y: -y + (x + z) * S30 });
+function corners(p: Panel): { pts: P2[]; c: P2; depth: number } {
+  const { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+  const pts: P2[] = [];
+  for (const a of [0, w]) for (const b of [0, h]) for (const e of [0, d]) pts.push(scr(x + a, y + b, z + e));
+  return { pts, c: scr(x + w / 2, y + h / 2, z + d / 2), depth: x + w / 2 + y + h / 2 + z + d / 2 };
+}
+function hull(pts: P2[]): P2[] {
+  const s = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: P2, a: P2, b: P2) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lo: P2[] = [], up: P2[] = [];
+  for (const p of s) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of [...s].reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)];
+}
+function insideHull(h: P2[], q: P2): boolean {
+  if (h.length < 3) return false;
+  for (let i = 0; i < h.length; i++) {
+    const a = h[i], b = h[(i + 1) % h.length];
+    if ((b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x) < -1e-6) return false;
+  }
+  return true;
+}
+export function cutaway(project: YardProject, hot: string[], drawn: string[]): string[] {
+  const hotSet = new Set(hot);
+  const hp = project.panels.filter((p) => hotSet.has(p.id) && !p.polygon);
+  if (!hp.length) return [];
+  const out: string[] = [];
+  for (const q of project.panels) {
+    if (hotSet.has(q.id) || !drawn.includes(q.id) || q.polygon) continue;
+    if (Math.min(q.size.width, q.size.height, q.size.depth) > 1) continue; // only sheet walls and roofs, never legs or frames
+    const Q = corners(q);
+    const H = hull(Q.pts);
+    if (hp.every((p) => { const P = corners(p); return !(Q.depth > P.depth + 0.5 && insideHull(H, P.c)); })) continue;
+    out.push(q.id);
+  }
+  return out;
+}
+
+/** The step's part list when it names only real model parts (not "*", not empty). */
+function explicitParts(project: YardProject, s: AssemblyStep): Set<string> | null {
+  const used = s.partsUsed ?? [];
+  if (!used.length || used.some((u) => u === "*" || u === "all")) return null;
+  const byName = new Map(project.panels.map((p) => [p.name.toLowerCase(), p.id]));
+  const ids = used.map((u) => byName.get(u.toLowerCase()));
+  return ids.every(Boolean) ? new Set(ids as string[]) : null;
+}
+
+/**
+ * F12 owner of each part: the step that adds it. The placement pass's step counts when that step's own
+ * part list includes the part (or the step has no explicit list); otherwise the first step that lists it.
+ */
+export function stepOwners(project: YardProject, steps: AssemblyStep[], stepParts: ReturnType<typeof planStepParts>): Map<string, number> {
+  const owner = new Map<string, number>();
+  const lists = steps.map((s) => explicitParts(project, s));
+  stepParts.forEach((sp, i) => {
+    if (sp.kind !== "build") return;
+    for (const id of sp.fresh) if (!owner.has(id) && (!lists[i] || lists[i]!.has(id))) owner.set(id, i);
+  });
+  lists.forEach((l, i) => {
+    if (!l || stepParts[i]?.kind !== "build") return;
+    for (const id of l) if (!owner.has(id)) owner.set(id, i);
+  });
+  return owner;
 }

@@ -32,3 +32,20 @@ describe("How this was built", () => {
     assert.equal(urls.length, 0);
   });
 });
+
+it("a Critic-flagged built-in (picnic table) is Unverified until regraded", () => {
+  const i = buildInfo({ prompt: "picnic table", notes: [] } as never);
+  assert.equal(i.source, "Built-in shape");
+  assert.equal(i.trust, "Unverified");
+  assert.ok(i.failed.some((f) => /regrade/.test(f)));
+});
+
+describe("span warning and trust", () => {
+  it("never shows Trusted while a span warning is up", async () => {
+    const { stampSpanOffer } = await import("./spanCheck.ts");
+    const p = stampSpanOffer(generateFromPrompt("corner bookshelf 60 wide 84 tall"));
+    if (p.supportOffer?.needed && !p.supportOffer.included) assert.equal(buildInfo(p).trust, "Unverified");
+    const fake = { prompt: "bookshelf", notes: [], supportOffer: { needed: true, included: false, kind: "span", reason: "x" } } as never;
+    assert.equal(buildInfo(fake).trust, "Unverified");
+  });
+});

@@ -3,6 +3,7 @@
  * Expandable. Later: user uploads, community, or product APIs.
  */
 
+import { unitSizeRows, withUnitSize } from "./unitSizes";
 import type { CatalogItem } from "./types";
 import { foundCatalogItem, listFoundStock } from "./foundStock";
 import { catalogLumberAliases, catalogLumberTags } from "./namedLumberSpecies";
@@ -42,7 +43,7 @@ export const FORGE_CATALOG: CatalogItem[] = [
     roughness: 0.35,
     metalness: 0.2,
     searchQuery: "",
-    notes: "Placeholder skeleton only. Open Stock and pick a real material to densify the form.",
+    notes: "Placeholder skeleton only. Open Stock and pick a real material to build the form.",
   },
   {
     id: "popsicle-jumbo",
@@ -807,6 +808,10 @@ export const FORGE_CATALOG: CatalogItem[] = [
     searchQuery: "titebond wood glue 8 oz",
   },
 ];
+
+// Curated single-item sizes (unitSizes.ts) override the seed rows and add the small items the seed lacks.
+FORGE_CATALOG.push(...unitSizeRows(new Set(FORGE_CATALOG.map((item) => item.id))));
+for (let i = 0; i < FORGE_CATALOG.length; i++) FORGE_CATALOG[i] = withUnitSize(FORGE_CATALOG[i]);
 
 export const CATALOG_BY_ID: Record<string, CatalogItem> = Object.fromEntries(
   FORGE_CATALOG.map((item) => [item.id, item])

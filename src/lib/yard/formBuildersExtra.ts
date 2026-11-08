@@ -954,3 +954,89 @@ export function guessOps(lower: string, s: Size3): FormOp[] {
   }
   return ops;
 }
+
+/**
+ * Spec 006 C1 · sailing ship (pirate ship, galleon, tall ship, schooner). A real hull: a keel that sweeps up at the bow,
+ * U ribs whose half-beam follows the hull's plan curve, gunwales and a deck line through the rib tops, a raised
+ * sterncastle, three masts (main tallest) with yards across them, and a bowsprit. Centered on the origin; L = width
+ * (length overall), B = depth (beam), H = height (keel to main truck). Proportions from period galleon models:
+ * hull depth about 0.22 H, beam about 0.27 L.
+ */
+export function shipOps(s: Size3): FormOp[] {
+  const L = s.width, B = s.depth, H = s.height;
+  const D = H * 0.22; // deck height
+  const stern = -L * 0.42, bow = L * 0.36;
+  const N = 9;
+  const xAt = (i: number) => stern + ((bow - stern) * i) / (N - 1);
+  const half = (i: number) => (B / 2) * Math.pow(Math.sin(Math.PI * (0.12 + (0.83 * i) / (N - 1))), 0.6);
+  const keelY = (i: number) => (i >= N - 2 ? D * 0.35 * (i - (N - 3)) : 0);
+  const ops: FormOp[] = [];
+  // Keel: stern post, bottom, rising stem.
+  ops.push({ op: "poly", role: "leg", points: [{ x: stern, y: D * 1.25, z: 0 }, ...Array.from({ length: N }, (_, i) => ({ x: xAt(i), y: keelY(i), z: 0 })), { x: bow + L * 0.04, y: D * 1.05, z: 0 }] });
+  // Ribs.
+  for (let i = 0; i < N; i++) {
+    const x = xAt(i), b = half(i), y0 = keelY(i);
+    ops.push({ op: "poly", role: "brace", points: [{ x, y: D, z: -b }, { x, y: y0 + D * 0.35, z: -b * 0.85 }, { x, y: y0, z: 0 }, { x, y: y0 + D * 0.35, z: b * 0.85 }, { x, y: D, z: b }] });
+  }
+  // Gunwales (port, starboard) and the bilge strake, meeting at the stem.
+  for (const side of [-1, 1]) {
+    ops.push({ op: "poly", role: "rail", points: [...Array.from({ length: N }, (_, i) => ({ x: xAt(i), y: D, z: side * half(i) })), { x: bow + L * 0.04, y: D * 1.05, z: 0 }] });
+    ops.push({ op: "poly", role: "rail", points: Array.from({ length: N }, (_, i) => ({ x: xAt(i), y: keelY(i) + D * 0.35, z: side * half(i) * 0.85 })) });
+  }
+  // Sterncastle: a raised deck over the aft quarter.
+  const sc = xAt(2), sb = half(1);
+  ops.push({ op: "poly", role: "rail", points: [{ x: stern, y: D * 1.5, z: -sb }, { x: sc, y: D * 1.5, z: -sb }, { x: sc, y: D * 1.5, z: sb }, { x: stern, y: D * 1.5, z: sb }, { x: stern, y: D * 1.5, z: -sb }] });
+  for (const z of [-sb, sb]) for (const x of [stern, sc]) ops.push({ op: "column", x, z, y0: D, y1: D * 1.5, role: "support" });
+  // Masts (mizzen, main, fore) with yards across them.
+  const masts: [number, number][] = [[-L * 0.22, 0.78], [L * 0.02, 1], [L * 0.22, 0.86]];
+  for (const [x, f] of masts) {
+    const top = D + (H - D) * f;
+    ops.push({ op: "column", x, z: 0, y0: 0, y1: top, role: "support" });
+    for (const [t, w] of [[0.42, 0.9], [0.72, 0.65], [0.93, 0.4]] as const) {
+      const y = D + (top - D) * t, half = (B * 1.1 * w * f) / 2;
+      ops.push({ op: "poly", role: "beam", points: [{ x, y, z: -half }, { x, y, z: half }] });
+    }
+  }
+  // Bowsprit.
+  ops.push({ op: "poly", role: "beam", points: [{ x: bow, y: D * 1.05, z: 0 }, { x: L / 2, y: D * 1.7, z: 0 }] });
+  return ops;
+}
+
+/**
+ * Longship (Spec 007 C3): long, low, narrow open hull, stem and stern both sweeping up into posts, one mast with
+ * one yard, a row of oar-port thwarts. No castles, no bowsprit — that is the galleon.
+ */
+export function longshipOps(s: Size3): FormOp[] {
+  const L = s.width, B = s.depth, H = s.height;
+  const D = H * 0.18; // sheer height amidships
+  const end = L * 0.46;
+  const N = 11;
+  const xAt = (i: number) => -end + (2 * end * i) / (N - 1);
+  const t = (i: number) => (2 * i) / (N - 1) - 1; // -1 stern … 1 stem
+  const half = (i: number) => (B / 2) * Math.pow(Math.max(0, 1 - t(i) * t(i)), 0.7);
+  const sheer = (i: number) => D * (1 + 1.4 * Math.pow(t(i), 4)); // symmetric upsweep
+  const keelY = (i: number) => D * 0.5 * Math.pow(t(i), 6);
+  const ops: FormOp[] = [];
+  const post = (sgn: number) => [
+    { x: sgn * end, y: keelY(sgn > 0 ? N - 1 : 0), z: 0 },
+    { x: sgn * (end + L * 0.02), y: D * 2.2, z: 0 },
+    { x: sgn * (end + L * 0.005), y: D * 2.9, z: 0 },
+  ];
+  // Keel with both posts rising.
+  ops.push({ op: "poly", role: "leg", points: [...post(-1).reverse(), ...Array.from({ length: N }, (_, i) => ({ x: xAt(i), y: keelY(i), z: 0 })), ...post(1)] });
+  // Ribs.
+  for (let i = 1; i < N - 1; i++) {
+    const x = xAt(i), b = half(i), y0 = keelY(i), top = sheer(i);
+    ops.push({ op: "poly", role: "brace", points: [{ x, y: top, z: -b }, { x, y: y0 + (top - y0) * 0.4, z: -b * 0.8 }, { x, y: y0, z: 0 }, { x, y: y0 + (top - y0) * 0.4, z: b * 0.8 }, { x, y: top, z: b }] });
+  }
+  // Sheer strakes (port, starboard) meeting at both posts.
+  for (const side of [-1, 1]) {
+    ops.push({ op: "poly", role: "rail", points: Array.from({ length: N }, (_, i) => ({ x: xAt(i), y: sheer(i), z: side * half(i) })) });
+  }
+  // Rowing thwarts.
+  for (let i = 2; i < N - 2; i++) ops.push({ op: "poly", role: "beam", points: [{ x: xAt(i), y: sheer(i) * 0.85, z: -half(i) * 0.9 }, { x: xAt(i), y: sheer(i) * 0.85, z: half(i) * 0.9 }] });
+  // One mast amidships with one yard.
+  ops.push({ op: "column", x: 0, z: 0, y0: 0, y1: H, role: "support" });
+  ops.push({ op: "poly", role: "beam", points: [{ x: 0, y: H * 0.85, z: -B * 0.9 }, { x: 0, y: H * 0.85, z: B * 0.9 }] });
+  return ops;
+}

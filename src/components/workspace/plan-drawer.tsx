@@ -1,8 +1,10 @@
 "use client";
 
+import { userText } from "@/lib/yard/userText";
 import { inchFrac } from "@/lib/yard/inchText";
+import { cutListIntro, cutProgressRows } from "@/lib/yard/wholeItems";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useYard } from "@/lib/yard/store";
 import { writeInstructions, renderProject } from "@/lib/ai/grok";
@@ -11,12 +13,18 @@ import { downloadFlatSvg, bestFlatPlane, flatSvgString, type FlatPlane, type Pap
 import { usd } from "@/lib/utils";
 import { BuyList } from "@/components/workspace/buy-list";
 import { PlanStepPlate } from "@/components/workspace/plan-step-plate";
+import { CutRowDrawing } from "@/components/workspace/part-drawing";
 import { NestPlate } from "@/components/workspace/nest-plate";
+import { overlaps, setCutFocus } from "@/components/workspace/cut-focus";
+import { useCutTicks } from "@/components/workspace/cut-ticks";
 import { ExportDialog } from "@/components/workspace/export-dialog";
 import { planSheetNest, sheetSizeLabel } from "@/lib/yard/nesting";
 import type { BuildPlan } from "@/lib/yard/types";
 import { shopWordsChipTalk, fmtUnitEnvelopeInches, assumedDensifyNotes } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
+import { backerRowIds } from "@/lib/plan/backer";
+
+const rowEl = (L: string) => document.querySelector(`tr[data-yard-cut-row="${CSS.escape(L)}"]`);
 
 export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const project = useYard((s) => s.project);
@@ -24,14 +32,26 @@ export function PlanDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const setPlan = useYard((s) => s.setPlan);
   const grokBusy = useYard((s) => s.grokBusy);
   const grokError = useYard((s) => s.grokError);
+  const building = useYard((s) => s.building);
 
-  if (!open || !plan) return null;
+  // A landing brief (or any rebuild) clears the plan for a beat: keep the drawer open on the last plan,
+  // and make the new one at the next frame, instead of closing under the reader.
+  const lastPlan = useRef(plan);
+  if (plan) lastPlan.current = plan;
+  useEffect(() => {
+    // Wait out the rebuild (and any house brief), so the new plan is made once, for the new build.
+    if (!open || plan || building || grokBusy) return;
+    const id = requestAnimationFrame(() => { if (!useYard.getState().plan) useYard.getState().makePlan(); });
+    return () => cancelAnimationFrame(id);
+  }, [open, plan, building, grokBusy]);
+  const shown = plan ?? lastPlan.current;
+  if (!open || !shown) return null;
 
   return (
     <PlanBody
       projectName={project.name}
       projectPrompt={project.prompt}
-      plan={plan}
+      plan={shown}
       setPlan={setPlan}
       grokBusy={grokBusy}
       grokError={grokError}
@@ -227,8 +247,54 @@ function PlanBody({
     [plan.cutList, plan.partsKind, plan.sheetNest],
   );
   const nestSheets = nest?.sheets ?? [];
-  const thinCuts = plan.cutList.filter((c) => (c.thicknessIn ?? 0.75) < 0.5);
-  const houseNest = housePath && nestSheets.length > 0;
+  const backerSheets = plan.partsKind === "whole" ? [] : (plan.sheetNest?.backer?.sheets ?? []);
+  // Only real backer panels (thin sheet stock on the plan's backer sheets): never a dowel, stick, skewer or pane.
+  const backerIds = useMemo(() => backerRowIds(plan), [plan]);
+  const thinCuts = plan.cutList.filter((c) => backerIds.has(c.id));
+  // Every sheet-goods build gets its sheet (it is what the cut list is cut from), not only house builds.
+  const houseNest = nestSheets.length > 0;
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  // Linking runs on SWE's partIds (the 3D part ids); a row or piece without them falls back to its letter.
+  const focusIds = useMemo(() => {
+    const row = activeLetter ? plan.cutList.find((c) => c.label === activeLetter) : null;
+    return new Set<string>(row?.partIds ?? []);
+  }, [activeLetter, plan.cutList]);
+  useEffect(() => { setCutFocus(focusIds); }, [focusIds]);
+  useEffect(() => () => setCutFocus(null), []);
+  const [ticks, toggleTick] = useCutTicks(`${project.prompt}|${project.overall.width}x${project.overall.height}x${project.overall.depth}|${project.primaryMaterialId}`);
+  const cutCount = cutProgressRows(plan).filter((c) => ticks.has(c.label!)).length;
+  // Tap a letter on the sheet: light its pieces and its row, and bring the row into view.
+  // A row's drawing opens under it and the last one closes: keep the tapped row still under the finger.
+  const pinRow = useRef<{ L: string; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const pin = pinRow.current;
+    pinRow.current = null;
+    const row = pin && rowEl(pin.L);
+    const box = row?.closest(".overflow-y-auto");
+    if (row && box) box.scrollTop += row.getBoundingClientRect().top - pin.top;
+    // Then bring an opened drawing fully above the Save PDF bar (a bottom row's would open out of view).
+    const pic = document.querySelector("[data-yard-part-row]");
+    const area = pic?.closest(".overflow-y-auto");
+    const over = pic && area ? pic.getBoundingClientRect().bottom - area.getBoundingClientRect().bottom + 8 : 0;
+    if (area && over > 0) area.scrollTop += over;
+  }, [activeLetter]);
+  // Escape closes the open drawing; focus stays on the letter that opened it. The export dialog keeps its own Escape.
+  useEffect(() => {
+    if (!activeLetter || exportOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !e.defaultPrevented) setActiveLetter(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeLetter, exportOpen]);
+  const pickLetter = useCallback((letter: string, fromSheet: boolean) => {
+    setActiveLetter((cur) => (cur === letter && !fromSheet ? null : letter));
+    const top = !fromSheet && rowEl(letter)?.getBoundingClientRect().top;
+    if (typeof top === "number") pinRow.current = { L: letter, top };
+    if (fromSheet) {
+      const row = document.querySelector(`[data-yard-cut-row="${CSS.escape(letter)}"]`);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      row?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    }
+  }, []);
   const nestSizes = [...new Set(nestSheets.map((s) => sheetSizeLabel(s).replace("x", "×")))];
   const nestTitle =
     nestSizes.length === 1 ? `Cut this ${nestSizes[0]} plywood` : nestSizes.length > 1 ? "Cut these sheets" : "Cut this plywood";
@@ -265,12 +331,15 @@ function PlanBody({
               <p className="mt-1 text-xs text-muted">
                 Letters match the cut list. 1/8" kerf included. Grain runs long.
                 {thinCuts.length
-                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is not on these sheets — buy 1/4" separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
+                  ? ` Thin backer (${thinCuts.map((t) => t.label ?? t.name).join(", ")}) is cut from its own 1/4" sheet${backerSheets.length ? " (last below)" : ""}, never the 3/4" ply — buy it separately${thinCuts.some((c) => Math.max(c.lengthIn, c.widthIn) > 96) ? " (4×10 for full-height backs)" : ""}.`
                   : ""}
               </p>
               <div className="mt-3 space-y-3">
                 {nestSheets.map((sheet) => (
-                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} />
+                  <NestPlate key={sheet.index} sheet={sheet} sheetCount={nestSheets.length} active={activeLetter} focus={focusIds} done={ticks} onPick={(l) => pickLetter(l, true)} />
+                ))}
+                {backerSheets.map((sheet) => (
+                  <NestPlate key={`backer-${sheet.index}`} sheet={sheet} sheetCount={backerSheets.length} active={activeLetter} focus={focusIds} done={ticks} onPick={(l) => pickLetter(l, true)} backer />
                 ))}
               </div>
               {nest && nest.unplaced.length > 0 && (
@@ -286,10 +355,13 @@ function PlanBody({
             <section>
               <h3 className="font-display text-lg text-fg">{plan.partsKind === "whole" ? "Stick list" : "Cut list"}</h3>
               <p className="mt-1 text-xs text-muted">
-                {plan.partsKind === "whole"
-                  ? "Full pieces from the pack. Glue them. Do not cut."
-                  : "Same size is the same letter. Mark A on the first cut, then batch."}
+                {cutListIntro(plan)}
               </p>
+              {cutProgressRows(plan).length > 0 && (
+                <p className="mt-1 text-xs text-fg" data-yard-cut-progress aria-live="polite">
+                  {cutCount} of {cutProgressRows(plan).length} sizes cut
+                </p>
+              )}
               <table className="mt-3 w-full text-left text-xs">
                 <thead className="text-faint">
                   <tr>
@@ -300,22 +372,63 @@ function PlanBody({
                   </tr>
                 </thead>
                 <tbody>
-                  {plan.cutList.map((c) => (
-                    <tr key={c.id} className="border-t border-border/70">
-                      <td className="py-1.5 font-mono font-semibold text-fg">{c.label ?? ""}</td>
-                      <td className="py-1.5 font-mono">{c.quantity}</td>
-                      <td className="py-1.5">
-                        {c.name}
-                        {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
-                      </td>
-                      <td className="py-1.5 font-mono text-muted">
-                        {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
-                        {c.material ? (
-                          <span className="mt-0.5 block text-[10px] text-faint">{shortSheetTalk(c.material)}</span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
+                  {plan.cutList.map((c) => {
+                    const L = c.label ?? "";
+                    const done = !!L && ticks.has(L);
+                    const thin = backerIds.has(c.id);
+                    return (
+                      <Fragment key={c.id}>
+                      <tr
+                        data-yard-cut-row={L}
+                        data-active={overlaps(c, focusIds, activeLetter) ? "1" : undefined}
+                        data-part-ids={c.partIds?.join(" ") || undefined}
+                        data-done={done ? "1" : undefined}
+                        className="yard-cut-row border-t border-border/70"
+                      >
+                        <td className="py-0.5 pr-1">
+                          {L ? (
+                            <span className="flex items-center">
+                              {!c.whole && (
+                                <label className="grid size-11 cursor-pointer place-items-center" title={`Mark ${L} cut`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={done}
+                                    onChange={() => toggleTick(L)}
+                                    aria-label={`${L}, ${c.name}: cut`}
+                                    className="size-4 accent-mark"
+                                  />
+                                </label>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => pickLetter(L, false)}
+                                aria-pressed={L === activeLetter}
+                                aria-label={`Show ${L} on the sheet`}
+                                className="grid size-11 place-items-center font-mono font-semibold text-fg"
+                              >
+                                {L}
+                              </button>
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-1.5 font-mono">{c.quantity}</td>
+                        <td className="py-1.5">
+                          {c.name}
+                          {c.notes ? <span className="mt-0.5 block text-[10px] text-faint">{c.notes}</span> : null}
+                          {thin ? <span className="mt-0.5 block text-[10px] text-faint" data-yard-backer-note>1/4" backer: cut from its own 1/4" sheet, not the 3/4" ply.</span> : null}
+                        </td>
+                        <td className="py-1.5 font-mono text-muted">
+                          {inchFrac(c.lengthIn)}" × {inchFrac(c.widthIn)}" × {inchFrac(c.thicknessIn ?? 0.75)}"
+                          {c.material ? (
+                            <span className="mt-0.5 block text-[10px] text-faint">{shortSheetTalk(c.material)}</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                      {/* The tapped row's part: in place and alone, from the live drawing (no new words). */}
+                      <CutRowDrawing project={project} plan={plan} row={c} active={!!L && L === activeLetter} />
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </section>
@@ -383,7 +496,7 @@ function PlanBody({
                 <p className="font-medium text-fg">Assumed size</p>
                 {assumedDensifyNotes(project.notes).map((n) => (
                   <p key={n} className="mt-1">
-                    {n}
+                    {userText(n)}
                   </p>
                 ))}
               </div>
@@ -416,8 +529,8 @@ function PlanBody({
                         <span className="block font-medium text-fg">
                           <span className="font-mono text-faint">{String(s.step).padStart(2, "0")}</span> {s.title}
                         </span>
-                        <span className="mt-1 block text-muted">{s.description}</span>
-                        {s.tips && <span className="mt-1 block text-xs text-faint">{s.tips}</span>}
+                        <span className="mt-1 block text-muted">{userText(s.description)}</span>
+                        {userText(s.tips) && <span className="mt-1 block text-xs text-faint">{userText(s.tips)}</span>}
                         <span className="mt-2 block text-xs text-faint print:hidden">
                           {on ? "On the bench now — click again to leave" : "View this step on the bench"}
                         </span>

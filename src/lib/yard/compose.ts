@@ -1,6 +1,7 @@
 import { createId } from "@/lib/utils";
 import { looksLikePocket } from "./pocket";
 import { detectWeekendFamily } from "./weekendFamily";
+import { plainFractions, readLengths, releaseReads } from "./lengthReader";
 import type { Panel, Vec3, YardInstance, YardProject } from "./types";
 
 /**
@@ -127,6 +128,31 @@ function partNotProduct(core: string): boolean {
   return false;
 }
 
+/**
+ * Class F (row 570, card 1): the whole prompt is a card 1 host, optionally with its size ("vanity 85 wide 34.5 tall"),
+ * then "with 1 shelf", "with one shelf", "with 1/one [word] shelf" or "with an open shelf": that is the host's own
+ * shelf. Anything else (another clause, "desk organizer", a size after the shelf) keeps the release build. Release's
+ * casters rule (C13) builds the prompt without its casters words first, so "desk with 1 shelf and casters" is this form.
+ * Only the typed words decide, never price or stock, so a stock switch keeps the structure (row 745).
+ * The host list is not the size rule. canonicalMeasures already wrote every axis the one reader reads as inches,
+ * including a separator comma beside this shelf wording, on every host. This list only keeps the shelf on the host.
+ */
+const CARD1 = /^(?:an? |the )?(?:media console|sideboard|credenza|buffet|vanity|desk|nightstand)(?: \d+(?:\.\d+)? (?:wide|tall|deep))* with (?:(?:1|one) (?:(?!wide |tall |deep )[a-z]+ )?shelf|an open shelf)$/;
+
+/**
+ * The text CARD1 reads: a size typed in any spelling the one reader reads ("4 ft wide", "2'6\" wide", "thirty inches
+ * wide", "762 mm wide") is its decimal inches, so the host keeps its own shelf at every spelling of its size, as it does
+ * at "48 wide" (I41: a feature never picks the build). Text the reader leaves to release (releaseReads) is as typed.
+ */
+function card1Text(prompt: string): string {
+  let s = plainFractions(prompt.toLowerCase()).replace(/[″”]/g, '"').replace(/\s+/g, " ").trim();
+  if (releaseReads(s)) return s;
+  for (const l of readLengths(s).reverse()) {
+    if (/^ (?:wide|tall|deep)\b/.test(s.slice(l.end))) s = s.slice(0, l.start) + String(Math.round(l.inches * 10000) / 10000) + s.slice(l.end);
+  }
+  return s;
+}
+
 function stemOf(clause: string): string | null {
   const core = clauseCore(clause);
   if (!core || partNotProduct(core)) return null;
@@ -144,6 +170,7 @@ function stemOf(clause: string): string | null {
 function accessory(stem: string, others: string[]): boolean {
   const rest = others.join(" ").toLowerCase();
   if (stem === "Mirror" && /vanity|dresser|medicine/.test(rest)) return true;
+  if ((stem === "Stool" || stem === "Chair") && /vanity/.test(rest)) return true;
   if (stem === "Ladder" && /bunk|loft/.test(rest)) return true;
   if (stem === "Shelf" && /bookcase|bookshelf|closet|hutch|dresser|wardrobe|pantry|linen/.test(rest)) return true;
   // A seat builds its own under-seat shelf: "entry bench with shoe shelf" is one bench.
@@ -288,6 +315,9 @@ export function composeProducts(
     .filter((c): c is { clause: string; stem: string } => !!c.stem);
   const kept = found.filter((c) => !accessory(c.stem, found.filter((o) => o !== c).map((o) => o.stem)));
   if (kept.length < 2) return null;
+  // Class F (row 570, card 1): "host with 1 shelf / an open shelf" builds the host with its own shelf, not a second
+  // Shelf product. Only the whole-prompt form above; everything else keeps the release build.
+  if (CARD1.test(card1Text(prompt))) return null;
 
   // Coat rack + bench is one hall tree. Stacking the wall rack on the seat
   // stretches the bench sides into fins and runs the pegs across the seat.

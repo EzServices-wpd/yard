@@ -7,13 +7,22 @@ import type { jsPDF } from "jspdf";
 import { getCatalogItem } from "./catalog";
 import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
-import { outlineRingXZ, polygonRings } from "./iso";
+import { headerSize } from "./headerSize";
+import { outlineRingXZ, polygonHoleCircles, polygonHoleRings, polygonRings, type HoleCircle } from "./iso";
 import { cutListName } from "./shopPlural";
 import type { CutLine, Panel, YardProject } from "./types";
 import { KIT, clean, frac, type RGB } from "./pdfKit";
 
 type V3 = { x: number; y: number; z: number };
-type Face = { pts: V3[]; n: V3 };
+/** A flat face; `holes` are inner rings (same plane) left open with an even-odd fill. */
+/** A round hole's rim on this face (c + u·cos t + v·sin t) and its centre on the far face, for exact arcs. */
+type Rim = { c: V3; u: V3; v: V3; back: V3 };
+/**
+ * soft: one facet of a round wall (a hub, a collar, a wheel's rim). It is filled without its own edge lines, and
+ * `sil` lists the side edges that are drawn: where the wall turns away from the viewer (its silhouette). `rim` is the
+ * wall's edge along a cap the viewer cannot see (the far rim): no cap outline draws it, so the wall does (row 135).
+ */
+type Face = { pts: V3[]; n: V3; holes?: V3[][]; rims?: Rim[]; soft?: boolean; sil?: [V3, V3][]; rim?: [V3, V3][] };
 export type Tone = "hot" | "built" | "ghost";
 
 type Solid = {
@@ -81,22 +90,76 @@ export function isRoundPlate(project: YardProject, p: Panel): boolean {
   return project.fitted?.unit?.shape === "round" && /top|shelf/i.test(p.type);
 }
 
-function prism(ring0: V3[], ring1: V3[]): Face[] {
+/**
+ * Extruded outline: two caps and a side wall per outer edge. Each hole (a ring pair placed like the outline) is cut
+ * out of both caps and gets its own inner wall, facing the hole's axis, so a wheel's open centre shows what is behind.
+ */
+function prism(ring0: V3[], ring1: V3[], holes: V3[][][] = [], circles: HoleCircle[] = []): Face[] {
   const u = sub(ring1[0], ring0[0]);
   const nr = newell(ring0);
   const sign = dot(nr, u) >= 0 ? 1 : -1;
   const faces: Face[] = [];
   const capDir = norm(u);
-  faces.push({ pts: ring0, n: scale3(capDir, -1) });
-  faces.push({ pts: ring1, n: capDir });
-  for (let i = 0; i < ring0.length; i++) {
+  const h0 = holes.map((h) => h[0]), h1 = holes.map((h) => h[1]);
+  // Round holes (one circle per ring pair): each cap carries exact rims and draws its own hole wall, so the PDF
+  // paints true arcs at any print size and no per-side wall facet joins the depth sort (Critic #93 row 110).
+  const round = circles.length === holes.length && holes.length > 0;
+  const rims0: Rim[] = round ? circles.map((k) => ({ c: k.c0, u: k.u, v: k.v, back: k.c1 })) : [];
+  const rims1: Rim[] = round ? circles.map((k) => ({ c: k.c1, u: k.u, v: k.v, back: k.c0 })) : [];
+  faces.push({ pts: ring0, n: scale3(capDir, -1), ...(holes.length ? { holes: h0 } : {}), ...(round ? { rims: rims0 } : {}) });
+  faces.push({ pts: ring1, n: capDir, ...(holes.length ? { holes: h1 } : {}), ...(round ? { rims: rims1 } : {}) });
+  for (const [a, b] of round ? [] : holes) {
+    const axis = centroid(a);
+    for (let i = 0; i < a.length; i++) {
+      const j = (i + 1) % a.length;
+      const e = sub(a[j], a[i]);
+      if (Math.hypot(e.x, e.y, e.z) < 1e-6) continue;
+      let n = norm(cross(e, u));
+      // The inner wall faces into the hole.
+      if (dot(n, sub(axis, scale3(add(a[i], a[j]), 0.5))) < 0) n = scale3(n, -1);
+      faces.push({ pts: [a[i], a[j], b[j], b[i]], n });
+    }
+  }
+  // A round outline's wall is one curved surface: its facets draw no seams, only the silhouette edges, so a hub
+  // or a wheel's rim reads round at 400 dpi instead of gear-like (Critic #93 row 110).
+  const soft = isRoundRing(ring0);
+  const sideN = ring0.map((_, i) => {
     const j = (i + 1) % ring0.length;
     const e = sub(ring0[j], ring0[i]);
-    if (Math.hypot(e.x, e.y, e.z) < 1e-6) continue;
-    const n = norm(scale3(cross(e, u), sign));
-    faces.push({ pts: [ring0[i], ring0[j], ring1[j], ring1[i]], n });
+    return Math.hypot(e.x, e.y, e.z) < 1e-6 ? null : norm(scale3(cross(e, u), sign));
+  });
+  const seen = (n: V3 | null) => !!n && dot(n, VIEW) > 1e-4;
+  // A cap the viewer cannot see draws no outline, so the wall strokes that rim itself (the collar's left edge).
+  const cap0Hidden = !seen(scale3(capDir, -1)), cap1Hidden = !seen(capDir);
+  for (let i = 0; i < ring0.length; i++) {
+    const j = (i + 1) % ring0.length;
+    const n = sideN[i];
+    if (!n) continue;
+    const face: Face = { pts: [ring0[i], ring0[j], ring1[j], ring1[i]], n };
+    if (soft) {
+      const prev = sideN[(i - 1 + ring0.length) % ring0.length], next = sideN[j];
+      face.soft = true;
+      face.sil = [
+        ...(seen(prev) !== seen(n) ? [[ring0[i], ring1[i]] as [V3, V3]] : []),
+        ...(seen(next) !== seen(n) ? [[ring0[j], ring1[j]] as [V3, V3]] : []),
+      ];
+      face.rim = [
+        ...(cap0Hidden ? [[ring0[i], ring0[j]] as [V3, V3]] : []),
+        ...(cap1Hidden ? [[ring1[i], ring1[j]] as [V3, V3]] : []),
+      ];
+    }
+    faces.push(face);
   }
   return faces;
+}
+
+/** 12 or more corners, all the same distance from the middle (within 2%): a circle, drawn as a smooth wall. */
+export function isRoundRing(ring: V3[]): boolean {
+  if (ring.length < 12) return false;
+  const c = centroid(ring);
+  const r = ring.map((p) => Math.hypot(p.x - c.x, p.y - c.y, p.z - c.z));
+  const mean = r.reduce((a, b) => a + b, 0) / r.length;
+  return mean > 0 && r.every((x) => Math.abs(x - mean) <= 0.02 * mean);
 }
 
 function boxFaces(c: V3[]): Face[] {
@@ -131,11 +194,53 @@ function bounds(pts: V3[]) {
   return { min, max };
 }
 
+/** A facet with its normal pointing away from `inside`. */
+function facet(pts: V3[], inside: V3): Face {
+  let n = norm(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0])));
+  if (dot(n, sub(centroid(pts), inside)) < 0) n = { x: -n.x, y: -n.y, z: -n.z };
+  return { pts, n };
+}
+
+/** Cone (open, apex up) or dome (half sphere on its base) filling the part's box, as the 3D view draws them. */
+function curvedFaces(p: Panel): Face[] {
+  const { x, y, z } = p.position, { width: w, height: h, depth: d } = p.size;
+  const c = { x: x + w / 2, y, z: z + d / 2 }, n = 24;
+  const at = (t: number, k: number) => ({ x: c.x + (w / 2) * k * Math.cos(t), y: 0, z: c.z + (d / 2) * k * Math.sin(t) });
+  const faces: Face[] = [];
+  if (p.form === "cone") {
+    const apex = { x: c.x, y: y + h, z: c.z }, mid = { x: c.x, y: y + h / 3, z: c.z };
+    for (let i = 0; i < n; i++) {
+      const a = at((i / n) * 2 * Math.PI, 1), b = at(((i + 1) / n) * 2 * Math.PI, 1);
+      faces.push(facet([{ ...a, y }, { ...b, y }, apex], mid));
+    }
+    return faces;
+  }
+  const rings = 6, inside = { x: c.x, y, z: c.z };
+  for (let j = 0; j < rings; j++) {
+    const p0 = (j / rings) * (Math.PI / 2), p1 = ((j + 1) / rings) * (Math.PI / 2);
+    for (let i = 0; i < n; i++) {
+      const t0 = (i / n) * 2 * Math.PI, t1 = ((i + 1) / n) * 2 * Math.PI;
+      const q = (t: number, ph: number) => ({ ...at(t, Math.cos(ph)), y: y + h * Math.sin(ph) });
+      const pts = j === rings - 1 ? [q(t0, p0), q(t1, p0), q(t0, p1)] : [q(t0, p0), q(t1, p0), q(t1, p1), q(t0, p1)];
+      faces.push(facet(pts, inside));
+    }
+  }
+  return faces;
+}
+
 function panelSolid(project: YardProject, p: Panel): Solid {
   let faces: Face[];
-  if (p.polygon) {
+  if (p.strut) {
+    // A round rod from a to b (offsets from the part's corner): drawn as the rod, not its box.
+    const o = p.position, { a, b, r } = p.strut;
+    const A = { x: o.x + a[0], y: o.y + a[1], z: o.z + a[2] }, B = { x: o.x + b[0], y: o.y + b[1], z: o.z + b[2] };
+    return { id: p.id, faces: [], ...bounds([A, B]), center: centroid([A, B]), stick: { a: A, b: B, w: 2 * r } };
+  }
+  if (p.form === "cone" || p.form === "dome") {
+    faces = curvedFaces(p);
+  } else if (p.polygon) {
     const [r0, r1] = polygonRings(p);
-    faces = prism(r0, r1);
+    faces = prism(r0, r1, polygonHoleRings(p), polygonHoleCircles(p));
   } else if (p.outline) {
     const ring = outlineRingXZ(p);
     const yb = p.position.y;
@@ -180,6 +285,35 @@ function instanceSolid(inst: YardProject["instances"][number]): Solid {
   return { id: inst.id, faces: [], ...bb, center: centroid([a, b]), stick: { a, b, w } };
 }
 
+/**
+ * The points a size is measured to (the true extent, not the drawn approximation): a part's rod is its part box; a
+ * loose rod is its surface (ends padded by its radius, exactly for a slanted rod); a round plate is its box (its "cut
+ * round" diameter, which the drawn polygon falls just short of). Everything else is its drawn corners.
+ */
+export function truePts(project: YardProject, s: Solid): V3[] {
+  const p = project.panels.find((q) => q.id === s.id);
+  // A part's rod (a strut) is measured to its part box, the size the cut list and the engine give it.
+  if (s.stick && p?.strut) return panelWorldCorners(p).map((c) => ({ x: c.x, y: c.y, z: c.z }));
+  if (s.stick) {
+    const { a, b, w } = s.stick;
+    const u = norm(sub(b, a)), r = w / 2;
+    const pad = { x: r * Math.sqrt(Math.max(0, 1 - u.x * u.x)), y: r * Math.sqrt(Math.max(0, 1 - u.y * u.y)), z: r * Math.sqrt(Math.max(0, 1 - u.z * u.z)) };
+    return [a, b].flatMap((q) => [sub(q, pad), add(q, pad)]);
+  }
+  const pts = s.faces.flatMap((f) => f.pts);
+  if (!p?.polygon || !pts.length) return pts;
+  const corners = panelWorldCorners(p).map((c) => ({ x: c.x, y: c.y, z: c.z }));
+  const a = bounds(pts), b = bounds(corners);
+  const close = (["x", "y", "z"] as const).every((k) => Math.abs(a.min[k] - b.min[k]) <= 0.25 && Math.abs(a.max[k] - b.max[k]) <= 0.25);
+  return close ? corners : pts;
+}
+
+/** The extent the drawings label on a full view: every part measured to its true surface (measurePts). */
+export function drawnExtent(project: YardProject): { min: V3; max: V3 } | null {
+  const pts = projectSolids(project).flatMap((s) => truePts(project, s));
+  return pts.length ? bounds(pts) : null;
+}
+
 export function projectSolids(project: YardProject): Solid[] {
   return [...project.panels.map((p) => panelSolid(project, p)), ...project.instances.map((i) => instanceSolid(i))];
 }
@@ -197,7 +331,13 @@ function shift(s: Solid, d: V3): Solid {
   if (!d.x && !d.y && !d.z) return s;
   return {
     id: s.id,
-    faces: s.faces.map((f) => ({ n: f.n, pts: f.pts.map((p) => add(p, d)) })),
+    faces: s.faces.map((f) => ({
+      n: f.n,
+      pts: f.pts.map((p) => add(p, d)),
+      ...(f.holes ? { holes: f.holes.map((h) => h.map((p) => add(p, d))) } : {}),
+      ...(f.rims ? { rims: f.rims.map((r) => ({ ...r, c: add(r.c, d), back: add(r.back, d) })) } : {}),
+      ...(f.soft ? { soft: true, sil: (f.sil ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]), rim: (f.rim ?? []).map(([a, b]) => [add(a, d), add(b, d)] as [V3, V3]) } : {}),
+    })),
     min: add(s.min, d),
     max: add(s.max, d),
     center: add(s.center, d),
@@ -243,8 +383,11 @@ function interpenetrationFirst(a: Solid, b: Solid): boolean {
  * 1: a paints first (b sits on the viewer's side of a separating plane), -1: b first, 0: no plane or edge-on.
  * ponytail: face normals only; edge×edge axes or a per-face z-buffer if a pair still sorts wrong.
  */
+/** A part's points: its faces, or a rod's two ends. */
+const ptsOf = (s: Solid): V3[] => (s.stick ? [s.stick.a, s.stick.b] : s.faces.flatMap((f) => f.pts));
+
 export function satOrder(a: Solid, b: Solid): number {
-  const pa = a.faces.flatMap((f) => f.pts), pb = b.faces.flatMap((f) => f.pts);
+  const pa = ptsOf(a), pb = ptsOf(b);
   let best = 0, gap = -1e-3;
   for (const n of [...a.faces, ...b.faces].map((f) => f.n)) {
     const v = dot(n, VIEW);
@@ -263,7 +406,7 @@ export function satOrder(a: Solid, b: Solid): number {
 
 /** True when the two parts' drawings cannot overlap: some projected face edge separates them on screen. */
 function apartOnScreen(a: Solid, b: Solid): boolean {
-  const pa = a.faces.flatMap((f) => f.pts).map(iso), pb = b.faces.flatMap((f) => f.pts).map(iso);
+  const pa = ptsOf(a).map(iso), pb = ptsOf(b).map(iso);
   for (const f of [...a.faces, ...b.faces]) {
     const q = f.pts.map(iso);
     for (let k = 0; k < q.length; k++) {
@@ -289,6 +432,52 @@ export function faceSolids(solids: Solid[]): Solid[] {
   );
 }
 
+
+type P2 = { x: number; y: number };
+const area2 = (q: P2[]) => q.reduce((a, p, k) => { const e = q[(k + 1) % q.length]; return a + p.x * e.y - e.x * p.y; }, 0);
+/** Clip convex polygon `subj` by convex polygon `clip` (Sutherland–Hodgman). */
+function clipConvex(subj: P2[], clip: P2[]): P2[] {
+  const c = area2(clip) < 0 ? [...clip].reverse() : clip;
+  let out = subj;
+  for (let k = 0; k < c.length && out.length; k++) {
+    const a = c[k], b = c[(k + 1) % c.length];
+    const side = (p: P2) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    const inp = out;
+    out = [];
+    for (let m = 0; m < inp.length; m++) {
+      const p = inp[m], q = inp[(m + 1) % inp.length];
+      const sp = side(p), sq = side(q);
+      if (sp >= 0) out.push(p);
+      if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t }); }
+    }
+  }
+  return out;
+}
+/** Depth (toward the viewer) of a face's plane under screen point s. */
+function planeDepth(f: Face, s: P2): number {
+  const a = s.x / COS30, b = s.y / SIN30;
+  // iso(B) = s with B.y = 0.
+  const B: V3 = { x: (a + b) / 2, y: 0, z: (b - a) / 2 };
+  const nv = dot(f.n, VIEW);
+  const t = (dot(f.n, f.pts[0]) - dot(f.n, B)) / nv;
+  return dot(B, VIEW) + t;
+}
+/**
+ * Exact order of two flat face plates: where their drawings overlap, the nearer plane paints last.
+ * 1 = a is behind, -1 = b is behind, 0 = their drawings do not overlap (no constraint).
+ */
+export function faceOrder(a: Solid, b: Solid): number {
+  const fa = a.faces[0], fb = b.faces[0];
+  const qa = fa.pts.map(iso), qb = fb.pts.map(iso);
+  const sa = area2(qa) < 0 ? [...qa].reverse() : qa;
+  const hit = clipConvex(sa, qb);
+  if (hit.length < 3 || Math.abs(area2(hit)) < 1e-6) return 0;
+  const c = { x: hit.reduce((t, p) => t + p.x, 0) / hit.length, y: hit.reduce((t, p) => t + p.y, 0) / hit.length };
+  const da = planeDepth(fa, c), db = planeDepth(fb, c);
+  if (Math.abs(da - db) < 1e-6) return 0;
+  return da < db ? 1 : -1;
+}
+
 /** Painter order: far first. A is behind B when separated along an axis toward the viewer. */
 export function paintOrder(solids: Solid[]): Solid[] {
   const n = solids.length;
@@ -298,7 +487,13 @@ export function paintOrder(solids: Solid[]): Solid[] {
   const behind = (a: Solid, b: Solid) =>
     a.max.x <= b.min.x + eps || a.max.y <= b.min.y + eps || a.max.z <= b.min.z + eps;
   const indeg = new Array(n).fill(0);
+  // Edges proved by a separating axis on the real shapes are hard; box and centre guesses are soft.
+  const hardIn = new Array(n).fill(0);
+  // Box separation along an axis is firmer than an interpenetration or centre-depth guess.
+  const boxIn = new Array(n).fill(0);
+  const firm: boolean[][] = solids.map(() => []);
   const out: number[][] = solids.map(() => []);
+  const hard: boolean[][] = solids.map(() => []);
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       const A = boxes[i];
@@ -306,11 +501,23 @@ export function paintOrder(solids: Solid[]): Solid[] {
       if (A.x1 <= B.x0 || B.x1 <= A.x0 || A.y1 <= B.y0 || B.y1 <= A.y0) continue;
       if (apartOnScreen(solids[i], solids[j])) continue;
       const pi = solids[i].of ?? solids[i], pj = solids[j].of ?? solids[j];
-      const sat = pi !== pj ? satOrder(pi, pj) || satOrder(solids[i], solids[j]) : satOrder(solids[i], solids[j]);
+      if (solids[i].of && solids[j].of && !solids[i].stick && !solids[j].stick && solids[i].faces.length === 1 && solids[j].faces.length === 1) {
+        // Two flat face plates: the exact depth where they overlap decides; no overlap, no constraint.
+        const fo = pi === pj ? 0 : faceOrder(solids[i], solids[j]);
+        if (fo) {
+          const [f, g] = fo > 0 ? [i, j] : [j, i];
+          out[f].push(g); hard[f].push(true); firm[f].push(false); indeg[g]++; hardIn[g]++;
+        }
+        continue;
+      }
+      const sat = pi !== pj ? satOrder(solids[i], solids[j]) || satOrder(pi, pj) : satOrder(solids[i], solids[j]);
       if (sat) {
         const [f, g] = sat > 0 ? [i, j] : [j, i];
         out[f].push(g);
+        hard[f].push(true);
+        firm[f].push(false);
         indeg[g]++;
+        hardIn[g]++;
         continue;
       }
       const ij = behind(solids[i], solids[j]);
@@ -330,10 +537,15 @@ export function paintOrder(solids: Solid[]): Solid[] {
       }
       const second = first === i ? j : i;
       out[first].push(second);
+      hard[first].push(false);
+      const boxed = ij !== ji;
+      firm[first].push(boxed);
+      if (boxed) boxIn[second]++;
       indeg[second]++;
     }
   }
   const depth = solids.map((s) => dot(s.center, VIEW));
+  const nearest = solids.map((s) => Math.max(...ptsOf(s).map((p) => dot(p, VIEW))));
   const done = new Array(n).fill(false);
   const order: Solid[] = [];
   for (let k = 0; k < n; k++) {
@@ -343,12 +555,14 @@ export function paintOrder(solids: Solid[]): Solid[] {
       if (pick < 0 || depth[i] < depth[pick]) pick = i;
     }
     if (pick < 0) {
-      // Cycle: break it where the fewest constraints are broken (then farthest).
-      for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || indeg[i] < indeg[pick] || (indeg[i] === indeg[pick] && depth[i] < depth[pick]))) pick = i;
+      // Cycle (parts that pass through each other): paint first the plate whose nearest corner is farthest away;
+      // a guessed (soft) edge still breaks before a proved one.
+      const worse = (i: number, p: number) => hardIn[i] !== hardIn[p] && (hardIn[i] === 0 || hardIn[p] === 0) ? hardIn[i] < hardIn[p] : nearest[i] < nearest[p];
+      for (let i = 0; i < n; i++) if (!done[i] && (pick < 0 || worse(i, pick))) pick = i;
     }
     done[pick] = true;
     order.push(solids[pick]);
-    for (const j of out[pick]) indeg[j]--;
+    out[pick].forEach((j, k) => { indeg[j]--; if (hard[pick][k]) hardIn[j]--; if (firm[pick][k]) boxIn[j]--; });
   }
   return order;
 }
@@ -370,6 +584,8 @@ export type RenderOpts = {
   /** Axes the stranger never typed — their dimension labels say "assumed". */
   assumedAxes?: Partial<Record<"width" | "height" | "depth", boolean>>;
   pad?: number;
+  /** SVG only: wrap each drawn piece of a part in a <g> with these attributes (Operate hooks). */
+  partGroup?: (id: string) => Record<string, string> | null;
   /** Placement arrows (reference → part), labelled in fractions — from the same geometry as the step words. */
   measures?: { a: V3; b: V3; label: string; ea?: V3; eb?: V3 }[];
 };
@@ -397,6 +613,43 @@ function poly(doc: jsPDF, pts: { x: number; y: number }[], style: "F" | "S" | "F
   );
 }
 
+/** Outer ring plus hole rings as one path, filled even-odd (holes stay open) and stroked on every ring. */
+function ringPath(doc: jsPDF, r: { x: number; y: number }[]) {
+  if (r.length < 2) return;
+  doc.moveTo(r[0].x, r[0].y);
+  for (const p of r.slice(1)) doc.lineTo(p.x, p.y);
+  doc.close();
+}
+
+/** Bézier arc constant: four cubic quarters trace a circle within 0.03% of its radius. */
+export const ARC_K = (4 / 3) * Math.tan(Math.PI / 8);
+
+/**
+ * A circle c + u·cos t + v·sin t as four cubic Bézier quarters, projected by an affine `map` (iso and the page
+ * transform are both affine, so projecting the control points gives the exact projected ellipse).
+ */
+export function rimPath(doc: jsPDF, c: V3, u: V3, v: V3, map: (p: V3) => { x: number; y: number }) {
+  const dirs = [u, v, scale3(u, -1), scale3(v, -1)];
+  const P0 = map(add(c, u));
+  doc.moveTo(P0.x, P0.y);
+  for (let q = 0; q < 4; q++) {
+    const a = dirs[q], b = dirs[(q + 1) % 4];
+    const c1 = map(add(add(c, a), scale3(b, ARC_K))), c2 = map(add(add(c, b), scale3(a, ARC_K))), e = map(add(c, b));
+    doc.curveTo(c1.x, c1.y, c2.x, c2.y, e.x, e.y);
+  }
+  doc.close();
+}
+
+function polyHoles(doc: jsPDF, rings: { x: number; y: number }[][]) {
+  for (const r of rings) {
+    if (r.length < 2) continue;
+    doc.moveTo(r[0].x, r[0].y);
+    for (const p of r.slice(1)) doc.lineTo(p.x, p.y);
+    doc.close();
+  }
+  doc.fillStrokeEvenOdd();
+}
+
 /** Draw the project (or part of it) into a frame. Returns the screen anchor of each drawn solid. */
 export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, opts: RenderOpts) {
   const base = projectSolids(project);
@@ -419,7 +672,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   const fitPts = (fitSolids.length ? fitSolids : solids).flatMap((s) =>
     s.stick ? [s.stick.a, s.stick.b] : s.faces.flatMap((f) => f.pts),
   );
-  const dimsOn = !!opts.dims && !project.instances.length;
+  // Nothing built (a refusal, an empty bench): no part to measure, so no dimension line says 0" (refusal surfaces).
+  const dimsOn = !!opts.dims && !project.instances.length && project.panels.length > 0;
   const bb = bounds(fitPts.length ? fitPts : [{ x: 0, y: 0, z: 0 }]);
   const span = Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z, 1);
   const off = span * 0.1;
@@ -449,7 +703,17 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
   doc.setLineCap("round");
   const anchors = new Map<string, { x: number; y: number }>();
   const ink = new Map<string, { x: number; y: number }[]>();
+  // Everything painted, in paint order, so a label can tell which of a part's paint is still showing.
+  const painted: Paint[] = [];
+  const grouped = doc as unknown as { beginGroup?: (a: Record<string, string>) => void; endGroup?: () => void };
+  const wallTone = new Map<Solid, V3 | null>();
   for (const sol of paintOrder(faceSolids(solids))) {
+    const g = opts.partGroup && grouped.beginGroup ? opts.partGroup(sol.id) : null;
+    if (g) grouped.beginGroup!(g);
+    drawSolid(sol);
+    if (g) grouped.endGroup!();
+  }
+  function drawSolid(sol: ReturnType<typeof faceSolids>[number]) {
     const tone = opts.tones.get(sol.id) ?? "built";
     const c = toneColors(tone);
     if (sol.stick) {
@@ -463,7 +727,8 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
       doc.setLineWidth(w);
       doc.line(a.x, a.y, b.x, b.y);
       anchors.set(sol.id, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-      continue;
+      painted.push(paintOf(sol.id, [], { a, b, r: (w + 0.9) / 2 }));
+      return;
     }
     const vis = sol.faces
       .filter((f) => dot(f.n, VIEW) > 1e-4)
@@ -471,11 +736,52 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
     doc.setLineWidth(c.lw);
     doc.setDrawColor(...c.edge);
     const screenPts: { x: number; y: number }[] = [];
+    // A round wall is one curved surface: one tone for all its facets (the mean of their normals), so it reads smooth
+    // instead of in faint bands, one per facet (row 135).
+    // The painter hands faces over one at a time (faceSolids), so the tone is the whole part's (`of`).
+    const whole = sol.of ?? sol;
+    let softN = wallTone.get(whole);
+    if (softN === undefined) {
+      const softVis = whole.faces.filter((f) => f.soft && dot(f.n, VIEW) > 1e-4);
+      softN = softVis.length ? norm(softVis.reduce((a, f) => add(a, f.n), { x: 0, y: 0, z: 0 })) : null;
+      wallTone.set(whole, softN);
+    }
     for (const f of vis) {
       const pts = f.pts.map(map);
       screenPts.push(...pts);
       doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
-      poly(doc, pts, "FD");
+      const rings = [pts, ...(f.holes ?? []).map((h) => h.map(map))];
+      if (f.rims?.length) {
+        // The hole wall first (the far wall shows between this rim and the far rim), then the face over it.
+        for (const r of f.rims) {
+          const ax = norm(sub(r.back, r.c));
+          const perp = sub(VIEW, scale3(ax, dot(VIEW, ax)));
+          if (Math.hypot(perp.x, perp.y, perp.z) < 1e-4) continue;
+          doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, norm(perp))));
+          rimPath(doc, r.c, r.u, r.v, map);
+          rimPath(doc, r.back, r.u, r.v, map);
+          doc.fillStrokeEvenOdd();
+        }
+        doc.setFillColor(...(tone === "ghost" ? c.fill : shade(c.fill, f.n)));
+        ringPath(doc, pts);
+        for (const r of f.rims) rimPath(doc, r.c, r.u, r.v, map);
+        doc.fillStrokeEvenOdd();
+      } else if (f.soft) {
+        // A facet of a round wall: no seam lines (stroke in its own colour closes hairline gaps), silhouette only.
+        const fill = tone === "ghost" ? c.fill : shade(c.fill, softN ?? f.n);
+        doc.setFillColor(...fill);
+        doc.setDrawColor(...fill);
+        doc.setLineWidth(0.35);
+        poly(doc, pts, "FD");
+        doc.setDrawColor(...c.edge);
+        doc.setLineWidth(c.lw);
+        for (const [a, b] of [...(f.sil ?? []), ...(f.rim ?? [])]) {
+          const A = map(a), B = map(b);
+          doc.line(A.x, A.y, B.x, B.y);
+        }
+      } else if (f.holes?.length) polyHoles(doc, rings);
+      else poly(doc, pts, "FD");
+      painted.push(paintOf(sol.id, rings));
     }
     ink.set(sol.id, [...(ink.get(sol.id) ?? []), ...screenPts]);
   }
@@ -483,21 +789,90 @@ export function renderProject(doc: jsPDF, project: YardProject, frame: Frame, op
     if (pts.length) anchors.set(id, { x: pts.reduce((a, p) => a + p.x, 0) / pts.length, y: pts.reduce((a, p) => a + p.y, 0) / pts.length });
   }
 
-  if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes);
+  // Labels read the true extent of the same parts (a round plate's diameter, a rod's surface); lines stay on the drawing.
+  const measured = !ex && fitSolids.length ? bounds(fitSolids.flatMap((q) => truePts(project, q))) : bb;
+  if (dimsOn) drawDims(doc, project, bb, off, map, s, opts.assumedAxes, measured);
   if (opts.measures?.length) drawMeasures(doc, opts.measures, map);
 
   if (opts.letters) {
     const want = opts.bubbleIds ?? new Set([...opts.tones.entries()].filter(([, t]) => t === "hot").map(([id]) => id));
-    const byLetter = new Map<string, { x: number; y: number }>();
-    for (const [id, pt] of anchors) {
-      if (!want.has(id)) continue;
-      const L = opts.letters.get(id);
-      if (!L || byLetter.has(L)) continue;
-      byLetter.set(L, pt);
+    const byLetter = new Map<string, string[]>();
+    for (const id of anchors.keys()) {
+      const L = want.has(id) ? opts.letters.get(id) : undefined;
+      if (L) byLetter.set(L, [...(byLetter.get(L) ?? []), id]);
     }
-    drawBubbles(doc, frame, byLetter);
+    const pins = new Map<string, { x: number; y: number }>();
+    for (const [L, ids] of byLetter) pins.set(L, visiblePin(painted, ids, anchors));
+    drawBubbles(doc, frame, pins);
   }
   return { anchors, scale: s };
+}
+
+type Paint = { id: string; rings: P2[][]; stick?: { a: P2; b: P2; r: number }; box: { x0: number; y0: number; x1: number; y1: number } };
+export function paintOf(id: string, rings: P2[][], stick?: Paint["stick"]): Paint {
+  const pts = stick ? [stick.a, stick.b] : rings[0];
+  const pad = stick ? stick.r : 0;
+  const xs = pts.map((p) => p.x);
+  const ys = pts.map((p) => p.y);
+  return { id, rings, stick, box: { x0: Math.min(...xs) - pad, y0: Math.min(...ys) - pad, x1: Math.max(...xs) + pad, y1: Math.max(...ys) + pad } };
+}
+/** Even-odd over every ring, so a point in a hole is not on the paint. */
+function onPaint(q: Paint, p: P2) {
+  const b = q.box;
+  if (p.x < b.x0 || p.x > b.x1 || p.y < b.y0 || p.y > b.y1) return false;
+  if (q.stick) {
+    const { a, b: e, r } = q.stick;
+    const dx = e.x - a.x;
+    const dy = e.y - a.y;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy) <= r;
+  }
+  let inside = false;
+  for (const ring of q.rings) {
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const A = ring[i];
+      const B = ring[j];
+      if (A.y > p.y !== B.y > p.y && p.x < ((B.x - A.x) * (p.y - A.y)) / (B.y - A.y) + A.x) inside = !inside;
+    }
+  }
+  return inside;
+}
+/** The part on top at a screen point (the last paint there), or null on bare paper. */
+function topAt(painted: Paint[], p: P2) {
+  for (let i = painted.length - 1; i >= 0; i--) if (onPaint(painted[i], p)) return painted[i].id;
+  return null;
+}
+const PIN_MARGIN = 2.5;
+/** The point and a small ring around it all show this part, so the dot reads as sitting on it. */
+const showsAt = (painted: Paint[], id: string, p: P2) =>
+  [p, { x: p.x + PIN_MARGIN, y: p.y }, { x: p.x - PIN_MARGIN, y: p.y }, { x: p.x, y: p.y + PIN_MARGIN }, { x: p.x, y: p.y - PIN_MARGIN }].every((q) => topAt(painted, q) === id);
+/**
+ * Where a letter's leader lands: the first part's centre when that part shows there (the old pin, unchanged), else
+ * on the part (of those sharing the letter) with the most paint still showing, at its visible sample nearest the
+ * middle of what shows. Only when none of them shows anywhere does the old centre stay.
+ */
+export function visiblePin(painted: Paint[], ids: string[], anchors: Map<string, P2>): P2 {
+  const first = anchors.get(ids[0])!;
+  if (showsAt(painted, ids[0], first)) return first;
+  let best: { n: number; pt: P2 } | null = null;
+  for (const id of ids) {
+    const shown: P2[] = [];
+    for (const q of painted) {
+      if (q.id !== id) continue;
+      const N = 12;
+      for (let i = 0; i <= N; i++) {
+        for (let j = 0; j <= N; j++) {
+          const p = { x: q.box.x0 + ((q.box.x1 - q.box.x0) * i) / N, y: q.box.y0 + ((q.box.y1 - q.box.y0) * j) / N };
+          if (onPaint(q, p) && showsAt(painted, id, p)) shown.push(p);
+        }
+      }
+    }
+    if (!shown.length || (best && shown.length <= best.n)) continue;
+    const m = { x: shown.reduce((a, p) => a + p.x, 0) / shown.length, y: shown.reduce((a, p) => a + p.y, 0) / shown.length };
+    const pt = shown.reduce((a, p) => (Math.hypot(p.x - m.x, p.y - m.y) < Math.hypot(a.x - m.x, a.y - m.y) ? p : a));
+    best = { n: shown.length, pt };
+  }
+  return best?.pt ?? first;
 }
 
 /** Small dimension arrows: reference plane → part face, with a fraction label on a white chip. */
@@ -563,14 +938,20 @@ function drawDims(
   map: (p: V3) => { x: number; y: number },
   s: number,
   assumed: Partial<Record<"width" | "height" | "depth", boolean>> = {},
+  measured: { min: V3; max: V3 } = bb,
 ) {
   const round = project.fitted?.unit?.shape === "round";
-  const W = bb.max.x - bb.min.x;
-  const H = bb.max.y - bb.min.y;
-  const D = bb.max.z - bb.min.z;
+  const span = lineSpans(project, measured);
+  // One size source (Critic #93 rows 108/109): a full view labels the header's own W × D × H, so a typed 34″ vanity
+  // under its mirror says 34 and a typed 16″ linen with proud doors says 16, never the accessory or proud extent.
+  const W = span.width;
+  const H = span.height;
+  const D = span.depth;
   // Only the overall size can be assumed; a label that measures something else stays plain.
+  // Only the overall size can be assumed (the header's number, or the overall box off a full view); a label that
+  // measures something else stays plain.
   const tag = (axis: "width" | "height" | "depth", v: number, text: string) =>
-    assumed[axis] && Math.abs(v - project.overall[axis]) < 0.5 ? `${text} assumed` : text;
+    assumed[axis] && (span.header[axis] || Math.abs(v - project.overall[axis]) < 0.5) ? `${text} assumed` : text;
   const line = (a: V3, b: V3, label: string, side: V3) => {
     const A = map(a);
     const B = map(b);
@@ -601,10 +982,37 @@ function drawDims(
     const zc = (bb.min.z + bb.max.z) / 2;
     line({ x: bb.min.x, y: bb.max.y + 0.05, z: zc }, { x: bb.max.x, y: bb.max.y + 0.05, z: zc }, tag("width", W, `${frac(W)} dia`), { x: 0, y: 0, z: 1 });
   } else {
-    line({ x: bb.min.x, y: bb.min.y, z: zf }, { x: bb.max.x, y: bb.min.y, z: zf }, tag("width", W, frac(W)), { x: 0, y: 0, z: 1 });
-    line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y, z: bb.max.z }, tag("depth", D, frac(D)), { x: 1, y: 0, z: 0 });
+    // A line shortened to the header's size spans the body from its back / bottom / left (proud fronts and a mirror
+    // above stay outside it), so the arrow measures the number it prints.
+    line({ x: bb.min.x, y: bb.min.y, z: zf }, { x: bb.min.x + span.lineW(bb), y: bb.min.y, z: zf }, tag("width", W, frac(W)), { x: 0, y: 0, z: 1 });
+    line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y, z: bb.min.z + span.lineD(bb) }, tag("depth", D, frac(D)), { x: 1, y: 0, z: 0 });
   }
-  line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.max.y, z: bb.min.z }, tag("height", H, frac(H)), { x: 1, y: 0, z: 0 });
+  line({ x: xr, y: bb.min.y, z: bb.min.z }, { x: xr, y: bb.min.y + span.lineH(bb), z: bb.min.z }, tag("height", H, frac(H)), { x: 1, y: 0, z: 0 });
+}
+
+/**
+ * What a drawing's three dimension lines print, and how long each line is. A full view (the drawing measures the
+ * whole build) prints headerSize on every axis where the header is a part of the drawn extent (a typed body under
+ * a mirror, inside proud fronts); the line then spans just that part. Anything else (a sub-assembly, a floating
+ * desk whose header height is from the floor) prints what it measures, full length.
+ */
+export function lineSpans(project: YardProject, measured: { min: V3; max: V3 }) {
+  const m = { width: measured.max.x - measured.min.x, height: measured.max.y - measured.min.y, depth: measured.max.z - measured.min.z };
+  const all = drawnExtent(project);
+  const full = !!all && (["x", "y", "z"] as const).every((k) => Math.abs(all.min[k] - measured.min[k]) <= 0.05 && Math.abs(all.max[k] - measured.max[k]) <= 0.05);
+  const head = full && !project.instances.length ? headerSize(project) : null;
+  const pick = (a: "width" | "height" | "depth") => (head && head[a] > 0 && head[a] <= m[a] + 1 / 32 ? head[a] : m[a]);
+  const out = { width: pick("width"), height: pick("height"), depth: pick("depth") };
+  const header = { width: !!head && out.width === head.width, height: !!head && out.height === head.height, depth: !!head && out.depth === head.depth };
+  // Line length on the drawing box (the drawn bounds may differ slightly from the true surfaces): scale by the share.
+  const share = (a: "width" | "height" | "depth") => (m[a] > 0 ? Math.min(1, out[a] / m[a]) : 1);
+  return {
+    ...out,
+    header,
+    lineW: (bb: { min: V3; max: V3 }) => (bb.max.x - bb.min.x) * share("width"),
+    lineH: (bb: { min: V3; max: V3 }) => (bb.max.y - bb.min.y) * share("height"),
+    lineD: (bb: { min: V3; max: V3 }) => (bb.max.z - bb.min.z) * share("depth"),
+  };
 }
 
 export function drawBubble(doc: jsPDF, x: number, y: number, letter: string, r = 8.5, muted = false) {
@@ -713,7 +1121,8 @@ export function partLetters(project: YardProject, cutList: CutLine[]): Map<strin
 
 // ───────────────────────── flat part shapes ─────────────────────────
 
-export type Shape2D = { pts: [number, number][]; circle?: number; w: number; h: number; angled: boolean };
+/** Flat part outline; `holes` are round cut-outs in the same (paper) frame as `pts`. */
+export type Shape2D = { pts: [number, number][]; circle?: number; w: number; h: number; angled: boolean; holes?: { x: number; y: number; r: number }[] };
 
 /** Face outline of a cut line, long side horizontal, in inches. */
 export function partShape(project: YardProject, line: CutLine, letters: Map<string, string>): Shape2D {
@@ -724,13 +1133,21 @@ export function partShape(project: YardProject, line: CutLine, letters: Map<stri
   if (!panel) return rect;
   if (isRoundPlate(project, panel)) return { pts: [], circle: panel.size.width / 2, w: panel.size.width, h: panel.size.width, angled: true };
   let ring: [number, number][] | null = null;
+  let holes: { x: number; y: number; r: number }[] = [];
   if (panel.outline) {
     ring = outlineRingXZ(panel).map((q) => [q.x - panel.position.x, q.z - panel.position.z]);
   } else if (panel.polygon) {
     // The outline is the face only when it is extruded by the board's own thickness.
-    const thick = panel.polygon.plane === "xz" ? panel.size.height : panel.size.depth;
-    const faceIsPoly = Math.abs(thick - line.thicknessIn) < 0.07;
-    if (faceIsPoly) ring = panel.polygon.pts.map(([a, b]) => [a, b]);
+    const thick = panel.polygon.plane === "xz" ? panel.size.height : panel.polygon.plane === "zy" ? panel.size.width : panel.size.depth;
+    // A glue-up (a hub of 5 layers) cuts every layer to the outline: its footprint is the cut line's length × width.
+    const us = panel.polygon.pts.map((q) => q[0]), vs = panel.polygon.pts.map((q) => q[1]);
+    const fw = Math.max(...us) - Math.min(...us), fh = Math.max(...vs) - Math.min(...vs);
+    const footprint = Math.abs(Math.max(fw, fh) - L) < 0.13 && Math.abs(Math.min(fw, fh) - W) < 0.13 && thick > line.thicknessIn;
+    const faceIsPoly = Math.abs(thick - line.thicknessIn) < 0.07 || footprint;
+    if (faceIsPoly) {
+      ring = panel.polygon.pts.map(([a, b]) => [a, b]);
+      holes = (panel.polygon.holes ?? []).filter((q) => q.r > 0);
+    }
     else return { ...rect, angled: !!panel.cutNote };
   }
   if (!ring) return rect;
@@ -739,15 +1156,18 @@ export function partShape(project: YardProject, line: CutLine, letters: Map<stri
   const x0 = Math.min(...xs);
   const y0 = Math.min(...ys);
   let pts = ring.map(([a, b]) => [a - x0, b - y0] as [number, number]);
+  let hs = holes.map((q) => ({ x: q.x - x0, y: q.y - y0, r: q.r }));
   let w = Math.max(...xs) - x0;
   let h = Math.max(...ys) - y0;
   if (h > w) {
     pts = pts.map(([a, b]) => [b, a] as [number, number]);
+    hs = hs.map((q) => ({ x: q.y, y: q.x, r: q.r }));
     [w, h] = [h, w];
   }
   // Paper y runs down; flip so "up" in the model is up on the page.
   pts = pts.map(([a, b]) => [a, h - b] as [number, number]);
-  return { pts, w, h, angled: true };
+  hs = hs.map((q) => ({ ...q, y: h - q.y }));
+  return { pts, w, h, angled: true, ...(hs.length ? { holes: hs } : {}) };
 }
 
 export function drawShape(doc: jsPDF, sh: Shape2D, x: number, y: number, s: number, fill: RGB, edge: RGB) {
@@ -758,11 +1178,16 @@ export function drawShape(doc: jsPDF, sh: Shape2D, x: number, y: number, s: numb
     doc.circle(x + sh.circle * s, y + sh.circle * s, sh.circle * s, "FD");
     return;
   }
-  poly(
-    doc,
-    sh.pts.map(([a, b]) => ({ x: x + a * s, y: y + b * s })),
-    "FD",
-  );
+  const outer = sh.pts.map(([a, b]) => ({ x: x + a * s, y: y + b * s }));
+  if (sh.holes?.length) {
+    // Exact arcs, not a polygon: round at any zoom (same rule as the iso drawings).
+    ringPath(doc, outer);
+    for (const q of sh.holes) {
+      const c = { x: x + q.x * s, y: y + q.y * s, z: 0 }, r = q.r * s;
+      rimPath(doc, c, { x: r, y: 0, z: 0 }, { x: 0, y: r, z: 0 }, (p) => ({ x: p.x, y: p.y }));
+    }
+    doc.fillStrokeEvenOdd();
+  } else poly(doc, outer, "FD");
 }
 
 export function drawShapeInRect(doc: jsPDF, sh: Shape2D, x: number, y: number, w: number, h: number, edge: RGB) {
@@ -792,6 +1217,11 @@ export function drawShapeInRect(doc: jsPDF, sh: Shape2D, x: number, y: number, w
       (Math.abs(a.x - b.x) < 0.01 && (Math.abs(a.x - x) < 0.01 || Math.abs(a.x - x - w) < 0.01)) ||
       (Math.abs(a.y - b.y) < 0.01 && (Math.abs(a.y - y) < 0.01 || Math.abs(a.y - y - h) < 0.01));
     if (!onEdge) doc.line(a.x, a.y, b.x, b.y);
+  }
+  // Holes are cut too: mark each one on the nest.
+  for (const q of sh.holes ?? []) {
+    const c = tall ? { x: x + q.y * sx, y: y + q.x * sy } : { x: x + q.x * sx, y: y + q.y * sy };
+    doc.circle(c.x, c.y, q.r * Math.min(sx, sy), "S");
   }
   doc.setLineDashPattern([], 0);
 }

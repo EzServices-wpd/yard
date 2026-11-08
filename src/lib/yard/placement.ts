@@ -7,6 +7,8 @@
  * side, and hardware spots (hinges, pulls, slides, brackets). The same records feed the step
  * text, the PDF step pages, the dimension arrows on the step pictures, and the guards.
  */
+import { rotorChain } from "./solids";
+import { doorHingeCount, hingeCenters } from "./hingedLeaf";
 import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
 import { ANATOMY_NOTE } from "./classAnatomy";
@@ -246,7 +248,9 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
   for (const t of [...tops].sort((a, b) => a - b)) if (!uniq.some((u) => Math.abs(u - t) < 1 / 32)) uniq.push(t);
   const floorTalk = (t: number) => (ref && ctx.floor ? ` (${f(t)} from the floor)` : "");
   const L = ctx.letters.get(first.id);
-  const fam = cutListName(first.name, first.type).toLowerCase().replace(/ \d+$/, "");
+  // A group of left and right parts is named by what they share ("seat boards"), never by the first one's side.
+  const sides = new Set(group.map((p) => p.name.match(/^(left|right|front|back|near|far)\b/i)?.[1]?.toLowerCase() ?? ""));
+  const fam = cutListName(first.name, first.type).toLowerCase().replace(/ \d+$/, "").replace(sides.size > 1 ? /^(?:left|right|front|back|near|far) /i : /^$/, "");
   const supTop = sups.length ? Math.max(...sups.map((id) => ctx.box.get(id)!.max.y)) : null;
   const supBottom = sups.length ? Math.min(...sups.map((id) => ctx.box.get(id)!.min.y)) : null;
   if (group.length === 1 || uniq.length === 1) {
@@ -540,16 +544,23 @@ function overhangTalk(ctx: Ctx, p: Panel, under: Panel[]): string {
   const o = overhangOf(ctx, p, under);
   if (!o) return "";
   const eq = (a: number, b: number) => Math.abs(a - b) < 1 / 16;
-  const ends = eq(o.l, o.r) ? (o.l > EPS ? `${f(o.l)} past each end` : "") : `${f(o.l)} past the left end and ${f(o.r)} past the right`;
+  // Only a part that runs past what holds it overhangs: one set back from that edge (a negative overhang) or flush
+  // says nothing for that side, never "0\" past the front" (I37 zero, outdoor bench seat boards).
+  const over = (a: number) => a > EPS;
+  const ends = eq(o.l, o.r)
+    ? over(o.l) ? `${f(o.l)} past each end` : ""
+    : over(o.l) && over(o.r) ? `${f(o.l)} past the left end and ${f(o.r)} past the right` : over(o.l) ? `${f(o.l)} past the left end` : over(o.r) ? `${f(o.r)} past the right end` : "";
   const fb = eq(o.bk, o.fr)
-    ? o.fr > EPS
+    ? over(o.fr)
       ? `${f(o.fr)} front and back`
       : ""
-    : Math.abs(o.bk) < EPS
-      ? `${f(o.fr)} past the front (${ctx.panels.some((q) => /\bback\b/i.test(q.name)) ? "back" : "rear"} edge flush)`
-      : Math.abs(o.fr) < EPS
-        ? `${f(o.bk)} past the back (front edge flush)`
-        : `${f(o.fr)} at the front and ${f(o.bk)} at the back`;
+    : !over(o.fr) && !over(o.bk)
+      ? ""
+      : !over(o.bk)
+        ? `${f(o.fr)} past the front${Math.abs(o.bk) < EPS ? ` (${ctx.panels.some((q) => /\bback\b/i.test(q.name)) ? "back" : "rear"} edge flush)` : ""}`
+        : !over(o.fr)
+          ? `${f(o.bk)} past the back${Math.abs(o.fr) < EPS ? " (front edge flush)" : ""}`
+          : `${f(o.fr)} at the front and ${f(o.bk)} at the back`;
   if (ends && fb && eq(o.l, o.r) && eq(o.bk, o.fr) && eq(o.l, o.fr)) return `centered, overhanging ${f(o.l)} on all four sides`;
   const bits = [ends, fb].filter(Boolean);
   return bits.length ? `overhang ${bits.join(" and ")}` : "";
@@ -566,7 +577,11 @@ function hungTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
   const ry = ctx.floor ? 0 : ctx.unitBottom;
   out.measures.push({ kind: "top", id: p.id, refId: null, refY: ry, value: b.min.y - ry });
   let s = `Bottom edge of the ${p.name.toLowerCase()} sits ${f(b.min.y - ry)} up from ${ctx.floor ? "the floor" : "the bottom edge of the unit"}`;
-  if (below) s += ` — ${f(b.min.y - below.c.max.y)} above the top of ${nameOf(ctx, below.q)}`;
+  if (below) {
+    const gap = b.min.y - below.c.max.y;
+    // Flush with the piece under it is not a height. "0\" above" is an I37 zero (a sink mirror sits on the counter).
+    s += gap > 1 / 16 ? ` — ${f(gap)} above the top of ${nameOf(ctx, below.q)}` : `, on ${nameOf(ctx, below.q)}`;
+  }
   out.sentences.push(`${s}.`);
   const side = (dir: -1 | 1) => {
     let best: { q: Panel; d: number } | null = null;
@@ -604,12 +619,14 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
   const m = text.match(/(\d+)\s+(?:concealed\s+|soft-close\s+|butt\s+|piano\s+)?hinges?\s+(?:each|per\s+(?:door|lid))/i) ?? text.match(/(?:each|per)\s+(?:door|lid)[^.]*?(\d+)\s+(?:concealed\s+)?hinges?/i);
   const n = m ? parseInt(m[1], 10) : 2;
   if (/piano/i.test(text)) return;
+  const concealed = /concealed/i.test(text);
   out.hardware.push("hinge");
   const seen = new Set<string>();
   for (const d of doors) {
     const c = ctx.box.get(d.id)!;
     const h = c.max.y - c.min.y;
-    const inset = h >= 12 ? 3 : Math.max(1.5, Math.round(h * 0.2 * 4) / 4);
+    // One hinge-centre rule for the Where line and the bench model (hingedLeaf.hingeCenters, row 207).
+    const inset = hingeCenters(h, 2)[0];
     const key = `${Math.round(h * 16)}:${Math.round(c.min.y * 16)}`;
     out.measures.push({ kind: "hinge", id: d.id, value: inset });
     out.measures.push({ kind: "hingeHeight", id: d.id, value: c.min.y + inset });
@@ -621,12 +638,19 @@ function hingeTalk(ctx: Ctx, doors: Panel[], step: AssemblyStep, out: StepPlacem
     });
     const who = same.length > 1 ? `each ${ctx.letters.get(d.id) ? `${ctx.letters.get(d.id)} ` : ""}door` : nameOf(ctx, d);
     let s = `Hinge centers ${f(inset)} down from the top and ${f(inset)} up from the bottom of ${who} (${f(h - inset * 2)} apart)`;
-    if (n >= 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
+    // Concealed doors take the count the hinged-leaf module bought for their height; the others space evenly.
+    const k = concealed ? doorHingeCount({ size: { width: c.max.x - c.min.x, height: h, depth: c.max.z - c.min.z } }) : n;
+    if (k === 3) s += `, with the middle hinge at ${f(h / 2)} — halfway`;
+    // I15/F9: the door list and the floor list come from the same hinge centers, each rounded to 1/16".
+    const s16 = (x: number) => Math.round(x * 16) / 16;
+    const centers = hingeCenters(h, k);
+    const join = (xs: string[]) => (xs.length > 2 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs.join(" and "));
+    if (k > 3) s += `, with ${k - 2} more evenly between at ${join(centers.slice(1, -1).map((x) => f(s16(x))))} up from the door's bottom edge`;
     const sides = new Set(same.map(doorHingesLeft));
     s += sides.size === 1 ? `, on the hinge edge (the ${doorHingesLeft(d) ? "left" : "right"} edge)` : `, on each door's hinge edge`;
-    const lo = c.min.y + inset;
-    const hi = c.max.y - inset;
-    s += ctx.floor ? ` — on the cabinet side that is ${f(lo)} and ${f(hi)} up from the floor` : "";
+    // F9: every hinge gets its cabinet-side height, not just the top and bottom ones.
+    const list = join(centers.map((x) => f(s16(c.min.y + x))));
+    s += ctx.floor ? ` — on the cabinet side that is ${list} up from the floor` : "";
     out.sentences.push(`${s}.`);
   }
 }
@@ -818,6 +842,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const sp = planStepParts(project, steps, letters);
   const placed = new Set<string>();
   const byId = new Map(panels.map((p) => [p.id, p]));
+  const chain = rotorChain(panels);
   return steps.map((s, i) => {
     const out: StepPlacement = { sentences: [], measures: [], arrows: [], positioned: [], hardware: [] };
     const st = sp[i];
@@ -825,7 +850,8 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     if (st.kind !== "build") return out;
     const fresh = st.fresh.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const roles = new Map(fresh.map((p) => [p.id, placeRole(p)]));
-    const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!));
+    // A rotor part is located by the axle and the parts it threads against, never by a height off the floor.
+    const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!) && !chain.has(p.id));
     out.positioned = pos.map((p) => p.id);
     // Group horizontals and rails by letter (same size family) so repeats read as one sentence.
     const groups = (role: PlaceRole) => {
@@ -845,9 +871,11 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
     const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const pick = (role: PlaceRole, word: RegExp) => {
+      // A hollow drawer's five parts are placed as the one drawer they make.
+      const one = (list: Panel[]) => (role === "drawer" ? list.filter((q, k) => !q.drawerId || (q.drawerPart === "side" && list.findIndex((r) => r.drawerId === q.drawerId && r.drawerPart === "side") === k)) : list);
       const a = inStep.filter((p) => placeRole(p) === role);
-      if (a.length) return a;
-      return word.test(text) ? panels.filter((p) => placeRole(p) === role) : [];
+      if (a.length) return one(a);
+      return word.test(text) ? one(panels.filter((p) => placeRole(p) === role)) : [];
     };
     if (/\bhinges?\b/.test(text)) {
       const doors = pick("door", /\bdoors?\b/);
@@ -893,7 +921,7 @@ function dropStale(desc: string, pl: StepPlacement): string {
     d = d.replace(/\s*Marked heights?:[^.]*\.(?:\s*\d[^.]*\.)*/g, "");
     d = d.replace(/\s*\((?:shelf )?top face ~[^)]*\)/g, "");
   }
-  if (pl.hardware.includes("hinge")) d = d.replace(/,?\s*3[–-]4"\s*from top and bottom/g, "");
+  if (pl.hardware.includes("hinge")) d = d.replace(/,?\s*3[–-]4"\s*from top and bottom(?:, the others evenly spaced between)?/g, "");
   return d.replace(/\s{2,}/g, " ").trim();
 }
 

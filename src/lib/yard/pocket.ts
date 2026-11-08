@@ -4,6 +4,7 @@
  * back-wall centerline, inside an angled alcove. Vanity + drawers + uppers.
  */
 
+import { doorLeaves, doorRise } from "./hingedLeaf";
 import { withoutFeatureBay } from "./heldObjects";
 import { createId } from "@/lib/utils";
 import type { Panel, PocketNotch, PocketSpec, PocketUnit, PocketWalls, YardProject } from "./types";
@@ -405,8 +406,12 @@ export function buildPocket(spec: PocketSpec, prompt = ""): YardProject {
     panels.push(panel("shelf", `Right towel shelf ${i + 1}`, x1 - P - bays.right, y, 0.1, bays.right, P, D - 0.2));
   });
 
-  panels.push(panel("door", "Left upper door", x0 + 0.1, u0, D - P, bays.left, uH, P));
-  panels.push(panel("door", "Right upper door", x1 - bays.right - 0.1, u0, D - P, bays.right, uH, P));
+  // Each upper door covers its bay with the shared 1/16" reveal all round (hingedLeaf).
+  const rise = doorRise(u0, uH);
+  const [l] = doorLeaves({ x: x0, w: bays.left, count: 1 });
+  const [r] = doorLeaves({ x: x1 - bays.right, w: bays.right, count: 1 });
+  panels.push(panel("door", "Left upper door", l.x, rise.y, D - P, l.w, rise.h, P));
+  panels.push(panel("door", "Right upper door", r.x, rise.y, D - P, r.w, rise.h, P));
 
   if (seat.z > 0) for (const p of panels) p.position = { ...p.position, z: p.position.z + seat.z };
 

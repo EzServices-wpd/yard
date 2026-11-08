@@ -1,7 +1,10 @@
+import { pdfCutListIntro } from "./wholeItems";
+import { isUnitItem } from "./unitItems";
+import { stepTones } from "./planStepPicture";
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { jsPDF } from "jspdf";
 import { usd } from "@/lib/utils";
-import { planSheetNest, sheetSizeLabel, type NestSheet } from "./nesting";
+import { planSheetNest, sheetBuyName, sheetSizeLabel, type NestSheet } from "./nesting";
 import type { AssemblyStep, BuildPlan, CutLine, YardProject } from "./types";
 import { fmtUnitEnvelope, shortSheetTalk } from "./pdfFormat";
 import { SHOP_GLOSSARY } from "./pdfGlossary";
@@ -9,7 +12,10 @@ import { glossaryForPlan, speciesStockHonestyTalk } from "./voiceHonesty";
 import { planStepParts, stepKindOf } from "./stepParts";
 import { affiliateActive, affiliateConfig, affiliateDisclosure, outboundHref } from "./outbound";
 import { stepPlacements } from "./placement";
+import { buyListCart } from "./amazonCart";
+import { drawQr } from "./pdfQr";
 import { cutListName } from "./shopPlural";
+import { headerShelfCount } from "./shelfSpan";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
 import {
   TOOL_LABEL,
@@ -36,84 +42,8 @@ export function slugPlan(name: string) {
 }
 
 
-type Axis = "width" | "height" | "depth";
-const AXIS_WORD: Record<Axis, string> = { width: "wide", height: "tall", depth: "deep" };
-
-/**
- * Typed-axes honesty for the PDF (same rule as the engine's class-default densify):
- * typed axes print plainly; untyped axes read from the build's "Assumed …" notes are marked assumed.
- * A prompt with no numbers at all (stock design size) is all assumed.
- */
-/** "21 3/4" → 21.75, "3/4" → 0.75, "34" → 34. */
-function shopInches(raw: string): number {
-  const [a, b] = raw.trim().split(/\s+/);
-  const part = (t: string) => (t.includes("/") ? Number(t.split("/")[0]) / Number(t.split("/")[1]) : parseFloat(t));
-  return b ? part(a) + part(b) : part(a);
-}
-
-export function typedAxesTalk(project: YardProject, craft = false) {
-  // A pocket build's overall is the room pocket it stands in (walls + clearance) — the plan talks
-  // about the unit you build, the same 38 × 102 × 17 the bench and the cover arrows show.
-  const o = project.pocket?.unit
-    ? { width: project.pocket.unit.width, height: project.pocket.unit.height, depth: project.pocket.unit.depth }
-    : project.overall;
-  const prompt = project.prompt ?? "";
-  const name = clean(project.name) || "Yard plan";
-  const assumed: Partial<Record<Axis, boolean>> = {};
-  const extra: string[] = [];
-  const axisOf = (w: string): Axis => (/wide/i.test(w) ? "width" : /tall/i.test(w) ? "height" : "depth");
-  for (const n of project.notes ?? []) {
-    // Shop fractions in the note ("Assumed 21 3/4" deep") read as their inch value.
-    const m = String(n).trim().match(/^Assumed\s+(\d+(?:\.\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+)\s*(?:"|″|in)?\s*(wide|tall|deep)\b(?:\s*\(([^)]*)\))?/i);
-    if (!m) continue;
-    const axis = axisOf(m[2]);
-    const v = shopInches(m[1]);
-    const finishedAxis = axis === "depth" ? modelFinishedDepth(project.panels, o.depth) : o[axis];
-    if (Math.abs(v - o[axis]) < 0.5 || Math.abs(v - finishedAxis) < 0.07) assumed[axis] = true;
-    // An assumed part size that is not the overall (L-desk wing depth) names its part: "desk 24" deep".
-    else extra.push(`${m[3] ? `${clean(m[3]).replace(/\s*(?:class\s+)?default$/i, "")} ` : ""}${frac(v)} ${AXIS_WORD[axis]}`);
-  }
-  const noDigits = !/\d/.test(prompt);
-  // Digits that size nothing ("3 bays", "20lb tank", "for a 50 lb dog") type no axis: with no
-  // dimension triple and no bare length, an axis no "N wide/tall/deep" names is assumed.
-  {
-    const lp = prompt.toLowerCase();
-    const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(lp) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|long|length|tall|high|height|deep|depth))/.test(lp);
-    if (!noDigits && !sized) {
-      const named: Record<Axis, RegExp> = { width: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:wide|width|long|length)\b|\b(?:width|length)\s*(?:of\s*)?\d/, height: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b|\bheight\s*(?:of\s*)?\d/, depth: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:deep|depth)\b|\bdepth\s*(?:of\s*)?\d/ };
-      for (const a of ["width", "height", "depth"] as Axis[]) if (!named[a].test(lp)) assumed[a] = true;
-    }
-  }
-  const axes: Axis[] = ["width", "height", "depth"];
-  // Nothing typed is still stock size when the build's own Assumed notes cover every axis.
-  const stock = noDigits && !extra.length && (!Object.keys(assumed).length || axes.every((a) => assumed[a]));
-  if (stock) axes.forEach((a) => (assumed[a] = true));
-  const finished = modelFinishedDepth(project.panels, o.depth);
-  const shown = { ...o, depth: finished };
-  const typed = axes.filter((a) => !assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
-  const guessed = axes.filter((a) => assumed[a]).map((a) => `${frac(shown[a])} ${AXIS_WORD[a]}`);
-  const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
-  const assumedList = [...guessed, ...extra];
-  const assumedTalk = !assumedList.length
-    ? ""
-    : craft && stock
-      ? "design size, nothing typed"
-      : `${list(assumedList)} assumed, measure to lock`;
-  // One finished depth. The note does not repeat an inch figure.
-  const proud = modelProudNote(project.panels, o.depth);
-  const subtitle =
-    craft && stock
-      ? `About ${guessed.join(" x ")} · ${assumedTalk}`
-      : [typed.join(" x "), assumedTalk, proud].filter(Boolean).join(" · ");
-  // Title never stamps an untyped stock size: "Nightstand 20" × 24" × 16"" from a bare prompt → "Nightstand".
-  const title = stampFinishedDepth(
-    stock && /\d/.test(name) ? name.replace(/\s*\d.*$/, "").trim() || name : name,
-    o.depth,
-    finished,
-  );
-  const assumedShort = assumedList.length ? (craft && stock ? "design size" : `${list(assumedList)} assumed`) : "";
-  return { title, subtitle: clean(subtitle), assumed, assumedTalk, assumedShort };
-}
+export { typedAxesTalk } from "./headerSize";
+import { NAME_SIZE_RE, coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
 
 const CRAFT_GLOSSARY = [
   { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them as they come." },
@@ -135,8 +65,11 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   const TOP = GRID.top;
   const BOTTOM = pageH - GRID.bottom;
   const craft0 = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
-  const sizing = typedAxesTalk(project, craft0);
-  const title = sizing.title;
+  // The cover (subtitle, dimension tags) reads the project's one spec (I42).
+  const sizing = coverAxesTalk(project, craft0);
+  // The header's own words and W × D × H order on the cover title and every running head (Critic #93: the PDF
+  // title said "File cabinet 30" x 24" x 30"" in W × H × D under a W × D × H header).
+  const title = clean(headerTitle(project, { features: false }));
   const craft = plan.partsKind === "whole" || (project.instances.length > 0 && project.panels.length === 0);
   const letters = partLetters(project, plan.cutList);
   const aff = affiliateConfig();
@@ -203,7 +136,10 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     }),
   );
   // Typed axes print plainly; axes the stranger never typed are marked assumed (shared densify rule).
-  const envelope = /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
+  // A refused build has no size to lock: the subline says nothing was built and the smallest size that builds.
+  const envelope = project.refused && !project.panels.length
+    ? refusedSubline(project.refused)
+    : /dia|round/i.test(envelopeTalk) && !sizing.assumedTalk ? envelopeTalk : sizing.subtitle;
 
   // ── what the build needs, read from the plan itself
   const hay = `${project.prompt ?? ""} ${project.name} ${plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ")}`.toLowerCase();
@@ -258,6 +194,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   font(28, "bold");
   tl.forEach((ln, i) => doc.text(ln, L, y + 26 + i * 32));
   y += tl.length * 32 + 8;
+  const said = headerFeatures(project);
+  if (said.length) y += textBlock(said.join(" · "), L, y, W, 12, "bold") + 4;
   y += textBlock(envelope, L, y, W, 13, "normal", KIT.muted, 16) + 6;
   // Only a build that is really ¾" plywood needs the "species = finish" disclaimer; named solid boards are the species.
   const onPly = project.panels.some((p) => /^plywood-3-4/i.test(p.materialId ?? ""));
@@ -305,22 +243,31 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     doc.text(TOOL_LABEL[t], tx + tw / 2, y + 42, { align: "center" });
   });
   y += 52;
-  if (project.prompt && y < BOTTOM - 20) {
-    textBlock(`You asked for: "${project.prompt}"`, L, y, W, 9, "italic", KIT.muted);
+  // The words the person typed (fractions, ft-in), never the engine's normalized prompt: same rule as the prompt bar.
+  const asked = project.typedPrompt || project.prompt;
+  if (asked && y < BOTTOM - 20) {
+    textBlock(`You asked for: "${asked}"`, L, y, W, 9, "italic", KIT.muted);
   }
 
   // ═════════════════════════ BEFORE YOU START
   newPage("Before you start");
   sectionTitle("Before you start");
-  const checkLead = clean(plan.feasibility.summary);
+  // The plan's own words name the build as the engine stamped it ("File cabinet 30" x 24" x 30"", W × H × D): on
+  // the page that name is the header's, in its order (one size source, Critic #93).
+  const named = (t: string) => {
+    const raw = clean(project.name);
+    return raw && raw !== headerName(project) ? t.split(raw).join(title) : t;
+  };
+  const checkLead = named(clean(plan.feasibility.summary));
   if (checkLead) y += textBlock(checkLead, L, y, W, 10.5) + 6;
   for (const issue of plan.feasibility.issues) {
     const tag = issue.severity === "critical" ? "Stop and fix: " : issue.severity === "warning" ? "Note: " : "";
-    const h1 = wrap(`${tag}${issue.message}`, W - 14, 10).length * 13.5 + (issue.suggestion ? wrap(issue.suggestion, W - 14, 9).length * 12.5 : 0) + 8;
+    const message = named(clean(issue.message));
+    const h1 = wrap(`${tag}${message}`, W - 14, 10).length * 13.5 + (issue.suggestion ? wrap(issue.suggestion, W - 14, 9).length * 12.5 : 0) + 8;
     if (h1 > room()) newPage("Before you start");
     doc.setFillColor(...(issue.severity === "critical" ? KIT.accent : KIT.rule));
     doc.rect(L, y + 2, 3, h1 - 8, "F");
-    y += textBlock(`${tag}${issue.message}`, L + 12, y, W - 14, 10);
+    y += textBlock(`${tag}${message}`, L + 12, y, W - 14, 10);
     if (issue.suggestion) y += textBlock(issue.suggestion, L + 12, y, W - 14, 9, "italic", KIT.muted);
     y += 8;
   }
@@ -371,6 +318,20 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   y += 4;
   if (plan.totals.estCostUsd) y += textBlock(`About ${usd(plan.totals.estCostUsd)} all-in, pricing each item at its cheapest same-size listing for the amount you need, any store.`, L, y, W, 9, "normal", KIT.muted) + 8;
   if (affOn) y += textBlock(affiliateDisclosure(aff), L, y, W, 8.5, "italic", KIT.muted) + 8;
+  // Buy-list QR: scan to open the same one-click Amazon "Buy this list" cart as the site
+  // (tagged through the same affiliate config). Drawn locally; only when the list has Amazon rows.
+  const cart = buyListCart(plan.bom, aff);
+  if (cart.href) {
+    const qs = 84;
+    if (room() < qs + 16) newPage("Before you start");
+    drawQr(doc, cart.href, L, y, qs);
+    doc.link(L, y, qs, qs, { url: cart.href });
+    font(9.5, "bold");
+    doc.text("Scan to buy this list", L + qs + 12, y + 30);
+    font(8.5, "normal", KIT.muted);
+    doc.text(`Opens an Amazon cart with ${cart.lines.length} of the items above.${cart.perRow.length ? " Get the rest locally." : ""}`, L + qs + 12, y + 44);
+    y += qs + 10;
+  }
   if (room() < 110) newPage("Before you start");
   subTitle("Tools");
   const cols = Math.min(tools.length, 8);
@@ -451,7 +412,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     } else newPage(craft ? "Parts" : "Cut list");
     sectionTitle(
       craft ? "Stick list" : "Cut list",
-      craft ? "Full pieces from the pack. Glue them as they come." : "Same size is the same letter. Mark each part with its letter in pencil as you cut it.",
+      pdfCutListIntro(plan, craft),
     );
     const cols2 = craft
       ? [
@@ -525,7 +486,8 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     // The same sheets Buy counted (one nest per plan): structural sheets, then the thin backer's
     // own sheets. Named solid boards are never on a sheet — they get board diagrams below.
     const planNest = plan.sheetNest ?? planSheetNest(partLines);
-    const sheets: NestSheet[] = [...(planNest.sheets?.sheets ?? [])];
+    // A structural sheet is headed with the name of the Buy row that buys it (row 504), else its own material.
+    const sheets: NestSheet[] = (planNest.sheets?.sheets ?? []).map((s) => ({ ...s, material: sheetBuyName(s, plan.bom) ?? s.material }));
     for (const s of planNest.backer?.sheets ?? []) {
       const thick = partLines.find((c) => s.parts.some((p) => p.label && p.label === c.label))?.thicknessIn ?? 0.25;
       sheets.push({ ...s, index: sheets.length + 1, material: `${frac(thick)} plywood` });
@@ -565,7 +527,6 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
   }
 
   // ═════════════════════════ BUILD STEPS
-  const placed = new Set<string>();
   const tallBuild = projectAspect(project) < 1.3;
   const stepParts = planStepParts(project, plan.instructions, letters);
   // Same placement records as the step words — arrows on the pictures read the same numbers.
@@ -597,26 +558,13 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const tones = new Map<string, Tone>();
     const hotIds: string[] = [];
     let refIds: string[] = [];
+    // One tone rule for the drawer, print preview and PDF (planStepPicture.stepTones).
+    const pic = kind === "cut" ? null : stepTones(project, plan, si, letters);
+    if (pic) for (const [id, t] of pic.tones) tones.set(id, t);
     if (kind === "build") {
-      let hot = sp.fresh;
-      if (!sp.said && !hot.length) {
-        // Words name nothing new: light the parts the title names, if any.
-        const t = clean(s.title).toLowerCase();
-        hot = ids.filter((id) => {
-          const p = project.panels.find((q) => q.id === id);
-          if (!p) return false;
-          const fam = cutListName(p.name, p.type).toLowerCase();
-          return t.includes(fam) || t.includes(p.name.toLowerCase());
-        });
-      }
-      const drawn = sp.said ? new Set([...placed, ...sp.fresh, ...sp.onto]) : new Set([...placed, ...ids]);
-      for (const id of drawn) tones.set(id, "ghost");
-      for (const id of hot) tones.set(id, "hot");
-      if (!hot.length) for (const id of tones.keys()) tones.set(id, "built");
-      hotIds.push(...hot);
+      for (const [id, t] of tones) if (t === "hot") hotIds.push(id);
       // Grey "to" bubbles only when the step adds something onto them.
-      if (hot.length) refIds = sp.onto;
-      drawn.forEach((id) => placed.add(id));
+      if (hotIds.length) refIds = sp.onto;
     }
     // Callout row: part letters with counts.
     const counts = new Map<string, number>();
@@ -685,7 +633,7 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     if (kind === "cut") {
       drawPartsPlate(doc, project, cutLines, letters, { x: frame.x + 10, y: frame.y + 8, w: frame.w - 20, h: frame.h - 14 }, craft, true);
     } else if (kind === "prep") {
-      renderProject(doc, project, frame, { tones: allTones("built"), dims: true, assumedAxes: sizing.assumed, pad: 26 });
+      renderProject(doc, project, frame, { tones, dims: true, assumedAxes: sizing.assumed, pad: 26 });
     } else {
       renderProject(doc, project, frame, { tones, fitIds: allIds, letters, pad: 26, measures: placements[si]?.arrows });
     }
@@ -892,8 +840,9 @@ export function buildPlanPdf(project: YardProject, plan: BuildPlan): jsPDF {
     const room0 = W - doc.getTextWidth(sec) - 24;
     font(8, "bold", KIT.muted);
     // Running header: honest title, plus the assumed axes so no page reads them as typed.
-    let head = (sizing.assumedShort ? `${title} · ${sizing.assumedShort}` : title).toUpperCase();
-    if (doc.getTextWidth(head) > room0) head = title.toUpperCase();
+    // The title already marks the assumed axes ("(W, D assumed)"), so no page reads them as typed.
+    let head = title.toUpperCase();
+    if (doc.getTextWidth(head) > room0) head = title.replace(/ · .*$/, "").toUpperCase();
     while (head.length > 8 && doc.getTextWidth(head) > room0) head = `${head.slice(0, -4).trimEnd()}...`;
     doc.text(head, L, 40);
     font(8, "normal", KIT.muted);
@@ -991,7 +940,7 @@ export function drawPartsPlate(
     for (const it of r.items) {
       const x = box.x + it.x;
       const cy = y + (r.h - labelH - it.h) / 2;
-      if (craft && !it.sh.circle && it.sh.pts.length === 4) {
+      if (craft && !it.sh.circle && !it.sh.holes?.length && it.sh.pts.length === 4) {
         doc.setFillColor(...KIT.wood);
         doc.setDrawColor(...KIT.woodEdge);
         doc.setLineWidth(0.7);
@@ -1216,17 +1165,39 @@ export { planStepParts, stepKindOf };
  * The header everywhere a size shows: the name without its bare size, then the finished size with every
  * axis labelled in one order, W × D × H, and the axes nobody typed marked assumed.
  */
-export function headerTitle(project: YardProject): string {
+/** What a refused build's header says after the thing asked for: no size, no count, no fallback family. */
+export const NOTHING_BUILT_HEADER = "nothing built";
+/**
+ * A refused build's cover subline: "Nothing built · needs at least 6 9/16" wide", the smallest size the refusal names
+ * (never an assumed size it didn't build); just "Nothing built" when the refusal names none.
+ */
+export function refusedSubline(refused: string): string {
+  const m = refused.match(/\bneeds (?:at least )?((?:\d+ )?\d+(?:\/\d+)?)(?:"|″| in\b)\s*(wide|tall|deep|long|high)\b/i);
+  return clean(m ? `Nothing built · needs at least ${m[1]}" ${m[2].toLowerCase()}` : "Nothing built");
+}
+export function headerTitle(project: YardProject, opts: { features?: boolean } = {}): string {
+  // A refused build names what was asked for and says nothing was built: never a size it didn't build, never a fallback.
+  if (project.refused && !project.panels.length) return `${clean(project.name).trim() || "Yard plan"} · ${NOTHING_BUILT_HEADER}`;
+  return [`${headerName(project)} · ${headerAxes(project)}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
+}
+
+/** The build's name without its bare typed size ("File cabinet 30" x 24" x 30"" → "File cabinet"). */
+export function headerName(project: YardProject): string {
+  return clean(project.name).replace(NAME_SIZE_RE, "").trim() || "Yard plan";
+}
+
+/** The one size in one order: `31 1/2" W × 16" D × 78" H`, axes nobody typed marked assumed. Header, bench, PDF. */
+export function headerAxes(project: YardProject): string {
   const { assumed } = typedAxesTalk(project);
-  const o = project.pocket?.unit ?? project.overall;
-  // A typed depth is the size said back (the linen closet's 16″, doors standing proud are a note); only an
-  // assumed depth reads the model's finished depth.
-  const d = assumed.depth ? modelFinishedDepth(project.panels, o.depth) : o.depth;
-  const base = clean(project.name).replace(/\s+[\d\s./'"″′]*\d[\d\s./'"″′]*(?:[×x]\s*[\d\s./'"″′]+)+$/, "").trim() || "Yard plan";
-  const axes = [["W", o.width, "width"], ["D", d, "depth"], ["H", o.height, "height"]] as const;
+  // One size (headerSize): a typed axis is the size said back (the linen closet's 16″, doors standing proud are
+  // a note); an assumed axis is the model's own extent, the number the drawings label.
+  const { width: W, depth: d, height: H } = headerSize(project);
+  const axes = [["W", W, "width"], ["D", d, "depth"], ["H", H, "height"]] as const;
   const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
+  // C3: a purchased item's size is the unit table's real piece, never an assumption.
+  if (isUnitItem(project)) guess.length = 0;
   const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";
-  return [`${base} · ${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`, ...headerFeatures(project)].join(" · ");
+  return `${axes.map(([l, v]) => `${frac(v)} ${l}`).join(" × ")}${mark}`;
 }
 
 const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
@@ -1247,7 +1218,10 @@ export function headerFeatures(project: YardProject): string[] {
     if (held) out.push(`${held} bottles`);
   }
   if (typed("hooks?\\b")) { const n = count(/\bhook\b/); if (n) out.push(plural(n, "hook", "hooks")); }
-  if (typed("shel(?:f|ves)\\b")) { const n = count(/^(?:grid |adjustable |fixed |inner )?shelf$/); if (n) out.push(plural(n, "shelf", "shelves")); }
+  if (typed("shel(?:f|ves)\\b")) {
+    const n = headerShelfCount(project.panels);
+    if (n) out.push(plural(n, "shelf", "shelves"));
+  }
   if (typed("cubb(?:y|ies)\\b")) {
     // Cubbies said back as the model's own count: dividers split the run into dividers + 1 openings.
     const dividers = count(/^cubby divider$/);

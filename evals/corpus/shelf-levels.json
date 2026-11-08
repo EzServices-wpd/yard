@@ -1,0 +1,9 @@
+{
+  "source": "shelf-levels",
+  "note": "Multi-bay typed shelf counts. A typed shelf count is levels: the same height in two bays is one shelf, and two pieces at one height in one bay are a duplicate.",
+  "prompts": [
+    { "id": "shelf-levels-60-4", "prompt": "bookcase 60 wide with 4 shelves" },
+    { "id": "shelf-levels-48-3", "prompt": "bookcase 48 wide with 3 shelves" },
+    { "id": "shelf-levels-42-5", "prompt": "bookshelf 42 wide with 5 shelves" }
+  ]
+}

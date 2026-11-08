@@ -9,6 +9,7 @@
  * Every block builds in the typed stock: lumber laminates whole pieces, craft sticks and dowels slat or cage,
  * sheet goods (cardboard, plywood) cut panels and strips. A subject is a combo of blocks.
  */
+import { checkParts } from "./partCeiling";
 import { getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import { inchFrac } from "./inchText";
@@ -140,6 +141,7 @@ class Bench {
 
   put(a: Vec3, b: Vec3, role: string, extra: Partial<BlockPiece> = {}) {
     this.pieces.push({ a, b, role, stock: extra.stock ?? this.kit.item.id, ...extra });
+    checkParts(this.pieces.length);
   }
 
   private faceFor(d: Vec3, face?: Vec3) {

@@ -14,6 +14,7 @@ import { inchFrac } from "./inchText";
 import { createId } from "@/lib/utils";
 import { oddShapeKind } from "./oddShapes";
 import type { AssemblyStep, CornerUnit, FittedSpec, Panel, YardProject } from "./types";
+import { fastenerText, wallScrew } from "./wallAnchorSteps";
 
 const PLY = "plywood-3-4-4x8";
 const T = 0.75;
@@ -334,6 +335,14 @@ export function buildCornerUnit(spec: FittedSpec, prompt: string): YardProject {
         : `Assumed ${N} shel${N === 1 ? "f" : "ves"} (from the height) — type a count like "five shelves" to lock it.`,
     );
   }
+  if (!c.wallHung) {
+    // A wall panel wider and taller than a 4×8 sheet allows cannot come from one sheet: say so before the cut list does.
+    const fitsSheet = (w: number) => Math.min(w, H) <= 48 && Math.max(w, H) <= 96;
+    const wide = [["A", a], ["B", b]].filter(([, w]) => !fitsSheet(w as number));
+    for (const [k, w] of wide) {
+      notes.push(`Wall panel ${k} is ${fmt(w as number)}" × ${fmt(H)}", bigger than one 4×8 sheet, so it is cut as two pieces and butt-joined with glue and screws from the back at the "Join sheet splices" step. Put the seam over a stud.`);
+    }
+  }
   notes.push("Walls are rarely a perfect 90°. Dry-fit one shelf in the corner first and shave the edge that touches if it rocks.");
   const spokenDeg = prompt.match(/\b(\d{2,3})\s*(?:°|deg(?:ree)?s?)\b/i);
   if (spokenDeg && /\b(?:book\s*shel(?:f|ves)|bookcases?|shel(?:f|ves|ving))\b/i.test(prompt)) {
@@ -486,9 +495,10 @@ export function cornerSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: "Screw it into both walls",
-      description: `Push the unit into the corner. Find a stud (or the corner framing) behind each wall panel with a stud finder. Drive 2 structural screws (3") through Wall panel A into the wall and 2 through Wall panel B into the other wall — one pair near the top, one near the middle. A tall narrow shelf will tip forward if it is only standing on the floor.`,
+      description: `Push the unit into the corner. Find a stud (or the corner framing) behind each wall panel with a stud finder. Drive ${fastenerText(wallScrew(project, 4))}, 2 through Wall panel A into the wall and 2 through Wall panel B into the other wall — one pair near the top, one near the middle. A tall narrow shelf will tip forward if it is only standing on the floor.`,
       tips: "Guidance only — hit wood behind the drywall. Confirm there are no wires or pipes in the corner before you drive a screw.",
       partsUsed: wallPanels.map((p) => p.name),
+      fastenersUsed: [wallScrew(project, 4)],
     });
   } else {
     const allCleats = [...cleatsA, ...cleatsB];
@@ -502,9 +512,10 @@ export function cornerSteps(project: YardProject): AssemblyStep[] {
     steps.push({
       step: n++,
       title: "Screw a pair of cleats into both walls for each shelf",
-      description: `Pick the height of the lowest shelf. Mark the bottom of every cleat pair on both walls with a level, measured up from the lowest cleat: ${cleatMarks}. For each shelf, screw cleat A to one wall and cleat B to the other so they meet in the corner at the same height. Drive 3" structural screws through each cleat into a stud or the corner framing (2 per cleat).`,
+      description: `Pick the height of the lowest shelf. Mark the bottom of every cleat pair on both walls with a level, measured up from the lowest cleat: ${cleatMarks}. For each shelf, screw cleat A to one wall and cleat B to the other so they meet in the corner at the same height. Drive ${fastenerText(wallScrew(project, 2 * allCleats.length))} through each cleat into a stud or the corner framing (2 per cleat, ${2 * allCleats.length} in all).`,
       tips: "Guidance only — hit wood behind the drywall. Keep each pair level so the shelf sits flat.",
       partsUsed: allCleats.map((p) => p.name),
+      fastenersUsed: [wallScrew(project, 2 * allCleats.length)],
     });
     steps.push({
       step: n++,

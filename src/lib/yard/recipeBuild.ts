@@ -4,6 +4,7 @@
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
  */
+import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
 import { UNVERIFIED } from "./promptMain";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
@@ -12,18 +13,31 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
+import { riderFloor, rodArrayFailures, rodArrays, ROW_CLEAR } from "./rodArrays";
+import { askedDrawerCount, drawerSection, SHARED_DRAWER_ROW_IN } from "./frontSections";
+import { CONTACT } from "./materialForUse";
+import { inchFrac } from "./inchText";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
 const NUM: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8 };
+
+/** "8 1/4", "8-1/4", "3/4", "8.25" → inches. */
+function shopNumber(t: string): number {
+  const m = t.match(/^(?:(\d+(?:\.\d+)?)(?:\s+|-))?(\d+)\/(\d+)$/);
+  return m ? Number(m[1] ?? 0) + Number(m[2]) / Number(m[3]) : Number(t);
+}
 
 /** Typed sizes: "48 wide", "6 ft tall", and a bare "10x10" read as a plan in feet when the recipe says so. */
 export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
   const lower = prompt.toLowerCase();
   const out: Partial<Size> = {};
   const axis = { wide: "width", long: "width", tall: "height", high: "height", deep: "depth" } as const;
-  for (const m of lower.matchAll(/(\d+(?:\.\d+)?)\s*(ft|feet|foot|'|in|inch|inches|")?\s*(wide|long|tall|high|deep)\b/g)) {
-    out[axis[m[3] as keyof typeof axis]] = Number(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
+  // A shop size may carry a fraction: "8 1/4 wide", "8-1/4\" wide", "3/4 deep" (the size a refusal names).
+  for (const m of lower.matchAll(/(\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+)\s*(ft|feet|foot|'|in|inch|inches|")?\s*(wide|long|tall|high|deep)\b/g)) {
+    // "48 wide 96 long": with a width typed too, "long" is the other plan side.
+    const k = m[3] === "long" && /\d\s*(?:ft|feet|foot|'|in|inch|inches|")?\s*wide\b/.test(lower) ? "depth" : axis[m[3] as keyof typeof axis];
+    out[k] = shopNumber(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
   }
   const pair = lower.match(/\b(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)\b(?!\s*x)/);
   if (pair && !/^[124]$/.test(pair[1]) && out.width == null && out.depth == null) {
@@ -41,11 +55,16 @@ export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
   return out;
 }
 
+/** Whether the prompt names the recipe's count ("7 rods"). */
+export function countWasTyped(prompt: string, recipe: Recipe): boolean {
+  return !!recipe.count && new RegExp(String.raw`\b(\d+|${Object.keys(NUM).join("|")})\s+${recipe.count.word.replace(/s$/, "")}s?\b`).test(prompt.toLowerCase());
+}
+
 export function typedCount(prompt: string, recipe: Recipe): number {
   if (!recipe.count) return 1;
   const m = prompt.toLowerCase().match(new RegExp(String.raw`\b(\d+|${Object.keys(NUM).join("|")})\s+${recipe.count.word.replace(/s$/, "")}s?\b`));
-  const n = m ? (NUM[m[1]] ?? Number(m[1])) : recipe.count.default;
-  return Math.max(1, Math.min(12, Math.round(n)));
+  // A typed count is the maker's spec: never cut back (I32). Only the recipe's own default is ours to choose.
+  return m ? Math.max(1, Math.round(NUM[m[1]] ?? Number(m[1]))) : Math.max(1, Math.min(12, Math.round(recipe.count.default)));
 }
 
 /** Words that name a stock (a size or a material), not only a species ("cedar", "pine"). */
@@ -58,7 +77,12 @@ const STOCK_WORD = /\b\d+\s*x\s*\d+\b|plywood|\bply\b|cardboard|popsicle|craft\s
  * the recipe's own stock builds it and a note says why.
  */
 function stockFor(prompt: string, recipe: Recipe, override?: string) {
-  const typed = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  const said = override ? getCatalogItem(override) : STOCK_WORD.test(prompt) ? detectMaterial(prompt) : undefined;
+  // C15: a size that names a part's own section ("with 4x4 posts" on a bed whose posts are 4x4) is that part's stock,
+  // not the whole build's: the boards stay the recipe's (the raised bed's 2x6 courses, as its note says).
+  // A species with a footprint ("cedar raised garden bed 4x8") is the species alone: the 4x8 is the bed's size, not a 1x4.
+  const speciesOnly = !override && said?.id === "lumber-1x4-8" && !/\b1\s*x\s*4\b/i.test(prompt);
+  const typed = !override && said && (speciesOnly || recipe.parts.some((p) => p.stock === said.id)) ? undefined : said;
   let ok = typed && !isWireStock(typed) ? typed : null;
   const craft = !!ok && CRAFT.has(ok.category);
   const big = Math.max(recipe.size.width, recipe.size.height, recipe.size.depth) > 48;
@@ -100,7 +124,7 @@ function pinDowel(memberId: string, section = 9): string {
  * so an arm reads as one member, not an edge-glued cluster. Parts resting on (or hanging from) a member
  * then settle onto its new face, so every load path still touches.
  */
-function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string): Panel[] {
+function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string, typed: Partial<Size> = {}): Panel[] {
   const byName = new Map(recipe.parts.map((p) => [p.name, p]));
   const base = (n: string) => byName.get(n) ?? byName.get(n.replace(/ \d+$/, ""));
   const AX = [["x", "width"], ["y", "height"], ["z", "depth"]] as const;
@@ -124,7 +148,11 @@ function snapMembers(recipe: Recipe, panels: Panel[], _memberId: string): Panel[
     for (const i of group) {
       const p = out[i];
       // Every lumber member snaps to its own board (the recipe's member stock or a part's named 2x6), never a scaled section.
-      const best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock)[0];
+      let best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock)[0];
+      // A member never grows past a typed size, and one spanning a whole typed size (a full-width rail) keeps that
+      // span: either way it is laid across instead, its run kept as its cut length.
+      const past = (to?: Panel["size"]) => !!to && (["width", "height", "depth"] as const).some((k) => typed[k] != null && ((to[k] > p.size[k] + 0.01 && to[k] > typed[k]! + 0.01) || (Math.abs(p.size[k] - typed[k]!) < 0.01 && Math.abs(to[k] - p.size[k]) > 0.01)));
+      if (past(best?.to)) best = closestBoards(p.materialId, p.size, !!base(p.name)?.stock, true).find((o) => !past(o.to)) ?? best;
       const to = best?.to ?? p.size;
       if (best) next[i].materialId = best.id;
       const top0 = p.position.y + p.size.height;
@@ -181,14 +209,14 @@ function realBoards(recipe: Recipe, panels: Panel[]) {
  * Real boards a lumber member could be cut as, closest first: its own board, or (unless the recipe names
  * the board) another board of the same length as one board thick (a 1.4×0.96 rail is a 1×2, never a 3 1/2" 2×4 face; a 1×4 is never a glued post).
  */
-export function closestBoards(materialId: string, size: Panel["size"], named = false): { id: string; to: Panel["size"] }[] {
+export function closestBoards(materialId: string, size: Panel["size"], named = false, across = false): { id: string; to: Panel["size"] }[] {
   // A named board binds when the part is about its face (a 3.6" post is a 4×4); a 5" deck board named "2×4" is re-picked.
   const face = getCatalogItem(materialId)?.dims.width ?? 0;
   if (named && [size.width, size.height, size.depth].sort((a, b) => a - b)[1] > face * 1.1 + 0.05) named = false;
   const len = getCatalogItem(materialId)?.dims.length ?? 96;
   const one = (id: string, to: Panel["size"]) => Math.min(to.width, to.height, to.depth) <= (getCatalogItem(id)?.dims.height ?? 0) + 0.01;
   return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height && c.dims.length === len)
-    .map((b) => ({ id: b.id, to: boardSection(b.id, size) }))
+    .map((b) => ({ id: b.id, to: boardSection(b.id, size, across) }))
     // A board the recipe names for the part (rafters from 2×6) is kept; only the default member stock is re-picked.
     .filter((o): o is { id: string; to: Panel["size"] } => !!o.to && (o.id === materialId || (!named && one(o.id, o.to))))
     .map((o) => ({ ...o, cost: (["width", "height", "depth"] as const).reduce((n, k) => n + Math.abs(o.to[k] - size[k]), 0), face: getCatalogItem(o.id)!.dims.width! }))
@@ -200,13 +228,19 @@ export function closestBoards(materialId: string, size: Panel["size"], named = f
  * 2+ boards), the board's full face. A big block (more than ~2 boards) is not a member.
  * Returns null when the part is not dimensional lumber or is already a real section.
  */
-export function boardSection(materialId: string, size: Panel["size"]): Panel["size"] | null {
+export function boardSection(materialId: string, size: Panel["size"], across = false): Panel["size"] | null {
   const it = getCatalogItem(materialId);
   const th = it?.dims.height;
   const fw = it?.dims.width;
   if (!it || it.category !== "lumber" || it.formFactor !== "board" || !th || !fw) return null;
   const axes = (["width", "height", "depth"] as const).map((k) => ({ k, v: size[k] })).sort((m, n) => m.v - n.v);
-  const [thin, wide] = axes;
+  const [thin] = axes;
+  // Laid across (only asked for when the usual way would run past a typed size: a rail on a 2 1/4" narrow frame
+  // whose other side is already the 3 1/2" face): the short run is its cut length, never grown to the face.
+  const wide = across && axes[1].v < fw - 0.01 && Math.abs(axes[2].v - fw) < 0.01 ? axes[2] : axes[1];
+  // A part already cut to the board's section whichever way it runs (a 3" rail across a 3 1/2" deep 2×4 laid flat)
+  // is real: its short side is its length, never grown to the face.
+  if (Math.abs(thin.v - th) < 0.01 && axes.slice(1).some((m) => Math.abs(m.v - fw) < 0.01)) return null;
   if (thin.v > Math.max(th * 2.2, fw * 1.1) + 0.01 || wide.v > fw * 2.2 + 0.01) return null;
   const out = { ...size };
   // A square stick (4x4 post, 2x2) is the same board both ways.
@@ -254,6 +288,13 @@ export const ROUND_WORD = /\b(?:wheels?|beads?|discs?|disks?|pulleys?|gears?|dru
  * runs along its longest; the two cross sides close to one diameter, centred. A bore cuts a centred hole
  * (a ring's rim is its bore width; a bead takes a 3/8 of its diameter bore unless it names one).
  */
+/** A part the recipe says stands proud of the stated size on purpose (a cribbage board's pegs, set in their holes). */
+function proudParts(recipe: Recipe, panels: Panel[]): void {
+  // "Peg1" in the recipe is "Peg 1" on the build: match on the name without its number.
+  const stem = (s: string) => s.replace(/\s*\d+$/, "").toLowerCase();
+  for (const p of panels) if (recipe.parts.some((q) => q.proud && (q.name === p.name || stem(q.name) === stem(p.name)))) p.proud = true;
+}
+
 /** A part's hole array is drilled in its largest face: an even grid of round holes, rows along the short side. */
 function holeArrays(recipe: Recipe, panels: Panel[]): void {
   for (const p of panels) {
@@ -672,6 +713,22 @@ function bearing(p: Panel, c: Panel): { a: "x" | "z"; got: number; need: number 
  * edge (held by end screws) is lengthened to run across the carrier's full width.
  */
 export function bearOnCarriers(recipe: Recipe, panels: Panel[]): void {
+  // A lower member that snapped taller lifts the rails in its footprint and leaves them 1/16" into the deck.
+  // The board sits on every rail it names, including one that runs along the board: the rail keeps its thickness and stops at the underside.
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (!part || !LOAD_ROLE.test(part.role ?? "") || !part.on?.length) continue;
+    const on = new Set(part.on);
+    for (const c of panels) {
+      if (c === p || !(on.has(c.name) || on.has(c.name.replace(/ \d+$/, "")))) continue;
+      const role = recipe.parts.find((q) => q.name === c.name || q.name === c.name.replace(/ \d+$/, ""))?.role ?? "";
+      if (!/rail|cleat|joist|apron|bearer|ledger|frame/i.test(`${role} ${c.name}`)) continue;
+      const bite = c.position.y + c.size.height - p.position.y;
+      const ox = Math.min(span(p, "x")[1], span(c, "x")[1]) - Math.max(span(p, "x")[0], span(c, "x")[0]);
+      const oz = Math.min(span(p, "z")[1], span(c, "z")[1]) - Math.max(span(p, "z")[0], span(c, "z")[0]);
+      if (bite > 1 / 32 && bite < 0.15 && ox > 0.05 && oz > 0.05) c.position = { ...c.position, y: c.position.y - bite };
+    }
+  }
   for (const p of panels) {
     for (const c of bearers(recipe, panels, p)) {
       const b = bearing(p, c);
@@ -735,14 +792,43 @@ function trestleLegs(recipe: Recipe, panels: Panel[], size: Size): void {
   }
 }
 
+/** True where two plain boxes share more than 1/16" of space on every axis. */
+const sharesSpace = (a: Panel, b: Panel) => (["x", "y", "z"] as const).every((k, n) => {
+  const s = (["width", "height", "depth"] as const)[n];
+  return Math.min(a.position[k] + a.size[s], b.position[k] + b.size[s]) - Math.max(a.position[k], b.position[k]) > 1 / 16;
+});
+
+/**
+ * Real joints where recipe parts meet inside each other: a butt hinge's leaf is mortised flush into the lid and the
+ * board it hangs on; a shelf that runs to the corner posts (a utility cart) is notched around each post.
+ */
+function seatHardwareAndNotches(panels: Panel[]): void {
+  for (const h of panels.filter((p) => /\bhinge \d+$/i.test(p.name))) {
+    for (const o of panels) if (o !== h && !/\bhinge \d+$/i.test(o.name) && sharesSpace(h, o)) h.joints = [...(h.joints ?? []), { with: o.id, kind: "mortise" }];
+  }
+  const posts = panels.filter((p) => /\bpost$/i.test(p.name));
+  for (const sh of panels.filter((p) => /\bshelf$/i.test(p.name))) {
+    const hit = posts.filter((q) => sharesSpace(sh, q));
+    if (!hit.length) continue;
+    sh.joints = [...(sh.joints ?? []), ...hit.map((q) => ({ with: q.id, kind: "notch" as const }))];
+    const q = hit[0];
+    sh.cutNote = `${sh.cutNote ? sh.cutNote + " " : ""}Notch ${hit.length === 4 ? "each corner" : `${hit.length} corners`} ${fmtIn(q.size.width)} × ${fmtIn(q.size.depth)} so it fits around the posts.`;
+  }
+}
+
 function hingedLids(recipe: Recipe, panels: Panel[], H: number): void {
   // Only a hinged lid is seated (a hinged gate or door swings sideways and is never a lid) and sloped; a loose lid (a churn's) stays where the recipe put it.
   const lids = new Set((recipe.moving ?? []).filter((m) => m.motion === "hinge" && !/\b(?:gates?|doors?)\b/i.test(m.part)).map((m) => m.part));
   for (const lid of panels.filter((p) => lids.has(p.name) || lids.has(p.name.replace(/ \d+$/, "")))) {
     lid.turns = true;
-    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
+    const under = panels.filter((w) => !lids.has(w.name) && !lids.has(w.name.replace(/ \d+$/, "")) && !/\bhinges?\b/i.test(w.name) && w.size.height > 1 && Math.min(w.size.width, w.size.depth) >= 0.2 &&
       w.position.x < lid.position.x + lid.size.width && lid.position.x < w.position.x + w.size.width &&
       w.position.z < lid.position.z + lid.size.depth && lid.position.z < w.position.z + w.size.depth);
+    // C13: a part with another part on top of it (a lower course of a stacked wall, a floor cleat) carries that part, not the lid.
+    const covered = (w: Panel) => panels.some((q) => q !== w && q !== lid && q.position.y >= w.position.y + w.size.height - 0.1 && q.position.y <= w.position.y + w.size.height + 1 &&
+      q.position.x < w.position.x + w.size.width && w.position.x < q.position.x + q.size.width && q.position.z < w.position.z + w.size.depth && w.position.z < q.position.z + q.size.depth);
+    // An inside divider (a jewelry box's ring row) sits below the lid and never seats or slopes it.
+    under.splice(0, under.length, ...under.filter((w) => !covered(w) && !/\b(?:divider|partition)s?\b/i.test(w.name)));
     if (!under.length) continue;
     const top = (w: Panel) => w.position.y + w.size.height;
     const hi = under.reduce((m, w) => (top(w) > top(m) ? w : m)), lo = under.reduce((m, w) => (top(w) < top(m) ? w : m));
@@ -784,9 +870,16 @@ const SZ = { x: "width", y: "height", z: "depth" } as const;
 const meets3 = (p: Panel, q: Panel) => (["x", "y", "z"] as const).every((a) => p.position[a] <= q.position[a] + q.size[SZ[a]] + 0.05 && q.position[a] <= p.position[a] + p.size[SZ[a]] + 0.05);
 
 /**
- * A spinning wheel is a rotor: its round parts sit centred on the axle, a rim (ring) is joined to the hub by
- * crossed spokes, paddles stand on the rim at the quarter points, and every fixed part the axle passes is
- * drilled for it.
+ * A spinning wheel is a rotor, built the way a real one is (a garden water wheel, a mill wheel):
+ * - every fixed part the axle passes is drilled for it; the axle is glued in those snug bores and the rotor
+ *   turns on it, each of its bores 1/16" over the axle;
+ * - each rim (a ring) has a hub disc in its open centre, sandwiched between two crossed spokes, one on each
+ *   face of the rim, so every spoke lies on the rim's face (never in its plane) and meets the hub face to face;
+ * - paddles run between the two rims (or stand on a lone rim's face), butted to the rims' inner faces across
+ *   the band and standing out past the rim edge, spaced round the wheel clear of the spokes;
+ * - the rotor sits centred between the parts that carry the axle, held there by collars glued to the axle
+ *   a card's thickness (1/32") off its faces, so it turns but can't slide along the axle.
+ * Every joint is a real contact (the step text and the support graph read the same geometry).
  */
 function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
   // Every dowel sits in drilled holes: each fixed part it meets is drilled for it.
@@ -794,6 +887,8 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     const L = (["x", "y", "z"] as const).reduce((m, a) => (pin.size[SZ[a]] > pin.size[SZ[m]] ? a : m), "x" as Ax);
     const dia = Math.min(...(["x", "y", "z"] as const).filter((x) => x !== L).map((x) => pin.size[SZ[x]]));
     const name = pin.name.replace(/ \d+$/, "").toLowerCase();
+    // One axle is "the axle"; a family of rods is "each rod".
+    const many = pins.filter((q) => q.name.replace(/ \d+$/, "").toLowerCase() === name).length > 1;
     for (const q of panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && meets3(p, pin))) {
       const deep = Math.round(Math.min(0.75, q.size[SZ[L]] * 0.6) * 16) / 16;
       const through = pin.position[L] < q.position[L] - 0.05 && pin.position[L] + pin.size[SZ[L]] > q.position[L] + q.size[SZ[L]] + 0.05;
@@ -804,7 +899,7 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
         q.size = { ...q.size, [SZ[x]]: hi0 - lo0 };
       }
       // A fixed bore is named: the axle a rotor spins on is glued snug here, only the rotor's bores clear it.
-      const n = `Drill a ${fmtIn(dia)} hole for each ${name}${through ? " right through" : `, ${fmtIn(deep)} deep`}.${pin.turns && panels.some((r) => r.turns && r.polygon && r !== pin && meets3(r, pin)) ? ` A snug fixed bore: glue the ${name} here.` : ""}`;
+      const n = `Drill a ${fmtIn(dia)} hole for ${many ? `each ${name}` : `the ${name}`}${through ? ", right through" : `, ${fmtIn(deep)} deep`}.${pin.turns && panels.some((r) => r.turns && r.polygon && r !== pin && meets3(r, pin)) ? ` A snug fixed bore: glue the ${name} here.` : ""}`;
       // The dowel runs into its hole: it reaches into a part at either end by the hole depth.
       const lo = pin.position[L], hi = lo + pin.size[SZ[L]];
       if (!(q.cutNote ?? "").includes(n)) q.cutNote = `${q.cutNote ? `${q.cutNote} ` : ""}${n}`;
@@ -819,52 +914,411 @@ function rotors(recipe: Recipe, panels: Panel[], pins: Panel[]): void {
     const ca = pin.position[a] + pin.size[SZ[a]] / 2, cb = pin.position[b] + pin.size[SZ[b]] / 2;
     const riders = panels.filter((p) => p.turns && p !== pin && p.polygon && meets3(p, pin));
     const d = pin.size[SZ[a]];
+    const bore = d / 2 + 1 / 32;
     // Only the glued-up rotor turns: each part bored for the axle clears it by 1/16".
     for (const p of riders) {
       p.position = { ...p.position, [a]: ca - p.size[SZ[a]] / 2, [b]: cb - p.size[SZ[b]] / 2 };
       const h = p.polygon?.holes?.[0];
-      if (h && h.r < d) h.r = Math.max(h.r, d / 2 + 1 / 32);
+      if (h && h.r < d) h.r = Math.max(h.r, bore);
       if (h) p.cutNote = (p.cutNote ?? "").replace(/(bored) [\d./]+"?/, `$1 ${fmtIn(h.r * 2)} (running clearance on the ${fmtIn(d)} ${pin.name.replace(/ \d+$/, "").toLowerCase()})`);
     }
-    for (const rim of riders.filter((p) => recipe.parts.some((q) => q.shape === "ring" && q.name === p.name.replace(/ \d+$/, "")))) {
-      const r = rim.size[SZ[a]] / 2, inner = rim.polygon?.holes?.[0]?.r ?? r * 0.8, band = Math.max(r - inner, 1.5);
-      const t = rim.size[SZ[long]];
-      for (const [i, along] of [a, b].entries()) {
-        const across = along === a ? b : a;
+    const isRim = (p: Panel) => recipe.parts.some((q) => q.shape === "ring" && (q.name === p.name || q.name === p.name.replace(/ \d+$/, "")));
+    const rims = riders.filter(isRim).sort((p, q) => p.position[long] - q.position[long]);
+    if (!rims.length) continue;
+    const axleWord = pin.name.replace(/ \d+$/, "").toLowerCase();
+    const plane = rims[0].polygon!.plane;
+    // The rim's face plane: (u, v) are its outline coordinates, the axle runs along `long`.
+    const [ua, va] = plane === "xz" ? (["x", "z"] as const) : plane === "xy" ? (["x", "y"] as const) : (["z", "y"] as const);
+    const cu = ua === a ? ca : cb, cv = va === a ? ca : cb;
+    // The wheel turns clear of the fixed parts under it (a cross rail between the posts): its paddles sweep
+    // 1 1/2" past the rim, so a rim too big for the room under the axle is cut smaller.
+    if (a === "y" || b === "y") {
+      const cy = a === "y" ? ca : cb;
+      const span0 = [Math.min(...rims.map((p) => p.position[long])), Math.max(...rims.map((p) => p.position[long] + p.size[SZ[long]]))];
+      const under = panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && !meets3(p, pin) && p.position.y + p.size.height < cy && p.position[long] < span0[1] && p.position[long] + p.size[SZ[long]] > span0[0]);
+      const room = cy - Math.max(0, ...under.map((p) => p.position.y + p.size.height)) - 0.5 - 1.5;
+      const r0 = rims[0].size[SZ[a]] / 2;
+      if (room > 2 && r0 > room) {
+        const k = room / r0;
+        for (const rim of rims) {
+          const pl = rim.polygon!, [pu, pv] = pl.plane === "xz" ? (["x", "z"] as const) : pl.plane === "xy" ? (["x", "y"] as const) : (["z", "y"] as const);
+          const su = rim.size[SZ[pu]], sv = rim.size[SZ[pv]];
+          rim.polygon = { ...pl, pts: pl.pts.map(([u, v]) => [su / 2 + (u - su / 2) * k, sv / 2 + (v - sv / 2) * k] as [number, number]), holes: pl.holes?.map((h) => ({ x: su / 2 + (h.x - su / 2) * k, y: sv / 2 + (h.y - sv / 2) * k, r: h.r * k })).map((h) => ({ ...h, x: h.x - (su - su * k) / 2, y: h.y - (sv - sv * k) / 2 })) };
+          rim.polygon = { ...rim.polygon, pts: rim.polygon.pts.map(([u, v]) => [u - (su - su * k) / 2, v - (sv - sv * k) / 2] as [number, number]) };
+          rim.position = { ...rim.position, [pu]: rim.position[pu] + (su - su * k) / 2, [pv]: rim.position[pv] + (sv - sv * k) / 2 };
+          rim.size = { ...rim.size, [SZ[pu]]: su * k, [SZ[pv]]: sv * k };
+          rim.cutNote = (rim.cutNote ?? "").replace(/^Cut round, [^.]*(?:\.\d+[^.]*)*\./, `Cut round, ${fmtIn(su * k)} diameter, open centre ${fmtIn(2 * (rim.polygon!.holes?.[0]?.r ?? 0))}.`);
+        }
+      }
+    }
+    const r = rims[0].size[SZ[a]] / 2, inner = rims[0].polygon?.holes?.[0]?.r ?? r * 0.8;
+    const t = rims[0].size[SZ[long]];
+    const band = Math.min(Math.max(r - inner, 1.5), 3.5);
+    const sheet = rims[0].materialId;
+    const ply = getCatalogItem(sheet)?.dims.thickness ?? t;
+    const clear = 1 / 16;
+    // The parts that carry the axle (posts, frame sides), nearest the rotor on each side.
+    const mid0 = (rims[0].position[long] + rims[rims.length - 1].position[long] + t) / 2;
+    const carriers = panels.filter((p) => !p.turns && p !== pin && !/^dowel-/.test(p.materialId) && meets3(p, pin));
+    const stopLo = carriers.filter((p) => p.position[long] + p.size[SZ[long]] <= mid0).sort((p, q) => q.position[long] + q.size[SZ[long]] - (p.position[long] + p.size[SZ[long]]))[0];
+    const stopHi = carriers.filter((p) => p.position[long] >= mid0).sort((p, q) => p.position[long] - q.position[long])[0];
+    const faceLo = stopLo ? stopLo.position[long] + stopLo.size[SZ[long]] : undefined, faceHi = stopHi?.position[long];
+    const mid = faceLo != null && faceHi != null ? (faceLo + faceHi) / 2 : mid0;
+    const paddle = recipe.parts.find((q) => q.role === "paddle");
+    const tmpl = paddle && panels.find((p) => p.name === paddle.name || p.name.replace(/ \d+$/, "") === paddle.name);
+    // Rotor width along the axle: spoke, rim, paddles, rim, spoke. With carriers both sides it fills the span
+    // less a one-ply collar and 1/16" running clearance at each end.
+    const two = rims.length >= 2;
+    const span = faceLo != null && faceHi != null ? faceHi - faceLo : undefined;
+    const fixedPaddle = tmpl ? Math.max(tmpl.size[SZ[long]], t * 4) : 0;
+    const between = two ? Math.max(3, span != null ? span - 2 * (ply + clear) - 2 * (2 * t) : Math.max(fixedPaddle, rims[rims.length - 1].position[long] - rims[0].position[long] - t)) : 0;
+    const width = two ? 2 * (2 * t) + between : 3 * t;
+    const lo = mid - width / 2;
+    // Rims: the first and last bound the paddles; any between are spaced evenly.
+    const rimLo = rims.map((_, i) => (rims.length === 1 ? lo + t : lo + t + (i * (width - 3 * t)) / (rims.length - 1)));
+    rims.forEach((rim, i) => { rim.position = { ...rim.position, [long]: rimLo[i] }; });
+    // Hubs: the recipe's hub, one per rim, in the rim's open centre and as thick as the rim.
+    const hubs0 = riders.filter((p) => !isRim(p) && p.size[SZ[a]] < r);
+    const hubDia = Math.min(Math.max(hubs0[0]?.size[SZ[a]] ?? 4 * d, 3 * d, band + 0.5), 2 * inner - 1);
+    const hubName = (hubs0[0]?.name ?? "Hub").replace(/ \d+$/, "");
+    const keep0 = new Set(hubs0);
+    panels.splice(0, panels.length, ...panels.filter((p) => !keep0.has(p) || p === hubs0[0]));
+    const disc = (dia: number, hole: number): Panel["polygon"] => {
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 32; i++) pts.push([dia / 2 + (dia / 2) * Math.cos((i / 32) * 2 * Math.PI), dia / 2 + (dia / 2) * Math.sin((i / 32) * 2 * Math.PI)]);
+      return { plane, pts, holes: [{ x: dia / 2, y: dia / 2, r: hole }] };
+    };
+    const box = (alongLong: [number, number], u: [number, number], v: [number, number]) => {
+      const pos = { x: 0, y: 0, z: 0 }, size = { width: 0, height: 0, depth: 0 };
+      pos[long] = alongLong[0]; size[SZ[long]] = alongLong[1];
+      pos[ua] = u[0]; size[SZ[ua]] = u[1];
+      pos[va] = v[0]; size[SZ[va]] = v[1];
+      return { position: pos, size };
+    };
+    const hubBits = rims.map((rim, i) => {
+      const h: Panel = {
+        ...(i === 0 && hubs0[0] ? hubs0[0] : {}), id: i === 0 && hubs0[0] ? hubs0[0].id : `${rim.id}-hub-${i}`, type: "rail", name: rims.length > 1 ? `${hubName} ${i + 1}` : hubName,
+        materialId: sheet, turns: true, polygon: disc(hubDia, bore),
+        ...box([rim.position[long], t], [cu - hubDia / 2, hubDia], [cv - hubDia / 2, hubDia]),
+        cutNote: `Cut round, ${fmtIn(hubDia)} diameter, bored ${fmtIn(bore * 2)} (running clearance on the ${fmtIn(d)} ${axleWord}). It sits in the rim's open centre, as thick as the rim, between the two spokes.`,
+      };
+      return h;
+    });
+    const hubIds = new Set(hubBits.map((h) => h.id));
+    panels.splice(0, panels.length, ...panels.filter((p) => !hubIds.has(p.id)), ...hubBits);
+    // Spokes: two crossed spokes per rim, one on each face, the hub between them. They stop 1/4" inside the rim's edge.
+    const sl = 2 * r - 0.5;
+    let k = 0;
+    rims.forEach((rim, i) => {
+      const outerLo = rims.length === 1 || i === 0;
+      const faces: [number, "u" | "v"][] = [[rim.position[long] - t, outerLo ? "v" : "u"], [rim.position[long] + t, outerLo ? "u" : "v"]];
+      for (const [at, along] of faces) {
+        k += 1;
+        const u: [number, number] = along === "u" ? [cu - sl / 2, sl] : [cu - band / 2, band];
+        const v: [number, number] = along === "v" ? [cv - sl / 2, sl] : [cv - band / 2, band];
         panels.push({
-          id: `${rim.id}-spoke-${i}`, type: "rail", name: `Spoke ${i + 1}`, materialId: rim.materialId, turns: true,
-          position: { ...rim.position, [along]: (along === a ? ca : cb) - r + band / 2, [across]: (across === a ? ca : cb) - band / 2 } as Panel["position"],
-          size: { ...rim.size, [SZ[along]]: 2 * r - band, [SZ[across]]: band, [SZ[long]]: t } as Panel["size"],
-          cutNote: `Half-lap the two spokes where they cross and bore ${fmtIn(d + 1 / 16)} there for the axle.`,
+          id: `${rim.id}-spoke-${k}`, type: "rail", name: `Spoke ${k}`, materialId: sheet, turns: true, ...box([at, t], u, v),
+          // The board with its axle bore modelled, so the axle runs through a real hole.
+          polygon: { plane, pts: [[0, 0], [u[1], 0], [u[1], v[1]], [0, v[1]]], holes: [{ x: cu - u[0], y: cv - v[0], r: bore }] },
+          cutNote: `Bore ${fmtIn(bore * 2)} at the centre for the ${axleWord} (running clearance). It lies on the rim's face: glue and screw it to the rim at both ends and to the ${hubName.toLowerCase()} at the centre.`,
         });
       }
-      for (const hub of riders.filter((p) => p !== rim && p.size[SZ[a]] < r)) {
-        // The spokes lie in the rim's plane; the hub's face sits flush with it so they seat in its face slot.
-        hub.position = { ...hub.position, [long]: rim.position[long] };
-        const n = `Cut a ${fmtIn(band)} wide, ${fmtIn(Math.min(t, hub.size[SZ[long]]))} deep slot across the hub face for each spoke.`;
-        if (!(hub.cutNote ?? "").includes(n)) hub.cutNote = `${hub.cutNote ? `${hub.cutNote} ` : ""}${n}`;
-      }
-      const paddle = recipe.parts.find((q) => q.role === "paddle");
-      const tmpl = paddle && panels.find((p) => p.name === paddle.name || p.name.replace(/ \d+$/, "") === paddle.name);
-      if (tmpl) {
-        const pl = Math.max(tmpl.size[SZ[long]], t * 4), ph = Math.max(Math.min(tmpl.size[SZ[a]], tmpl.size[SZ[b]], r / 3), 2), pt = 0.75;
-        const keep = panels.filter((p) => p.name.replace(/ \d+$/, "") !== paddle.name);
-        panels.splice(0, panels.length, ...keep);
-        const mid = rim.position[long] + t / 2;
-        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([u, v], i) => {
-          // A paddle straddles the rim's outer edge so half of it stands out past the rim to catch water.
-          const pa = ca + u * r, pb = cb + v * r;
-          const sa = u ? ph : pt, sb = v ? ph : pt;
-          panels.push({
-            id: `${rim.id}-paddle-${i}`, type: "rail", name: `${paddle.name} ${i + 1}`, materialId: tmpl.materialId, turns: true,
-            position: { [a]: pa - sa / 2, [b]: pb - sb / 2, [long]: mid - pl / 2 } as Panel["position"],
-            size: { [SZ[a]]: sa, [SZ[b]]: sb, [SZ[long]]: pl } as Panel["size"],
-            cutNote: "Glue and screw to the rim, square to it.",
-          });
+    });
+    // Paddles: real boards between the rims (or on a lone rim's face), butted to the rim faces across the band and
+    // standing out past the rim edge to catch the water. Spaced evenly, half a step off the spokes.
+    if (tmpl) {
+      const D = 2 * r;
+      const n = Math.max(8, 2 * Math.round((Math.PI * D) / 18));
+      const boardId = getCatalogItem("lumber-1x4-8") ? "lumber-1x4-8" : tmpl.materialId;
+      const bd = getCatalogItem(boardId)?.dims;
+      const pt = bd?.height ?? 0.75;
+      const out = Math.min(1.5, (bd?.width ?? 3.5) / 2);
+      const rho1 = r + out, rho0 = Math.max(inner + 0.25, rho1 - (bd?.width ?? 3.5));
+      const ph = rho1 - rho0;
+      const pl = two ? between : fixedPaddle;
+      const at = two ? rims[0].position[long] + t : rims[0].position[long] + t;
+      const keep = panels.filter((p) => p.name.replace(/ \d+$/, "") !== paddle!.name);
+      panels.splice(0, panels.length, ...keep);
+      for (let i = 0; i < n; i++) {
+        const th = Math.PI / n + (i * 2 * Math.PI) / n;
+        const rad = [Math.cos(th), Math.sin(th)], tan = [-Math.sin(th), Math.cos(th)];
+        const corners = [[rho0, -pt / 2], [rho1, -pt / 2], [rho1, pt / 2], [rho0, pt / 2]].map(([p, q]) => [cu + rad[0] * p + tan[0] * q, cv + rad[1] * p + tan[1] * q]);
+        const u0 = Math.min(...corners.map((c) => c[0])), v0 = Math.min(...corners.map((c) => c[1]));
+        const u1 = Math.max(...corners.map((c) => c[0])), v1 = Math.max(...corners.map((c) => c[1]));
+        panels.push({
+          id: `${rims[0].id}-paddle-${i}`, type: "rail", name: `${paddle!.name} ${i + 1}`, materialId: boardId, turns: true,
+          ...box([at, pl], [u0, u1 - u0], [v0, v1 - v0]),
+          polygon: { plane, pts: corners.map(([u, v]) => [u - u0, v - v0] as [number, number]) },
+          blank: { lengthIn: Math.round(pl * 8) / 8, widthIn: Math.round(ph * 8) / 8, thicknessIn: pt },
+          cutNote: two ? `Screw through each rim into its ends, ${fmtIn(rho1 - r)} standing out past the rim.` : `Screw through the rim into its end, ${fmtIn(rho1 - r)} standing out past the rim.`,
         });
       }
     }
+    // Collars: glued to the axle a card's thickness (1/32") off the rotor's end faces, filling to the carrier
+    // (or capping the axle's end). 1/16" of end play in all: it turns free but can't wander.
+    const gap = 1 / 32;
+    const pierced = (p: Panel) => (["x", "y", "z"] as const).filter((x) => x !== long).every((x) => {
+      const c = x === a ? ca : cb;
+      return p.position[x] < c && c < p.position[x] + p.size[SZ[x]];
+    });
+    const ends = panels.filter((p) => p.turns && p !== pin && pierced(p));
+    const rLo = Math.min(...ends.map((p) => p.position[long])), rHi = Math.max(...ends.map((p) => p.position[long] + p.size[SZ[long]]));
+    const cd = Math.min(Math.max(2.5 * d, d + 1.5), hubDia);
+    const collar = (from: number, to: number, i: number, end: boolean): Panel => ({
+      id: `${pin.id}-collar-${i}`, type: "rail", name: `Collar ${i}`, materialId: sheet, polygon: disc(cd, d / 2),
+      ...box([from, to - from], [cu - cd / 2, cd], [cv - cd / 2, cd]),
+      cutNote: `Cut round, ${fmtIn(cd)} diameter, bored ${fmtIn(d)} snug on the ${axleWord}. Glue it to the ${axleWord} ${end ? "at its end" : "against the carrier"}, a card's thickness (1/32") off the wheel, so the wheel turns but can't slide.`,
+    });
+    const lowFace = faceLo ?? rLo - gap - ply, highFace = faceHi ?? rHi + gap + ply;
+    // A collar is whole plies (I28): the fill to the carrier rounds down to plies; the sliver left is on the carrier side.
+    const plies = (fill: number) => ply * Math.max(1, Math.floor((fill + 1 / 32) / ply));
+    if (rLo - gap - lowFace > 0.1) panels.push(collar(rLo - gap - plies(rLo - gap - lowFace), rLo - gap, 1, faceLo == null));
+    if (highFace - (rHi + gap) > 0.1) panels.push(collar(rHi + gap, rHi + gap + plies(highFace - (rHi + gap)), 2, faceHi == null));
+    // A capped end: the axle stops at the cap's outer face.
+    if (faceLo == null) { const end = pin.position[long] + pin.size[SZ[long]]; pin.position = { ...pin.position, [long]: lowFace }; pin.size = { ...pin.size, [SZ[long]]: end - lowFace }; }
+    if (faceHi == null) pin.size = { ...pin.size, [SZ[long]]: highFace - pin.position[long] };
   }
+}
+
+/**
+ * A member carried by two parts at its ends (a cross rail between two posts) runs face to face between them:
+ * when the carriers' faces moved (stock thickness kept while the width grew or shrank), its ends follow them.
+ */
+function buttBetween(recipe: Recipe, panels: Panel[]): Panel[] {
+  const K = { x: "width", y: "height", z: "depth" } as const;
+  for (const part of recipe.parts.filter((q) => q.kind === "member" && (q.on ?? []).length === 2)) {
+    const ends = part.on!.map((n) => panels.find((p) => p.name === n || p.name.replace(/ \d+$/, "") === n));
+    if (ends.some((e) => !e)) continue;
+    for (const p of panels.filter((q) => q.name === part.name || q.name.replace(/ \d+$/, "") === part.name)) {
+      const L = (["x", "y", "z"] as const).reduce((m, a) => (p.size[K[a]] > p.size[K[m]] ? a : m), "x" as "x" | "y" | "z");
+      const [a, b] = [...ends].sort((u, v) => u!.position[L] - v!.position[L]) as Panel[];
+      const lo = a.position[L] + a.size[K[L]], hi = b.position[L];
+      // Only a member that already spans the gap between them (within a sliver either way).
+      if (hi - lo < 1 || Math.abs(p.position[L] - lo) > 0.75 || Math.abs(p.position[L] + p.size[K[L]] - hi) > 0.75) continue;
+      p.position = { ...p.position, [L]: lo };
+      p.size = { ...p.size, [K[L]]: hi - lo };
+    }
+  }
+  return panels;
+}
+
+/**
+ * A stated size is the build's size: a part the recipe sets flush with an outer face (an end post) keeps that
+ * face when its kept stock thickness or its board snap made it thicker, growing inward, never past the face.
+ */
+function keepStatedFaces(recipe: Recipe, panels: Panel[], size: Size, stated: Partial<Size>): Panel[] {
+  const AX = [["x", "width", 0, 3], ["z", "depth", 2, 5]] as const;
+  for (const p of panels) {
+    const part = recipe.parts.find((q) => q.name === p.name || q.name === p.name.replace(/ \d+$/, ""));
+    if (!part) continue;
+    for (const [a, k, o, w] of AX) {
+      if (stated[k] == null) continue;
+      // A part the recipe runs the full stated width (a rail) that its board snap made longer is cut to that width:
+      // the run is its length, and the board's own section (thickness and face, its other two sides) is kept.
+      if (p.size[k] > size[k] + 1e-6) {
+        const c = getCatalogItem(p.materialId);
+        const rest = (["width", "height", "depth"] as const).filter((x) => x !== k).map((x) => p.size[x]).sort((u, v) => u - v);
+        const section = c?.category === "lumber" && !!c.dims.width && !!c.dims.height && Math.abs(rest[0] - c.dims.height) < 0.01 && Math.abs(rest[1] - c.dims.width) < 0.01;
+        if (section && part.box[o] <= 1e-6 && part.box[o] + part.box[w] >= 1 - 1e-6) { p.position = { ...p.position, [a]: 0 }; p.size = { ...p.size, [k]: size[k] }; }
+        continue;
+      }
+      if (part.box[o] <= 1e-6 && p.position[a] < -1e-6) p.position = { ...p.position, [a]: 0 };
+      else if (part.box[o] + part.box[w] >= 1 - 1e-6 && p.position[a] + p.size[k] > size[k] + 1e-6) p.position = { ...p.position, [a]: size[k] - p.size[k] };
+    }
+  }
+  return panels;
+}
+
+/**
+ * The one auto-widen decision for a counted row (I32). A typed size always wins: 0 means a row never grows past
+ * the size the maker typed, so a typed count that can't fit is refused instead. A size said with "fit" or "max"
+ * never widens, whatever this is set to. Change only this to allow a small auto-widen (0.1 = up to 10% wider).
+ */
+export const AUTO_WIDEN = 0;
+export function mayWiden(need: number, typed: number | undefined, strict: boolean): boolean {
+  if (typed == null) return true;
+  if (strict) return false;
+  return need <= typed * (1 + AUTO_WIDEN) + 1e-6;
+}
+/** The most of anything a build takes when typed ("60 rods"): more is refused plainly, never cut back to this. */
+export const MAX_TYPED_COUNT = 48;
+/** "to fit 8 wide", "8 wide max": the size is a hard limit. */
+export const STRICT_SIZE = /\b(?:fits?|fitting|max|maximum|at most|no (?:wider|taller|deeper|more) than)\b/i;
+
+export type RowAsk = { typed: boolean; strict: boolean; title: string; typedSize: Partial<Size> };
+export type RowFit = { count: number; refuse?: string; widen?: { axis: "width" | "height" | "depth"; to: number }; card?: string };
+const AXIS_WORD = { width: "wide", height: "tall", depth: "deep" } as const;
+const up16 = (n: number) => Math.ceil(n * 16 - 1e-6) / 16;
+
+/**
+ * Rod arrays fit their span (rodArrays.ts; I30, I32). In any row of like round rods (an abacus's wires, a rack's
+ * dowels, rungs, spindles) that parts bound on each side, a row that sinks into those parts, crowds its
+ * neighbours, stacks its riders or carries riders under their own minimum is laid out again inside the clear span:
+ * - riders (beads, rollers, spools) are shared out evenly across every rod, as many on each as the row had;
+ * - one even pitch; a rider is never thinner than a running bore on the rod plus a 1/16" wall each side (the
+ *   thinnest whole dowel that takes it), and shrinks to that floor only when its own size doesn't fit;
+ * - when that floor can't share the span, the parts bounding the row take the thinnest board that keeps their face
+ *   (never a thicker one), their outer face held.
+ * One rule for every counted row when it still can't fit:
+ * - a typed count is never reduced: an untyped side grows to fit it; a typed side grows only as far as mayWiden
+ *   allows (never, today); otherwise nothing is built and the refusal names the size the full count needs;
+ * - an untyped count may shrink to what fits, and the card says so, naming the size the full count needs;
+ * - when not even one fits, nothing is built and the refusal names the smallest size that takes one.
+ */
+type RowWords = { one: string; title: string; word: string; each: string; need: (k: number) => number };
+const rodsOf = (w: RowWords, k: number) => `${k} ${k === 1 ? w.one : `${w.one}s`}`;
+/** A typed count that doesn't fit its typed side: nothing is built, and the card names the size it needs. */
+const refuseTyped = (w: RowWords, want: number, fits: number, at: number) =>
+  `${rodsOf(w, want)} ${want === 1 ? "doesn't" : "don't"} fit in ${inchFrac(at)}" ${w.word} (${w.each}). ${withArticle(`${want}-${w.one} ${w.title}`, true)} needs ${inchFrac(w.need(want))}" ${w.word}. Nothing is built: make it ${inchFrac(w.need(want))}" ${w.word}${fits ? `, or ask for ${rodsOf(w, fits)}` : ""}.`;
+/** Not even one fits: nothing is built, and the card names the smallest size that takes one. */
+const refuseNone = (w: RowWords, full: number, at: number) =>
+  `${withArticle(w.title, true)} needs at least ${inchFrac(w.need(1))}" ${w.word} for 1 ${w.one} (${w.each}). A full ${full}-${w.one} ${w.title} needs ${inchFrac(w.need(full))}". Nothing is built at ${inchFrac(at)}".`;
+const eachWords = (floor: number, thinnest: number, rider?: string) => `each needs ${inchFrac(floor)}"${rider ? ` for ${inchFrac(thinnest)}" ${rider}s` : ""}`;
+
+/** What a counted row needs along its run, measured once on the recipe at its own size (I36). */
+export type RowNeed = { axis: "width" | "height" | "depth"; frame: number; floor: number; thinnest: number; one: string; rider?: string; full: number };
+const rowNeedCache = new Map<string, RowNeed | null>();
+/**
+ * The least a counted row takes along its run: the thinnest board that keeps each bounding part's face, plus one
+ * floor pitch per column. It comes from the recipe built at its own size, never from the build at hand, so a typed
+ * size too small for the builder to even lay the row out (a 1 1/2" abacus whose posts meet) is checked the same way.
+ */
+export function rowNeed(recipe: Recipe, materialOverride?: string): RowNeed | null {
+  if (!recipe.count) return null;
+  // Keyed on the parts themselves: a learned recipe can share a key (and a part count) with another.
+  const key = `${recipe.key}|${materialOverride ?? ""}|${JSON.stringify(recipe.parts)}`;
+  if (rowNeedCache.has(key)) return rowNeedCache.get(key)!;
+  rowNeedCache.set(key, null);
+  const ref = buildRecipeBody(recipe, recipe.title, materialOverride);
+  const panels = ref.project.panels;
+  const boards = FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height);
+  let out: RowNeed | null = null;
+  for (const arr of rodArrays(panels)) {
+    if (arr.L == null || arr.R == null || arr.rods.length !== ref.count) continue;
+    const { row, third } = arr;
+    const riders = arr.strung.flat();
+    const rodDia = Math.min(arr.rods[0].size[row[1]], arr.rods[0].size[third[1]]);
+    const thinnest = riders.length ? riderFloor(rodDia) : rodDia;
+    const mid = (arr.L + arr.R) / 2;
+    const bounds = panels.filter((p) => !arr.rods.includes(p) && !riders.includes(p) && (Math.abs(p.position[row[0]] + p.size[row[1]] - arr.L!) < 1e-6 || Math.abs(p.position[row[0]] - arr.R!) < 1e-6));
+    const thin = (p: Panel) => {
+      const c = getCatalogItem(p.materialId), face = p.size[third[1]], now = p.size[row[1]];
+      const b = c?.category === "lumber" ? boards.filter((x) => Math.abs(x.dims.width! - face) < 0.05 && x.dims.height! < now - 1e-6 && x.dims.length === c.dims.length).sort((x, y) => x.dims.height! - y.dims.height!)[0] : undefined;
+      return b?.dims.height ?? now;
+    };
+    const side = (s: "L" | "R") => Math.min(...bounds.filter((p) => (p.position[row[0]] + p.size[row[1]] / 2 < mid) === (s === "L")).map(thin));
+    const frame = side("L") + side("R");
+    if (!Number.isFinite(frame)) continue;
+    out = { axis: row[1], frame, floor: thinnest + ROW_CLEAR, thinnest, one: arr.family.toLowerCase(), rider: riders.length ? riders[0].name.replace(/ \d+$/, "").toLowerCase() : undefined, full: ref.count };
+    break;
+  }
+  rowNeedCache.set(key, out);
+  return out;
+}
+
+function fitRodArrays(panels: Panel[], count: number, notes: string[], ask: RowAsk): RowFit {
+  const fam = (p: Panel) => p.name.replace(/ \d+$/, "");
+  const boards = FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board" && c.dims.width && c.dims.height);
+  let card: string | undefined;
+  for (const arr of rodArrays(panels)) {
+    if (arr.L == null || arr.R == null) continue;
+    const { row, third } = arr;
+    const riders = arr.strung.flat();
+    const rodDia = Math.min(arr.rods[0].size[row[1]], arr.rods[0].size[third[1]]);
+    const dia = (b: Panel) => Math.min(b.size[row[1]], b.size[third[1]]);
+    const d0 = riders.length ? Math.min(...riders.map(dia)) : rodDia;
+    // The thinnest legal rider: a whole dowel that takes the rod's running bore with a 1/16" wall each side.
+    const thinnest = riders.length ? riderFloor(rodDia) : rodDia;
+    const thin = riders.some((b) => dia(b) < thinnest - 1e-6);
+    if (!thin && !rodArrayFailures({ panels }).some((m) => m.startsWith(arr.family) || arr.rods.some((r) => m.startsWith(`${r.name} `)))) continue;
+    const floor = thinnest + ROW_CLEAR;
+    const want = arr.rods.length;
+    const side = (p: Panel) => (p.position[row[0]] + p.size[row[1]] / 2 < (arr.L! + arr.R!) / 2 ? "L" : "R");
+    // The parts that bound the row: the nearest on each side, sharing its length.
+    const bounds = panels.filter((p) => !arr.rods.includes(p) && !riders.includes(p) && (Math.abs(p.position[row[0]] + p.size[row[1]] - arr.L!) < 1e-6 || Math.abs(p.position[row[0]] - arr.R!) < 1e-6));
+    let L = arr.L, R = arr.R;
+    if ((R - L) / want < floor - 1e-6) {
+      for (const p of bounds) {
+        const c = getCatalogItem(p.materialId);
+        if (c?.category !== "lumber" || !c.dims.width || !c.dims.height) continue;
+        const face = p.size[third[1]], now = p.size[row[1]];
+        // Same face across the row's depth; thinner across the row only.
+        const board = boards.filter((b) => Math.abs(b.dims.width! - face) < 0.05 && b.dims.height! < now - 1e-6 && b.dims.length === c.dims.length).sort((x, y) => x.dims.height! - y.dims.height!)[0];
+        if (!board) continue;
+        const t = board.dims.height!;
+        if (side(p) === "L") { p.size = { ...p.size, [row[1]]: t }; L = Math.min(L, p.position[row[0]] + t); }
+        else { p.position = { ...p.position, [row[0]]: p.position[row[0]] + now - t }; p.size = { ...p.size, [row[1]]: t }; }
+        p.materialId = board.id;
+      }
+    }
+    // The parts bounding a refitted row stand flush with the frame's outer faces (a post set in from the rail's
+    // end wastes the row's room), so the size the row needs is exactly its bounds plus its columns.
+    const others = panels.filter((p) => !arr.rods.includes(p) && !riders.includes(p));
+    const e0 = Math.min(...others.map((p) => p.position[row[0]])), e1 = Math.max(...others.map((p) => p.position[row[0]] + p.size[row[1]]));
+    for (const p of bounds) {
+      if (side(p) === "L" && p.position[row[0]] - e0 < 1) p.position = { ...p.position, [row[0]]: e0 };
+      if (side(p) === "R" && e1 - (p.position[row[0]] + p.size[row[1]]) < 1) p.position = { ...p.position, [row[0]]: e1 - p.size[row[1]] };
+    }
+    {
+      const ls = bounds.filter((p) => side(p) === "L"), rs = bounds.filter((p) => side(p) === "R");
+      if (ls.length) L = Math.max(...ls.map((p) => p.position[row[0]] + p.size[row[1]]));
+      if (rs.length) R = Math.min(...rs.map((p) => p.position[row[0]]));
+    }
+    const span = R - L;
+    const fits = Math.min(want, Math.floor((span + 1e-6) / floor));
+    const counted = arr.rods.length === count;
+    if (fits < want) {
+      const axis = row[1], word = AXIS_WORD[axis];
+      const outer = bounds.length ? Math.max(...bounds.map((p) => p.position[row[0]] + p.size[row[1]])) - Math.min(...bounds.map((p) => p.position[row[0]])) : span;
+      const frame = outer - span;
+      const need = (k: number) => up16(frame + k * floor);
+      const w: RowWords = { one: arr.family.toLowerCase(), title: ask.title.toLowerCase(), word, each: eachWords(floor, thinnest, riders.length ? fam(riders[0]).toLowerCase() : undefined), need };
+      const typedHere = ask.typedSize[axis];
+      const keep = ask.typed && counted;
+      // A typed count, or an untyped side: the row grows to hold the full count when the one widen rule allows it.
+      if ((keep || typedHere == null) && mayWiden(need(want), typedHere, ask.strict)) return { count, widen: { axis, to: need(want) } };
+      if (keep) return { count: 0, refuse: refuseTyped(w, want, fits, outer) };
+      if (!fits) return { count: 0, refuse: refuseNone(w, want, outer) };
+      card = `Only ${rodsOf(w, fits)} fit${fits === 1 ? "s" : ""} in ${inchFrac(outer)}" ${word} (${w.each}). A full ${want}-${w.one} ${w.title} needs ${inchFrac(need(want))}".`;
+      notes.push(card);
+    }
+    const n = fits;
+    const pitch = span / n, room = pitch - ROW_CLEAR;
+    // A rider keeps its own size when it fits and is legal; otherwise it is the floor: the thinnest whole dowel that takes the rod's bore.
+    const d = !riders.length ? d0 : d0 >= thinnest - 1e-6 && d0 <= room + 1e-6 ? d0 : thinnest;
+    // Riders per rod: as many as the row carried per rod, shared out in order along the rod.
+    const per = Math.round(riders.length / want);
+    const byLong = [...riders].sort((a, b) => a.position[arr.long[0]] - b.position[arr.long[0]]);
+    const levels = [...new Set(byLong.map((b) => Math.round(b.position[arr.long[0]] * 1000) / 1000))].sort((a, b) => a - b);
+    const kept = arr.rods.slice(0, n);
+    const ridersKept = riders.slice(0, per * n);
+    const dropped = new Set<Panel>([...arr.rods.slice(n), ...riders.slice(per * n)]);
+    kept.forEach((r, i) => {
+      const c = L + pitch * (i + 0.5);
+      r.position = { ...r.position, [row[0]]: c - r.size[row[1]] / 2 };
+      ridersKept.slice(i * per, (i + 1) * per).forEach((b, k) => {
+        const ct = r.position[third[0]] + r.size[third[1]] / 2;
+        const y = levels.length >= per ? levels[k] : b.position[arr.long[0]];
+        b.position = { ...b.position, [row[0]]: c - d / 2, [third[0]]: ct - d / 2, [arr.long[0]]: y };
+        const d0b = dia(b);
+        b.size = { ...b.size, [row[1]]: d, [third[1]]: d };
+        // A round outline follows its new diameter; its bore stays the rod's.
+        if (b.polygon && Math.abs(d - d0b) > 1e-6) {
+          const r0 = d / 2;
+          b.polygon = { ...b.polygon, pts: b.polygon.pts.map((_, k2, all) => [r0 + r0 * Math.cos((k2 / all.length) * 2 * Math.PI), r0 + r0 * Math.sin((k2 / all.length) * 2 * Math.PI)] as [number, number]), ...(b.polygon.holes ? { holes: b.polygon.holes.map((h) => ({ ...h, x: r0, y: r0 })) } : {}) };
+          if (b.cutNote) b.cutNote = b.cutNote.replace(fmtIn(d0b), fmtIn(d));
+        }
+      });
+    });
+    if (dropped.size) {
+      const fams = new Set([...dropped].map(fam));
+      panels.splice(0, panels.length, ...panels.filter((p) => !dropped.has(p)));
+      // Numbering stays whole: rod 1..n, bead 1..k.
+      for (const f of fams) panels.filter((p) => fam(p) === f).forEach((p, i) => { p.name = `${f} ${i + 1}`; });
+    }
+    if (counted) count = n;
+  }
+  return { count, ...(card ? { card } : {}) };
 }
 
 export type RecipeBuild = { project: YardProject; count: number; size: Size };
@@ -882,15 +1336,90 @@ function noteStock(recipe: Recipe): Recipe {
   }) };
 }
 
+/**
+ * Front sections on a recipe build (class F17 doors-drawers): a requested drawer count always builds. A recipe with no
+ * drawer of its own stands on a drawer case that holds every drawer asked for, inside the build's own footprint and
+ * stock; a typed height is the whole build's, so the body above takes what the case leaves.
+ */
 export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
+  const lower = prompt.toLowerCase();
+  const count = recipe0.parts.some((q) => /\bdrawer/i.test(`${q.role} ${q.name}`)) ? 0 : askedDrawerCount(lower);
+  if (!count) return buildRecipeBody(recipe0, prompt, materialOverride, sizeOverride);
+  const typedH = sizeOverride?.height ?? typedSize(prompt, recipe0).height;
+  const r8 = (n: number) => Math.round(n * 8) / 8;
+  const rowIn = Math.max(1.5, Math.min(SHARED_DRAWER_ROW_IN, recipe0.size.height * 0.5));
+  const secH0 = r8(typedH != null ? Math.min(count * rowIn, typedH * 0.6) : count * rowIn);
+  const built = buildRecipeBody(recipe0, prompt, materialOverride, typedH != null ? ({ ...(sizeOverride ?? {}), height: typedH - secH0 } as Size) : sizeOverride);
+  const p = built.project;
+  const body = p.panels;
+  // A body whose parts stop short of the height it was given (kept thicknesses, a recipe that doesn't fill its box)
+  // leaves the rest to the case: the whole build stands at the typed height, never short of it (row 296: 'jewelry box
+  // 12 wide 8 tall 8 deep with 3 drawers' stood 7 11/16" under a typed 8").
+  const bodyTop = Math.max(0, ...body.map((q) => q.position.y + q.size.height));
+  const secH = typedH != null && body.length && bodyTop < typedH - secH0 - 1 / 32 ? typedH - bodyTop : secH0;
+  const minX = Math.min(...body.map((q) => q.position.x)), maxX = Math.max(...body.map((q) => q.position.x + q.size.width));
+  const minZ = Math.min(...body.map((q) => q.position.z)), maxZ = Math.max(...body.map((q) => q.position.z + q.size.depth));
+  const W = maxX - minX, D = maxZ - minZ;
+  const mat = p.primaryMaterialId ?? "plywood-3-4-4x8";
+  // The case is cut from the body's own stock at the body's own thickness.
+  const thick = body.filter((q) => q.materialId === mat).map((q) => Math.min(q.size.width, q.size.height, q.size.depth)).sort((a, b) => a - b);
+  const T = r8(thick[Math.floor(thick.length / 2)] ?? 0.75);
+  for (const q of body) q.position = { ...q.position, y: q.position.y + secH };
+  const part = (type: Panel["type"], name: string, x: number, y: number, z: number, w: number, h: number, d: number, m = mat): Panel => ({ id: `recipe-${recipe0.key}-case-${name.toLowerCase().replace(/\W+/g, "-")}`, type, name, position: { x, y, z }, size: { width: w, height: h, depth: d }, materialId: m });
+  const sec = drawerSection({ x0: minX + T, innerW: W - 2 * T, yBottom: T, yTop: secH, depth: D, count, width: W, shares: false });
+  const kase = [
+    part("upright", "Left case side", minX, 0, minZ, T, secH, D),
+    part("upright", "Right case side", maxX - T, 0, minZ, T, secH, D),
+    part("bottom", "Case bottom", minX + T, 0, minZ + 0.25, W - 2 * T, T, D - 0.25),
+    part("back", "Case back", minX + T, 0, minZ, W - 2 * T, secH, 0.25, "plywood-1-4-4x8"),
+    ...sec.panels.map((q) => ({ ...q, position: { ...q.position, z: q.position.z + minZ }, materialId: mat })),
+  ];
+  p.panels = [...kase, ...body];
+  p.overall = { ...p.overall, height: typedH ?? r8(p.overall.height + secH) };
+  p.notes = [...(p.notes ?? []), `${count === 1 ? "One drawer" : `${count} drawers`} in a case under the ${p.name.toLowerCase()}, inside its ${fmtIn(W)}" × ${fmtIn(D)}" footprint. Each drawer is a front, a back, two sides and a 1/4" bottom.`];
+  return built;
+}
+
+/** Nothing is built: the card says why, in plain words, and names what would build (I32). */
+function refusedBuild(recipe: Recipe, prompt: string, size: Size, why: string): RecipeBuild {
+  const title = recipe.title.replace(/^\w/, (c) => c.toUpperCase());
+  return {
+    project: { id: `recipe-${recipe.key}`, name: title, prompt, kind: "custom", overall: size, instances: [], panels: [], primaryMaterialId: recipe.stock ?? "lumber-2x4-8", notes: [why], refused: why, cardNote: why, sizedByBuilder: true,
+      assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" } },
+    count: 0,
+    size,
+  };
+}
+
+function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size, widened?: string): RecipeBuild {
   const recipe = noteStock(hollowVessels(recipe0));
   const stock = stockFor(prompt, recipe, materialOverride);
   const base = (stock.craft && recipe.craftSize) || recipe.size;
-  const count = typedCount(prompt, recipe);
+  const own: Size = base;
+  // Flat parts (a base, a bottom board) whose kept thickness moved their top: the parts that sat on them follow.
+  const seats: { top0: number; top: number; x: [number, number]; z: [number, number] }[] = [];
+  let count = typedCount(prompt, recipe);
   // A counted unit has its own real size: 3 bays are three bays wide, 3 steps three rises tall.
   const unit = recipe.count?.unit ?? {};
   const perUnit = Object.fromEntries((["width", "height", "depth"] as const).filter((a) => unit[a]).map((a) => [a, unit[a]! * count]));
   const size: Size = { ...base, ...perUnit, ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) };
+  if (recipe.count && countWasTyped(prompt, recipe) && count > MAX_TYPED_COUNT) {
+    return refusedBuild(recipe, prompt, size, `${count} ${recipe.count.word} is more than Yard builds in one ${recipe.title.toLowerCase()} (up to ${MAX_TYPED_COUNT}). Nothing is built: ask for ${MAX_TYPED_COUNT} or fewer.`);
+  }
+  // One fit check for every typed size on a counted row's run, fractions included (I36): it is measured against the
+  // row's real minimum before any part is placed, so the build is refused below it and never rounded up past it.
+  if (recipe.count && !widened) {
+    const rn = rowNeed(recipe0, materialOverride);
+    const at = rn ? { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }[rn.axis] : undefined;
+    if (rn && at != null) {
+      const need = (k: number) => up16(rn.frame + k * rn.floor);
+      const fits = Math.max(0, Math.floor((at - rn.frame + 1e-6) / rn.floor));
+      const w: RowWords = { one: rn.one, title: recipe.title.toLowerCase(), word: AXIS_WORD[rn.axis], each: eachWords(rn.floor, rn.thinnest, rn.rider), need };
+      const typed = countWasTyped(prompt, recipe);
+      if (typed && fits < count && !mayWiden(need(count), at, STRICT_SIZE.test(prompt))) return refusedBuild(recipe, prompt, size, refuseTyped(w, count, Math.min(fits, count), at));
+      if (!typed && fits < 1) return refusedBuild(recipe, prompt, size, refuseNone(w, rn.full, at));
+    }
+  }
   const panels: Panel[] = [];
   const seen = new Map<string, number>();
   // Repeats fill the clear span between the side members (posts, sides at the width's edges), not the full width.
@@ -924,14 +1453,37 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
         if (sz.height <= sz.depth) [sz.width, sz.height] = [sz.height, Math.min(span, size.height * (1 - py))];
         else [sz.width, sz.depth] = [sz.depth, Math.min(span, size.depth * (1 - pz))];
       }
+      // Stock thickness never scales (I28): a resized build stretches its parts' lengths and widths, but each
+      // part keeps the thickness it has at the recipe's own size — the board or sheet it is cut from.
+      const pos0 = { x: px * size.width, y: py * size.height, z: pz * size.depth };
+      {
+        const K = { x: "width", y: "height", z: "depth" } as const;
+        const frac = { x: pw, y: ph, z: pd };
+        const thin = (["x", "y", "z"] as const).reduce((m, a) => (frac[a] * own[K[a]] < frac[m] * own[K[m]] ? a : m), "x" as "x" | "y" | "z");
+        const t0 = frac[thin] * own[K[thin]];
+        if (part.kind !== "hardware" && Math.abs(sz[K[thin]] - t0) > 1e-6 && t0 < Math.min(...(["x", "y", "z"] as const).filter((a) => a !== thin).map((a) => sz[K[a]]))) {
+          if (thin !== "y") pos0[thin] += (sz[K[thin]] - t0) / 2;
+          else seats.push({ top0: pos0.y + sz.height, top: pos0.y + t0, x: [pos0.x, pos0.x + sz.width], z: [pos0.z, pos0.z + sz.depth] });
+          sz[K[thin]] = t0;
+        }
+      }
       panels.push({
         id: `recipe-${recipe.key}-${panels.length}`,
         type: panelType(part),
         name: fam || reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${base} ${n}` : part.name,
-        position: { x: px * size.width, y: py * size.height, z: pz * size.depth },
+        position: pos0,
         size: sz,
         materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) && !BOUGHT_MECHANISM.test(base) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
       });
+    }
+  }
+  // A part standing on a seat whose top moved keeps its own top and meets the seat's new top (a post on a base).
+  for (const st of seats) {
+    for (const p of panels) {
+      if (Math.abs(p.position.y - st.top0) > 0.05 || p.position.x >= st.x[1] - 0.01 || p.position.x + p.size.width <= st.x[0] + 0.01 || p.position.z >= st.z[1] - 0.01 || p.position.z + p.size.depth <= st.z[0] + 0.01) continue;
+      const d = st.top - st.top0;
+      if (p.size.height <= Math.min(p.size.width, p.size.depth) || p.size.height - d < 1) p.position = { ...p.position, y: p.position.y + d };
+      else { p.position = { ...p.position, y: st.top }; p.size = { ...p.size, height: p.size.height - d }; }
     }
   }
   // A pin is round stock: its two short sides are the dowel's diameter, centred where the recipe put it.
@@ -946,11 +1498,12 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     }
   }
   definingShapes(recipe, panels);
-  const fitted = snapMembers(recipe, panels, stock.member);
+  const fitted = buttBetween(recipe, keepStatedFaces(recipe, snapMembers(recipe, panels, stock.member, { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }), size, { ...typedSize(prompt, recipe), ...(sizeOverride ?? {}) }));
   // Learned hardware with no catalogue item (a clock's hanger) can't be bought or cut: unless it defines the object it is dropped, never a priceless line.
   panels.splice(0, panels.length, ...fitted.filter((p) => !(recipe.learned && p.type === "cleat" && p.materialId === "hardware" && !/hinge|latch|hook|knob|pull|handle|caster|bolt|axle|slide/i.test(p.name) && !(recipe.defining ?? []).includes(recipe.parts.find((q) => q.name === p.name.replace(/ \d+$/, ""))?.role ?? ""))));
   const footed = addFeet(recipe, panels, size, stock.member);
   hingedLids(recipe, panels, size.height);
+  seatHardwareAndNotches(panels);
   crossLegs(recipe, panels);
   steadyPedestal(panels, size);
   if (/\btrestle\b/i.test(`${recipe.title} ${prompt}`)) trestleLegs(recipe, panels, size);
@@ -965,12 +1518,26 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     if (c?.category === "lumber" && p.materialId === stock.member && c.dims.width && c.dims.height && part?.kind === "member" && !stock.typed && thin > c.dims.height + 0.01 && mid > c.dims.width + 0.01) { p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8"; continue; }
     if (c?.formFactor !== "board" || !c.dims.width) continue;
     if (part?.kind !== "panel" || mid <= c.dims.width + 0.05) continue;
-    if (!stock.typed) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
+    // An outdoor part named for boards (a bench seat lid) stays edge-glued boards: interior-style plywood never sits out in the rain.
+    if (!stock.typed && !(recipe.outdoor && part.stock)) p.materialId = getCatalogItem(stock.sheet)?.formFactor === "sheet" ? stock.sheet : "plywood-3-4-4x8";
     else wide.add(`${p.name.replace(/ \d+$/, "")} is ${fmtIn(mid)} wide, more than one ${c.name}: edge-glue boards to width.`);
   }
   roundParts(recipe, panels);
   holeArrays(recipe, panels);
+  proudParts(recipe, panels);
   panels.splice(0, panels.length, ...curvedParts(recipe, panels, size));
+  const rowNotes: string[] = widened ? [widened] : [];
+  const asked = { ...typedSize(prompt, recipe), ...(sizeOverride && !widened ? sizeOverride : {}) };
+  const row = fitRodArrays(panels, count, rowNotes, { typed: countWasTyped(prompt, recipe), strict: STRICT_SIZE.test(prompt), title: recipe.title, typedSize: asked });
+  if (row.refuse) return refusedBuild(recipe, prompt, size, row.refuse);
+  if (row.widen && !widened) {
+    const { axis, to } = row.widen;
+    const was = size[axis];
+    const why = `${count} ${recipe.count?.word ?? "rods"} need ${inchFrac(to)}" ${AXIS_WORD[axis]}; built ${inchFrac(to)}" ${AXIS_WORD[axis]}${typedSize(prompt, recipe)[axis] != null ? `, not the ${inchFrac(was)}" typed` : ""}.`;
+    return buildRecipeBody(recipe0, prompt, materialOverride, { ...(sizeOverride ?? {}), [axis]: to } as Size, why);
+  }
+  count = row.count;
+  const cardNote = widened ?? row.card;
   const pins = panels.filter((p) => /^dowel-/.test(p.materialId) && PIN.test(p.name));
   // Moving parts and their pins ride free: no screws at the joint, and a bored moving part clears its pin by 1/16".
   const movers = new Set((recipe.moving ?? []).map((m) => m.part));
@@ -1005,12 +1572,13 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     const from = a === "y" ? 0 : Math.min(...panels.map((p) => p.position[a]));
     if (typedAxes[k] != null) continue;
     if (from > 0) for (const p of panels) p.position = { ...p.position, [a]: p.position[a] - from };
-    real[k] = Math.ceil((hi - from) * 8 - 1e-6) / 8;
+    // The model's exact extent (not rounded up to 1/8): the header, card and drawings all print this one number.
+    real[k] = Math.round((hi - from) * 1e4) / 1e4;
   }
   // The header height is the body's: pegs standing in their holes (a cribbage board's) don't count.
   const peg = (p: Panel) => p.type === "cleat" && /^dowel-/.test(p.materialId) && /\bpegs?\b/i.test(p.name);
   const bodyTop = Math.max(0, ...panels.filter((p) => !peg(p)).map((p) => p.position.y + p.size.height));
-  if (typedAxes.height == null && panels.some(peg) && bodyTop > 0 && bodyTop < real.height - 0.01 && panels.every((p) => !peg(p) || p.position.y <= bodyTop + 0.01)) real.height = Math.ceil(bodyTop * 8 - 1e-6) / 8;
+  if (typedAxes.height == null && panels.some(peg) && bodyTop > 0 && bodyTop < real.height - 0.01 && panels.every((p) => !peg(p) || p.position.y <= bodyTop + 0.01)) real.height = Math.round(bodyTop * 1e4) / 1e4;
   const moving = (recipe.moving ?? []).map((m) => {
     const pin = pins[0];
     const pinName = pin ? `${pin.name.replace(/ \d+$/, "").toLowerCase()} (${getCatalogItem(pin.materialId)?.name ?? "dowel"})` : null;
@@ -1032,8 +1600,9 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
     panels,
     // The stock it is mostly made of (by cut volume), so a plywood wheel on 2x4 posts never reads "2x4".
     primaryMaterialId: mainStock(panels) ?? stock.member,
-    notes: [...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? ["Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
+    notes: [...rowNotes, ...sized, ...wide, ...(footed ? [`Feet run the full ${fmtIn(size.depth)} depth under each upright so it can't tip.`] : []), `${recipe.title}${counted.length ? `, ${counted.join(", ")}` : ""}: built from its defining parts (${[...new Set(recipe.parts.map((p) => p.role))].join(", ")}).`, ...(recipe.wall ? recipe.notes : recipe.notes.map((n) => n.replace(/\bfootprint\b/gi, "base size"))), ...moving, ...(stock.craft ? ["Glue the joints."] : []), ...(stock.refused ? [stock.refused] : []), ...(recipe.outdoor ? [CONTACT.test(`${prompt} ${recipe.title}`) ? `Outdoors: untreated cedar (it touches food, skin or a nest) and exterior screws.` : "Outdoors: cedar or pressure-treated stock and exterior screws."] : [])],
     sizedByBuilder: true,
+    ...(cardNote ? { cardNote } : {}),
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
   return { project, count, size };
@@ -1244,6 +1813,8 @@ export function needsRecipeLookup(project: YardProject, prompt: string, engineOw
  * ever passed and the recipe bot never proposed one.
  */
 export const UNAVAILABLE = "unavailable";
+/** What the bench says when no lookup can run: never an error, always a way forward. */
+export const TRY_SAMPLE = "Yard can't look this one up right now. Try a sample from Ideas: built-in shapes and saved recipes always build.";
 export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, firstMs = 145_000, totalMs = 155_000): Lookup {
   let start = 0;
   return async (_prompt, feedback) => {
@@ -1255,7 +1826,8 @@ export function timedLookup(call: (feedback?: string[]) => Promise<{ ok: boolean
     let id: ReturnType<typeof setTimeout> | undefined;
     const timer = new Promise<never>((_, reject) => (id = setTimeout(() => reject(new Error("timeout")), ms)));
     const r = await Promise.race([call(feedback), timer]).finally(() => clearTimeout(id));
-    if (!r.ok) throw new Error(/not available/i.test(r.error ?? "") ? UNAVAILABLE : r.error ?? "lookup failed");
+    // No key, the visitor's daily cap, or an xAI error: no second call; the page offers samples instead.
+    if (!r.ok) throw new Error(/not available|free AI lookups|xAI API error/i.test(r.error ?? "") ? UNAVAILABLE : r.error ?? "lookup failed");
     return r.recipeJson ? JSON.parse(r.recipeJson) : null;
   };
 }

@@ -4,6 +4,7 @@
 import { footprintFeet } from "./honesty";
 import { featureBay } from "./heldObjects";
 import { inchFrac } from "./inchText";
+import { asksDoors } from "./frontSections";
 import { heldCollection } from "./heldObjects";
 import { readHookRows } from "./face";
 import type { FittedProgram, FittedSpec, FittedUnit, PocketWalls } from "./types";
@@ -40,7 +41,9 @@ import { detectMaterial, isWireStock } from "./promptHelpers";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
+import { clothesRodDefaultDepth } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
+import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
   P, PLY, pick, cabinetStem, tableClassHeight, isIroningCabinet, isMedicineCabinet, isSpiceRack,
@@ -48,7 +51,7 @@ import {
   spokenDrawerCount, typedDoorCount, spokenTierCount, spokenShelfCount, spokenArmCount,
   spokenBracketCount, spokenBinCount, spokenRungCount, spokenBottleCount, typedHeightInches,
   spokenSlotCount, spokenShelfThickness, spokenCubbyCount, shallowWallCabinetFace,
-  isKidsBookcase, KIDS_BOOKCASE_H, OPENING_SPACE, formChangeNotes, snapToBoardFace, boardFaceNote,
+  isKidsBookcase, KIDS_BOOKCASE_H, OPENING_SPACE, formChangeNotes, snapToBoardFace, boardFaceNote, SHELF_COUNT_DIGITS,
 } from "./fittedShared";
 import { inch16 } from "./fittedWine";
 
@@ -807,7 +810,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       ? Math.min(8, Math.max(6, Number.isFinite(depth) ? depth : 8))
                     : /floating/.test(lower) && /shel/.test(lower)
                       ? 3.25
-                    : /shelf/.test(lower) && !/bookcase|bookshelf/.test(lower)
+                    : /shelf/.test(lower) && !/bookcase|bookshelf|\bwardrobe\b|\barmoire\b/.test(lower)
                       ? 18
                     : isStorageHutch(lower)
                       ? 72
@@ -887,9 +890,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
                           ? 12
                         : house?.family === "hung-cabinet"
                           ? 12
-                        : /shelf|rack/.test(lower)
+                        : /shelf|rack/.test(lower) && !/\b(?:wardrobe|armoire)\b/.test(lower)
                           ? 12
-                          : 16);
+                          : (clothesRodDefaultDepth(lower, program) ?? 16));
     if (trip.d == null) {
       const board = detectMaterial(prompt);
       const face = snapToBoardFace(depth, board);
@@ -981,8 +984,8 @@ export function parseBrief(prompt: string): FittedSpec | null {
         ? height
         : undefined;
   // Bare workbench / potting bench is a standing shop top — never invent desk knee clearance.
-  // Door-carcase vanity: typed doors → no invent knee (pocket early-return already set knee).
-  // Drawers+doors vanity also skips knee unless knee/sit/chair/open is typed.
+  // A sink base is only a bath, sink, or plumbing cue (or a bare vanity at a typed 30–36 counter).
+  const makeupVanity = program === "vanity" && !isSinkVanityPrompt(lower, typedAxes.height ? height : undefined);
   const vanityDoorsSaid =
     program === "vanity" && /door/.test(lower) && !isDoorPortal(lower);
   // A typed feature bay ("pocket for the trash can") sizes the open bay to the object it holds.
@@ -1001,9 +1004,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
           /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*knee/i,
           pick(t, /knee[^\d]{0,24}(\d+(?:\.\d+)?)/i, 24),
         )
-      : bayObject && (program === "vanity" || program === "desk")
+      : bayObject && (program === "desk" || makeupVanity)
         ? Math.max(bayObject.width + 2, 8.5)
-        : program === "desk" || (program === "vanity" && !vanityDoorsSaid)
+        : program === "desk" || (makeupVanity && !vanityDoorsSaid)
           ? Math.round(Math.min(24, Math.max(18, width * 0.4)) * 16) / 16
           : undefined;
   // "Kitchen upper cabinet" is a hung box — not a vanity upperStart at 54".
@@ -1025,7 +1028,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
     ? Math.max(1, Math.min(12, spokenShelves))
     : pick(
     t,
-    /(\d+)\s*shel(?:f|ves|ving)/i,
+    SHELF_COUNT_DIGITS,
     program === "bookcase"
       ? 5
       : program === "closet"
@@ -1117,7 +1120,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Spoken no/zero/without/drawerless drawers — never silent-collapse to banks (desk/nightstand/dresser/vanity).
   // What the named thing normally has (a dresser has drawers), before any typed "no drawers".
   const drawersByNoun =
-      (program === "vanity" && !vanityDoorsSaid) ||
+      (makeupVanity && !vanityDoorsSaid) ||
       (program === "desk" && !isStandingShopTop(lower)) ||
       (isStandingShopTop(lower) && /drawer/.test(lower)) ||
       (/nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) || /dresser|file\s*cabinet/.test(lower) || (/\bfiling\b/.test(lower) && !isFilingShelf(lower)) || (/\bchest\b/.test(lower) && !isHingedLidChest(lower))) && !isBedsideShelf(lower) && !isStorageHutch(lower);
@@ -1134,9 +1137,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
     program === "pantry" ||
     program === "wardrobe" ||
     (program === "vanity" && height >= 54) ||
+    (program === "vanity" && !makeupVanity && !(/\bdrawers?\b/.test(lower) && !/\bdoors?\b/.test(lower))) ||
     isStorageHutch(lower);
   const doors = doorsByName || !!house?.affordances.includes("door") || (/door/.test(lower) && !isDoorPortal(lower));
-  const doorsFinal =
+  // A family's no-doors default (a cart, an island, a printer stand) never beats doors the person typed: the head noun
+  // picks the family and the typed doors become its front. Only a body with no front to hang them on (a bed frame,
+  // open or slotted shelving) keeps none, and the feature-honesty note says so.
+  const typedDoors = asksDoors(lower) && !isDoorPortal(lower) && !isBunkBed(lower) && !isLoftBed(lower) && !isDaybed(lower) && !isSlotRack(lower) && !isOpenKitchenShelving(lower) && !isFilingShelf(lower);
+  const doorsFinal = typedDoors ? true :
     isNoDoorsPrompt(lower) ||
     isBunkBed(lower) ||
     isLoftBed(lower) ||
@@ -1152,10 +1160,9 @@ export function parseBrief(prompt: string): FittedSpec | null {
     (program === "media" && !/door/.test(lower))
       ? false
       : doors;
-  // Door-carcase vanity: never invent a mirror when doors were typed (pocket early-return sets mirror).
+  // A mirror only when one was asked for. A medicine cabinet's door is that ask. A desk vanity does not invent one.
   const mirror =
-    /mirror/.test(lower) ||
-    (program === "vanity" && !vanityDoorsSaid) ||
+    (/mirror/.test(lower) && !/\bno\s+mirror\b/.test(lower)) ||
     isMedicineCabinet(lower);
 
   const walls: PocketWalls | undefined = /angle|trapezoid|centerline|back wall/.test(lower)

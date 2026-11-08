@@ -1,3 +1,5 @@
+import { UNIT_SIZES } from "./unitSizes";
+import { checkParts } from "./partCeiling";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
@@ -601,6 +603,8 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/2\s*[x×]\s*4|2x4/, "lumber-2x4-8"],
     [/2\s*[x×]\s*2|2x2/, "lumber-2x2-8"],
     [/\bcloset rods?\b|\bcloset poles?\b/, "closet-rod"],
+    // Curated single-item sizes: every dowel diameter, paper clips, cotton swabs, washers, beads.
+    ...UNIT_SIZES.filter((u) => u.key.startsWith("dowel-") || ["paper-clip", "cotton-swab", "washer-8", "pony-bead"].includes(u.key)).map((u) => [u.match, u.catalogId] as [RegExp, string]),
     [/(?:1\s*\/\s*2|half(?:\s|-)?inch)\s*(?:"|in(?:ch(?:es)?)?\.?)?\s*(?:hardwood\s+)?dowels?/, "dowel-1-2-36"],
     [/(?:1\s*1\s*\/\s*4|1-1\/4|1\s*1\/4)\s*(?:inch|")?\s*dowels?/, "dowel-1-1-4-36"],
     [/thick dowel|1\s*(?:inch|")\s*dowel/, "dowel-1-36"],
@@ -619,7 +623,7 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
 
 /** Spoken craft-stock test for follow-on / explicit-stock paths (plural-safe). */
 export function spokenWeekendCraftStock(lower: string): boolean {
-  return /popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?|legos?/.test(
+  return /paper\s*-?\s*clips?|paperclips?|cotton\s*swabs?|q-?\s*tips?|pony\s*beads?|popsicle|craft sticks?|1\s*[x×]\s*[2346]|2\s*[x×]\s*[46]|pvc|cardboard|plywood|straws?|toothpicks?|dowels?|\bskewers?\b|bamboo sticks?|kebab sticks?|legos?/.test(
     lower,
   );
 }
@@ -732,14 +736,12 @@ export function toProject(
   historic = false,
   extra: Pick<YardProject, "supportOffer" | "buildStats" | "joinMethod"> & { name?: string } = {},
 ): YardProject {
-  let list = instances;
-  if (list.length > 8000) {
-    list = list.slice(0, 8000);
-    notes = [
-      ...notes,
-      `Stopped at 8,000 pieces — the bench will hitch past that. This is a renderer limit, not a materials cap. Use longer stock or a shorter span.`,
-    ];
-  } else if (list.length > 1500) {
+  const list = instances;
+  // Over the part ceiling the build is refused (partCeiling.ts), never cut short.
+  const pts = () => list.flatMap((i) => (i.to && i.from ? [i.from, i.to] : [i.position]));
+  const span = (k: "x" | "y" | "z") => { let lo = Infinity, hi = -Infinity; for (const q of pts()) { lo = Math.min(lo, q[k]); hi = Math.max(hi, q[k]); } return hi - lo; };
+  checkParts(list.length, () => Math.max(0, ...pts().map((q) => q.y)), () => ({ width: span("x"), height: span("y"), depth: span("z") }));
+  if (list.length > 1500) {
     notes = [...notes, `${list.length} pieces. Orbit may hitch on a phone — that is expected, not a cap.`];
   }
   const xs: number[] = [];
