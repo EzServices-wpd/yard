@@ -9534,6 +9534,7 @@
    "feet": true,
    "outdoor": true,
    "wall": false,
+   "stock": "pvc-3-4-sch40",
    "defining": [
     "post",
     "rail"
