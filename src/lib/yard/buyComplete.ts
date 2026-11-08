@@ -10,11 +10,13 @@ import { isUnitItem } from "./unitItems";
  * - a tabletop or hung build is never told it "sits on the floor": it is set out on a work surface and checked
  *   flat (or checked hanging level), and its heights read from its bottom.
  */
-import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
+import type { AssemblyStep, BomLine, BuildPlan, CatalogItem, YardProject } from "./types";
 import { decorateBom, estimateOffers } from "./listings";
 import { hungBuild, PT_LUMBER } from "./outdoor";
 import { getCatalogItem } from "./catalog";
 import { CEDAR, EXTERIOR_PLY } from "./checkedStock";
+import { bomLinesFromForge, buildForgeBom } from "./bom";
+import { binderBom, binderKind, slipInstancesFromPanels } from "./joints";
 
 const hasLink = (b: BomLine) => (b.offers ?? []).some((o) => !!o.href);
 
@@ -45,11 +47,48 @@ function sheetsFor(plan: BuildPlan, material: string, sheetArea: number): number
   return Math.max(1, Math.ceil((area * 1.1) / Math.max(1, sheetArea)));
 }
 
+/**
+ * Length-sold stock with no Buy row of its own. Pipe and tube are the gap: sticks and dowels
+ * already have a pack line, and a second row here would buy them twice. Boards stay on the lumber packer.
+ */
+const LENGTH_SOLD = new Set(["pipe", "tube"]);
+
+function cutCatalogId(plan: BuildPlan, material: string): string {
+  const id = (plan.cutList.find((c) => c.material === material && !c.whole)?.id ?? "").split("|")[0];
+  return getCatalogItem(id) ? id : "";
+}
+
+/** Whole sticks for a cut list of length-sold stock, plus one slip fitting per joint when the stock cements. */
+function lengthSoldBuy(project: YardProject, plan: BuildPlan, item: CatalogItem, material: string): BomLine[] {
+  const cuts = plan.cutList.filter((c) => c.material === material && !c.whole);
+  const instances = cuts.flatMap((c) =>
+    Array.from({ length: c.quantity }, (_, k) => ({
+      id: `${c.id}-${k}`,
+      catalogId: item.id,
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: Math.max(c.lengthIn, c.widthIn, c.thicknessIn),
+    })),
+  );
+  const stock = bomLinesFromForge(buildForgeBom(instances, item.id));
+  if (binderKind(item) !== "slip") return stock;
+  const talk = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  const fittings = binderBom(item, slipInstancesFromPanels(project.panels, item.id)).filter(
+    (b) => b.catalogId !== "pvc-cement" || /solvent|cement/i.test(talk),
+  );
+  return [...stock, ...fittings];
+}
+
 /** The Buy pass: cut stock bought, every row linked. Prices only come from listings or the row's own estimate. */
 export function buyComplete(project: YardProject, plan: BuildPlan): BuildPlan {
   let bom = [...plan.bom];
   // A bought item (a bracelet, a zip tie) keeps its own Buy; its cord is not sheet stock.
   for (const m of isUnitItem(project) ? [] : cutStockOffBuy(plan)) {
+    const item = getCatalogItem(cutCatalogId(plan, m));
+    if (item && LENGTH_SOLD.has(item.formFactor) && item.canCut !== false) {
+      bom.push(...decorateBom(lengthSoldBuy(project, plan, item, m)).map((b) => (b.estimatedCost == null ? b : { ...b, estimatedCost: Math.round(b.estimatedCost * 100) / 100 })));
+      continue;
+    }
     const [row] = decorateBom([{ name: m, quantity: 1, unit: "sheet", searchQuery: m }]);
     // Sheet goods listed by size: count sheets by the pieces' area (a 9" × 12" acrylic sheet holds two feeder panes).
     const area = /acrylic|plexiglass/i.test(m) ? 9 * 12 : 0;

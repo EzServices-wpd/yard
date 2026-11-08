@@ -5,8 +5,8 @@
 import { faceScrewInches } from "./shopJoin";
 import { inchFrac } from "./inchText";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
-import { screwTalk, stickJoints } from "./modelJoints";
-import type { BomLine, CatalogItem, JoinMethod, Vec3, YardInstance } from "./types";
+import { panelJoints, screwTalk, stickJoints } from "./modelJoints";
+import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
@@ -113,6 +113,127 @@ export function classifyJoint(node: JointNode): JointClass {
   if (dot < -0.82) return "coupling";
   if (dot < -0.35) return "elbow45";
   return "elbow90";
+}
+
+function longAxis(p: Panel): "x" | "y" | "z" {
+  const ax = [
+    ["x", p.size.width],
+    ["y", p.size.height],
+    ["z", p.size.depth],
+  ] as const;
+  return ax.slice().sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function contactPoint(a: Panel, b: Panel): Vec3 {
+  const box = (p: Panel) => ({
+    min: [p.position.x, p.position.y, p.position.z],
+    max: [p.position.x + p.size.width, p.position.y + p.size.height, p.position.z + p.size.depth],
+  });
+  const A = box(a);
+  const B = box(b);
+  const pt = [0, 1, 2].map((k) => {
+    const lo = Math.max(A.min[k], B.min[k]);
+    const hi = Math.min(A.max[k], B.max[k]);
+    if (hi + 1e-6 >= lo) return (lo + hi) / 2;
+    return A.max[k] < B.min[k] ? (A.max[k] + B.min[k]) / 2 : (B.max[k] + A.min[k]) / 2;
+  });
+  return { x: pt[0], y: pt[1], z: pt[2] };
+}
+
+/**
+ * Recipe members are panels, not welded sticks. Each place two of them meet is one slip joint
+ * (a corner where a post meets two rails is one tee, not a fitting per part). Contacts within
+ * two cross-sections are the same fitting; meetings farther apart stay separate.
+ * ponytail: box members only — a curved pipe still uses its box until a recipe draws a centerline.
+ */
+export function slipInstancesFromPanels(panels: Panel[], catalogId: string): YardInstance[] {
+  const mine = panels.filter((p) => p.materialId === catalogId);
+  if (mine.length < 2) return [];
+  const byId = new Map(mine.map((p) => [p.id, p]));
+  const pairs = panelJoints(mine).filter((j) => byId.has(j.a) && byId.has(j.b));
+  if (!pairs.length) return [];
+  const section = Math.max(
+    ...mine.map((p) => {
+      const s = [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b);
+      return s[1];
+    }),
+    0.5,
+  );
+  const radius = Math.max(1.25, section * 2);
+  const dist = (u: Vec3, v: Vec3) => Math.hypot(u.x - v.x, u.y - v.y, u.z - v.z);
+  type Hit = Vec3 & { ids: string[] };
+  const hits: Hit[] = pairs.map((j) => ({ ...contactPoint(byId.get(j.a)!, byId.get(j.b)!), ids: [j.a, j.b] }));
+  const seen = hits.map(() => -1);
+  const clusters: { point: Vec3; ids: Set<string> }[] = [];
+  for (let i = 0; i < hits.length; i++) {
+    if (seen[i] >= 0) continue;
+    const stack = [i];
+    seen[i] = clusters.length;
+    const group: Hit[] = [];
+    while (stack.length) {
+      const k = stack.pop()!;
+      group.push(hits[k]);
+      for (let j = 0; j < hits.length; j++) {
+        if (seen[j] < 0 && dist(hits[k], hits[j]) <= radius) {
+          seen[j] = clusters.length;
+          stack.push(j);
+        }
+      }
+    }
+    const ids = new Set(group.flatMap((g) => g.ids));
+    if (ids.size < 2) continue;
+    clusters.push({
+      point: {
+        x: group.reduce((s, g) => s + g.x, 0) / group.length,
+        y: group.reduce((s, g) => s + g.y, 0) / group.length,
+        z: group.reduce((s, g) => s + g.z, 0) / group.length,
+      },
+      ids,
+    });
+  }
+  const out: YardInstance[] = [];
+  for (const p of mine) {
+    const axis = longAxis(p);
+    const pts: Vec3[] = [];
+    for (const q of clusters.filter((c) => c.ids.has(p.id)).map((c) => c.point).sort((u, v) => u[axis] - v[axis])) {
+      if (!pts.some((u) => dist(u, q) < 0.05)) pts.push(q);
+    }
+    // One meeting: the other end is free, so the shared point still classifies (an elbow, not a cap).
+    if (pts.length === 1) {
+      const mid = {
+        x: p.position.x + p.size.width / 2,
+        y: p.position.y + p.size.height / 2,
+        z: p.position.z + p.size.depth / 2,
+      };
+      const len = axis === "x" ? p.size.width : axis === "y" ? p.size.height : p.size.depth;
+      const ends = [mid[axis] - len / 2, mid[axis] + len / 2].map((n) => ({ ...mid, [axis]: n }));
+      const far = dist(ends[0], pts[0]) >= dist(ends[1], pts[0]) ? ends[0] : ends[1];
+      if (dist(pts[0], far) >= 0.5) {
+        out.push({
+          id: `${p.id}~0`,
+          catalogId,
+          position: pts[0],
+          rotation: { x: 0, y: 0, z: 0 },
+          from: pts[0],
+          to: far,
+        });
+      }
+      continue;
+    }
+    if (pts.length < 2) continue;
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (dist(pts[i], pts[i + 1]) < 0.5) continue;
+      out.push({
+        id: `${p.id}~${i}`,
+        catalogId,
+        position: pts[i],
+        rotation: { x: 0, y: 0, z: 0 },
+        from: pts[i],
+        to: pts[i + 1],
+      });
+    }
+  }
+  return out;
 }
 
 export function countSlipFittings(instances: YardInstance[], radius: number) {
