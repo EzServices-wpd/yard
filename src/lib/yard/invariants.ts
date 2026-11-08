@@ -53,7 +53,8 @@ import { cutListIntro, pdfCutListIntro } from "./wholeItems";
 import { namedStockDisplayName } from "./weekendStockHonesty";
 import { isNamedLumberSpeciesId } from "./namedLumberSpecies";
 import { applyShopJoin, listedPrice } from "./shopJoin";
-import { typedMeasures } from "./measureText";
+import { typedMeasures, type TypedMeasures } from "./measureText";
+import { slopeTypedEndHeights } from "./oddShapes";
 import { hangingClearanceIssues } from "./hangingClearance";
 import { boundPrompt } from "./promptLimits";
 import { hiddenOverlaps, rotorPlayFailures } from "./solids";
@@ -139,11 +140,22 @@ function i7(p: YardProject): Violation[] {
   return spanFindings(p).map((f) => v("I7", `${f.name} spans ${Math.round(f.span)}" (limit ${Math.round(f.allow)}")`));
 }
 
+/**
+ * A slope's overall height is the taller typed end. The first "N tall" can be the short end
+ * ("20 tall on the left 54 tall on the right" is 54 tall), so I8 and I35 compare against that taller end.
+ */
+function checkedMeasures(p: YardProject, prompt: string): TypedMeasures {
+  const typed = typedMeasures(prompt);
+  if (p.fitted?.unit?.odd?.kind !== "sloped") return typed;
+  const ends = slopeTypedEndHeights(prompt);
+  return ends.length >= 2 ? { ...typed, height: Math.max(...ends) } : typed;
+}
+
 /** I8: a typed W/H/D lands on the model (±1/8"). */
 function i8(p: YardProject, prompt: string): Violation[] {
   const out: Violation[] = [];
   // One reader for a typed size (I35): "24 1/2 wide" is 24 1/2, never the 2 of its fraction.
-  const { width: W, height: H, depth: D } = typedMeasures(prompt);
+  const { width: W, height: H, depth: D } = checkedMeasures(p, prompt);
   const o = p.overall;
   if (!o || !p.panels.length) return out;
   if (W && W <= 1200 && Math.abs(o.width - W) > 0.125) out.push(v("I8", `typed ${W} wide, model ${o.width}`));
@@ -561,7 +573,7 @@ export function i43(p: YardProject, prompt: string): Violation[] {
  */
 export function i35(p: YardProject, prompt: string): Violation[] {
   if (!prompt || !p.panels.length || p.displayOnly || isUnitItem(p) || boundPrompt(prompt).note) return [];
-  const typed = typedMeasures(prompt);
+  const typed = checkedMeasures(p, prompt);
   const o = p.overall;
   const TOL = 1 / 16 + 1e-6;
   const out: string[] = [];

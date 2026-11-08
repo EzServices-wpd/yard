@@ -4,6 +4,7 @@ import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { headerTitle } from "./pdf";
 import { coverAxesTalk } from "./headerSize";
+import { checkBuild } from "./invariants";
 import type { Panel, YardProject } from "./types";
 
 const notes = (p: { notes?: string[] }) => (p.notes ?? []).join(" ");
@@ -285,5 +286,79 @@ describe("a sloped HUD marks height from the ends that were built", () => {
     }
     assert.deepEqual(slopeEnds(generateFromPrompt("under stairs shelves 72 wide 16 deep 24 on the left 60 on the right")), { left: 24, right: 60 });
     assert.deepEqual(slopeEnds(generateFromPrompt("sloped ceiling shelves 48 wide 12 deep 30 on the left 60 on the right")), { left: 30, right: 60 });
+  });
+});
+
+const heightMisses = (prompt: string) => checkBuild(generateFromPrompt(prompt), prompt).filter((v) => v.id === "I8" || v.id === "I35");
+
+describe("a high or low role with a number names that end, in either order", () => {
+  it("low side N high side M is a slope between those heights, not a flat pair", () => {
+    for (const prompt of [
+      "under stairs shelves 72 wide 16 deep low side 24 high side 48",
+      "under stairs shelves 72 wide 16 deep high side 48 low side 24",
+      "under stairs shelves 72 wide 16 deep low side 24 tall high side 48 tall",
+      "under stairs shelves 72 wide 16 deep the low side 24 the high side 48",
+      "under stairs shelves 72 wide 16 deep short side 24 tall side 48",
+      "under stairs shelves 72 wide 16 deep low end 24 high end 48",
+    ]) {
+      const built = heightMarks(prompt);
+      assert.deepEqual(built.ends, { left: 24, right: 48 }, prompt);
+      assert.equal(built.project.overall.height, 48, prompt);
+      assert.equal(built.spec.typed, true, prompt);
+      assert.equal(built.spec.assumed, false, prompt);
+      assert.doesNotMatch(built.project.notes.join(" "), /0°|24" to 24"|48" to 48"/, prompt);
+      assert.deepEqual(heightMisses(prompt), [], prompt);
+    }
+    const stair = heightMarks("under stairs shelves 72 wide 16 deep low side 24 high side 48");
+    assert.match(stair.project.panels.find((p) => p.name === "Sloped back")?.cutNote ?? "", /24" tall on the left edge, 48" on the right/);
+    assert.match(stair.step, /24" on the left and 48" on the right/);
+    const ceiling = heightMarks("bookshelf under a sloped ceiling 48 wide 12 deep low side 24 high side 48");
+    assert.deepEqual(ceiling.ends, { left: 48, right: 24 });
+    assert.equal(ceiling.project.overall.height, 48);
+    assert.deepEqual(heightMisses("bookshelf under a sloped ceiling 48 wide 12 deep low side 24 high side 48"), []);
+    const plain = heightMarks("shelves low side 24 high side 48");
+    assert.deepEqual(plain.ends, { left: 48, right: 24 });
+    assert.equal(plain.project.overall.height, 48);
+    assert.deepEqual(heightMisses("shelves low side 24 high side 48"), []);
+    const knee = heightMarks("knee wall shelves 48 wide 12 deep low side 20 high side 54");
+    assert.deepEqual(knee.ends, { left: 54, right: 20 });
+    assert.equal(knee.project.overall.height, 54);
+    assert.deepEqual(heightMisses("knee wall shelves 48 wide 12 deep low side 20 high side 54"), []);
+  });
+
+  it("a number before the role names that end too", () => {
+    for (const prompt of [
+      "under stairs shelves 72 wide 16 deep 24 low side 48 high side",
+      "under stairs shelves 72 wide 16 deep 48 high side 24 low side",
+      "under stairs shelves 72 wide 16 deep 24 at the low side 48 at the high side",
+      "under stairs shelves 72 wide 16 deep 24 tall at the low side 48 tall at the high side",
+      "under stairs shelves 72 wide 16 deep 24 tall low side 48 tall high side",
+    ]) {
+      const built = heightMarks(prompt);
+      assert.deepEqual(built.ends, { left: 24, right: 48 }, prompt);
+      assert.equal(built.project.overall.height, 48, prompt);
+      assert.equal(built.spec.typed, true, prompt);
+      assert.equal(built.spec.assumed, false, prompt);
+      assert.deepEqual(heightMisses(prompt), [], prompt);
+    }
+  });
+});
+
+describe("I8 and I35 compare a slope's height to the taller typed end", () => {
+  it("a correct 54 and 20 under-stairs build is not failed because the first tall is the short end", () => {
+    for (const prompt of [
+      "under stairs shelves 72 wide 16 deep 20 tall on the left 54 tall on the right",
+      "under stairs shelves 72 wide 16 deep 54 tall on the right 20 tall on the left",
+      "under stairs shelves 72 wide 16 deep 20 tall at the low side 54 at the high side",
+      "under stairs shelves 72 wide 16 deep 54 at the high side 20 tall at the low side",
+    ]) {
+      const built = heightMarks(prompt);
+      assert.deepEqual([Math.min(built.ends.left, built.ends.right), Math.max(built.ends.left, built.ends.right)], [20, 54], prompt);
+      assert.equal(built.project.overall.height, 54, prompt);
+      assert.equal(built.spec.typed, true, prompt);
+      assert.deepEqual(heightMisses(prompt), [], prompt);
+    }
+    assert.deepEqual(slopeEnds(generateFromPrompt("under stairs shelves 72 wide 16 deep 20 tall on the left 54 tall on the right")), { left: 20, right: 54 });
+    assert.deepEqual(slopeEnds(generateFromPrompt("under stairs shelves 72 wide 16 deep 20 tall at the low side 54 at the high side")), { left: 20, right: 54 });
   });
 });
