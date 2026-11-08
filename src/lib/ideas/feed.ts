@@ -32,6 +32,8 @@ export type IdeaCard = {
   /** The typed size, for search only (never printed). */
   typedSize?: string;
   status: "checked" | "new";
+  /** The log has only ever seen this type as Unverified. A search / See-all row, never a picture card. */
+  unverified?: boolean;
   blurb?: string;
   /** Feature note printed after the size in the text face ("from 2×4", "for a 36 × 48 double-hung"). */
   stock?: string;

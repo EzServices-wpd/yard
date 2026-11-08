@@ -83,9 +83,13 @@ test("Popular groups by build type with a curated title; linen and bookshelf app
 });
 
 test("Popular recently is the live log of the last 7 days; new types are 'new' with their own size", () => {
-  // Chief 10-25 (b): a type the log has only seen Unverified (SNAP's cat tree) shows nowhere; once one build is Trusted it does.
+  // A type the log has only seen Unverified (SNAP's cat tree) is a catalog row, not a Popular recently picture. One Trusted build puts it back in the picture sections.
   const recentOf = (snap: IdeasSnapshot) => liveFeed(snap, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny).sections.find((s) => s.id === "recent");
+  const unvFeed = liveFeed(SNAP, curatedFeed(RECIPES), NOW, TEST_CUTOFF, drawAny);
+  const unvCat = unvFeed.all?.find((c) => c.buildType === "cat-tree");
+  assert.ok(unvCat?.unverified && !unvCat.drawing, "Unverified-only cat tree is a catalog row");
   assert.ok(!recentOf(SNAP)?.cards.some((c) => c.slug === "cat-tree"), "Unverified-only cat tree in Popular recently");
+  assert.ok(!unvFeed.sections.some((s) => s.cards.some((c) => c.buildType === "cat-tree")));
   const recent = recentOf({ ...SNAP, rows: SNAP.rows.map((r) => (r.resultKey === "recipe:cat-tree" ? { ...r, status: "Trusted" as const } : r)) });
   const cat = recent!.cards.find((c) => c.slug === "cat-tree")!;
   assert.equal(cat.status, "new");
