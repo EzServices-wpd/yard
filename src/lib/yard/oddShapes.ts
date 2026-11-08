@@ -335,6 +335,57 @@ function buildCornerDiagonal(lower: string): Build {
 
 // ───────────────────────────── sloped ─────────────────────────────
 
+/**
+ * Typed end heights on a slope. Read in this order, and never let a later phrase steal a side:
+ * "42 tall on the left", then a side that introduces the next height ("left 24 tall"),
+ * then "60 tall right". One leftover "N tall" fills the end nobody named.
+ * A typed end is never replaced by the 12" low-end default.
+ */
+function slopeSideHeights(lower: string): { left: number | null; right: number | null; spans: [number, number][] } {
+  type Hit = { side: "left" | "right"; n: number; start: number; end: number };
+  const hits = (re: RegExp, sideGroup: number, nGroup: number): Hit[] => {
+    const out: Hit[] = [];
+    for (const m of lower.matchAll(re)) {
+      const n = num(m[nGroup]);
+      if (n == null || m.index == null) continue;
+      out.push({ side: m[sideGroup] === "right" ? "right" : "left", n, start: m.index, end: m.index + m[0].length });
+    }
+    return out;
+  };
+  const sideLead = hits(new RegExp(String.raw`\b(left|right)(?:\s+(?:end|side|edge))?\s+${N}${U}\s*(?:tall|high)\b`, "g"), 1, 2);
+  // "42 tall on the left" names the left before a later height can be read as "left 28 tall".
+  const onSide = [
+    ...hits(new RegExp(String.raw`\b${N}${U}\s*(?:tall|high)\s+(?:on|at)\s+(?:the\s+)?(left|right)(?:\s+(?:end|side|edge))?\b`, "g"), 2, 1),
+    ...hits(new RegExp(String.raw`\b${N}${U}\s+(?:on|at)\s+the\s+(left|right)(?:\s+(?:end|side|edge))?\b`, "g"), 2, 1),
+  ];
+  const plainSide = hits(new RegExp(String.raw`\b${N}${U}\s*(?:tall|high)\s+(left|right)(?:\s+(?:end|side|edge))?\b`, "g"), 2, 1);
+  const taken = { left: null as number | null, right: null as number | null };
+  const spans: [number, number][] = [];
+  const overlaps = (h: Hit) => spans.some(([s, e]) => h.start < e && s < h.end);
+  for (const list of [onSide, sideLead, plainSide]) {
+    for (const h of [...list].sort((a, b) => a.start - b.start)) {
+      if (taken[h.side] != null || overlaps(h)) continue;
+      taken[h.side] = h.n;
+      spans.push([h.start, h.end]);
+    }
+  }
+  return { ...taken, spans };
+}
+
+/** A "N tall" that was not itself an end phrase, so it can fill the end nobody named. */
+function unboundTall(lower: string, spans: [number, number][]): number | null {
+  const re = new RegExp(String.raw`\b${N}${U}\s*(?:tall|high|height)\b`, "g");
+  for (const m of lower.matchAll(re)) {
+    if (m.index == null) continue;
+    const start = m.index;
+    const end = start + m[0].length;
+    if (spans.some(([s, e]) => start < e && s < end)) continue;
+    const n = num(m[1]);
+    if (n != null) return n;
+  }
+  return null;
+}
+
 function buildSloped(lower: string): Build {
   const stairs = /\bstair|steps\b/.test(lower);
   const knee = /\bknee\s*-?\s*wall|\battic|\beaves?\b/.test(lower);
@@ -355,7 +406,83 @@ function buildSloped(lower: string): Build {
   const W = W0 ?? (stairs ? 72 : 48);
   const D = D0 ?? (stairs ? 24 : 12);
   const notes: string[] = [];
-  if (hiH == null && loH == null) {
+  const sides = slopeSideHeights(lower);
+  let hL: number | null = sides.left;
+  let hR: number | null = sides.right;
+  let assumedSide: "left" | "right" | null = null;
+  let heightFromEnds = false;
+  const sidePath = hL != null || hR != null;
+  const pitched = pitch ? W * Math.tan((parseFloat(pitch[1]) * Math.PI) / 180) : null;
+  // Explicit "at the high side" drops 30". A plain height on a stair uses the stair pitch. A knee's plain height rises 24".
+  const assumedLow = (high: number, explicitHigh: boolean) => Math.max(12, high - (pitched ?? (explicitHigh ? 30 : stairs ? W * 0.72 : 30)));
+  const assumedHigh = (low: number, explicitLow: boolean) => low + (pitched ?? (explicitLow ? 30 : knee ? 24 : 30));
+  const sameEnd = (a: number, b: number) => Math.abs(a - b) < 1 / 32;
+  if (sidePath) {
+    const loose = unboundTall(lower, sides.spans);
+    if ((hL == null) !== (hR == null) && loose != null) {
+      if (hL == null) hL = loose;
+      else hR = loose;
+    }
+    // One named end: a typed high/low number, then a high/low word on either end (the other end is the opposite
+    // rank), then the kind. Stairs rise to the right. A knee's typed height is the low side. A ceiling's is the high side.
+    if ((hL == null) !== (hR == null)) {
+      const knownSide: "left" | "right" = hL != null ? "left" : "right";
+      const known = (hL ?? hR)!;
+      // A high/low word names that end, and the other end is the opposite rank, before any kind default.
+      const declared = (side: "left" | "right"): "high" | "low" | null => {
+        const high = new RegExp(String.raw`\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${side}\b|\b${side}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high\b`).test(lower);
+        const low = new RegExp(String.raw`\b(?:low|short)\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${side}\b|\b${side}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?(?:low|short)\b`).test(lower);
+        return high ? "high" : low ? "low" : null;
+      };
+      const otherSide: "left" | "right" = knownSide === "left" ? "right" : "left";
+      const knownRole = declared(knownSide) ?? (declared(otherSide) === "high" ? "low" : declared(otherSide) === "low" ? "high" : null);
+      let other = 0;
+      let knownIsHigh = false;
+      let otherTyped = false;
+      if (hiH != null && loH != null && sameEnd(known, hiH)) {
+        other = loH;
+        knownIsHigh = true;
+        otherTyped = true;
+      } else if (hiH != null && loH != null && sameEnd(known, loH)) {
+        other = hiH;
+        knownIsHigh = false;
+        otherTyped = true;
+      } else if (loH != null && !sameEnd(known, loH)) {
+        other = loH;
+        knownIsHigh = true;
+        otherTyped = true;
+      } else if (hiH != null && !sameEnd(known, hiH)) {
+        other = hiH;
+        knownIsHigh = false;
+        otherTyped = true;
+      } else if (loH != null && sameEnd(known, loH)) {
+        knownIsHigh = false;
+        other = assumedHigh(known, true);
+      } else if (hiH != null && sameEnd(known, hiH)) {
+        knownIsHigh = true;
+        other = assumedLow(known, true);
+      } else {
+        knownIsHigh = knownRole === "high" ? true : knownRole === "low" ? false : stairs ? knownSide === "right" : knee ? false : true;
+        other = knownIsHigh ? assumedLow(known, false) : assumedHigh(known, false);
+      }
+      if (hL == null) hL = other;
+      else hR = other;
+      if (!otherTyped) {
+        assumedSide = knownSide === "left" ? "right" : "left";
+        notes.push(
+          knownIsHigh
+            ? `Your ${fmtIn(known)}" is the high side. Assumed ${fmtIn(other)}" at the low side — type "30 at the low side" to lock it.`
+            : knee
+              ? `Your ${fmtIn(known)}" is the knee-wall (low) side. Assumed ${fmtIn(other)}" at the high side — type "60 at the high side" to lock it.`
+              : `Assumed ${fmtIn(other)}" at the high side — type it to lock the slope.`,
+        );
+      }
+    }
+    hiH = Math.max(hL!, hR!);
+    loH = Math.min(hL!, hR!);
+    const tallerAssumed = assumedSide === "left" ? hL! > hR! : assumedSide === "right" ? hR! > hL! : false;
+    heightFromEnds = !tallerAssumed;
+  } else if (hiH == null && loH == null) {
     if (plainH != null && knee) {
       loH = plainH; // a knee wall's height is the low side
       hiH = pitch ? loH + W * Math.tan((parseFloat(pitch[1]) * Math.PI) / 180) : loH + 24;
@@ -380,21 +507,26 @@ function buildSloped(lower: string): Build {
     loH = Math.max(12, hiH - 30);
     notes.push(`Assumed ${fmtIn(loH)}" at the low side — type it to lock the slope.`);
   }
-  if (loH! > hiH!) [hiH, loH] = [loH, hiH];
-  const highLeft = /\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?left|left\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high/.test(lower) || !/\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?right|right\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high/.test(lower) && !stairs;
-  const hL = highLeft ? hiH! : loH!;
-  const hR = highLeft ? loH! : hiH!;
-  if (!/\b(?:left|right)\b/.test(lower)) notes.push(`High side drawn on the ${highLeft ? "left" : "right"} — type "high side on the ${highLeft ? "right" : "left"}" to flip it.`);
+  if (!sidePath) {
+    if (loH! > hiH!) [hiH, loH] = [loH, hiH];
+    const highOnLeft = /\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?left|left\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high/.test(lower) || !/\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?right|right\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high/.test(lower) && !stairs;
+    hL = highOnLeft ? hiH! : loH!;
+    hR = highOnLeft ? loH! : hiH!;
+    if (!/\b(?:left|right)\b/.test(lower)) notes.push(`High side drawn on the ${highOnLeft ? "left" : "right"} — type "high side on the ${highOnLeft ? "right" : "left"}" to flip it.`);
+  }
+  const leftH = hL!;
+  const rightH = hR!;
+  const highLeft = leftH >= rightH;
   if (W0 == null) notes.push(`Assumed ${fmtIn(W)}" wide — type "48 wide" to lock it.`);
   if (D0 == null) notes.push(`Assumed ${fmtIn(D)}" deep — type "12 deep" to lock it.`);
-  const slope = (hR - hL) / W;
+  const slope = (rightH - leftH) / W;
   const ang = (Math.atan(Math.abs(slope)) * 180) / Math.PI;
   const tv = T / Math.cos(Math.atan(Math.abs(slope)));
-  const yTop = (x: number) => hL + slope * x;
+  const yTop = (x: number) => leftH + slope * x;
   const under = (x: number) => yTop(x) - tv;
   const panels: Panel[] = [];
   const zb = 0.25;
-  panels.push(facePlate("back", "Sloped back", 0, 0.25, [[0, 0], [W, 0], [W, yTop(W)], [0, yTop(0)]], `Whole back is one trapezoid: ${tape(W)} wide, ${tape(hL)} tall on the left edge, ${tape(hR)} on the right. Mark both heights and snap a straight line${W > 48 && Math.max(hL, hR) > 48 ? " — if it comes as two halves, butt them edge to edge first and mark the slope across both" : ""}.`, BACKER));
+  panels.push(facePlate("back", "Sloped back", 0, 0.25, [[0, 0], [W, 0], [W, yTop(W)], [0, yTop(0)]], `Whole back is one trapezoid: ${tape(W)} wide, ${tape(leftH)} tall on the left edge, ${tape(rightH)} on the right. Mark both heights and snap a straight line${W > 48 && Math.max(leftH, rightH) > 48 ? " — if it comes as two halves, butt them edge to edge first and mark the slope across both" : ""}.`, BACKER));
   const bays = Math.max(1, Math.round((W - 2 * T) / 24));
   const xs: number[] = [];
   for (let i = 0; i <= bays; i++) xs.push(i === 0 ? 0 : i === bays ? W - T : r8((i * (W - T)) / bays));
@@ -405,8 +537,8 @@ function buildSloped(lower: string): Build {
     const b = Math.floor(under(x + T) * 8 + 1e-6) / 8;
     panels.push(facePlate(i === 0 || i === bays ? "upright" : "divider", name, zb, D - zb, [[x, 0], [x + T, 0], [x + T, b], [x, a]], `${tape(D - zb)} deep board. Top end cut at ${deg(ang)}: ${tape(Math.max(a, b))} on the tall edge, ${tape(Math.min(a, b))} on the short edge.`));
   });
-  const topP = facePlate("top", "Sloped top", zb, D - zb, [[0, under(0)], [W, under(W)], [W, yTop(W)], [0, yTop(0)]], `${tape(Math.hypot(W, hR - hL))} long along the slope, ${tape(D - zb)} deep. Both ends cut at ${deg(ang)} so they sit plumb on the uprights.`);
-  topP.blank = { lengthIn: r8(Math.hypot(W, hR - hL)), widthIn: r8(D - zb), thicknessIn: T };
+  const topP = facePlate("top", "Sloped top", zb, D - zb, [[0, under(0)], [W, under(W)], [W, yTop(W)], [0, yTop(0)]], `${tape(Math.hypot(W, rightH - leftH))} long along the slope, ${tape(D - zb)} deep. Both ends cut at ${deg(ang)} so they sit plumb on the uprights.`);
+  topP.blank = { lengthIn: r8(Math.hypot(W, rightH - leftH)), widthIn: r8(D - zb), thicknessIn: T };
   panels.push(topP);
   // Bottom + shelves per bay, 12" apart, only where they clear the slope.
   let shelfN = 0;
@@ -427,7 +559,11 @@ function buildSloped(lower: string): Build {
     program: book ? "bookcase" : "storage",
     titleBits: [
       W0 != null ? `${fmtIn(W)}" wide` : "",
-      hi && lo ? `${fmtIn(hiH!)}" to ${fmtIn(loH!)}" tall`
+      sidePath
+        ? assumedSide
+          ? `${fmtIn(assumedSide === "left" ? rightH : leftH)}" on the ${assumedSide === "left" ? "right" : "left"}`
+          : `${fmtIn(leftH)}" on the left · ${fmtIn(rightH)}" on the right`
+        : hi && lo ? `${fmtIn(hiH!)}" to ${fmtIn(loH!)}" tall`
         : hi ? `${fmtIn(hiH!)}" at the high side`
         : lo ? `${fmtIn(loH!)}" at the low side`
         : plainH != null ? (knee ? `${fmtIn(plainH)}" knee wall` : `${fmtIn(plainH)}" tall`) : "",
@@ -435,7 +571,7 @@ function buildSloped(lower: string): Build {
     panels,
     notes: [`${stem}: the top follows a ${deg(ang)} slope from ${fmtIn(hiH!)}" down to ${fmtIn(loH!)}" over ${fmtIn(W)}" — uprights and dividers get angled tops, shelves stop below the slope.`, ...notes],
     overall: { width: W, height: hiH!, depth: D },
-    typed: { width: W0 != null, height: !!hi || (plainH != null && !knee), depth: D0 != null },
+    typed: { width: W0 != null, height: sidePath ? heightFromEnds : !!hi || (plainH != null && !knee), depth: D0 != null },
     install: "wall",
     params: { W, D, hiH: hiH!, loH: loH!, angle: Math.round(ang * 10) / 10, highLeft, bays },
   };
@@ -914,7 +1050,9 @@ export function oddSteps(project: YardProject): AssemblyStep[] {
       break;
     }
     case "sloped": {
-      add("Measure the slope", `Measure the height at the high side and at the low side, and the width between. This plan is ${fmtIn(pr.hiH)}" to ${fmtIn(pr.loH)}" over ${fmtIn(pr.W)}" — a ${fmtIn(pr.angle)}° slope. ${studs}`, []);
+      const endL = pr.highLeft ? pr.hiH : pr.loH;
+      const endR = pr.highLeft ? pr.loH : pr.hiH;
+      add("Measure the slope", `Measure the height at the left end and at the right end, and the width between. This plan is ${fmtIn(endL)}" on the left and ${fmtIn(endR)}" on the right over ${fmtIn(pr.W)}" — a ${fmtIn(pr.angle)}° slope. ${studs}`, []);
       add("Cut the angled parts", `${cutNotes} To mark an angle cut: measure the two heights on the board edges and connect them with a straight edge — no protractor needed.`, ids(P, /upright|Divider|Sloped/i));
       add("Cut the bottoms and shelves", `Cut the bottoms and shelves to the bay widths on the cut list — they are plain rectangles.`, ids(P, /^Bottom|^Shelf/));
       add("Assemble the uprights and bottoms", `Stand the uprights and dividers on edge, angled tops all sloping the same way. Glue and screw each bottom between them.`, ids(P, /upright|Divider|^Bottom/i));

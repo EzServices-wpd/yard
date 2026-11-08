@@ -114,6 +114,28 @@ describe("shelf span supports", () => {
     assert.deepEqual(checkBuild(project, "bookcase", plan).map((v) => v.id), []);
   });
 
+  it("oak 30 inch bookcase divides for solid wood; 3/4 plywood keeps one bay and five shelves", () => {
+    const prompt = "oak bookcase 30 wide 12 deep 60 tall with five shelves";
+    const oak = generateFromPrompt(prompt);
+    const ply = generateFromPrompt(prompt, "plywood-3-4-4x8");
+    const box = (p: ReturnType<typeof generateFromPrompt>) => [p.overall.width, p.overall.depth, p.overall.height];
+    assert.deepEqual(box(oak), [30, 12, 60]);
+    assert.deepEqual(box(ply), [30, 12, 60]);
+    assert.equal(shelfLineCount(oak.panels.filter((p) => p.type === "shelf")), 5);
+    assert.equal(shelfLineCount(ply.panels.filter((p) => p.type === "shelf")), 5);
+    assert.equal(oak.panels.filter((p) => /^Center divider\b/.test(p.name)).length, 1);
+    assert.equal(ply.panels.filter((p) => /^Center divider\b/.test(p.name)).length, 0);
+    assert.equal(buildPlan(oak).totals.pieces, 16);
+    assert.equal(buildPlan(ply).totals.pieces, 10);
+    const oakShelf = oak.panels.find((p) => p.type === "shelf")!;
+    assert.ok(oakShelf.size.width <= shelfSpanLimit(oakShelf.materialId, oakShelf.size.height) + 1 / 32);
+    assert.match(oak.notes.join(" "), /28 1\/2" is a long span for 3\/4" solid wood/);
+    for (const shelf of ply.panels.filter((p) => p.type === "shelf")) {
+      assert.ok(shelf.size.width <= shelfSpanLimit(shelf.materialId, shelf.size.height) + 1 / 32, shelf.name);
+      assert.ok(shelf.size.width > 26, shelf.size.width);
+    }
+  });
+
   it("adds a divider for 1/2 inch at 30 inches and leaves 3/4 inch open", () => {
     const prompt = "bookcase 30 wide 12 deep 72 tall";
     const thick = generateFromPrompt(prompt, "plywood-3-4-4x8");

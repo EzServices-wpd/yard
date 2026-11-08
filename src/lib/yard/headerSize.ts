@@ -116,11 +116,19 @@ function notesAxes(project: YardProject) {
     axes.forEach((a) => delete assumed[a]);
     extra.length = 0;
   }
+  // A slope's height mark is the ends the builder read, not a fresh scan for the word "tall".
+  // The taller end typed → height typed. The taller end assumed → height assumed.
+  const slopeH = project.fitted?.unit?.odd?.kind === "sloped" ? project.fitted.typedAxes?.height : undefined;
+  const spec = project.spec;
+  const benchMarks = !!(spec && (spec.bench || axes.some((a) => spec.size[a].edited)));
+  if (typeof slopeH === "boolean" && !benchMarks) {
+    if (slopeH) delete assumed.height;
+    else assumed.height = true;
+  }
   // An edit in place reads its marks from the edited spec (spec.ts), never from notes the rebuild no longer carries: an
   // axis set on the bench is the person's own value, every other axis keeps the mark it had (#109 B2).
   // A restock rebuilds from the bench's unit, whose notes no longer say which axes were assumed (row 295, family
   // sweep: 'dresser' restocked read '18" D (W, H assumed)', the fronts dropped): a bench rebuild reads the spec too.
-  const spec = project.spec;
   if (spec && (spec.bench || axes.some((a) => spec.size[a].edited))) {
     for (const a of axes) if (spec.size[a].assumed && !spec.size[a].edited) assumed[a] = true; else delete assumed[a];
     return { assumed, extra, stock: false };
