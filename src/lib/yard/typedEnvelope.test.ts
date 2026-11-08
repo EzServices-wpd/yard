@@ -362,3 +362,61 @@ describe("I8 and I35 compare a slope's height to the taller typed end", () => {
     assert.deepEqual(slopeEnds(generateFromPrompt("under stairs shelves 72 wide 16 deep 20 tall at the low side 54 at the high side")), { left: 20, right: 54 });
   });
 });
+
+describe("a side and a rank on the same number both stick", () => {
+  const hosts = [
+    ["under stairs shelves 72 wide 16 deep", 16, 16],
+    ["knee wall shelves 48 wide 12 deep", 11, 10],
+    ["bookshelf under a sloped ceiling 48 wide 12 deep", 11, 10],
+  ] as const;
+  // Rank before the number, then the side. And the side before the number, then the rank.
+  const orders = [
+    (rank: string, n: number, side: string) => `${rank} side ${n} tall on the ${side}`,
+    (rank: string, n: number, side: string) => `${side} ${n} tall at the ${rank} side`,
+  ];
+  for (const [prefix, highPieces, lowPieces] of hosts) {
+    for (const rank of ["high", "low"] as const) {
+      for (const side of ["left", "right"] as const) {
+        const n = rank === "high" ? 60 : 24;
+        const other = rank === "high" ? 30 : 54;
+        const ends = side === "left" ? { left: n, right: other } : { left: other, right: n };
+        for (const order of orders) {
+          const prompt = `${prefix} ${order(rank, n, side)}`;
+          it(prompt, () => {
+            const built = heightMarks(prompt);
+            const notes = built.project.notes.join(" ");
+            assert.deepEqual(built.ends, ends);
+            assert.equal(built.project.overall.height, Math.max(n, other));
+            assert.equal(built.pieces, rank === "high" ? highPieces : lowPieces);
+            assert.match(built.step, new RegExp(`${ends.left}" on the left and ${ends.right}" on the right`));
+            assert.match(built.project.panels.find((p) => p.name === "Sloped back")?.cutNote ?? "", new RegExp(`${ends.left}" tall on the left edge, ${ends.right}" on the right`));
+            if (rank === "high") {
+              assert.equal(built.spec.typed, true);
+              assert.equal(built.spec.assumed, false);
+              assert.match(notes, /Your 60" is the high side\. Assumed 30" at the low side/);
+              assert.doesNotMatch(notes, /knee-wall \(low\) side|90"|84"/);
+              assert.deepEqual(heightMisses(prompt), []);
+            } else {
+              assert.equal(built.spec.typed, false);
+              assert.equal(built.spec.assumed, true);
+              assert.match(notes, prefix.startsWith("knee") ? /Your 24" is the knee-wall \(low\) side\. Assumed 54" at the high side/ : /Assumed 54" at the high side/);
+              assert.doesNotMatch(notes, /Your 24" is the high side/);
+              assert.equal(heightMisses(prompt).length, 2);
+            }
+          });
+        }
+      }
+    }
+  }
+
+  it("one typed low end beside a plain tall still assumes the high end, and I8 and I35 still say so", () => {
+    const prompt = "under stairs shelves 72 wide 16 deep 54 tall 20 at the low side";
+    const built = heightMarks(prompt);
+    assert.deepEqual(built.ends, { left: 20, right: 50 });
+    assert.equal(built.project.overall.height, 50);
+    assert.equal(built.spec.assumed, true);
+    const misses = heightMisses(prompt);
+    assert.ok(misses.some((v) => v.id === "I8"));
+    assert.ok(misses.some((v) => v.id === "I35"));
+  });
+});
