@@ -84,6 +84,11 @@ export function buildSpec(project: YardProject, typedWords?: string, opts: { ove
   for (const a of typedSet) assumed[a] = false;
   const unit = isUnitItem(project);
   const size = Object.fromEntries(AXES.map((a) => [a, { inches: a === "depth" ? finished : box[a], typed: typedSet.has(a), assumed: !unit && !!assumed[a], ...(opts.override ? { edited: true } : {}) }])) as Record<Axis, SpecAxis>;
+  // A slope's overall height is the taller end. That end's typed/assumed mark is the builder's, not the word "tall".
+  const slopeH = project.fitted?.unit?.odd?.kind === "sloped" ? project.fitted.typedAxes?.height : undefined;
+  if (typeof slopeH === "boolean" && !opts.override && !unit) {
+    size.height = { ...size.height, typed: slopeH, assumed: !slopeH };
+  }
   const counts: Record<string, number> = {};
   for (const m of words.matchAll(COUNTED)) counts[m[2].toLowerCase()] = NUMBER[m[1].toLowerCase()] ?? Number(m[1]);
   return {
