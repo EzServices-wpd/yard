@@ -208,6 +208,67 @@ describe("one typed slope end uses the high/low rules, not a 30 inch rise", () =
   });
 });
 
+describe("a high or low word on the empty end ranks the typed end", () => {
+  it("high side on the left makes a typed right end the low side", () => {
+    for (const prompt of [
+      "bookshelf under a sloped ceiling 48 wide 12 deep high side on the left 30 tall on the right",
+      "bookshelf under a sloped ceiling 48 wide 12 deep left side is high 30 tall on the right",
+    ]) {
+      const built = heightMarks(prompt);
+      assert.deepEqual(built.ends, { left: 60, right: 30 }, prompt);
+      assert.equal(built.project.overall.height, 60, prompt);
+      assert.equal(built.pieces, 11, prompt);
+      assert.match(built.step, /60" on the left and 30" on the right/, prompt);
+      assert.match(built.project.panels.find((p) => p.name === "Sloped back")?.cutNote ?? "", /60" tall on the left edge, 30" on the right/, prompt);
+      assert.match(built.project.notes.join(" "), /Assumed 60" at the high side/, prompt);
+      assert.doesNotMatch(built.project.notes.join(" "), /Your 30" is the high side/, prompt);
+      assert.equal(built.spec.typed, false, prompt);
+      assert.equal(built.spec.assumed, true, prompt);
+      assert.match(built.hud, /H assumed/, prompt);
+      assert.match(built.cover, /60" tall\b.*assumed/, prompt);
+      assert.doesNotMatch(built.cover, /you typed/, prompt);
+    }
+  });
+
+  it("low side on the right makes a typed left end the high side", () => {
+    for (const prompt of [
+      "under stairs shelves 72 wide 16 deep low side on the right 60 tall on the left",
+      "under stairs shelves 72 wide 16 deep right side is low 60 tall on the left",
+    ]) {
+      const built = heightMarks(prompt);
+      assert.deepEqual(built.ends, { left: 60, right: 12 }, prompt);
+      assert.equal(built.project.overall.height, 60, prompt);
+      assert.equal(built.pieces, 14, prompt);
+      assert.match(built.step, /60" on the left and 12" on the right/, prompt);
+      assert.match(built.project.notes.join(" "), /Your 60" is the high side\. Assumed 12" at the low side/, prompt);
+      assert.doesNotMatch(built.project.notes.join(" "), /90/, prompt);
+      assert.equal(built.spec.typed, true, prompt);
+      assert.equal(built.spec.assumed, false, prompt);
+      assert.doesNotMatch(built.hud, /H assumed/, prompt);
+      assert.doesNotMatch(built.cover, /you typed/, prompt);
+    }
+  });
+
+  it("low side on the left makes a typed right end the high side on a knee wall", () => {
+    for (const prompt of [
+      "knee wall shelves 48 wide 12 deep low side on the left 60 tall on the right",
+      "knee wall shelves 48 wide 12 deep left side is low 60 tall on the right",
+    ]) {
+      const built = heightMarks(prompt);
+      assert.deepEqual(built.ends, { left: 30, right: 60 }, prompt);
+      assert.equal(built.project.overall.height, 60, prompt);
+      assert.equal(built.pieces, 11, prompt);
+      assert.match(built.step, /30" on the left and 60" on the right/, prompt);
+      assert.match(built.project.notes.join(" "), /Your 60" is the high side\. Assumed 30" at the low side/, prompt);
+      assert.doesNotMatch(built.project.notes.join(" "), /knee-wall \(low\) side|84/, prompt);
+      assert.equal(built.spec.typed, true, prompt);
+      assert.equal(built.spec.assumed, false, prompt);
+      assert.doesNotMatch(built.hud, /H assumed/, prompt);
+      assert.doesNotMatch(built.cover, /you typed/, prompt);
+    }
+  });
+});
+
 describe("a sloped HUD marks height from the ends that were built", () => {
   it("both ends typed without the word tall are not assumed", () => {
     for (const prompt of [

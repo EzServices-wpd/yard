@@ -423,13 +423,19 @@ function buildSloped(lower: string): Build {
       if (hL == null) hL = loose;
       else hR = loose;
     }
-    // One named end: the other comes from a typed high/low number, then high/low words, then the kind.
-    // Stairs rise to the right. A knee's typed height is the low side. A ceiling's typed height is the high side.
+    // One named end: a typed high/low number, then a high/low word on either end (the other end is the opposite
+    // rank), then the kind. Stairs rise to the right. A knee's typed height is the low side. A ceiling's is the high side.
     if ((hL == null) !== (hR == null)) {
       const knownSide: "left" | "right" = hL != null ? "left" : "right";
       const known = (hL ?? hR)!;
-      const wordHigh = new RegExp(String.raw`\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${knownSide}\b|\b${knownSide}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high\b`).test(lower);
-      const wordLow = new RegExp(String.raw`\b(?:low|short)\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${knownSide}\b|\b${knownSide}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?(?:low|short)\b`).test(lower);
+      // A high/low word names that end, and the other end is the opposite rank, before any kind default.
+      const declared = (side: "left" | "right"): "high" | "low" | null => {
+        const high = new RegExp(String.raw`\bhigh\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${side}\b|\b${side}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?high\b`).test(lower);
+        const low = new RegExp(String.raw`\b(?:low|short)\s+(?:side|end)\s+(?:is\s+)?(?:on\s+)?(?:the\s+)?${side}\b|\b${side}\s+(?:side\s+)?(?:is\s+)?(?:the\s+)?(?:low|short)\b`).test(lower);
+        return high ? "high" : low ? "low" : null;
+      };
+      const otherSide: "left" | "right" = knownSide === "left" ? "right" : "left";
+      const knownRole = declared(knownSide) ?? (declared(otherSide) === "high" ? "low" : declared(otherSide) === "low" ? "high" : null);
       let other = 0;
       let knownIsHigh = false;
       let otherTyped = false;
@@ -456,7 +462,7 @@ function buildSloped(lower: string): Build {
         knownIsHigh = true;
         other = assumedLow(known, true);
       } else {
-        knownIsHigh = wordHigh ? true : wordLow ? false : stairs ? knownSide === "right" : knee ? false : true;
+        knownIsHigh = knownRole === "high" ? true : knownRole === "low" ? false : stairs ? knownSide === "right" : knee ? false : true;
         other = knownIsHigh ? assumedLow(known, false) : assumedHigh(known, false);
       }
       if (hL == null) hL = other;
