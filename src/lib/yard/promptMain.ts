@@ -33,7 +33,7 @@ import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
 import { autoSupportSpans } from "./spanCheck";
 import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
-import { isWholeStock, toPrimitive } from "./geometry";
+import { fixedProfile, isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
 import { buildLatticeTowerGraph } from "./structures/latticeTower";
 import { buildClosetFromPrompt } from "./closet";
@@ -1807,8 +1807,9 @@ function buildTemplateProject(
   const roundStock = item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "pipe";
   for (const i of project.instances) {
     if (!i.from || !i.to) continue;
-    const fw = Math.max(i.section?.width ?? prim.width, 0.1);
-    const ft = Math.max(i.section?.height ?? (roundStock ? prim.width : prim.height), 0.05);
+    const locked = fixedProfile(item);
+    const fw = locked ? locked[0] : Math.max(i.section?.width ?? prim.width, 0.1);
+    const ft = locked ? locked[1] : Math.max(i.section?.height ?? (roundStock ? prim.width : prim.height), 0.05);
     const d = [i.to.x - i.from.x, i.to.y - i.from.y, i.to.z - i.from.z];
     const dl = Math.hypot(d[0], d[1], d[2]) || 1;
     const u = d.map((c) => c / dl);
@@ -2311,6 +2312,7 @@ function projectFromGraph(
 ): YardProject {
   const mapped = graphToInstances(graph, item, joinMethod, { whole });
   const joinUsed = joinMethod || item.preferredJoins?.[0] || "glue";
+  const profile = fixedProfile(item);
   const instances: YardInstance[] = mapped.instances.map((g) => ({
     id: g.id,
     catalogId: g.catalogId,
@@ -2322,7 +2324,7 @@ function projectFromGraph(
     from: g.from ? { x: g.from[0], y: g.from[1], z: g.from[2] } : undefined,
     to: g.to ? { x: g.to[0], y: g.to[1], z: g.to[2] } : undefined,
     ...(g.face ? { face: { x: g.face[0], y: g.face[1], z: g.face[2] } } : {}),
-    ...(section ? { section } : {}),
+    ...(section && !profile ? { section } : {}),
   }));
   const stats = analyzePieces(instances, item);
   const useWhole = whole ?? isWholeStock(item);

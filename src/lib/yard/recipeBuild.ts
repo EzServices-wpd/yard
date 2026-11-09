@@ -17,6 +17,7 @@ import { riderFloor, rodArrayFailures, rodArrays, ROW_CLEAR } from "./rodArrays"
 import { askedDrawerCount, drawerSection, SHARED_DRAWER_ROW_IN } from "./frontSections";
 import { CONTACT } from "./materialForUse";
 import { inchFrac } from "./inchText";
+import { fixedProfile } from "./geometry";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -1391,6 +1392,52 @@ function refusedBuild(recipe: Recipe, prompt: string, size: Size, why: string): 
   };
 }
 
+/**
+ * A straight member of fixed-section stock (pipe, tube) keeps the catalog profile on its two
+ * short axes. The long axis is the one that is longest at the recipe's own size, so a typed
+ * size changes the cut length and not the section. An outer face stays on the envelope.
+ */
+function lockFixedSection(
+  part: RecipePart,
+  item: ReturnType<typeof getCatalogItem>,
+  sz: Panel["size"],
+  pos0: { x: number; y: number; z: number },
+  own: Size,
+  frac: { x: number; y: number; z: number },
+): boolean {
+  const profile = fixedProfile(item);
+  if (!profile || part.kind !== "member") return false;
+  if (part.shape && part.shape !== "cylinder") return false;
+  const K = { x: "width", y: "height", z: "depth" } as const;
+  const native = { x: frac.x * own.width, y: frac.y * own.height, z: frac.z * own.depth };
+  const axes = (["x", "y", "z"] as const).slice().sort((a, b) => native[b] - native[a]);
+  const run = axes[0];
+  if (native[run] <= Math.max(profile[0], profile[1]) + 0.01) return false;
+  const cross = [axes[1], axes[2]].sort((a, b) => native[a] - native[b]);
+  const faces = [...profile].sort((a, b) => a - b);
+  const boxI = { x: 0, y: 1, z: 2 } as const;
+  const boxW = { x: 3, y: 4, z: 5 } as const;
+  for (let i = 0; i < 2; i++) {
+    const a = cross[i];
+    const k = K[a];
+    const t = faces[i];
+    const old = sz[k];
+    const start = part.box[boxI[a]];
+    const span = part.box[boxW[a]];
+    const onLo = start <= 1e-4;
+    const onHi = start + span >= 1 - 1e-4;
+    if (onLo && !onHi) sz[k] = t;
+    else if (onHi && !onLo) {
+      pos0[a] += old - t;
+      sz[k] = t;
+    } else {
+      pos0[a] += (old - t) / 2;
+      sz[k] = t;
+    }
+  }
+  return true;
+}
+
 function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size, widened?: string): RecipeBuild {
   const recipe = noteStock(hollowVessels(recipe0));
   const stock = stockFor(prompt, recipe, materialOverride);
@@ -1455,10 +1502,12 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
       }
       // Stock thickness never scales (I28): a resized build stretches its parts' lengths and widths, but each
       // part keeps the thickness it has at the recipe's own size — the board or sheet it is cut from.
+      // Pipe and tube skip that and take the catalog profile on both short axes (lockFixedSection).
       const pos0 = { x: px * size.width, y: py * size.height, z: pz * size.depth };
-      {
+      const materialId = part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) && !BOUGHT_MECHANISM.test(base) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet);
+      const frac = { x: pw, y: ph, z: pd };
+      if (!lockFixedSection(part, getCatalogItem(materialId), sz, pos0, own, frac)) {
         const K = { x: "width", y: "height", z: "depth" } as const;
-        const frac = { x: pw, y: ph, z: pd };
         const thin = (["x", "y", "z"] as const).reduce((m, a) => (frac[a] * own[K[a]] < frac[m] * own[K[m]] ? a : m), "x" as "x" | "y" | "z");
         const t0 = frac[thin] * own[K[thin]];
         if (part.kind !== "hardware" && Math.abs(sz[K[thin]] - t0) > 1e-6 && t0 < Math.min(...(["x", "y", "z"] as const).filter((a) => a !== thin).map((a) => sz[K[a]]))) {
@@ -1473,7 +1522,7 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
         name: fam || reps * (part.per ?? 1) > 1 || part.kind === "hardware" ? `${base} ${n}` : part.name,
         position: pos0,
         size: sz,
-        materialId: part.kind === "hardware" && !part.catalogId && PIN.test(`${part.role} ${base}`) && !BOUGHT_MECHANISM.test(base) ? pinDowel(stock.member, Math.min(...[pw * size.width, ph * size.height, pd * size.depth].sort((a, b) => a - b).slice(1, 2))) : part.kind === "hardware" || (part.kind === "cover" && !getCatalogItem(stock.sheet)) ? part.catalogId ?? "hardware" : (stock.all ? undefined : part.stock) ?? (part.kind === "member" ? stock.member : stock.sheet),
+        materialId,
       });
     }
   }

@@ -4,7 +4,8 @@ import { generateFromPrompt } from "../src/lib/yard/promptMain.ts";
 import { buildPlan } from "../src/lib/yard/report.ts";
 import { packLengths, kerfFor } from "../src/lib/yard/linearPack.ts";
 import { getCatalogItem } from "../src/lib/yard/catalog.ts";
-import { binderBom, slipInstancesFromPanels } from "../src/lib/yard/joints.ts";
+import { binderBom, classifyJoint, countSlipFittings, slipInstancesFromPanels } from "../src/lib/yard/joints.ts";
+import { fixedProfile, visualPrimitive } from "../src/lib/yard/geometry.ts";
 import { learnedRecipeFailures } from "../src/lib/yard/learnedGate.ts";
 import { RECIPES } from "../src/lib/yard/recipes.ts";
 import type { BuildPlan, Panel } from "../src/lib/yard/types.ts";
@@ -39,7 +40,7 @@ function assertPvcGoalBuy(prompt: string) {
   assert.equal(pipe.quantity, sticks, "Buy counts whole sticks from the cut lengths");
   assert.ok(sticks > 1, "a goal's pipe does not fit in one stick");
   assert.match(pipe.notes ?? "", /from \d+ whole pipes/);
-  const fittings = plan.bom.filter((b) => /PVC (?:tee|cross|90° elbow|45° elbow)/.test(b.name));
+  const fittings = plan.bom.filter((b) => /PVC (?:tee|cross|90° elbow|45° elbow|3-way corner)/.test(b.name));
   const fittingQty = fittings.reduce((s, b) => s + b.quantity, 0);
   const pieces = plan.cutList.reduce((s, c) => s + c.quantity, 0);
   assert.ok(fittingQty > 0, "joints buy fittings");
@@ -59,19 +60,36 @@ function assertPvcGoalBuy(prompt: string) {
   assert.ok(bottoms.every((s) => /solvent cement/.test(s.description)), "bottom corners are cemented");
   assert.doesNotMatch((project.notes ?? []).join("\n"), WOOD_OUTDOOR);
   assert.doesNotMatch(steps, WOOD_OUTDOOR);
+  const dia = getCatalogItem("pvc-3-4-sch40")!.dims.diameter!;
+  for (const part of pipes) {
+    const cross = [part.size.width, part.size.height, part.size.depth].sort((a, b) => a - b).slice(0, 2);
+    assert.equal(cross[0], dia, `${part.name} section`);
+    assert.equal(cross[1], dia, `${part.name} section`);
+  }
+  const corners = plan.bom.find((b) => /3-way corner/.test(b.name));
+  assert.ok(corners, "corners are on Buy");
+  assert.equal(corners.quantity, 8);
+  assert.match(corners.notes ?? "", /Side-outlet elbow/);
+  assert.equal(plan.bom.some((b) => /PVC tee/.test(b.name)), false);
+  assert.equal(fittingQty, 8);
+  const bill = countSlipFittings(slipInstancesFromPanels(project.panels, "pvc-3-4-sch40"), dia / 2);
+  assert.equal(bill.corners, 8);
+  assert.equal(bill.tees, 0);
+  assert.match(steps, /8 3\/4" PVC 3-way corners, the same fittings on the Buy list/);
+  assert.match(steps, /1 1\/16 × 1 1\/16/);
+  assert.doesNotMatch(steps, /1 3\/8|1 1\/2/);
+  for (const cut of plan.cutList.filter((c) => c.id.startsWith("pvc-3-4-sch40"))) {
+    assert.equal(cut.widthIn, dia, cut.name);
+    assert.equal(cut.thicknessIn, dia, cut.name);
+  }
   return { project, plan, fittingQty };
 }
 
 test("pvc soccer goal buys pipe by the stick, one fitting per corner, and cement", () => {
   const { plan, fittingQty } = assertPvcGoalBuy("pvc soccer goal 6 ft wide 4 ft tall");
-  // 69" rails share a 10 ft stick with a 48" post; the 10" rails share one more. Not the old frame's 6 pipes.
+  // 69 7/8" rails share a 10 ft stick with a 48" post; the 10" rails share one more. Not the old frame's 6 pipes.
   assert.equal(plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!.quantity, 5);
-  const tees = plan.bom.find((b) => /PVC tee/.test(b.name));
-  assert.ok(tees);
-  // Eight corners: each post meets two rails, one tee per corner.
-  assert.equal(tees.quantity, 8);
   assert.equal(fittingQty, 8);
-  assert.equal(plan.bom.some((b) => /elbow/.test(b.name)), false);
 });
 
 test("bare soccer goal stays the PVC recipe and buys the same way", () => {
@@ -79,7 +97,6 @@ test("bare soccer goal stays the PVC recipe and buys the same way", () => {
   assert.ok(!project.unmatched);
   assert.equal(plan.bom.some((b) => /popsicle/i.test(b.name)), false);
   assert.equal(plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!.quantity, 4);
-  assert.equal(plan.bom.find((b) => /PVC tee/.test(b.name))!.quantity, 8);
   assert.equal(fittingQty, 8);
 });
 
@@ -138,16 +155,27 @@ test("learned recipe gate accepts slip fittings bought for pipe on the cut list"
 });
 
 test("soccer goal fittings hold across short and wide sizes", () => {
+  const dia = getCatalogItem("pvc-3-4-sch40")!.dims.diameter!;
   const fittingQty = (plan: BuildPlan) =>
-    plan.bom.filter((b) => /PVC (?:tee|cross|90° elbow|45° elbow)/.test(b.name)).reduce((s, b) => s + b.quantity, 0);
+    plan.bom.filter((b) => /PVC (?:tee|cross|90° elbow|45° elbow|3-way corner)/.test(b.name)).reduce((s, b) => s + b.quantity, 0);
   const widths = [2, 4, 6, 12, 20, 24];
   const heights = [1, 2, 3, 4, 8];
   for (const w of widths) {
     for (const h of heights) {
       const q = `pvc soccer goal ${w} ft wide ${h} ft tall`;
-      const { plan } = planOf(q);
+      const { project, plan } = planOf(q);
       const n = fittingQty(plan);
       assert.equal(n, 8, `${q} merges or drops corners`);
+      assert.equal(plan.bom.find((b) => /3-way corner/.test(b.name))?.quantity, 8, q);
+      assert.equal(plan.bom.some((b) => /PVC tee/.test(b.name)), false, q);
+      const post = project.panels.find((p) => p.name === "Left front post");
+      assert.ok(post, q);
+      assert.equal(post.size.height, h * 12, `${q} post length`);
+      for (const part of project.panels.filter((p) => p.materialId === "pvc-3-4-sch40")) {
+        const cross = [part.size.width, part.size.height, part.size.depth].sort((a, b) => a - b).slice(0, 2);
+        assert.equal(cross[0], dia, `${q} ${part.name}`);
+        assert.equal(cross[1], dia, `${q} ${part.name}`);
+      }
       assert.ok(plan.bom.some((b) => b.catalogId === "pvc-cement"), q);
       assert.equal(plan.bom.some((b) => /glue/i.test(b.name)) && n === 0, false, q);
     }
@@ -158,5 +186,76 @@ test("soccer goal fittings hold across short and wide sizes", () => {
   assert.equal(short.plan.bom.every((b) => /glue/i.test(b.name) || b.catalogId === "pvc-3-4-sch40") && !short.plan.bom.some((b) => b.catalogId === "pvc-cement"), false);
   const wide = planOf("pvc soccer goal 24 ft wide 8 ft tall");
   assert.equal(fittingQty(wide.plan), 8);
-  assert.equal(wide.plan.bom.find((b) => /PVC tee/.test(b.name))?.quantity, 8);
+  assert.equal(wide.plan.bom.find((b) => /3-way corner/.test(b.name))?.quantity, 8);
+  assert.equal(wide.plan.bom.some((b) => /PVC tee/.test(b.name)), false);
+});
+
+test("fitting type follows joint valence", () => {
+  const at = { x: 0, y: 1, z: 0 };
+  const v = (x: number, y: number, z: number) => ({ x, y, z });
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0)] }), "elbow90");
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(-1, 0, 0), v(0, 1, 0)] }), "tee");
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), v(0, 0, 1)] }), "corner3");
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(-1, 0, 0), v(0, 0, 1), v(0, 0, -1)] }), "cross");
+
+  const item = getCatalogItem("pvc-3-4-sch40");
+  assert.ok(item);
+  const corner: Panel[] = [
+    { id: "post", type: "rail", name: "Post", materialId: item.id, position: { x: 0, y: 0, z: 0 }, size: { width: 1.05, height: 24, depth: 1.05 } },
+    { id: "railx", type: "rail", name: "Rail X", materialId: item.id, position: { x: 1.05, y: 22.95, z: 0 }, size: { width: 24, height: 1.05, depth: 1.05 } },
+    { id: "railz", type: "rail", name: "Rail Z", materialId: item.id, position: { x: 0, y: 22.95, z: 1.05 }, size: { width: 1.05, height: 1.05, depth: 24 } },
+  ];
+  const cornerLines = binderBom(item, slipInstancesFromPanels(corner, item.id));
+  assert.equal(cornerLines.find((b) => /3-way corner/.test(b.name))?.quantity, 1);
+  assert.equal(cornerLines.some((b) => /PVC tee/.test(b.name)), false);
+
+  const tee: Panel[] = [
+    { id: "left", type: "rail", name: "Left run", materialId: item.id, position: { x: 0, y: 11.5, z: 0 }, size: { width: 12, height: 1.05, depth: 1.05 } },
+    { id: "right", type: "rail", name: "Right run", materialId: item.id, position: { x: 12, y: 11.5, z: 0 }, size: { width: 12, height: 1.05, depth: 1.05 } },
+    { id: "branch", type: "rail", name: "Branch", materialId: item.id, position: { x: 11.475, y: 12.55, z: 0 }, size: { width: 1.05, height: 12, depth: 1.05 } },
+  ];
+  const teeLines = binderBom(item, slipInstancesFromPanels(tee, item.id));
+  assert.equal(teeLines.find((b) => /PVC tee/.test(b.name))?.quantity, 1);
+  assert.equal(teeLines.some((b) => /3-way corner/.test(b.name)), false);
+});
+
+test("a straw bridge and a PVC birdhouse keep the catalog section while the span changes", () => {
+  const straw = getCatalogItem("straw-plastic");
+  assert.ok(straw);
+  assert.deepEqual(fixedProfile(straw), [straw.dims.diameter, straw.dims.diameter]);
+  const short = generateFromPrompt("4 foot bridge from plastic drinking straws");
+  const tall = generateFromPrompt("8 foot bridge from plastic drinking straws");
+  const straws = (p: typeof short) => p.instances.filter((i) => i.catalogId === straw.id).length;
+  assert.ok(straws(tall) > straws(short));
+  for (const project of [short, tall]) {
+    for (const inst of project.instances) if (inst.catalogId === straw.id) assert.equal(inst.section, undefined);
+    const drawn = visualPrimitive(straw, 48, 120);
+    assert.equal(drawn.width, straw.dims.diameter);
+    assert.equal(drawn.height, straw.dims.diameter);
+  }
+  const pipe = getCatalogItem("pvc-3-4-sch40")!;
+  const small = generateFromPrompt("birdhouse from 3/4 PVC pipe");
+  const big = generateFromPrompt("birdhouse from 3/4 PVC pipe 24 wide 18 tall");
+  const longest = (p: typeof small) => Math.max(...p.instances.map((i) => i.cutLength ?? 0));
+  assert.ok(longest(big) > longest(small));
+  for (const project of [small, big]) {
+    for (const inst of project.instances) if (inst.catalogId === pipe.id) assert.equal(inst.section, undefined);
+    const drawn = visualPrimitive(pipe, longest(project), 48);
+    assert.equal(drawn.width, pipe.dims.diameter);
+    assert.equal(drawn.height, pipe.dims.diameter);
+  }
+});
+
+test("a garden arch keeps its tee and elbow buy", () => {
+  const { plan } = planOf("6 foot garden arch from 3/4 inch PVC pipe");
+  assert.equal(plan.bom.find((b) => /PVC tee/.test(b.name))?.quantity, 4);
+  assert.equal(plan.bom.find((b) => /90° elbow/.test(b.name))?.quantity, 2);
+  assert.equal(plan.bom.find((b) => /45° elbow/.test(b.name))?.quantity, 2);
+  assert.equal(plan.bom.some((b) => /3-way corner/.test(b.name)), false);
+  const item = getCatalogItem("pvc-3-4-sch40")!;
+  for (const feet of [4, 6, 8]) {
+    const project = generateFromPrompt(`${feet} foot garden arch from 3/4 inch PVC pipe`);
+    for (const inst of project.instances) assert.equal(inst.section, undefined);
+    assert.equal(visualPrimitive(item, 72, 96).width, item.dims.diameter);
+  }
 });

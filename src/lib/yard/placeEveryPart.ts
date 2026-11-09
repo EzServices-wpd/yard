@@ -5,7 +5,7 @@
 import { faceScrewInches, stockThickness } from "./shopJoin";
 import { panelStockThickness } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
-import { binderKind } from "./joints";
+import { binderKind, countSlipFittings, slipFittingPhrase, slipInstancesFromPanels } from "./joints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
@@ -24,6 +24,16 @@ const SLIP_CEMENT = "solvent cement, the same cement on the Buy list.";
 function slipMember(materialId: string | undefined): boolean {
   const item = getCatalogItem(materialId ?? "");
   return !!item && binderKind(item) === "slip";
+}
+
+/** The fitting sentence Buy uses, so a step names the same fittings in the same counts. */
+function slipFitTalk(project: YardProject): string {
+  const id = project.panels.find((p) => slipMember(p.materialId))?.materialId;
+  const item = getCatalogItem(id ?? "");
+  if (!item) return "";
+  const counts = countSlipFittings(slipInstancesFromPanels(project.panels, item.id), (item.dims.diameter ?? 1.05) / 2);
+  const phrase = slipFittingPhrase(item, counts);
+  return phrase ? ` ${phrase}` : "";
 }
 
 function fastenerTalk(project: YardProject): string {
@@ -246,11 +256,12 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   // Pipe joins with the fittings on Buy. A thin drawn box is still a pipe, not a glued wood joint.
   if (slipMember(panel?.materialId)) {
+    const fit = slipFitTalk(project);
     if (info?.how === "floor") {
       const lead = /\bposts?\b/i.test(part.name) ? "Stand the posts in the slip fittings. " : "";
-      return `${lead}Set the ${part.name} on the floor, square to the marks. Every pipe meets a fitting. Fasten it with ${SLIP_CEMENT}`;
+      return `${lead}Set the ${part.name} on the floor, square to the marks. Every pipe meets a fitting. Fasten it with ${SLIP_CEMENT}${fit}`;
     }
-    return `Fasten the ${part.name} to ${onto} with ${SLIP_CEMENT} Every pipe meets a fitting.`;
+    return `Fasten the ${part.name} to ${onto} with ${SLIP_CEMENT} Every pipe meets a fitting.${fit}`;
   }
   // Nothing under 3/4" but a back takes a screw: a thin divider or face (under 1/2", or planed thinner than its stock) is glued in place.
   const t = panel ? Math.min(panel.size.width, panel.size.height, panel.size.depth) : 1;
@@ -503,7 +514,7 @@ function withSlipJoints(project: YardProject, steps: AssemblyStep[]): AssemblySt
     out.splice(at, 0, {
       step: 0,
       title: `Fasten the ${p.name}`,
-      description: `Fasten the ${p.name} with ${SLIP_CEMENT} Every pipe meets a fitting.`,
+      description: `Fasten the ${p.name} with ${SLIP_CEMENT} Every pipe meets a fitting.${slipFitTalk(project)}`,
       partsUsed: [p.name],
     });
     at += 1;

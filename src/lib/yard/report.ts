@@ -20,7 +20,7 @@ import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
-import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
+import { fixedProfile, isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
@@ -127,6 +127,11 @@ function closetCuts(project: YardProject): CutLine[] {
       }
     }
     let dims = sheetCutDims(w, h, d);
+    const profile = fixedProfile(getCatalogItem(materialId ?? ""));
+    if (profile) {
+      const faces = [...profile].sort((a, b) => b - a);
+      dims = { lengthIn: dims.lengthIn, widthIn: faces[0], thicknessIn: faces[1] };
+    }
     let qty = 1;
     const isPly =
       /plywood/i.test(materialId ?? "") ||

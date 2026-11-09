@@ -424,6 +424,16 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "pvc-side-outlet",
+    retailer: "homedepot",
+    title: "FORMUFIT 3/4\" furniture-grade PVC 3-way elbow, 8 pack",
+    href: "https://www.homedepot.com/p/Formufit-3-4-in-Furniture-Grade-PVC-3-Way-Elbow-in-White-8-Pack-F0343WE-WH-8/205749438",
+    packQty: 8,
+    packPrice: 18.99,
+    lengthIn: 0,
+    checkedAt: "2026-11-09",
+  },
+  {
     catalogId: "pvc-coupling",
     retailer: "homedepot",
     title: "Charlotte 3/4\" Sch 40 coupling",
@@ -1249,6 +1259,7 @@ function guessCatalogId(line: BomLine): string | null {
     return "plywood-3-4-4x8";
   }
   if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
+  if (/pvc/.test(hay) && /3-way|side[- ]?outlet/.test(hay)) return "pvc-side-outlet";
   if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";
   if (/45/.test(hay) && /elbow|pvc/.test(hay)) return "pvc-elbow-45";
   if (/elbow/.test(hay) && /pvc/.test(hay)) return "pvc-elbow-90";
