@@ -39,8 +39,9 @@ it("a soccer goal at the default size and at 6×4 stands, and Buy matches the mo
   const barePlan = agrees(bare);
   const barePipe = barePlan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!;
   assert.equal(barePipe.quantity, 4);
-  assert.match(barePipe.notes ?? "", /16"/);
-  assert.equal(barePlan.bom.find((b) => /PVC tee/.test(b.name))!.quantity, 8);
+  assert.match(barePipe.notes ?? "", /15 7\/8"/);
+  assert.equal(barePlan.bom.find((b) => /3-way corner/.test(b.name))!.quantity, 8);
+  assert.equal(barePlan.bom.some((b) => /PVC tee/.test(b.name)), false);
   assert.equal(barePlan.bom.find((b) => b.catalogId === "pvc-cement")!.quantity, 1);
 
   const wide = generateFromPrompt("pvc soccer goal 6 ft wide 4 ft tall");
@@ -51,8 +52,9 @@ it("a soccer goal at the default size and at 6×4 stands, and Buy matches the mo
   const widePlan = agrees(wide);
   const widePipe = widePlan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!;
   assert.equal(widePipe.quantity, 5);
-  assert.match(widePipe.notes ?? "", /22"/);
-  assert.equal(widePlan.bom.find((b) => /PVC tee/.test(b.name))!.quantity, 8);
+  assert.match(widePipe.notes ?? "", /21 7\/8"/);
+  assert.equal(widePlan.bom.find((b) => /3-way corner/.test(b.name))!.quantity, 8);
+  assert.equal(widePlan.bom.some((b) => /PVC tee/.test(b.name)), false);
 });
 
 /** Clear distance between the base rails. A 16" log has to land on both. */

@@ -16,7 +16,7 @@ import { hungBuild, PT_LUMBER } from "./outdoor";
 import { getCatalogItem } from "./catalog";
 import { CEDAR, EXTERIOR_PLY } from "./checkedStock";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
-import { binderBom, binderKind, slipInstancesFromPanels } from "./joints";
+import { binderBom, binderKind, slipInstancesFromPanels, stockRunCouplings } from "./joints";
 
 const hasLink = (b: BomLine) => (b.offers ?? []).some((o) => !!o.href);
 
@@ -73,7 +73,7 @@ function lengthSoldBuy(project: YardProject, plan: BuildPlan, item: CatalogItem,
   const stock = bomLinesFromForge(buildForgeBom(instances, item.id));
   if (binderKind(item) !== "slip") return stock;
   const talk = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
-  const fittings = binderBom(item, slipInstancesFromPanels(project.panels, item.id)).filter(
+  const fittings = binderBom(item, slipInstancesFromPanels(project.panels, item.id), undefined, stockRunCouplings(project.panels, item)).filter(
     (b) => b.catalogId !== "pvc-cement" || /solvent|cement/i.test(talk),
   );
   return [...stock, ...fittings];

@@ -294,9 +294,16 @@ export function stabilizeOpenFrame(project: YardProject, prompt: string, sizeOve
       const panels = delta <= 0.01 ? panels0 : openLogBay(panels0) ? widenOnGround(panels0, need) : deepenBox(panels0, box.z0, box.z1, delta);
       if (!panels) next = withTip(next, "deep", next.overall?.depth ?? stance.baseDepth);
       else if (panels !== panels0) {
-        const depth = Math.round((Math.max(...panels.map((p) => p.position.z + p.size.depth)) - Math.min(...panels.map((p) => p.position.z))) * 1e4) / 1e4;
+        const zLo = Math.min(...panels.map((p) => p.position.z));
+        const zHi = Math.max(...panels.map((p) => p.position.z + p.size.depth));
+        const depth = Math.round((zHi - zLo) * 1e4) / 1e4;
+        // A 1.05" pipe is not a binary fraction, so the rear face can land a few ulps past the rounded depth.
+        const dust = zHi - (zLo + depth);
+        const seated = Math.abs(dust) > 0 && Math.abs(dust) < 1e-6
+          ? panels.map((p) => (Math.abs(p.position.z + p.size.depth - zHi) < 1e-6 ? { ...p, position: { ...p.position, z: p.position.z - dust } } : p))
+          : panels;
         const notes = notesOf(next).some((n) => /needs a base at least half/.test(n)) ? notesOf(next) : [...notesOf(next), assumedNote(depth, height)];
-        next = { ...next, panels, overall: { ...next.overall, depth }, notes };
+        next = { ...next, panels: seated, overall: { ...next.overall, depth }, notes };
       }
     }
   }

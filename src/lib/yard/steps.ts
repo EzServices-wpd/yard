@@ -50,12 +50,12 @@ import { namedStockDisplayName } from "./weekendStockHonesty";
 import { glueUpTalk, planSolidBoards } from "./solidStock";
 import { isBedsideShelf, isHingedLidChest, isLiftOffLidPrompt, isIroningWallMount, isKeyMailShelf, isLeashRail, isPegRail, isPlatformBed, isPortalHookRail, isPortalSpanShelf, portalHookRailTitle, portalSpanShelfTitle, isToolRail, isToyChest, towelPortalWantsHooks, wantsBookHold, wantsPrintHold , isAdirondackChair, isPorchSwingFrame, isCoatHookBoard, isSeatingLoungeClass, isLoungeChair, isRockingChair, isOttoman, namesSitChair} from "./family";
 import { getCatalogItem } from "./catalog";
-import { isWholeStock, toPrimitive } from "./geometry";
+import { fixedProfile, isWholeStock, toPrimitive } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { adjustableShelfTalk, isFixedSpanShelf, shelfLineCount } from "./shelfSpan";
 import { drawerSlideInches, SLIDE_LENGTHS_IN } from "./stockLook";
 import { drawerPartStock } from "./shopPlural";
-import { shopPlural, fmtSheetCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
+import { shopPlural, fmtSheetCut, fmtProfileCut, cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts, woodCutPieceCount, isBuyMirrorPanel, isBoughtHardwareName } from "./shopPlural";
 import type { AssemblyStep, CatalogItem, FastenerUse, Panel, YardInstance, YardProject } from "./types";
 
 import { shelfInstallHeightsClause, guidanceConfirmTalk } from "./voiceHonesty";
@@ -74,7 +74,9 @@ function rodDropTalk(rods: Panel[], panels: Panel[], height: number): string {
 
 /** A part's cut size: its rectangular blank when the box is not the blank (a splayed leg), else the box. */
 function dim(p: Panel) {
-  return p.blank ? fmtSheetCut(p.blank.thicknessIn, p.blank.lengthIn, p.blank.widthIn) : fmtSheetCut(p.size.width, p.size.height, p.size.depth);
+  if (p.blank) return fmtSheetCut(p.blank.thicknessIn, p.blank.lengthIn, p.blank.widthIn);
+  const profile = fixedProfile(getCatalogItem(p.materialId));
+  return profile ? fmtProfileCut(p.size.width, p.size.height, p.size.depth, profile) : fmtSheetCut(p.size.width, p.size.height, p.size.depth);
 }
 
 /**
@@ -2876,20 +2878,27 @@ function sheetCutDescription(
 
 function groupSheetCuts(allPanels: Panel[]): string[] {
   const panels = allPanels.filter((p) => !isBoughtHardwareName(p.name));
-  const map = new Map<string, { qty: number; label: string; w: number; h: number; d: number }>();
-  const push = (name: string, type: string | undefined, w: number, h: number, d: number) => {
+  const map = new Map<string, { qty: number; label: string; text: string }>();
+  const push = (name: string, type: string | undefined, w: number, h: number, d: number, exact = false) => {
     const family = cutListName(name, type).toLowerCase();
-    const dims = fmtSheetCut(w, h, d);
-    const key = `${family}|${dims}`;
+    const text = exact ? `${inchFrac(w)} × ${inchFrac(h)} × ${inchFrac(d)}` : fmtSheetCut(w, h, d);
+    const key = `${family}|${text}`;
     const g = map.get(key);
     if (g) g.qty += 1;
-    else map.set(key, { qty: 1, label: cutListName(name, type), w, h, d });
+    else map.set(key, { qty: 1, label: cutListName(name, type), text });
   };
   for (const p of panels) {
     // A shaped part (leaning rail, sloped board) is cut from its rectangular blank, not its bounding box.
     if (p.blank && p.polygon) {
       const b = p.blank;
       push(p.name.replace(/ \d+$/, ""), p.type, Math.round(b.lengthIn * 8) / 8, Math.round(b.widthIn * 8) / 8, Math.round(b.thicknessIn * 8) / 8);
+      continue;
+    }
+    const profile = fixedProfile(getCatalogItem(p.materialId));
+    if (profile) {
+      const length = Math.round([p.size.width, p.size.height, p.size.depth].sort((a, b) => b - a)[0] * 8) / 8;
+      const faces = [...profile].sort((a, b) => b - a);
+      push(p.name.replace(/ \d+$/, ""), p.type, length, faces[0], faces[1], true);
       continue;
     }
     const w = Math.round(p.size.width * 8) / 8;
@@ -2916,7 +2925,7 @@ function groupSheetCuts(allPanels: Panel[]): string[] {
     push(p.name.replace(/ \d+$/, ""), p.type, w, h, d);
   }
   return [...map.values()].map((g) => {
-    return `${g.qty} ${shopPlural(g.label, g.qty)} ${fmtSheetCut(g.w, g.h, g.d)}".`;
+    return `${g.qty} ${shopPlural(g.label, g.qty)} ${g.text}".`;
   });
 }
 

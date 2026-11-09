@@ -20,7 +20,7 @@ import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
-import { isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
+import { fixedProfile, isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
@@ -127,6 +127,11 @@ function closetCuts(project: YardProject): CutLine[] {
       }
     }
     let dims = sheetCutDims(w, h, d);
+    const profile = fixedProfile(getCatalogItem(materialId ?? ""));
+    if (profile) {
+      const faces = [...profile].sort((a, b) => b - a);
+      dims = { lengthIn: dims.lengthIn, widthIn: faces[0], thicknessIn: faces[1] };
+    }
     let qty = 1;
     const isPly =
       /plywood/i.test(materialId ?? "") ||
@@ -234,7 +239,35 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     addCut(p.materialId, p.name, p.type, w, h, d, materialName, p.cutNote);
   }
-  return stampLabels(stampPlySheetSize(spliceCutListToSheet([...grouped.values()]))).map(cornerCutNote);
+  return stampLabels(stampPlySheetSize(spliceLinearToStock(spliceCutListToSheet([...grouped.values()])))).map(cornerCutNote);
+}
+
+/**
+ * A pipe or tube longer than the stick it is bought as is cut in pieces that fit that stick.
+ * The name stays free of the sheet-splice mark, so the pieces are not told to glue and screw.
+ * The joints between those pieces are couplings, bought with the other slip fittings.
+ */
+function spliceLinearToStock(cuts: CutLine[]): CutLine[] {
+  const out: CutLine[] = [];
+  for (const c of cuts) {
+    const item = getCatalogItem((c.id ?? "").split("|")[0]);
+    const stock = item?.dims.length ?? 0;
+    if (!fixedProfile(item) || !(stock > 0) || !(c.lengthIn > stock + 0.01)) {
+      out.push(c);
+      continue;
+    }
+    const n = Math.max(2, Math.ceil((c.lengthIn - 1e-6) / stock));
+    const each = c.lengthIn / n;
+    for (let i = 0; i < n; i++) {
+      out.push({
+        ...c,
+        id: `${c.id}|${i + 1}/${n}`,
+        name: `${c.name}, piece ${i + 1} of ${n}`,
+        lengthIn: Math.min(stock, each),
+      });
+    }
+  }
+  return out;
 }
 
 /** Corner-unit cut lines say how a stranger gets the shape from a square blank. */
