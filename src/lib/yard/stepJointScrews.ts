@@ -6,7 +6,8 @@
  * once the box stands square, along every edge it touches, so its step names each real support.
  */
 import { panelJoints, type ModelJoint } from "./modelJoints";
-import { placementIndex } from "./placeEveryPart";
+import { orderBySupports, placementIndex } from "./placeEveryPart";
+import { frameBeforeSpan } from "./voiceHonesty";
 import type { BuildPlan, CutLine, Panel, YardProject } from "./types";
 
 const sorted3 = (a: number, b: number, c: number) => [a, b, c].sort((x, y) => y - x);
@@ -192,8 +193,10 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     instructions = backThenShelves(project, instructions, joints, backShelves);
     changed = true;
   }
-  if (!changed) return plan;
-  return { ...plan, instructions: instructions.map((s, i) => ({ ...s, step: i + 1 })) };
+  const ordered = frameBeforeSpan(orderBySupports(project, instructions));
+  const sameOrder = ordered.length === instructions.length && ordered.every((s, i) => s.title === instructions[i]?.title);
+  if (!changed && sameOrder) return plan;
+  return { ...plan, instructions: ordered.map((s, i) => ({ ...s, step: i + 1 })) };
 }
 
 /** Screws the steps drive: a step's own "drives N" total when it states one, else every "with N × #8" join. */

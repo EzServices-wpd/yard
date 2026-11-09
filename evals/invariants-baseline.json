@@ -13,14 +13,6 @@
    "class": "F21",
    "msg": "Left side is interior plywood on the ground outdoors"
   },
-  "I14|pergola": {
-   "class": "F11",
-   "msg": "Back beam is placed before Post 3, which it rests on"
-  },
-  "I14|pergola 10 by 12": {
-   "class": "F11",
-   "msg": "Back beam is placed before Post 3, which it rests on"
-  },
   "I1|beehive box": {
    "class": "F1",
    "msg": "Left side reaches neither the floor nor a wall"

@@ -1132,13 +1132,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? "standing adult"
             : "standing kid"
         } at ${riseRun}.`,
-        tips: "Square the tread before the braces.",
+        tips: panels.some((p) => /\bbrace/i.test(p.name)) ? "Square the tread before the braces." : "Square the frame before the tread goes on.",
         partsUsed: names(uprights),
       },
       {
         step: 3,
-        title: "Brace the step frame",
-        description: `Braces keep the ${riseRun} tread from racking.`,
+        title: panels.some((p) => /\bbrace/i.test(p.name)) ? "Brace the step frame" : "Set the rails and treads",
+        description: panels.some((p) => /\bbrace/i.test(p.name))
+          ? `Braces keep the ${riseRun} tread from racking.`
+          : `The rails keep the ${riseRun} tread from racking.`,
         tips: "Guidance only.",
         partsUsed: names(panels),
       },
@@ -1165,6 +1167,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const frame = panels.filter((p) => /backrest|apron/i.test(p.name));
     const sides = panels.filter((p) => /side rail/i.test(p.name));
     const sheetCuts = panels.map((p) => `${p.name} ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}".`);
+    const postWord = posts.some((p) => /\bposts?\b/i.test(p.name)) ? "posts" : `${posts.length === 1 ? "leg" : "legs"}`;
+    const standPosts = postWord === "posts" && posts.length === 4 ? "Stand the four posts and frame them" : `Stand the ${posts.length} ${postWord} and frame them`;
     return [
       {
         step: 1,
@@ -1182,8 +1186,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the four posts and frame them",
-        description: `${[...posts, ...frame].map(cutLine).join("; ")}. Screw the front apron across the front posts and the backrest to the back posts. Glue the joints too.`,
+        title: standPosts,
+        description: `${[...posts, ...frame].map(cutLine).join("; ")}. Screw the front apron across the front ${postWord} and the backrest to the back ${postWord}. Glue the joints too.`,
         tips: "Square the frame before the deck goes on.",
         partsUsed: names([...posts, ...frame]),
       },
@@ -1204,7 +1208,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Level it",
-        description: "Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a mattress that fits the deck.",
+        description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the ${postWord}. Add a mattress that fits the deck.`,
         tips: "Guidance only — person load is heuristic, not stamped engineering.",
         partsUsed: ["*"],
       },
@@ -2625,7 +2629,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       fixedGlue
         ? {
             step: n++,
-            title: `Glue ${shelfLineCount(looseShelves)} fixed shel${shelfLineCount(looseShelves) === 1 ? "f" : "ves"}`,
+            title: `Glue ${shelfLineCount(looseShelves)} fixed shel${shelfLineCount(looseShelves) === 1 ? "f" : "ves"}${looseShelves.length === shelfLineCount(looseShelves) ? "" : ` (${looseShelves.length} pieces)`}`,
             description: `${looseShelves.map(cutLine).join("; ")}. ${shelfHeights(looseShelves)} Glue and #8 × 1¼" screws through the uprights into each shelf at those marked heights. Square every bay. These shelves are fixed — no pins.`,
             tips: "Predrill near the ends so the ply does not split. Wipe squeeze-out.",
             partsUsed: names([...uprights, ...backs, ...bottoms, ...of("top"), ...looseShelves]),
@@ -3381,7 +3385,14 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
         : (spec as { word?: string }).word ?? spec.role;
     const named = shopPlural(roleWord, listI.length);
     const rawTitle = listI.length === 1 && /segments in an S/i.test(spec.title) ? "Glue the neck" : spec.title;
-    const title = whole && /^cut\b/i.test(rawTitle) ? rawTitle.replace(/^cut\b/i, "Place") : rawTitle;
+    const titled = whole && /^cut\b/i.test(rawTitle) ? rawTitle.replace(/^cut\b/i, "Place") : rawTitle;
+    // A template that says "the four legs" is wrong when this build has a different count. The suffix carries the real count.
+    const countWord = roleWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const title = titled.replace(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|both)\\s+(?=(?:[a-z]+\\s+){0,3}${countWord}s?\\b)`, "i"), (num) => {
+      const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, both: 2 };
+      const qty = words[num.toLowerCase()] ?? Number(num);
+      return qty === listI.length ? num : "";
+    }).replace(/\s{2,}/g, " ").trim();
     const why = listI.length === 1 && /segments in an S/i.test(spec.title) ? "One neck piece. Glue it where it meets the body." : spec.why;
     steps.push({
       step: n++,

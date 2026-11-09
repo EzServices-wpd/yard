@@ -697,6 +697,33 @@ export function densifyPartsCountTalk(
  * Full kit-craft densify for packPlan: plain shop words already applied;
  * then parts-plate refs + one-join split + honest parts-count + drawer-explode Voice honesty.
  */
+const FRAME_PART = /\b(?:apron|brace)s?\b/i;
+const SPAN_PART = /\b(?:seat|top|shelf|deck|counter|tread|slat)s?\b/i;
+
+/**
+ * Aprons and braces hold the frame. Their step comes before the step that sets the
+ * seat, top, shelf or deck on that frame. Existing sentences stay; only the order moves.
+ */
+function frameBeforeSpan(steps: AssemblyStep[]): AssemblyStep[] {
+  const out = steps.map((s) => ({ ...s }));
+  const frame = (s: AssemblyStep) => {
+    const used = (s.partsUsed ?? []).filter((n) => n !== "*" && n !== "all");
+    return used.some((n) => FRAME_PART.test(n)) && !used.some((n) => SPAN_PART.test(n)) && !SPAN_PART.test(s.title);
+  };
+  const span = (s: AssemblyStep) => !/^(?:confirm|cut|read|lay out|do not|print|count|mark)\b/i.test(s.title) && SPAN_PART.test(s.title) && !frame(s);
+  let guard = out.length;
+  while (guard--) {
+    const spanAt = out.findIndex(span);
+    const frameAt = out.findIndex((s, i) => i > spanAt && spanAt >= 0 && frame(s));
+    if (spanAt < 0 || frameAt < 0) break;
+    const [step] = out.splice(frameAt, 1);
+    out.splice(spanAt, 0, step);
+  }
+  return out.map((s, i) => ({ ...s, step: i + 1 }));
+}
+
+export { frameBeforeSpan };
+
 export function densifyKitCraftInstructions(
   instructions: AssemblyStep[],
   cutList: CutLine[],

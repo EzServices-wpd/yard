@@ -106,7 +106,9 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       out.set(p.id, { key: p.id, name: p.name, how: "floor", on: [] });
       continue;
     }
-    const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer");
+    // Bought hardware (a hook, a hinge, a bracket) fastens to the frame. It is not what the frame rests on.
+    const bought = (q: Panel) => q.materialId === "hardware" || /^(?:Hinge|Latch|A-frame bracket|Fold bracket|Coat hook|Coat peg|Caster|Screw eye) \d+$/.test(q.name);
+    const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer" && !(bought(q) && !bought(p)));
     // A flat span fastened between two uprights (a top, bottom, seat or fixed shelf) is carried by those
     // end supports, whatever sits under its middle (a divider, a kick strip) — they fasten to it later.
     const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
@@ -343,9 +345,26 @@ function acyclicRoles(out: Map<string, SupportInfo>, groups: Map<string, YardIns
   return out;
 }
 
+const REST_ROLE = /^(?:shelf|top|seat|deck|slat|panel|tread|lid)s?$/;
+const BRACE_ROLE = /^(?:brace|apron|stretcher)s?$/;
+
+/** A stick that rests on the frame also waits for the braces of that same frame. */
+function bracesBeforeLoad(out: Map<string, SupportInfo>): Map<string, SupportInfo> {
+  for (const [key, info] of out) {
+    if (!REST_ROLE.test(key)) continue;
+    const on = [...info.on];
+    for (const [other, brace] of out) {
+      if (other === key || !BRACE_ROLE.test(other) || on.includes(other) || brace.on.includes(key)) continue;
+      if (brace.on.some((s) => on.includes(s))) on.push(other);
+    }
+    if (on.length !== info.on.length) out.set(key, { ...info, on });
+  }
+  return out;
+}
+
 /** Supports for every part key the steps place (panel ids, or role names on stick builds). */
 export function supportsOf(project: YardProject): Map<string, SupportInfo> {
-  if (!project.panels.length) return roleSupports(project.instances);
+  if (!project.panels.length) return bracesBeforeLoad(roleSupports(project.instances));
   const out = panelSupports(project.panels);
   // A part set into another (a mirror in the door's rabbet) is mounted on that part, never the nearest one.
   for (const p of project.panels) {

@@ -147,7 +147,7 @@ function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean 
 function isBuild(step: AssemblyStep): boolean {
   // "Level it" checks the finished box; it places no part.
   // A glue-up makes blanks; it places no part either.
-  return !PREP.test(step.title) && !/^(?:Cut|Glue up|Join sheet splices)\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
+  return !PREP.test(step.title) && !/^(?:Cut|Glue up|Join sheet splices|Splice)\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
 }
 
 const POSITION = /^(left|right|front|back|top|bottom|lower|upper|middle|inner|outer|center|centre)$/;
@@ -351,6 +351,12 @@ function namesSupport(project: YardProject, step: AssemblyStep, info: SupportInf
 
 function renumber(steps: AssemblyStep[]): AssemblyStep[] {
   return steps.map((s, i) => ({ ...s, step: i + 1 }));
+}
+
+/** Final pass: a part's step follows every part it rests on. Stable when nothing is late. */
+export function orderBySupports(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  if (!steps.length) return steps;
+  return renumber(supportOrder(project, steps, partsOf(project), supportsOf(project)));
 }
 
 /** The step index that places each part, or -1. */
@@ -598,7 +604,9 @@ function liftAfterSupports(project: YardProject, steps: AssemblyStep[], parts: P
           .replace(/^;\s*/, ""),
       };
       const target = Math.max(...late);
-      moves.set(target, [...(moves.get(target) ?? []), ...same.slice(0, 1)]);
+      // A later step already installs this part. Dropping it here is enough; that step follows the support.
+      const later = out.findIndex((s, i) => i > at && (s.partsUsed ?? []).some((u) => u.toLowerCase() === name));
+      if (later < 0) moves.set(target, [...(moves.get(target) ?? []), ...same.slice(0, 1)]);
     }
     if (!moves.size) break;
     for (const target of [...moves.keys()].sort((a, b) => b - a)) {
