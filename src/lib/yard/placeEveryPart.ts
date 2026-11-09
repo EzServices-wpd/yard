@@ -5,7 +5,7 @@
 import { faceScrewInches, stockThickness } from "./shopJoin";
 import { panelStockThickness } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
-import { binderKind, countSlipFittings, slipFittingPhrase, slipInstancesFromPanels } from "./joints";
+import { binderKind, countSlipFittings, slipFittingPhrase, slipInstancesFromPanels, stockRunCouplings } from "./joints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
@@ -32,6 +32,7 @@ function slipFitTalk(project: YardProject): string {
   const item = getCatalogItem(id ?? "");
   if (!item) return "";
   const counts = countSlipFittings(slipInstancesFromPanels(project.panels, item.id), (item.dims.diameter ?? 1.05) / 2);
+  counts.couplings = stockRunCouplings(project.panels, item);
   const phrase = slipFittingPhrase(item, counts);
   return phrase ? ` ${phrase}` : "";
 }

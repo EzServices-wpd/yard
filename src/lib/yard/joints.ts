@@ -7,11 +7,12 @@ import { inchFrac } from "./inchText";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { screwTalk, stickJoints } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
+import { fixedProfile } from "./geometry";
 import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
 
 /** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
-export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet"]);
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling"]);
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -336,6 +337,7 @@ export function slipFittingPhrase(item: CatalogItem, counts: ReturnType<typeof c
     if (qty > 0) bits.push(`${qty} ${size} PVC ${qty === 1 ? title : plural}`);
   };
   add(counts.corners, "3-way corner", "3-way corners");
+  add(counts.couplings, "coupling", "couplings");
   add(counts.tees, "tee", "tees");
   add(counts.crosses, "cross", "crosses");
   add(counts.elbows90, "90° elbow", "90° elbows");
@@ -352,10 +354,27 @@ function pvcSizeLabel(item: CatalogItem): string {
   return "3/4\"";
 }
 
+/**
+ * Couplings that join one straight run cut into sticks. A run that fits the stick needs none.
+ * A collinear joint already drawn in the model stays as it was: counted, not bought.
+ */
+export function stockRunCouplings(panels: Panel[], item: CatalogItem): number {
+  const stock = item.dims.length ?? 0;
+  if (!fixedProfile(item) || !(stock > 0)) return 0;
+  let n = 0;
+  for (const p of panels) {
+    if (p.materialId !== item.id) continue;
+    const len = Math.max(p.size.width, p.size.height, p.size.depth);
+    if (len > stock + 0.01) n += Math.ceil((len - 1e-6) / stock) - 1;
+  }
+  return n;
+}
+
 export function binderBom(
   item: CatalogItem,
   instances: YardInstance[],
   override?: JoinMethod | null,
+  extraCouplings = 0,
 ): BomLine[] {
   const kind = binderKind(item, override);
   const joints = Math.max(1, Math.round(instances.length * 0.6));
@@ -435,6 +454,7 @@ export function binderBom(
       });
     };
     push(c.corners, `${size} PVC 3-way corner`, "pvc-side-outlet", `${size} schedule 40 PVC 3-way elbow`, 2.37, "Side-outlet elbow. Three sockets at right angles, one along each axis.");
+    push(extraCouplings, `${size} PVC coupling`, "pvc-coupling", `${size} schedule 40 PVC coupling`, 0.68);
     push(c.tees, `${size} PVC tee`, "pvc-tee", `${size} schedule 40 PVC tee`, 1.15);
     push(c.crosses, `${size} PVC cross`, "pvc-tee", `${size} schedule 40 PVC cross`, 2.4);
     push(c.elbows90, `${size} PVC 90° elbow`, "pvc-elbow-90", `${size} schedule 40 PVC 90 elbow`, 0.95);

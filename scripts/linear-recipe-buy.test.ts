@@ -210,6 +210,9 @@ test("every soccer-goal pipe meets a neighbor, and no cut is longer than a stick
   const eps = 0.05;
   let gaps = 0;
   let over = 0;
+  let glue = 0;
+  let sheetSplice = 0;
+  let couplingMiss = 0;
   for (const w of widths) {
     for (const h of heights) {
       const q = `pvc soccer goal ${w} ft wide ${h} ft tall`;
@@ -238,16 +241,30 @@ test("every soccer-goal pipe meets a neighbor, and no cut is longer than a stick
         if (!near(lo) || !near(hi)) gaps += 1;
       }
       for (const cut of plan.cutList) if (cut.id.startsWith(pipe.id) && cut.lengthIn > stock + 0.01) over += 1;
+      const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+      if (/Join sheet splices/i.test(text)) sheetSplice += 1;
+      if (plan.bom.some((b) => /\bwood glue\b/i.test(b.name))) glue += 1;
+      const need = panels.reduce((n, p) => {
+        const len = Math.max(p.size.width, p.size.height, p.size.depth);
+        return n + (len > stock + 0.01 ? Math.ceil((len - 1e-6) / stock) - 1 : 0);
+      }, 0);
+      const got = plan.bom.find((b) => b.catalogId === "pvc-coupling")?.quantity ?? 0;
+      if (got !== need) couplingMiss += 1;
       if (w === 24 && h === 8) {
-        const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
         assert.match(text, /Front crossbar to both posts/);
         assert.equal(plan.bom.find((b) => b.catalogId === pipe.id)?.quantity, 16, "over-length rails split into sticks");
-        assert.ok(plan.cutList.some((c) => / · \d+\/\d+/.test(c.name)), "a long rail is named as segments");
+        assert.equal(need, 8);
+        assert.equal(got, 8);
+        const said = text.match(/The fittings are 8 3\/4" PVC 3-way corners and 8 3\/4" PVC couplings, the same fittings on the Buy list\./g) ?? [];
+        assert.equal(said.length, 1);
       }
     }
   }
   assert.equal(gaps, 0);
   assert.equal(over, 0);
+  assert.equal(glue, 0);
+  assert.equal(sheetSplice, 0);
+  assert.equal(couplingMiss, 0);
 });
 
 test("fitting type follows joint valence", () => {

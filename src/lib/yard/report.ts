@@ -244,7 +244,8 @@ function closetCuts(project: YardProject): CutLine[] {
 
 /**
  * A pipe or tube longer than the stick it is bought as is cut in pieces that fit that stick.
- * A narrow face is not a sheet, so the sheet splitter leaves it whole; this is the stock-length split.
+ * The name stays free of the sheet-splice mark, so the pieces are not told to glue and screw.
+ * The joints between those pieces are couplings, bought with the other slip fittings.
  */
 function spliceLinearToStock(cuts: CutLine[]): CutLine[] {
   const out: CutLine[] = [];
@@ -261,7 +262,7 @@ function spliceLinearToStock(cuts: CutLine[]): CutLine[] {
       out.push({
         ...c,
         id: `${c.id}|${i + 1}/${n}`,
-        name: `${c.name} · ${i + 1}/${n}`,
+        name: `${c.name} ${i + 1}/${n}`,
         lengthIn: Math.min(stock, each),
       });
     }
