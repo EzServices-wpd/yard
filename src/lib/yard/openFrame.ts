@@ -19,6 +19,7 @@
  * will tip.
  */
 import { getCatalogItem } from "./catalog";
+import { typedExtents } from "./honesty";
 import { inchFrac } from "./inchText";
 import { typedDepth } from "./typedAxis";
 import type { Panel, YardProject } from "./types";
@@ -27,6 +28,11 @@ import type { Panel, YardProject } from "./types";
 export const OPEN_FRAME_MIN_HEIGHT = 24;
 /** The base, in each plan direction, has to be at least this share of the height. */
 export const OPEN_FRAME_BASE_RATIO = 0.5;
+/**
+ * Posts and rails sit a member inside the header (a pipe's width, a board's face). A frame whose
+ * header depth is already half the height is standing; that inset is not a short base.
+ */
+const MEMBER_INSET = 1;
 
 export type OpenFrameStance = {
   /** Posts and rails only, free-standing, tall enough to tip, with a real front and a real back. */
@@ -121,8 +127,8 @@ export function openFrameStance(project: YardProject): OpenFrameStance {
   const ground = groundPanels(panels);
   const baseWidth = Math.max(...ground.map((p) => p.position.x + p.size.width)) - Math.min(...ground.map((p) => p.position.x));
   const baseDepth = Math.max(...ground.map((p) => p.position.z + p.size.depth)) - Math.min(...ground.map((p) => p.position.z));
-  const need = height * OPEN_FRAME_BASE_RATIO - 0.01;
-  const tippy = Math.min(baseWidth, baseDepth) < need;
+  const need = height * OPEN_FRAME_BASE_RATIO - MEMBER_INSET;
+  const tippy = Math.min(baseWidth, baseDepth) < need - 0.01;
   return {
     open: true,
     height,
@@ -134,14 +140,53 @@ export function openFrameStance(project: YardProject): OpenFrameStance {
   };
 }
 
-/** A depth the person named, or a depth the bench set. Null when the depth is the engine's own default. */
+/** A depth the person named — an axis word, a W×D×H triple, or the bench. Null when the depth is ours. */
 export function givenDepth(prompt: string, sizeOverride?: { depth?: number }): number | null {
   if (sizeOverride?.depth != null) return sizeOverride.depth;
-  return typedDepth(prompt);
+  const word = typedDepth(prompt);
+  if (word != null) return word;
+  const ext = typedExtents(prompt);
+  if (ext?.labeled.depth && ext.depth != null && ext.depth > 0) return ext.depth;
+  return null;
+}
+
+/**
+ * Two low rails run the width with an open gap between them (a firewood rack's log bay). A member
+ * at that same height bridging the gap means the gap is the frame itself (a goal's bottom rails).
+ */
+function openLogBay(panels: Panel[]): boolean {
+  const rails = panels.filter((p) => p.position.y < 6 && p.size.width > p.size.depth + 0.5 && p.size.width > p.size.height && p.size.width > 24);
+  if (rails.length < 2) return false;
+  const sorted = [...rails].sort((a, b) => a.position.z - b.position.z);
+  const front = sorted[0];
+  const back = sorted[sorted.length - 1];
+  const gapLo = front.position.z + front.size.depth;
+  const gapHi = back.position.z;
+  if (gapHi - gapLo < 4) return false;
+  const y = (front.position.y + back.position.y) / 2;
+  const bridged = panels.some((p) => {
+    if (Math.abs(p.position.y - y) > 1.25) return false;
+    if (!(p.size.depth > p.size.width + 0.5 && p.size.depth > p.size.height)) return false;
+    return p.position.z <= gapLo + 1 && p.position.z + p.size.depth >= gapHi - 1;
+  });
+  return !bridged;
 }
 
 function runsAlongDepth(p: Panel): boolean {
   return p.size.depth > p.size.width + 0.01 && p.size.depth > p.size.height + 0.01;
+}
+
+/** A closed post-and-rail box: lengthen the depth members and carry the rear posts back with them. */
+function deepenBox(panels: Panel[], z0: number, z1: number, delta: number): Panel[] {
+  const mid = (z0 + z1) / 2;
+  return panels.map((p) => {
+    const lo = p.position.z;
+    const hi = lo + p.size.depth;
+    const spans = lo < mid - 0.01 && hi > mid + 0.01;
+    if (spans && runsAlongDepth(p)) return { ...p, size: { ...p.size, depth: p.size.depth + delta } };
+    if (!spans && lo + p.size.depth / 2 >= mid - 0.01) return { ...p, position: { ...p.position, z: p.position.z + delta } };
+    return p;
+  });
 }
 
 /**
@@ -166,20 +211,20 @@ export function stabilizeOpenFrame(project: YardProject, prompt: string, sizeOve
   const z1 = Math.max(...panels0.map((p) => p.position.z + p.size.depth));
   const delta = need - (z1 - z0);
   if (delta <= 0.01) return project;
-  const mid = (z0 + z1) / 2;
-  const panels = panels0.map((p) => {
-    const lo = p.position.z;
-    const hi = lo + p.size.depth;
-    const spans = lo < mid - 0.01 && hi > mid + 0.01;
-    if (spans && runsAlongDepth(p)) return { ...p, size: { ...p.size, depth: p.size.depth + delta } };
-    if (!spans && lo + p.size.depth / 2 >= mid - 0.01) return { ...p, position: { ...p.position, z: p.position.z + delta } };
-    return p;
-  });
+  // A log bay stays at its span. The sleepers under it grow past the uprights, so the logs still
+  // reach both rails and the ground reach is what gets longer.
+  const panels = openLogBay(panels0)
+    ? panels0.map((p) => {
+        const onFloor = p.position.y < 0.75 && runsAlongDepth(p);
+        const covers = p.position.z <= z0 + 1 && p.position.z + p.size.depth >= z1 - 1;
+        return onFloor && covers ? { ...p, size: { ...p.size, depth: p.size.depth + delta } } : p;
+      })
+    : deepenBox(panels0, z0, z1, delta);
   const depth = Math.round((Math.max(...panels.map((p) => p.position.z + p.size.depth)) - Math.min(...panels.map((p) => p.position.z))) * 1e4) / 1e4;
   // The second sentence must not say tall, high, wide, or deep: an "Assumed" note is scanned for those
   // words, and a mention of another axis would swallow that axis's own assumed note.
   const note = `Assumed ${inchFrac(depth)}" deep (default size) — type a depth to lock it. A free-standing frame of ${inchFrac(height)}" needs a base at least half that, front to back.`;
-  const notes = (project.notes ?? []).some((n) => /free-standing frame stands when the base/.test(n)) ? project.notes : [...(project.notes ?? []), note];
+  const notes = (project.notes ?? []).some((n) => /needs a base at least half/.test(n)) ? project.notes : [...(project.notes ?? []), note];
   return { ...project, panels, overall: { ...project.overall, depth }, notes };
 }
 

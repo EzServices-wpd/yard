@@ -62,6 +62,10 @@ it("a firewood rack that stood 18 1/2\" deep now stands, and a stable open frame
   assert.equal(openFrameStance(rack).tippy, false);
   const plan = agrees(rack);
   assert.equal(plan.bom.find((b) => b.catalogId === "lumber-2x4-8")!.quantity, 6);
+  const back = rack.panels.find((p) => p.name === "Base rail back")!;
+  const front = rack.panels.find((p) => p.name === "Base rail front")!;
+  const bay = front.position.z - (back.position.z + back.size.depth);
+  assert.ok(bay < 16 && bay > 8, `log bay ${bay}" would drop a 16" log`);
 
   // Compost tumbler frame: 38.6" tall on a 25.2" base, already past half the height. Same parts.
   const tumbler = generateFromPrompt("compost tumbler frame");
@@ -91,6 +95,14 @@ it("a typed depth that is too shallow is kept, and the note says the frame will 
   assert.match((p.notes ?? []).join("\n"), /Built 8" deep, as given/);
   assert.match((p.notes ?? []).join("\n"), /will tip unless it is held/);
   agrees(p);
+  // A W×D×H triple is a typed depth. 12" stays 12"; 18" on a 36" frame is half the height and stands.
+  const triple = generateFromPrompt("soccer goal 48x12x36");
+  assert.equal(triple.overall.depth, 12);
+  assert.match((triple.notes ?? []).join("\n"), /Built 12" deep, as given/);
+  const half = generateFromPrompt("soccer goal 48 wide 36 tall 18 deep");
+  assert.equal(half.overall.depth, 18);
+  assert.equal(openFrameStance(half).tippy, false);
+  assert.equal((half.notes ?? []).some((n) => /will tip unless it is held/.test(n)), false);
 });
 
 it("the learned gate rejects a synthetic open frame that is still tippy", () => {
@@ -99,6 +111,7 @@ it("the learned gate rejects a synthetic open frame that is still tippy", () => 
   assert.deepEqual(learnedRecipeFailures(goal, "pvc soccer goal 6 ft wide 4 ft tall"), []);
   const shallow = learnedRecipeFailures(goal, "soccer goal 48 wide 36 tall 8 deep");
   assert.ok(shallow.some((f) => /tips: free-standing open frame is 36" tall on a 8" base/.test(f)), shallow.join("; "));
+  assert.equal(learnedRecipeFailures(goal, "soccer goal 48 wide 36 tall 18 deep").some((f) => /tips:/.test(f)), false);
   const synthetic = { ...goal, key: "box-frame", title: "Box Frame", learned: true } as Recipe;
   const fail = learnedRecipeFailures(synthetic, "box frame 40 wide 48 tall 6 deep");
   assert.ok(fail.some((f) => /tips: free-standing open frame is 48" tall on a 6" base/.test(f)), fail.join("; "));
