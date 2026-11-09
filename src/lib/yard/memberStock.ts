@@ -741,10 +741,9 @@ function segmentClosest(a: OutlineSeg, b: OutlineSeg): { d: number; ti: number; 
   return { d: vdist(qi, qj), ti, tj, qi, qj };
 }
 
-function fuseCollinear(segs: OutlineSeg[], od: number): OutlineSeg[] {
+function fuseCollinear(segs: OutlineSeg[], limit: number): OutlineSeg[] {
   let cur = segs.slice();
   let changed = true;
-  const limit = Math.max(od, 2);
   while (changed) {
     changed = false;
     const at = new Map<string, number[]>();
@@ -800,9 +799,15 @@ function fuseCollinear(segs: OutlineSeg[], od: number): OutlineSeg[] {
 }
 
 function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance[] {
+  // Slip stock is what the joint test buys fittings for. A dowel or a craft stick
+  // stays on the outline it already had: a 2" snap there pulls rods together and
+  // lifts a floor off its posts.
+  if (item.formFactor !== "pipe" && item.formFactor !== "tube") return instances;
   const kept = instances.filter((inst) => !inst.from || !inst.to);
   const od = outsideDiameter(item);
-  const snapTol = Math.max(od, 2);
+  // Pipe faces sit about 2" apart where two outlines meet. Thinner stock (a dowel, a craft
+  // stick) uses its own diameter, so neighbouring rods are not pulled into one node.
+  const snapTol = od >= 0.75 ? Math.max(od, 2) : od;
   let segs: OutlineSeg[] = instances.filter((inst) => inst.from && inst.to).map((inst) => ({
     from: { ...inst.from! },
     to: { ...inst.to! },
@@ -828,10 +833,9 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
         const p = end === 0 ? segs[i].from : segs[i].to;
         let best: { d: number; q: Vec3; j: number } | null = null;
         for (let j = 0; j < segs.length; j++) {
-          if (i === j) continue;
+          if (i === j || !crossing(segs[i], segs[j])) continue;
           const hit = closestPoint(p, segs[j].from, segs[j].to);
-          const limit = crossing(segs[i], segs[j]) ? snapTol : od;
-          if (hit.d <= limit + 1e-6 && (!best || hit.d < best.d)) best = { ...hit, j };
+          if (hit.d <= snapTol + 1e-6 && (!best || hit.d < best.d)) best = { ...hit, j };
         }
         if (!best || best.d <= 0.005) continue;
         if (full) {
@@ -855,12 +859,12 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
   };
   for (let pass = 0; pass < 4; pass++) slide(false);
   slide(true);
-  segs = weldNearEnds(segs, 0.35);
+  segs = weldNearEnds(segs, 0.08);
   const cuts: Vec3[][] = segs.map(() => []);
   for (let i = 0; i < segs.length; i++) {
     for (let j = 0; j < segs.length; j++) {
-      if (i === j) continue;
-      const limit = crossing(segs[i], segs[j]) ? 0.35 : Math.min(od, 0.35);
+      if (i === j || !crossing(segs[i], segs[j])) continue;
+      const limit = 0.08;
       for (const p of [segs[j].from, segs[j].to]) {
         const hit = closestPoint(p, segs[i].from, segs[i].to);
         const L = vdist(segs[i].from, segs[i].to);
@@ -885,13 +889,13 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
   }
   let out: OutlineSeg[] = [];
   segs.forEach((seg, i) => out.push(...splitSeg(seg, cuts[i])));
-  out = weldNearEnds(out, 0.35);
-  out = fuseCollinear(out, od);
+  out = weldNearEnds(out, 0.08);
+  out = fuseCollinear(out, snapTol);
   const valence = new Map<string, number>();
   for (const s of out) {
     for (const p of [s.from, s.to]) valence.set(nodeKey(p), (valence.get(nodeKey(p)) ?? 0) + 1);
   }
-  const stubLimit = Math.max(od, 2) + 0.05;
+  const stubLimit = snapTol + 0.05;
   out = out.filter((s) => {
     const L = vdist(s.from, s.to);
     if (L < 0.2) return false;
