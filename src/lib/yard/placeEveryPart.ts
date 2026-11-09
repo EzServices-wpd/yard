@@ -5,7 +5,7 @@
 import { faceScrewInches, stockThickness } from "./shopJoin";
 import { panelStockThickness } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
-import { binderKind } from "./joints";
+import { binderKind, countSlipFittings, slipFittingPhrase, slipInstancesFromPanels, stockRunCouplings } from "./joints";
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
@@ -24,6 +24,17 @@ const SLIP_CEMENT = "solvent cement, the same cement on the Buy list.";
 function slipMember(materialId: string | undefined): boolean {
   const item = getCatalogItem(materialId ?? "");
   return !!item && binderKind(item) === "slip";
+}
+
+/** The fitting sentence Buy uses, so a step names the same fittings in the same counts. */
+function slipFitTalk(project: YardProject): string {
+  const id = project.panels.find((p) => slipMember(p.materialId))?.materialId;
+  const item = getCatalogItem(id ?? "");
+  if (!item) return "";
+  const counts = countSlipFittings(slipInstancesFromPanels(project.panels, item.id), (item.dims.diameter ?? 1.05) / 2);
+  counts.couplings = stockRunCouplings(project.panels, item);
+  const phrase = slipFittingPhrase(item, counts);
+  return phrase ? ` ${phrase}` : "";
 }
 
 function fastenerTalk(project: YardProject): string {
@@ -488,6 +499,15 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   return renumber(withSlipJoints(project, out));
 }
 
+/** The fitting count is said once, on the first step that cements those joints. */
+function sayFittingsOnce(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const phrase = slipFitTalk(project).trim();
+  if (!phrase) return steps;
+  const i = steps.findIndex((s) => /solvent cement|slip fittings/i.test(`${s.title} ${s.description}`));
+  if (i < 0 || steps.some((s) => s.description.includes("The fittings are"))) return steps;
+  return steps.map((s, k) => (k === i ? { ...s, description: `${s.description} ${phrase}` } : s));
+}
+
 /**
  * A pipe named only in a placement clause is not joined. Each slip member is cemented in a step,
  * with the same fitting words the frame path already uses.
@@ -508,7 +528,7 @@ function withSlipJoints(project: YardProject, steps: AssemblyStep[]): AssemblySt
     });
     at += 1;
   }
-  return out;
+  return sayFittingsOnce(project, out);
 }
 
 /**
