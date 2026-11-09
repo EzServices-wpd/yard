@@ -239,7 +239,34 @@ function closetCuts(project: YardProject): CutLine[] {
     }
     addCut(p.materialId, p.name, p.type, w, h, d, materialName, p.cutNote);
   }
-  return stampLabels(stampPlySheetSize(spliceCutListToSheet([...grouped.values()]))).map(cornerCutNote);
+  return stampLabels(stampPlySheetSize(spliceLinearToStock(spliceCutListToSheet([...grouped.values()])))).map(cornerCutNote);
+}
+
+/**
+ * A pipe or tube longer than the stick it is bought as is cut in pieces that fit that stick.
+ * A narrow face is not a sheet, so the sheet splitter leaves it whole; this is the stock-length split.
+ */
+function spliceLinearToStock(cuts: CutLine[]): CutLine[] {
+  const out: CutLine[] = [];
+  for (const c of cuts) {
+    const item = getCatalogItem((c.id ?? "").split("|")[0]);
+    const stock = item?.dims.length ?? 0;
+    if (!fixedProfile(item) || !(stock > 0) || !(c.lengthIn > stock + 0.01)) {
+      out.push(c);
+      continue;
+    }
+    const n = Math.max(2, Math.ceil((c.lengthIn - 1e-6) / stock));
+    const each = c.lengthIn / n;
+    for (let i = 0; i < n; i++) {
+      out.push({
+        ...c,
+        id: `${c.id}|${i + 1}/${n}`,
+        name: `${c.name} · ${i + 1}/${n}`,
+        lengthIn: Math.min(stock, each),
+      });
+    }
+  }
+  return out;
 }
 
 /** Corner-unit cut lines say how a stranger gets the shape from a square blank. */

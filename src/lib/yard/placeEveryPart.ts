@@ -256,12 +256,11 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   // Pipe joins with the fittings on Buy. A thin drawn box is still a pipe, not a glued wood joint.
   if (slipMember(panel?.materialId)) {
-    const fit = slipFitTalk(project);
     if (info?.how === "floor") {
       const lead = /\bposts?\b/i.test(part.name) ? "Stand the posts in the slip fittings. " : "";
-      return `${lead}Set the ${part.name} on the floor, square to the marks. Every pipe meets a fitting. Fasten it with ${SLIP_CEMENT}${fit}`;
+      return `${lead}Set the ${part.name} on the floor, square to the marks. Every pipe meets a fitting. Fasten it with ${SLIP_CEMENT}`;
     }
-    return `Fasten the ${part.name} to ${onto} with ${SLIP_CEMENT} Every pipe meets a fitting.${fit}`;
+    return `Fasten the ${part.name} to ${onto} with ${SLIP_CEMENT} Every pipe meets a fitting.`;
   }
   // Nothing under 3/4" but a back takes a screw: a thin divider or face (under 1/2", or planed thinner than its stock) is glued in place.
   const t = panel ? Math.min(panel.size.width, panel.size.height, panel.size.depth) : 1;
@@ -499,6 +498,15 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   return renumber(withSlipJoints(project, out));
 }
 
+/** The fitting count is said once, on the first step that cements those joints. */
+function sayFittingsOnce(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  const phrase = slipFitTalk(project).trim();
+  if (!phrase) return steps;
+  const i = steps.findIndex((s) => /solvent cement|slip fittings/i.test(`${s.title} ${s.description}`));
+  if (i < 0 || steps.some((s) => s.description.includes("The fittings are"))) return steps;
+  return steps.map((s, k) => (k === i ? { ...s, description: `${s.description} ${phrase}` } : s));
+}
+
 /**
  * A pipe named only in a placement clause is not joined. Each slip member is cemented in a step,
  * with the same fitting words the frame path already uses.
@@ -514,12 +522,12 @@ function withSlipJoints(project: YardProject, steps: AssemblyStep[]): AssemblySt
     out.splice(at, 0, {
       step: 0,
       title: `Fasten the ${p.name}`,
-      description: `Fasten the ${p.name} with ${SLIP_CEMENT} Every pipe meets a fitting.${slipFitTalk(project)}`,
+      description: `Fasten the ${p.name} with ${SLIP_CEMENT} Every pipe meets a fitting.`,
       partsUsed: [p.name],
     });
     at += 1;
   }
-  return out;
+  return sayFittingsOnce(project, out);
 }
 
 /**

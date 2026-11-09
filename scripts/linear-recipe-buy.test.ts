@@ -69,13 +69,14 @@ function assertPvcGoalBuy(prompt: string) {
   const corners = plan.bom.find((b) => /3-way corner/.test(b.name));
   assert.ok(corners, "corners are on Buy");
   assert.equal(corners.quantity, 8);
-  assert.match(corners.notes ?? "", /Side-outlet elbow/);
+  assert.equal(corners.notes, "Side-outlet elbow. Three sockets at right angles, one along each axis.");
   assert.equal(plan.bom.some((b) => /PVC tee/.test(b.name)), false);
   assert.equal(fittingQty, 8);
   const bill = countSlipFittings(slipInstancesFromPanels(project.panels, "pvc-3-4-sch40"), dia / 2);
   assert.equal(bill.corners, 8);
   assert.equal(bill.tees, 0);
-  assert.match(steps, /8 3\/4" PVC 3-way corners, the same fittings on the Buy list/);
+  const said = steps.match(/The fittings are 8 3\/4" PVC 3-way corners, the same fittings on the Buy list\./g) ?? [];
+  assert.equal(said.length, 1);
   assert.match(steps, /1 1\/16 × 1 1\/16/);
   assert.doesNotMatch(steps, /1 3\/8|1 1\/2/);
   for (const cut of plan.cutList.filter((c) => c.id.startsWith("pvc-3-4-sch40"))) {
@@ -195,14 +196,76 @@ test("soccer goal fittings hold across short and wide sizes", () => {
   assert.equal(wide.plan.bom.some((b) => /PVC tee/.test(b.name)), false);
 });
 
+test("every soccer-goal pipe meets a neighbor, and no cut is longer than a stick", () => {
+  const pipe = getCatalogItem("pvc-3-4-sch40")!;
+  const stock = pipe.dims.length;
+  const widths = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 30, 36];
+  const heights = [2, 3, 4, 6, 8, 10, 12];
+  assert.equal(widths.length * heights.length, 91);
+  const axes = [
+    ["x", "width"],
+    ["y", "height"],
+    ["z", "depth"],
+  ] as const;
+  const eps = 0.05;
+  let gaps = 0;
+  let over = 0;
+  for (const w of widths) {
+    for (const h of heights) {
+      const q = `pvc soccer goal ${w} ft wide ${h} ft tall`;
+      const { project, plan } = planOf(q);
+      const panels = project.panels.filter((p) => p.materialId === pipe.id);
+      for (const p of panels) {
+        const run = axes.reduce((m, a) => (p.size[a[1]] > p.size[m[1]] ? a : m));
+        const others = axes.filter((a) => a[0] !== run[0]);
+        const key = run[0] === "x" ? "width" : run[0] === "y" ? "height" : "depth";
+        const near = (at: number) =>
+          (run[0] === "y" && at <= eps) ||
+          panels.some((other) => {
+            if (other === p) return false;
+            const span = other.size[key];
+            if (Math.abs(other.position[run[0]] - at) > eps && Math.abs(other.position[run[0]] + span - at) > eps) return false;
+            return others.some(([b, bk]) => {
+              const a0 = p.position[b];
+              const a1 = a0 + p.size[bk];
+              const b0 = other.position[b];
+              const b1 = b0 + other.size[bk];
+              return Math.min(a1, b1) - Math.max(a0, b0) > eps;
+            });
+          });
+        const lo = p.position[run[0]];
+        const hi = lo + p.size[run[1]];
+        if (!near(lo) || !near(hi)) gaps += 1;
+      }
+      for (const cut of plan.cutList) if (cut.id.startsWith(pipe.id) && cut.lengthIn > stock + 0.01) over += 1;
+      if (w === 24 && h === 8) {
+        const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+        assert.match(text, /Front crossbar to both posts/);
+        assert.equal(plan.bom.find((b) => b.catalogId === pipe.id)?.quantity, 16, "over-length rails split into sticks");
+        assert.ok(plan.cutList.some((c) => / · \d+\/\d+/.test(c.name)), "a long rail is named as segments");
+      }
+    }
+  }
+  assert.equal(gaps, 0);
+  assert.equal(over, 0);
+});
+
 test("fitting type follows joint valence", () => {
   const at = { x: 0, y: 1, z: 0 };
   const v = (x: number, y: number, z: number) => ({ x, y, z });
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0)] }), "elbow90");
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(-1, 0, 0), v(0, 1, 0)] }), "tee");
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), v(0, 0, 1)] }), "corner3");
-  // About 10° off square is a tee, not a 3-way corner.
-  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), v(-0.17, 0, 0.985)] }), "tee");
+  const deg = (d: number) => ({ x: Math.cos((d * Math.PI) / 180), y: 0, z: Math.sin((d * Math.PI) / 180) });
+  // 100° and 80° are not square, and neither is one 75° pair beside two square pairs.
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), deg(100)] }), "tee");
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), deg(80)] }), "tee");
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), deg(75)] }), "tee");
+  // |dot| = 0.05 is the 3° edge and still a corner; just past it is a tee.
+  const onEdge = { x: 0.05, y: 0, z: Math.sqrt(1 - 0.05 * 0.05) };
+  const past = { x: 0.06, y: 0, z: Math.sqrt(1 - 0.06 * 0.06) };
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), onEdge] }), "corner3");
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), past] }), "tee");
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(-1, 0, 0), v(0, 0, 1), v(0, 0, -1)] }), "cross");
 
   const item = getCatalogItem("pvc-3-4-sch40");
@@ -241,7 +304,10 @@ test("a straw bridge and a PVC birdhouse keep the catalog section while the span
     assert.equal(drawn.height, straw.dims.diameter);
   }
   const pipe = getCatalogItem("pvc-3-4-sch40")!;
-  const small = generateFromPrompt("birdhouse from 3/4 PVC pipe");
+  const house = planOf("birdhouse from 3/4 PVC pipe");
+  assert.equal(house.plan.bom.some((b) => /3-way corner/.test(b.name)), false);
+  assert.equal(house.plan.bom.find((b) => /PVC tee/.test(b.name))?.quantity, 2);
+  const small = house.project;
   const big = generateFromPrompt("birdhouse from 3/4 PVC pipe 24 wide 18 tall");
   const longest = (p: typeof small) => Math.max(...p.instances.map((i) => i.cutLength ?? 0));
   assert.ok(longest(big) > longest(small));
