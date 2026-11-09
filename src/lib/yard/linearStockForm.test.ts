@@ -365,6 +365,12 @@ it("linear stock keeps the form of every Ideas prompt and every recipe", () => {
     ["birdhouse [dowel-1-2-36]", "Floor"],
     ["birdhouse [lumber-2x2-8]", "Floor"],
     ["ferris wheel [dowel-1-2-36]", "Left front leg"],
+    // #286 keeps the real pipe section. These ends and this height then miss the face box.
+    ["ferris wheel [pvc-3-4-sch40]", "Front spoke 1"],
+    ["reindeer [pvc-3-4-sch40]", "Neck"],
+    ["learned sawbuck [pvc-3-4-sch40]", "Left leg A"],
+    ["learned compost tumbler frame [pvc-3-4-sch40]", "Left front post"],
+    ["learned sundial [pvc-3-4-sch40]", "bbox"],
     ["learned water wheel [pvc-3-4-sch40]", "left base"],
     ["learned water wheel [dowel-1-2-36]", "left base"],
     ["learned water wheel [lumber-2x2-8]", "left base"],
