@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type ThreeEvent, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { getCatalogItem } from "@/lib/yard/catalog";
-import { meshKind, visualPrimitive } from "@/lib/yard/geometry";
+import { fixedProfile, meshKind, visualPrimitive } from "@/lib/yard/geometry";
 import { stockLook } from "@/lib/yard/stockLook";
 import { shopLook } from "@/components/workspace/shop-light";
 import { useYard } from "@/lib/yard/store";
@@ -67,9 +67,13 @@ export function StickCloud({
       const item = getCatalogItem(inst.catalogId);
       if (!item) return;
       const prim0 = visualPrimitive(item, inst.cutLength, span);
-      const prim = inst.section
-        ? { ...prim0, width: inst.section.width, height: inst.section.height, radius: undefined, innerRadius: undefined }
-        : prim0;
+      // Pipe and tube draw the catalog diameter. A stored section cannot swell the profile.
+      const locked = fixedProfile(item);
+      const prim = locked
+        ? { ...prim0, width: locked[0], height: locked[1], radius: locked[0] / 2, innerRadius: item.dims.innerDiameter ? item.dims.innerDiameter / 2 : undefined }
+        : inst.section
+          ? { ...prim0, width: inst.section.width, height: inst.section.height, radius: undefined, innerRadius: undefined }
+          : prim0;
       // A piece cut round (wheel, face disc) draws as a disc of its own diameter, whatever the stock.
       if (inst.round) {
         solidCyls.push({ inst, index, item, prim: { ...prim0, width: inst.round, height: inst.round, radius: inst.round / 2, innerRadius: undefined } });

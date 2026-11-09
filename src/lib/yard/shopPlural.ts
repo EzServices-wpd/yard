@@ -148,6 +148,16 @@ export function fmtSheetCut(w: number, h: number, d: number) {
 }
 
 /**
+ * A fixed profile (pipe, tube): the length is shop-rounded, the two short sides stay the catalog
+ * section. A 1/8" round would print 1.05" as 1".
+ */
+export function fmtProfileCut(w: number, h: number, d: number, profile: [number, number]): string {
+  const length = Math.round([w, h, d].sort((a, b) => b - a)[0] * 8) / 8;
+  const faces = [...profile].sort((a, b) => b - a);
+  return `${inchFrac(length)} × ${inchFrac(faces[0])} × ${inchFrac(faces[1])}`;
+}
+
+/**
  * Cut-list names a stranger can find in the pile — hanging rod, not "Rail";
  * peg rail / hat shelf, not "Back" / "Top".
  */

@@ -55,6 +55,18 @@ export function visualPrimitive(item: CatalogItem, cutLength?: number, overallSp
   };
 }
 
+/**
+ * Cross-section of stock sold by the length. Pipe and tube keep the catalog diameter
+ * on both axes; a typed size cuts the length only. Boards, sticks and dowels are not
+ * here: a board can be ripped, and wood members already resolve their own section.
+ */
+export function fixedProfile(item: CatalogItem | null | undefined): [number, number] | null {
+  const d = item?.dims.diameter;
+  if (!item || !d || d <= 0) return null;
+  if (item.formFactor === "pipe" || item.formFactor === "tube") return [d, d];
+  return null;
+}
+
 /** Normalize any CatalogItem to a bounding box + optional cylinder params */
 export function toPrimitive(item: CatalogItem, cutLength?: number): PrimitiveDims {
   const d = item.dims;

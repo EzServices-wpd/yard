@@ -7,11 +7,12 @@ import { inchFrac } from "./inchText";
 import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { screwTalk, stickJoints } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
+import { fixedProfile } from "./geometry";
 import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from "./types";
 import { dist } from "./connect";
 
 /** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
-export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45"]);
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling"]);
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -21,7 +22,14 @@ export function screwBoxUnit(boxes: number): string {
 
 export type BinderKind = "slip" | "glue" | "tape" | "fastener" | "friction";
 
-export type JointClass = "ground" | "cap" | "coupling" | "elbow45" | "elbow90" | "tee" | "cross";
+export type JointClass = "ground" | "cap" | "coupling" | "elbow45" | "elbow90" | "tee" | "corner3" | "cross";
+
+/** Two directions continue one straight pipe (the same test a coupling uses). */
+const STRAIGHT = -0.82;
+/** Shallower than a right angle, steeper than straight: a 45° elbow. */
+const OBTUSE = -0.35;
+/** A pair counts as square when it is within about 3° of 90° (sin 3° ≈ 0.052). */
+const SQUARE = 0.05;
 
 export type JointNode = {
   p: Vec3;
@@ -105,17 +113,39 @@ export function jointNodes(
   return [...map.values()];
 }
 
+function pairDots(dirs: Vec3[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      out.push(dirs[i].x * dirs[j].x + dirs[i].y * dirs[j].y + dirs[i].z * dirs[j].z);
+    }
+  }
+  return out;
+}
+
+/**
+ * The fitting follows the pipes that meet, not the part name.
+ * 2 at 90° is an elbow, 2 nearly straight is a coupling, 2 at 45° is a 45° elbow.
+ * 3 pipes within about 3° of mutually perpendicular are a 3-way corner.
+ * Any other meeting of 3 (a straight run with a branch, or an angled crown) is a tee.
+ * 4 or more is a cross.
+ */
 export function classifyJoint(node: JointNode): JointClass {
   const n = node.dirs.length;
   if (n <= 1 && node.p.y < 0.45) return "ground";
   if (n <= 1) return "cap";
-  if (n === 3) return "tee";
   if (n >= 4) return "cross";
+  if (n === 3) {
+    const dots = pairDots(node.dirs);
+    // A square corner: every pair is within about 3° of 90°. A straight run, or any angled meeting, stays a tee.
+    const square = dots.length === 3 && dots.every((d) => Math.abs(d) <= SQUARE);
+    return square ? "corner3" : "tee";
+  }
   const d0 = node.dirs[0];
   const d1 = node.dirs[1];
   const dot = d0.x * d1.x + d0.y * d1.y + d0.z * d1.z;
-  if (dot < -0.82) return "coupling";
-  if (dot < -0.35) return "elbow45";
+  if (dot < STRAIGHT) return "coupling";
+  if (dot < OBTUSE) return "elbow45";
   return "elbow90";
 }
 
@@ -285,10 +315,11 @@ export function countSlipFittings(instances: YardInstance[], radius: number) {
   const nodes = jointNodes(
     instances.map((i) => ({ from: i.from, to: i.to, radius })),
   );
-  const counts = { tees: 0, elbows90: 0, elbows45: 0, couplings: 0, crosses: 0, caps: 0 };
+  const counts = { tees: 0, elbows90: 0, elbows45: 0, couplings: 0, crosses: 0, caps: 0, corners: 0 };
   for (const node of nodes) {
     const k = classifyJoint(node);
     if (k === "tee") counts.tees += 1;
+    else if (k === "corner3") counts.corners += 1;
     else if (k === "elbow90") counts.elbows90 += 1;
     else if (k === "elbow45") counts.elbows45 += 1;
     else if (k === "coupling") counts.couplings += 1;
@@ -298,6 +329,24 @@ export function countSlipFittings(instances: YardInstance[], radius: number) {
   return counts;
 }
 
+/** Bought slip fittings, in the same order and words Buy and the steps use. */
+export function slipFittingPhrase(item: CatalogItem, counts: ReturnType<typeof countSlipFittings>): string {
+  const size = pvcSizeLabel(item);
+  const bits: string[] = [];
+  const add = (qty: number, title: string, plural: string) => {
+    if (qty > 0) bits.push(`${qty} ${size} PVC ${qty === 1 ? title : plural}`);
+  };
+  add(counts.corners, "3-way corner", "3-way corners");
+  add(counts.couplings, "coupling", "couplings");
+  add(counts.tees, "tee", "tees");
+  add(counts.crosses, "cross", "crosses");
+  add(counts.elbows90, "90° elbow", "90° elbows");
+  add(counts.elbows45, "45° elbow", "45° elbows");
+  if (!bits.length) return "";
+  const list = bits.length === 1 ? bits[0] : `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}`;
+  return `The fittings are ${list}, the same fittings on the Buy list.`;
+}
+
 function pvcSizeLabel(item: CatalogItem): string {
   const d = item.dims.diameter ?? 1.05;
   if (d < 0.95) return "1/2\"";
@@ -305,10 +354,27 @@ function pvcSizeLabel(item: CatalogItem): string {
   return "3/4\"";
 }
 
+/**
+ * Couplings that join one straight run cut into sticks. A run that fits the stick needs none.
+ * A collinear joint already drawn in the model stays as it was: counted, not bought.
+ */
+export function stockRunCouplings(panels: Panel[], item: CatalogItem): number {
+  const stock = item.dims.length ?? 0;
+  if (!fixedProfile(item) || !(stock > 0)) return 0;
+  let n = 0;
+  for (const p of panels) {
+    if (p.materialId !== item.id) continue;
+    const len = Math.max(p.size.width, p.size.height, p.size.depth);
+    if (len > stock + 0.01) n += Math.ceil((len - 1e-6) / stock) - 1;
+  }
+  return n;
+}
+
 export function binderBom(
   item: CatalogItem,
   instances: YardInstance[],
   override?: JoinMethod | null,
+  extraCouplings = 0,
 ): BomLine[] {
   const kind = binderKind(item, override);
   const joints = Math.max(1, Math.round(instances.length * 0.6));
@@ -375,7 +441,7 @@ export function binderBom(
         notes: "Dry-fit every joint. Cement is permanent.",
       },
     ];
-    const push = (qty: number, name: string, id: string, q: string, cost: number) => {
+    const push = (qty: number, name: string, id: string, q: string, cost: number, why?: string) => {
       if (qty <= 0) return;
       lines.push({
         name,
@@ -384,9 +450,11 @@ export function binderBom(
         catalogId: id,
         searchQuery: q,
         estimatedCost: qty * cost,
-        notes: `Match ${size} pipe.`,
+        notes: why ?? `Match ${size} pipe.`,
       });
     };
+    push(c.corners, `${size} PVC 3-way corner`, "pvc-side-outlet", `${size} schedule 40 PVC 3-way elbow`, 2.37, "Side-outlet elbow. Three sockets at right angles, one along each axis.");
+    push(extraCouplings, `${size} PVC coupling`, "pvc-coupling", `${size} schedule 40 PVC coupling`, 0.68);
     push(c.tees, `${size} PVC tee`, "pvc-tee", `${size} schedule 40 PVC tee`, 1.15);
     push(c.crosses, `${size} PVC cross`, "pvc-tee", `${size} schedule 40 PVC cross`, 2.4);
     push(c.elbows90, `${size} PVC 90° elbow`, "pvc-elbow-90", `${size} schedule 40 PVC 90 elbow`, 0.95);
