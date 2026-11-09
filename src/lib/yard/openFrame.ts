@@ -1,0 +1,317 @@
+/**
+ * Free-standing open frames: posts and rails of linear stock, no closing panel and no back.
+ *
+ * A uniform frame carries its weight about halfway up. It starts to tip when it is leaned far enough
+ * that this weight passes the edge of the base. That lean, measured from vertical, is atan(base / height).
+ * At a base of half the height the lean is about 27°, which is enough that a bump or a ball into a light
+ * frame does not throw it over. At a quarter (a 12" base under a 4 ft frame) the lean is about 14° and the
+ * frame tips. Shop practice for a bookcase or a goal is the same line: below half the height, anchor it or
+ * give it a wider base.
+ *
+ * Frames shorter than 24" are tabletop pieces. Their proportions stay as they were designed.
+ * A diagonal that stays inside the posts stops the rectangle from racking. It does not move the ground
+ * the frame stands on, so it does not by itself keep a tall frame from tipping. Feet, splayed legs, and
+ * rear supports count because the base is measured from every part that meets the ground.
+ *
+ * When the depth was not typed and that depth is what makes the base too small, the frame's own depth
+ * members are lengthened and the rear posts move back until the base is half the height. The stock is
+ * the stock the frame is already cut from. A depth the person typed is kept, and the note says the frame
+ * will tip.
+ */
+import { getCatalogItem } from "./catalog";
+import { typedExtents } from "./honesty";
+import { inchFrac } from "./inchText";
+import { typedAxisNumber, typedDepth } from "./typedAxis";
+import type { Panel, YardProject } from "./types";
+
+/** Axes the build actually took from the person: Measure, the recipe's own reader, axis words, or a W×D×H triple. */
+export type TypedPlan = { width?: number; depth?: number; height?: number };
+
+/** Below this height the piece is a tabletop frame, not a standing one. */
+export const OPEN_FRAME_MIN_HEIGHT = 24;
+/** The base, in each plan direction, has to be at least this share of the height. Exactly half stands. */
+export const OPEN_FRAME_BASE_RATIO = 0.5;
+
+export type OpenFrameStance = {
+  /** Posts and rails only, free-standing, tall enough to tip, with a real front and a real back. */
+  open: boolean;
+  height: number;
+  /** Ground reach, left to right. */
+  baseWidth: number;
+  /** Ground reach, front to back. */
+  baseDepth: number;
+  /** A diagonal member inside the frame. It does not widen the base. */
+  hasDiagonal: boolean;
+  /** The base is under half the height on its short side. */
+  tippy: boolean;
+  /** The front-to-back base is under half the height, so a deeper base would help. */
+  depthIsCause: boolean;
+  /** The side-to-side base is under half the height. */
+  widthIsCause: boolean;
+};
+
+const SKIP_KIND = new Set(["ladder", "opening", "closet"]);
+
+function sortedDims(p: Panel): [number, number, number] {
+  return [p.size.width, p.size.height, p.size.depth].sort((a, b) => a - b) as [number, number, number];
+}
+
+/**
+ * A face that closes a side. A sheet, or a thin skin whose two other sides are both a face
+ * (a reindeer's body boards), not a stick. A 2×4's thickness is over an inch, so a post-and-rail
+ * frame is not a skin.
+ */
+function isClosingPanel(p: Panel): boolean {
+  if (!p.materialId || p.materialId === "hardware") return false;
+  const item = getCatalogItem(p.materialId);
+  const [a, b, c] = sortedDims(p);
+  if (item?.formFactor === "sheet" || item?.category === "sheet_goods" || item?.category === "cardboard") return b > 6 && c > 6;
+  return a <= 1.05 && b > 4 && c > 8;
+}
+
+/** A stick of pipe, tube, dowel, or a board used on edge. Not a panel. */
+function isLinearMember(p: Panel): boolean {
+  if (!p.materialId || p.materialId === "hardware") return false;
+  if (isClosingPanel(p)) return false;
+  const item = getCatalogItem(p.materialId);
+  const ff = item?.formFactor;
+  if (ff === "pipe" || ff === "tube" || ff === "stick" || ff === "dowel" || ff === "board") return true;
+  const [a, b] = sortedDims(p);
+  return a <= 3.6 && b <= 6.5;
+}
+
+/** Two of the three dimensions are long: a diagonal drawn in its box, or a strut. */
+function isDiagonal(p: Panel): boolean {
+  if (p.strut) return true;
+  if (isClosingPanel(p)) return false;
+  const [a, b, c] = sortedDims(p);
+  return a <= 3.6 && b > a * 3 && c > a * 3 && b > 8;
+}
+
+function isUpright(p: Panel): boolean {
+  return p.size.height + 0.01 >= p.size.width && p.size.height + 0.01 >= p.size.depth && p.size.height > 12 && p.position.y < 6;
+}
+
+/** Front posts and rear posts, with air between them. A flat ladder has none. */
+function hasFrontAndRear(panels: Panel[]): boolean {
+  const spans = panels
+    .filter(isUpright)
+    .map((p) => [p.position.z, p.position.z + p.size.depth] as const)
+    .sort((a, b) => a[0] - b[0]);
+  if (spans.length < 2) return false;
+  let end = spans[0][1];
+  for (let i = 1; i < spans.length; i++) {
+    if (spans[i][0] > end + 2) return true;
+    end = Math.max(end, spans[i][1]);
+  }
+  return false;
+}
+
+function partExtent(panels: Panel[]) {
+  const x0 = Math.min(...panels.map((p) => p.position.x));
+  const x1 = Math.max(...panels.map((p) => p.position.x + p.size.width));
+  const z0 = Math.min(...panels.map((p) => p.position.z));
+  const z1 = Math.max(...panels.map((p) => p.position.z + p.size.depth));
+  return { x0, x1, z0, z1, width: x1 - x0, depth: z1 - z0 };
+}
+
+/** Cross-section of the sticks, so a post centered inside the header is still that header's base. */
+function memberSection(panels: Panel[]): number {
+  let m = 0;
+  for (const p of panels) {
+    const [a, b] = sortedDims(p);
+    if (b <= 6.5) m = Math.max(m, b);
+  }
+  return m || 1;
+}
+
+/**
+ * One base for both the tip check and the decision to grow: the header box when the parts sit inside
+ * it within one member (posts centered on the typed corners), otherwise the outer faces of the parts.
+ */
+function outerBase(project: YardProject, panels: Panel[]): { width: number; depth: number } {
+  const box = partExtent(panels);
+  const section = memberSection(panels);
+  const o = project.overall;
+  const width = o && o.width + 0.01 >= box.width && o.width - box.width <= section + 0.01 ? o.width : box.width;
+  const depth = o && o.depth + 0.01 >= box.depth && o.depth - box.depth <= section + 0.01 ? o.depth : box.depth;
+  return { width, depth };
+}
+
+export function openFrameStance(project: YardProject): OpenFrameStance {
+  const empty = { open: false, height: 0, baseWidth: 0, baseDepth: 0, hasDiagonal: false, tippy: false, depthIsCause: false, widthIsCause: false };
+  const panels = project.panels ?? [];
+  const mode = project.assumptions?.installMode;
+  if (!panels.length || project.fitted || project.pocket || project.refused) return empty;
+  if (mode && mode !== "freestanding") return empty;
+  if (SKIP_KIND.has(project.kind)) return empty;
+  const structural = panels.filter((p) => p.materialId !== "hardware" && !/^dowel-/.test(p.materialId ?? ""));
+  if (structural.length < 4 || structural.some(isClosingPanel) || !structural.every((p) => isLinearMember(p) || isDiagonal(p))) return empty;
+  if (!hasFrontAndRear(structural)) return empty;
+  const height = project.overall?.height ?? Math.max(...panels.map((p) => p.position.y + p.size.height));
+  if (!(height > OPEN_FRAME_MIN_HEIGHT)) return empty;
+  const base = outerBase(project, structural);
+  const need = height * OPEN_FRAME_BASE_RATIO;
+  const tippy = Math.min(base.width, base.depth) < need - 1e-6;
+  return {
+    open: true,
+    height,
+    baseWidth: base.width,
+    baseDepth: base.depth,
+    hasDiagonal: structural.some(isDiagonal),
+    tippy,
+    depthIsCause: base.depth < need - 1e-6,
+    widthIsCause: base.width < need - 1e-6,
+  };
+}
+
+/** "4 ft x 1 ft x 3 ft" and "72x12x48" are W×D×H. A 2×4×8 board size is not. */
+function sizeTriple(prompt: string): TypedPlan | null {
+  const t = prompt.toLowerCase().replace(/×/g, "x");
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(ft|feet|foot|')?\s*(?:x|by)\s*(\d+(?:\.\d+)?)\s*(ft|feet|foot|')?\s*(?:x|by)\s*(\d+(?:\.\d+)?)\s*(ft|feet|foot|')?/);
+  if (!m) return null;
+  const feet = (u?: string) => !!u && /ft|feet|foot|'/.test(u);
+  const n = (num: string, u?: string) => parseFloat(num) * (feet(u) ? 12 : 1);
+  const width = n(m[1], m[2]);
+  const depth = n(m[3], m[4]);
+  const height = n(m[5], m[6]);
+  const anyFeet = feet(m[2]) || feet(m[4]) || feet(m[6]);
+  if (!anyFeet && width <= 4 && depth <= 12 && height <= 16) return null;
+  if (!(width > 0 && depth > 0 && height > 0)) return null;
+  return { width, depth, height };
+}
+
+/** The numbers the build took from the person. `fromBuild` is the recipe reader's own typed size. */
+export function typedPlan(prompt: string, sizeOverride?: TypedPlan, fromBuild?: TypedPlan): TypedPlan {
+  const ext = typedExtents(prompt);
+  const triple = sizeTriple(prompt);
+  const pick = (axis: keyof TypedPlan, word: number | null) =>
+    sizeOverride?.[axis] ?? fromBuild?.[axis] ?? (word != null ? word : undefined) ?? (ext?.labeled[axis] ? ext[axis] : undefined) ?? triple?.[axis];
+  return {
+    width: pick("width", typedAxisNumber(prompt, "width")),
+    depth: pick("depth", typedDepth(prompt)),
+    height: pick("height", typedAxisNumber(prompt, "height")),
+  };
+}
+
+/**
+ * Two low rails run the width with an open gap between them (a firewood rack's log bay). A member
+ * at that same height bridging the gap means the gap is the frame itself (a goal's bottom rails).
+ */
+function openLogBay(panels: Panel[]): boolean {
+  const rails = panels.filter((p) => p.position.y < 6 && p.size.width > p.size.depth + 0.5 && p.size.width > p.size.height && p.size.width > 24);
+  if (rails.length < 2) return false;
+  const sorted = [...rails].sort((a, b) => a.position.z - b.position.z);
+  const front = sorted[0];
+  const back = sorted[sorted.length - 1];
+  const gapLo = front.position.z + front.size.depth;
+  const gapHi = back.position.z;
+  if (gapHi - gapLo < 4) return false;
+  const y = (front.position.y + back.position.y) / 2;
+  const bridged = panels.some((p) => {
+    if (Math.abs(p.position.y - y) > 1.25) return false;
+    if (!(p.size.depth > p.size.width + 0.5 && p.size.depth > p.size.height)) return false;
+    return p.position.z <= gapLo + 1 && p.position.z + p.size.depth >= gapHi - 1;
+  });
+  return !bridged;
+}
+
+function runsAlongDepth(p: Panel): boolean {
+  return p.size.depth > p.size.width + 0.01 && p.size.depth > p.size.height + 0.01;
+}
+
+/** A closed post-and-rail box: lengthen the depth members and carry the rear posts back with them. */
+function deepenBox(panels: Panel[], z0: number, z1: number, delta: number): Panel[] {
+  const mid = (z0 + z1) / 2;
+  return panels.map((p) => {
+    const lo = p.position.z;
+    const hi = lo + p.size.depth;
+    const spans = lo < mid - 0.01 && hi > mid + 0.01;
+    if (spans && runsAlongDepth(p)) return { ...p, size: { ...p.size, depth: p.size.depth + delta } };
+    if (!spans && lo + p.size.depth / 2 >= mid - 0.01) return { ...p, position: { ...p.position, z: p.position.z + delta } };
+    return p;
+  });
+}
+
+const TIP_NOTE = /will tip unless it is held/;
+const NEAR = 1 / 16;
+
+/** Sleepers (or feet) on the ground that already run the full depth. Null when there are none. */
+function widenOnGround(panels: Panel[], need: number): Panel[] | null {
+  const box = partExtent(panels);
+  if (box.depth >= need - 1e-6) return panels;
+  const runners = panels.filter((p) => p.position.y < 0.75 && runsAlongDepth(p) && p.position.z <= box.z0 + 1 && p.position.z + p.size.depth >= box.z1 - 1);
+  if (!runners.length) return null;
+  const extra = need - box.depth;
+  const back = extra / 2;
+  const ids = new Set(runners.map((p) => p.id));
+  // The bay shifts as one piece. The sleepers then stick out past both faces by half the extra each.
+  return panels.map((p) => {
+    const z = p.position.z + back;
+    if (!ids.has(p.id)) return { ...p, position: { ...p.position, z } };
+    return { ...p, position: { ...p.position, z: z - back }, size: { ...p.size, depth: p.size.depth + extra } };
+  });
+}
+
+function assumedNote(depth: number, height: number): string {
+  // Wording fixed in r1; an "Assumed" note is scanned for tall/wide/deep, so the second sentence names none of them.
+  return `Assumed ${inchFrac(depth)}" deep (default size) — type a depth to lock it. A free-standing frame of ${inchFrac(height)}" needs a base at least half that, front to back.`;
+}
+
+function tipNote(kind: "deep" | "wide", size: number, height: number, need: number, asGiven: boolean): string {
+  const word = kind === "deep" ? "deep" : "wide";
+  const way = kind === "deep" ? "front to back" : "across";
+  const given = asGiven ? ", as given" : "";
+  return `Built ${inchFrac(size)}" ${word}${given}. This frame is ${inchFrac(height)}" tall, and a free-standing frame stands when the base is at least half the height (${inchFrac(need)}" ${way}), so this one will tip unless it is held.`;
+}
+
+/**
+ * Lengthen an untyped depth until the base is half the height. A log bay is widened only by the
+ * sleepers under it, past both faces, so the gap that holds the load does not change. A typed
+ * depth or width is never grown. Cross-sections stay put.
+ */
+export function stabilizeOpenFrame(project: YardProject, prompt: string, sizeOverride?: TypedPlan, fromBuild?: TypedPlan): YardProject {
+  const stance = openFrameStance(project);
+  if (!stance.open || !stance.tippy) return project;
+  const typed = typedPlan(prompt, sizeOverride, fromBuild);
+  const height = stance.height;
+  const need = height * OPEN_FRAME_BASE_RATIO;
+  const notesOf = (p: YardProject) => p.notes ?? [];
+  const withTip = (p: YardProject, kind: "deep" | "wide", size: number, typedNum?: number): YardProject => {
+    if (notesOf(p).some((n) => TIP_NOTE.test(n))) return p;
+    const asGiven = typedNum != null && Math.abs(typedNum - size) <= NEAR;
+    return { ...p, notes: [...notesOf(p), tipNote(kind, size, height, need, asGiven)] };
+  };
+
+  let next = project;
+  if (stance.depthIsCause) {
+    if (typed.depth != null) {
+      next = withTip(next, "deep", next.overall?.depth ?? stance.baseDepth, typed.depth);
+    } else {
+      const panels0 = next.panels;
+      const box = partExtent(panels0);
+      const delta = need - outerBase(next, panels0).depth;
+      const panels = delta <= 0.01 ? panels0 : openLogBay(panels0) ? widenOnGround(panels0, need) : deepenBox(panels0, box.z0, box.z1, delta);
+      if (!panels) next = withTip(next, "deep", next.overall?.depth ?? stance.baseDepth);
+      else if (panels !== panels0) {
+        const depth = Math.round((Math.max(...panels.map((p) => p.position.z + p.size.depth)) - Math.min(...panels.map((p) => p.position.z))) * 1e4) / 1e4;
+        const notes = notesOf(next).some((n) => /needs a base at least half/.test(n)) ? notesOf(next) : [...notesOf(next), assumedNote(depth, height)];
+        next = { ...next, panels, overall: { ...next.overall, depth }, notes };
+      }
+    }
+  }
+  const after = openFrameStance(next);
+  if (after.open && after.tippy && after.widthIsCause) {
+    const wide = next.overall?.width ?? after.baseWidth;
+    next = withTip(next, "wide", wide, typed.width);
+  }
+  return next;
+}
+
+/** Learned-recipe gate: an open frame that is still tippy after the build is not certified. */
+export function openFrameTipFailures(project: YardProject): string[] {
+  const s = openFrameStance(project);
+  if (!s.open || !s.tippy) return [];
+  const base = Math.min(s.baseWidth, s.baseDepth);
+  return [`tips: free-standing open frame is ${inchFrac(s.height)}" tall on a ${inchFrac(base)}" base`];
+}
