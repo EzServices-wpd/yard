@@ -104,7 +104,7 @@ function isWallArmRack(project: YardProject): boolean {
   const standards = project.panels.filter((panel) => /standard$/i.test(panel.name));
   if (arms.length < 2 || standards.length < 2) return false;
   const load = project.panels.some(
-    (panel) => panel.type === "shelf" || panel.type === "top" || panel.type === "bottom" || panel.type === "deck" || panel.type === "seat",
+    (panel) => panel.type === "shelf" || panel.type === "top" || panel.type === "bottom" || panel.type === "deck" || /seat/i.test(panel.name),
   );
   return !load;
 }
