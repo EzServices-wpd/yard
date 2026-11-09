@@ -61,7 +61,7 @@ import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, 
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
-import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
+import { closeLoosePipeEnds, memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
@@ -444,7 +444,8 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     // One spec object per prompt (spec.ts), built once here at intake; a bench edit types every axis.
     const o = args[3];
     const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
-    const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
+    const snapped = idDepth === 1 ? closeLoosePipeEnds(built1) : built1;
+    const built = idDepth === 1 ? { ...snapped, spec: buildSpec(snapped, typed, { override }) } : snapped;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } catch (e) {
     if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;

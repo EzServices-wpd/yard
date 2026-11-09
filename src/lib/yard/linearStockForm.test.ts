@@ -13,6 +13,7 @@ import { recipePrompt } from "./recipeIdeas.ts";
 import { IDEAS } from "./ideas.ts";
 import { spokenTierCount } from "./fittedShared.ts";
 import { getCatalogItem } from "./catalog.ts";
+import { binderKind, countSlipFittings, slipInstancesFromPanels, stockRunCouplings } from "./joints.ts";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types.ts";
 
 const PVC = "pvc-3-4-sch40";
@@ -298,6 +299,42 @@ function check(prompt: string, face: YardProject, linear: YardProject, asked: st
     const ys = new Set(loads.map((p) => Math.round(p.position.y)));
     if (ys.size < askedTiers) return `face build has ${ys.size} load levels, asked ${askedTiers}`;
   }
+  return fittingIssue(linear, prompt);
+}
+
+/** Buy's slip fittings are the joint-valence counts. A rack with those joints cannot buy none. */
+function fittingIssue(project: YardProject, prompt: string): string | null {
+  const item = getCatalogItem(project.primaryMaterialId);
+  if (!item || binderKind(item) !== "slip") return null;
+  const outlined = project.instances.some((inst) => inst.from && inst.to);
+  const members = outlined ? project.instances : slipInstancesFromPanels(project.panels, item.id);
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const counts = countSlipFittings(members, radius);
+  const plan = buildPlan(project);
+  const bought = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0 };
+  for (const line of plan.bom) {
+    const qty = line.quantity ?? 0;
+    if (/3-way corner/.test(line.name)) bought.corners += qty;
+    else if (/PVC cross/.test(line.name)) bought.crosses += qty;
+    else if (/PVC tee/.test(line.name)) bought.tees += qty;
+    else if (/90° elbow/.test(line.name)) bought.elbows90 += qty;
+    else if (/45° elbow/.test(line.name)) bought.elbows45 += qty;
+    else if (/PVC coupling/.test(line.name)) bought.couplings += qty;
+  }
+  const couplingBuy = project.panels.some((panel) => panel.materialId === item.id) ? stockRunCouplings(project.panels, item) : 0;
+  if (
+    bought.corners !== counts.corners ||
+    bought.tees !== counts.tees ||
+    bought.crosses !== counts.crosses ||
+    bought.elbows90 !== counts.elbows90 ||
+    bought.elbows45 !== counts.elbows45 ||
+    bought.couplings !== couplingBuy
+  ) {
+    return `fittings buy ${bought.corners} corners, ${bought.tees} tees, ${bought.crosses} crosses, ${bought.elbows90}+${bought.elbows45} elbows, ${bought.couplings} couplings`;
+  }
+  const joints = counts.corners + counts.tees + counts.crosses + counts.elbows90 + counts.elbows45;
+  const boughtJoints = bought.corners + bought.tees + bought.crosses + bought.elbows90 + bought.elbows45;
+  if (/\brack\b/i.test(prompt) && joints > 0 && boughtJoints === 0) return "rack buys no fittings";
   return null;
 }
 
@@ -365,12 +402,12 @@ it("linear stock keeps the form of every Ideas prompt and every recipe", () => {
     ["birdhouse [dowel-1-2-36]", "Floor"],
     ["birdhouse [lumber-2x2-8]", "Floor"],
     ["ferris wheel [dowel-1-2-36]", "Left front leg"],
-    // #286 keeps the real pipe section. These ends and this height then miss the face box.
-    ["ferris wheel [pvc-3-4-sch40]", "Front spoke 1"],
-    ["reindeer [pvc-3-4-sch40]", "Neck"],
+    // The spoke now meets the rim. What is left is outside a 2" joint snap.
+    ["reindeer [pvc-3-4-sch40]", "Head"],
     ["learned sawbuck [pvc-3-4-sch40]", "Left leg A"],
-    ["learned compost tumbler frame [pvc-3-4-sch40]", "Left front post"],
+    ["learned compost tumbler frame [pvc-3-4-sch40]", "Axle"],
     ["learned sundial [pvc-3-4-sch40]", "bbox"],
+    ["closet system 80x120 [pvc-3-4-sch40]", "rail free"],
     ["learned water wheel [pvc-3-4-sch40]", "left base"],
     ["learned water wheel [dowel-1-2-36]", "left base"],
     ["learned water wheel [lumber-2x2-8]", "left base"],
@@ -435,7 +472,10 @@ it("typed rack prompts build the recipe frame, centred, with the asked tiers", (
   const lumber = generateFromPrompt("lumber rack");
   const pipeLumber = generateFromPrompt("pvc lumber rack");
   assert.equal(pipeLumber.instances.filter((i) => /arm/.test(i.role ?? "")).length, 4);
-  assert.equal(pipeLumber.instances.filter((i) => i.role === "upright").length, 2);
+  const uprightX = new Set(
+    pipeLumber.instances.filter((i) => i.role === "upright" && i.from && i.to).map((i) => Math.round((i.from!.x + i.to!.x) / 2)),
+  );
+  assert.equal(uprightX.size, 2);
   const box = boxOf(segs(pipeLumber));
   assert.ok(Math.abs((box.minX + box.maxX) / 2) < 1, `lumber rack not centred (${box.minX}..${box.maxX})`);
   assert.ok(Math.abs(box.maxX - box.minX - lumber.overall.width) < 1);

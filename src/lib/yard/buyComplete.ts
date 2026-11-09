@@ -16,7 +16,7 @@ import { hungBuild, PT_LUMBER } from "./outdoor";
 import { getCatalogItem } from "./catalog";
 import { CEDAR, EXTERIOR_PLY } from "./checkedStock";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
-import { binderBom, binderKind, slipInstancesFromPanels, stockRunCouplings } from "./joints";
+import { binderBom, binderKind, SLIP_FITTING_IDS, slipInstancesFromPanels, stockRunCouplings } from "./joints";
 
 const hasLink = (b: BomLine) => (b.offers ?? []).some((o) => !!o.href);
 
@@ -79,6 +79,28 @@ function lengthSoldBuy(project: YardProject, plan: BuildPlan, item: CatalogItem,
   return [...stock, ...fittings];
 }
 
+/**
+ * Pipe already on Buy still needs its fittings. A row that only counts sticks
+ * leaves a joint with nothing to buy.
+ */
+function withSlipFittings(project: YardProject, plan: BuildPlan, bom: BomLine[]): BomLine[] {
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item || binderKind(item) !== "slip") return bom;
+  if (bom.some((b) => b.catalogId && SLIP_FITTING_IDS.has(b.catalogId) && b.catalogId !== "pvc-cement")) return bom;
+  const fromPanels = project.panels.some((p) => p.materialId === item.id);
+  const members = project.instances.some((i) => i.from && i.to) ? project.instances : slipInstancesFromPanels(project.panels, item.id);
+  if (members.length < 2) return bom;
+  const talk = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  const fittings = binderBom(item, members, undefined, fromPanels ? stockRunCouplings(project.panels, item) : 0).filter(
+    (b) => b.catalogId !== "pvc-cement" || /solvent|cement/i.test(talk),
+  );
+  if (!fittings.some((b) => b.catalogId !== "pvc-cement")) return bom;
+  return [
+    ...bom,
+    ...decorateBom(fittings).map((b) => (b.estimatedCost == null ? b : { ...b, estimatedCost: Math.round(b.estimatedCost * 100) / 100 })),
+  ];
+}
+
 /** The Buy pass: cut stock bought, every row linked. Prices only come from listings or the row's own estimate. */
 export function buyComplete(project: YardProject, plan: BuildPlan): BuildPlan {
   let bom = [...plan.bom];
@@ -107,6 +129,7 @@ export function buyComplete(project: YardProject, plan: BuildPlan): BuildPlan {
     const [row] = decorateBom([{ name: `#8 x ${len}" ${outdoor ? "exterior-coated or stainless " : ""}wood screws`, quantity: 1, unit: "box (50 ct)", catalogId: "screws-8" }]);
     if (row.estimatedCost && row.estimatedCost > 0) { bom.push({ ...row, notes: "The screws the steps drive." }); sizes.add(z); }
   }
+  bom = withSlipFittings(project, plan, bom);
   bom = bom.map((b) => (hasLink(b) ? b : { ...b, offers: estimateOffers(b.searchQuery || b.name, Math.max(1, b.quantity), b.estimatedCost ?? 0) }));
   return { ...plan, bom };
 }

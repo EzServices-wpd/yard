@@ -6,6 +6,7 @@
  */
 import { createId } from "@/lib/utils";
 import { isBoughtHardwareName } from "./boughtHardware";
+import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
 
@@ -174,7 +175,7 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
     panels: [],
     fitted: undefined,
     pocket: undefined,
-    instances,
+    instances: weldOutline(instances, item),
     primaryMaterialId: item.id,
     joinMethod: join as YardProject['joinMethod'],
     overall: project.overall?.width ? project.overall : { width: r(W), height: r(H), depth: r(D) },
@@ -508,7 +509,7 @@ function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProjec
     fitted: undefined,
     pocket: undefined,
     recastFrom: project.fitted || project.pocket ? { fitted: project.fitted, pocket: project.pocket } : project.recastFrom,
-    instances,
+    instances: weldOutline(instances, item),
     primaryMaterialId: item.id,
     notes: bearing && section < 0.5 ? notes : [note, ...notes],
   };
@@ -544,4 +545,497 @@ export function recastNotes(notes: string[], item: CatalogItem): string[] {
       ),
     )
     .filter((n) => !/\bnest(?:s|ed)?\b.*\bsheet\b|\bsheet\b.*\bnest|buy 2x2 lumber|edge band|plywood|4\s*[×x]\s*8\b|4\s*[×x]\s*10\b/i.test(n));
+}
+
+/**
+ * Outline sticks from adjacent faces, and ends that stop short of a neighbour,
+ * become one centreline with shared nodes. #286's joint test is an exact
+ * 0.01" match, so the node has to be one point before that test runs.
+ * A free end is kept only for a designed tip (an arm, a rung) or a foot.
+ */
+type OutlineSeg = {
+  from: Vec3;
+  to: Vec3;
+  role: string;
+  join?: string;
+  catalogId: string;
+  face?: Vec3;
+  whole: boolean;
+};
+
+function vsub(a: Vec3, b: Vec3): Vec3 {
+  return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+function vadd(a: Vec3, b: Vec3): Vec3 {
+  return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+}
+function vmul(a: Vec3, s: number): Vec3 {
+  return { x: a.x * s, y: a.y * s, z: a.z * s };
+}
+function vdot(a: Vec3, b: Vec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+function vlen(a: Vec3): number {
+  return Math.hypot(a.x, a.y, a.z);
+}
+function vdist(a: Vec3, b: Vec3): number {
+  return vlen(vsub(a, b));
+}
+function vnorm(a: Vec3): Vec3 {
+  const L = vlen(a) || 1;
+  return vmul(a, 1 / L);
+}
+function r2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+function r3(p: Vec3): Vec3 {
+  return { x: r2(p.x), y: r2(p.y), z: r2(p.z) };
+}
+function nodeKey(p: Vec3): string {
+  return `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+}
+function closestPoint(p: Vec3, a: Vec3, b: Vec3): { d: number; q: Vec3; t: number } {
+  const ab = vsub(b, a);
+  const L2 = vdot(ab, ab);
+  if (L2 < 1e-8) return { d: vdist(p, a), q: a, t: 0 };
+  const t = Math.max(0, Math.min(1, vdot(vsub(p, a), ab) / L2));
+  const q = vadd(a, vmul(ab, t));
+  return { d: vdist(p, q), q, t };
+}
+
+function outsideDiameter(item: CatalogItem): number {
+  const d = item.dims;
+  return Math.max(d.diameter ?? 0, d.width ?? 0, d.thickness ?? 0, d.height ?? 0, 0.08);
+}
+
+const DESIGNED_TIP = /\b(?:arm|rung|wing|tine|ear|finial|prong|tail|horn|antler)\b/i;
+
+function mergeParallel(segs: OutlineSeg[], tol: number): OutlineSeg[] {
+  const n = segs.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const dirs = segs.map((s) => vnorm(vsub(s.to, s.from)));
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (Math.abs(vdot(dirs[i], dirs[j])) < 0.985) continue;
+      const mid = vmul(vadd(segs[j].from, segs[j].to), 0.5);
+      const rel = vsub(mid, segs[i].from);
+      const along = vdot(rel, dirs[i]);
+      const pd = vdist(mid, vadd(segs[i].from, vmul(dirs[i], along)));
+      if (pd > tol) continue;
+      const proj = (p: Vec3) => vdot(p, dirs[i]);
+      const a0 = Math.min(proj(segs[i].from), proj(segs[i].to));
+      const a1 = Math.max(proj(segs[i].from), proj(segs[i].to));
+      const b0 = Math.min(proj(segs[j].from), proj(segs[j].to));
+      const b1 = Math.max(proj(segs[j].from), proj(segs[j].to));
+      const ov = Math.min(a1, b1) - Math.max(a0, b0);
+      const shorter = Math.min(vdist(segs[i].from, segs[i].to), vdist(segs[j].from, segs[j].to));
+      if (ov < 0.5 || (ov < shorter * 0.55 && pd > 0.35)) continue;
+      parent[find(j)] = find(i);
+    }
+  }
+  const groups = new Map<number, OutlineSeg[]>();
+  segs.forEach((s, i) => {
+    const r = find(i);
+    groups.set(r, [...(groups.get(r) ?? []), s]);
+  });
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const dir = vnorm(vsub(group[0].to, group[0].from));
+    const origin = group[0].from;
+    let acc = { x: 0, y: 0, z: 0 };
+    let k = 0;
+    let tMin = Infinity;
+    let tMax = -Infinity;
+    for (const s of group) {
+      for (const p of [s.from, s.to]) {
+        const rel = vsub(p, origin);
+        const t = vdot(rel, dir);
+        tMin = Math.min(tMin, t);
+        tMax = Math.max(tMax, t);
+        acc = vadd(acc, vsub(rel, vmul(dir, t)));
+        k++;
+      }
+    }
+    const shift = vmul(acc, 1 / Math.max(k, 1));
+    const longest = group.slice().sort((a, b) => vdist(b.from, b.to) - vdist(a.from, a.to))[0];
+    return {
+      ...longest,
+      from: r3(vadd(vadd(origin, vmul(dir, tMin)), shift)),
+      to: r3(vadd(vadd(origin, vmul(dir, tMax)), shift)),
+    };
+  });
+}
+
+function weldNearEnds(segs: OutlineSeg[], tol: number): OutlineSeg[] {
+  const ends: { s: number; e: 0 | 1; p: Vec3 }[] = [];
+  segs.forEach((s, i) => {
+    ends.push({ s: i, e: 0, p: s.from });
+    ends.push({ s: i, e: 1, p: s.to });
+  });
+  const parent = ends.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < ends.length; i++) {
+    for (let j = i + 1; j < ends.length; j++) {
+      if (vdist(ends[i].p, ends[j].p) <= tol) parent[find(j)] = find(i);
+    }
+  }
+  const groups = new Map<number, number[]>();
+  ends.forEach((_, i) => {
+    const r = find(i);
+    groups.set(r, [...(groups.get(r) ?? []), i]);
+  });
+  const out = segs.map((s) => ({ ...s, from: { ...s.from }, to: { ...s.to } }));
+  for (const idxs of groups.values()) {
+    const c = idxs.reduce((a, i) => vadd(a, ends[i].p), { x: 0, y: 0, z: 0 });
+    const node = r3(vmul(c, 1 / idxs.length));
+    for (const i of idxs) {
+      const { s, e } = ends[i];
+      if (e === 0) out[s].from = node;
+      else out[s].to = node;
+    }
+  }
+  return out;
+}
+
+function splitSeg(seg: OutlineSeg, points: Vec3[]): OutlineSeg[] {
+  const axis = vsub(seg.to, seg.from);
+  const L = vlen(axis) || 1;
+  const d = vmul(axis, 1 / L);
+  const marks: { t: number; p: Vec3 }[] = [
+    { t: 0, p: seg.from },
+    { t: L, p: seg.to },
+  ];
+  for (const p of points) {
+    const t = vdot(vsub(p, seg.from), d);
+    if (t > 0.15 && t < L - 0.15) marks.push({ t, p });
+  }
+  marks.sort((a, b) => a.t - b.t);
+  const uniq: { t: number; p: Vec3 }[] = [];
+  for (const m of marks) if (!uniq.length || m.t - uniq[uniq.length - 1].t > 0.12) uniq.push(m);
+  const pieces: OutlineSeg[] = [];
+  for (let i = 0; i < uniq.length - 1; i++) {
+    const from = r3(uniq[i].p);
+    const to = r3(uniq[i + 1].p);
+    if (vdist(from, to) < 0.15) continue;
+    pieces.push({ ...seg, from, to });
+  }
+  return pieces.length ? pieces : [{ ...seg, from: r3(seg.from), to: r3(seg.to) }];
+}
+
+function segmentClosest(a: OutlineSeg, b: OutlineSeg): { d: number; ti: number; tj: number; qi: Vec3; qj: Vec3 } | null {
+  const u = vsub(a.to, a.from);
+  const v = vsub(b.to, b.from);
+  const w0 = vsub(a.from, b.from);
+  const A = vdot(u, u);
+  const B = vdot(u, v);
+  const C = vdot(v, v);
+  const D = vdot(u, w0);
+  const E = vdot(v, w0);
+  const den = A * C - B * B;
+  if (A < 1e-8 || C < 1e-8 || Math.abs(den) < 1e-6) return null;
+  const ti = Math.max(0, Math.min(1, (B * E - C * D) / den));
+  const tj = Math.max(0, Math.min(1, (A * E - B * D) / den));
+  const qi = vadd(a.from, vmul(u, ti));
+  const qj = vadd(b.from, vmul(v, tj));
+  return { d: vdist(qi, qj), ti, tj, qi, qj };
+}
+
+function fuseCollinear(segs: OutlineSeg[], od: number): OutlineSeg[] {
+  let cur = segs.slice();
+  let changed = true;
+  const limit = Math.max(od, 2);
+  while (changed) {
+    changed = false;
+    const at = new Map<string, number[]>();
+    cur.forEach((s, i) => {
+      for (const p of [s.from, s.to]) {
+        const k = nodeKey(p);
+        at.set(k, [...(at.get(k) ?? []), i]);
+      }
+    });
+    for (const idxs of at.values()) {
+      const uniq = [...new Set(idxs)];
+      if (uniq.length < 2) continue;
+      const pieces = uniq.map((i) => ({ i, s: cur[i], d: vnorm(vsub(cur[i].to, cur[i].from)) }));
+      const seed = pieces.slice().sort((a, b) => vdist(b.s.from, b.s.to) - vdist(a.s.from, a.s.to))[0];
+      const bundle = pieces.filter((p) => Math.abs(vdot(p.d, seed.d)) > 0.82);
+      const shorts = bundle.filter((p) => p !== seed && vdist(p.s.from, p.s.to) <= limit);
+      if (!shorts.length || vdist(seed.s.from, seed.s.to) <= limit) continue;
+      const origin = seed.s.from;
+      let tMin = vdot(vsub(seed.s.from, origin), seed.d);
+      let tMax = vdot(vsub(seed.s.to, origin), seed.d);
+      let fromP = seed.s.from;
+      let toP = seed.s.to;
+      if (tMin > tMax) {
+        const swap = tMin;
+        tMin = tMax;
+        tMax = swap;
+        fromP = seed.s.to;
+        toP = seed.s.from;
+      }
+      for (const p of shorts) {
+        for (const q of [p.s.from, p.s.to]) {
+          const t = vdot(vsub(q, origin), seed.d);
+          if (t < tMin) {
+            tMin = t;
+            fromP = q;
+          }
+          if (t > tMax) {
+            tMax = t;
+            toP = q;
+          }
+        }
+      }
+      if (vdist(fromP, toP) < 0.15) continue;
+      const drop = new Set(shorts.map((p) => p.i));
+      cur = cur.filter((_, i) => !drop.has(i));
+      const host = cur.findIndex((s) => s === seed.s);
+      if (host >= 0) cur[host] = { ...seed.s, from: fromP, to: toP };
+      changed = true;
+      break;
+    }
+  }
+  return cur;
+}
+
+function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance[] {
+  const kept = instances.filter((inst) => !inst.from || !inst.to);
+  const od = outsideDiameter(item);
+  const snapTol = Math.max(od, 2);
+  let segs: OutlineSeg[] = instances.filter((inst) => inst.from && inst.to).map((inst) => ({
+    from: { ...inst.from! },
+    to: { ...inst.to! },
+    role: inst.role ?? "member",
+    join: inst.join,
+    catalogId: inst.catalogId,
+    face: inst.face,
+    whole: inst.cutLength == null,
+  }));
+  if (segs.length < 2) return instances;
+  segs = mergeParallel(segs, od);
+  const home = segs.map((s) => ({ from: { ...s.from }, to: { ...s.to } }));
+  const clampEnd = (p: Vec3, origin: Vec3): Vec3 => {
+    const moved = vdist(p, origin);
+    if (moved <= snapTol) return p;
+    return vadd(origin, vmul(vnorm(vsub(p, origin)), snapTol));
+  };
+  const crossing = (a: OutlineSeg, b: OutlineSeg) => Math.abs(vdot(vnorm(vsub(a.to, a.from)), vnorm(vsub(b.to, b.from)))) < 0.85;
+  const slide = (full: boolean) => {
+    const targets: [Vec3 | null, Vec3 | null][] = segs.map(() => [null, null]);
+    for (let i = 0; i < segs.length; i++) {
+      for (const end of [0, 1] as const) {
+        const p = end === 0 ? segs[i].from : segs[i].to;
+        let best: { d: number; q: Vec3; j: number } | null = null;
+        for (let j = 0; j < segs.length; j++) {
+          if (i === j) continue;
+          const hit = closestPoint(p, segs[j].from, segs[j].to);
+          const limit = crossing(segs[i], segs[j]) ? snapTol : od;
+          if (hit.d <= limit + 1e-6 && (!best || hit.d < best.d)) best = { ...hit, j };
+        }
+        if (!best || best.d <= 0.005) continue;
+        if (full) {
+          targets[i][end] = best.q;
+          continue;
+        }
+        const other = segs[best.j];
+        const ep = vdist(best.q, other.from) <= vdist(best.q, other.to) ? other.from : other.to;
+        const atEnd = vdist(best.q, ep) <= Math.max(od, 0.75);
+        targets[i][end] = atEnd ? vmul(vadd(p, ep), 0.5) : best.q;
+      }
+    }
+    segs = segs.map((seg, i) => {
+      let from = targets[i][0] ?? seg.from;
+      let to = targets[i][1] ?? seg.to;
+      from = clampEnd(from, home[i].from);
+      to = clampEnd(to, home[i].to);
+      if (vdist(from, to) < 0.15) return seg;
+      return { ...seg, from, to };
+    });
+  };
+  for (let pass = 0; pass < 4; pass++) slide(false);
+  slide(true);
+  segs = weldNearEnds(segs, 0.35);
+  const cuts: Vec3[][] = segs.map(() => []);
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = 0; j < segs.length; j++) {
+      if (i === j) continue;
+      const limit = crossing(segs[i], segs[j]) ? 0.35 : Math.min(od, 0.35);
+      for (const p of [segs[j].from, segs[j].to]) {
+        const hit = closestPoint(p, segs[i].from, segs[i].to);
+        const L = vdist(segs[i].from, segs[i].to);
+        const along = hit.t * L;
+        if (hit.d <= limit && along > 0.2 && along < L - 0.2) cuts[i].push(p);
+      }
+    }
+  }
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      if (!crossing(segs[i], segs[j])) continue;
+      const hit = segmentClosest(segs[i], segs[j]);
+      if (!hit || hit.d > Math.min(od, 0.75)) continue;
+      const Li = vdist(segs[i].from, segs[i].to);
+      const Lj = vdist(segs[j].from, segs[j].to);
+      if (hit.ti * Li > 0.2 && hit.ti * Li < Li - 0.2 && hit.tj * Lj > 0.2 && hit.tj * Lj < Lj - 0.2) {
+        const node = r3(vmul(vadd(hit.qi, hit.qj), 0.5));
+        cuts[i].push(node);
+        cuts[j].push(node);
+      }
+    }
+  }
+  let out: OutlineSeg[] = [];
+  segs.forEach((seg, i) => out.push(...splitSeg(seg, cuts[i])));
+  out = weldNearEnds(out, 0.35);
+  out = fuseCollinear(out, od);
+  const valence = new Map<string, number>();
+  for (const s of out) {
+    for (const p of [s.from, s.to]) valence.set(nodeKey(p), (valence.get(nodeKey(p)) ?? 0) + 1);
+  }
+  const stubLimit = Math.max(od, 2) + 0.05;
+  out = out.filter((s) => {
+    const L = vdist(s.from, s.to);
+    if (L < 0.2) return false;
+    const va = valence.get(nodeKey(s.from)) ?? 1;
+    const vb = valence.get(nodeKey(s.to)) ?? 1;
+    const designed = DESIGNED_TIP.test(s.role);
+    const stub = (free: Vec3, vFree: number, vOther: number) => vFree <= 1 && vOther >= 2 && L <= stubLimit && free.y > 0.45 && !designed;
+    return !stub(s.from, va, vb) && !stub(s.to, vb, va);
+  });
+  const welded = out.map((s) => {
+    const L = vdist(s.from, s.to);
+    return {
+      id: createId("sk"),
+      catalogId: s.catalogId,
+      position: { x: (s.from.x + s.to.x) / 2, y: (s.from.y + s.to.y) / 2, z: (s.from.z + s.to.z) / 2 },
+      rotation: { x: 0, y: 0, z: 0 },
+      cutLength: s.whole ? undefined : r2(L),
+      role: s.role,
+      join: s.join,
+      from: s.from,
+      to: s.to,
+      face: s.face,
+    } satisfies YardInstance;
+  });
+  return [...welded, ...kept];
+}
+
+type RunAxis = "x" | "y" | "z";
+type SizeKey = "width" | "height" | "depth";
+
+function pipeRun(panel: Panel): { axis: RunAxis; key: SizeKey } | null {
+  const dims: { axis: RunAxis; key: SizeKey; n: number }[] = [
+    { axis: "x", key: "width", n: panel.size.width },
+    { axis: "y", key: "height", n: panel.size.height },
+    { axis: "z", key: "depth", n: panel.size.depth },
+  ];
+  dims.sort((a, b) => a.n - b.n);
+  if (dims[2].n < dims[1].n * 2.5 || dims[1].n > 4) return null;
+  return { axis: dims[2].axis, key: dims[2].key };
+}
+
+function runEnds(panel: Panel, axis: RunAxis): [Vec3, Vec3] {
+  const mid = {
+    x: panel.position.x + panel.size.width / 2,
+    y: panel.position.y + panel.size.height / 2,
+    z: panel.position.z + panel.size.depth / 2,
+  };
+  const len = axis === "x" ? panel.size.width : axis === "y" ? panel.size.height : panel.size.depth;
+  const a = { ...mid, [axis]: mid[axis] - len / 2 };
+  const b = { ...mid, [axis]: mid[axis] + len / 2 };
+  return [a, b];
+}
+
+function boxesTouch(a: Panel, end: 0 | 1, panels: Panel[]): boolean {
+  const run = pipeRun(a);
+  if (!run) return true;
+  const along = run.axis === "x" ? a.size.width : run.axis === "y" ? a.size.height : run.axis === "z" ? a.size.depth : 0;
+  const cap = Math.min(0.35, along / 2);
+  const at = end === 0 ? a.position[run.axis] : a.position[run.axis] + along - cap;
+  const box = {
+    minX: a.position.x,
+    maxX: a.position.x + a.size.width,
+    minY: a.position.y,
+    maxY: a.position.y + a.size.height,
+    minZ: a.position.z,
+    maxZ: a.position.z + a.size.depth,
+  };
+  if (run.axis === "x") {
+    box.minX = at;
+    box.maxX = at + cap;
+  } else if (run.axis === "y") {
+    box.minY = at;
+    box.maxY = at + cap;
+  } else {
+    box.minZ = at;
+    box.maxZ = at + cap;
+  }
+  const gap = 0.45;
+  return panels.some((other) => {
+    if (other === a) return false;
+    return (
+      box.minX <= other.position.x + other.size.width + gap &&
+      other.position.x <= box.maxX + gap &&
+      box.minY <= other.position.y + other.size.height + gap &&
+      other.position.y <= box.maxY + gap &&
+      box.minZ <= other.position.z + other.size.depth + gap &&
+      other.position.z <= box.maxZ + gap
+    );
+  });
+}
+
+/**
+ * A pipe recipe whose end stops short of the member it meets is extended along
+ * its own run to that centreline. Ends that already touch, feet, and designed
+ * tips stay where they are, so a frame that already joins is unchanged.
+ */
+export function closeLoosePipeEnds(project: YardProject): YardProject {
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item || (item.formFactor !== "pipe" && item.formFactor !== "tube")) return project;
+  if (project.panels.length < 2) return project;
+  const od = item.dims.diameter ?? 1.05;
+  const tol = Math.max(od, 2);
+  const panels = project.panels.map((panel) => ({ ...panel, position: { ...panel.position }, size: { ...panel.size } }));
+  let changed = false;
+  const floor = Math.min(...panels.map((panel) => panel.position.y));
+  for (let pass = 0; pass < 3; pass++) {
+    for (const panel of panels) {
+      const run = pipeRun(panel);
+      if (!run || panel.materialId !== item.id) continue;
+      for (const end of [0, 1] as const) {
+        if (boxesTouch(panel, end, panels)) continue;
+        const vertical = panel.size.height >= panel.size.width && panel.size.height >= panel.size.depth;
+        const yAt = end === 0 ? panel.position.y : panel.position.y + panel.size.height;
+        if (vertical && run.axis === "y" && yAt <= floor + 0.5) continue;
+        const along = panel.size[run.key];
+        const endAt = end === 0 ? panel.position[run.axis] : panel.position[run.axis] + along;
+        let bestDelta: number | null = null;
+        const consider = (face: number) => {
+          const delta = face - endAt;
+          if (Math.abs(delta) < 0.02 || Math.abs(delta) > tol) return;
+          if (bestDelta == null || Math.abs(delta) < Math.abs(bestDelta)) bestDelta = delta;
+        };
+        for (const other of panels) {
+          if (other === panel) continue;
+          const gap = 0.45;
+          const crossOk = (["x", "y", "z"] as const).every((axis) => {
+            if (axis === run.axis) return true;
+            const key = axis === "x" ? "width" : axis === "y" ? "height" : "depth";
+            return panel.position[axis] <= other.position[axis] + other.size[key] + gap && other.position[axis] <= panel.position[axis] + panel.size[key] + gap;
+          });
+          if (!crossOk) continue;
+          const otherKey = run.axis === "x" ? "width" : run.axis === "y" ? "height" : "depth";
+          consider(other.position[run.axis]);
+          consider(other.position[run.axis] + other.size[otherKey]);
+        }
+        if (bestDelta == null) continue;
+        const next = end === 0 ? along - bestDelta : along + bestDelta;
+        if (next < 0.5) continue;
+        if (end === 0) panel.position = { ...panel.position, [run.axis]: panel.position[run.axis] + bestDelta };
+        panel.size = { ...panel.size, [run.key]: next };
+        changed = true;
+      }
+    }
+  }
+  if (!changed) return project;
+  return { ...project, panels };
 }
