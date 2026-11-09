@@ -61,7 +61,7 @@ import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, 
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
-import { closeLoosePipeEnds, memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
+import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
@@ -197,11 +197,8 @@ function finishHouse(
   // interference solve, once doors have been pulled onto the front.
   const recastCraft = Boolean(stock && !kind && next.panels.length);
   if (recastCraft && stock) next = applySpokenFace(next, prompt);
-  if (recastCraft && stock) {
-    // Bought hooks replace the wooden pegs before the frame is cut into sticks, and the recast keeps them.
-    next = hooksShowInModel(next);
-    next = recastPanelsAsStock(next, stock);
-  } else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
+  if (recastCraft && stock) next = recastPanelsAsStock(next, stock);
+  else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
     next = applyExplicitBoardCarcase(next, stock);
   } else if (kind === "sheet" && stock && (stock.id !== next.primaryMaterialId || stock.id !== "plywood-3-4-4x8")) {
     const already =
@@ -444,8 +441,7 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     // One spec object per prompt (spec.ts), built once here at intake; a bench edit types every axis.
     const o = args[3];
     const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
-    const snapped = idDepth === 1 ? closeLoosePipeEnds(built1) : built1;
-    const built = idDepth === 1 ? { ...snapped, spec: buildSpec(snapped, typed, { override }) } : snapped;
+    const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
     return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
   } catch (e) {
     if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
@@ -1510,16 +1506,12 @@ function generateRaw(
   if (placed && !formOverride) return placed;
   const held = placeHeldProduct(prompt);
   if (held && !formOverride) return held;
-  // A spoken tier count on a plant stand builds those stepped decks in whatever stock was asked.
+  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser.
+  // A craft stock pick (popsicle, dowel…) stays craft.
   if (!formOverride && !opts.fittedOverride) {
     const tiers = plantStandTiers(lower);
-    if (tiers) {
-      const built = buildTieredPlantStand(prompt, tiers);
-      const ask = requestedStock(prompt, materialOverride);
-      // Linear stock keeps the stepped decks. It does not fall through to another shape.
-      if (ask && !carcaseKind(ask) && !/^lumber-|^plywood-/.test(ask.id)) return recastPanelsAsStock(built, ask);
-      return built;
-    }
+    const ask = tiers ? requestedStock(prompt, materialOverride) : null;
+    if (tiers && (!ask || carcaseKind(ask) || /^lumber-/.test(ask.id))) return buildTieredPlantStand(prompt, tiers);
   }
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
@@ -1550,13 +1542,9 @@ function generateRaw(
     return honestHouse(buildOddShape(null, prompt), prompt, false, materialOverride);
   }
 
-  if (kindHint === "opening") {
-    const built =
-      looksLikeDoorFrame(lower) && !/\bwindows?\b/.test(lower) ? buildDoorProject(prompt) : buildWindowProject(pickWindow(prompt), prompt);
-    // The opening plan is the stud frame plus the bought unit. Pipe and dowel are not that frame:
-    // keep the opening and say so, instead of falling through to a different shape.
-    if (!craftAsk || !stockAsk) return built;
-    return refuseUnusedStock(built, stockAsk.id, true, "2×4 or 2×6 studs");
+  if (kindHint === "opening" && !craftAsk) {
+    if (looksLikeDoorFrame(lower) && !/\bwindows?\b/.test(lower)) return buildDoorProject(prompt);
+    return buildWindowProject(pickWindow(prompt), prompt);
   }
   const climbPrimary = !!climbIdentityLabel(lower);
   const weekendMech = detectWeekendMech(prompt);

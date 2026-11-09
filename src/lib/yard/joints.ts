@@ -128,8 +128,53 @@ function pairDots(dirs: Vec3[]): number[] {
  * 2 at 90° is an elbow, 2 nearly straight is a coupling, 2 at 45° is a 45° elbow.
  * 3 pipes within about 3° of mutually perpendicular are a 3-way corner.
  * Any other meeting of 3 (a straight run with a branch, or an angled crown) is a tee.
- * 4 or more is a cross.
+ * Four pipes in one plane are a cross. A 4-way that leaves that plane, or 5 or more
+ * pipes, is not a catalog cross.
  */
+/**
+ * A catalog cross is exactly four pipes in one plane.
+ * A 5-way, a 6-way, or a 4-way that leaves the plane is not one, and is not sold as one.
+ */
+export function uncataloguedCrosses(members: { from?: Vec3; to?: Vec3; radius: number }[]): number {
+  return jointNodes(members).filter((node) => node.dirs.length >= 4 && !(node.dirs.length === 4 && dirsSharePlane(node.dirs))).length;
+}
+
+export function dropUncataloguedCrosses<T extends { name: string; quantity: number; estimatedCost?: number }>(
+  lines: T[],
+  members: { from?: Vec3; to?: Vec3; radius: number }[],
+): T[] {
+  const extra = uncataloguedCrosses(members);
+  if (!extra) return lines;
+  return lines.flatMap((line) => {
+    if (!/PVC cross/.test(line.name) || !(line.quantity > 0)) return [line];
+    const qty = line.quantity - extra;
+    if (qty <= 0) return [];
+    const each = (line.estimatedCost ?? 0) / line.quantity;
+    return [{ ...line, quantity: qty, estimatedCost: Math.round(qty * each * 100) / 100 }];
+  });
+}
+
+/** Four directions are a catalog cross only when they lie in one plane. */
+export function dirsSharePlane(dirs: Vec3[]): boolean {
+  let normal: Vec3 | null = null;
+  for (let i = 0; i < dirs.length && !normal; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const c = {
+        x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y,
+        y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z,
+        z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x,
+      };
+      if (Math.hypot(c.x, c.y, c.z) > 0.2) {
+        normal = c;
+        break;
+      }
+    }
+  }
+  if (!normal) return true;
+  const L = Math.hypot(normal.x, normal.y, normal.z);
+  return dirs.every((d) => Math.abs(d.x * normal!.x + d.y * normal!.y + d.z * normal!.z) / L <= 0.08);
+}
+
 export function classifyJoint(node: JointNode): JointClass {
   const n = node.dirs.length;
   if (n <= 1 && node.p.y < 0.45) return "ground";

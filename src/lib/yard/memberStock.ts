@@ -5,8 +5,6 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
-import { isBoughtHardwareName } from "./boughtHardware";
-import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
 
@@ -108,35 +106,13 @@ export function isLoadSurface(panel: Panel): boolean {
 }
 
 /**
- * A wall-arm rack: standards on the wall and arms that stick out past them
- * (the lumber rack). The parts are named by that form. The word "rack" is not it.
- * A seat, a deck, a counter, or a bay means this is not that form.
- */
-function isWallArmRack(project: YardProject): boolean {
-  const arms = project.panels.filter((panel) => /^Arm \d+$/.test(panel.name));
-  const standards = project.panels.filter((panel) => /standard$/i.test(panel.name));
-  if (arms.length < 2 || standards.length < 2) return false;
-  return !project.panels.some(isLoadSurface);
-}
-
-/** The panel model's own box, so a linear frame sits where the panels sit. */
-function panelEnvelope(project: YardProject): { x0: number; z0: number; W: number; H: number; D: number } {
-  const panels = project.panels;
-  const x0 = Math.min(...panels.map((panel) => panel.position.x));
-  const x1 = Math.max(...panels.map((panel) => panel.position.x + panel.size.width));
-  const z0 = Math.min(...panels.map((panel) => panel.position.z));
-  const z1 = Math.max(...panels.map((panel) => panel.position.z + panel.size.depth));
-  const H = Math.max(8, project.overall?.height ?? Math.max(...panels.map((panel) => panel.position.y + panel.size.height)));
-  return { x0, z0, W: Math.max(8, x1 - x0), H, D: Math.max(6, z1 - z0) };
-}
-
-/**
- * Cantilever arms for a wall-arm rack only. The standards and arms sit on the
- * panel model's box (centred on the size box the same way the panels are).
+ * The release cantilever for a rack that is not pipe. Starts at the origin.
+ * Pipe racks do not use this.
  */
 function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
-  const box = panelEnvelope(project);
-  const { x0, z0, W, H, D } = box;
+  const W = Math.max(8, project.overall?.width ?? 36);
+  const H = Math.max(8, project.overall?.height ?? 30);
+  const D = Math.max(6, project.overall?.depth ?? 12);
   const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
   const arms = Math.max(2, Math.min(6, shelves.length || 2));
   const join = item.preferredJoins?.[0] ?? "glue";
@@ -156,15 +132,15 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
     };
   };
   const instances: YardInstance[] = [
-    member("upright", { x: x0, y: 0, z: z0 }, { x: x0, y: H, z: z0 }),
-    member("upright", { x: x0 + W, y: 0, z: z0 }, { x: x0 + W, y: H, z: z0 }),
-    member("rail", { x: x0, y: 1, z: z0 }, { x: x0 + W, y: 1, z: z0 }),
-    member("rail", { x: x0, y: H - 1, z: z0 }, { x: x0 + W, y: H - 1, z: z0 }),
+    member("upright", { x: 0, y: 0, z: 0 }, { x: 0, y: H, z: 0 }),
+    member("upright", { x: W, y: 0, z: 0 }, { x: W, y: H, z: 0 }),
+    member("rail", { x: 0, y: 1, z: 0 }, { x: W, y: 1, z: 0 }),
+    member("rail", { x: 0, y: H - 1, z: 0 }, { x: W, y: H - 1, z: 0 }),
   ];
   for (let i = 0; i < arms; i++) {
     const y = r(H * (0.35 + (0.45 * i) / Math.max(1, arms - 1)));
-    instances.push(member(`arm ${i + 1}`, { x: x0, y, z: z0 }, { x: x0, y, z: z0 + D }));
-    instances.push(member(`arm ${i + 1}`, { x: x0 + W, y, z: z0 }, { x: x0 + W, y, z: z0 + D }));
+    instances.push(member(`arm ${i + 1}`, { x: 0, y, z: 0 }, { x: 0, y, z: D }));
+    instances.push(member(`arm ${i + 1}`, { x: W, y, z: 0 }, { x: W, y, z: D }));
   }
   const name = /^Storage unit\b/i.test(project.name)
     ? `Rack ${r(W)}" × ${r(H)}" × ${r(D)}"`
@@ -175,10 +151,10 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
     panels: [],
     fitted: undefined,
     pocket: undefined,
-    instances: weldOutline(instances, item),
+    instances,
     primaryMaterialId: item.id,
     joinMethod: join as YardProject['joinMethod'],
-    overall: project.overall?.width ? project.overall : { width: r(W), height: r(H), depth: r(D) },
+    overall: { width: r(W), height: r(H), depth: r(D) },
     notes: [
       `Open frame of ${item.name}. ${arms} arms at the typed depth. Not a pin-shelf box.`,
       ...recastNotes(project.notes ?? [], item).filter((n) => !/Tiers stay tiers/.test(n)),
@@ -186,31 +162,48 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
   };
 }
 
-/**
- * Bought units stay panels. The frame around them is what the stock is cut into.
- */
-const KEPT_UNIT = new Set(["window-unit", "prehung-door"]);
+/** Centre-to-centre pitch a 3/4" fitting can actually sit on. */
+const FITTING_PITCH = 2.75;
+
+function isPipeStock(item: CatalogItem): boolean {
+  return item.formFactor === "pipe" || item.formFactor === "tube";
+}
+
+function isRackPrompt(prompt: string | undefined): boolean {
+  const text = (prompt ?? "").toLowerCase();
+  return /\bracks?\b/.test(text) && !/rail|peg|hook/.test(text);
+}
 
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
   if (!project.panels.length) return project;
-  const kept = project.panels.filter(
-    (panel) =>
-      panel.type === "glass_panel" ||
-      panel.type === "mirror" ||
-      KEPT_UNIT.has(panel.materialId ?? "") ||
-      isBoughtHardwareName(panel.name),
-  );
-  const frame = kept.length ? { ...project, panels: project.panels.filter((panel) => !kept.includes(panel)) } : project;
-  if (!frame.panels.length) return project;
-  const recast = recastFrameAsStock(frame, item);
-  if (!kept.length) return recast;
-  return { ...recast, panels: [...recast.panels, ...kept] };
+  const rack = isRackPrompt(project.prompt);
+  const pipe = isPipeStock(item);
+  // Dowel and stick racks stay the release cantilever. Pipe racks leave it.
+  if (rack && !isFaceStock(item) && !pipe) return openMemberRack(project, item);
+  if (rack && !pipe) {
+    const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
+    if (shelves.length) {
+      const posts = project.panels.filter((panel) => panel.type === "upright" || /post|upright/i.test(panel.name));
+      const keep = [...posts, ...shelves].map((panel) => ({ ...panel, materialId: item.id }));
+      return {
+        ...project,
+        panels: keep,
+        instances: project.instances,
+        primaryMaterialId: item.id,
+        notes: [`Tiers stay tiers in ${item.name}.`, ...recastNotes(project.notes ?? [], item)],
+      };
+    }
+  }
+  const recast = recastFrameAsStock(project, item);
+  if (!pipe || !rack) return recast;
+  const r = (n: number) => Math.round(n * 8) / 8;
+  const name = /^Storage unit\b/i.test(recast.name)
+    ? `Rack ${r(recast.overall.width)}" × ${r(recast.overall.height)}" × ${r(recast.overall.depth)}"`
+    : recast.name;
+  return { ...recast, name, instances: weldOutline(recast.instances, item) };
 }
 
 function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProject {
-  // Linear stock keeps every part the form built. A cantilever template is only
-  // the wall-arm form (lumber rack): standards and arms, not the word "rack".
-  if (!isFaceStock(item) && isWallArmRack(project)) return openMemberRack(project, item);
   const prim = toPrimitive(item);
   const stockL = Math.max(0.4, prim.length);
   const across = Math.max(prim.width, prim.height, 0.08);
@@ -280,8 +273,18 @@ function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProjec
     const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
     // A top, seat, or shelf gets slats across it even in thin stock, so it rests on the frame under it
     // (a display model in thin stock says so in its notes).
+    // A 3/4" fitting is about 1 3/8" from centre to face, so pipes between nodes
+    // stay at least 2.75" apart. A pipe rack draws that pitch, not one slat per board.
+    const pipeRack = isPipeStock(item) && isRackPrompt(project.prompt);
+    const pitchCount = (span: number) => {
+      let n = Math.max(2, Math.floor((span - section) / FITTING_PITCH) + 1);
+      while (n > 2 && (span - section) / (n - 1) < FITTING_PITCH - 1e-6) n -= 1;
+      return n;
+    };
     const nAcross = bearing
-      ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
+      ? pipeRack
+        ? pitchCount(midN)
+        : Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
       : midN < 0.2 ? 1 : 2;
     const usable = whole ? Math.max(stockL * 0.86, stockL - 0.25) : Math.max(stockL * 0.9, 0.5);
     const cover = whole ? stockL : Math.min(stockL, longN);
@@ -322,7 +325,7 @@ function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProjec
       position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
       rotation: { x: 0, y: 0, z: 0 },
       cutLength: whole ? undefined : Math.round(Math.min(len, stockL) * 100) / 100,
-      role: panel.type,
+      role: isPipeStock(item) && isRackPrompt(project.prompt) && DESIGNED_TIP.test(panel.name) ? panel.name : panel.type,
       join,
       from: a,
       to: b,
@@ -509,7 +512,7 @@ function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProjec
     fitted: undefined,
     pocket: undefined,
     recastFrom: project.fitted || project.pocket ? { fitted: project.fitted, pocket: project.pocket } : project.recastFrom,
-    instances: weldOutline(instances, item),
+    instances,
     primaryMaterialId: item.id,
     notes: bearing && section < 0.5 ? notes : [note, ...notes],
   };
@@ -608,7 +611,7 @@ function outsideDiameter(item: CatalogItem): number {
   return Math.max(d.diameter ?? 0, d.width ?? 0, d.thickness ?? 0, d.height ?? 0, 0.08);
 }
 
-const DESIGNED_TIP = /\b(?:arm|rung|wing|tine|ear|finial|prong|tail|horn|antler)\b/i;
+const DESIGNED_TIP = /\b(?:arm|rung|wing|tine|ear|finial|prong|tail|horn|antler|hook|peg)\b/i;
 
 function mergeParallel(segs: OutlineSeg[], tol: number): OutlineSeg[] {
   const n = segs.length;
@@ -630,7 +633,7 @@ function mergeParallel(segs: OutlineSeg[], tol: number): OutlineSeg[] {
       const b1 = Math.max(proj(segs[j].from), proj(segs[j].to));
       const ov = Math.min(a1, b1) - Math.max(a0, b0);
       const shorter = Math.min(vdist(segs[i].from, segs[i].to), vdist(segs[j].from, segs[j].to));
-      if (ov < 0.5 || (ov < shorter * 0.55 && pd > 0.35)) continue;
+      if (pd > 0.5 ? ov < shorter * 0.55 : ov < 0.5) continue;
       parent[find(j)] = find(i);
     }
   }
@@ -798,6 +801,101 @@ function fuseCollinear(segs: OutlineSeg[], limit: number): OutlineSeg[] {
   return cur;
 }
 
+/** A 3/4" fitting body, centre to face. A cap inside this of another pipe is a clash. */
+const FITTING_BODY = 1.375;
+
+/**
+ * An end that sits within a fitting body of another pipe moves onto that pipe.
+ * Two pipes that pass within one pipe width, and do not already meet, get a shared node.
+ * Seating can lengthen a member. It will not shorten a designed tip, and it will not leave a member under the fitting pitch.
+ */
+function seatTouching(segs: OutlineSeg[], od: number): OutlineSeg[] {
+  let cur = segs.map((s) => ({ ...s, from: { ...s.from }, to: { ...s.to } }));
+  const mayMove = (oldL: number, newL: number) => {
+    if (newL < 0.2) return false;
+    if (newL >= oldL - 0.05) return true;
+    return newL >= FITTING_PITCH - 0.01;
+  };
+  const owns = (seg: OutlineSeg, p: Vec3) => vdist(seg.from, p) <= 0.05 || vdist(seg.to, p) <= 0.05;
+  for (let pass = 0; pass < 4; pass++) {
+    const cuts: Vec3[][] = cur.map(() => []);
+    let moved = false;
+    const seen = new Set<string>();
+    for (let i = 0; i < cur.length; i++) {
+      for (const end of [0, 1] as const) {
+        const p = end === 0 ? cur[i].from : cur[i].to;
+        const key = nodeKey(p);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        let best: { d: number; q: Vec3; t: number; j: number } | null = null;
+        for (let j = 0; j < cur.length; j++) {
+          if (owns(cur[j], p)) continue;
+          const hit = closestPoint(p, cur[j].from, cur[j].to);
+          const search = DESIGNED_TIP.test(cur[i].role) ? 2.25 : FITTING_BODY;
+          if (hit.d <= search && (!best || hit.d < best.d)) best = { ...hit, j };
+        }
+        if (!best) continue;
+        const host = cur[best.j];
+        const L = vdist(host.from, host.to);
+        const along = best.t * L;
+        const ontoEnd = along <= 0.2 || L - along <= 0.2;
+        // A cap may reach a fitting body away. A joint that already has pipes only reaches one pipe width.
+        const shared = cur.some((seg, idx) => idx !== i && owns(seg, p));
+        // A peg or a hook is glued into the rail. Its root may reach that rail; the proud tip is farther than this and stays a cap.
+        const reach = !shared && DESIGNED_TIP.test(cur[i].role) ? 2.25 : FITTING_BODY;
+        if (shared && best.d > od) continue;
+        if (!shared && best.d > reach) continue;
+        const dest = ontoEnd ? (along <= 0.2 ? host.from : host.to) : best.q;
+        if (vdist(p, dest) <= 0.05) {
+          if (!ontoEnd) cuts[best.j].push(r3(dest));
+          continue;
+        }
+        const partners: { i: number; end: 0 | 1 }[] = [];
+        let ok = true;
+        for (let j = 0; j < cur.length; j++) {
+          for (const e of [0, 1] as const) {
+            const q = e === 0 ? cur[j].from : cur[j].to;
+            if (vdist(q, p) > 0.05) continue;
+            const other = e === 0 ? cur[j].to : cur[j].from;
+            if (!mayMove(vdist(q, other), vdist(dest, other))) ok = false;
+            partners.push({ i: j, end: e });
+          }
+        }
+        if (!ok || !partners.length) continue;
+        const at = r3(dest);
+        for (const partner of partners) {
+          if (partner.end === 0) cur[partner.i].from = at;
+          else cur[partner.i].to = at;
+        }
+        moved = true;
+        if (!ontoEnd) cuts[best.j].push(at);
+      }
+    }
+    for (let i = 0; i < cur.length; i++) {
+      for (let j = i + 1; j < cur.length; j++) {
+        const hit = segmentClosest(cur[i], cur[j]);
+        if (!hit || hit.d > od || hit.d <= 0.02) continue;
+        const Li = vdist(cur[i].from, cur[i].to);
+        const Lj = vdist(cur[j].from, cur[j].to);
+        const ai = hit.ti * Li;
+        const aj = hit.tj * Lj;
+        if (Math.max(ai, Li - ai) < FITTING_PITCH || Math.max(aj, Lj - aj) < FITTING_PITCH) continue;
+        if (ai < 0.2 || Li - ai < 0.2 || aj < 0.2 || Lj - aj < 0.2) continue;
+        const node = r3(vmul(vadd(hit.qi, hit.qj), 0.5));
+        cuts[i].push(node);
+        cuts[j].push(node);
+        moved = true;
+      }
+    }
+    if (!moved && cuts.every((c) => c.length === 0)) break;
+    cur = cur.flatMap((seg, i) => splitSeg(seg, cuts[i]));
+    cur = weldNearEnds(cur, 0.08);
+    cur = mergeParallel(cur, od);
+    cur = cur.filter((s) => vdist(s.from, s.to) >= FITTING_PITCH);
+  }
+  return cur;
+}
+
 function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance[] {
   // Slip stock is what the joint test buys fittings for. A dowel or a craft stick
   // stays on the outline it already had: a 2" snap there pulls rods together and
@@ -807,7 +905,7 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
   const od = outsideDiameter(item);
   // Pipe faces sit about 2" apart where two outlines meet. Thinner stock (a dowel, a craft
   // stick) uses its own diameter, so neighbouring rods are not pulled into one node.
-  const snapTol = od >= 0.75 ? Math.max(od, 2) : od;
+  const snapTol = od >= 0.75 ? Math.max(od, FITTING_BODY) : od;
   let segs: OutlineSeg[] = instances.filter((inst) => inst.from && inst.to).map((inst) => ({
     from: { ...inst.from! },
     to: { ...inst.to! },
@@ -890,20 +988,14 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
   let out: OutlineSeg[] = [];
   segs.forEach((seg, i) => out.push(...splitSeg(seg, cuts[i])));
   out = weldNearEnds(out, 0.08);
-  out = fuseCollinear(out, snapTol);
-  const valence = new Map<string, number>();
-  for (const s of out) {
-    for (const p of [s.from, s.to]) valence.set(nodeKey(p), (valence.get(nodeKey(p)) ?? 0) + 1);
-  }
-  const stubLimit = snapTol + 0.05;
+  out = fuseCollinear(out, FITTING_PITCH);
+  out = seatTouching(out, od);
   out = out.filter((s) => {
     const L = vdist(s.from, s.to);
     if (L < 0.2) return false;
-    const va = valence.get(nodeKey(s.from)) ?? 1;
-    const vb = valence.get(nodeKey(s.to)) ?? 1;
-    const designed = DESIGNED_TIP.test(s.role);
-    const stub = (free: Vec3, vFree: number, vOther: number) => vFree <= 1 && vOther >= 2 && L <= stubLimit && free.y > 0.45 && !designed;
-    return !stub(s.from, va, vb) && !stub(s.to, vb, va);
+    // A fitting needs about 2.75" of pipe between nodes. A shorter scrap cannot hold one.
+    if (L < FITTING_PITCH) return false;
+    return true;
   });
   const welded = out.map((s) => {
     const L = vdist(s.from, s.to);
@@ -921,125 +1013,4 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
     } satisfies YardInstance;
   });
   return [...welded, ...kept];
-}
-
-type RunAxis = "x" | "y" | "z";
-type SizeKey = "width" | "height" | "depth";
-
-function pipeRun(panel: Panel): { axis: RunAxis; key: SizeKey } | null {
-  const dims: { axis: RunAxis; key: SizeKey; n: number }[] = [
-    { axis: "x", key: "width", n: panel.size.width },
-    { axis: "y", key: "height", n: panel.size.height },
-    { axis: "z", key: "depth", n: panel.size.depth },
-  ];
-  dims.sort((a, b) => a.n - b.n);
-  if (dims[2].n < dims[1].n * 2.5 || dims[1].n > 4) return null;
-  return { axis: dims[2].axis, key: dims[2].key };
-}
-
-function runEnds(panel: Panel, axis: RunAxis): [Vec3, Vec3] {
-  const mid = {
-    x: panel.position.x + panel.size.width / 2,
-    y: panel.position.y + panel.size.height / 2,
-    z: panel.position.z + panel.size.depth / 2,
-  };
-  const len = axis === "x" ? panel.size.width : axis === "y" ? panel.size.height : panel.size.depth;
-  const a = { ...mid, [axis]: mid[axis] - len / 2 };
-  const b = { ...mid, [axis]: mid[axis] + len / 2 };
-  return [a, b];
-}
-
-function boxesTouch(a: Panel, end: 0 | 1, panels: Panel[]): boolean {
-  const run = pipeRun(a);
-  if (!run) return true;
-  const along = run.axis === "x" ? a.size.width : run.axis === "y" ? a.size.height : run.axis === "z" ? a.size.depth : 0;
-  const cap = Math.min(0.35, along / 2);
-  const at = end === 0 ? a.position[run.axis] : a.position[run.axis] + along - cap;
-  const box = {
-    minX: a.position.x,
-    maxX: a.position.x + a.size.width,
-    minY: a.position.y,
-    maxY: a.position.y + a.size.height,
-    minZ: a.position.z,
-    maxZ: a.position.z + a.size.depth,
-  };
-  if (run.axis === "x") {
-    box.minX = at;
-    box.maxX = at + cap;
-  } else if (run.axis === "y") {
-    box.minY = at;
-    box.maxY = at + cap;
-  } else {
-    box.minZ = at;
-    box.maxZ = at + cap;
-  }
-  const gap = 0.45;
-  return panels.some((other) => {
-    if (other === a) return false;
-    return (
-      box.minX <= other.position.x + other.size.width + gap &&
-      other.position.x <= box.maxX + gap &&
-      box.minY <= other.position.y + other.size.height + gap &&
-      other.position.y <= box.maxY + gap &&
-      box.minZ <= other.position.z + other.size.depth + gap &&
-      other.position.z <= box.maxZ + gap
-    );
-  });
-}
-
-/**
- * A pipe recipe whose end stops short of the member it meets is extended along
- * its own run to that centreline. Ends that already touch, feet, and designed
- * tips stay where they are, so a frame that already joins is unchanged.
- */
-export function closeLoosePipeEnds(project: YardProject): YardProject {
-  const item = getCatalogItem(project.primaryMaterialId ?? "");
-  if (!item || (item.formFactor !== "pipe" && item.formFactor !== "tube")) return project;
-  if (project.panels.length < 2) return project;
-  const od = item.dims.diameter ?? 1.05;
-  const tol = Math.max(od, 2);
-  const panels = project.panels.map((panel) => ({ ...panel, position: { ...panel.position }, size: { ...panel.size } }));
-  let changed = false;
-  const floor = Math.min(...panels.map((panel) => panel.position.y));
-  for (let pass = 0; pass < 3; pass++) {
-    for (const panel of panels) {
-      const run = pipeRun(panel);
-      if (!run || panel.materialId !== item.id) continue;
-      for (const end of [0, 1] as const) {
-        if (boxesTouch(panel, end, panels)) continue;
-        const vertical = panel.size.height >= panel.size.width && panel.size.height >= panel.size.depth;
-        const yAt = end === 0 ? panel.position.y : panel.position.y + panel.size.height;
-        if (vertical && run.axis === "y" && yAt <= floor + 0.5) continue;
-        const along = panel.size[run.key];
-        const endAt = end === 0 ? panel.position[run.axis] : panel.position[run.axis] + along;
-        let bestDelta: number | null = null;
-        const consider = (face: number) => {
-          const delta = face - endAt;
-          if (Math.abs(delta) < 0.02 || Math.abs(delta) > tol) return;
-          if (bestDelta == null || Math.abs(delta) < Math.abs(bestDelta)) bestDelta = delta;
-        };
-        for (const other of panels) {
-          if (other === panel) continue;
-          const gap = 0.45;
-          const crossOk = (["x", "y", "z"] as const).every((axis) => {
-            if (axis === run.axis) return true;
-            const key = axis === "x" ? "width" : axis === "y" ? "height" : "depth";
-            return panel.position[axis] <= other.position[axis] + other.size[key] + gap && other.position[axis] <= panel.position[axis] + panel.size[key] + gap;
-          });
-          if (!crossOk) continue;
-          const otherKey = run.axis === "x" ? "width" : run.axis === "y" ? "height" : "depth";
-          consider(other.position[run.axis]);
-          consider(other.position[run.axis] + other.size[otherKey]);
-        }
-        if (bestDelta == null) continue;
-        const next = end === 0 ? along - bestDelta : along + bestDelta;
-        if (next < 0.5) continue;
-        if (end === 0) panel.position = { ...panel.position, [run.axis]: panel.position[run.axis] + bestDelta };
-        panel.size = { ...panel.size, [run.key]: next };
-        changed = true;
-      }
-    }
-  }
-  if (!changed) return project;
-  return { ...project, panels };
 }

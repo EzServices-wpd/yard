@@ -25,7 +25,7 @@ import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
-import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { binderBom, binderKind, countSlipFittings, dropUncataloguedCrosses, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -70,23 +70,6 @@ function partFamily(name: string, type?: string) {
   return cutListName(name, type);
 }
 
-/** A stick frame may keep bought hardware or a sheet backer. Those panels are not the cut list. */
-function stickPlanWithAccessories(project: YardProject): boolean {
-  return (
-    project.instances.length > 0 &&
-    project.panels.length > 0 &&
-    project.panels.every(
-      (p) =>
-        isStickAccessorySheet(p) ||
-        isBoughtHardwareName(p.name) ||
-        p.type === "glass_panel" ||
-        p.type === "mirror" ||
-        p.materialId === "window-unit" ||
-        p.materialId === "prehung-door",
-    )
-  );
-}
-
 function effortLabel(project: YardProject, pieces: number): string {
   if (project.kind === "opening") return "1/2-day";
   // C3: a few bought pieces linked, stacked or threaded is a short sit-down job, never a "weekend".
@@ -94,7 +77,7 @@ function effortLabel(project: YardProject, pieces: number): string {
   // Fitted/house: bands on honest wood piece count (same as Confirm/chip /
   // plan.totals.pieces via closetCuts) — never raw panels.length. Bounding
   // type=drawer envelopes under-count exploded sides/back/bottom kits.
-  if (project.panels.length > 0 && !stickPlanWithAccessories(project)) {
+  if (project.panels.length > 0) {
     if (pieces <= 10) return "1/2-day";
     if (pieces <= 20) return "1-day";
     return "weekend";
@@ -1381,7 +1364,7 @@ export function strangerWoodPieceCount(project: YardProject): number {
   if (project.kind === "opening" && project.windowPkg) {
     return stampLabels(windowCuts(project)).reduce((s, c) => s + c.quantity, 0);
   }
-  if (project.panels.length > 0 && !stickPlanWithAccessories(project)) {
+  if (project.panels.length > 0) {
     return closetCuts(project).reduce((s, c) => s + c.quantity, 0);
   }
   return project.instances.length;
@@ -1517,17 +1500,6 @@ export function hardwareFromNotes(project: YardProject, bom: BuildPlan["bom"]): 
   if (latches && !/latch/.test(have)) extra.push({ name: "Gate latch", quantity: latches, estimatedCost: 9.98 * (latches), unit: "each", searchQuery: "child safety gate latch", notes: "On the latch stile, into the far stud." });
   const hooks = drawn(/^Coat hook \d+$/);
   if (hooks && !/hook/.test(have)) extra.push({ name: "Coat hooks", quantity: hooks, estimatedCost: 3.98 * hooks, unit: "each", searchQuery: "double coat hook wall mount", notes: "One per drawn hook." });
-  const mirrors = project.panels.filter((p) => p.type === "mirror").length;
-  if (mirrors && !/mirror/.test(have)) {
-    extra.push({
-      name: "Mirror for the door",
-      quantity: mirrors,
-      unit: "pc",
-      searchQuery: "adhesive bathroom cabinet mirror",
-      estimatedCost: 14.98 * mirrors,
-      notes: "Set into a 1/8\" rabbet in the door's outer face with mirror adhesive, flush with that face and inside the door's edges.",
-    });
-  }
   // Hardware the notes and steps name is bought, once: caulk, paint, lag screws, fabric, handles.
   const said = `${notes} ${(project.notes ?? []).join(" ")}`;
   const named: [RegExp, RegExp, BuildPlan["bom"][number]][] = [
@@ -2056,6 +2028,14 @@ function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
   };
 }
 
+/** A rack's Buy drops a cross that is not four pipes in one plane. Those joints are not a catalog fitting. */
+function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number): BuildPlan["bom"] {
+  const lines = binderBom(item, project.instances, project.joinMethod, couplings);
+  if (!slipRack) return lines;
+  const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius: (item.dims.diameter ?? 1.05) / 2 }));
+  return dropUncataloguedCrosses(lines, members);
+}
+
 function buildPlanCore(project: YardProject): BuildPlan {
   if (project.kind === "opening" && project.windowPkg) {
     const cutList = stampLabels(windowCuts(project));
@@ -2077,7 +2057,7 @@ function buildPlanCore(project: YardProject): BuildPlan {
 
   // Plates → cut list. A closet rebuilt in sticks (no plates) uses the stick plan below; a stick build whose
   // only sheet part is a chipboard backer stays a stick plan too (backer on Buy).
-  const stickWithBacker = stickPlanWithAccessories(project);
+  const stickWithBacker = project.instances.length > 0 && project.panels.length > 0 && project.panels.every(isStickAccessorySheet);
   if (project.panels.length > 0 && !stickWithBacker) {
     const rawCuts = closetCuts(project);
     const sheetNest = planSheetNest(rawCuts);
@@ -2242,7 +2222,10 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
-  const glue = item ? binderBom(item, project.instances, project.joinMethod) : [];
+  const rackPrompt = /\bracks?\b/i.test(project.prompt ?? "") && !/rail|peg|hook/i.test(project.prompt ?? "");
+  const slipRack = !!(item && rackPrompt && binderKind(item) === "slip");
+  const slipCouplings = slipRack ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
+  const glue = item ? rackSlipLines(project, item, slipRack, slipCouplings) : [];
   const spring = project.shape?.params?.rubberBands
     ? [{
         name: "Rubber bands",

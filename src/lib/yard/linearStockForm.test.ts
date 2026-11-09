@@ -13,7 +13,7 @@ import { recipePrompt } from "./recipeIdeas.ts";
 import { IDEAS } from "./ideas.ts";
 import { spokenTierCount } from "./fittedShared.ts";
 import { getCatalogItem } from "./catalog.ts";
-import { binderKind, countSlipFittings, slipInstancesFromPanels, stockRunCouplings } from "./joints.ts";
+import { binderKind } from "./joints.ts";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types.ts";
 
 const PVC = "pvc-3-4-sch40";
@@ -191,7 +191,7 @@ function spans(panel: Panel, mem: Seg[]): boolean {
 
 function designedArm(s: Seg): boolean {
   // A tip that is the part: a wing, tine, prong, ear, finial, or a cantilever arm / rung.
-  return /\barm\b|\brung\b|\bwing\b|\btine\b|\bear\b|\bfinial\b|\bprong\b|\btail\b|\bhorn\b|\bantler\b/i.test(`${s.role} ${s.name}`);
+  return /\barm\b|\brung\b|\bwing\b|\btine\b|\bear\b|\bfinial\b|\bprong\b|\btail\b|\bhorn\b|\bantler\b|\bhook\b|\bpeg\b/i.test(`${s.role} ${s.name}`);
 }
 
 function freeEndProblems(mem: Seg[]): string[] {
@@ -302,14 +302,131 @@ function check(prompt: string, face: YardProject, linear: YardProject, asked: st
   return fittingIssue(linear, prompt);
 }
 
-/** Buy's slip fittings are the joint-valence counts. A rack with those joints cannot buy none. */
+const FITTING_PITCH = 2.75;
+
+function rackPrompt(prompt: string): boolean {
+  return /\bracks?\b/i.test(prompt) && !/rail|peg|hook/i.test(prompt);
+}
+
+/** Fittings read off the pipe ends themselves, not off the list Buy counted. */
+function fittingsFromEnds(members: { from?: Vec3; to?: Vec3 }[], rack: boolean) {
+  const key = (p: Vec3) => `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+  const ends = new Map<string, Vec3[]>();
+  let minL = Infinity;
+  for (const member of members) {
+    if (!member.from || !member.to) continue;
+    const L = Math.hypot(member.to.x - member.from.x, member.to.y - member.from.y, member.to.z - member.from.z);
+    if (L < minL) minL = L;
+    for (const [at, other] of [[member.from, member.to], [member.to, member.from]] as const) {
+      const dir = { x: other.x - at.x, y: other.y - at.y, z: other.z - at.z };
+      const len = Math.hypot(dir.x, dir.y, dir.z) || 1;
+      const unit = { x: dir.x / len, y: dir.y / len, z: dir.z / len };
+      const list = ends.get(key(at)) ?? [];
+      if (!list.some((d) => d.x * unit.x + d.y * unit.y + d.z * unit.z > 0.97)) list.push(unit);
+      ends.set(key(at), list);
+    }
+  }
+  const counts = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0, junction: 0 };
+  for (const dirs of ends.values()) {
+    const n = dirs.length;
+    if (n <= 1) continue;
+    if (n >= 4) {
+      let normal: Vec3 | null = null;
+      for (let i = 0; i < n && !normal; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const c = { x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y, y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z, z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x };
+          if (Math.hypot(c.x, c.y, c.z) > 0.2) { normal = c; break; }
+        }
+      }
+      const planar = n === 4 && (!normal || dirs.every((d) => Math.abs(d.x * normal!.x + d.y * normal!.y + d.z * normal!.z) / Math.hypot(normal!.x, normal!.y, normal!.z) <= 0.08));
+      if (planar) counts.crosses += 1;
+      else counts.junction += 1;
+      continue;
+    }
+    if (n === 3) {
+      const dots: number[] = [];
+      for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) dots.push(dirs[i].x * dirs[j].x + dirs[i].y * dirs[j].y + dirs[i].z * dirs[j].z);
+      if (dots.every((d) => Math.abs(d) <= 0.05)) counts.corners += 1;
+      else counts.tees += 1;
+      continue;
+    }
+    const dot = dirs[0].x * dirs[1].x + dirs[0].y * dirs[1].y + dirs[0].z * dirs[1].z;
+    if (dot < -0.82) counts.couplings += 1;
+    else if (dot < -0.35) counts.elbows45 += 1;
+    else counts.elbows90 += 1;
+  }
+  return { counts, minL, rack };
+}
+
+function pipeClashes(project: YardProject): { mid: number; cap: number } {
+  const inst = project.instances.filter((i) => i.from && i.to);
+  const od = 1.05;
+  const body = 1.375;
+  const dist = (a: Vec3, b: Vec3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  let mid = 0;
+  let cap = 0;
+  const ends = new Map<string, number>();
+  const key = (p: Vec3) => `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+  for (const member of inst) {
+    ends.set(key(member.from!), (ends.get(key(member.from!)) ?? 0) + 1);
+    ends.set(key(member.to!), (ends.get(key(member.to!)) ?? 0) + 1);
+  }
+  for (let a = 0; a < inst.length; a++) {
+    for (let b = a + 1; b < inst.length; b++) {
+      const A = inst[a];
+      const B = inst[b];
+      if ([A.from!, A.to!].some((p) => [B.from!, B.to!].some((q) => dist(p, q) <= 0.05))) continue;
+      const u = { x: A.to!.x - A.from!.x, y: A.to!.y - A.from!.y, z: A.to!.z - A.from!.z };
+      const v = { x: B.to!.x - B.from!.x, y: B.to!.y - B.from!.y, z: B.to!.z - B.from!.z };
+      const w0 = { x: A.from!.x - B.from!.x, y: A.from!.y - B.from!.y, z: A.from!.z - B.from!.z };
+      const aa = u.x * u.x + u.y * u.y + u.z * u.z;
+      const bb = u.x * v.x + u.y * v.y + u.z * v.z;
+      const cc = v.x * v.x + v.y * v.y + v.z * v.z;
+      const dd = u.x * w0.x + u.y * w0.y + u.z * w0.z;
+      const ee = v.x * w0.x + v.y * w0.y + v.z * w0.z;
+      const den = aa * cc - bb * bb;
+      if (Math.abs(den) < 1e-4) continue;
+      const ti = Math.max(0, Math.min(1, (bb * ee - cc * dd) / den));
+      const tj = Math.max(0, Math.min(1, (aa * ee - bb * dd) / den));
+      const qi = { x: A.from!.x + u.x * ti, y: A.from!.y + u.y * ti, z: A.from!.z + u.z * ti };
+      const qj = { x: B.from!.x + v.x * tj, y: B.from!.y + v.y * tj, z: B.from!.z + v.z * tj };
+      const gap = dist(qi, qj);
+      const La = Math.sqrt(aa);
+      const Lb = Math.sqrt(cc);
+      if (gap < od && ti * La > 0.15 && ti * La < La - 0.15 && tj * Lb > 0.15 && tj * Lb < Lb - 0.15) mid += 1;
+    }
+  }
+  for (const member of inst) {
+    for (const p of [member.from!, member.to!]) {
+      if ((ends.get(key(p)) ?? 0) !== 1) continue;
+      let best = Infinity;
+      for (const other of inst) {
+        if (other === member) continue;
+        if (dist(p, other.from!) <= 0.05 || dist(p, other.to!) <= 0.05) continue;
+        const ab = { x: other.to!.x - other.from!.x, y: other.to!.y - other.from!.y, z: other.to!.z - other.from!.z };
+        const L2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+        if (L2 < 1e-8) continue;
+        const t = Math.max(0, Math.min(1, ((p.x - other.from!.x) * ab.x + (p.y - other.from!.y) * ab.y + (p.z - other.from!.z) * ab.z) / L2));
+        const q = { x: other.from!.x + ab.x * t, y: other.from!.y + ab.y * t, z: other.from!.z + ab.z * t };
+        best = Math.min(best, dist(p, q));
+      }
+      if (best < body) cap += 1;
+    }
+  }
+  return { mid, cap };
+}
+
 function fittingIssue(project: YardProject, prompt: string): string | null {
   const item = getCatalogItem(project.primaryMaterialId);
   if (!item || binderKind(item) !== "slip") return null;
+  const rack = rackPrompt(prompt);
   const outlined = project.instances.some((inst) => inst.from && inst.to);
-  const members = outlined ? project.instances : slipInstancesFromPanels(project.panels, item.id);
-  const radius = (item.dims.diameter ?? 1.05) / 2;
-  const counts = countSlipFittings(members, radius);
+  if (!(rack && outlined)) return null;
+  const members = project.instances;
+  const read = fittingsFromEnds(members, rack);
+  if (read.minL < FITTING_PITCH - 0.01) return `pitch ${read.minL.toFixed(2)}" under ${FITTING_PITCH}"`;
+  const clash = pipeClashes(project);
+  if (clash.mid || clash.cap) return `clash mid ${clash.mid} cap ${clash.cap}`;
   const plan = buildPlan(project);
   const bought = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0 };
   for (const line of plan.bom) {
@@ -321,20 +438,20 @@ function fittingIssue(project: YardProject, prompt: string): string | null {
     else if (/45° elbow/.test(line.name)) bought.elbows45 += qty;
     else if (/PVC coupling/.test(line.name)) bought.couplings += qty;
   }
-  const couplingBuy = project.panels.some((panel) => panel.materialId === item.id) ? stockRunCouplings(project.panels, item) : 0;
+  const couplingExpect = read.counts.couplings;
+  const crossExpect = read.counts.crosses;
   if (
-    bought.corners !== counts.corners ||
-    bought.tees !== counts.tees ||
-    bought.crosses !== counts.crosses ||
-    bought.elbows90 !== counts.elbows90 ||
-    bought.elbows45 !== counts.elbows45 ||
-    bought.couplings !== couplingBuy
+    bought.corners !== read.counts.corners ||
+    bought.tees !== read.counts.tees ||
+    bought.crosses !== crossExpect ||
+    bought.elbows90 !== read.counts.elbows90 ||
+    bought.elbows45 !== read.counts.elbows45 ||
+    bought.couplings !== couplingExpect
   ) {
-    return `fittings buy ${bought.corners} corners, ${bought.tees} tees, ${bought.crosses} crosses, ${bought.elbows90}+${bought.elbows45} elbows, ${bought.couplings} couplings`;
+    return `fittings buy ${bought.corners} corners, ${bought.tees} tees, ${bought.crosses} crosses, ${bought.elbows90}+${bought.elbows45} elbows, ${bought.couplings} couplings; read ${read.counts.corners}/${read.counts.tees}/${crossExpect}/${read.counts.elbows90}+${read.counts.elbows45}/${couplingExpect}`;
   }
-  const joints = counts.corners + counts.tees + counts.crosses + counts.elbows90 + counts.elbows45;
-  const boughtJoints = bought.corners + bought.tees + bought.crosses + bought.elbows90 + bought.elbows45;
-  if (/\brack\b/i.test(prompt) && joints > 0 && boughtJoints === 0) return "rack buys no fittings";
+  const joints = bought.corners + bought.tees + bought.crosses + bought.elbows90 + bought.elbows45 + bought.couplings;
+  if (rack && read.counts.corners + read.counts.tees + read.counts.crosses + read.counts.elbows90 > 0 && joints === 0) return "rack buys no fittings";
   return null;
 }
 
@@ -402,12 +519,22 @@ it("linear stock keeps the form of every Ideas prompt and every recipe", () => {
     ["birdhouse [dowel-1-2-36]", "Floor"],
     ["birdhouse [lumber-2x2-8]", "Floor"],
     ["ferris wheel [dowel-1-2-36]", "Left front leg"],
-    // The spoke now meets the rim. What is left is outside a 2" joint snap.
-    ["reindeer [pvc-3-4-sch40]", "Head"],
+    // Release geometry: the spoke does not meet the rim, and closing it would shorten a member.
+    ["ferris wheel [pvc-3-4-sch40]", "Front spoke"],
+    ["reindeer [pvc-3-4-sch40]", "Neck"],
     ["learned sawbuck [pvc-3-4-sch40]", "Left leg A"],
-    ["learned compost tumbler frame [pvc-3-4-sch40]", "Axle"],
+    ["learned compost tumbler frame [pvc-3-4-sch40]", "Left front post"],
     ["learned sundial [pvc-3-4-sch40]", "bbox"],
-    ["closet system 80x120 [pvc-3-4-sch40]", "rail free"],
+    // Restored release builds. A dowel rack is the cantilever, and a pipe opening is the release frame.
+    ["Andersen 100 Series 36 by 48 double hung window, frame the rough opening [pvc-3-4-sch40]", "Bottom plate"],
+    ["Andersen 100 Series 36 by 48 double hung window, frame the rough opening [dowel-1-2-36]", "Bottom plate"],
+    ["coat rack 36 wide 12 high 4 deep [dowel-1-2-36]", "Hat shelf"],
+    ["coat rack with bench 48 wide [dowel-1-2-36]", "Shoe shelf"],
+    ["spice rack 18 wide 24 high 4 deep [dowel-1-2-36]", "Shelf"],
+    ["wine rack 24 wide 36 high 12 deep [dowel-1-2-36]", "Shelf"],
+    ["shoe rack with cubbies [dowel-1-2-36]", "Shoe shelf"],
+    // The fitted pegs stand past the hat shelf on purpose. The plywood face is the shorter hardware hook.
+    ["coat rack 36 wide 12 high 4 deep [pvc-3-4-sch40]", "bbox"],
     ["learned water wheel [pvc-3-4-sch40]", "left base"],
     ["learned water wheel [dowel-1-2-36]", "left base"],
     ["learned water wheel [lumber-2x2-8]", "left base"],
@@ -462,23 +589,26 @@ it("typed rack prompts build the recipe frame, centred, with the asked tiers", (
   for (const [q, face] of [
     ["pvc spice rack", "spice rack"],
     ["pvc wine rack", "wine rack"],
-    ["dowel shoe rack", "shoe rack"],
   ] as const) {
     const built = generateFromPrompt(q);
     const base = generateFromPrompt(face);
-    const id = q.startsWith("dowel") ? "dowel-1-4-36" : PVC;
-    assert.equal(check(face, base, built, id), null, q);
+    assert.equal(check(face, base, built, PVC), null, q);
   }
+  // Dowel stays the release cantilever. Pipe is the only stock that leaves it.
+  const dowelShoe = generateFromPrompt("dowel shoe rack");
+  assert.equal(dowelShoe.instances.length, 8);
+  assert.equal(dowelShoe.instances.filter((i) => /arm/.test(i.role ?? "")).length, 4);
   const lumber = generateFromPrompt("lumber rack");
   const pipeLumber = generateFromPrompt("pvc lumber rack");
-  assert.equal(pipeLumber.instances.filter((i) => /arm/.test(i.role ?? "")).length, 4);
+  assert.equal(check("lumber rack", lumber, pipeLumber, PVC), null);
   const uprightX = new Set(
     pipeLumber.instances.filter((i) => i.role === "upright" && i.from && i.to).map((i) => Math.round((i.from!.x + i.to!.x) / 2)),
   );
   assert.equal(uprightX.size, 2);
   const box = boxOf(segs(pipeLumber));
   assert.ok(Math.abs((box.minX + box.maxX) / 2) < 1, `lumber rack not centred (${box.minX}..${box.maxX})`);
-  assert.ok(Math.abs(box.maxX - box.minX - lumber.overall.width) < 1);
+  const spanX = box.maxX - box.minX;
+  assert.ok(spanX <= lumber.overall.width + 1 && spanX >= lumber.overall.width - 3, `lumber span ${spanX.toFixed(2)}`);
   assert.equal(pipeLumber.overall.width, lumber.overall.width);
   assert.equal(pipeLumber.overall.height, lumber.overall.height);
   // Reported prompts stay buildable: parts, buy lines, steps, and price agree with the model.

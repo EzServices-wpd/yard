@@ -84,6 +84,9 @@ function lengthSoldBuy(project: YardProject, plan: BuildPlan, item: CatalogItem,
  * leaves a joint with nothing to buy.
  */
 function withSlipFittings(project: YardProject, plan: BuildPlan, bom: BomLine[]): BomLine[] {
+  const prompt = (project.prompt ?? "").toLowerCase();
+  // Fittings for pipe builds that are not racks stay on a later change.
+  if (!/\bracks?\b/.test(prompt) || /rail|peg|hook/.test(prompt)) return bom;
   const item = getCatalogItem(project.primaryMaterialId ?? "");
   if (!item || binderKind(item) !== "slip") return bom;
   if (bom.some((b) => b.catalogId && SLIP_FITTING_IDS.has(b.catalogId) && b.catalogId !== "pvc-cement")) return bom;
