@@ -1,4 +1,5 @@
 import { pieceTalk } from "./shopPlural";
+import { inchFrac } from "./inchText";
 import type { BomLine, YardInstance } from "./types";
 import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
@@ -135,7 +136,7 @@ export function buildForgeBom(
       notes = whole
         ? `${pieceTalk(data.count, true)}. Glue. Do not cut.`
         : (item.canCut ?? true) && uniqueCuts.length
-          ? `Cut to: ${uniqueCuts.map((c) => `${c}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole ${stockNoun(item.name)}${sticksUsed === 1 ? "" : "s"}` : ""}${spare}`
+          ? `Cut to: ${uniqueCuts.map((c) => `${inchFrac(c)}"`).join(", ")}${sticksUsed ? ` · from ${sticksUsed} whole ${stockNoun(item.name)}${sticksUsed === 1 ? "" : "s"}` : ""}${spare}`
           : item.notes;
     }
 

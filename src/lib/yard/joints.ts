@@ -123,15 +123,20 @@ function pairDots(dirs: Vec3[]): number[] {
 /**
  * The fitting follows the pipes that meet, not the part name.
  * 2 at 90° is an elbow, 2 nearly straight is a coupling, 2 at 45° is a 45° elbow.
- * 3 with one straight run is a tee. 3 with no straight run (a corner of three
- * mutually perpendicular pipes) is a 3-way corner. 4 or more is a cross.
+ * 3 mutually perpendicular pipes are a 3-way corner. Any other meeting of 3
+ * (a straight run with a branch, or an angled crown) is a tee. 4 or more is a cross.
  */
 export function classifyJoint(node: JointNode): JointClass {
   const n = node.dirs.length;
   if (n <= 1 && node.p.y < 0.45) return "ground";
   if (n <= 1) return "cap";
   if (n >= 4) return "cross";
-  if (n === 3) return pairDots(node.dirs).some((d) => d < STRAIGHT) ? "tee" : "corner3";
+  if (n === 3) {
+    const dots = pairDots(node.dirs);
+    // A square corner: every pair is near 90°. A straight run, or any angled meeting, stays a tee.
+    const square = dots.length === 3 && dots.every((d) => Math.abs(d) <= 0.35);
+    return square ? "corner3" : "tee";
+  }
   const d0 = node.dirs[0];
   const d1 = node.dirs[1];
   const dot = d0.x * d1.x + d0.y * d1.y + d0.z * d1.z;
