@@ -831,7 +831,9 @@ function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: 
     if (slant.length) {
       const lo = Math.min(...slant.map((st) => Math.min(st.a.y, st.b.y))) - base;
       const hi = Math.max(...slant.map((st) => Math.max(st.a.y, st.b.y))) - base;
-      out.sentences.push(`${slant.length === 1 ? `The slanted ${role} runs` : `The ${slant.length} slanted ${word} run`} from ${Math.abs(lo) < EPS ? refWord : `${f(lo)} up`} to ${f(hi)} up — end to end on the joints in the picture.`);
+      const said = statedRoleCount(title, role);
+      const count = said != null && said < slant.length ? said : slant.length;
+      out.sentences.push(`${count === 1 ? `The slanted ${role} runs` : `The ${count} slanted ${word} run`} from ${Math.abs(lo) < EPS ? refWord : `${f(lo)} up`} to ${f(hi)} up — end to end on the joints in the picture.`);
       for (const st of slant) out.measures.push({ kind: "center", id: st.id, value: (st.a.y + st.b.y) / 2 - base });
     }
   }

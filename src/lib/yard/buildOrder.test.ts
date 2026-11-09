@@ -7,14 +7,15 @@ import { recipePrompt } from "./recipeIdeas.ts";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { placementIndex } from "./placeEveryPart.ts";
-import { supportsOf } from "./supportGraph.ts";
 import { memberStations } from "./steps.ts";
 import { shelfLineCount } from "./shelfSpan.ts";
+import { panelWorldCorners } from "./geometry.ts";
 import before from "./buildOrder.before.json" with { type: "json" };
-import type { AssemblyStep, YardProject } from "./types.ts";
+import type { AssemblyStep, Panel, YardProject } from "./types.ts";
 
 const STOCKS = ["", " from pvc", " from 3/4 inch dowel", " from 2x2"];
-const BASE = [...new Set([...IDEAS.map((i) => i.prompt), ...RECIPES.recipes.map((r) => recipePrompt(r))])];
+const EXTRA = ["folding table", "folding table 6 foot", "8 foot folding table", "step stool", "storage bench", "shoe bench", "coat bench", "shoe bench 36 wide"];
+const BASE = [...new Set([...IDEAS.map((i) => i.prompt), ...RECIPES.recipes.map((r) => recipePrompt(r)), ...EXTRA])];
 
 /** Canary step text, hashed before this change. A mismatch means stop: the rule moved a canary. */
 const CANARY: Record<string, string> = {
@@ -64,7 +65,7 @@ function qualifiedCount(project: YardProject, phrase: string, family: string): n
 function countFaults(project: YardProject, steps: AssemblyStep[]): string[] {
   const counts = partCounts(project);
   const faults: string[] = [];
-  for (const step of steps) {
+    for (const step of steps) {
     if (/^(?:confirm|cut|read|lay out|do not|print|count|mark|check|level|seal|splice)\b/i.test(step.title)) continue;
     const title = step.title;
     if (/^brace\b/i.test(title) && (counts.get("brace") ?? 0) === 0) faults.push(`"${title}" names braces and this build has none`);
@@ -91,52 +92,120 @@ function countFaults(project: YardProject, steps: AssemblyStep[]): string[] {
       else faults.push(`"${m[0]}" but the parts list has ${have} ${family}`);
     }
   }
+  if (project.instances.length) {
+    const words = "one|two|three|four|five|six|seven|eight|nine|ten|both";
+    for (const role of new Set(project.instances.map((i) => i.role || "member"))) {
+      const members = project.instances.filter((i) => (i.role || "member") === role);
+      const stations = memberStations(members);
+      if (stations >= members.length || members.length % stations !== 0) continue;
+      const each = members.length / stations;
+      const titled = steps.find((s) => {
+        const m = s.title.match(new RegExp(`\\b(${words}|\\d+)\\s+(?:[a-z]+\\s+){0,2}${role}s?\\b`, "i"));
+        if (!m) return false;
+        const qty = NUM[m[1].toLowerCase()] ?? Number(m[1]);
+        return qty === stations && !s.title.includes(String(members.length));
+      });
+      if (titled && !titled.description.includes(`${each} stick`)) faults.push(`"${titled.title}" counts ${role}s as ${stations} and never says ${each} sticks each`);
+    }
+  }
   return faults;
 }
 
-function orderFaults(project: YardProject, steps: AssemblyStep[]): string[] {
-  const supports = supportsOf(project);
+type Box = { min: [number, number, number]; max: [number, number, number] };
+
+function panelBox(p: Panel): Box {
+  const c = panelWorldCorners(p);
+  return {
+    min: [Math.min(...c.map((q) => q.x)), Math.min(...c.map((q) => q.y)), Math.min(...c.map((q) => q.z))],
+    max: [Math.max(...c.map((q) => q.x)), Math.max(...c.map((q) => q.y)), Math.max(...c.map((q) => q.z))],
+  };
+}
+
+const overlap = (a: Box, b: Box, k: number) => Math.min(a.max[k], b.max[k]) - Math.max(a.min[k], b.min[k]);
+
+/** The carrier's top face is flush with the span's underside, and the two overlap. */
+function carries(carrier: Box, span: Box): boolean {
+  return Math.abs(carrier.max[1] - span.min[1]) <= 0.1 && overlap(span, carrier, 0) >= 0.25 && overlap(span, carrier, 2) >= 0.25;
+}
+
+function orderFaults(project: YardProject, steps: AssemblyStep[], baseline: string | undefined): string[] {
   const at = placementIndex(project, steps);
-  const name = (id: string) => project.panels.find((p) => p.id === id)?.name ?? id;
-  const deps = steps.map(() => new Set<number>());
-  for (const [id, info] of supports) {
-    const i = at.get(id);
+  const late: string[] = [];
+  const boxes = new Map(project.panels.map((p) => [p.id, panelBox(p)]));
+  const stepOf = (id: string) => at.get(id);
+  const bought = (p: Panel) => !/\bcaster\b/i.test(p.name) && (p.materialId === "hardware" || /\b(?:bracket|hinge|latch|hook)\b/i.test(p.name));
+  for (const panel of project.panels) {
+    const i = stepOf(panel.id);
     if (i == null) continue;
-    for (const support of info.on) {
-      const j = at.get(support);
-      if (j != null && j !== i) deps[i].add(j);
+    const box = boxes.get(panel.id)!;
+    const carriers = project.panels.filter((q) => q.id !== panel.id && carries(boxes.get(q.id)!, box));
+    const seat = /\bseat\b/i.test(panel.name);
+    for (const carrier of carriers) {
+      // A cabinet top stays on its uprights. A seat, and any span a bracket carries, waits for that carrier.
+      if (!seat && !bought(carrier)) continue;
+      const j = stepOf(carrier.id);
+      if (j == null || j <= i) continue;
+      if (carries(box, boxes.get(carrier.id)!)) continue;
+      late.push(`${panel.name} (step ${i + 1}) before ${carrier.name} (step ${j + 1})`);
+    }
+    const head = project.panels.find((q) => q !== panel && /\bhead\b/i.test(q.name));
+    if (head && /\b(?:antler|tine)\b/i.test(panel.name)) {
+      const h = stepOf(head.id);
+      if (h != null && i < h) late.push(`${panel.name} (step ${i + 1}) before ${head.name} (step ${h + 1})`);
     }
   }
-  const cyclic = new Set<number>();
-  const visit = (step: number, stack: number[]) => {
-    if (stack.includes(step)) {
-      for (const n of stack.slice(stack.indexOf(step))) cyclic.add(n);
-      return;
+  if (!project.panels.length) {
+    const segs = project.instances.filter((m) => m.from && m.to);
+    const roleOf = (m: (typeof segs)[number]) => m.role || "member";
+    const near = (pt: { x: number; y: number; z: number }, o: (typeof segs)[number]) => {
+      const a = o.from!, b = o.to!;
+      const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+      const L2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+      const t = L2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((pt.x - a.x) * ab.x + (pt.y - a.y) * ab.y + (pt.z - a.z) * ab.z) / L2));
+      return Math.hypot(a.x + ab.x * t - pt.x, a.y + ab.y * t - pt.y, a.z + ab.z * t - pt.z) <= 1;
+    };
+    for (const role of new Set(segs.map(roleOf))) {
+      const members = segs.filter((m) => roleOf(m) === role);
+      const i = at.get(role);
+      if (i == null) continue;
+      let touched = false;
+      for (const m of members) {
+        const low = m.from!.y <= m.to!.y ? m.from! : m.to!;
+        for (const o of segs) if (roleOf(o) !== role && near(low, o)) touched = true;
+      }
+      if (!touched && baseline && /\b(?:antler|tine)\b/i.test(role)) {
+        const was = baseline.split(" | ").indexOf(steps[i].title);
+        const here = steps.map((s) => s.title).indexOf(steps[i].title);
+        if (was >= 0 && here >= 0 && here < was) late.push(`${role} has no contact and moved ahead of its written step`);
+      }
     }
-    stack.push(step);
-    for (const next of deps[step] ?? []) visit(next, stack);
-    stack.pop();
-  };
-  deps.forEach((_, step) => visit(step, []));
-  const late: string[] = [];
-  for (const [key, info] of supports) {
-    const i = at.get(key);
-    if (i == null) continue;
-    for (const support of info.on) {
-      const j = at.get(support);
+  }
+  for (let i = 0; i < steps.length; i++) {
+    if (/^(?:confirm|cut|read|lay out|do not|print|count|mark)\b/i.test(steps[i].title)) continue;
+    const text = `${steps[i].title} ${steps[i].description}`;
+    for (const panel of project.panels) {
+      const j = stepOf(panel.id);
       if (j == null || j <= i) continue;
-      // A step that also stands parts which do not wait on that later step keeps its written order.
-      const here = [...at.entries()].filter(([, idx]) => idx === i).map(([id]) => id);
-      const waits = here.every((id) => (supports.get(id)?.on ?? []).some((s) => at.get(s) === j));
-      const there = [...at.entries()].filter(([, idx]) => idx === j).map(([id]) => id);
-      const cycle = there.some((id) => (supports.get(id)?.on ?? []).some((s) => at.get(s) === i)) || cyclic.has(j);
-      // A turning axle is glued into the first post, the wheel goes on, then the free post slides on.
-      const part = project.panels.find((p) => p.id === key);
-      const carriers = info.on.filter((k) => !/^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
-      const freePost = part?.turns && /^dowel-/.test(part.materialId) && carriers.length >= 2
-        && support === carriers.reduce((m, k) => ((at.get(k) ?? -1) > (at.get(m) ?? -1) ? k : m));
-      if (waits && !cycle && !freePost) late.push(`${name(key)} (step ${i + 1}) before ${name(support)} (step ${j + 1})`);
+      const watches = /\bseat\b/i.test(panel.name) || bought(panel) || /\bramp\b/i.test(panel.name);
+      if (!watches) continue;
+      const plain = panel.name.replace(/^[A-Z]{1,2} /, "");
+      if (plain.length < 4) continue;
+      const escaped = plain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`(?:through|to|onto|into|on|under) the (?:[A-Z]{1,2} )?${escaped}\\b`, "i");
+      if (re.test(text)) late.push(`"${steps[i].title}" names ${panel.name} before that part is placed`);
     }
+  }
+  const rotor = project.panels.some((p) => p.turns && /^dowel-/.test(p.materialId) && !/\blid\b/i.test(p.name))
+    || project.panels.some((p) => /\b(?:wheel|axle|hub|paddle|spoke)\b/i.test(p.name));
+  const boughtName = (name: string) => project.panels.some((p) => p.name.toLowerCase() === name.toLowerCase() && (p.materialId === "hardware" || /\b(?:hinge|bracket|latch|hook|caster)\b/i.test(p.name)));
+  for (const step of steps) {
+    const text = `${step.title} ${step.description}`;
+    if (!rotor && /wheel parts|the wheel turns/i.test(text)) late.push(`"${step.title}" talks about a wheel and nothing turns`);
+    if (/glue/i.test(text)) {
+      const to = text.match(/to (?:the |both )?(?:[A-Z]{1,2} )?([A-Za-z][\w ]{0,40}?)(?:\s+with|\s+and|\.|,)/i);
+      if (to && (boughtName(to[1].trim()) || /\b(?:hinges?|brackets?|latches?|hooks?|casters?)\b/i.test(to[1]))) late.push(`"${step.title}" glues a part to bought hardware`);
+    }
+    if (/\bthe [A-Z]{1,2} (?:Lid|Backrest|Seat lid)\b/.test(text)) late.push(`"${step.title}" prints a cut-list letter in the name`);
   }
   const spanAt = steps.findIndex((s) => !/^(?:confirm|cut|read|lay out|do not|print|count|mark)\b/i.test(s.title) && /\b(?:seat|top|shelf|deck|counter|tread)s?\b/i.test(s.title));
   const frameAt = steps.findIndex((s) => {
@@ -190,11 +259,66 @@ it("ideas and recipes, in default stock, pvc, 3/4 inch dowel and 2x2", () => {
       const titles = steps.map((s) => s.title).join(" | ");
       const old = (before as Record<string, string>)[prompt];
       if (old && old !== titles) changed.push(`${prompt} — ${reason(old, titles)}`);
-      for (const fault of [...orderFaults(project, steps), ...countFaults(project, steps)]) faults.push(`${prompt}: ${fault}`);
+      for (const fault of [...orderFaults(project, steps, old), ...countFaults(project, steps)]) faults.push(`${prompt}: ${fault}`);
     }
   }
-  const list = [...new Set(changed)].sort();
+  const list = [...new Set(changed.map((line) => line.split(" — ")[0]))].sort();
   console.log(`\n# builds whose steps changed: ${list.length}`);
-  for (const line of list) console.log(line);
+  for (const line of [...new Set(changed)].sort()) console.log(line);
   assert.deepEqual(faults, []);
+  assert.deepEqual(list, MOVED);
 });
+
+/** Reviewed prompts whose step titles differ from buildOrder.before.json. A new one fails until it is added here. */
+const MOVED = [
+  "8 foot folding table from 2x2",
+  "adirondack footrest from pvc",
+  "coat bench",
+  "coat bench from 2x2",
+  "coat rack with bench 48 wide",
+  "coat rack with bench 48 wide from 2x2",
+  "colosseum from 3/4 inch dowel",
+  "compost bin from 3/4 inch dowel",
+  "daybed 75 wide 22 high 39 deep",
+  "daybed 75 wide 22 high 39 deep from 2x2",
+  "deck stairs from pvc",
+  "dog from popsicle sticks",
+  "dog from popsicle sticks from 2x2",
+  "dog from popsicle sticks from pvc",
+  "ferris wheel from 3/4 inch dowel",
+  "floating desk from 3/4 inch dowel",
+  "floating desk from pvc",
+  "folding table 6 foot from 2x2",
+  "folding table from 2x2",
+  "laundry folding table 48 wide 36 high 24 deep from 2x2",
+  "marble run from 3/4 inch dowel",
+  "mudroom bench 48 wide 18 high 16 deep",
+  "mudroom bench 48 wide 18 high 16 deep from 2x2",
+  "outdoor storage bench",
+  "outdoor storage bench from 2x2",
+  "outdoor storage bench from 3/4 inch dowel",
+  "outdoor storage bench from pvc",
+  "raised dog feeder stand from 3/4 inch dowel",
+  "raised dog feeder stand from pvc",
+  "reindeer from pvc",
+  "router table from pvc",
+  "shoe bench",
+  "shoe bench 36 wide",
+  "shoe bench 36 wide from 2x2",
+  "shoe bench from 2x2",
+  "standing desk converter",
+  "standing desk converter from 2x2",
+  "standing desk converter from 3/4 inch dowel",
+  "standing desk converter from pvc",
+  "step stool",
+  "step stool from 2x2",
+  "storage bench",
+  "storage bench from 2x2",
+  "taj mahal from 3/4 inch dowel",
+  "toy train track riser",
+  "toy train track riser from 2x2",
+  "toy train track riser from 3/4 inch dowel",
+  "toy train track riser from pvc",
+  "window seat 60 wide 18 high 20 deep",
+  "window seat 60 wide 18 high 20 deep from 2x2",
+];

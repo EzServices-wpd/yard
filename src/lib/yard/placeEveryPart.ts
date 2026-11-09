@@ -9,6 +9,8 @@ import { binderKind, countSlipFittings, slipFittingPhrase, slipInstancesFromPane
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
+import { stickGroupPhrase } from "./steps";
+import { panelWorldCorners } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { isFixedSpanShelf } from "./shelfSpan";
 import { rotorChain, type RotorLink } from "./solids";
@@ -101,7 +103,8 @@ const sidedFamilyRe = (f: string) => cached(SIDED_FAMILY_RE, f, () => new RegExp
 // The name goes in unescaped, exactly as before (a name with a dot or paren matched as a pattern then too).
 const ontoRe = (n: string) => cached(ONTO_RE, n, () => new RegExp(`to the ${n}|onto the ${n}|on the ${n}`));
 const kindRe = (k: string) => cached(KIND_RE, k, () => new RegExp(`\\b${k}s?\\b`));
-const joinKindRe = (k: string) => cached(JOIN_KIND_RE, k, () => new RegExp(`^\\S+ (?:the )?(?:[a-z]{1,2} )?${k}s?\\b`));
+// "Fasten the Ramp 4 rail" places the rail, not the ramp. "Attach A Top" still places the top.
+const joinKindRe = (k: string) => cached(JOIN_KIND_RE, k, () => new RegExp(`^\\S+ (?:the )?(?:[a-z]{1,2} )?${k}s?(?: \\d+)?\\b(?! (?:rail|backstop|lip|cleat|support|stop)s?\\b)`));
 
 function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean {
   // A step that declares it uses no parts (stapling mesh, drilling vents) places none: nothing is fastened in it.
@@ -112,7 +115,10 @@ function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean 
   // A title that names the part outright ("Fit the drawer front") still places it.
   if (used.length && names && used.every((u) => names.has(u))) {
     const n = part.name.toLowerCase();
-    if (used.includes(n) || (n.includes(" ") && namedRe(n).test(step.title.toLowerCase()))) return true;
+    const title = step.title.toLowerCase();
+    // "Ramp 4 rail" is the rail. The title must not also count as placing "Ramp 4".
+    const longer = used.some((u) => u !== n && (u.startsWith(`${n} `) || u.startsWith(`${n}s `)));
+    if (used.includes(n) || (n.includes(" ") && !longer && namedRe(n).test(title))) return true;
     // "Fit the drawer fronts" places every drawer front; "the 6 right end slats" places no left one.
     const f = familyWord(part.name);
     const m = f.includes(" ") ? step.title.toLowerCase().match(sidedFamilyRe(f)) : null;
@@ -195,8 +201,10 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
   const names = project.panels.length
     ? info.on.map((id) => project.panels.find((p) => p.id === id)?.name ?? "").filter(Boolean)
     : info.on.map((role) => {
+        const grouped = stickGroupPhrase(project, role);
+        if (grouped) return grouped;
         const n = project.instances.filter((i) => (i.role || "member") === role).length;
-        return n === 1 ? role : `${n} ${plural(role, n)}`;
+        return n === 1 ? role : `${n} ${role}s`;
       });
   if (!project.panels.length) return names.map((n) => `the ${n}`).join(" and ");
   // Two bay pieces of one shelf share a name. Count that shelf once.
@@ -209,15 +217,35 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
   }
   const bits = [...byFamily.entries()].map(([w, set]) => {
     const n = set.size;
-    return n === 1 ? `the ${[...set][0]}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`;
+    return n === 1 ? `the ${spokenName([...set][0])}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`;
   });
   return bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0];
+}
+
+/** A cut-list letter is not part of the name a step speaks: "B Lid" is "Lid". */
+function spokenName(name: string): string {
+  return name.replace(/^[A-Z]{1,2} (?=(?:Lid|Backrest|Seat lid)\b)/, "");
+}
+
+/**
+ * A hinged lid is screwed to its hinges. This sentence is chosen before any dowel, wheel, or glue wording,
+ * so a lid is never described as a wheel and never glued to the hinge.
+ */
+function hingeSentence(project: YardProject, part: Part, panel: YardProject["panels"][number] | undefined): string | null {
+  if (!panel || !/\blid\b/i.test(panel.name)) return null;
+  if (!project.panels.some((q) => /\bhinge/i.test(q.name))) return null;
+  if (!(panel.turns || panel.hinged || isLid(panel))) return null;
+  const name = spokenName(part.name);
+  return `Hang the ${name} on its hinges: screw each hinge's free leaf to the ${name} with the short hinge screws. The ${name} itself takes no screws: it rests on the walls and swings open.`;
 }
 
 /** One sentence that sets the part on its real support with the way it really holds. */
 function placeSentence(project: YardProject, part: Part, info: SupportInfo | undefined, fix: string): string {
   const onto = supportTalk(project, info);
   const panel = project.panels.find((p) => p.id === part.key);
+  const hung = hingeSentence(project, part, panel);
+  if (hung) return hung;
+  const who = panel ? spokenName(part.name) : (stickGroupPhrase(project, part.key) ?? part.name);
   // A span rail is glued on edge under its shelf. The floor template ("mounts to the wall") is not that joint.
   if (panel && /^Front rail\b/.test(panel.name)) {
     const shelf = project.panels.find((s) => {
@@ -246,15 +274,13 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (panel?.turns && /^dowel-/.test(panel.materialId) && !lidPart && blind) return `Set the ${part.name} into the drilled holes in ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   if (panel?.turns && /^dowel-/.test(panel.materialId) && !lidPart) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
-  // A rotor's parts are fixed to each other; only the assembly turns on the pin.
-  // A hinged lid swings on its hinges: it is hung, never screwed down.
-  if (panel?.turns && !onPin && !/^dowel-/.test(panel.materialId) && isLid(panel) && project.panels.some((q) => /\bhinge/i.test(q.name))) return `Hang the ${part.name} on its hinges: screw each hinge's free leaf to the ${part.name} with the short hinge screws. The ${part.name} itself takes no screws: it rests on the walls and swings open.`;
+  // A rotor's parts are fixed to each other; only the assembly turns on the pin. A lid is not a wheel.
   // C13: a caster screws under the piece once it is built; a screw eye twists into a pilot hole.
   if (panel?.materialId === "hardware" && /^Caster \d+$/.test(part.name)) return `Tip the piece on its side and screw the ${part.name} under ${onto} with four #10 × 3/4" pan-head screws through its plate, 1/2" in from the corner. Locking casters go at the front.`;
   if (panel?.materialId === "hardware" && /^Screw eye \d+$/.test(part.name)) return `Drill a 1/8" pilot hole and twist the ${part.name} into ${onto} by hand until the eye sits flat.`;
   if (panel?.materialId === "acrylic-sheet") return `Slide the ${part.name} into 1/8" grooves cut in ${onto}. No glue or screws: it lifts out for cleaning.`;
   if (panel?.materialId === "hardware" && /\bhinge/i.test(part.name)) return `Screw one leaf of the ${part.name} to ${onto.split(" and ")[0]} with its short hinge screws, knuckle at the top edge.`;
-  if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
+  if (panel?.turns && onPin && !lidPart) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
   if (/^dowel-/.test(panel?.materialId ?? "") && !lidPart) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   // Pipe joins with the fittings on Buy. A thin drawn box is still a pipe, not a glued wood joint.
   if (slipMember(panel?.materialId)) {
@@ -281,7 +307,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
         return `Hang the ${part.name} on ${onto} with its hinge strap screwed along the batten. The boards of the same leaf fasten to it next, clear of the frame so it swings free.`;
       return `Hang the ${part.name} on its hinges on ${onto}.`;
     case "front":
-      return `Set the ${part.name} on the face of ${onto} and fasten it from inside the drawer with ${fix}`;
+      return `Set the ${who} on the face of ${onto} and fasten it from inside the drawer with ${fix}`;
     case "rests":
       // A span divider on a pinned shelf is not screwed there. Buy leaves that joint out.
       if (
@@ -293,11 +319,11 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
           return !!host && host.type === "shelf" && !isFixedSpanShelf(host);
         })
       ) {
-        return `Set the ${part.name} on ${onto}. The shelf stays on pins, so this joint takes no screws.`;
+        return `Set the ${who} on ${onto}. The shelf stays on pins, so this joint takes no screws.`;
       }
-      return `Set the ${part.name} on ${onto}. Fasten it with ${fix}`;
+      return `Set the ${who} on ${onto}. Fasten it with ${fix}`;
     default:
-      return `Fasten the ${part.name} to ${onto} with ${fix}`;
+      return `Fasten the ${who} to ${onto} with ${fix}`;
   }
 }
 
@@ -452,10 +478,12 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
       const turns = project.panels.find((p) => p.id === part.key)?.turns;
       const onPinNow = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
       const frontRail = /^Front rail\b/.test(part.name);
-      const verb = frontRail ? "Glue" : (turns || /\bcollar/i.test(part.name)) && onPinNow ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
+      const hanging = sentence.startsWith("Hang the ") && /\blid\b/i.test(part.name);
+      const verb = hanging ? "Hang" : frontRail ? "Glue" : (turns || /\bcollar/i.test(part.name)) && onPinNow ? "Slide on" : info?.how === "hinges" ? "Hang" : info?.how === "rests" || info?.how === "floor" || info?.how === "front" ? "Set" : "Fasten";
+      const titleName = hanging ? spokenName(part.name) : part.name;
       out.splice(insertAt, 0, {
         step: insertAt + 1,
-        title: frontRail ? `Glue the ${part.name} under the shelf` : `${verb} the ${part.name}`,
+        title: frontRail ? `Glue the ${part.name} under the shelf` : hanging ? `Hang the ${titleName}` : `${verb} the ${part.name}`,
         description: sentence,
         tips: INSERTED,
         partsUsed: [project.panels.length ? part.name : part.kind],
@@ -466,6 +494,8 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
     // A mirror the step already hangs on a cleat or into studs is not also glued to the carcase it stands above.
     const mirrorHung = project.panels.find((p) => p.id === part.key)?.type === "mirror" && !project.fitted?.unit?.kneeW && !project.pocket && /\b(?:cleat|studs?)\b/i.test(`${step.title} ${step.description}`);
     if (handWritten || namesSupport(project, step, info) || mirrorHung) continue;
+    // The step already screws this lid to its hinge. Do not append a second, material-specific sentence.
+    if (hingeSentence(project, part, project.panels.find((p) => p.id === part.key)) && /hinge/i.test(`${step.title} ${step.description}`) && /screw/i.test(step.description)) continue;
     // The span step already screws a fixed shelf to the uprights. A second "fasten it" line names no joint.
     const fixedShelf = project.panels.find((p) => p.id === part.key);
     if (fixedShelf && isFixedSpanShelf(fixedShelf) && /screw each fixed shelf/i.test(`${step.title} ${step.description}`)) continue;
@@ -685,6 +715,43 @@ function supportOrder(project: YardProject, steps: AssemblyStep[], parts: Part[]
       for (let j = 0; j < i; j++) if (unplaced[j].includes(p)) deps[i].add(j);
     }
   });
+  // A panel with no path to the floor, and no contact with one that has, keeps its written place.
+  const grounded = (key: string, seen = new Set<string>()): boolean => {
+    if (seen.has(key)) return false;
+    seen.add(key);
+    const info = supports.get(key);
+    if (!info) return false;
+    if (info.how === "floor") return true;
+    if (!info.on.length) return false;
+    return info.on.some((k) => grounded(k, seen));
+  };
+  const boxOf = (id: string) => {
+    const p = project.panels.find((q) => q.id === id)!;
+    const c = panelWorldCorners(p);
+    return {
+      min: [Math.min(...c.map((q) => q.x)), Math.min(...c.map((q) => q.y)), Math.min(...c.map((q) => q.z))],
+      max: [Math.max(...c.map((q) => q.x)), Math.max(...c.map((q) => q.y)), Math.max(...c.map((q) => q.z))],
+    };
+  };
+  const gap = (a: { min: number[]; max: number[] }, b: { min: number[]; max: number[] }, k: number) => Math.max(a.min[k], b.min[k]) - Math.min(a.max[k], b.max[k]);
+  const touchesGround = (key: string) => project.panels.some((q) => {
+    if (q.id === key || !grounded(q.id)) return false;
+    const a = boxOf(key), b = boxOf(q.id);
+    const gaps = [0, 1, 2].map((k) => gap(a, b, k));
+    const axis = gaps.indexOf(Math.max(...gaps));
+    return gaps[axis] <= 0.1 && [0, 1, 2].filter((k) => k !== axis).every((k) => -gaps[k] >= 0.25);
+  });
+  for (let i = 0; i < steps.length; i++) {
+    const here = parts.filter((p) => where.get(p.key) === i && project.panels.some((q) => q.id === p.key));
+    if (!here.length || here.some((p) => grounded(p.key) || touchesGround(p.key))) continue;
+    const held = new Set(here.map((p) => p.key));
+    const wantedEarlier = parts.some((p) => {
+      const atP = where.get(p.key);
+      return atP != null && atP < i && (supports.get(p.key)?.on ?? []).some((k) => held.has(k));
+    });
+    if (wantedEarlier) continue;
+    for (let j = 0; j < i; j++) if (isBuild(steps[j])) deps[i].add(j);
+  }
   if (!deps.some((d, i) => [...d].some((j) => j > i))) return steps;
   // Only steps that place parts (or use parts no step places) move; prep, cut and check steps keep their slots.
   const placing = steps.map((_, i) => i).filter((i) => isBuild(steps[i]) && ([...where.values()].includes(i) || unplaced[i].length > 0));

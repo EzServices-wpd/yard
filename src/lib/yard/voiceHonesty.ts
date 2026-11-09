@@ -338,6 +338,8 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
       if (/^(top|bottom)$/i.test(m) && /\bfrom\s+(?:the\s+)?$/i.test(prior)) return m;
       if (/^(top|bottom)$/i.test(m) && /^\s+and\s+(top|bottom)\b/i.test(after)) return m;
       if (!isExplicitPartRef(whole, offset, m)) return m;
+      // A step speaks the plain name. The cut-list letter stays on the dimension line.
+      if (/^(?:lid|backrest|seat lid)$/i.test(m)) return m;
       const buried = byLen.some((longer) => {
         if (longer.name.length <= e.name.length) return false;
         if (!longer.name.toLowerCase().endsWith(e.name.toLowerCase())) return false;
@@ -569,9 +571,8 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
 
   // Lid stay first — must not inherit piano-hinge join from body mention of piano hinge.
   if (/lid stay|lid support/i.test(hayTitle) && !/with\s+1\s+lid stay/i.test(d)) {
-    const lid = entries.find((e) => e.family === "lid");
     if (!/one join:/i.test(d)) {
-      d = `One join: attach 1 lid stay (lid support) between ${lid ? `the ${plateRef(lid, "Lid")}` : "the lid"} and the main box. ${d}`;
+      d = `One join: attach 1 lid stay (lid support) between the lid and the main box. ${d}`;
     }
     return d;
   }

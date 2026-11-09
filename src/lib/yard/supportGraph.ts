@@ -106,11 +106,16 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       out.set(p.id, { key: p.id, name: p.name, how: "floor", on: [] });
       continue;
     }
-    // Bought hardware (a hook, a hinge, a bracket) fastens to the frame. It is not what the frame rests on.
+    // Bought hardware (a hook, a hinge, a bracket) fastens to the frame. It is not what the frame rests on,
+    // unless its top face carries this span: flush with the underside, and the two overlap.
     const bought = (q: Panel) => q.materialId === "hardware" || /^(?:Hinge|Latch|A-frame bracket|Fold bracket|Coat hook|Coat peg|Caster|Screw eye) \d+$/.test(q.name);
-    // A lid is fastened to its hinge. A shelf is not carried by a hook.
     const lid = (q: Panel) => /\blid\b/i.test(q.name);
-    const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer" && !(bought(q) && !bought(p) && !lid(p)));
+    const carriesSpan = (q: Panel) => {
+      if (/^Caster \d+$/.test(q.name)) return false;
+      const B = boxes.get(q.id)!;
+      return Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
+    };
+    const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer" && !(bought(q) && !bought(p) && !lid(p) && !carriesSpan(q)));
     // A flat span fastened between two uprights (a top, bottom, seat or fixed shelf) is carried by those
     // end supports, whatever sits under its middle (a divider, a kick strip) — they fasten to it later.
     const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
@@ -138,7 +143,12 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
           const B = boxes.get(q.id)!;
           return !l.includes(q) && !r.includes(q) && Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
         }) : [];
-        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r, ...seat].map((q) => q.id) });
+        // A seat rests on the dividers and aprons whose tops are flush with its underside. A cabinet
+        // top stays on its end uprights: the dividers under it fasten to the top after the top is on.
+        const under = /\bseat\b/i.test(p.name)
+          ? others.filter((q) => carriesSpan(q) && !l.includes(q) && !r.includes(q) && !seat.includes(q))
+          : [];
+        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r, ...seat, ...under].map((q) => q.id) });
         continue;
       }
     }
@@ -192,7 +202,9 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
         return end === 0 ? B.min[long] <= A.min[long] + 0.25 * ext[long] : B.max[long] >= A.max[long] - 0.25 * ext[long];
       });
     const skin = p.type !== "rail" && p.type !== "upright" && faceOn.length >= 2 && ext[thin] * 3 <= ext[long] && reach(0) && reach(1);
-    const on = skin ? faceOn : lower.length ? lower : below.length ? below : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
+    let on = skin ? faceOn : lower.length ? lower : below.length ? below : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
+    // A ramp rail is set into the ramp. The ramp does not wait for the rail.
+    if (/\bramp\b/i.test(p.name) && !/\brail\b/i.test(p.name)) on = on.filter((q) => typeof q === "string" || !/\brail\b/i.test(q.name));
     out.set(p.id, { key: p.id, name: p.name, how: "side", on: on.map((q) => (typeof q === "string" ? q : q.id)) });
   }
   // A batten or cleat that only ties boards together fastens across them: the boards go first, so a board

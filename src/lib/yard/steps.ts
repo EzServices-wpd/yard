@@ -1741,7 +1741,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         ? [{
             step: 4,
             title: "Set cubby dividers",
-            description: `${cubbies.map(cutLine).join("; ")}. Space them evenly. ${stockThrough(project, `the seat, ${bayName.toLowerCase()}, and back into each divider`)} These carry sit load across the span.`,
+            description: `${cubbies.map(cutLine).join("; ")}. Space them evenly. ${stockThrough(project, `the ${bayName.toLowerCase()} and the back into each divider`)} These carry sit load across the span.`,
             tips: "Dividers only exist when the cut list has them.",
             partsUsed: names(cubbies),
           }]
@@ -1750,7 +1750,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         ? [{
             step: 4,
             title: "Set the front apron",
-            description: `${aprons.map(cutLine).join("; ")}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron under the front edge of the seat between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron under the front edge of the seat between the uprights." : "Tape or glue the front apron under the front edge of the seat between the uprights."}`,
+            description: `${aprons.map(cutLine).join("; ")}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron between the uprights." : "Tape or glue the front apron between the uprights."}`,
             tips: "The apron is the rail under the front edge, not a cubby wall.",
             partsUsed: names(aprons),
           }]
@@ -3224,6 +3224,27 @@ export function memberStations(list: { id: string; from?: { x: number; y: number
   return new Set(parent.map((_, i) => find(i))).size;
 }
 
+const GROUP_WORD: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, both: 2 };
+
+/**
+ * When the written step counts stations rather than sticks ("four legs", "two ears"),
+ * say both: "four legs, 9 sticks each". Otherwise the stick count is the unit.
+ */
+export function stickGroupPhrase(project: YardProject, role: string): string | null {
+  const list = project.instances.filter((i) => (i.role || "member") === role);
+  const places = memberStations(list);
+  if (places < 1 || places >= list.length || list.length % places !== 0) return null;
+  const spec = roleScript(project).find((s) => s.role === role);
+  if (!spec) return null;
+  const word = (spec.word ?? role).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const said = spec.title.match(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|both)\\s+(?=(?:[a-z]+\\s+){0,3}${word}s?\\b)`, "i"));
+  if (!said) return null;
+  const qty = GROUP_WORD[said[1].toLowerCase()] ?? Number(said[1]);
+  if (qty !== places) return null;
+  const each = list.length / places;
+  return `${said[1].toLowerCase()} ${shopPlural(spec.word ?? role, places)}, ${each} stick${each === 1 ? "" : "s"} each`;
+}
+
 function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (project.kind === "eiffel") return uniqueEiffelSteps(project);
   if (isRecastCarcase(project)) return uniqueRecastCarcaseSteps(project);
@@ -3428,7 +3449,10 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
           return qty === listI.length || qty === places ? match : "";
         }).replace(/\s{2,}/g, " ").trim();
     const why = listI.length === 1 && /segments in an S/i.test(spec.title) ? "One neck piece. Glue it where it meets the body." : spec.why;
-    const countLead = stacked ? "" : `${listI.length} ${named}. `;
+    const each = places > 0 && listI.length % places === 0 ? listI.length / places : 0;
+    const countLead = stacked && said
+      ? `${said[1].charAt(0).toUpperCase()}${said[1].slice(1).toLowerCase()} ${shopPlural(roleWord, places)}, ${each} stick${each === 1 ? "" : "s"} each. `
+      : stacked ? "" : `${listI.length} ${named}. `;
     steps.push({
       step: n++,
       title: stacked ? title : `${title} — ${listI.length} ${named}`,
