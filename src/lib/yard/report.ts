@@ -25,7 +25,7 @@ import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
-import { binderBom, binderKind, countSlipFittings, dropUncataloguedCrosses, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -2028,12 +2028,12 @@ function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
   };
 }
 
-/** A rack's Buy drops a cross that is not four pipes in one plane. Those joints are not a catalog fitting. */
+/** A rack's Buy names each joint by the pipes that meet. A direction set with no catalog fitting is left unbought. */
 function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number): BuildPlan["bom"] {
   const lines = binderBom(item, project.instances, project.joinMethod, couplings);
   if (!slipRack) return lines;
   const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius: (item.dims.diameter ?? 1.05) / 2 }));
-  return dropUncataloguedCrosses(lines, members);
+  return buyCatalogWays(lines, members);
 }
 
 function buildPlanCore(project: YardProject): BuildPlan {

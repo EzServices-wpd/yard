@@ -13,7 +13,7 @@ import { recipePrompt } from "./recipeIdeas.ts";
 import { IDEAS } from "./ideas.ts";
 import { spokenTierCount } from "./fittedShared.ts";
 import { getCatalogItem } from "./catalog.ts";
-import { binderKind } from "./joints.ts";
+import { binderKind, highWay } from "./joints.ts";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types.ts";
 
 const PVC = "pvc-3-4-sch40";
@@ -326,21 +326,17 @@ function fittingsFromEnds(members: { from?: Vec3; to?: Vec3 }[], rack: boolean) 
       ends.set(key(at), list);
     }
   }
-  const counts = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0, junction: 0 };
+  const counts = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0, tee4: 0, cross5: 0, cross6: 0, miss: 0 };
   for (const dirs of ends.values()) {
     const n = dirs.length;
     if (n <= 1) continue;
     if (n >= 4) {
-      let normal: Vec3 | null = null;
-      for (let i = 0; i < n && !normal; i++) {
-        for (let j = i + 1; j < n; j++) {
-          const c = { x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y, y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z, z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x };
-          if (Math.hypot(c.x, c.y, c.z) > 0.2) { normal = c; break; }
-        }
-      }
-      const planar = n === 4 && (!normal || dirs.every((d) => Math.abs(d.x * normal!.x + d.y * normal!.y + d.z * normal!.z) / Math.hypot(normal!.x, normal!.y, normal!.z) <= 0.08));
-      if (planar) counts.crosses += 1;
-      else counts.junction += 1;
+      const kind = highWay(dirs);
+      if (kind === "cross") counts.crosses += 1;
+      else if (kind === "tee4") counts.tee4 += 1;
+      else if (kind === "cross5") counts.cross5 += 1;
+      else if (kind === "cross6") counts.cross6 += 1;
+      else counts.miss += 1;
       continue;
     }
     if (n === 3) {
@@ -428,10 +424,13 @@ function fittingIssue(project: YardProject, prompt: string): string | null {
   const clash = pipeClashes(project);
   if (clash.mid || clash.cap) return `clash mid ${clash.mid} cap ${clash.cap}`;
   const plan = buildPlan(project);
-  const bought = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0 };
+  const bought = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0, tee4: 0, cross5: 0, cross6: 0 };
   for (const line of plan.bom) {
     const qty = line.quantity ?? 0;
     if (/3-way corner/.test(line.name)) bought.corners += qty;
+    else if (/PVC 4-way tee/.test(line.name)) bought.tee4 += qty;
+    else if (/PVC 5-way cross/.test(line.name)) bought.cross5 += qty;
+    else if (/PVC 6-way cross/.test(line.name)) bought.cross6 += qty;
     else if (/PVC cross/.test(line.name)) bought.crosses += qty;
     else if (/PVC tee/.test(line.name)) bought.tees += qty;
     else if (/90° elbow/.test(line.name)) bought.elbows90 += qty;
@@ -440,17 +439,23 @@ function fittingIssue(project: YardProject, prompt: string): string | null {
   }
   const couplingExpect = read.counts.couplings;
   const crossExpect = read.counts.crosses;
+  const fit = (c: typeof bought) => c.corners + c.tees + c.crosses + c.elbows90 + c.elbows45 + c.couplings + c.tee4 + c.cross5 + c.cross6;
+  const expectFit = fit({ ...bought, corners: read.counts.corners, tees: read.counts.tees, crosses: crossExpect, elbows90: read.counts.elbows90, elbows45: read.counts.elbows45, couplings: couplingExpect, tee4: read.counts.tee4, cross5: read.counts.cross5, cross6: read.counts.cross6 });
+  if (fit(bought) !== expectFit) return `unbought ${expectFit - fit(bought)}`;
   if (
     bought.corners !== read.counts.corners ||
     bought.tees !== read.counts.tees ||
     bought.crosses !== crossExpect ||
     bought.elbows90 !== read.counts.elbows90 ||
     bought.elbows45 !== read.counts.elbows45 ||
-    bought.couplings !== couplingExpect
+    bought.couplings !== couplingExpect ||
+    bought.tee4 !== read.counts.tee4 ||
+    bought.cross5 !== read.counts.cross5 ||
+    bought.cross6 !== read.counts.cross6
   ) {
-    return `fittings buy ${bought.corners} corners, ${bought.tees} tees, ${bought.crosses} crosses, ${bought.elbows90}+${bought.elbows45} elbows, ${bought.couplings} couplings; read ${read.counts.corners}/${read.counts.tees}/${crossExpect}/${read.counts.elbows90}+${read.counts.elbows45}/${couplingExpect}`;
+    return `fittings buy ${bought.corners} corners, ${bought.tees} tees, ${bought.crosses} crosses, ${bought.tee4} 4-way, ${bought.cross5} 5-way, ${bought.cross6} 6-way, ${bought.elbows90}+${bought.elbows45} elbows, ${bought.couplings} couplings; read ${read.counts.corners}/${read.counts.tees}/${crossExpect}/${read.counts.tee4}/${read.counts.cross5}/${read.counts.cross6}/${read.counts.elbows90}+${read.counts.elbows45}/${couplingExpect} miss ${read.counts.miss}`;
   }
-  const joints = bought.corners + bought.tees + bought.crosses + bought.elbows90 + bought.elbows45 + bought.couplings;
+  const joints = fit(bought);
   if (rack && read.counts.corners + read.counts.tees + read.counts.crosses + read.counts.elbows90 > 0 && joints === 0) return "rack buys no fittings";
   return null;
 }
@@ -547,6 +552,20 @@ it("linear stock keeps the form of every Ideas prompt and every recipe", () => {
     return m ? `${m[1]} [${m[2]}]` : line;
   });
   assert.deepEqual(got.sort(), still.map(([key]) => key).sort(), failed.join("\n"));
+  // Joints the catalog cannot fit (not a right angle) stay named here and are not bought.
+  const lockedMisses: [string, number][] = [];
+  for (const { prompt } of CASES) {
+    if (!rackPrompt(prompt)) continue;
+    const built = generateFromPrompt(prompt, PVC);
+    if (!built.instances.some((inst) => inst.from && inst.to)) continue;
+    const n = fittingsFromEnds(built.instances, true).counts.miss;
+    if (n) lockedMisses.push([prompt, n]);
+  }
+  assert.deepEqual(lockedMisses, [
+    ["coat rack with bench 48 wide", 8],
+    ["wine rack 24 wide 36 high 12 deep", 10],
+    ["shoe rack with cubbies", 4],
+  ]);
   for (const [key, bit] of still) {
     const line = failed.find((row) => row.startsWith(`${key}: `));
     assert.ok(line?.includes(bit), line ?? key);
@@ -598,19 +617,13 @@ it("typed rack prompts build the recipe frame, centred, with the asked tiers", (
   const dowelShoe = generateFromPrompt("dowel shoe rack");
   assert.equal(dowelShoe.instances.length, 8);
   assert.equal(dowelShoe.instances.filter((i) => /arm/.test(i.role ?? "")).length, 4);
-  const lumber = generateFromPrompt("lumber rack");
+  // A lumber rack is the wall-arm cantilever, the same build release makes.
   const pipeLumber = generateFromPrompt("pvc lumber rack");
-  assert.equal(check("lumber rack", lumber, pipeLumber, PVC), null);
-  const uprightX = new Set(
-    pipeLumber.instances.filter((i) => i.role === "upright" && i.from && i.to).map((i) => Math.round((i.from!.x + i.to!.x) / 2)),
-  );
-  assert.equal(uprightX.size, 2);
-  const box = boxOf(segs(pipeLumber));
-  assert.ok(Math.abs((box.minX + box.maxX) / 2) < 1, `lumber rack not centred (${box.minX}..${box.maxX})`);
-  const spanX = box.maxX - box.minX;
-  assert.ok(spanX <= lumber.overall.width + 1 && spanX >= lumber.overall.width - 3, `lumber span ${spanX.toFixed(2)}`);
-  assert.equal(pipeLumber.overall.width, lumber.overall.width);
-  assert.equal(pipeLumber.overall.height, lumber.overall.height);
+  assert.equal(pipeLumber.instances.length, 8);
+  const arms = pipeLumber.instances.filter((i) => /arm/.test(i.role ?? "") && i.from && i.to);
+  assert.equal(arms.length, 4);
+  assert.ok(arms.every((arm) => Math.abs(arm.to!.z - arm.from!.z) > 8));
+  assert.equal(buildPlan(pipeLumber).bom.some((b) => /elbow|tee|cross|4-way/.test(b.name)), false);
   // Reported prompts stay buildable: parts, buy lines, steps, and price agree with the model.
   for (const q of ["pvc shoe rack", "PVC shoe rack 36 wide 12 deep 30 tall", "3 tier pvc shoe rack", "pvc spice rack", "pvc wine rack", "dowel shoe rack", "pvc lumber rack"]) {
     const row = planOf(q);

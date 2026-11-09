@@ -12,7 +12,7 @@ import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from
 import { dist } from "./connect";
 
 /** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
-export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling"]);
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross"]);
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -128,32 +128,9 @@ function pairDots(dirs: Vec3[]): number[] {
  * 2 at 90° is an elbow, 2 nearly straight is a coupling, 2 at 45° is a 45° elbow.
  * 3 pipes within about 3° of mutually perpendicular are a 3-way corner.
  * Any other meeting of 3 (a straight run with a branch, or an angled crown) is a tee.
- * Four pipes in one plane are a cross. A 4-way that leaves that plane, or 5 or more
- * pipes, is not a catalog cross.
+ * Four pipes in one plane are a cross. A post through two right-angle rails is a 4-way tee.
+ * Four in a plane plus one out of that plane is a 5-way cross. Three square axes are a 6-way cross.
  */
-/**
- * A catalog cross is exactly four pipes in one plane.
- * A 5-way, a 6-way, or a 4-way that leaves the plane is not one, and is not sold as one.
- */
-export function uncataloguedCrosses(members: { from?: Vec3; to?: Vec3; radius: number }[]): number {
-  return jointNodes(members).filter((node) => node.dirs.length >= 4 && !(node.dirs.length === 4 && dirsSharePlane(node.dirs))).length;
-}
-
-export function dropUncataloguedCrosses<T extends { name: string; quantity: number; estimatedCost?: number }>(
-  lines: T[],
-  members: { from?: Vec3; to?: Vec3; radius: number }[],
-): T[] {
-  const extra = uncataloguedCrosses(members);
-  if (!extra) return lines;
-  return lines.flatMap((line) => {
-    if (!/PVC cross/.test(line.name) || !(line.quantity > 0)) return [line];
-    const qty = line.quantity - extra;
-    if (qty <= 0) return [];
-    const each = (line.estimatedCost ?? 0) / line.quantity;
-    return [{ ...line, quantity: qty, estimatedCost: Math.round(qty * each * 100) / 100 }];
-  });
-}
-
 /** Four directions are a catalog cross only when they lie in one plane. */
 export function dirsSharePlane(dirs: Vec3[]): boolean {
   let normal: Vec3 | null = null;
@@ -175,10 +152,118 @@ export function dirsSharePlane(dirs: Vec3[]): boolean {
   return dirs.every((d) => Math.abs(d.x * normal!.x + d.y * normal!.y + d.z * normal!.z) / L <= 0.08);
 }
 
+const WAY_RIGHT = 0.08;
+
+function dirDot(a: Vec3, b: Vec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function planeNormal(dirs: Vec3[]): Vec3 | null {
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const c = {
+        x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y,
+        y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z,
+        z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x,
+      };
+      if (Math.hypot(c.x, c.y, c.z) > 0.2) return c;
+    }
+  }
+  return null;
+}
+
+/** A catalog fitting for four or more pipes, read from the direction set. Anything else is not bought. */
+export function highWay(dirs: Vec3[]): "cross" | "tee4" | "cross5" | "cross6" | "miss" {
+  if (dirs.length === 4 && dirsSharePlane(dirs)) return "cross";
+  if (dirs.length === 4 && sideOutlet(dirs)) return "tee4";
+  if (dirs.length === 5 && fiveWay(dirs)) return "cross5";
+  if (dirs.length === 6 && sixWay(dirs)) return "cross6";
+  return "miss";
+}
+
+/** Post continuing through, plus two rails at right angles. Not four coplanar pipes. */
+function sideOutlet(dirs: Vec3[]): boolean {
+  const straight: [number, number][] = [];
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) if (dirDot(dirs[i], dirs[j]) < STRAIGHT) straight.push([i, j]);
+  }
+  if (straight.length !== 1) return false;
+  const [a, b] = straight[0];
+  const rest = [0, 1, 2, 3].filter((k) => k !== a && k !== b);
+  const rails = [dirs[rest[0]], dirs[rest[1]]];
+  if (Math.abs(dirDot(rails[0], rails[1])) > WAY_RIGHT) return false;
+  for (const rail of rails) {
+    if (Math.abs(dirDot(rail, dirs[a])) > WAY_RIGHT || Math.abs(dirDot(rail, dirs[b])) > WAY_RIGHT) return false;
+  }
+  return true;
+}
+
+/** Four pipes in one plane and a fifth square to that plane. */
+function fiveWay(dirs: Vec3[]): boolean {
+  for (let i = 0; i < dirs.length; i++) {
+    const rest = dirs.filter((_, k) => k !== i);
+    if (!dirsSharePlane(rest)) continue;
+    const normal = planeNormal(rest);
+    if (!normal) continue;
+    const align = Math.abs(dirDot(dirs[i], normal)) / Math.hypot(normal.x, normal.y, normal.z);
+    if (align >= 0.96) return true;
+  }
+  return false;
+}
+
+/** Three pairs of opposite pipes, each pair square to the others. */
+function sixWay(dirs: Vec3[]): boolean {
+  const used = new Set<number>();
+  const axes: Vec3[] = [];
+  for (let i = 0; i < dirs.length; i++) {
+    if (used.has(i)) continue;
+    let mate = -1;
+    for (let j = i + 1; j < dirs.length; j++) {
+      if (!used.has(j) && dirDot(dirs[i], dirs[j]) < STRAIGHT) mate = j;
+    }
+    if (mate < 0) return false;
+    used.add(i);
+    used.add(mate);
+    axes.push(dirs[i]);
+  }
+  return axes.length === 3 && Math.abs(dirDot(axes[0], axes[1])) <= WAY_RIGHT && Math.abs(dirDot(axes[0], axes[2])) <= WAY_RIGHT && Math.abs(dirDot(axes[1], axes[2])) <= WAY_RIGHT;
+}
+
+type WayLine = { name: string; quantity: number; estimatedCost?: number; unit?: string; catalogId?: string; searchQuery?: string; notes?: string };
+
+/** Replace a rack's undifferentiated crosses with the fitting each direction set actually is. */
+export function buyCatalogWays<T extends WayLine>(lines: T[], members: { from?: Vec3; to?: Vec3; radius: number }[]): T[] {
+  const counts = { cross: 0, tee4: 0, cross5: 0, cross6: 0 };
+  for (const node of jointNodes(members)) {
+    if (node.dirs.length < 4) continue;
+    const kind = highWay(node.dirs);
+    if (kind === "miss") continue;
+    counts[kind] += 1;
+  }
+  const sized = lines.find((line) => /PVC/.test(line.name));
+  const size = sized?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
+  let out = lines.flatMap((line) => {
+    if (!/PVC cross$/.test(line.name)) return [line];
+    if (counts.cross <= 0) return [];
+    const each = line.quantity > 0 ? (line.estimatedCost ?? 0) / line.quantity : 0;
+    return [{ ...line, quantity: counts.cross, estimatedCost: Math.round(counts.cross * each * 100) / 100 }];
+  });
+  const add = (qty: number, name: string, id: string, cost: number) => {
+    if (qty <= 0) return;
+    out = [...out, { name, quantity: qty, unit: "ea", catalogId: id, searchQuery: name, estimatedCost: Math.round(qty * cost * 100) / 100, notes: `Match ${size} pipe.` } as T];
+  };
+  add(counts.tee4, `${size} PVC 4-way tee`, "pvc-4-way-tee", 2.85);
+  add(counts.cross5, `${size} PVC 5-way cross`, "pvc-5-way-cross", 3.4);
+  add(counts.cross6, `${size} PVC 6-way cross`, "pvc-6-way-cross", 4.1);
+  return out;
+}
+
 export function classifyJoint(node: JointNode): JointClass {
   const n = node.dirs.length;
   if (n <= 1 && node.p.y < 0.45) return "ground";
   if (n <= 1) return "cap";
+  // A build that is not a rack still buys every meeting of four or more as a cross.
+  // A rack's Buy uses highWay instead, so a side-outlet is not sold as that cross.
   if (n >= 4) return "cross";
   if (n === 3) {
     const dots = pairDots(node.dirs);

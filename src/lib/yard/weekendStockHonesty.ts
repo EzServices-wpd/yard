@@ -38,7 +38,7 @@ import {
   mediaHoldTipDeg,
 } from "./weekendFamily";
 import { isWholeStock } from "./geometry";
-import { binderBom, binderKind, dropUncataloguedCrosses, effectiveJoin, memberSpan } from "./joints";
+import { binderBom, binderKind, buyCatalogWays, effectiveJoin, memberSpan } from "./joints";
 import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock, stripJoinWords, weekendSizedStockPhrases } from "./promptHelpers";
 import { stripHeldPurpose } from "./heldObjects";
 import {
@@ -1299,7 +1299,7 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
   let binders = binderBom(item, project.instances, project.joinMethod);
   if (rack && binderKind(item) === "slip") {
     const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius: (item.dims.diameter ?? 1.05) / 2 }));
-    binders = dropUncataloguedCrosses(binders, members);
+    binders = buyCatalogWays(binders, members);
   }
   for (const line of binders) {
     if (!bom.some((b) => b.name === line.name)) bom = [...bom, line];

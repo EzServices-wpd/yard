@@ -174,12 +174,21 @@ function isRackPrompt(prompt: string | undefined): boolean {
   return /\bracks?\b/.test(text) && !/rail|peg|hook/.test(text);
 }
 
+/** Standards plus arms, and nothing a person sets a load on. That is the wall-arm cantilever. */
+function isWallArmForm(project: YardProject): boolean {
+  const arms = project.panels.filter((panel) => /\barm\b/i.test(panel.name));
+  if (arms.length < 2) return false;
+  if (project.panels.some((panel) => isLoadSurface(panel))) return false;
+  return project.panels.filter((panel) => panel.type === "upright" || /\b(?:standard|upright|post)\b/i.test(panel.name)).length >= 2;
+}
+
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
   if (!project.panels.length) return project;
   const rack = isRackPrompt(project.prompt);
   const pipe = isPipeStock(item);
-  // Dowel and stick racks stay the release cantilever. Pipe racks leave it.
-  if (rack && !isFaceStock(item) && !pipe) return openMemberRack(project, item);
+  // Dowel and stick racks stay the release cantilever. A wall-arm form does too, in any stock.
+  // Every other pipe rack leaves it.
+  if (rack && !isFaceStock(item) && (!pipe || isWallArmForm(project))) return openMemberRack(project, item);
   if (rack && !pipe) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
     if (shelves.length) {
