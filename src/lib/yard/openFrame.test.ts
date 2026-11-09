@@ -55,17 +55,32 @@ it("a soccer goal at the default size and at 6×4 stands, and Buy matches the mo
   assert.equal(widePlan.bom.find((b) => /PVC tee/.test(b.name))!.quantity, 8);
 });
 
-it("a firewood rack that stood 18 1/2\" deep now stands, and a stable open frame is unchanged", () => {
-  const rack = generateFromPrompt("firewood rack");
-  assert.deepEqual([rack.overall.width, rack.overall.depth, rack.overall.height], [96, 24, 48]);
-  assert.ok(rack.panels.filter((p) => /^Sleeper/.test(p.name)).every((p) => p.size.depth === 24));
-  assert.equal(openFrameStance(rack).tippy, false);
-  const plan = agrees(rack);
+/** Clear distance between the base rails. A 16" log has to land on both. */
+function logBay(project: YardProject): number {
+  const rails = project.panels.filter((p) => /base rail/i.test(p.name)).sort((a, b) => a.position.z - b.position.z);
+  const back = rails[0];
+  const front = rails[rails.length - 1];
+  return front.position.z - (back.position.z + back.size.depth);
+}
+
+it("a firewood rack keeps a bay a 16\" log can span, and a stable open frame is unchanged", () => {
+  for (const [q, tall] of [["firewood rack", 48], ["firewood rack 60 tall", 60], ["firewood rack 72 tall", 72]] as const) {
+    const rack = generateFromPrompt(q);
+    const bay = logBay(rack);
+    assert.ok(bay < 16 && bay > 8, `${q} bay ${bay}" drops a 16" log`);
+    assert.equal(openFrameStance(rack).tippy, false, q);
+    const uprights = rack.panels.filter((p) => /^Upright/.test(p.name));
+    const face0 = Math.min(...uprights.map((p) => p.position.z));
+    const face1 = Math.max(...uprights.map((p) => p.position.z + p.size.depth));
+    for (const sleeper of rack.panels.filter((p) => /^Sleeper/.test(p.name))) {
+      assert.ok(sleeper.position.z < face0 - 0.2, `${q} sleeper does not pass the back face`);
+      assert.ok(sleeper.position.z + sleeper.size.depth > face1 + 0.2, `${q} sleeper does not pass the front face`);
+    }
+    assert.ok(Math.abs(rack.overall.height - tall) < 0.1, q);
+    assert.match((rack.notes ?? []).join("\n"), /Stack 16" logs across the rails/);
+  }
+  const plan = agrees(generateFromPrompt("firewood rack"));
   assert.equal(plan.bom.find((b) => b.catalogId === "lumber-2x4-8")!.quantity, 6);
-  const back = rack.panels.find((p) => p.name === "Base rail back")!;
-  const front = rack.panels.find((p) => p.name === "Base rail front")!;
-  const bay = front.position.z - (back.position.z + back.size.depth);
-  assert.ok(bay < 16 && bay > 8, `log bay ${bay}" would drop a 16" log`);
 
   // Compost tumbler frame: 38.6" tall on a 25.2" base, already past half the height. Same parts.
   const tumbler = generateFromPrompt("compost tumbler frame");
@@ -103,6 +118,29 @@ it("a typed depth that is too shallow is kept, and the note says the frame will 
   assert.equal(half.overall.depth, 18);
   assert.equal(openFrameStance(half).tippy, false);
   assert.equal((half.notes ?? []).some((n) => /will tip unless it is held/.test(n)), false);
+  const halfWide = generateFromPrompt("pvc soccer goal 6 ft wide 4 ft tall 24 inches deep");
+  assert.equal(halfWide.overall.depth, 24);
+  assert.equal(halfWide.overall.height, 48);
+  assert.equal(openFrameStance(halfWide).tippy, false);
+  assert.equal((halfWide.notes ?? []).some((n) => /will tip unless it is held/.test(n)), false);
+  const halfSquare = generateFromPrompt("soccer goal 48 wide 48 tall 24 deep");
+  assert.equal(openFrameStance(halfSquare).tippy, false);
+
+  const feet = generateFromPrompt("soccer goal 4 ft x 1 ft x 3 ft");
+  assert.equal(feet.overall.depth, 12);
+  assert.match((feet.notes ?? []).join("\n"), /Built 12" deep, as given/);
+  assert.equal((feet.notes ?? []).some((n) => /Assumed \d/.test(n) && /deep/.test(n)), false);
+  const tripleGoal = generateFromPrompt("pvc soccer goal 72x12x48");
+  assert.equal((tripleGoal.notes ?? []).some((n) => /Assumed .* deep \(default size\)/.test(n)), false);
+
+  const typedRack = generateFromPrompt("firewood rack 96 wide 48 tall 18 inches deep");
+  assert.equal((typedRack.notes ?? []).some((n) => /as given/.test(n)), false);
+  assert.match((typedRack.notes ?? []).join("\n"), /will tip unless it is held/);
+
+  const narrow = generateFromPrompt("soccer goal 10 wide 36 tall");
+  assert.equal(narrow.overall.width, 10);
+  assert.match((narrow.notes ?? []).join("\n"), /will tip unless it is held/);
+  assert.equal(openFrameStance(narrow).tippy, true);
 });
 
 it("the learned gate rejects a synthetic open frame that is still tippy", () => {

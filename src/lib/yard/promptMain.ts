@@ -15,7 +15,7 @@ import { boundPrompt } from "./promptLimits";
 import { builderOwnText, READ_MODIFIER } from "./builderName";
 import { FORM_NEUTRAL } from "./genericBox";
 import { findRecipe } from "./recipes";
-import { buildRecipe, exteriorBoards } from "./recipeBuild";
+import { buildRecipe, exteriorBoards, typedSize } from "./recipeBuild";
 import { stabilizeOpenFrame } from "./openFrame";
 import { withFoldingLegs } from "./foldingLegs";
 import { frontCueNotes } from "./fittedShared";
@@ -535,7 +535,8 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
   const members = outdoorBuild(members0, prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
   // Before the assumed-size notes, so an untyped depth that was deepened is the depth those notes name.
-  const stood = stabilizeOpenFrame(members, prompt, args[3]?.sizeOverride);
+  const recipe = findRecipe(prompt);
+  const stood = stabilizeOpenFrame(members, prompt, args[3]?.sizeOverride, recipe ? typedSize(prompt, recipe) : undefined);
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(stood, args), prompt), prompt), prompt),
     args,
