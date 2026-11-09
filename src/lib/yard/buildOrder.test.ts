@@ -130,7 +130,12 @@ function orderFaults(project: YardProject, steps: AssemblyStep[]): string[] {
       const waits = here.every((id) => (supports.get(id)?.on ?? []).some((s) => at.get(s) === j));
       const there = [...at.entries()].filter(([, idx]) => idx === j).map(([id]) => id);
       const cycle = there.some((id) => (supports.get(id)?.on ?? []).some((s) => at.get(s) === i)) || cyclic.has(j);
-      if (waits && !cycle) late.push(`${name(key)} (step ${i + 1}) before ${name(support)} (step ${j + 1})`);
+      // A turning axle is glued into the first post, the wheel goes on, then the free post slides on.
+      const part = project.panels.find((p) => p.id === key);
+      const carriers = info.on.filter((k) => !/^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
+      const freePost = part?.turns && /^dowel-/.test(part.materialId) && carriers.length >= 2
+        && support === carriers.reduce((m, k) => ((at.get(k) ?? -1) > (at.get(m) ?? -1) ? k : m));
+      if (waits && !cycle && !freePost) late.push(`${name(key)} (step ${i + 1}) before ${name(support)} (step ${j + 1})`);
     }
   }
   const spanAt = steps.findIndex((s) => !/^(?:confirm|cut|read|lay out|do not|print|count|mark)\b/i.test(s.title) && /\b(?:seat|top|shelf|deck|counter|tread)s?\b/i.test(s.title));

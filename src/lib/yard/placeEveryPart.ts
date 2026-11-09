@@ -357,7 +357,10 @@ function renumber(steps: AssemblyStep[]): AssemblyStep[] {
 /** Final pass: a part's step follows every part it rests on. Stable when nothing is late. */
 export function orderBySupports(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
   if (!steps.length) return steps;
-  return renumber(supportOrder(project, steps, partsOf(project), supportsOf(project)));
+  const supports = supportsOf(project);
+  const ordered = supportOrder(project, steps, partsOf(project), supports);
+  // Support order puts a post with its base. A rotor is threaded on first, then the free post slides on.
+  return renumber(rotorBeforeSecondSupport(project, ordered, supports));
 }
 
 /** The step index that places each part, or -1. */
@@ -931,7 +934,8 @@ function rotorBeforeSecondSupport(project: YardProject, steps: AssemblyStep[], s
       : carriers.reduce((m, k) => ((at.get(k) ?? -1) > (at.get(m) ?? -1) ? k : m));
     const si = at.get(second), first = project.panels.find((p) => p.id === carriers.find((k) => k !== second))!, sec = byKey(second);
     if (ai == null || si == null || si > ai || lastR < ai || (out[si].partsUsed ?? [sec.name]).length > 1) continue;
-    const moved = { ...out[si], description: `Slide the ${sec.name} onto the free end of the ${axle.name} and glue the ${axle.name} in it. ${out[si].description}` };
+    const lead = `Slide the ${sec.name} onto the free end of the ${axle.name} and glue the ${axle.name} in it.`;
+    const moved = { ...out[si], description: out[si].description.startsWith(lead) ? out[si].description : `${lead} ${out[si].description}` };
     out = out.map((st, i) => (i === ai ? { ...st, description: st.description.replace(/^Pass the (.+?) through [^.]+\./, `Pass the $1 through the ${first.name} and glue it there; the other end stays free until the rotor is on.`) } : st));
     // Parts fastened to the free carrier (a cross rail between the posts) wait for it.
     const deps = new Set<string>([second]);

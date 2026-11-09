@@ -1137,7 +1137,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: panels.some((p) => /\bbrace/i.test(p.name)) ? "Brace the step frame" : "Set the rails and treads",
+        title: panels.some((p) => /\bbrace/i.test(p.name)) ? "Brace the step frame" : "Set the rails",
         description: panels.some((p) => /\bbrace/i.test(p.name))
           ? `Braces keep the ${riseRun} tread from racking.`
           : `The rails keep the ${riseRun} tread from racking.`,
