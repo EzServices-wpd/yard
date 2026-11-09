@@ -16,9 +16,12 @@ import { hungBuild, PT_LUMBER } from "./outdoor";
 import { getCatalogItem } from "./catalog";
 import { CEDAR, EXTERIOR_PLY } from "./checkedStock";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
-import { binderBom, binderKind, slipInstancesFromPanels, stockRunCouplings } from "./joints";
+import { binderBom, binderKind, SLIP_FITTING_IDS, slipInstancesFromPanels, stockRunCouplings } from "./joints";
 
 const hasLink = (b: BomLine) => (b.offers ?? []).some((o) => !!o.href);
+/** These fittings have no checked listing. An empty offer list is the result, not a missing link. */
+const UNLISTED_SLIP = /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross)$/;
+const unlistedSlip = (b: BomLine) => !!b.catalogId && UNLISTED_SLIP.test(b.catalogId);
 
 /** Cut-list stock with no Buy row of its own (the clear panes of a feeder cut from an acrylic sheet). */
 export function cutStockOffBuy(plan: Pick<BuildPlan, "bom" | "cutList" | "partsKind">): string[] {
@@ -79,6 +82,31 @@ function lengthSoldBuy(project: YardProject, plan: BuildPlan, item: CatalogItem,
   return [...stock, ...fittings];
 }
 
+/**
+ * Pipe already on Buy still needs its fittings. A row that only counts sticks
+ * leaves a joint with nothing to buy.
+ */
+function withSlipFittings(project: YardProject, plan: BuildPlan, bom: BomLine[]): BomLine[] {
+  const prompt = (project.prompt ?? "").toLowerCase();
+  // Fittings for pipe builds that are not racks stay on a later change.
+  if (!/\bracks?\b/.test(prompt) || /rail|peg|hook/.test(prompt)) return bom;
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item || binderKind(item) !== "slip") return bom;
+  if (bom.some((b) => b.catalogId && SLIP_FITTING_IDS.has(b.catalogId) && b.catalogId !== "pvc-cement")) return bom;
+  const fromPanels = project.panels.some((p) => p.materialId === item.id);
+  const members = project.instances.some((i) => i.from && i.to) ? project.instances : slipInstancesFromPanels(project.panels, item.id);
+  if (members.length < 2) return bom;
+  const talk = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
+  const fittings = binderBom(item, members, undefined, fromPanels ? stockRunCouplings(project.panels, item) : 0).filter(
+    (b) => b.catalogId !== "pvc-cement" || /solvent|cement/i.test(talk),
+  );
+  if (!fittings.some((b) => b.catalogId !== "pvc-cement")) return bom;
+  return [
+    ...bom,
+    ...decorateBom(fittings).map((b) => (b.estimatedCost == null ? b : { ...b, estimatedCost: Math.round(b.estimatedCost * 100) / 100 })),
+  ];
+}
+
 /** The Buy pass: cut stock bought, every row linked. Prices only come from listings or the row's own estimate. */
 export function buyComplete(project: YardProject, plan: BuildPlan): BuildPlan {
   let bom = [...plan.bom];
@@ -107,7 +135,8 @@ export function buyComplete(project: YardProject, plan: BuildPlan): BuildPlan {
     const [row] = decorateBom([{ name: `#8 x ${len}" ${outdoor ? "exterior-coated or stainless " : ""}wood screws`, quantity: 1, unit: "box (50 ct)", catalogId: "screws-8" }]);
     if (row.estimatedCost && row.estimatedCost > 0) { bom.push({ ...row, notes: "The screws the steps drive." }); sizes.add(z); }
   }
-  bom = bom.map((b) => (hasLink(b) ? b : { ...b, offers: estimateOffers(b.searchQuery || b.name, Math.max(1, b.quantity), b.estimatedCost ?? 0) }));
+  bom = withSlipFittings(project, plan, bom);
+  bom = bom.map((b) => (hasLink(b) || unlistedSlip(b) ? b : { ...b, offers: estimateOffers(b.searchQuery || b.name, Math.max(1, b.quantity), b.estimatedCost ?? 0) }));
   return { ...plan, bom };
 }
 
@@ -147,7 +176,7 @@ export function stepHardwareOffBuy(plan: Pick<BuildPlan, "bom" | "instructions">
 
 /** Rows with no store link (C15). */
 export function unlinkedBuy(plan: Pick<BuildPlan, "bom">): string[] {
-  return plan.bom.filter((b) => !hasLink(b)).map((b) => b.name);
+  return plan.bom.filter((b) => !hasLink(b) && !unlistedSlip(b)).map((b) => b.name);
 }
 
 /** Lumber sizes the notes name ("Three courses of 2×6") that Buy does not sell (C15). */

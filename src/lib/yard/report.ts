@@ -25,7 +25,7 @@ import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
-import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -2028,6 +2028,14 @@ function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
   };
 }
 
+/** A rack's Buy names each joint by the pipes that meet. A joint with no catalog fitting never reaches this list. */
+function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number): BuildPlan["bom"] {
+  const lines = binderBom(item, project.instances, project.joinMethod, couplings);
+  if (!slipRack) return lines;
+  const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius: (item.dims.diameter ?? 1.05) / 2 }));
+  return buyCatalogWays(lines, members);
+}
+
 function buildPlanCore(project: YardProject): BuildPlan {
   if (project.kind === "opening" && project.windowPkg) {
     const cutList = stampLabels(windowCuts(project));
@@ -2214,7 +2222,10 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
-  const glue = item ? binderBom(item, project.instances, project.joinMethod) : [];
+  const rackPrompt = /\bracks?\b/i.test(project.prompt ?? "") && !/rail|peg|hook/i.test(project.prompt ?? "");
+  const slipRack = !!(item && rackPrompt && binderKind(item) === "slip");
+  const slipCouplings = slipRack ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
+  const glue = item ? rackSlipLines(project, item, slipRack, slipCouplings) : [];
   const spring = project.shape?.params?.rubberBands
     ? [{
         name: "Rubber bands",

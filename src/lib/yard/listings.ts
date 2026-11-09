@@ -1154,6 +1154,8 @@ export function offersFor(
     dims ? sameSize(o, dims) : true,
   );
   const fromListings = rows.length > 0;
+  // A fitting with no checked listing shows no offer. Do not borrow the plain tee or the plain cross.
+  if (!rows.length && /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross)$/.test(catalogId)) return [];
   if (!rows.length) {
     const item = getCatalogItem(catalogId);
     const q = item?.searchQuery || item?.name || humanizeCatalogSlug(catalogId);
@@ -1221,6 +1223,8 @@ function guessCatalogId(line: BomLine): string | null {
   // Exterior package rows (Titebond III, exterior screws, finish, glides, liner) shop by their own search.
   if (line.catalogId?.startsWith("outdoor-")) return line.catalogId;
   if (line.catalogId) {
+    // A fitting keeps its own id. A 4-way tee is not the plain tee, and a cross is not one either.
+    if (/^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross)$/.test(line.catalogId)) return line.catalogId;
     if (LISTINGS.some((o) => o.catalogId === line.catalogId)) return line.catalogId;
     if (FORGE_CATALOG.some((c) => c.id === line.catalogId)) return line.catalogId;
   }
@@ -1260,6 +1264,10 @@ function guessCatalogId(line: BomLine): string | null {
   }
   if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
   if (/pvc/.test(hay) && /3-way|side[- ]?outlet/.test(hay)) return "pvc-side-outlet";
+  if (/pvc/.test(hay) && /4-way tee/.test(hay)) return "pvc-4-way-tee";
+  if (/pvc/.test(hay) && /5-way cross/.test(hay)) return "pvc-5-way-cross";
+  if (/pvc/.test(hay) && /6-way cross/.test(hay)) return "pvc-6-way-cross";
+  if (/pvc/.test(hay) && /\bcross\b/.test(hay)) return "pvc-cross";
   if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";
   if (/45/.test(hay) && /elbow|pvc/.test(hay)) return "pvc-elbow-45";
   if (/elbow/.test(hay) && /pvc/.test(hay)) return "pvc-elbow-90";
@@ -1413,6 +1421,9 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
             : "search"
           : undefined,
     }));
+    if (!offers.length && id && /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross)$/.test(id)) {
+      return { ...line, catalogId: id, offers: [] };
+    }
     if (!offers.length) {
       offers = searchOffers(
         line.searchQuery || line.name,

@@ -197,9 +197,8 @@ function finishHouse(
   // interference solve, once doors have been pulled onto the front.
   const recastCraft = Boolean(stock && !kind && next.panels.length);
   if (recastCraft && stock) next = applySpokenFace(next, prompt);
-  if (recastCraft && stock) {
-    next = recastPanelsAsStock(next, stock);
-  } else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
+  if (recastCraft && stock) next = recastPanelsAsStock(next, stock);
+  else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
     next = applyExplicitBoardCarcase(next, stock);
   } else if (kind === "sheet" && stock && (stock.id !== next.primaryMaterialId || stock.id !== "plywood-3-4-4x8")) {
     const already =
