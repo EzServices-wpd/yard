@@ -14,6 +14,7 @@ import type { BuildPlan, Panel } from "./types";
 import { generateFromPrompt } from "./promptMain";
 import { supportsOf } from "./supportGraph";
 import { SHALLOW_SHELF_MIN } from "./fittedShared";
+import { openFrameTipFailures } from "./openFrame";
 
 /** Buy lines that are not cut stock: fasteners, glue, finish, glides, hardware. */
 // Consumables (oil, fabric liner, finish) are bought, never cut: no part comes from them, by design.
@@ -65,6 +66,8 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   fail.push(...mountParentFailures(built.project, plan));
   fail.push(...wallHangFailures(built.project, plan));
   fail.push(...shallowShelfFailures(built.project));
+  // A learned open frame that is still tippy (a typed depth too shallow to stand) is not certified.
+  fail.push(...openFrameTipFailures(built.project));
   // The saw step counts what the cut list counts (glue layers as layers, not parts).
   fail.push(...buildClassFailures(built.project, plan, !!recipe.outdoor || isOutdoorPrompt(prompt)));
   fail.push(...bearingFailures(recipe, panels), ...glueUpFailures(recipe, panels));

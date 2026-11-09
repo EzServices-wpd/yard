@@ -16,6 +16,7 @@ import { builderOwnText, READ_MODIFIER } from "./builderName";
 import { FORM_NEUTRAL } from "./genericBox";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards } from "./recipeBuild";
+import { stabilizeOpenFrame } from "./openFrame";
 import { withFoldingLegs } from "./foldingLegs";
 import { frontCueNotes } from "./fittedShared";
 import { typedAxisNumber, typedSpan, typedDepth } from "./typedAxis";
@@ -533,8 +534,10 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   const members0 = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
   // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
   const members = outdoorBuild(members0, prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
+  // Before the assumed-size notes, so an untyped depth that was deepened is the depth those notes name.
+  const stood = stabilizeOpenFrame(members, prompt, args[3]?.sizeOverride);
   const done = withAxisOrderNote(
-    withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(members, args), prompt), prompt), prompt),
+    withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(stood, args), prompt), prompt), prompt),
     args,
   );
   // The prompt box keeps the person's own words; every build's notes are tidied the same way.

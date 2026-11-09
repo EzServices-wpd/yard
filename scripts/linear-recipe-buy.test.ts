@@ -64,7 +64,7 @@ function assertPvcGoalBuy(prompt: string) {
 
 test("pvc soccer goal buys pipe by the stick, one fitting per corner, and cement", () => {
   const { plan, fittingQty } = assertPvcGoalBuy("pvc soccer goal 6 ft wide 4 ft tall");
-  // 69" rails share a 10 ft stick with a 48" post; the 10" rails share one more. Not the old frame's 6 pipes.
+  // 69" rails share a 10 ft stick with a 48" post; the 22" depth rails (half the 48" height) share one more.
   assert.equal(plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!.quantity, 5);
   const tees = plan.bom.find((b) => /PVC tee/.test(b.name));
   assert.ok(tees);

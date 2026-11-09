@@ -17,6 +17,7 @@ import { riderFloor, rodArrayFailures, rodArrays, ROW_CLEAR } from "./rodArrays"
 import { askedDrawerCount, drawerSection, SHARED_DRAWER_ROW_IN } from "./frontSections";
 import { CONTACT } from "./materialForUse";
 import { inchFrac } from "./inchText";
+import { stabilizeOpenFrame } from "./openFrame";
 
 type Size = { width: number; height: number; depth: number };
 const CRAFT = new Set(["craft_wood", "cardboard", "paper_tube", "dowel_rod"]);
@@ -1344,7 +1345,7 @@ function noteStock(recipe: Recipe): Recipe {
 export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: string, sizeOverride?: Size): RecipeBuild {
   const lower = prompt.toLowerCase();
   const count = recipe0.parts.some((q) => /\bdrawer/i.test(`${q.role} ${q.name}`)) ? 0 : askedDrawerCount(lower);
-  if (!count) return buildRecipeBody(recipe0, prompt, materialOverride, sizeOverride);
+  if (!count) return finishRecipe(buildRecipeBody(recipe0, prompt, materialOverride, sizeOverride), prompt, sizeOverride);
   const typedH = sizeOverride?.height ?? typedSize(prompt, recipe0).height;
   const r8 = (n: number) => Math.round(n * 8) / 8;
   const rowIn = Math.max(1.5, Math.min(SHARED_DRAWER_ROW_IN, recipe0.size.height * 0.5));
@@ -1377,7 +1378,14 @@ export function buildRecipe(recipe0: Recipe, prompt: string, materialOverride?: 
   p.panels = [...kase, ...body];
   p.overall = { ...p.overall, height: typedH ?? r8(p.overall.height + secH) };
   p.notes = [...(p.notes ?? []), `${count === 1 ? "One drawer" : `${count} drawers`} in a case under the ${p.name.toLowerCase()}, inside its ${fmtIn(W)}" × ${fmtIn(D)}" footprint. Each drawer is a front, a back, two sides and a 1/4" bottom.`];
-  return built;
+  return finishRecipe(built, prompt, sizeOverride);
+}
+
+/** After the parts are placed: a tippy open frame grows an untyped depth, or keeps a typed one and says so. */
+function finishRecipe(built: RecipeBuild, prompt: string, sizeOverride?: Size): RecipeBuild {
+  const stood = stabilizeOpenFrame(built.project, prompt, sizeOverride);
+  if (stood === built.project) return built;
+  return { ...built, project: stood, size: { ...built.size, depth: stood.overall.depth } };
 }
 
 /** Nothing is built: the card says why, in plain words, and names what would build (I32). */
