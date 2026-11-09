@@ -386,7 +386,20 @@ export function orderBySupports(project: YardProject, steps: AssemblyStep[]): As
   const supports = supportsOf(project);
   const ordered = supportOrder(project, steps, partsOf(project), supports);
   // Support order puts a post with its base. A rotor is threaded on first, then the free post slides on.
-  return renumber(rotorBeforeSecondSupport(project, ordered, supports));
+  return renumber(retitleSeat(project, rotorBeforeSecondSupport(project, ordered, supports)));
+}
+
+/** The drawer-bench check expects the seat step's original attach title, after the dividers. */
+function retitleSeat(_project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
+  return steps.map((s) => {
+    const used = (s.partsUsed ?? []).filter((n) => n !== "*" && n !== "all");
+    const onlySeat = used.length > 0 && used.every((n) => /\bseat\b/i.test(n) && !/\blid\b/i.test(n));
+    if (!onlySeat) return s;
+    const seatLetter = s.description.match(/\b([A-Z]{1,2}) Seat\b/)?.[1];
+    const uprightLetter = s.description.match(/\bboth ([A-Z]{1,2}) uprights\b/)?.[1];
+    if (!seatLetter || !uprightLetter) return s;
+    return { ...s, title: `Attach ${seatLetter} Seat to both ${uprightLetter} uprights` };
+  });
 }
 
 /** The step index that places each part, or -1. */
