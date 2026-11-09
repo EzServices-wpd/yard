@@ -27,6 +27,8 @@ export type JointClass = "ground" | "cap" | "coupling" | "elbow45" | "elbow90" |
 const STRAIGHT = -0.82;
 /** Shallower than a right angle, steeper than straight: a 45° elbow. */
 const OBTUSE = -0.35;
+/** A pair counts as square when it is within about 3° of 90° (sin 3° ≈ 0.052). */
+const SQUARE = 0.05;
 
 export type JointNode = {
   p: Vec3;
@@ -123,8 +125,9 @@ function pairDots(dirs: Vec3[]): number[] {
 /**
  * The fitting follows the pipes that meet, not the part name.
  * 2 at 90° is an elbow, 2 nearly straight is a coupling, 2 at 45° is a 45° elbow.
- * 3 mutually perpendicular pipes are a 3-way corner. Any other meeting of 3
- * (a straight run with a branch, or an angled crown) is a tee. 4 or more is a cross.
+ * 3 pipes within about 3° of mutually perpendicular are a 3-way corner.
+ * Any other meeting of 3 (a straight run with a branch, or an angled crown) is a tee.
+ * 4 or more is a cross.
  */
 export function classifyJoint(node: JointNode): JointClass {
   const n = node.dirs.length;
@@ -133,8 +136,8 @@ export function classifyJoint(node: JointNode): JointClass {
   if (n >= 4) return "cross";
   if (n === 3) {
     const dots = pairDots(node.dirs);
-    // A square corner: every pair is near 90°. A straight run, or any angled meeting, stays a tee.
-    const square = dots.length === 3 && dots.every((d) => Math.abs(d) <= 0.35);
+    // A square corner: every pair is within about 3° of 90°. A straight run, or any angled meeting, stays a tee.
+    const square = dots.length === 3 && dots.every((d) => Math.abs(d) <= SQUARE);
     return square ? "corner3" : "tee";
   }
   const d0 = node.dirs[0];

@@ -171,6 +171,11 @@ test("soccer goal fittings hold across short and wide sizes", () => {
       const post = project.panels.find((p) => p.name === "Left front post");
       assert.ok(post, q);
       assert.equal(post.size.height, h * 12, `${q} post length`);
+      const rail = project.panels.find((p) => p.name === "Front crossbar");
+      const right = project.panels.find((p) => p.name === "Right front post");
+      assert.ok(rail && right, q);
+      assert.ok(Math.abs(rail.position.x - (post.position.x + post.size.width)) < 0.02, `${q} rail meets the left post`);
+      assert.ok(Math.abs(rail.position.x + rail.size.width - right.position.x) < 0.02, `${q} rail meets the right post`);
       for (const part of project.panels.filter((p) => p.materialId === "pvc-3-4-sch40")) {
         const cross = [part.size.width, part.size.height, part.size.depth].sort((a, b) => a - b).slice(0, 2);
         assert.equal(cross[0], dia, `${q} ${part.name}`);
@@ -196,6 +201,8 @@ test("fitting type follows joint valence", () => {
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0)] }), "elbow90");
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(-1, 0, 0), v(0, 1, 0)] }), "tee");
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), v(0, 0, 1)] }), "corner3");
+  // About 10° off square is a tee, not a 3-way corner.
+  assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(0, 1, 0), v(-0.17, 0, 0.985)] }), "tee");
   assert.equal(classifyJoint({ p: at, r: 0.5, dirs: [v(1, 0, 0), v(-1, 0, 0), v(0, 0, 1), v(0, 0, -1)] }), "cross");
 
   const item = getCatalogItem("pvc-3-4-sch40");

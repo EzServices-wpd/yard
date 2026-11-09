@@ -1094,8 +1094,10 @@ function buttBetween(recipe: Recipe, panels: Panel[]): Panel[] {
       const L = (["x", "y", "z"] as const).reduce((m, a) => (p.size[K[a]] > p.size[K[m]] ? a : m), "x" as "x" | "y" | "z");
       const [a, b] = [...ends].sort((u, v) => u!.position[L] - v!.position[L]) as Panel[];
       const lo = a.position[L] + a.size[K[L]], hi = b.position[L];
-      // Only a member that already spans the gap between them (within a sliver either way).
-      if (hi - lo < 1 || Math.abs(p.position[L] - lo) > 0.75 || Math.abs(p.position[L] + p.size[K[L]] - hi) > 0.75) continue;
+      // A board snap moves a face by a hair. A pipe or tube section snaps from a scaled box to the
+      // catalog diameter, so the same rail can miss the post by inches once the build is wide.
+      const sliver = fixedProfile(getCatalogItem(p.materialId)) ? Math.max(0.75, p.size[K[L]]) : 0.75;
+      if (hi - lo < 1 || Math.abs(p.position[L] - lo) > sliver || Math.abs(p.position[L] + p.size[K[L]] - hi) > sliver) continue;
       p.position = { ...p.position, [L]: lo };
       p.size = { ...p.size, [K[L]]: hi - lo };
     }
