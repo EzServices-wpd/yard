@@ -262,7 +262,7 @@ function spliceLinearToStock(cuts: CutLine[]): CutLine[] {
       out.push({
         ...c,
         id: `${c.id}|${i + 1}/${n}`,
-        name: `${c.name} ${i + 1}/${n}`,
+        name: `${c.name}, piece ${i + 1} of ${n}`,
         lengthIn: Math.min(stock, each),
       });
     }

@@ -288,16 +288,30 @@ test("every soccer-goal pipe meets a crossing neighbor, and no cut is longer tha
       const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
       if (/Join sheet splices/i.test(text)) sheetSplice += 1;
       if (plan.bom.some((b) => /\bwood glue\b/i.test(b.name))) glue += 1;
-      const need = panels.reduce((n, p) => {
+      const fromMembers = panels.reduce((n, p) => {
         const len = Math.max(p.size.width, p.size.height, p.size.depth);
         return n + (len > stock + 0.01 ? Math.ceil((len - 1e-6) / stock) - 1 : 0);
       }, 0);
+      const families = new Map<string, { n: number; qty: number }>();
+      for (const cut of plan.cutList) {
+        if (!cut.id.startsWith(pipe.id)) continue;
+        assert.doesNotMatch(cut.name, /\s\d+\/\d+$/, cut.name);
+        const named = cut.name.match(/^(.*), piece (\d+) of (\d+)$/);
+        if (!named) continue;
+        const base = named[1];
+        const n = Number(named[3]);
+        const prev = families.get(base);
+        if (!prev) families.set(base, { n, qty: cut.quantity });
+        else assert.deepEqual(prev, { n, qty: cut.quantity }, base);
+      }
+      let fromNames = 0;
+      for (const g of families.values()) fromNames += (g.n - 1) * g.qty;
       const got = plan.bom.find((b) => b.catalogId === "pvc-coupling")?.quantity ?? 0;
-      if (got !== need) couplingMiss += 1;
+      if (got !== fromNames || fromNames !== fromMembers) couplingMiss += 1;
       if (w === 24 && h === 8) {
         assert.match(text, /Front crossbar to both posts/);
         assert.equal(plan.bom.find((b) => b.catalogId === pipe.id)?.quantity, 19, "over-length rails split into sticks");
-        assert.equal(need, 8);
+        assert.equal(fromNames, 8);
         assert.equal(got, 8);
         const said = text.match(/The fittings are 8 3\/4" PVC 3-way corners and 8 3\/4" PVC couplings, the same fittings on the Buy list\./g) ?? [];
         assert.equal(said.length, 1);
