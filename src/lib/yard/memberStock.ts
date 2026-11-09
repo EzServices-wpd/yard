@@ -5,6 +5,7 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
+import { isBoughtHardwareName } from "./boughtHardware";
 import { isWholeStock, toPrimitive } from "./geometry";
 import type { CatalogItem, Panel, Vec3, YardInstance, YardProject } from "./types";
 
@@ -95,13 +96,37 @@ function isFaceStock(item: CatalogItem): boolean {
 }
 
 /**
- * A rack keeps its tiers only in sheet or board stock.
- * Pipe, round, and stick stock are cut lengths — an open frame, not sheet panels.
+ * A wall-arm rack: standards on the wall and arms that stick out past them
+ * (the lumber rack). The parts are named by that form. The word "rack" is not it.
+ */
+function isWallArmRack(project: YardProject): boolean {
+  const arms = project.panels.filter((panel) => /^Arm \d+$/.test(panel.name));
+  const standards = project.panels.filter((panel) => /standard$/i.test(panel.name));
+  if (arms.length < 2 || standards.length < 2) return false;
+  const load = project.panels.some(
+    (panel) => panel.type === "shelf" || panel.type === "top" || panel.type === "bottom" || panel.type === "deck" || panel.type === "seat",
+  );
+  return !load;
+}
+
+/** The panel model's own box, so a linear frame sits where the panels sit. */
+function panelEnvelope(project: YardProject): { x0: number; z0: number; W: number; H: number; D: number } {
+  const panels = project.panels;
+  const x0 = Math.min(...panels.map((panel) => panel.position.x));
+  const x1 = Math.max(...panels.map((panel) => panel.position.x + panel.size.width));
+  const z0 = Math.min(...panels.map((panel) => panel.position.z));
+  const z1 = Math.max(...panels.map((panel) => panel.position.z + panel.size.depth));
+  const H = Math.max(8, project.overall?.height ?? Math.max(...panels.map((panel) => panel.position.y + panel.size.height)));
+  return { x0, z0, W: Math.max(8, x1 - x0), H, D: Math.max(6, z1 - z0) };
+}
+
+/**
+ * Cantilever arms for a wall-arm rack only. The standards and arms sit on the
+ * panel model's box (centred on the size box the same way the panels are).
  */
 function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
-  const W = Math.max(8, project.overall?.width ?? 36);
-  const H = Math.max(8, project.overall?.height ?? 30);
-  const D = Math.max(6, project.overall?.depth ?? 12);
+  const box = panelEnvelope(project);
+  const { x0, z0, W, H, D } = box;
   const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
   const arms = Math.max(2, Math.min(6, shelves.length || 2));
   const join = item.preferredJoins?.[0] ?? "glue";
@@ -121,15 +146,15 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
     };
   };
   const instances: YardInstance[] = [
-    member("upright", { x: 0, y: 0, z: 0 }, { x: 0, y: H, z: 0 }),
-    member("upright", { x: W, y: 0, z: 0 }, { x: W, y: H, z: 0 }),
-    member("rail", { x: 0, y: 1, z: 0 }, { x: W, y: 1, z: 0 }),
-    member("rail", { x: 0, y: H - 1, z: 0 }, { x: W, y: H - 1, z: 0 }),
+    member("upright", { x: x0, y: 0, z: z0 }, { x: x0, y: H, z: z0 }),
+    member("upright", { x: x0 + W, y: 0, z: z0 }, { x: x0 + W, y: H, z: z0 }),
+    member("rail", { x: x0, y: 1, z: z0 }, { x: x0 + W, y: 1, z: z0 }),
+    member("rail", { x: x0, y: H - 1, z: z0 }, { x: x0 + W, y: H - 1, z: z0 }),
   ];
   for (let i = 0; i < arms; i++) {
     const y = r(H * (0.35 + (0.45 * i) / Math.max(1, arms - 1)));
-    instances.push(member(`arm ${i + 1}`, { x: 0, y, z: 0 }, { x: 0, y, z: D }));
-    instances.push(member(`arm ${i + 1}`, { x: W, y, z: 0 }, { x: W, y, z: D }));
+    instances.push(member(`arm ${i + 1}`, { x: x0, y, z: z0 }, { x: x0, y, z: z0 + D }));
+    instances.push(member(`arm ${i + 1}`, { x: x0 + W, y, z: z0 }, { x: x0 + W, y, z: z0 + D }));
   }
   const name = /^Storage unit\b/i.test(project.name)
     ? `Rack ${r(W)}" × ${r(H)}" × ${r(D)}"`
@@ -143,7 +168,7 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
     instances,
     primaryMaterialId: item.id,
     joinMethod: join as YardProject['joinMethod'],
-    overall: { width: r(W), height: r(H), depth: r(D) },
+    overall: project.overall?.width ? project.overall : { width: r(W), height: r(H), depth: r(D) },
     notes: [
       `Open frame of ${item.name}. ${arms} arms at the typed depth. Not a pin-shelf box.`,
       ...recastNotes(project.notes ?? [], item).filter((n) => !/Tiers stay tiers/.test(n)),
@@ -151,24 +176,31 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
   };
 }
 
+/**
+ * Bought units stay panels. The frame around them is what the stock is cut into.
+ */
+const KEPT_UNIT = new Set(["window-unit", "prehung-door"]);
+
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
   if (!project.panels.length) return project;
-  const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
-  if (rack && !isFaceStock(item)) return openMemberRack(project, item);
-  if (rack) {
-    const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
-    if (shelves.length) {
-      const posts = project.panels.filter((panel) => panel.type === "upright" || /post|upright/i.test(panel.name));
-      const keep = [...posts, ...shelves].map((panel) => ({ ...panel, materialId: item.id }));
-      return {
-        ...project,
-        panels: keep,
-        instances: project.instances,
-        primaryMaterialId: item.id,
-        notes: [`Tiers stay tiers in ${item.name}.`, ...recastNotes(project.notes ?? [], item)],
-      };
-    }
-  }
+  const kept = project.panels.filter(
+    (panel) =>
+      panel.type === "glass_panel" ||
+      panel.type === "mirror" ||
+      KEPT_UNIT.has(panel.materialId ?? "") ||
+      isBoughtHardwareName(panel.name),
+  );
+  const frame = kept.length ? { ...project, panels: project.panels.filter((panel) => !kept.includes(panel)) } : project;
+  if (!frame.panels.length) return project;
+  const recast = recastFrameAsStock(frame, item);
+  if (!kept.length) return recast;
+  return { ...recast, panels: [...recast.panels, ...kept] };
+}
+
+function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProject {
+  // Linear stock keeps every part the form built. A cantilever template is only
+  // the wall-arm form (lumber rack): standards and arms, not the word "rack".
+  if (!isFaceStock(item) && isWallArmRack(project)) return openMemberRack(project, item);
   const prim = toPrimitive(item);
   const stockL = Math.max(0.4, prim.length);
   const across = Math.max(prim.width, prim.height, 0.08);

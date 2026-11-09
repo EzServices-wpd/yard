@@ -198,6 +198,8 @@ function finishHouse(
   const recastCraft = Boolean(stock && !kind && next.panels.length);
   if (recastCraft && stock) next = applySpokenFace(next, prompt);
   if (recastCraft && stock) {
+    // Bought hooks replace the wooden pegs before the frame is cut into sticks, and the recast keeps them.
+    next = hooksShowInModel(next);
     next = recastPanelsAsStock(next, stock);
   } else if (kind === "board" && stock && next.primaryMaterialId !== stock.id) {
     next = applyExplicitBoardCarcase(next, stock);
@@ -1507,12 +1509,16 @@ function generateRaw(
   if (placed && !formOverride) return placed;
   const held = placeHeldProduct(prompt);
   if (held && !formOverride) return held;
-  // A spoken tier count on a plant stand builds N stepped tiers in lumber, not a single craft riser.
-  // A craft stock pick (popsicle, dowel…) stays craft.
+  // A spoken tier count on a plant stand builds those stepped decks in whatever stock was asked.
   if (!formOverride && !opts.fittedOverride) {
     const tiers = plantStandTiers(lower);
-    const ask = tiers ? requestedStock(prompt, materialOverride) : null;
-    if (tiers && (!ask || carcaseKind(ask) || /^lumber-/.test(ask.id))) return buildTieredPlantStand(prompt, tiers);
+    if (tiers) {
+      const built = buildTieredPlantStand(prompt, tiers);
+      const ask = requestedStock(prompt, materialOverride);
+      // Linear stock keeps the stepped decks. It does not fall through to another shape.
+      if (ask && !carcaseKind(ask) && !/^lumber-|^plywood-/.test(ask.id)) return recastPanelsAsStock(built, ask);
+      return built;
+    }
   }
   const size = parseSize(lower);
   const kindHint = detectStructure(lower);
@@ -1543,9 +1549,13 @@ function generateRaw(
     return honestHouse(buildOddShape(null, prompt), prompt, false, materialOverride);
   }
 
-  if (kindHint === "opening" && !craftAsk) {
-    if (looksLikeDoorFrame(lower) && !/\bwindows?\b/.test(lower)) return buildDoorProject(prompt);
-    return buildWindowProject(pickWindow(prompt), prompt);
+  if (kindHint === "opening") {
+    const built =
+      looksLikeDoorFrame(lower) && !/\bwindows?\b/.test(lower) ? buildDoorProject(prompt) : buildWindowProject(pickWindow(prompt), prompt);
+    // The opening plan is the stud frame plus the bought unit. Pipe and dowel are not that frame:
+    // keep the opening and say so, instead of falling through to a different shape.
+    if (!craftAsk || !stockAsk) return built;
+    return refuseUnusedStock(built, stockAsk.id, true, "2×4 or 2×6 studs");
   }
   const climbPrimary = !!climbIdentityLabel(lower);
   const weekendMech = detectWeekendMech(prompt);
