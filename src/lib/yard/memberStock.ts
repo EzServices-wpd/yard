@@ -5,7 +5,9 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
+import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
+import { uncataloguedJoints } from "./joints";
 import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
 
 export type MemberSection = { width: number; height: number };
@@ -209,7 +211,15 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
   const name = /^Storage unit\b/i.test(recast.name)
     ? `Rack ${r(recast.overall.width)}" × ${r(recast.overall.height)}" × ${r(recast.overall.depth)}"`
     : recast.name;
-  return { ...recast, name, instances: weldOutline(recast.instances, item) };
+  const welded = weldOutline(recast.instances, item);
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  if (uncataloguedJoints(welded.map((inst) => ({ from: inst.from, to: inst.to, radius }))) > 0) {
+    const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
+    const noun = project.name.toLowerCase().replace(/\s+\d.*$/, "");
+    const note = `${item.name} can't build this ${noun}, so it stays ${kept} at the same size. Pick a lumber stock to switch it.`;
+    return { ...project, notes: [...(project.notes ?? []), note] };
+  }
+  return { ...recast, name, instances: welded };
 }
 
 function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProject {
@@ -334,7 +344,7 @@ function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProjec
       position: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 },
       rotation: { x: 0, y: 0, z: 0 },
       cutLength: whole ? undefined : Math.round(Math.min(len, stockL) * 100) / 100,
-      role: isPipeStock(item) && isRackPrompt(project.prompt) && DESIGNED_TIP.test(panel.name) ? panel.name : panel.type,
+      role: tipRole(item, project, panel),
       join,
       from: a,
       to: b,
@@ -498,7 +508,10 @@ function recastFrameAsStock(project: YardProject, item: CatalogItem): YardProjec
     }
   }
 
-  const note = `Same ${project.name} in ${item.name}. Each face is the outline of that stock, not a solid tile.`;
+  const shown = /^Storage unit\b/i.test(project.name)
+    ? `Rack ${Math.round(project.overall.width * 8) / 8}" × ${Math.round(project.overall.height * 8) / 8}" × ${Math.round(project.overall.depth * 8) / 8}"`
+    : project.name;
+  const note = `Same ${shown} in ${item.name}. Each face is the outline of that stock, not a solid tile.`;
   const notes = recastNotes(project.notes ?? [], item).filter((n) => !/^Same .+ in /.test(n) && !/^Named stock:/.test(n) && !/^Stock:/.test(n));
   const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
   const bearing = project.panels.some((panel) => panel.type === "shelf" || panel.type === "deck" || panel.type === "top" || /shelf|seat|top/i.test(panel.name));
@@ -573,6 +586,8 @@ type OutlineSeg = {
   catalogId: string;
   face?: Vec3;
   whole: boolean;
+  axis?: Vec3;
+  origin?: Vec3;
 };
 
 function vsub(a: Vec3, b: Vec3): Vec3 {
@@ -621,6 +636,13 @@ function outsideDiameter(item: CatalogItem): number {
 }
 
 const DESIGNED_TIP = /\b(?:arm|rung|wing|tine|ear|finial|prong|tail|horn|antler|hook|peg)\b/i;
+
+function tipRole(item: CatalogItem, project: YardProject, panel: Panel): string {
+  if (!(isPipeStock(item) && isRackPrompt(project.prompt) && DESIGNED_TIP.test(panel.name))) return panel.type;
+  if (/\bpegs?\b/i.test(panel.name)) return "peg";
+  if (/\bhooks?\b/i.test(panel.name)) return "hook";
+  return panel.type;
+}
 
 function mergeParallel(segs: OutlineSeg[], tol: number): OutlineSeg[] {
   const n = segs.length;
@@ -703,8 +725,13 @@ function weldNearEnds(segs: OutlineSeg[], tol: number): OutlineSeg[] {
     const node = r3(vmul(c, 1 / idxs.length));
     for (const i of idxs) {
       const { s, e } = ends[i];
-      if (e === 0) out[s].from = node;
-      else out[s].to = node;
+      const seg = out[s];
+      const axis = seg.axis ?? vnorm(vsub(seg.to, seg.from));
+      const anchor = e === 0 ? seg.to : seg.from;
+      const t = vdot(vsub(node, anchor), axis);
+      const on = r3(vadd(anchor, vmul(axis, t)));
+      if (e === 0) out[s].from = on;
+      else out[s].to = on;
     }
   }
   return out;
@@ -720,7 +747,7 @@ function splitSeg(seg: OutlineSeg, points: Vec3[]): OutlineSeg[] {
   ];
   for (const p of points) {
     const t = vdot(vsub(p, seg.from), d);
-    if (t > 0.15 && t < L - 0.15) marks.push({ t, p });
+    if (t > 0.15 && t < L - 0.15) marks.push({ t, p: vadd(seg.from, vmul(d, t)) });
   }
   marks.sort((a, b) => a.t - b.t);
   const uniq: { t: number; p: Vec3 }[] = [];
@@ -770,7 +797,7 @@ function fuseCollinear(segs: OutlineSeg[], limit: number): OutlineSeg[] {
       if (uniq.length < 2) continue;
       const pieces = uniq.map((i) => ({ i, s: cur[i], d: vnorm(vsub(cur[i].to, cur[i].from)) }));
       const seed = pieces.slice().sort((a, b) => vdist(b.s.from, b.s.to) - vdist(a.s.from, a.s.to))[0];
-      const bundle = pieces.filter((p) => Math.abs(vdot(p.d, seed.d)) > 0.82);
+      const bundle = pieces.filter((p) => Math.abs(vdot(p.d, seed.d)) > 0.9998);
       const shorts = bundle.filter((p) => p !== seed && vdist(p.s.from, p.s.to) <= limit);
       if (!shorts.length || vdist(seed.s.from, seed.s.to) <= limit) continue;
       const origin = seed.s.from;
@@ -785,19 +812,23 @@ function fuseCollinear(segs: OutlineSeg[], limit: number): OutlineSeg[] {
         fromP = seed.s.to;
         toP = seed.s.from;
       }
+      let off = false;
       for (const p of shorts) {
         for (const q of [p.s.from, p.s.to]) {
           const t = vdot(vsub(q, origin), seed.d);
+          const on = vadd(origin, vmul(seed.d, t));
+          if (vdist(q, on) > 0.05) off = true;
           if (t < tMin) {
             tMin = t;
-            fromP = q;
+            fromP = on;
           }
           if (t > tMax) {
             tMax = t;
-            toP = q;
+            toP = on;
           }
         }
       }
+      if (off) continue;
       if (vdist(fromP, toP) < 0.15) continue;
       const drop = new Set(shorts.map((p) => p.i));
       cur = cur.filter((_, i) => !drop.has(i));
@@ -814,95 +845,119 @@ function fuseCollinear(segs: OutlineSeg[], limit: number): OutlineSeg[] {
 const FITTING_BODY = 1.375;
 
 /**
- * An end that sits within a fitting body of another pipe moves onto that pipe.
- * Two pipes that pass within one pipe width, and do not already meet, get a shared node.
- * Seating can lengthen a member. It will not shorten a designed tip, and it will not leave a member under the fitting pitch.
+ * Close a gap without tilting. An end moves only along its pipe.
+ * A whole pipe may shift sideways, parallel to itself, onto the pipe it should meet.
  */
 function seatTouching(segs: OutlineSeg[], od: number): OutlineSeg[] {
-  let cur = segs.map((s) => ({ ...s, from: { ...s.from }, to: { ...s.to } }));
-  const mayMove = (oldL: number, newL: number) => {
-    if (newL < 0.2) return false;
-    if (newL >= oldL - 0.05) return true;
-    return newL >= FITTING_PITCH - 0.01;
+  let cur: OutlineSeg[] = segs.map((s) => {
+    const axis = vnorm(vsub(s.to, s.from));
+    const origin = { ...s.from };
+    const t1 = vdist(s.from, s.to);
+    return { ...s, axis, origin, from: { ...origin }, to: r3(vadd(origin, vmul(axis, t1))) };
+  });
+  const reachOf = (s: OutlineSeg) => (DESIGNED_TIP.test(s.role) ? 4 : Math.max(od, FITTING_BODY));
+  const params = (s: OutlineSeg) => {
+    const t0 = vdot(vsub(s.from, s.origin ?? s.from), s.axis ?? vnorm(vsub(s.to, s.from)));
+    const t1 = vdot(vsub(s.to, s.origin ?? s.from), s.axis ?? vnorm(vsub(s.to, s.from)));
+    return [Math.min(t0, t1), Math.max(t0, t1)] as const;
   };
-  const owns = (seg: OutlineSeg, p: Vec3) => vdist(seg.from, p) <= 0.05 || vdist(seg.to, p) <= 0.05;
-  for (let pass = 0; pass < 4; pass++) {
-    const cuts: Vec3[][] = cur.map(() => []);
+  const commit = (s: OutlineSeg, origin: Vec3, t0: number, t1: number): OutlineSeg => {
+    const axis = s.axis ?? vnorm(vsub(s.to, s.from));
+    const lo = Math.min(t0, t1);
+    const hi = Math.max(t0, t1);
+    return { ...s, axis, origin, from: r3(vadd(origin, vmul(axis, lo))), to: r3(vadd(origin, vmul(axis, hi))) };
+  };
+  const axisOf = (s: OutlineSeg) => s.axis ?? vnorm(vsub(s.to, s.from));
+  for (let pass = 0; pass < 8; pass++) {
     let moved = false;
-    const seen = new Set<string>();
+    const cuts: Vec3[][] = cur.map(() => []);
     for (let i = 0; i < cur.length; i++) {
       for (const end of [0, 1] as const) {
-        const p = end === 0 ? cur[i].from : cur[i].to;
-        const key = nodeKey(p);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        let best: { d: number; q: Vec3; t: number; j: number } | null = null;
+        const s = cur[i];
+        const axis = axisOf(s);
+        const p = end === 0 ? s.from : s.to;
+        let best: { d: number; q: Vec3; j: number; t: number } | null = null;
         for (let j = 0; j < cur.length; j++) {
-          if (owns(cur[j], p)) continue;
+          if (i === j) continue;
           const hit = closestPoint(p, cur[j].from, cur[j].to);
-          const search = DESIGNED_TIP.test(cur[i].role) ? 2.25 : FITTING_BODY;
-          if (hit.d <= search && (!best || hit.d < best.d)) best = { ...hit, j };
+          if (hit.d <= reachOf(s) && (!best || hit.d < best.d)) best = { ...hit, j };
         }
-        if (!best) continue;
-        const host = cur[best.j];
-        const L = vdist(host.from, host.to);
-        const along = best.t * L;
-        const ontoEnd = along <= 0.2 || L - along <= 0.2;
-        // A cap may reach a fitting body away. A joint that already has pipes only reaches one pipe width.
-        const shared = cur.some((seg, idx) => idx !== i && owns(seg, p));
-        // A peg or a hook is glued into the rail. Its root may reach that rail; the proud tip is farther than this and stays a cap.
-        const reach = !shared && DESIGNED_TIP.test(cur[i].role) ? 2.25 : FITTING_BODY;
-        if (shared && best.d > od) continue;
-        if (!shared && best.d > reach) continue;
-        const dest = ontoEnd ? (along <= 0.2 ? host.from : host.to) : best.q;
-        if (vdist(p, dest) <= 0.05) {
-          if (!ontoEnd) cuts[best.j].push(r3(dest));
+        if (!best || best.d <= 0.02) {
+          if (best && best.d <= 0.05 && Math.abs(vdot(axis, axisOf(cur[best.j]))) < 0.85) {
+            const host = cur[best.j];
+            const L = vdist(host.from, host.to);
+            const along = best.t * L;
+            if (along > 0.15 && along < L - 0.15) cuts[best.j].push(best.q);
+          }
           continue;
         }
-        const partners: { i: number; end: 0 | 1 }[] = [];
-        let ok = true;
-        for (let j = 0; j < cur.length; j++) {
-          for (const e of [0, 1] as const) {
-            const q = e === 0 ? cur[j].from : cur[j].to;
-            if (vdist(q, p) > 0.05) continue;
-            const other = e === 0 ? cur[j].to : cur[j].from;
-            if (!mayMove(vdist(q, other), vdist(dest, other))) ok = false;
-            partners.push({ i: j, end: e });
+        if (Math.abs(vdot(axis, axisOf(cur[best.j]))) >= 0.85) continue;
+        const delta = vsub(best.q, p);
+        const axial = vdot(delta, axis);
+        const perp = vsub(delta, vmul(axis, axial));
+        let here = s;
+        if (vlen(perp) > 0.05 && vlen(perp) <= reachOf(s)) {
+          const [t0, t1] = params(here);
+          here = commit(here, vadd(here.origin ?? here.from, perp), t0, t1);
+          cur[i] = here;
+          moved = true;
+        }
+        if (Math.abs(axial) > 0.05 && Math.abs(axial) <= reachOf(here)) {
+          const [t0, t1] = params(here);
+          const tEnd = end === 0 ? t0 : t1;
+          const next = commit(here, here.origin ?? here.from, end === 0 ? tEnd + axial : t0, end === 1 ? tEnd + axial : t1);
+          if (!(vdist(next.from, next.to) < FITTING_PITCH - 0.01 && vdist(next.from, next.to) + 0.05 < vdist(here.from, here.to))) {
+            cur[i] = next;
+            moved = true;
           }
         }
-        if (!ok || !partners.length) continue;
-        const at = r3(dest);
-        for (const partner of partners) {
-          if (partner.end === 0) cur[partner.i].from = at;
-          else cur[partner.i].to = at;
-        }
-        moved = true;
-        if (!ontoEnd) cuts[best.j].push(at);
-      }
-    }
-    for (let i = 0; i < cur.length; i++) {
-      for (let j = i + 1; j < cur.length; j++) {
-        const hit = segmentClosest(cur[i], cur[j]);
-        if (!hit || hit.d > od || hit.d <= 0.02) continue;
-        const Li = vdist(cur[i].from, cur[i].to);
-        const Lj = vdist(cur[j].from, cur[j].to);
-        const ai = hit.ti * Li;
-        const aj = hit.tj * Lj;
-        if (Math.max(ai, Li - ai) < FITTING_PITCH || Math.max(aj, Lj - aj) < FITTING_PITCH) continue;
-        if (ai < 0.2 || Li - ai < 0.2 || aj < 0.2 || Lj - aj < 0.2) continue;
-        const node = r3(vmul(vadd(hit.qi, hit.qj), 0.5));
-        cuts[i].push(node);
-        cuts[j].push(node);
-        moved = true;
       }
     }
     if (!moved && cuts.every((c) => c.length === 0)) break;
     cur = cur.flatMap((seg, i) => splitSeg(seg, cuts[i]));
-    cur = weldNearEnds(cur, 0.08);
-    cur = mergeParallel(cur, od);
     cur = cur.filter((s) => vdist(s.from, s.to) >= FITTING_PITCH);
   }
-  return cur;
+  // A cap within a pipe width of another pipe shifts onto it, parallel to itself, or lengthens along its axis.
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 0; i < cur.length; i++) {
+      for (const end of [0, 1] as const) {
+        const seg = cur[i];
+        const ax = seg.axis ?? vnorm(vsub(seg.to, seg.from));
+        const p = end === 0 ? seg.from : seg.to;
+        let best: { d: number; q: Vec3; j: number; t: number } | null = null;
+        for (let j = 0; j < cur.length; j++) {
+          if (i === j) continue;
+          const hit = closestPoint(p, cur[j].from, cur[j].to);
+          if (vdist(p, cur[j].from) <= 0.02 || vdist(p, cur[j].to) <= 0.02) continue;
+          if (Math.abs(vdot(ax, axisOf(cur[j]))) >= 0.85) continue;
+          if (hit.d <= 0.15 && (!best || hit.d < best.d)) best = { ...hit, j };
+        }
+        if (!best) continue;
+        const delta = vsub(best.q, p);
+        const axial = vdot(delta, ax);
+        const perp = vsub(delta, vmul(ax, axial));
+        let here = seg;
+        if (vlen(perp) > 0.01 && vlen(perp) <= 0.15) {
+          const [t0, t1] = params(here);
+          here = commit(here, vadd(here.origin ?? here.from, perp), t0, t1);
+          cur[i] = here;
+        }
+        if (Math.abs(axial) > 0.01 && Math.abs(axial) <= reachOf(here)) {
+          const [t0, t1] = params(here);
+          const tEnd = end === 0 ? t0 : t1;
+          cur[i] = commit(here, here.origin ?? here.from, end === 0 ? tEnd + axial : t0, end === 1 ? tEnd + axial : t1);
+        }
+        const host = cur[best.j];
+        const L = vdist(host.from, host.to);
+        const along = best.t * L;
+        if (along > FITTING_PITCH && L - along > FITTING_PITCH) {
+          const parts = splitSeg(host, [best.q]);
+          cur.splice(best.j, 1, ...parts);
+        }
+      }
+    }
+  }
+  return cur.filter((s) => vdist(s.from, s.to) >= FITTING_PITCH);
 }
 
 function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance[] {
@@ -933,7 +988,7 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
     return vadd(origin, vmul(vnorm(vsub(p, origin)), snapTol));
   };
   const crossing = (a: OutlineSeg, b: OutlineSeg) => Math.abs(vdot(vnorm(vsub(a.to, a.from)), vnorm(vsub(b.to, b.from)))) < 0.85;
-  const slide = (full: boolean) => {
+  const slide = () => {
     const targets: [Vec3 | null, Vec3 | null][] = segs.map(() => [null, null]);
     for (let i = 0; i < segs.length; i++) {
       for (const end of [0, 1] as const) {
@@ -945,14 +1000,12 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
           if (hit.d <= snapTol + 1e-6 && (!best || hit.d < best.d)) best = { ...hit, j };
         }
         if (!best || best.d <= 0.005) continue;
-        if (full) {
-          targets[i][end] = best.q;
-          continue;
-        }
-        const other = segs[best.j];
-        const ep = vdist(best.q, other.from) <= vdist(best.q, other.to) ? other.from : other.to;
-        const atEnd = vdist(best.q, ep) <= Math.max(od, 0.75);
-        targets[i][end] = atEnd ? vmul(vadd(p, ep), 0.5) : best.q;
+        // The end may travel only along this pipe. A sideways hit is a later parallel shift, never a tilt.
+        const axis = vnorm(vsub(home[i].to, home[i].from));
+        const along = vdot(vsub(best.q, home[i].from), axis);
+        const onAxis = vadd(home[i].from, vmul(axis, along));
+        if (vdist(best.q, onAxis) > 0.05) continue;
+        targets[i][end] = onAxis;
       }
     }
     segs = segs.map((seg, i) => {
@@ -964,9 +1017,8 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
       return { ...seg, from, to };
     });
   };
-  for (let pass = 0; pass < 4; pass++) slide(false);
-  slide(true);
-  segs = weldNearEnds(segs, 0.08);
+  for (let pass = 0; pass < 4; pass++) slide();
+  segs = weldNearEnds(segs, 0.02);
   const cuts: Vec3[][] = segs.map(() => []);
   for (let i = 0; i < segs.length; i++) {
     for (let j = 0; j < segs.length; j++) {
@@ -976,7 +1028,7 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
         const hit = closestPoint(p, segs[i].from, segs[i].to);
         const L = vdist(segs[i].from, segs[i].to);
         const along = hit.t * L;
-        if (hit.d <= limit && along > 0.2 && along < L - 0.2) cuts[i].push(p);
+        if (hit.d <= limit && along > 0.2 && along < L - 0.2) cuts[i].push(hit.q);
       }
     }
   }
@@ -984,19 +1036,18 @@ function weldOutline(instances: YardInstance[], item: CatalogItem): YardInstance
     for (let j = i + 1; j < segs.length; j++) {
       if (!crossing(segs[i], segs[j])) continue;
       const hit = segmentClosest(segs[i], segs[j]);
-      if (!hit || hit.d > Math.min(od, 0.75)) continue;
+      if (!hit || hit.d > 0.05) continue;
       const Li = vdist(segs[i].from, segs[i].to);
       const Lj = vdist(segs[j].from, segs[j].to);
       if (hit.ti * Li > 0.2 && hit.ti * Li < Li - 0.2 && hit.tj * Lj > 0.2 && hit.tj * Lj < Lj - 0.2) {
-        const node = r3(vmul(vadd(hit.qi, hit.qj), 0.5));
-        cuts[i].push(node);
-        cuts[j].push(node);
+        cuts[i].push(r3(hit.qi));
+        cuts[j].push(r3(hit.qj));
       }
     }
   }
   let out: OutlineSeg[] = [];
   segs.forEach((seg, i) => out.push(...splitSeg(seg, cuts[i])));
-  out = weldNearEnds(out, 0.08);
+  out = weldNearEnds(out, 0.02);
   out = fuseCollinear(out, FITTING_PITCH);
   out = seatTouching(out, od);
   out = out.filter((s) => {

@@ -2028,7 +2028,7 @@ function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
   };
 }
 
-/** A rack's Buy names each joint by the pipes that meet. A direction set with no catalog fitting is left unbought. */
+/** A rack's Buy names each joint by the pipes that meet. A joint with no catalog fitting never reaches this list. */
 function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number): BuildPlan["bom"] {
   const lines = binderBom(item, project.instances, project.joinMethod, couplings);
   if (!slipRack) return lines;

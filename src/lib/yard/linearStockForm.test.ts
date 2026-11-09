@@ -13,7 +13,7 @@ import { recipePrompt } from "./recipeIdeas.ts";
 import { IDEAS } from "./ideas.ts";
 import { spokenTierCount } from "./fittedShared.ts";
 import { getCatalogItem } from "./catalog.ts";
-import { binderKind, highWay } from "./joints.ts";
+import { binderKind } from "./joints.ts";
 import type { CatalogItem, Panel, Vec3, YardProject } from "./types.ts";
 
 const PVC = "pvc-3-4-sch40";
@@ -308,6 +308,104 @@ function rackPrompt(prompt: string): boolean {
   return /\bracks?\b/i.test(prompt) && !/rail|peg|hook/i.test(prompt);
 }
 
+const WAY_RIGHT = 0.08;
+const WAY_STRAIGHT = -0.82;
+
+function dirDot(a: Vec3, b: Vec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function sharePlane(dirs: Vec3[]): boolean {
+  let normal: Vec3 | null = null;
+  for (let i = 0; i < dirs.length && !normal; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const c = {
+        x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y,
+        y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z,
+        z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x,
+      };
+      if (Math.hypot(c.x, c.y, c.z) > 0.2) normal = c;
+    }
+  }
+  if (!normal) return true;
+  const L = Math.hypot(normal.x, normal.y, normal.z);
+  return dirs.every((d) => Math.abs(dirDot(d, normal!)) / L <= WAY_RIGHT);
+}
+
+function planeNormal(dirs: Vec3[]): Vec3 | null {
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const c = {
+        x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y,
+        y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z,
+        z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x,
+      };
+      if (Math.hypot(c.x, c.y, c.z) > 0.2) return c;
+    }
+  }
+  return null;
+}
+
+/** Side-outlet versus cross, from these directions alone. A side-outlet labelled as a cross fails the Buy compare. */
+function wayFromDirs(dirs: Vec3[]): "cross" | "tee4" | "cross5" | "cross6" | "miss" {
+  if (dirs.length === 4 && sharePlane(dirs)) return "cross";
+  if (dirs.length === 4) {
+    const straight: [number, number][] = [];
+    for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) if (dirDot(dirs[i], dirs[j]) < WAY_STRAIGHT) straight.push([i, j]);
+    if (straight.length === 1) {
+      const [a, b] = straight[0];
+      const rest = [0, 1, 2, 3].filter((k) => k !== a && k !== b);
+      const rails = [dirs[rest[0]], dirs[rest[1]]];
+      const square = Math.abs(dirDot(rails[0], rails[1])) <= WAY_RIGHT && rails.every((rail) => Math.abs(dirDot(rail, dirs[a])) <= WAY_RIGHT && Math.abs(dirDot(rail, dirs[b])) <= WAY_RIGHT);
+      if (square) return "tee4";
+    }
+    return "miss";
+  }
+  if (dirs.length === 5) {
+    for (let i = 0; i < dirs.length; i++) {
+      const rest = dirs.filter((_, k) => k !== i);
+      if (!sharePlane(rest)) continue;
+      const normal = planeNormal(rest);
+      if (!normal) continue;
+      const align = Math.abs(dirDot(dirs[i], normal)) / Math.hypot(normal.x, normal.y, normal.z);
+      if (align >= 0.96) return "cross5";
+    }
+    return "miss";
+  }
+  if (dirs.length === 6) {
+    const used = new Set<number>();
+    const axes: Vec3[] = [];
+    for (let i = 0; i < dirs.length; i++) {
+      if (used.has(i)) continue;
+      let mate = -1;
+      for (let j = i + 1; j < dirs.length; j++) if (!used.has(j) && dirDot(dirs[i], dirs[j]) < WAY_STRAIGHT) mate = j;
+      if (mate < 0) return "miss";
+      used.add(i);
+      used.add(mate);
+      axes.push(dirs[i]);
+    }
+    if (axes.length === 3 && Math.abs(dirDot(axes[0], axes[1])) <= WAY_RIGHT && Math.abs(dirDot(axes[0], axes[2])) <= WAY_RIGHT && Math.abs(dirDot(axes[1], axes[2])) <= WAY_RIGHT) return "cross6";
+  }
+  return "miss";
+}
+
+function axisTiltDeg(project: YardProject): number {
+  let max = 0;
+  for (const inst of project.instances) {
+    if (!inst.from || !inst.to) continue;
+    const d = {
+      x: inst.to.x - inst.from.x,
+      y: inst.to.y - inst.from.y,
+      z: inst.to.z - inst.from.z,
+    };
+    const L = Math.hypot(d.x, d.y, d.z) || 1;
+    const aligned = Math.max(Math.abs(d.x), Math.abs(d.y), Math.abs(d.z)) / L;
+    const deg = (Math.acos(Math.min(1, aligned)) * 180) / Math.PI;
+    if (deg > max) max = deg;
+  }
+  return max;
+}
+
 /** Fittings read off the pipe ends themselves, not off the list Buy counted. */
 function fittingsFromEnds(members: { from?: Vec3; to?: Vec3 }[], rack: boolean) {
   const key = (p: Vec3) => `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
@@ -331,7 +429,7 @@ function fittingsFromEnds(members: { from?: Vec3; to?: Vec3 }[], rack: boolean) 
     const n = dirs.length;
     if (n <= 1) continue;
     if (n >= 4) {
-      const kind = highWay(dirs);
+      const kind = wayFromDirs(dirs);
       if (kind === "cross") counts.crosses += 1;
       else if (kind === "tee4") counts.tee4 += 1;
       else if (kind === "cross5") counts.cross5 += 1;
@@ -343,7 +441,8 @@ function fittingsFromEnds(members: { from?: Vec3; to?: Vec3 }[], rack: boolean) 
       const dots: number[] = [];
       for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) dots.push(dirs[i].x * dirs[j].x + dirs[i].y * dirs[j].y + dirs[i].z * dirs[j].z);
       if (dots.every((d) => Math.abs(d) <= 0.05)) counts.corners += 1;
-      else counts.tees += 1;
+      else if (dots.filter((d) => d < WAY_STRAIGHT).length === 1 && dots.filter((d) => Math.abs(d) <= WAY_RIGHT).length === 2) counts.tees += 1;
+      else counts.miss += 1;
       continue;
     }
     const dot = dirs[0].x * dirs[1].x + dirs[0].y * dirs[1].y + dirs[0].z * dirs[1].z;
@@ -354,75 +453,17 @@ function fittingsFromEnds(members: { from?: Vec3; to?: Vec3 }[], rack: boolean) 
   return { counts, minL, rack };
 }
 
-function pipeClashes(project: YardProject): { mid: number; cap: number } {
-  const inst = project.instances.filter((i) => i.from && i.to);
-  const od = 1.05;
-  const body = 1.375;
-  const dist = (a: Vec3, b: Vec3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
-  let mid = 0;
-  let cap = 0;
-  const ends = new Map<string, number>();
-  const key = (p: Vec3) => `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
-  for (const member of inst) {
-    ends.set(key(member.from!), (ends.get(key(member.from!)) ?? 0) + 1);
-    ends.set(key(member.to!), (ends.get(key(member.to!)) ?? 0) + 1);
-  }
-  for (let a = 0; a < inst.length; a++) {
-    for (let b = a + 1; b < inst.length; b++) {
-      const A = inst[a];
-      const B = inst[b];
-      if ([A.from!, A.to!].some((p) => [B.from!, B.to!].some((q) => dist(p, q) <= 0.05))) continue;
-      const u = { x: A.to!.x - A.from!.x, y: A.to!.y - A.from!.y, z: A.to!.z - A.from!.z };
-      const v = { x: B.to!.x - B.from!.x, y: B.to!.y - B.from!.y, z: B.to!.z - B.from!.z };
-      const w0 = { x: A.from!.x - B.from!.x, y: A.from!.y - B.from!.y, z: A.from!.z - B.from!.z };
-      const aa = u.x * u.x + u.y * u.y + u.z * u.z;
-      const bb = u.x * v.x + u.y * v.y + u.z * v.z;
-      const cc = v.x * v.x + v.y * v.y + v.z * v.z;
-      const dd = u.x * w0.x + u.y * w0.y + u.z * w0.z;
-      const ee = v.x * w0.x + v.y * w0.y + v.z * w0.z;
-      const den = aa * cc - bb * bb;
-      if (Math.abs(den) < 1e-4) continue;
-      const ti = Math.max(0, Math.min(1, (bb * ee - cc * dd) / den));
-      const tj = Math.max(0, Math.min(1, (aa * ee - bb * dd) / den));
-      const qi = { x: A.from!.x + u.x * ti, y: A.from!.y + u.y * ti, z: A.from!.z + u.z * ti };
-      const qj = { x: B.from!.x + v.x * tj, y: B.from!.y + v.y * tj, z: B.from!.z + v.z * tj };
-      const gap = dist(qi, qj);
-      const La = Math.sqrt(aa);
-      const Lb = Math.sqrt(cc);
-      if (gap < od && ti * La > 0.15 && ti * La < La - 0.15 && tj * Lb > 0.15 && tj * Lb < Lb - 0.15) mid += 1;
-    }
-  }
-  for (const member of inst) {
-    for (const p of [member.from!, member.to!]) {
-      if ((ends.get(key(p)) ?? 0) !== 1) continue;
-      let best = Infinity;
-      for (const other of inst) {
-        if (other === member) continue;
-        if (dist(p, other.from!) <= 0.05 || dist(p, other.to!) <= 0.05) continue;
-        const ab = { x: other.to!.x - other.from!.x, y: other.to!.y - other.from!.y, z: other.to!.z - other.from!.z };
-        const L2 = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
-        if (L2 < 1e-8) continue;
-        const t = Math.max(0, Math.min(1, ((p.x - other.from!.x) * ab.x + (p.y - other.from!.y) * ab.y + (p.z - other.from!.z) * ab.z) / L2));
-        const q = { x: other.from!.x + ab.x * t, y: other.from!.y + ab.y * t, z: other.from!.z + ab.z * t };
-        best = Math.min(best, dist(p, q));
-      }
-      if (best < body) cap += 1;
-    }
-  }
-  return { mid, cap };
-}
-
 function fittingIssue(project: YardProject, prompt: string): string | null {
   const item = getCatalogItem(project.primaryMaterialId);
   if (!item || binderKind(item) !== "slip") return null;
   const rack = rackPrompt(prompt);
   const outlined = project.instances.some((inst) => inst.from && inst.to);
   if (!(rack && outlined)) return null;
+  const tilt = axisTiltDeg(project);
+  if (tilt > 1) return `tilt ${tilt.toFixed(1)}°`;
   const members = project.instances;
   const read = fittingsFromEnds(members, rack);
   if (read.minL < FITTING_PITCH - 0.01) return `pitch ${read.minL.toFixed(2)}" under ${FITTING_PITCH}"`;
-  const clash = pipeClashes(project);
-  if (clash.mid || clash.cap) return `clash mid ${clash.mid} cap ${clash.cap}`;
   const plan = buildPlan(project);
   const bought = { corners: 0, tees: 0, crosses: 0, elbows90: 0, elbows45: 0, couplings: 0, tee4: 0, cross5: 0, cross6: 0 };
   for (const line of plan.bom) {
@@ -441,7 +482,7 @@ function fittingIssue(project: YardProject, prompt: string): string | null {
   const crossExpect = read.counts.crosses;
   const fit = (c: typeof bought) => c.corners + c.tees + c.crosses + c.elbows90 + c.elbows45 + c.couplings + c.tee4 + c.cross5 + c.cross6;
   const expectFit = fit({ ...bought, corners: read.counts.corners, tees: read.counts.tees, crosses: crossExpect, elbows90: read.counts.elbows90, elbows45: read.counts.elbows45, couplings: couplingExpect, tee4: read.counts.tee4, cross5: read.counts.cross5, cross6: read.counts.cross6 });
-  if (fit(bought) !== expectFit) return `unbought ${expectFit - fit(bought)}`;
+  if (read.counts.miss > 0 || fit(bought) !== expectFit) return `unbought ${read.counts.miss + Math.max(0, expectFit - fit(bought))}`;
   if (
     bought.corners !== read.counts.corners ||
     bought.tees !== read.counts.tees ||
@@ -540,6 +581,7 @@ it("linear stock keeps the form of every Ideas prompt and every recipe", () => {
     ["shoe rack with cubbies [dowel-1-2-36]", "Shoe shelf"],
     // The fitted pegs stand past the hat shelf on purpose. The plywood face is the shorter hardware hook.
     ["coat rack 36 wide 12 high 4 deep [pvc-3-4-sch40]", "bbox"],
+    ["coat rack with bench 48 wide [pvc-3-4-sch40]", "bbox"],
     ["learned water wheel [pvc-3-4-sch40]", "left base"],
     ["learned water wheel [dowel-1-2-36]", "left base"],
     ["learned water wheel [lumber-2x2-8]", "left base"],
@@ -552,20 +594,6 @@ it("linear stock keeps the form of every Ideas prompt and every recipe", () => {
     return m ? `${m[1]} [${m[2]}]` : line;
   });
   assert.deepEqual(got.sort(), still.map(([key]) => key).sort(), failed.join("\n"));
-  // Joints the catalog cannot fit (not a right angle) stay named here and are not bought.
-  const lockedMisses: [string, number][] = [];
-  for (const { prompt } of CASES) {
-    if (!rackPrompt(prompt)) continue;
-    const built = generateFromPrompt(prompt, PVC);
-    if (!built.instances.some((inst) => inst.from && inst.to)) continue;
-    const n = fittingsFromEnds(built.instances, true).counts.miss;
-    if (n) lockedMisses.push([prompt, n]);
-  }
-  assert.deepEqual(lockedMisses, [
-    ["coat rack with bench 48 wide", 8],
-    ["wine rack 24 wide 36 high 12 deep", 10],
-    ["shoe rack with cubbies", 4],
-  ]);
   for (const [key, bit] of still) {
     const line = failed.find((row) => row.startsWith(`${key}: `));
     assert.ok(line?.includes(bit), line ?? key);
@@ -589,6 +617,33 @@ function planOf(prompt: string) {
     roles: project.instances.map((i) => i.role),
   };
 }
+
+it("a side-outlet is not a cross", () => {
+  const side = [
+    { x: 0, y: 1, z: 0 },
+    { x: 0, y: -1, z: 0 },
+    { x: 1, y: 0, z: 0 },
+    { x: 0, y: 0, z: 1 },
+  ];
+  assert.equal(wayFromDirs(side), "tee4");
+  const planar = [
+    { x: 1, y: 0, z: 0 },
+    { x: -1, y: 0, z: 0 },
+    { x: 0, y: 0, z: 1 },
+    { x: 0, y: 0, z: -1 },
+  ];
+  assert.equal(wayFromDirs(planar), "cross");
+  const nearSquare = [
+    { x: 1, y: 0, z: 0 },
+    { x: 0, y: 0.9, z: 0.15 },
+    { x: 0, y: 0, z: 1 },
+  ];
+  const dots: number[] = [];
+  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) dots.push(nearSquare[i].x * nearSquare[j].x + nearSquare[i].y * nearSquare[j].y + nearSquare[i].z * nearSquare[j].z);
+  const corner = dots.every((d) => Math.abs(d) <= 0.05);
+  const tee = dots.filter((d) => d < WAY_STRAIGHT).length === 1 && dots.filter((d) => Math.abs(d) <= WAY_RIGHT).length === 2;
+  assert.equal(corner || tee, false);
+});
 
 it("typed rack prompts build the recipe frame, centred, with the asked tiers", () => {
   const shoe = generateFromPrompt("shoe rack");

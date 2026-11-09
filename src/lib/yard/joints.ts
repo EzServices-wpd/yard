@@ -12,7 +12,7 @@ import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from
 import { dist } from "./connect";
 
 /** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
-export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross"]);
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling", "pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross"]);
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -170,6 +170,30 @@ function planeNormal(dirs: Vec3[]): Vec3 | null {
     }
   }
   return null;
+}
+
+/** A straight run with one branch square to it. A corner that is only nearly square is not this. */
+function properTee(dirs: Vec3[]): boolean {
+  if (dirs.length !== 3) return false;
+  const dots = pairDots(dirs);
+  return dots.filter((d) => d < STRAIGHT).length === 1 && dots.filter((d) => Math.abs(d) <= WAY_RIGHT).length === 2;
+}
+
+/** Joints a catalog fitting cannot make. A rack in pipe is refused rather than sold one of these. */
+export function uncataloguedJoints(members: { from?: Vec3; to?: Vec3; radius: number }[]): number {
+  let miss = 0;
+  for (const node of jointNodes(members)) {
+    const n = node.dirs.length;
+    if (n <= 2) continue;
+    if (n === 3) {
+      const dots = pairDots(node.dirs);
+      const square = dots.length === 3 && dots.every((d) => Math.abs(d) <= SQUARE);
+      if (!square && !properTee(node.dirs)) miss += 1;
+      continue;
+    }
+    if (highWay(node.dirs) === "miss") miss += 1;
+  }
+  return miss;
 }
 
 /** A catalog fitting for four or more pipes, read from the direction set. Anything else is not bought. */
@@ -586,7 +610,7 @@ export function binderBom(
     push(c.corners, `${size} PVC 3-way corner`, "pvc-side-outlet", `${size} schedule 40 PVC 3-way elbow`, 2.37, "Side-outlet elbow. Three sockets at right angles, one along each axis.");
     push(extraCouplings, `${size} PVC coupling`, "pvc-coupling", `${size} schedule 40 PVC coupling`, 0.68);
     push(c.tees, `${size} PVC tee`, "pvc-tee", `${size} schedule 40 PVC tee`, 1.15);
-    push(c.crosses, `${size} PVC cross`, "pvc-tee", `${size} schedule 40 PVC cross`, 2.4);
+    push(c.crosses, `${size} PVC cross`, "pvc-cross", `${size} schedule 40 PVC cross`, 2.4);
     push(c.elbows90, `${size} PVC 90° elbow`, "pvc-elbow-90", `${size} schedule 40 PVC 90 elbow`, 0.95);
     push(c.elbows45, `${size} PVC 45° elbow`, "pvc-elbow-45", `${size} schedule 40 PVC 45 elbow`, 0.95);
     return lines;
