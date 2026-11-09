@@ -242,8 +242,9 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   }
   // A dowel passes through only holes drilled right through; into blind holes it is set.
   const blind = (info?.on ?? []).some((k) => / deep\./.test(project.panels.find((p) => p.id === k)?.cutNote ?? ""));
-  if (panel?.turns && /^dowel-/.test(panel.materialId) && blind) return `Set the ${part.name} into the drilled holes in ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
-  if (panel?.turns && /^dowel-/.test(panel.materialId)) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
+  const lidPart = !!panel && /\blid\b/i.test(panel.name);
+  if (panel?.turns && /^dowel-/.test(panel.materialId) && !lidPart && blind) return `Set the ${part.name} into the drilled holes in ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
+  if (panel?.turns && /^dowel-/.test(panel.materialId) && !lidPart) return `Pass the ${part.name} through ${onto}. Glue it only in the fixed parts; whatever turns on it rides free.`;
   const onPin = (info?.on ?? []).some((k) => /^dowel-/.test(project.panels.find((p) => p.id === k)?.materialId ?? ""));
   // A rotor's parts are fixed to each other; only the assembly turns on the pin.
   // A hinged lid swings on its hinges: it is hung, never screwed down.
@@ -254,7 +255,7 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   if (panel?.materialId === "acrylic-sheet") return `Slide the ${part.name} into 1/8" grooves cut in ${onto}. No glue or screws: it lifts out for cleaning.`;
   if (panel?.materialId === "hardware" && /\bhinge/i.test(part.name)) return `Screw one leaf of the ${part.name} to ${onto.split(" and ")[0]} with its short hinge screws, knuckle at the top edge.`;
   if (panel?.turns && onPin) return `Slide the ${part.name} onto ${onto}. The wheel parts are glued and screwed to it next, and the wheel turns on ${onto} as one assembly: no glue or screws into the pin.`;
-  if (/^dowel-/.test(panel?.materialId ?? "")) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
+  if (/^dowel-/.test(panel?.materialId ?? "") && !lidPart) return `Set the ${part.name} into holes drilled in ${onto} and glue it there. No screws in a dowel.`;
   // Pipe joins with the fittings on Buy. A thin drawn box is still a pipe, not a glued wood joint.
   if (slipMember(panel?.materialId)) {
     if (info?.how === "floor") {

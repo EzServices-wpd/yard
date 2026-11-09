@@ -108,7 +108,9 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
     }
     // Bought hardware (a hook, a hinge, a bracket) fastens to the frame. It is not what the frame rests on.
     const bought = (q: Panel) => q.materialId === "hardware" || /^(?:Hinge|Latch|A-frame bracket|Fold bracket|Coat hook|Coat peg|Caster|Screw eye) \d+$/.test(q.name);
-    const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer" && !(bought(q) && !bought(p)));
+    // A lid is fastened to its hinge. A shelf is not carried by a hook.
+    const lid = (q: Panel) => /\blid\b/i.test(q.name);
+    const others = structural.filter((q) => q.id !== p.id && q.type !== "drawer" && !(bought(q) && !bought(p) && !lid(p)));
     // A flat span fastened between two uprights (a top, bottom, seat or fixed shelf) is carried by those
     // end supports, whatever sits under its middle (a divider, a kick strip) — they fasten to it later.
     const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);

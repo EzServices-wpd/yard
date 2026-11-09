@@ -8,6 +8,8 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { placementIndex } from "./placeEveryPart.ts";
 import { supportsOf } from "./supportGraph.ts";
+import { memberStations } from "./steps.ts";
+import { shelfLineCount } from "./shelfSpan.ts";
 import before from "./buildOrder.before.json" with { type: "json" };
 import type { AssemblyStep, YardProject } from "./types.ts";
 
@@ -76,6 +78,11 @@ function countFaults(project: YardProject, steps: AssemblyStep[]): string[] {
       if (stated && Number(stated[1]) === qty) continue;
       if (piece && Number(piece[1]) === have) continue;
       if (have === qty) continue;
+      if (project.instances.length) {
+        const members = project.instances.filter((i) => familyKey(i.role || "member") === family);
+        if (members.length > qty && memberStations(members) === qty) continue;
+      }
+      if (family === "shelf" && project.panels.length && shelfLineCount(project.panels.filter((p) => p.type === "shelf")) === qty) continue;
       const subset = qualifiedCount(project, m[0], family);
       if (subset === qty) continue;
       // Paired boards glued into one post: the title counts the posts, the parts list counts the boards.
