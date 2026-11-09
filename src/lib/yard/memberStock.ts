@@ -7,7 +7,7 @@
 import { createId } from "@/lib/utils";
 import { isBoughtHardwareName } from "./boughtHardware";
 import { isWholeStock, toPrimitive } from "./geometry";
-import type { CatalogItem, Panel, Vec3, YardInstance, YardProject } from "./types";
+import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
 
 export type MemberSection = { width: number; height: number };
 
@@ -96,17 +96,26 @@ function isFaceStock(item: CatalogItem): boolean {
 }
 
 /**
+ * Kinds a person sets a load on. Checked as PanelType, so a kind that is not real
+ * ("seat") does not compile. A seat or a deck is also a name on another kind.
+ * A counter and a bay are kinds of their own.
+ */
+const LOAD_KINDS: readonly PanelType[] = ["shelf", "top", "bottom", "deck", "counter", "bay"];
+
+export function isLoadSurface(panel: Panel): boolean {
+  return LOAD_KINDS.includes(panel.type) || /\b(?:shelf|seat|top|bottom|deck)\b/i.test(panel.name);
+}
+
+/**
  * A wall-arm rack: standards on the wall and arms that stick out past them
  * (the lumber rack). The parts are named by that form. The word "rack" is not it.
+ * A seat, a deck, a counter, or a bay means this is not that form.
  */
 function isWallArmRack(project: YardProject): boolean {
   const arms = project.panels.filter((panel) => /^Arm \d+$/.test(panel.name));
   const standards = project.panels.filter((panel) => /standard$/i.test(panel.name));
   if (arms.length < 2 || standards.length < 2) return false;
-  const load = project.panels.some(
-    (panel) => panel.type === "shelf" || panel.type === "top" || panel.type === "bottom" || panel.type === "deck" || /seat/i.test(panel.name),
-  );
-  return !load;
+  return !project.panels.some(isLoadSurface);
 }
 
 /** The panel model's own box, so a linear frame sits where the panels sit. */

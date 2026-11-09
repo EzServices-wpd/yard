@@ -5,6 +5,7 @@
  */
 import assert from "node:assert/strict";
 import { it } from "node:test";
+import { isLoadSurface } from "./memberStock.ts";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { RECIPES } from "./recipes.ts";
@@ -19,17 +20,11 @@ const DOWEL = "dowel-1-2-36";
 const TWO = "lumber-2x2-8";
 const PLY = "plywood-3-4-4x8";
 
-const LOAD_TYPE = new Set(["shelf", "top", "bottom", "seat", "deck"]);
-
 type Seg = { a: Vec3; b: Vec3; role: string; name: string; section: number };
 
 function isFace(item: CatalogItem | undefined): boolean {
   if (!item) return false;
   return item.formFactor === "sheet" || item.formFactor === "board" || item.category === "sheet_goods" || item.category === "cardboard";
-}
-
-function isLoad(panel: Panel): boolean {
-  return LOAD_TYPE.has(panel.type) || /shelf|seat|\btop\b|\bbottom\b|\bdeck\b/i.test(panel.name);
 }
 
 function sectionOf(id: string | undefined, fallback: number): number {
@@ -276,7 +271,7 @@ function check(prompt: string, face: YardProject, linear: YardProject, asked: st
   if (why) return null;
   const mem = segs(linear);
   if (!mem.length) return "no members";
-  const loads = face.panels.filter(isLoad);
+  const loads = face.panels.filter(isLoadSurface);
   const missed = loads.filter((panel) => !spans(panel, mem)).map((panel) => panel.name.replace(/ \d+$/, ""));
   if (missed.length) return `load not spanned: ${[...new Set(missed)].slice(0, 4).join(", ")}`;
   const sticks = linear.instances.some((inst) => inst.from && inst.to);
