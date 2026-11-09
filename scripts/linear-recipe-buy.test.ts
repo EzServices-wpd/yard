@@ -17,6 +17,65 @@ function planOf(prompt: string) {
   return { project, plan: buildPlan(project) };
 }
 
+const AX = [
+  ["x", "width"],
+  ["y", "height"],
+  ["z", "depth"],
+] as const;
+
+function runOf(p: Panel): (typeof AX)[number] {
+  return AX.reduce((m, a) => (p.size[a[1]] > p.size[m[1]] ? a : m));
+}
+
+function iv(p: Panel, axis: "x" | "y" | "z"): [number, number] {
+  const key = axis === "x" ? "width" : axis === "y" ? "height" : "depth";
+  return [p.position[axis], p.position[axis] + p.size[key]];
+}
+
+/**
+ * Ends that miss a crossing member, a collinear coupling, and the floor.
+ * Two parallel rails that only share an end station do not count.
+ */
+function missedEnds(panels: Panel[], eps = 0.05): string[] {
+  const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1, b1) - Math.max(a0, b0);
+  const misses: string[] = [];
+  for (const p of panels) {
+    const [axis, key] = runOf(p);
+    const others = AX.filter((a) => a[0] !== axis);
+    const lo = p.position[axis];
+    const hi = lo + p.size[key];
+    const section = Math.max(...others.map(([, k]) => p.size[k]), eps);
+    const landed = (at: number) => {
+      if (axis === "y" && at <= eps) return true;
+      return panels.some((q) => {
+        if (q === p) return false;
+        const [qAxis] = runOf(q);
+        const ov = (a: "x" | "y" | "z") => {
+          const [a0, a1] = iv(p, a);
+          const [b0, b1] = iv(q, a);
+          return overlap(a0, a1, b0, b1);
+        };
+        const faces = others.every(([b]) => ov(b) > eps);
+        if (qAxis === axis) {
+          const [qLo, qHi] = iv(q, axis);
+          return faces && (Math.abs(qLo - at) <= eps || Math.abs(qHi - at) <= eps);
+        }
+        const [qLo, qHi] = iv(q, axis);
+        if (faces && at >= qLo - eps && at <= qHi + eps) return true;
+        const touching = AX.filter(([a]) => ov(a) > eps).length >= 2 && AX.every(([a]) => ov(a) > -eps);
+        if (!touching) return false;
+        const hitLo = Math.max(lo, qLo);
+        const hitHi = Math.min(hi, qHi);
+        const contact = hitHi > hitLo ? Math.min(Math.abs(hitLo - at), Math.abs(hitHi - at)) : Math.min(Math.abs(qLo - at), Math.abs(qHi - at));
+        return contact <= section + eps;
+      });
+    };
+    if (!landed(lo)) misses.push(`${p.name} @ ${axis}=${lo.toFixed(2)}`);
+    if (!landed(hi)) misses.push(`${p.name} @ ${axis}=${hi.toFixed(2)}`);
+  }
+  return misses;
+}
+
 /** Sticks the cut lengths nest into, the same packer Buy uses. */
 function packedSticks(plan: BuildPlan, catalogId: string): number {
   const item = getCatalogItem(catalogId);
@@ -87,14 +146,16 @@ function assertPvcGoalBuy(prompt: string) {
 }
 
 test("pvc soccer goal buys pipe by the stick, one fitting per corner, and cement", () => {
-  const { plan, fittingQty } = assertPvcGoalBuy("pvc soccer goal 6 ft wide 4 ft tall");
-  // 69 7/8" rails share a 10 ft stick with a 48" post; the 10" rails share one more. Not the old frame's 6 pipes.
+  const { project, plan, fittingQty } = assertPvcGoalBuy("pvc soccer goal 6 ft wide 4 ft tall");
+  // 69 7/8" rails share a 10 ft stick with a 48" post; the depth rails, grown to half the height, share one more.
   assert.equal(plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!.quantity, 5);
   assert.equal(fittingQty, 8);
+  assert.deepEqual([project.overall.width, project.overall.depth, project.overall.height], [72, 24, 48]);
 });
 
 test("bare soccer goal stays the PVC recipe and buys the same way", () => {
   const { project, plan, fittingQty } = assertPvcGoalBuy("soccer goal");
+  assert.deepEqual([project.overall.width, project.overall.depth, project.overall.height], [48, 18, 36]);
   assert.ok(!project.unmatched);
   assert.equal(plan.bom.some((b) => /popsicle/i.test(b.name)), false);
   assert.equal(plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40")!.quantity, 4);
@@ -196,18 +257,22 @@ test("soccer goal fittings hold across short and wide sizes", () => {
   assert.equal(wide.plan.bom.some((b) => /PVC tee/.test(b.name)), false);
 });
 
-test("every soccer-goal pipe meets a neighbor, and no cut is longer than a stick", () => {
+test("every soccer-goal pipe meets a crossing neighbor, and no cut is longer than a stick", () => {
   const pipe = getCatalogItem("pvc-3-4-sch40")!;
   const stock = pipe.dims.length;
   const widths = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 30, 36];
   const heights = [2, 3, 4, 6, 8, 10, 12];
   assert.equal(widths.length * heights.length, 91);
-  const axes = [
-    ["x", "width"],
-    ["y", "height"],
-    ["z", "depth"],
-  ] as const;
-  const eps = 0.05;
+  // The r1 gap: posts locked to the envelope, rails still ending on the old inner face.
+  // Parallel rails share that station and overlap in height, which is not a joint.
+  const gapped: Panel[] = [
+    { id: "lp", type: "rail", name: "Left front post", materialId: pipe.id, position: { x: 0, y: 0, z: 0 }, size: { width: 1.05, height: 96, depth: 1.05 } },
+    { id: "rp", type: "rail", name: "Right front post", materialId: pipe.id, position: { x: 286.95, y: 0, z: 0 }, size: { width: 1.05, height: 96, depth: 1.05 } },
+    { id: "fr", type: "rail", name: "Front crossbar", materialId: pipe.id, position: { x: 6.05, y: 94.95, z: 0 }, size: { width: 275.9, height: 1.05, depth: 1.05 } },
+    { id: "rr", type: "rail", name: "Rear crossbar", materialId: pipe.id, position: { x: 6.05, y: 94.95, z: 10 }, size: { width: 275.9, height: 1.05, depth: 1.05 } },
+  ];
+  const gapMisses = missedEnds(gapped);
+  assert.ok(gapMisses.some((m) => m.startsWith("Front crossbar")), gapMisses.join("; "));
   let gaps = 0;
   let over = 0;
   let glue = 0;
@@ -218,28 +283,7 @@ test("every soccer-goal pipe meets a neighbor, and no cut is longer than a stick
       const q = `pvc soccer goal ${w} ft wide ${h} ft tall`;
       const { project, plan } = planOf(q);
       const panels = project.panels.filter((p) => p.materialId === pipe.id);
-      for (const p of panels) {
-        const run = axes.reduce((m, a) => (p.size[a[1]] > p.size[m[1]] ? a : m));
-        const others = axes.filter((a) => a[0] !== run[0]);
-        const key = run[0] === "x" ? "width" : run[0] === "y" ? "height" : "depth";
-        const near = (at: number) =>
-          (run[0] === "y" && at <= eps) ||
-          panels.some((other) => {
-            if (other === p) return false;
-            const span = other.size[key];
-            if (Math.abs(other.position[run[0]] - at) > eps && Math.abs(other.position[run[0]] + span - at) > eps) return false;
-            return others.some(([b, bk]) => {
-              const a0 = p.position[b];
-              const a1 = a0 + p.size[bk];
-              const b0 = other.position[b];
-              const b1 = b0 + other.size[bk];
-              return Math.min(a1, b1) - Math.max(a0, b0) > eps;
-            });
-          });
-        const lo = p.position[run[0]];
-        const hi = lo + p.size[run[1]];
-        if (!near(lo) || !near(hi)) gaps += 1;
-      }
+      gaps += missedEnds(panels).length;
       for (const cut of plan.cutList) if (cut.id.startsWith(pipe.id) && cut.lengthIn > stock + 0.01) over += 1;
       const text = plan.instructions.map((s) => `${s.title} ${s.description}`).join("\n");
       if (/Join sheet splices/i.test(text)) sheetSplice += 1;
@@ -252,7 +296,7 @@ test("every soccer-goal pipe meets a neighbor, and no cut is longer than a stick
       if (got !== need) couplingMiss += 1;
       if (w === 24 && h === 8) {
         assert.match(text, /Front crossbar to both posts/);
-        assert.equal(plan.bom.find((b) => b.catalogId === pipe.id)?.quantity, 16, "over-length rails split into sticks");
+        assert.equal(plan.bom.find((b) => b.catalogId === pipe.id)?.quantity, 19, "over-length rails split into sticks");
         assert.equal(need, 8);
         assert.equal(got, 8);
         const said = text.match(/The fittings are 8 3\/4" PVC 3-way corners and 8 3\/4" PVC couplings, the same fittings on the Buy list\./g) ?? [];
