@@ -9,6 +9,8 @@ import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { uncataloguedJoints } from "./joints";
 import { seatPipeRack } from "./pipeRackFrame";
+import { rodArrayFailures } from "./rodArrays";
+import { hiddenOverlaps } from "./solids";
 import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
 
 export type MemberSection = { width: number; height: number };
@@ -521,6 +523,9 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     ? uncataloguedJoints(seated.instances.map((inst) => ({ from: inst.from, to: inst.to, radius })))
     : 0;
   if (!seated.ok || missed > 0) {
+    // A refused pipe rack keeps the lumber build. When that build's rods already
+    // run into each other, the release cantilever is what this prompt shipped.
+    if (hiddenOverlaps(project).length || rodArrayFailures(project).length) return openMemberRack(project, item);
     const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
     const noun = project.name.toLowerCase().replace(/\s+\d.*$/, "");
     const refused = `${item.name} can't build this ${noun}, so it stays ${kept} at the same size. Pick a lumber stock to switch it.`;
