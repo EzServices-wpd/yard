@@ -3,13 +3,16 @@
  *
  * Start from the written order. Move a step only when a part it places, tests, or hangs
  * is still ahead of a part that box contact says it rests on, butts into, or is fastened
- * under, and the move adds no new fault. A cut, level, or glue step stays put. A step that
- * places several parts stays put. Anything two-way or unclear stays in the written order.
+ * under, and the move adds no new fault. A floor pad never starts a move. A swap that
+ * makes a step's own "Drive N" disagree with the joints drivable at that step stays put.
+ * A cut, level, or glue step stays put. A step that places several parts stays put.
+ * Anything two-way or unclear stays in the written order.
  */
 import { getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
 import { placementIndex } from "./placeEveryPart";
 import { supportsOf } from "./supportGraph";
+import { BUY_JOINTS } from "./stepJointScrews";
 import type { AssemblyStep, Panel, Vec3, YardInstance, YardProject } from "./types";
 
 const GAP = 1 / 16;
@@ -221,10 +224,9 @@ export function supportEdges(project: YardProject): Map<string, Set<string>> {
     for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i],
         b = boxes[j];
+      // A floor pad adds no edge, so it never starts a move.
       const bear = (upper: Aabb, lower: Aabb) =>
-        isPad(lower)
-          ? addEdge(edges, lower.name, upper.name)
-          : addEdge(edges, upper.name, lower.name);
+        isPad(lower) ? undefined : addEdge(edges, upper.name, lower.name);
       if (stack(a, b)) {
         bear(a, b);
         continue;
@@ -432,6 +434,35 @@ function screwsDriven(description: string): number {
   return n;
 }
 
+/**
+ * Refuse a swap when any step's own "Drive N" stops matching the joints drivable at that step.
+ * A count that was already false stays out of this check. No joint table means nothing to refuse.
+ */
+function stepCountBroken(project: YardProject, before: AssemblyStep[], after: AssemblyStep[]): boolean {
+  const js = BUY_JOINTS.get(project);
+  if (!js) return false;
+  const per = (steps: AssemblyStep[]) => {
+    const at = placementIndex(project, steps);
+    const m = new Map<AssemblyStep, number>();
+    for (const j of js) {
+      if (!(j.screws > 0)) continue;
+      const a = at.get(j.a);
+      const b = at.get(j.b);
+      if (a == null || b == null) continue;
+      const st = steps[Math.max(a, b)];
+      m.set(st, (m.get(st) ?? 0) + j.screws);
+    }
+    return m;
+  };
+  const pb = per(before);
+  const pa = per(after);
+  for (const st of before) {
+    const said = screwsDriven(st.description ?? "");
+    if (said === (pb.get(st) ?? 0) && said !== (pa.get(st) ?? 0)) return true;
+  }
+  return false;
+}
+
 /** A "brings the build to N" sentence is false when fewer than N screws have been driven by that step. */
 function falseScrewTotal(steps: AssemblyStep[]): boolean {
   let run = 0;
@@ -541,6 +572,7 @@ export function orderStepsBySupport(project: YardProject, steps: AssemblyStep[])
           !subset ||
           !noNewSupport ||
           falseScrewTotal(candidate) ||
+          stepCountBroken(project, cur, candidate) ||
           nextClaimBroken(cur, candidate) ||
           movedAheadOfInterior(project, cur, candidate) ||
           shiftedStepNamesLater(project, cur, candidate);

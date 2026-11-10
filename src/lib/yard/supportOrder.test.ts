@@ -1,6 +1,7 @@
 /**
  * Step order against this file's own part boxes and its own step words.
- * It does not import the engine support graph, the plural helper, or step-text hashes.
+ * The per-step screw check reads the joint table and the placement index.
+ * It does not import the plural helper or step-text hashes.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -9,8 +10,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getCatalogItem } from "./catalog.ts";
 import { toPrimitive } from "./geometry.ts";
+import { placementIndex } from "./placeEveryPart.ts";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
+import { BUY_JOINTS } from "./stepJointScrews.ts";
 import { orderStepsBySupport, unresolvedFaults } from "./supportOrder.ts";
 import { SUPPORT_ORDER_NAMED, supportPromptSet } from "../../../scripts/support-order-prompts.ts";
 import type { AssemblyStep, Panel, Vec3, YardInstance, YardProject } from "./types.ts";
@@ -253,6 +256,21 @@ function falseRunningTotal(steps: AssemblyStep[]): string | null {
   return null;
 }
 
+/** Joints that can be driven at each step: the later of the two parts owns the screws. */
+function jointsDrivable(project: YardProject, steps: AssemblyStep[]): number[] {
+  const js = BUY_JOINTS.get(project) ?? [];
+  const at = placementIndex(project, steps);
+  const n = steps.map(() => 0);
+  for (const j of js) {
+    if (!(j.screws > 0)) continue;
+    const a = at.get(j.a);
+    const b = at.get(j.b);
+    if (a == null || b == null) continue;
+    n[Math.max(a, b)] += j.screws;
+  }
+  return n;
+}
+
 function planOf(prompt: string, materialId?: string) {
   const project = generateFromPrompt(prompt, materialId);
   return { project, steps: buildPlan(project).instructions };
@@ -442,6 +460,27 @@ describe("the shipped order keeps the supports the boxes require", () => {
     assert.ok(dividers >= 0 && dividers < doors);
   });
 
+  it("a 2-wide wall shelf screws the cleat before the shelf sits on it", () => {
+    const { steps } = planOf("wall shelf 2 wide");
+    const cleat = steps.findIndex((s) => /Screw each wall cleat into studs/.test(s.title));
+    const shelf = steps.findIndex((s) => /Sit each shelf on its cleat/.test(s.title));
+    assert.ok(cleat >= 0 && shelf > cleat, steps.map((s) => s.title).join(" | "));
+  });
+
+  it("the dowel router table on 2x10 and 2x12 keeps every Drive N equal to the joints drivable at that step", () => {
+    for (const materialId of ["lumber-2x10-10", "lumber-2x12-10"]) {
+      const { project, steps } = planOf("router table from 3/4 inch dowel", materialId);
+      const want = jointsDrivable(project, steps);
+      steps.forEach((step, i) => {
+        assert.equal(
+          screwsDriven(step.description ?? ""),
+          want[i],
+          `${materialId} ${i + 1}. ${step.title}`,
+        );
+      });
+    }
+  });
+
   it("moving the miter shelf past its rails makes the running total lie", () => {
     const { steps } = planOf("miter saw station from 3/4 inch dowel");
     const shelf = steps.findIndex((s) => /Bottom shelf/.test(s.title));
@@ -599,8 +638,15 @@ describe("the swept mover and unresolved lists", () => {
     }
     assert.equal(keys.has("miter saw station from 3/4 inch dowel"), false);
     assert.equal(keys.has("wall shelf for jars 24 wide from 2x2"), false);
-    assert.equal(movers.length, 630);
-    assert.equal(unresolved.length, 7990);
+    assert.equal(keys.has("router table from 3/4 inch dowel||lumber-2x10-10"), false);
+    assert.equal(keys.has("router table from 3/4 inch dowel||lumber-2x12-10"), false);
+    for (const prompt of ["router table from 3/4 inch dowel||lumber-2x10-10", "router table from 3/4 inch dowel||lumber-2x12-10"]) {
+      const line = unresolved.find((l) => key(l) === prompt);
+      assert.match(line ?? "", /Table top still before Front apron/);
+      assert.match(line ?? "", /Fence still before Table top/);
+    }
+    assert.equal(movers.length, 628);
+    assert.equal(unresolved.length, 7398);
   });
 });
 
@@ -612,7 +658,7 @@ describe("the prompt set is the committed file", () => {
   });
 });
 
-it("the order module does not call the engine support, placement, or plural helpers, and does not restore the cutoff or the hang skip", () => {
+it("the order module uses the engine support and placement helpers, does not call the plural helpers, and does not restore the cutoff or the hang skip", () => {
   const src = readFileSync(join(here, "supportOrder.ts"), "utf8");
   assert.doesNotMatch(src, /shopPlural|familyWord|countPlural/);
   assert.match(src, /supportsOf/);
