@@ -207,12 +207,15 @@ function kissEdges(project: YardProject): Map<string, Set<string>> {
 export function supportEdges(project: YardProject): Map<string, Set<string>> {
   const boxes = partBoxes(project).filter((b) => !b.turns);
   const edges = new Map<string, Set<string>>();
-  // A real bearing overlaps in the plan. An edge kiss (a drawer front under a counter, a riser on a tread's back edge) is left alone.
+  // A real bearing overlaps in the plan. A skinny strip (a 3/4" wall cleat) is fastened to the
+  // shelf, not a bearer the shelf waits for. An edge kiss is left alone.
+  const bearer = (b: Aabb) => b.max[0] - b.min[0] >= 1.25 && b.max[2] - b.min[2] >= 1.25;
   const stack = (upper: Aabb, lower: Aabb) => {
     const y = upper.min[1] - lower.max[1];
     return (
       y <= STACK &&
       y >= -STACK &&
+      bearer(lower) &&
       overlap(upper, lower, 0) >= BEAR &&
       overlap(upper, lower, 2) >= BEAR
     );
@@ -424,7 +427,13 @@ export function orderStepsBySupport(project: YardProject, steps: AssemblyStep[])
     for (const fault of faults) {
       const late = fault.kind === "geom" ? at.get(fault.on) : at.get(fault.part);
       // Only swap with the very next step, and only when that step is the one this step is waiting on.
+      // A hang step that itself places parts must stay: moving it also moves those parts.
       if (late !== fault.at + 1) continue;
+      if (
+        fault.kind === "hang" &&
+        (cur[fault.at].partsUsed ?? []).some((n) => n !== "*" && n !== "all")
+      )
+        continue;
       for (const candidate of [moved(cur, fault.at, late)]) {
         if (!candidate) continue;
         const after = keys(project, candidate);
