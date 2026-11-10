@@ -12,11 +12,12 @@ export function pieceTalk(count: number, full = false): string {
 }
 
 /**
- * The one plural for a generated count. shelf → shelves, body → bodies, chassis → chassises.
- * A trailing s is not enough: "chassis" is still one chassis.
+ * The one plural for a generated count. shelf → shelves, body → bodies.
+ * chassis is invariant: one chassis, 150 chassis. Not chassises, not chassiss.
  */
 export function countPlural(word: string, n = 2): string {
   if (n === 1) return word;
+  if (/chassis$/i.test(word)) return word;
   if (/(?:shelf|half|leaf|loaf)$/i.test(word)) return word.replace(/f$/i, "ves");
   if (/(?:knife|life|wife)$/i.test(word)) return word.replace(/fe$/i, "ves");
   if (/(?:s|sh|ch|x)$/i.test(word)) return `${word}es`;

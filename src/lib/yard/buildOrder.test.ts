@@ -103,9 +103,14 @@ export function badPlurals(text: string, names: string[]): string[] {
   }
   const faults: string[] = [];
   for (const stem of stems) {
-    const naive = `${stem}s`;
-    if (countPlural(stem, 2).toLowerCase() === naive) continue;
-    if (new RegExp(`\\b${naive}\\b`, "i").test(text)) faults.push(naive);
+    const right = countPlural(stem, 2).toLowerCase();
+    const wrong = new Set<string>();
+    if (`${stem}s` !== right) wrong.add(`${stem}s`);
+    // chassis + es is "chassises". A word that already ends in s does not grow an extra -es.
+    if (stem.endsWith("s") && `${stem}es` !== right) wrong.add(`${stem}es`);
+    for (const bad of wrong) {
+      if (new RegExp(`\\b${bad}\\b`, "i").test(text)) faults.push(bad);
+    }
   }
   return faults;
 }
@@ -166,7 +171,8 @@ describe("the check reads the step text, not the build graph", () => {
     assert.ok(badPlurals("Set the 10 shelfs on the uprights.", ["shelf"]).includes("shelfs"));
     assert.ok(badPlurals("Set the 4 bodys flat.", ["body"]).includes("bodys"));
     assert.ok(badPlurals("on the 150 chassiss.", ["chassis"]).includes("chassiss"));
-    assert.deepEqual(badPlurals("Set the 10 shelves on the 78 bodies and the 150 chassises.", ["shelf", "body", "chassis"]), []);
+    assert.ok(badPlurals("on the 150 chassises.", ["chassis"]).includes("chassises"));
+    assert.deepEqual(badPlurals("Set the 10 shelves on the 78 bodies and the 150 chassis.", ["shelf", "body", "chassis"]), []);
   });
 });
 
