@@ -8,6 +8,8 @@
  */
 import { getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
+import { placementIndex } from "./placeEveryPart";
+import { supportsOf } from "./supportGraph";
 import type { AssemblyStep, Panel, Vec3, YardInstance, YardProject } from "./types";
 
 const GAP = 1 / 16;
@@ -18,12 +20,9 @@ const FROZEN =
 const TEST = /\bopen\/close\b|\btest\b/i;
 const HANG_ALL = /^hang it\b/i;
 const STOP = new Set([
-  "top",
-  "back",
   "side",
   "edge",
   "face",
-  "floor",
   "wall",
   "base",
   "part",
@@ -32,7 +31,6 @@ const STOP = new Set([
   "post",
   "leg",
   "lid",
-  "seat",
   "box",
   "step",
   "end",
@@ -159,9 +157,12 @@ function partBoxes(project: YardProject): Aabb[] {
 
 // A leg, a base, a body, a wheel, or an axle: contact does not say which one is stood first.
 const AMBIGUOUS = /\b(?:legs?|bases?|bod(?:y|ies)|wheels?|axles?)\b/i;
+// A door, a drawer front, a lid, or a false front is not a support. Nothing waits on it.
+const FACE = /\b(?:doors?|drawer fronts?|false fronts?|lids?)\b/i;
 
 function addEdge(edges: Map<string, Set<string>>, part: string, on: string) {
   if (!part || !on || part === on || AMBIGUOUS.test(part) || AMBIGUOUS.test(on)) return;
+  if (FACE.test(on)) return;
   if (!edges.has(part)) edges.set(part, new Set());
   edges.get(part)!.add(on);
 }
@@ -421,6 +422,93 @@ function motivating(project: YardProject, steps: AssemblyStep[]): Fault[] {
   );
 }
 
+/** Screws a step says it drives, from its own words. A running total is checked against this sum. */
+function screwsDriven(description: string): number {
+  if (/counted in another step/.test(description)) return 0;
+  const stated = description.match(/(?:Drive|drives) (\d+) × #8 /);
+  if (stated) return Number(stated[1]);
+  let n = 0;
+  for (const m of description.matchAll(/with (\d+) × #8 /g)) n += Number(m[1]);
+  return n;
+}
+
+/** A "brings the build to N" sentence is false when fewer than N screws have been driven by that step. */
+function falseScrewTotal(steps: AssemblyStep[]): boolean {
+  let run = 0;
+  for (const step of steps) {
+    const description = step.description ?? "";
+    run += screwsDriven(description);
+    const said = description.match(/brings the build to (\d+)/);
+    if (said && Number(said[1]) !== run) return true;
+  }
+  return false;
+}
+
+/**
+ * "the base the next parts fasten to", or any other "next", names the following step.
+ * Moving that boundary makes the sentence false.
+ */
+function nextClaimBroken(before: AssemblyStep[], after: AssemblyStep[]): boolean {
+  for (let i = 0; i < before.length; i++) {
+    if (!/\bnext\b/i.test(before[i].description ?? "")) continue;
+    const j = after.indexOf(before[i]);
+    if (j >= 0 && before[i + 1] !== after[j + 1]) return true;
+  }
+  return false;
+}
+
+function isFaceStep(step: AssemblyStep): boolean {
+  if (/^hang\b/i.test(step.title) || /\bopen\/close\b/i.test(step.title) || /\btest\b/i.test(step.title))
+    return true;
+  if (FACE.test(step.title)) return true;
+  return (step.partsUsed ?? []).some((n) => FACE.test(n));
+}
+
+/** A door, drawer front, lid, false front, hang, or open/close step moved ahead of an interior part. */
+function movedAheadOfInterior(project: YardProject, before: AssemblyStep[], after: AssemblyStep[]): boolean {
+  const known = new Set(partBoxes(project).map((b) => b.name));
+  const interior = [...known].filter((n) => !FACE.test(n));
+  const was = placement(before, known);
+  const now = placement(after, known);
+  for (const step of before) {
+    if (!isFaceStep(step)) continue;
+    const from = before.indexOf(step);
+    const to = after.indexOf(step);
+    if (to < 0 || to >= from) continue;
+    for (const name of interior) {
+      const early = was.get(name);
+      const late = now.get(name);
+      if (early != null && early < from && late != null && late >= to) return true;
+    }
+  }
+  return false;
+}
+
+/** A step that moved must not name a part a later step places. */
+function shiftedStepNamesLater(project: YardProject, before: AssemblyStep[], after: AssemblyStep[]): boolean {
+  for (const fault of orderFaults(project, after)) {
+    if (fault.kind !== "names") continue;
+    const step = after[fault.at];
+    if (before.indexOf(step) !== fault.at) return true;
+  }
+  return false;
+}
+
+/** supportsOf pairs where the support is placed later. A new pair refuses the move. */
+function supportForward(project: YardProject, steps: AssemblyStep[]): Set<string> {
+  const at = placementIndex(project, steps);
+  const out = new Set<string>();
+  for (const [id, info] of supportsOf(project)) {
+    const i = at.get(id);
+    if (i == null) continue;
+    for (const on of info.on) {
+      const j = at.get(on);
+      if (j != null && j > i) out.add(`${id}>${on}`);
+    }
+  }
+  return out;
+}
+
 /**
  * Permute steps in place-order. Returns the same array when nothing moves, so a plan
  * that was already buildable is byte-identical.
@@ -433,6 +521,7 @@ export function orderStepsBySupport(project: YardProject, steps: AssemblyStep[])
     const faults = motivating(project, cur);
     if (!faults.length) break;
     const before = keys(project, cur);
+    const forward = supportForward(project, cur);
     let next: AssemblyStep[] | null = null;
     const known = new Set(partBoxes(project).map((b) => b.name));
     const at = placement(cur, known);
@@ -445,7 +534,17 @@ export function orderStepsBySupport(project: YardProject, steps: AssemblyStep[])
         const after = keys(project, candidate);
         let subset = after.size < before.size;
         for (const k of after) if (!before.has(k)) subset = false;
-        if (subset && motivating(project, candidate).length < faults.length) {
+        const laterSupport = supportForward(project, candidate);
+        let noNewSupport = true;
+        for (const k of laterSupport) if (!forward.has(k)) noNewSupport = false;
+        const worse =
+          !subset ||
+          !noNewSupport ||
+          falseScrewTotal(candidate) ||
+          nextClaimBroken(cur, candidate) ||
+          movedAheadOfInterior(project, cur, candidate) ||
+          shiftedStepNamesLater(project, cur, candidate);
+        if (!worse && motivating(project, candidate).length < faults.length) {
           next = candidate;
           break;
         }

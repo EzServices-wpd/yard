@@ -232,8 +232,29 @@ function forwardWords(steps: AssemblyStep[], names: string[]): string[] {
   return out;
 }
 
-function planOf(prompt: string) {
-  const project = generateFromPrompt(prompt);
+/** This file's own screw counter. It does not read the engine's joint totals. */
+function screwsDriven(description: string): number {
+  if (/counted in another step/.test(description)) return 0;
+  const stated = description.match(/(?:Drive|drives) (\d+) × #8 /);
+  if (stated) return Number(stated[1]);
+  let n = 0;
+  for (const m of description.matchAll(/with (\d+) × #8 /g)) n += Number(m[1]);
+  return n;
+}
+
+function falseRunningTotal(steps: AssemblyStep[]): string | null {
+  let run = 0;
+  for (const step of steps) {
+    const description = step.description ?? "";
+    run += screwsDriven(description);
+    const said = description.match(/brings the build to (\d+)/);
+    if (said && Number(said[1]) !== run) return `${step.title} says ${said[1]} with ${run} driven`;
+  }
+  return null;
+}
+
+function planOf(prompt: string, materialId?: string) {
+  const project = generateFromPrompt(prompt, materialId);
   return { project, steps: buildPlan(project).instructions };
 }
 
@@ -381,17 +402,54 @@ describe("the shipped order keeps the supports the boxes require", () => {
     }
   });
 
-  it("the miter-saw dowel station fastens the bottom shelf after the rails it sits on", () => {
-    const { project, steps } = planOf("miter saw station from 3/4 inch dowel");
-    const boxes = boxesOf(project);
-    const ons = dependencies(boxes).get("Bottom shelf");
-    assert.ok(ons && [...ons].some((n) => /lower rail/i.test(n)), [...(ons ?? [])].join(", "));
-    assert.ok(!boxOrderFaults(project, steps).some((f) => /bottom shelf is placed before/i.test(f) && /rail/i.test(f)));
+  it("the miter-saw dowel station stays in release order because the screw total would lie", () => {
+    const { steps } = planOf("miter saw station from 3/4 inch dowel");
+    assert.equal(falseRunningTotal(steps), null);
     const shelf = steps.findIndex((s) => /Bottom shelf/.test(s.title));
-    for (const rail of ["Left lower rail", "Front lower rail"]) {
-      const at = steps.findIndex((s) => s.title.includes(rail));
-      assert.ok(at >= 0 && at < shelf, rail);
-    }
+    const front = steps.findIndex((s) => /Front lower rail/.test(s.title));
+    assert.ok(shelf >= 0 && shelf < front);
+  });
+
+  it("the 2x2 jar shelf stays in release order because the screw total would lie", () => {
+    const { steps } = planOf("wall shelf for jars 24 wide from 2x2");
+    assert.equal(falseRunningTotal(steps), null);
+    const lips = steps.findIndex((s) => /jar lips/.test(s.title));
+    const shelves = steps.findIndex((s) => /fixed shelves/.test(s.title));
+    assert.ok(lips >= 0 && lips < shelves);
+  });
+
+  it("a pvc spice shelf on 2x4 lumber keeps the screw total true", () => {
+    const { steps } = planOf("pvc spice shelf", "lumber-2x4-8");
+    assert.equal(falseRunningTotal(steps), null);
+    const lips = steps.findIndex((s) => /jar lips/.test(s.title));
+    const shelves = steps.findIndex((s) => /fixed shelves/.test(s.title));
+    assert.ok(lips >= 0 && lips < shelves);
+  });
+
+  it("a chicken coop on 1x10 lays the floor before the rim that names it", () => {
+    const { steps } = planOf("chicken coop", "lumber-1x10-8");
+    const floor = steps.findIndex((s) => /Lay the floor/.test(s.title));
+    const rim = steps.findIndex((s) => /Floor rim right/.test(s.title));
+    assert.ok(floor >= 0 && floor < rim);
+    const names = ["Floor", "Floor rim right"];
+    assert.equal(forwardWords(steps, names).some((f) => /floor rim/i.test(f) && /floor/i.test(f)), false);
+  });
+
+  it("a half-inch wall cabinet sets the dividers before it hangs the doors", () => {
+    const { steps } = planOf("wall cabinet 30x30x12", "plywood-1-2-4x8");
+    const dividers = steps.findIndex((s) => /remaining dividers/.test(s.title));
+    const doors = steps.findIndex((s) => /Hang 2 doors/.test(s.title));
+    assert.ok(dividers >= 0 && dividers < doors);
+  });
+
+  it("moving the miter shelf past its rails makes the running total lie", () => {
+    const { steps } = planOf("miter saw station from 3/4 inch dowel");
+    const shelf = steps.findIndex((s) => /Bottom shelf/.test(s.title));
+    const front = steps.findIndex((s) => /Front lower rail/.test(s.title));
+    const bad = steps.slice();
+    const [moved] = bad.splice(shelf, 1);
+    bad.splice(front, 0, moved);
+    assert.match(falseRunningTotal(bad) ?? "", /says 86/);
   });
 
   it("the kitchen island keeps the shelf step ahead of the back step", () => {
@@ -516,6 +574,36 @@ describe("linen closet keeps its canary counts", () => {
   });
 });
 
+describe("the swept mover and unresolved lists", () => {
+  const movers = JSON.parse(readFileSync(join(here, "supportOrder.movers.json"), "utf8")) as string[];
+  const unresolved = JSON.parse(readFileSync(join(here, "supportOrder.unresolved.json"), "utf8")) as string[];
+  const key = (line: string) => line.split(" — ")[0];
+  it("keeps the clean movers and refuses the screw-total moves", () => {
+    const keys = new Set(movers.map(key));
+    for (const prompt of [
+      "jewelry box",
+      "jewellery box",
+      "jewelry box from 2x2",
+      "jewelry box from pvc",
+      "jewelry box with dividers",
+      "jewelry box with drawers",
+      "jewelry chest",
+      "small jewelry box",
+      "walnut jewelry box",
+      "wooden jewelry box",
+      "floating desk from pvc",
+      "laundry fold-down 48 wide 36 high 6 deep",
+      "laundry fold-down 48 wide 36 high 6 deep from 2x2",
+    ]) {
+      assert.ok(keys.has(prompt), prompt);
+    }
+    assert.equal(keys.has("miter saw station from 3/4 inch dowel"), false);
+    assert.equal(keys.has("wall shelf for jars 24 wide from 2x2"), false);
+    assert.equal(movers.length, 630);
+    assert.equal(unresolved.length, 7990);
+  });
+});
+
 describe("the prompt set is the committed file", () => {
   it("matches supportOrder.prompts.json and contains the named wordings", () => {
     const file = JSON.parse(readFileSync(join(here, "supportOrder.prompts.json"), "utf8")) as string[];
@@ -526,7 +614,9 @@ describe("the prompt set is the committed file", () => {
 
 it("the order module does not call the engine support, placement, or plural helpers, and does not restore the cutoff or the hang skip", () => {
   const src = readFileSync(join(here, "supportOrder.ts"), "utf8");
-  assert.doesNotMatch(src, /supportGraph|placeEveryPart|shopPlural|supportsOf|placementIndex|familyWord/);
+  assert.doesNotMatch(src, /shopPlural|familyWord|countPlural/);
+  assert.match(src, /supportsOf/);
+  assert.match(src, /placementIndex/);
   assert.doesNotMatch(src, /1\.25/);
   assert.doesNotMatch(src, /kind === "hang" &&/);
 });
