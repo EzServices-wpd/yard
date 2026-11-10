@@ -272,7 +272,7 @@ function backThenShelves(project: YardProject, instructions: BuildPlan["instruct
   if (m) {
     const total = Number(m[1]);
     back.description = back.description
-      .replace(/(?:,\s*|\s+and\s+)(?:all \d+ |both )?[A-Z]{1,2} Shel(?:f|ves)\b/, "")
+      .replace(/(?:,\s*|\s+and\s+)(?:all \d+ |both )?[A-Z]{1,2}(?: [A-Za-z]+){0,3} shel(?:f|ves)\b/i, "")
       .replace(/ and ([^,]+) with /, (all, x: string) => all) // keep the list grammar
       .replace(`with ${total} × ${m[2]}`, `with ${total - n} × ${m[2]}`);
     // A list that lost its last item keeps its "and".
