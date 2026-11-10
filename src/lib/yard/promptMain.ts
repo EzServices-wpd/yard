@@ -62,6 +62,7 @@ import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
 import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
+import { restSeatedFrame } from "./frameFloor";
 import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
@@ -792,6 +793,8 @@ function primaryFromParts(p: YardProject): YardProject {
  * reaching down (a model plane on its wings, a coaster) is lowered until that part sits on the floor.
  */
 function settleOnFloor(project: YardProject): YardProject {
+  // A seated pipe frame, wall-hung or not, rests on the outside of its lowest pipe.
+  if (isSeatedPipeFrame(project)) return restSeatedFrame(project);
   if (project.assumptions?.installMode && project.assumptions.installMode !== "freestanding") return project;
   if (project.windowPkg || project.pocket) return project;
   const boxes = projectBoxes(project);
