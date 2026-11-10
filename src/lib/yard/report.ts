@@ -25,7 +25,8 @@ import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
-import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX, UNLISTED_SLIP } from "./joints";
+import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -1743,10 +1744,7 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const out = stepTextForPlace(project, withTypedFinish(project, buyComplete(project, smallestSheetStock({ ...plan, bom: dedupeBuy(bom) }))));
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
-  const priced = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
-  // A fitting with no catalog price is not in that number. The total says so.
-  const unpricedFit = out.bom.some((b) => !!b.catalogId && UNLISTED_SLIP.test(b.catalogId) && !(b.estimatedCost != null && b.estimatedCost > 0));
-  const summary = unpricedFit && !/plus unpriced items/i.test(priced) ? `${priced} · plus unpriced items` : priced;
+  const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
   // C3: whole purchased pieces have no cut list to restate as a cut step.
   const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
   return isUnitItem(project) ? fin : cutStepFromList(fin);
@@ -1874,8 +1872,23 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
   return dup;
 }
 
+/**
+ * An outline of pipe is not a box lying on the floor. The placement sentence that says so
+ * is rewritten; the step titles stay Lay the bottom and Run the rails.
+ */
+function outlineFrameTalk(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!isSeatedPipeFrame(project)) return plan;
+  const instructions = plan.instructions.map((step) => ({
+    ...step,
+    description: step.description
+      .replace(/\blies flat on the floor\b/g, "runs along the bottom of the frame")
+      .replace(/\blie flat on the floor\b/g, "run along the bottom of the frame"),
+  }));
+  return { ...plan, instructions };
+}
+
 function buildPlanInner(project: YardProject): BuildPlan {
-  const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
+  const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, outlineFrameTalk(project, withPlacementTalk(project, buildPlanCore(project))))))))));
   const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, withAntiTipKit(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(spliceStep(plan));
@@ -2230,9 +2243,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
-  const rackPrompt = /\bracks?\b/i.test(project.prompt ?? "") && !/rail|peg|hook/i.test(project.prompt ?? "");
-  // The wall-arm cantilever keeps the release Buy. Only a seated pipe frame names each joint.
-  const seatedRack = !!(item && rackPrompt && binderKind(item) === "slip" && (project.notes ?? []).some((n) => /Each face is the outline/.test(n)));
+  // Only a seated pipe frame names each joint. Every other slip build keeps the release Buy.
+  const seatedRack = isSeatedPipeFrame(project);
   const slipCouplings = seatedRack ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
   const glue = item ? rackSlipLines(project, item, seatedRack, slipCouplings) : [];
   const spring = project.shape?.params?.rubberBands

@@ -5,6 +5,9 @@
  * A frame that still clashes, gaps, or falls into two pieces is not shipped.
  */
 import { createId } from "@/lib/utils";
+import { getCatalogItem } from "./catalog";
+import { binderKind, clusterJointNodes, highWay } from "./joints";
+import { LISTINGS } from "./listings";
 import type { CatalogItem, Vec3, YardInstance } from "./types";
 
 type Axis = "x" | "y" | "z";
@@ -496,4 +499,100 @@ export function seatPipeRack(instances: YardInstance[], item: CatalogItem): Seat
   const why = faults(spans, od);
   if (why) return { ok: false, why: `${why} (${componentsOf(spans)} pieces)` };
   return { ok: true, instances: toInstances(spans, stock) };
+}
+
+/** Rigid 3/4" Schedule 40 PVC pipe whose catalog join is solvent slip. Straw, paper tube, and dowel are not. */
+export function rigidSlipPipe(item: CatalogItem): boolean {
+  if (item.formFactor !== "pipe" || item.category !== "pvc_plumbing") return false;
+  if (!(item.preferredJoins ?? []).includes("solvent")) return false;
+  if (Math.abs((item.dims.diameter ?? 0) - 1.05) > 0.02) return false;
+  if (!/schedule\s*40/i.test(item.name)) return false;
+  return binderKind(item) === "slip";
+}
+
+const WAY_CATALOG: Record<string, string> = {
+  cross: "pvc-cross",
+  tee4: "pvc-4-way-tee",
+  cross5: "pvc-5-way-cross",
+  cross6: "pvc-6-way-cross",
+};
+
+export function slipWayListed(id: string): boolean {
+  return LISTINGS.some((row) => row.catalogId === id && !!row.href && row.packPrice > 0);
+}
+
+/** A seated frame that would buy a fitting with no checked listing, or a joint no catalog fitting makes. */
+export function unlistedFrameFitting(instances: YardInstance[], item: CatalogItem): string | null {
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const nodes = clusterJointNodes(instances.map((inst) => ({ from: inst.from, to: inst.to, radius })));
+  for (const node of nodes) {
+    if (node.dirs.length < 4) continue;
+    const kind = highWay(node.dirs);
+    if (kind === "miss") return "uncatalogued joint";
+    if (!slipWayListed(WAY_CATALOG[kind])) return kind;
+  }
+  const caps = nodes.filter((node) => node.dirs.length <= 1 && node.p.y >= 0.45).length;
+  if (caps > 0 && !slipWayListed("pvc-cap")) return "cap";
+  return null;
+}
+
+/** Centre-line box of the seated pipes. */
+export function frameSpan(instances: YardInstance[]): { width: number; depth: number; height: number } | null {
+  let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let n = 0;
+  for (const inst of instances) {
+    if (!inst.from || !inst.to) continue;
+    for (const p of [inst.from, inst.to]) {
+      n += 1;
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+    }
+  }
+  if (!n) return null;
+  return { width: maxX - minX, depth: maxZ - minZ, height: maxY - Math.min(0, minY) };
+}
+
+/** The frame shrank far below the size it was drawn at. */
+export function frameCollapsed(
+  intended: { width: number; depth: number; height: number },
+  built: { width: number; depth: number; height: number },
+): boolean {
+  for (const axis of ["width", "depth", "height"] as const) {
+    const drop = intended[axis] - built[axis];
+    if (drop > 2 && built[axis] < intended[axis] * 0.75) return true;
+  }
+  return false;
+}
+
+/**
+ * A shelf drawn deep enough for a front pipe and a back pipe came out as one plane.
+ * One pipe cannot hold a jar.
+ */
+export function onePlaneShelf(intendedDepth: number, builtDepth: number, hadShelf: boolean): boolean {
+  return hadShelf && intendedDepth >= 2.75 && builtDepth < 2.75 - 0.01;
+}
+
+/** Floor pipes keep the bottom step. Every other pipe is a rail, so the steps do not say the frame is a box. */
+export function outlineRoles(instances: YardInstance[]): YardInstance[] {
+  let minY = Infinity;
+  for (const inst of instances) {
+    if (!inst.from || !inst.to) continue;
+    minY = Math.min(minY, inst.from.y, inst.to.y);
+  }
+  return instances.map((inst) => {
+    const fy = inst.from?.y ?? 0;
+    const ty = inst.to?.y ?? 0;
+    const horizontal = Math.abs(fy - ty) < 0.2;
+    const onFloor = horizontal && Math.abs(Math.min(fy, ty) - minY) < 0.75;
+    return { ...inst, role: onFloor ? "bottom" : "rail" };
+  });
+}
+
+/** A seated outline: rigid slip pipe, no panels, and only bottom and rail roles. */
+export function isSeatedPipeFrame(project: { panels: readonly unknown[]; instances: readonly { role?: string; from?: Vec3; to?: Vec3 }[]; primaryMaterialId?: string }): boolean {
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item || !rigidSlipPipe(item)) return false;
+  if (project.panels.length || project.instances.length < 2) return false;
+  return project.instances.every((inst) => (inst.role === "bottom" || inst.role === "rail") && inst.from && inst.to);
 }

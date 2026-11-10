@@ -239,12 +239,10 @@ const BUILT = [
   "pvc bike rack",
   "pvc towel rack",
   "pvc wine rack",
-  "pvc spice rack",
   "drying rack",
   "magazine rack",
   "dish rack",
   "plate rack",
-  "shoe rack by the door",
   "3 tier shoe rack",
   "kayak rack",
 ];
@@ -261,21 +259,26 @@ test("a seated PVC rack is one square frame and Buy matches the geometry", () =>
     assert.equal(frame.gaps, 0, `${prompt} gaps ${frame.gaps}`);
     assert.ok(frame.tilt <= 1, `${prompt} tilt ${frame.tilt}`);
     assert.equal(frame.geo.other ?? 0, 0, `${prompt} uncatalogued ${frame.geo.other}`);
+    const centres = clusterNodes(frame.members);
+    let pitch = Infinity;
+    for (let i = 0; i < centres.length; i++) {
+      for (let j = i + 1; j < centres.length; j++) {
+        const d = hypot(centres[i].p, centres[j].p);
+        if (d > NODE) pitch = Math.min(pitch, d);
+      }
+    }
+    assert.ok(pitch >= 2.75 - 1e-6, `${prompt} fitting pitch ${pitch.toFixed(3)}`);
     for (const key of BOUGHT) {
       assert.equal(frame.buy[key] ?? 0, frame.geo[key] ?? 0, `${prompt} ${key} buy ${frame.buy[key] ?? 0} geometry ${frame.geo[key] ?? 0}`);
     }
     const tee = frame.plan.bom.find((b) => /PVC tee$/.test(b.name));
     if (tee) assert.ok((tee.offers ?? []).some((o) => o.href), `${prompt} plain tee lost its listing`);
-    let unpriced = false;
     for (const id of ["pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross", "pvc-cap"]) {
       const line = frame.plan.bom.find((b) => b.catalogId === id);
       if (!line) continue;
-      unpriced = true;
       assert.ok((line.offers ?? []).some((o) => o.href), `${prompt} ${id} has no store link`);
-      assert.ok(!(line.offers ?? []).some((o) => o.best), `${prompt} ${id} is marked as a checked listing`);
-      assert.ok(line.estimatedCost == null || line.estimatedCost === 0, `${prompt} ${id} priced ${line.estimatedCost}`);
+      assert.ok((line.estimatedCost ?? 0) > 0, `${prompt} ${id} unpriced`);
     }
-    if (unpriced) assert.match(frame.plan.feasibility.summary, /plus unpriced items/);
   }
 });
 
@@ -286,9 +289,45 @@ test("a side-outlet is not a cross: the shoe rack buys 4-way tees the geometry c
   assert.equal(frame.buy.cross ?? 0, frame.geo.cross ?? 0);
 });
 
-test("a rack that cannot be one square pipe frame stays on its lumber and says so", () => {
-  const frame = frameOf("coat rack", "pvc-3-4-sch40");
+test("a coupling 2 inches from a corner fails the fitting pitch", () => {
+  const frame = frameOf("pvc shoe rack");
+  const nodes = clusterNodes(frame.members);
+  const corner = nodes.find((node) => kindOf(node) === "corner");
+  assert.ok(corner, "shoe rack has no corner to move a coupling toward");
+  const moved = [
+    ...nodes,
+    { p: { x: corner!.p.x + 2, y: corner!.p.y, z: corner!.p.z }, dirs: [{ x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }] },
+  ];
+  let pitch = Infinity;
+  for (let i = 0; i < moved.length; i++) {
+    for (let j = i + 1; j < moved.length; j++) {
+      const d = hypot(moved[i].p, moved[j].p);
+      if (d > NODE) pitch = Math.min(pitch, d);
+    }
+  }
+  assert.ok(pitch < 2.75, `mutation pitch ${pitch} should fail the 2.75 inch check`);
+});
+
+test("a spice rack in one plane is refused, and the note names the sheet Buy sells", () => {
+  const frame = frameOf("pvc spice rack");
   assert.equal(frame.refused, true);
   assert.notEqual(frame.project.primaryMaterialId, "pvc-3-4-sch40");
-  assert.ok(frame.project.notes?.some((n) => n === `3/4" Schedule 40 PVC Pipe can't build this coat rack, so it stays 3/4" Plywood 4×8 at the same size. Pick a lumber stock to switch it.`));
+  const sheet = frame.plan.bom.find((b) => /plywood/i.test(b.name));
+  assert.ok(sheet, "spice rack Buy has no plywood");
+  const note = frame.project.notes?.find((n) => /can't build this spice rack/.test(n));
+  assert.equal(note, `3/4" Schedule 40 PVC Pipe can't build this spice rack, so it stays ${sheet!.name} at the same size. Pick a lumber stock to switch it.`);
+});
+
+test("a coat rack stays the release open frame", () => {
+  const frame = frameOf("coat rack", "pvc-3-4-sch40");
+  assert.equal(frame.refused, false);
+  assert.equal(frame.project.primaryMaterialId, "pvc-3-4-sch40");
+  assert.ok(frame.project.notes?.some((n) => /Open frame of/.test(n)));
+  assert.equal(frame.plan.bom.some((b) => /4-way tee|5-way|6-way/.test(b.name)), false);
+});
+
+test("a drinking straw rack is not seated as pipe", () => {
+  const frame = frameOf("drinking straw spice rack");
+  assert.equal(frame.project.primaryMaterialId, "straw-plastic");
+  assert.equal(frame.plan.bom.some((b) => /PVC/.test(b.name)), false);
 });

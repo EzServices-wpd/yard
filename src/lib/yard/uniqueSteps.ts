@@ -1,4 +1,5 @@
 import { unitItemSteps } from "./unitItems";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { uniqueSteps as uniqueDefault } from "./steps";
 import { uniqueTableSteps } from "./tableSteps";
 import { jobFurnitureSteps } from "./jobFurniture";
@@ -18,12 +19,39 @@ export function uniqueSteps(project: YardProject): AssemblyStep[] {
     ? jobFurnitureSteps(project)
     : project.fitted?.program === "table" ? uniqueTableSteps(project) : uniqueDefault(project));
   const display = (project.notes ?? []).some((n) => /display model/i.test(n));
-  const steps = raw
+  const framed = isSeatedPipeFrame(project) ? outlineFrameTitles(raw) : raw;
+  const steps = framed
     .filter((s) => !/^Do not cut\b/i.test(s.title))
     .map((s) => display && /^(Sit on it|Load it|Stand on it)$/i.test(s.title)
       ? { ...s, title: "Set it on display", description: "This is a display model. Set it on a shelf where it can be seen and enjoyed." }
       : s);
   return withLaminateStep(project, withDrillStep(project, foldRepeats(project, placeEveryPart(project, withLeafGlueUp(project, withHardwareStep(project, withFrameStack(project, steps)))))));
+}
+
+const CARCASE_TITLE = /^(?:Skin the back|Stand the sides|Stand the dividers|Close the top|Hang the doors|Set the shelves|Set the kick|Set the counter|Build the drawers|Lay the deck|Frame the glass opening|Frame the mirror) —/;
+
+/** A pipe outline uses the two existing frame titles. Carcase verbs are one rail step. */
+function outlineFrameTitles(steps: AssemblyStep[]): AssemblyStep[] {
+  const countOf = (title: string) => Number(title.match(/— (\d+)/)?.[1] ?? 0);
+  let rails = 0;
+  const rest = steps.filter((step) => {
+    if (/^Run the rails —/.test(step.title) || CARCASE_TITLE.test(step.title)) {
+      rails += countOf(step.title);
+      return false;
+    }
+    return true;
+  });
+  if (!rails) return steps;
+  const at = rest.findIndex((step) => /^Check plumb/.test(step.title));
+  const rail: AssemblyStep = {
+    step: 0,
+    title: `Run the rails — ${rails} ${rails === 1 ? "piece" : "pieces"}`,
+    description: steps.find((step) => /^Run the rails —/.test(step.title) || CARCASE_TITLE.test(step.title))?.description ?? "",
+    tips: "Dry-fit the face, then join.",
+    partsUsed: ["rail"],
+  };
+  rest.splice(at < 0 ? rest.length : at, 0, rail);
+  return rest.map((step, i) => ({ ...step, step: i + 1 }));
 }
 
 /**

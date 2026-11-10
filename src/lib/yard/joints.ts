@@ -14,9 +14,6 @@ import { dist } from "./connect";
 /** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
 export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling", "pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross", "pvc-cap"]);
 
-/** A fitting with no checked listing. Buy shows the line and no offer, and does not borrow another fitting's price. */
-export const UNLISTED_SLIP = /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross|cap)$/;
-
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
 export function screwBoxUnit(boxes: number): string {
@@ -82,10 +79,49 @@ export function binderKind(item: CatalogItem, override?: JoinMethod | null): Bin
   return "glue";
 }
 
+function keyOf(p: Vec3) {
+  return `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
+}
+
+/**
+ * Joints for every slip build except a seated pipe frame.
+ * The rounded key is what release Buy counted. A seated frame uses clusterJointNodes.
+ */
+export function jointNodes(
+  members: { from?: Vec3; to?: Vec3; radius: number }[],
+): JointNode[] {
+  const map = new Map<string, JointNode>();
+  for (const m of members) {
+    if (!m.from || !m.to) continue;
+    const ends: [Vec3, Vec3][] = [
+      [m.from, m.to],
+      [m.to, m.from],
+    ];
+    for (const [at, other] of ends) {
+      const k = keyOf(at);
+      let node = map.get(k);
+      if (!node) {
+        node = { p: at, r: m.radius, dirs: [] };
+        map.set(k, node);
+      } else if (m.radius > node.r) node.r = m.radius;
+      const dx = other.x - at.x;
+      const dy = other.y - at.y;
+      const dz = other.z - at.z;
+      const len = Math.hypot(dx, dy, dz) || 1;
+      const dir = { x: dx / len, y: dy / len, z: dz / len };
+      if (!node.dirs.some((d) => d.x * dir.x + d.y * dir.y + d.z * dir.z > 0.97)) {
+        node.dirs.push(dir);
+      }
+    }
+  }
+  return [...map.values()];
+}
+
 /** Ends this close are one fitting. A rounded string key splits a joint that is 0.01" off. */
 const JOINT_CLUSTER = 0.05;
 
-export function jointNodes(
+/** Seated-frame census. Ends within 0.05" are one fitting. */
+export function clusterJointNodes(
   members: { from?: Vec3; to?: Vec3; radius: number }[],
 ): JointNode[] {
   type End = { at: Vec3; dir: Vec3; r: number };
@@ -248,7 +284,7 @@ export function highWay(dirs: Vec3[]): "cross" | "tee4" | "cross5" | "cross6" | 
 /** Joints a catalog fitting cannot make. A rack in pipe is refused rather than sold one of these. */
 export function uncataloguedJoints(members: { from?: Vec3; to?: Vec3; radius: number }[]): number {
   let miss = 0;
-  for (const node of jointNodes(members)) {
+  for (const node of clusterJointNodes(members)) {
     const n = node.dirs.length;
     if (n <= 2) continue;
     if (n === 3) {
@@ -271,7 +307,7 @@ type WayLine = { name: string; quantity: number; estimatedCost?: number; unit?: 
  */
 export function buyCatalogWays<T extends WayLine>(lines: T[], members: { from?: Vec3; to?: Vec3; radius: number }[]): T[] {
   const counts = { cross: 0, tee4: 0, cross5: 0, cross6: 0 };
-  for (const node of jointNodes(members)) {
+  for (const node of clusterJointNodes(members)) {
     if (node.dirs.length < 4) continue;
     const kind = highWay(node.dirs);
     if (kind === "miss") continue;
@@ -627,7 +663,7 @@ export function binderBom(
     push(c.corners, `${size} PVC 3-way corner`, "pvc-side-outlet", `${size} schedule 40 PVC 3-way elbow`, 2.37, "Side-outlet elbow. Three sockets at right angles, one along each axis.");
     push(extraCouplings, `${size} PVC coupling`, "pvc-coupling", `${size} schedule 40 PVC coupling`, 0.68);
     push(c.tees, `${size} PVC tee`, "pvc-tee", `${size} schedule 40 PVC tee`, 1.15);
-    push(c.crosses, `${size} PVC cross`, "pvc-cross", `${size} schedule 40 PVC cross`, 0);
+    push(c.crosses, `${size} PVC cross`, "pvc-tee", `${size} schedule 40 PVC cross`, 2.4);
     push(c.elbows90, `${size} PVC 90° elbow`, "pvc-elbow-90", `${size} schedule 40 PVC 90 elbow`, 0.95);
     push(c.elbows45, `${size} PVC 45° elbow`, "pvc-elbow-45", `${size} schedule 40 PVC 45 elbow`, 0.95);
     return lines;

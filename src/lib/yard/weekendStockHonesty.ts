@@ -39,6 +39,7 @@ import {
 } from "./weekendFamily";
 import { isWholeStock } from "./geometry";
 import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, memberSpan } from "./joints";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock, stripJoinWords, weekendSizedStockPhrases } from "./promptHelpers";
 import { stripHeldPurpose } from "./heldObjects";
 import {
@@ -1295,9 +1296,8 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
     });
     return { ...b, name: stockLabel, ...(offers ? { offers } : {}) };
   });
-  const rack = /\bracks?\b/i.test(project.prompt ?? "") && !/rail|peg|hook/i.test(project.prompt ?? "");
   const radius = (item.dims.diameter ?? 1.05) / 2;
-  const slipRack = rack && binderKind(item) === "slip" && (project.notes ?? []).some((n) => /Each face is the outline/.test(n));
+  const slipRack = isSeatedPipeFrame(project);
   let binders = binderBom(item, project.instances, project.joinMethod, slipRack ? countSlipFittings(project.instances, radius).couplings : 0);
   if (slipRack) {
     const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));

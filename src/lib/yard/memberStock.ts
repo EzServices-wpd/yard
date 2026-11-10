@@ -5,10 +5,11 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
-import { getCatalogItem } from "./catalog";
+import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
+import { nestSheets } from "./bom";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { uncataloguedJoints } from "./joints";
-import { seatPipeRack } from "./pipeRackFrame";
+import { frameCollapsed, frameSpan, onePlaneShelf, outlineRoles, rigidSlipPipe, seatPipeRack, unlistedFrameFitting } from "./pipeRackFrame";
 import { rodArrayFailures } from "./rodArrays";
 import { hiddenOverlaps } from "./solids";
 import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
@@ -105,14 +106,44 @@ function isLoadSurface(panel: Panel): boolean {
   return LOAD_KINDS.includes(panel.type) || /\b(?:shelf|seat|top|bottom|deck)\b/i.test(panel.name);
 }
 
-function isPipeStock(item: CatalogItem): boolean {
-  // A drinking straw is a tube. Only schedule-40 pipe gets the seated slip frame.
-  return item.formFactor === "pipe";
+/**
+ * An open storage frame: a load surface between uprights, square, not a wall-arm cantilever
+ * and not a roofed frame. The prompt's words are not part of this.
+ */
+function storageFrame(project: YardProject): boolean {
+  if (isWallArmForm(project)) return false;
+  const panels = project.panels;
+  if (panels.some((panel) => /\b(?:rafter|skid|girt|header)\b/i.test(panel.name))) return false;
+  if (panels.some((panel) => panel.polygon && Math.abs(panel.yaw ?? 0) > 0.02)) return false;
+  const load = panels.filter(isLoadSurface);
+  const uprights = panels.filter((panel) => panel.type === "upright" || panel.type === "divider" || /\b(?:upright|post|side|standard|stile)\b/i.test(panel.name));
+  const rails = panels.filter((panel) => panel.type === "rail" || /\brung\b/i.test(panel.name));
+  return uprights.length >= 2 && (load.length >= 1 || rails.length >= 2);
 }
 
-function isRackPrompt(prompt: string | undefined): boolean {
-  const text = (prompt ?? "").toLowerCase();
-  return /\bracks?\b/.test(text) && !/rail|peg|hook/.test(text);
+/** The sheet Buy will actually sell when every part fits a smaller panel of the same thickness. */
+function keptStockName(project: YardProject): string {
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  const fallback = item?.name ?? "its stock";
+  if (!item || item.formFactor !== "sheet") return fallback;
+  const full = (item.dims.length ?? 0) * (item.dims.width ?? 0);
+  if (full < 96 * 48) return fallback;
+  const rects: [number, number][] = project.panels.map((panel) => {
+    const dims = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
+    return [dims[0], dims[1]];
+  });
+  if (!rects.length) return fallback;
+  const smaller = Object.values(CATALOG_BY_ID).filter((sheet) =>
+    sheet.formFactor === "sheet" &&
+    sheet.id !== item.id &&
+    sheet.category === item.category &&
+    sheet.dims.thickness === item.dims.thickness &&
+    (sheet.dims.length ?? 96) * (sheet.dims.width ?? 48) < full &&
+    sheet.unitCostUsd != null &&
+    rects.every(([a, b]) => a <= (sheet.dims.length ?? 96) && b <= (sheet.dims.width ?? 48)) &&
+    nestSheets(rects, sheet.dims.length ?? 96, sheet.dims.width ?? 48) === 1,
+  ).sort((a, b) => (a.unitCostUsd ?? 0) - (b.unitCostUsd ?? 0))[0];
+  return smaller?.name ?? fallback;
 }
 
 /** Standards plus arms, and nothing a person sets a load on. That stays the wall-arm cantilever. */
@@ -180,11 +211,11 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
   };
 }
 
-export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
+export function recastPanelsAsStock(project: YardProject, item: CatalogItem, allowSeat = true): YardProject {
   if (!project.panels.length) return project;
-  const rack = isRackPrompt(project.prompt);
-  const pipeRack = rack && isPipeStock(item) && !isWallArmForm(project);
-  // Dowel and stick racks stay the release cantilever. A wall-arm rack does too, in any stock.
+  const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
+  // Seating follows the stock and the frame. Straw, paper tube, dowel, and a wall-arm cantilever stay the release build.
+  const pipeRack = allowSeat && rigidSlipPipe(item) && storageFrame(project);
   if (rack && !isFaceStock(item) && !pipeRack) return openMemberRack(project, item);
   if (rack && !pipeRack) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
@@ -518,16 +549,30 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     notes: bearing && section < 0.5 ? notes : [note, ...notes],
   };
   if (!pipeRack) return recast;
-  const seated = seatPipeRack(recast.instances, item);
   const radius = (item.dims.diameter ?? 1.05) / 2;
-  const missed = seated.ok
-    ? uncataloguedJoints(seated.instances.map((inst) => ({ from: inst.from, to: inst.to, radius })))
-    : 0;
-  if (!seated.ok || missed > 0) {
-    // A refused pipe rack keeps the lumber build. When that build's rods already
-    // run into each other, the release cantilever is what this prompt shipped.
-    if (hiddenOverlaps(project).length || rodArrayFailures(project).length) return openMemberRack(project, item);
-    const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
+  const accept = (drawn: YardInstance[], seatedInst: YardInstance[]): YardInstance[] | null => {
+    const hadShelf = drawn.some((inst) => inst.role === "shelf" || inst.role === "deck" || inst.role === "top");
+    const span = frameSpan(seatedInst);
+    const missed = uncataloguedJoints(seatedInst.map((inst) => ({ from: inst.from, to: inst.to, radius })));
+    const blocked = unlistedFrameFitting(seatedInst, item);
+    const collapsed = !span || frameCollapsed(project.overall, span) || onePlaneShelf(project.overall.depth, span.depth, hadShelf);
+    if (missed > 0 || blocked || collapsed) return null;
+    return outlineRoles(seatedInst);
+  };
+  const seated = seatPipeRack(recast.instances, item);
+  const taken = seated.ok ? accept(recast.instances, seated.instances) : null;
+  if (!taken) {
+    // The pitch-thinned outline would not ship. A non-rack tries the release outline once.
+    if (!rack) {
+      const plain = recastPanelsAsStock(project, item, false);
+      const again = seatPipeRack(plain.instances, item);
+      const retry = again.ok ? accept(plain.instances, again.instances) : null;
+      if (!retry) return plain;
+      return { ...plain, instances: retry };
+    }
+    // The pipes will not make one frame: the release cantilever, not a lumber carcase.
+    if (!seated.ok || hiddenOverlaps(project).length || rodArrayFailures(project).length) return openMemberRack(project, item);
+    const kept = keptStockName(project);
     const noun = project.name.toLowerCase().replace(/\s+\d.*$/, "");
     const refused = `${item.name} can't build this ${noun}, so it stays ${kept} at the same size. Pick a lumber stock to switch it.`;
     return { ...project, notes: [...(project.notes ?? []), refused] };
@@ -536,7 +581,7 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
   const name = /^Storage unit\b/i.test(recast.name)
     ? `Rack ${eighth(project.overall.width)}" × ${eighth(project.overall.height)}" × ${eighth(project.overall.depth)}"`
     : recast.name;
-  return { ...recast, name, instances: seated.instances };
+  return { ...recast, name, instances: taken };
 }
 
 /**
