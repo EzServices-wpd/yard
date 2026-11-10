@@ -282,11 +282,11 @@ export function buyCatalogWays<T extends WayLine>(lines: T[], members: { from?: 
   let out = lines.flatMap((line) => {
     if (!/PVC cross$/.test(line.name)) return [line];
     if (counts.cross <= 0) return [];
-    return [{ ...line, quantity: counts.cross, estimatedCost: 0, catalogId: "pvc-cross" }];
+    return [{ ...line, quantity: counts.cross, estimatedCost: undefined, catalogId: "pvc-cross" }];
   });
   const add = (qty: number, name: string, id: string) => {
     if (qty <= 0) return;
-    out = [...out, { name, quantity: qty, unit: "ea", catalogId: id, searchQuery: name, estimatedCost: 0, notes: `Match ${size} pipe.` } as T];
+    out = [...out, { name, quantity: qty, unit: "ea", catalogId: id, searchQuery: name, notes: `Match ${size} pipe.` } as T];
   };
   add(counts.tee4, `${size} PVC 4-way tee`, "pvc-4-way-tee");
   add(counts.cross5, `${size} PVC 5-way cross`, "pvc-5-way-cross");
@@ -620,7 +620,7 @@ export function binderBom(
         unit: "ea",
         catalogId: id,
         searchQuery: q,
-        estimatedCost: qty * cost,
+        ...(cost > 0 ? { estimatedCost: qty * cost } : {}),
         notes: why ?? `Match ${size} pipe.`,
       });
     };

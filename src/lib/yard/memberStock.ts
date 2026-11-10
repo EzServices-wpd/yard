@@ -106,7 +106,8 @@ function isLoadSurface(panel: Panel): boolean {
 }
 
 function isPipeStock(item: CatalogItem): boolean {
-  return item.formFactor === "pipe" || item.formFactor === "tube";
+  // A drinking straw is a tube. Only schedule-40 pipe gets the seated slip frame.
+  return item.formFactor === "pipe";
 }
 
 function isRackPrompt(prompt: string | undefined): boolean {

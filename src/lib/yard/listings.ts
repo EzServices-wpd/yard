@@ -1422,9 +1422,6 @@ export function decorateBom(lines: BomLine[]): BomLine[] {
             : "search"
           : undefined,
     }));
-    if (!offers.length && id && /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross|cap)$/.test(id)) {
-      return { ...line, catalogId: id, offers: [], estimatedCost: line.estimatedCost && line.estimatedCost > 0 ? line.estimatedCost : undefined };
-    }
     if (!offers.length) {
       offers = searchOffers(
         line.searchQuery || line.name,

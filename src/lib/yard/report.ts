@@ -25,7 +25,7 @@ import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
-import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX, UNLISTED_SLIP } from "./joints";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -1743,7 +1743,10 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const out = stepTextForPlace(project, withTypedFinish(project, buyComplete(project, smallestSheetStock({ ...plan, bom: dedupeBuy(bom) }))));
   const sum = Math.round(out.bom.reduce((t, b) => t + (b.estimatedCost ?? 0), 0) * 100) / 100;
   // The summary line (and the Check card that reads it) prices from the same Buy total.
-  const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
+  const priced = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
+  // A fitting with no catalog price is not in that number. The total says so.
+  const unpricedFit = out.bom.some((b) => !!b.catalogId && UNLISTED_SLIP.test(b.catalogId) && !(b.estimatedCost != null && b.estimatedCost > 0));
+  const summary = unpricedFit && !/plus unpriced items/i.test(priced) ? `${priced} · plus unpriced items` : priced;
   // C3: whole purchased pieces have no cut list to restate as a cut step.
   const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
   return isUnitItem(project) ? fin : cutStepFromList(fin);

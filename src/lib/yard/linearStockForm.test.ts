@@ -266,12 +266,16 @@ test("a seated PVC rack is one square frame and Buy matches the geometry", () =>
     }
     const tee = frame.plan.bom.find((b) => /PVC tee$/.test(b.name));
     if (tee) assert.ok((tee.offers ?? []).some((o) => o.href), `${prompt} plain tee lost its listing`);
+    let unpriced = false;
     for (const id of ["pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross", "pvc-cap"]) {
       const line = frame.plan.bom.find((b) => b.catalogId === id);
       if (!line) continue;
-      assert.equal((line.offers ?? []).length, 0, `${prompt} ${id} invented an offer`);
+      unpriced = true;
+      assert.ok((line.offers ?? []).some((o) => o.href), `${prompt} ${id} has no store link`);
+      assert.ok(!(line.offers ?? []).some((o) => o.best), `${prompt} ${id} is marked as a checked listing`);
       assert.ok(line.estimatedCost == null || line.estimatedCost === 0, `${prompt} ${id} priced ${line.estimatedCost}`);
     }
+    if (unpriced) assert.match(frame.plan.feasibility.summary, /plus unpriced items/);
   }
 });
 
