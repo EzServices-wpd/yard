@@ -1,6 +1,6 @@
 {
   "release": "645a038664c94050467197a13ade2e8798933995",
-  "prompts": 822,
+  "prompts": 856,
   "movers": 466,
   "rows": [
     {
@@ -30859,6 +30859,1268 @@
         ]
       },
       "omitted": []
+    },
+    {
+      "prompt": "2x2 shoe rack",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "2x2 shoe rack",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "2x2 shoe rack from pvc",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "pvc 2x2 shoe rack",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe 2x2 shoe rack",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack from 2x2",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack from 2x2",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "shoe rack from 2x2 from pvc",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "pvc shoe rack from 2x2",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe shoe rack from 2x2",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack with cubbies from 2x2",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack with cubbies from 2x2",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "shoe rack with cubbies from 2x2 from pvc",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "pvc shoe rack with cubbies from 2x2",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe shoe rack with cubbies from 2x2",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.4,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×#8 x 1-1/4\" wood screws=8.47",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×2 (8 ft) and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach D Top to both E uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Glue 1 fixed shelf",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack with cubbies from 3/4 inch dowel",
+      "material": null,
+      "before": {
+        "name": "Shoe rack",
+        "cost": 28.98,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "6×3/4\" Hardwood Dowel 36\"=24; 1×Multi-purpose craft glue=4.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 28.98,
+        "pieces": 8,
+        "hud": [
+          36,
+          12,
+          18
+        ],
+        "buy": "6×3/4\" Hardwood Dowel 36\"=24; 1×Multi-purpose craft glue=4.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack with cubbies from 3/4 inch dowel",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "shoe rack with cubbies from pvc",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Shoe rack",
+        "cost": 124.96,
+        "pieces": 58,
+        "hud": [
+          35.45,
+          12.05,
+          17.94
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 8×3/4\" PVC cross=22.99; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Shoe rack before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 42 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 2x2",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 60.42,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "6×2×2 (8 ft)=27; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 60.42,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "6×2×2 (8 ft)=27; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 2×2 (8 ft)",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 2x2",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 2x2 from pvc",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc spice rack 18 wide 24 high 4 deep from 2x2",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 60.42,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "6×2×2 (8 ft)=27; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 60.42,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "6×2×2 (8 ft)=27; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 2×2 (8 ft)",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe spice rack 18 wide 24 high 4 deep from 2x2",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 60.42,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "6×2×2 (8 ft)=27; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 60.42,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "6×2×2 (8 ft)=27; 1×#8 x 2-1/2\" wood screws=9.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 2×2 (8 ft)",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 3/4 inch dowel",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 20.98,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "4×3/4\" Hardwood Dowel 36\"=16; 1×Multi-purpose craft glue=4.98"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 20.98,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "4×3/4\" Hardwood Dowel 36\"=16; 1×Multi-purpose craft glue=4.98",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 3/4 inch dowel",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from pvc",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 2x2",
+      "material": null,
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 119.39,
+        "pieces": 19,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 2×#8 x 2-1/2\" wood screws=18.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 119.39,
+        "pieces": 19,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 2×#8 x 2-1/2\" wood screws=18.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 2×2 (8 ft)",
+          "Set the Plinth",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the bottle rails",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 2x2",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96",
+        "titles": [
+          "Read this Wine rack 24\" × 36\" × 12\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 32 pieces",
+          "Run the rails — 44 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "plumb-height",
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 2x2 from pvc",
+      "material": null,
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96",
+        "titles": [
+          "Read this Wine rack 24\" × 36\" × 12\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 32 pieces",
+          "Run the rails — 44 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "plumb-height",
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 high 12 deep from 2x2",
+      "material": null,
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 119.39,
+        "pieces": 19,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 2×#8 x 2-1/2\" wood screws=18.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 119.39,
+        "pieces": 19,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 2×#8 x 2-1/2\" wood screws=18.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 2×2 (8 ft)",
+          "Set the Plinth",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the bottle rails",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 high 12 deep from 2x2",
+      "material": null,
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 119.39,
+        "pieces": 19,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 2×#8 x 2-1/2\" wood screws=18.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 119.39,
+        "pieces": 19,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "17×2×2 (8 ft)=76.5; 2×#8 x 2-1/2\" wood screws=18.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 2×2 (8 ft)",
+          "Set the Plinth",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the bottle rails",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 3/4 inch dowel",
+      "material": null,
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 48.98,
+        "pieces": 16,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "11×3/4\" Hardwood Dowel 36\"=44; 1×Multi-purpose craft glue=4.98"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 48.98,
+        "pieces": 16,
+        "hud": [
+          24,
+          12,
+          36
+        ],
+        "buy": "11×3/4\" Hardwood Dowel 36\"=44; 1×Multi-purpose craft glue=4.98",
+        "titles": [
+          "Read this Wine rack 24\" × 36\" × 12\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Place the arm 4 — 2 pieces",
+          "Place the arm 5 — 2 pieces",
+          "Place the arm 6 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 3/4 inch dowel",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96",
+        "titles": [
+          "Read this Wine rack 24\" × 36\" × 12\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 32 pieces",
+          "Run the rails — 44 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "plumb-height",
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from pvc",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96"
+      },
+      "after": {
+        "name": "Wine rack 24\" × 36\" × 12\"",
+        "cost": 159.59,
+        "pieces": 76,
+        "hud": [
+          23.45,
+          11.875,
+          36.488
+        ],
+        "buy": "7×3/4\" Schedule 40 PVC Pipe=40.32; 1×PVC solvent cement=7.48; 6×3/4\" PVC 3-way corner=18.99; 6×3/4\" PVC tee=7.08; 2×3/4\" PVC 90° elbow=1.76; 28×3/4\" PVC 4-way tee=83.96",
+        "titles": [
+          "Read this Wine rack 24\" × 36\" × 12\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 32 pieces",
+          "Run the rails — 44 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "plumb-height",
+        "set-rails"
+      ]
     }
   ]
 }
