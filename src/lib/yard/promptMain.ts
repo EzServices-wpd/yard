@@ -62,6 +62,7 @@ import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
 import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
 import { buildTemplate, detectTemplate, typedSizeIn, type TemplateBuild, type TemplateClassId } from "./formTemplates";
@@ -443,7 +444,11 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const o = args[3];
     const override = !!(o?.sizeOverride || o?.fittedOverride || o?.pocketOverride || o?.honorUnit);
     const built = idDepth === 1 ? { ...built1, spec: buildSpec(built1, typed, { override }) } : built1;
-    return idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+    const out = idDepth === 1 && /^proj-/.test(built.id) ? { ...built, id: `proj-${Math.random().toString(36).slice(2, 9)}` } : built;
+    // Seating drops the shelf panels, so a "no shelves" note would be false. The case is listed, not rewritten.
+    if (!isSeatedPipeFrame(out)) return out;
+    const notes = (out.notes ?? []).filter((n) => !(/^You asked for\b/i.test(n) && /\bshel/i.test(n)));
+    return notes.length === (out.notes ?? []).length ? out : { ...out, notes };
   } catch (e) {
     if (idDepth !== 1 || !(e instanceof TooManyParts)) throw e;
     return partsRefusal(args, e);
