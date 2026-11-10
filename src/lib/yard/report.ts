@@ -1872,23 +1872,8 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
   return dup;
 }
 
-/**
- * An outline of pipe is not a box lying on the floor. The placement sentence that says so
- * is rewritten; the step titles stay Lay the bottom and Run the rails.
- */
-function outlineFrameTalk(project: YardProject, plan: BuildPlan): BuildPlan {
-  if (!isSeatedPipeFrame(project)) return plan;
-  const instructions = plan.instructions.map((step) => ({
-    ...step,
-    description: step.description
-      .replace(/\blies flat on the floor\b/g, "runs along the bottom of the frame")
-      .replace(/\blie flat on the floor\b/g, "run along the bottom of the frame"),
-  }));
-  return { ...plan, instructions };
-}
-
 function buildPlanInner(project: YardProject): BuildPlan {
-  const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, outlineFrameTalk(project, withPlacementTalk(project, buildPlanCore(project))))))))));
+  const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
   const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, withAntiTipKit(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(spliceStep(plan));

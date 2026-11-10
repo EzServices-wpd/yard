@@ -309,9 +309,23 @@ function mergeCloseLines(spans: Span[], limit: number): Span[] | string {
     const [i, j] = pair;
     const a = cur[i];
     const b = cur[j];
+    const apart = (FITTING_PITCH - best) / 2;
+    const len = best || 1;
+    const ux = (a.perp[0] - b.perp[0]) / len;
+    const uy = (a.perp[1] - b.perp[1]) / len;
+    const pushed: [number, number][] = [
+      [round4(a.perp[0] + ux * apart), round4(a.perp[1] + uy * apart)],
+      [round4(b.perp[0] - ux * apart), round4(b.perp[1] - uy * apart)],
+    ];
+    const fromBorn = (s: Span, perp: [number, number]) => Math.hypot(s.born[0] - perp[0], s.born[1] - perp[1]);
+    if (fromBorn(a, pushed[0]) <= limit + 1e-6 && fromBorn(b, pushed[1]) <= limit + 1e-6) {
+      cur[i] = { ...a, perp: pushed[0] };
+      cur[j] = { ...b, perp: pushed[1] };
+      banned.clear();
+      continue;
+    }
     const perp: [number, number] = [round4((a.perp[0] + b.perp[0]) / 2), round4((a.perp[1] + b.perp[1]) / 2)];
-    const moved = (s: Span) => Math.hypot(s.born[0] - perp[0], s.born[1] - perp[1]);
-    if (moved(a) > limit + 1e-6 || moved(b) > limit + 1e-6) {
+    if (fromBorn(a, perp) > limit + 1e-6 || fromBorn(b, perp) > limit + 1e-6) {
       banned.add(pairKey(i, j));
       continue;
     }
@@ -589,10 +603,15 @@ export function outlineRoles(instances: YardInstance[]): YardInstance[] {
   });
 }
 
-/** A seated outline: rigid slip pipe, no panels, and only bottom and rail roles. */
-export function isSeatedPipeFrame(project: { panels: readonly unknown[]; instances: readonly { role?: string; from?: Vec3; to?: Vec3 }[]; primaryMaterialId?: string }): boolean {
+/** A rack prompt whose pipes were seated into one outline. A storage unit that only shares the outline note is not one. */
+export function isSeatedPipeFrame(project: { panels: readonly unknown[]; instances: readonly { from?: Vec3; to?: Vec3 }[]; primaryMaterialId?: string; notes?: readonly string[]; prompt?: string }): boolean {
+  const prompt = (project.prompt ?? "").toLowerCase();
+  if (!/\bracks?\b/.test(prompt) || /rail|peg|hook/.test(prompt)) return false;
   const item = getCatalogItem(project.primaryMaterialId ?? "");
   if (!item || !rigidSlipPipe(item)) return false;
   if (project.panels.length || project.instances.length < 2) return false;
-  return project.instances.every((inst) => (inst.role === "bottom" || inst.role === "rail") && inst.from && inst.to);
+  const notes = project.notes ?? [];
+  if (notes.some((n) => /Open frame of/.test(n))) return false;
+  if (!notes.some((n) => /Each face is the outline/.test(n))) return false;
+  return project.instances.every((inst) => inst.from && inst.to);
 }

@@ -245,6 +245,9 @@ const BUILT = [
   "plate rack",
   "3 tier shoe rack",
   "kayak rack",
+  "pvc spice rack",
+  "pvc mug rack",
+  "pvc book rack",
 ];
 
 test("a seated PVC rack is one square frame and Buy matches the geometry", () => {
@@ -308,14 +311,10 @@ test("a coupling 2 inches from a corner fails the fitting pitch", () => {
   assert.ok(pitch < 2.75, `mutation pitch ${pitch} should fail the 2.75 inch check`);
 });
 
-test("a spice rack in one plane is refused, and the note names the sheet Buy sells", () => {
+test("a spice rack keeps a front and a back, so the header depth is the pipe box", () => {
   const frame = frameOf("pvc spice rack");
-  assert.equal(frame.refused, true);
-  assert.notEqual(frame.project.primaryMaterialId, "pvc-3-4-sch40");
-  const sheet = frame.plan.bom.find((b) => /plywood/i.test(b.name));
-  assert.ok(sheet, "spice rack Buy has no plywood");
-  const note = frame.project.notes?.find((n) => /can't build this spice rack/.test(n));
-  assert.equal(note, `3/4" Schedule 40 PVC Pipe can't build this spice rack, so it stays ${sheet!.name} at the same size. Pick a lumber stock to switch it.`);
+  assert.ok(frame.project.overall.depth >= 3.5 && frame.project.overall.depth <= 4.5, `depth ${frame.project.overall.depth}`);
+  assert.ok(frame.project.notes?.some((n) => /Each face is the outline/.test(n)));
 });
 
 test("a coat rack stays the release open frame", () => {

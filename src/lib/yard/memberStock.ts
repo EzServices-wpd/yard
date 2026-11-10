@@ -5,11 +5,9 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
-import { CATALOG_BY_ID, getCatalogItem } from "./catalog";
-import { nestSheets } from "./bom";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { uncataloguedJoints } from "./joints";
-import { frameCollapsed, frameSpan, onePlaneShelf, outlineRoles, rigidSlipPipe, seatPipeRack, unlistedFrameFitting } from "./pipeRackFrame";
+import { frameCollapsed, frameSpan, onePlaneShelf, rigidSlipPipe, seatPipeRack, unlistedFrameFitting } from "./pipeRackFrame";
 import { rodArrayFailures } from "./rodArrays";
 import { hiddenOverlaps } from "./solids";
 import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
@@ -106,46 +104,6 @@ function isLoadSurface(panel: Panel): boolean {
   return LOAD_KINDS.includes(panel.type) || /\b(?:shelf|seat|top|bottom|deck)\b/i.test(panel.name);
 }
 
-/**
- * An open storage frame: a load surface between uprights, square, not a wall-arm cantilever
- * and not a roofed frame. The prompt's words are not part of this.
- */
-function storageFrame(project: YardProject): boolean {
-  if (isWallArmForm(project)) return false;
-  const panels = project.panels;
-  if (panels.some((panel) => /\b(?:rafter|skid|girt|header)\b/i.test(panel.name))) return false;
-  if (panels.some((panel) => panel.polygon && Math.abs(panel.yaw ?? 0) > 0.02)) return false;
-  const load = panels.filter(isLoadSurface);
-  const uprights = panels.filter((panel) => panel.type === "upright" || panel.type === "divider" || /\b(?:upright|post|side|standard|stile)\b/i.test(panel.name));
-  const rails = panels.filter((panel) => panel.type === "rail" || /\brung\b/i.test(panel.name));
-  return uprights.length >= 2 && (load.length >= 1 || rails.length >= 2);
-}
-
-/** The sheet Buy will actually sell when every part fits a smaller panel of the same thickness. */
-function keptStockName(project: YardProject): string {
-  const item = getCatalogItem(project.primaryMaterialId ?? "");
-  const fallback = item?.name ?? "its stock";
-  if (!item || item.formFactor !== "sheet") return fallback;
-  const full = (item.dims.length ?? 0) * (item.dims.width ?? 0);
-  if (full < 96 * 48) return fallback;
-  const rects: [number, number][] = project.panels.map((panel) => {
-    const dims = [panel.size.width, panel.size.height, panel.size.depth].sort((a, b) => b - a);
-    return [dims[0], dims[1]];
-  });
-  if (!rects.length) return fallback;
-  const smaller = Object.values(CATALOG_BY_ID).filter((sheet) =>
-    sheet.formFactor === "sheet" &&
-    sheet.id !== item.id &&
-    sheet.category === item.category &&
-    sheet.dims.thickness === item.dims.thickness &&
-    (sheet.dims.length ?? 96) * (sheet.dims.width ?? 48) < full &&
-    sheet.unitCostUsd != null &&
-    rects.every(([a, b]) => a <= (sheet.dims.length ?? 96) && b <= (sheet.dims.width ?? 48)) &&
-    nestSheets(rects, sheet.dims.length ?? 96, sheet.dims.width ?? 48) === 1,
-  ).sort((a, b) => (a.unitCostUsd ?? 0) - (b.unitCostUsd ?? 0))[0];
-  return smaller?.name ?? fallback;
-}
-
 /** Standards plus arms, and nothing a person sets a load on. That stays the wall-arm cantilever. */
 function isWallArmForm(project: YardProject): boolean {
   const arms = project.panels.filter((panel) => /\barm\b/i.test(panel.name));
@@ -215,7 +173,7 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem, all
   if (!project.panels.length) return project;
   const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
   // Seating follows the stock and the frame. Straw, paper tube, dowel, and a wall-arm cantilever stay the release build.
-  const pipeRack = allowSeat && rigidSlipPipe(item) && storageFrame(project);
+  const pipeRack = allowSeat && rack && rigidSlipPipe(item) && !isWallArmForm(project);
   if (rack && !isFaceStock(item) && !pipeRack) return openMemberRack(project, item);
   if (rack && !pipeRack) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
@@ -557,31 +515,53 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem, all
     const blocked = unlistedFrameFitting(seatedInst, item);
     const collapsed = !span || frameCollapsed(project.overall, span) || onePlaneShelf(project.overall.depth, span.depth, hadShelf);
     if (missed > 0 || blocked || collapsed) return null;
-    return outlineRoles(seatedInst);
+    return seatedInst;
   };
   const seated = seatPipeRack(recast.instances, item);
   const taken = seated.ok ? accept(recast.instances, seated.instances) : null;
   if (!taken) {
-    // The pitch-thinned outline would not ship. A non-rack tries the release outline once.
-    if (!rack) {
-      const plain = recastPanelsAsStock(project, item, false);
-      const again = seatPipeRack(plain.instances, item);
-      const retry = again.ok ? accept(plain.instances, again.instances) : null;
-      if (!retry) return plain;
-      return { ...plain, instances: retry };
-    }
-    // The pipes will not make one frame: the release cantilever, not a lumber carcase.
-    if (!seated.ok || hiddenOverlaps(project).length || rodArrayFailures(project).length) return openMemberRack(project, item);
-    const kept = keptStockName(project);
-    const noun = project.name.toLowerCase().replace(/\s+\d.*$/, "");
-    const refused = `${item.name} can't build this ${noun}, so it stays ${kept} at the same size. Pick a lumber stock to switch it.`;
-    return { ...project, notes: [...(project.notes ?? []), refused] };
+    // Not one rigid frame. The release cantilever keeps the size the header already shows.
+    return openMemberRack(project, item);
   }
   const eighth = (n: number) => Math.round(n * 8) / 8;
   const name = /^Storage unit\b/i.test(recast.name)
     ? `Rack ${eighth(project.overall.width)}" × ${eighth(project.overall.height)}" × ${eighth(project.overall.depth)}"`
     : recast.name;
-  return { ...recast, name, instances: taken };
+  const fitted = fitPipeBox(taken, project.overall, item.dims.diameter ?? 1.05);
+  return { ...recast, name, instances: fitted };
+}
+
+/** Move the outer grid lines so the pipe skin meets the size the header already states. */
+function fitPipeBox(instances: YardInstance[], overall: { width: number; height: number; depth: number }, od: number): YardInstance[] {
+  const next = instances.map((inst) => ({
+    ...inst,
+    from: inst.from ? { ...inst.from } : inst.from,
+    to: inst.to ? { ...inst.to } : inst.to,
+  }));
+  const want: Record<"x" | "y" | "z", number> = { x: overall.width - od, y: overall.height - od / 2, z: overall.depth - od };
+  for (const axis of ["x", "y", "z"] as const) {
+    const vals = next.flatMap((inst) => [inst.from?.[axis], inst.to?.[axis]]).filter((n): n is number => n != null);
+    if (!vals.length) continue;
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const delta = want[axis] - (hi - lo);
+    if (delta < 0.05 || delta > 1.5) continue;
+    const dLo = axis === "y" && lo < 0.6 ? 0 : -delta / 2;
+    const dHi = axis === "y" && lo < 0.6 ? delta : delta / 2;
+    for (const inst of next) {
+      for (const p of [inst.from, inst.to]) {
+        if (!p) continue;
+        if (Math.abs(p[axis] - lo) <= 0.02) p[axis] = Math.round((p[axis] + dLo) * 10000) / 10000;
+        else if (Math.abs(p[axis] - hi) <= 0.02) p[axis] = Math.round((p[axis] + dHi) * 10000) / 10000;
+      }
+      if (inst.from && inst.to) {
+        const len = Math.hypot(inst.to.x - inst.from.x, inst.to.y - inst.from.y, inst.to.z - inst.from.z);
+        inst.position = { x: (inst.from.x + inst.to.x) / 2, y: (inst.from.y + inst.to.y) / 2, z: (inst.from.z + inst.to.z) / 2 };
+        if (inst.cutLength != null) inst.cutLength = Math.round(len * 8) / 8;
+      }
+    }
+  }
+  return next;
 }
 
 /**
