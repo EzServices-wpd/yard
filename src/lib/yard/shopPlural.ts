@@ -11,6 +11,20 @@ export function pieceTalk(count: number, full = false): string {
   return full ? `${n} full ${word}` : `${n} ${word}`;
 }
 
+/**
+ * The one plural for a generated count. shelf → shelves, body → bodies.
+ * chassis is invariant: one chassis, 150 chassis. Not chassises, not chassiss.
+ */
+export function countPlural(word: string, n = 2): string {
+  if (n === 1) return word;
+  if (/chassis$/i.test(word)) return word;
+  if (/(?:shelf|half|leaf|loaf)$/i.test(word)) return word.replace(/f$/i, "ves");
+  if (/(?:knife|life|wife)$/i.test(word)) return word.replace(/fe$/i, "ves");
+  if (/(?:s|sh|ch|x)$/i.test(word)) return `${word}es`;
+  if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+  return `${word}s`;
+}
+
 export function shopPlural(label: string, qty: number): string {
   if (qty === 1) return label;
   if (/shelves$/i.test(label)) return label;
@@ -19,8 +33,9 @@ export function shopPlural(label: string, qty: number): string {
   if (label === "Kick strip" || label === "kick strip") return "Kick strips";
   if (label === "toekick" || label === "Toekick") return "Kick strips";
   if (/box$/i.test(label)) return label.replace(/box$/i, "boxes");
+  if (/chassis$/i.test(label)) return countPlural(label, qty);
   if (label.endsWith("s")) return label;
-  return `${label}s`;
+  return countPlural(label, qty);
 }
 
 /** Bounding drawer envelope → sides / back / bottom a stranger can cut from sheet stock. */

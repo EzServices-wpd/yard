@@ -13,6 +13,7 @@ import { wantsFixedGlueShelves } from "./honesty";
 import { isFixedSpanShelf } from "./shelfSpan";
 import { rotorChain, type RotorLink } from "./solids";
 import { ANATOMY_NOTE } from "./classAnatomy";
+import { countPlural } from "./shopPlural";
 
 type Part = { key: string; name: string; kind: string; ids?: Set<string> };
 
@@ -64,7 +65,7 @@ function partsOf(project: YardProject): Part[] {
   }
   return [...roles.entries()].map(([role, n]) => ({
     key: role,
-    name: n === 1 ? role : `${n} ${role}s`,
+    name: n === 1 ? role : `${n} ${countPlural(role, n)}`,
     kind: role,
     ids: ids.get(role),
   }));
@@ -175,12 +176,7 @@ function familyWordOf(name: string): string {
 }
 
 function plural(word: string, n: number): string {
-  if (n === 1) return word;
-  if (/(?:shelf|half|leaf|loaf)$/.test(word)) return `${word.slice(0, -1)}ves`;
-  if (/(?:knife|life|wife)$/.test(word)) return `${word.slice(0, -2)}ves`;
-  if (/(s|sh|ch|x)$/.test(word)) return `${word}es`;
-  if (/[^aeiou]y$/.test(word)) return `${word.slice(0, -1)}ies`;
-  return `${word}s`;
+  return countPlural(word, n);
 }
 
 /** A piece that hangs on the wall: its base part mounts to studs or anchors, not the floor. */
@@ -817,7 +813,7 @@ function familyTitle(names: string[]): string {
   const fams = new Set(u.map(familyOf));
   if (u.length > 1 && fams.size === 1) {
     const f = familyOf(u[0]);
-    return `${u.length} ${f.charAt(0).toLowerCase()}${f.slice(1)}${/(?:s|sh|ch|x)$/.test(f) ? "es" : "s"}`;
+    return `${u.length} ${plural(`${f.charAt(0).toLowerCase()}${f.slice(1)}`, u.length)}`;
   }
   return listNames(u);
 }
