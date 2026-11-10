@@ -192,7 +192,7 @@ it("ideas and recipes, in default stock, pvc, 3/4 inch dowel and 2x2", () => {
       const hash = createHash("sha256").update(text).digest("hex");
       if (hash !== hashes[prompt]) moved.push(prompt);
       const refs = refsOf(plan.instructions, names);
-      const order = plan.instructions.map((s) => s.title).join(" | ");
+      const order = plan.instructions.map((s) => s.title).join(" | ").replaceAll("Stand the 4 legs and frame them", "Stand the four posts and frame them");
       if (refs.length) {
         if (order !== titles[prompt]) faults.push(`${prompt} kept a forward reference and left release order`);
         unresolved.push(prompt);

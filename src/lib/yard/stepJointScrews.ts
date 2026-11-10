@@ -61,13 +61,12 @@ function namesOf(project: YardProject): string[] {
   ];
 }
 
-/** Parts resting on a part a later step places. The text reorder must not add any. */
-function restingAhead(project: YardProject, steps: BuildPlan["instructions"]): number {
+/** A part placed before something it is fastened to or rests on. A text reorder must not add any. */
+function supportsAhead(project: YardProject, steps: BuildPlan["instructions"]): number {
   if (!project.panels.length) return 0;
   const at = placementIndex(project, steps);
   let n = 0;
   for (const [id, info] of supportsOf(project)) {
-    if (info.how !== "rests") continue;
     for (const support of info.on) {
       const part = at.get(id);
       const under = at.get(support);
@@ -103,12 +102,14 @@ function speakAndSettle(project: YardProject, plan: BuildPlan, instructions: Bui
   const voiced = roleVoice(project, instructions);
   const settled = settleForward(voiced, namesOf(project));
   const reordered = settled.steps;
+  const aheadVoiced = supportsAhead(project, voiced);
+  const aheadReordered = supportsAhead(project, reordered);
   let next =
-    restingAhead(project, reordered) > restingAhead(project, voiced) || (backAfterItsShelf(reordered) && !backAfterItsShelf(voiced))
+    aheadReordered > aheadVoiced || (backAfterItsShelf(reordered) && !backAfterItsShelf(voiced))
       ? voiced
       : reordered;
   const slid = backAfterSeat(next);
-  if (restingAhead(project, slid) <= restingAhead(project, next)) next = slid;
+  if (supportsAhead(project, slid) <= supportsAhead(project, next)) next = slid;
   const same =
     next.length === plan.instructions.length &&
     next.every((s, i) => s.title === plan.instructions[i]?.title && s.description === plan.instructions[i]?.description);
