@@ -6,8 +6,10 @@
  * once the box stands square, along every edge it touches, so its step names each real support.
  */
 import { panelJoints, type ModelJoint } from "./modelJoints";
-import { orderBySupports, placementIndex } from "./placeEveryPart";
-import { frameBeforeSpan } from "./voiceHonesty";
+import { placementIndex } from "./placeEveryPart";
+import { supportsOf } from "./supportGraph";
+import { settleForward } from "./forwardOrder";
+import { roleVoice } from "./roleVoice";
 import type { BuildPlan, CutLine, Panel, YardProject } from "./types";
 
 const sorted3 = (a: number, b: number, c: number) => [a, b, c].sort((x, y) => y - x);
@@ -52,8 +54,53 @@ export function fastensBack(s: { title: string; description?: string; partsUsed?
 const JOIN =
   /attach ([A-Z]{1,2}) ([A-Za-z][A-Za-z ]*?) to ((?:both |the )?(?:[A-Z]{1,2}(?: and [A-Z]{1,2})? )?[A-Za-z ]+?) with (\d+) × (#8 × [\d/ ]+" screws)(?: \((\d+) per (\w+)\))?/;
 
+function namesOf(project: YardProject): string[] {
+  return [
+    ...project.panels.filter((p) => p.type !== "drawer").map((p) => p.name),
+    ...new Set(project.instances.map((i) => i.role || "member")),
+  ];
+}
+
+/** Parts resting on a part a later step places. The text reorder must not add any. */
+function restingAhead(project: YardProject, steps: BuildPlan["instructions"]): number {
+  if (!project.panels.length) return 0;
+  const at = placementIndex(project, steps);
+  let n = 0;
+  for (const [id, info] of supportsOf(project)) {
+    if (info.how !== "rests") continue;
+    for (const support of info.on) {
+      const part = at.get(id);
+      const under = at.get(support);
+      if (part != null && under != null && under > part) n++;
+    }
+  }
+  return n;
+}
+
+function backAfterItsShelf(steps: BuildPlan["instructions"]): boolean {
+  const backAt = steps.findIndex((s) => /to the back of the box/.test(s.title));
+  const shelfAt = steps.findIndex((s) => /\bfixed shel/i.test(s.title));
+  return backAt >= 0 && shelfAt >= 0 && backAt > shelfAt;
+}
+
+/** Role sentences, then a reorder only when the step text itself no longer points ahead. */
+function speakAndSettle(project: YardProject, plan: BuildPlan, instructions: BuildPlan["instructions"], changed: boolean): BuildPlan {
+  const voiced = roleVoice(project, instructions);
+  const settled = settleForward(voiced, namesOf(project));
+  const reordered = settled.steps;
+  const next =
+    restingAhead(project, reordered) > restingAhead(project, voiced) || (backAfterItsShelf(reordered) && !backAfterItsShelf(voiced))
+      ? voiced
+      : reordered;
+  const same =
+    next.length === plan.instructions.length &&
+    next.every((s, i) => s.title === plan.instructions[i]?.title && s.description === plan.instructions[i]?.description);
+  if (!changed && same) return plan;
+  return { ...plan, instructions: next.map((s, i) => ({ ...s, step: i + 1 })) };
+}
+
 export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): BuildPlan {
-  if (!project.panels.length) return plan;
+  if (!project.panels.length) return speakAndSettle(project, plan, plan.instructions, false);
   const joints: ModelJoint[] = panelJoints(project.panels);
   const between = (xs: Panel[], ys: Panel[]) =>
     joints.filter(
@@ -193,10 +240,7 @@ export function stepsDriveJointScrews(project: YardProject, plan: BuildPlan): Bu
     instructions = backThenShelves(project, instructions, joints, backShelves);
     changed = true;
   }
-  const ordered = frameBeforeSpan(orderBySupports(project, instructions));
-  const sameOrder = ordered.length === instructions.length && ordered.every((s, i) => s.title === instructions[i]?.title);
-  if (!changed && sameOrder) return plan;
-  return { ...plan, instructions: ordered.map((s, i) => ({ ...s, step: i + 1 })) };
+  return speakAndSettle(project, plan, instructions, changed);
 }
 
 /** Screws the steps drive: a step's own "drives N" total when it states one, else every "with N × #8" join. */
