@@ -1302,11 +1302,6 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
   if (slipRack) {
     const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));
     binders = buyCatalogWays(binders, members);
-    const caps = countSlipFittings(project.instances, radius).caps;
-    if (caps > 0) {
-      const size = binders.find((line) => /PVC/.test(line.name))?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
-      binders = [...binders, { name: `${size} PVC cap`, quantity: caps, unit: "ea", catalogId: "pvc-cap", searchQuery: `${size} PVC cap`, notes: `Match ${size} pipe.` }];
-    }
   }
   for (const line of binders) {
     if (!bom.some((b) => b.name === line.name)) bom = [...bom, line];

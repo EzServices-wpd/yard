@@ -1872,8 +1872,26 @@ export function duplicateBuyLines(bom: BuildPlan["bom"]): string[] {
   return dup;
 }
 
+/**
+ * A seated pipe post is several pieces between fittings. The placement sentence
+ * calls one piece the post's height, and it sets every rail on the uprights.
+ * Both are dropped. The cut lengths stay.
+ */
+function seatedPipeTalk(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!isSeatedPipeFrame(project)) return plan;
+  const instructions = plan.instructions.map((step) => ({
+    ...step,
+    description: step.description
+      .replace(/Set the \d+ rails on the (?:\d+ )?uprights?\. ?/g, "")
+      .replace(/ ?Where: The \d+ uprights stand plumb, [^.]+\./g, "")
+      .replace(/ {2,}/g, " ")
+      .trim(),
+  }));
+  return { ...plan, instructions };
+}
+
 function buildPlanInner(project: YardProject): BuildPlan {
-  const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
+  const built = seatedPipeTalk(project, featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project))))))))));
   const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, withAntiTipKit(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))))));
   const extra = spaceCutStep(project);
   if (!extra) return positivePlan(spliceStep(plan));

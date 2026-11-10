@@ -5,7 +5,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateFromPrompt } from "./promptMain.ts";
+import { emptyProject, generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { headerSize } from "./headerSize.ts";
 import type { Vec3, YardInstance } from "./types.ts";
@@ -347,13 +347,38 @@ test("a coupling 2 inches from a corner fails the fitting pitch", () => {
   assert.ok(pitch < 2.75, `mutation pitch ${pitch} should fail the 2.75 inch check`);
 });
 
-test("dropping caps or 5-way crosses fails the Buy check", () => {
+test("a free pipe end is a cap on Buy, so dropping the cap fails", () => {
+  const upright = { x: 0, y: 0, z: 0 };
+  const joint = { x: 0, y: 24, z: 0 };
+  const tip = { x: 12, y: 24, z: 0 };
+  const member = (role: string, from: Vec3, to: Vec3): YardInstance => ({
+    id: `${role}-${from.y}-${to.x}`,
+    catalogId: "pvc-3-4-sch40",
+    position: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2, z: (from.z + to.z) / 2 },
+    rotation: { x: 0, y: 0, z: 0 },
+    cutLength: hypot(from, to),
+    role,
+    from,
+    to,
+  });
+  const project = {
+    ...emptyProject(),
+    name: "Cap check",
+    prompt: "pvc shoe rack",
+    kind: "closet" as const,
+    primaryMaterialId: "pvc-3-4-sch40",
+    notes: ["Same Cap check in 3/4\" Schedule 40 PVC Pipe. Each face is the outline of that stock, not a solid tile."],
+    instances: [member("upright", upright, joint), member("rail", joint, tip)],
+  };
+  const plan = buildPlan(project);
+  const nodes = clusterNodes(project.instances);
+  const caps = nodes.filter((node) => kindOf(node) === "cap").length;
+  const buy = buyCounts(plan.bom).cap ?? 0;
+  assert.ok(caps > 0, "the fixture has no cap, so a dropped cap would not be caught");
+  assert.equal(buy, caps, `cap buy ${buy} geometry ${caps}`);
   const frame = frameOf("firewood rack 96 wide 48 tall", "pvc-3-4-sch40");
   assert.ok((frame.geo.cross5 ?? 0) > 0, "this rack has no 5-way cross, so dropping one would not be caught");
-  assert.equal(buyAgrees(frame.geo, frame.buy, "cross5"), true);
-  assert.equal(buyAgrees(frame.geo, { ...frame.buy, cross5: (frame.buy.cross5 ?? 0) - 1 }, "cross5"), false);
-  assert.equal(buyAgrees({ cap: 2 }, { cap: 2 }, "cap"), true);
-  assert.equal(buyAgrees({ cap: 2 }, { cap: 0 }, "cap"), false);
+  assert.equal(frame.buy.cross5 ?? 0, frame.geo.cross5 ?? 0);
 });
 
 test("a one-plane spice rack stays the release open frame", () => {
