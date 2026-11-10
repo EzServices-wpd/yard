@@ -83,15 +83,32 @@ function backAfterItsShelf(steps: BuildPlan["instructions"]): boolean {
   return backAt >= 0 && shelfAt >= 0 && backAt > shelfAt;
 }
 
+const SEAT_STEP = /^Attach [A-Z]{1,2} Seat to both [A-Z]{1,2} uprights$/;
+
+/** The back fastens to the seat, so it follows the step that installs the seat. */
+function backAfterSeat(steps: BuildPlan["instructions"]): BuildPlan["instructions"] {
+  const seatAt = steps.findIndex((s) => SEAT_STEP.test(s.title));
+  const backAt = steps.findIndex((s) => /to the back of the box/.test(s.title));
+  if (seatAt < 0 || backAt < 0 || seatAt < backAt) return steps;
+  const out = steps.map((s) => ({ ...s }));
+  const [back] = out.splice(backAt, 1);
+  const seatNow = out.findIndex((s) => SEAT_STEP.test(s.title));
+  out.splice(seatNow + 1, 0, back);
+  if (backAfterItsShelf(out) && !backAfterItsShelf(steps)) return steps;
+  return out;
+}
+
 /** Role sentences, then a reorder only when the step text itself no longer points ahead. */
 function speakAndSettle(project: YardProject, plan: BuildPlan, instructions: BuildPlan["instructions"], changed: boolean): BuildPlan {
   const voiced = roleVoice(project, instructions);
   const settled = settleForward(voiced, namesOf(project));
   const reordered = settled.steps;
-  const next =
+  let next =
     restingAhead(project, reordered) > restingAhead(project, voiced) || (backAfterItsShelf(reordered) && !backAfterItsShelf(voiced))
       ? voiced
       : reordered;
+  const slid = backAfterSeat(next);
+  if (restingAhead(project, slid) <= restingAhead(project, next)) next = slid;
   const same =
     next.length === plan.instructions.length &&
     next.every((s, i) => s.title === plan.instructions[i]?.title && s.description === plan.instructions[i]?.description);

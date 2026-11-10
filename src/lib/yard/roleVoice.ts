@@ -24,7 +24,9 @@ export function roleVoice(project: YardProject, steps: AssemblyStep[]): Assembly
     const dog = dogStep(prompt, step);
     if (dog) return dog;
     const seat = seatSentence(project, step);
-    if (seat) return { ...step, description: withWhere(step.description, seat) };
+    // Keep the original "One join: attach C Seat…" clause. That is what marks this step,
+    // not the earlier box step, as the step that installs the seat.
+    if (seat) return { ...step, description: step.description.includes(seat) ? step.description : `${seat} ${step.description}` };
     const lid = seatLid(prompt, step);
     if (lid) return lid;
     return step;
