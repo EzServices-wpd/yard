@@ -26,7 +26,7 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
-import { isSeatedPipeFrame } from "./pipeRackFrame";
+import { isSeatedPipeFrame, withoutFalsePlacement } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -1876,9 +1876,12 @@ function buildPlanInner(project: YardProject): BuildPlan {
   const built = featureBayWording(project, stepsUseFaceScrew(project, applyShopJoin(project, fractionPlanText(buyReadsModel(boardStockWording(project, withOutdoorPackage(project, withPlacementTalk(project, buildPlanCore(project)))))))));
   const plan = withAccessorySheetCuts(project, stepsInstallWallAnchors(project, withAntiTipKit(project, stepsAccountForScrews(stepsStateJointScrews(project, stepsDriveJointScrews(project, { ...built, bom: hardwareFromNotes(project, built.bom) }))))));
   const extra = spaceCutStep(project);
-  if (!extra) return positivePlan(spliceStep(plan));
-  const step = plan.instructions.length + 1;
-  return positivePlan(spliceStep({ ...plan, instructions: [...plan.instructions, { step, title: extra.title, description: extra.description }] }));
+  const withExtra = extra
+    ? { ...plan, instructions: [...plan.instructions, { step: plan.instructions.length + 1, title: extra.title, description: extra.description }] }
+    : plan;
+  const spoken = positivePlan(spliceStep(withExtra));
+  // A release plumb height or "set the rails on the uprights" that the pipes contradict is left off.
+  return isSeatedPipeFrame(project) ? withoutFalsePlacement(project, spoken).plan : spoken;
 }
 
 /** Pieces the "Cut the …" step tells you to cut ("4 Posts …", "16 Rafter layers …"), or null with no such step. */

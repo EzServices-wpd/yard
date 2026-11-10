@@ -574,8 +574,8 @@ export function onePlaneShelf(intendedDepth: number, builtDepth: number, hadShel
 }
 
 /**
- * Vertical pipes are posts. Horizontal pipes are rails.
- * A rail up off the floor stays a rail, so a step cannot call a post a rail.
+ * Vertical pipes are uprights. Horizontal pipes are rails.
+ * The release carcase steps already say "Stand the sides" and "Run the rails" for those roles.
  */
 export function outlineRoles(instances: YardInstance[]): YardInstance[] {
   return instances.map((inst) => {
@@ -583,7 +583,7 @@ export function outlineRoles(instances: YardInstance[]): YardInstance[] {
     const dx = Math.abs(inst.to.x - inst.from.x);
     const dy = Math.abs(inst.to.y - inst.from.y);
     const dz = Math.abs(inst.to.z - inst.from.z);
-    return { ...inst, role: dy >= dx && dy >= dz ? "post" : "rail" };
+    return { ...inst, role: dy >= dx && dy >= dz ? "upright" : "rail" };
   });
 }
 
@@ -592,6 +592,69 @@ export function isSeatedPipeFrame(project: { panels: readonly unknown[]; instanc
   const item = getCatalogItem(project.primaryMaterialId ?? "");
   if (!item || !rigidSlipPipe(item)) return false;
   if (project.panels.length || project.instances.length < 2) return false;
-  const roles = new Set(["rail", "post"]);
+  const roles = new Set(["rail", "upright"]);
   return project.instances.every((inst) => !!inst.role && roles.has(inst.role) && inst.from && inst.to);
+}
+
+const PLUMB_SENTENCE = /(?:Where: )?The \d+ \w+ stand plumb,[^.]*\./g;
+const SET_RAILS = /Set the \d+ rails on the \d+ uprights\.(?: Fasten it with solvent cement, the same cement on the Buy list\.)?/g;
+const SET_REVERSED = /Set the \d+ uprights on the \d+ rails\.(?: Fasten it with solvent cement, the same cement on the Buy list\.)?/g;
+const FASTEN_MEETS = /Fasten the \d+ \w+ to the parts it meets with solvent cement, the same cement on the Buy list\./g;
+const WHERE = /Where:[^.]*\./g;
+
+function vertical(inst: { role?: string; from?: Vec3; to?: Vec3 }): boolean {
+  if (!inst.from || !inst.to) return false;
+  const dx = Math.abs(inst.to.x - inst.from.x);
+  const dy = Math.abs(inst.to.y - inst.from.y);
+  const dz = Math.abs(inst.to.z - inst.from.z);
+  return dy >= dx && dy >= dz && dy > 0.2;
+}
+
+/** Distinct upright lengths, to the nearest 1/16". One plumb height is false when this is more than one. */
+export function uprightHeights(instances: readonly { role?: string; from?: Vec3; to?: Vec3 }[]): number[] {
+  const hs = new Set<number>();
+  for (const inst of instances) {
+    if (inst.role !== "upright" || !vertical(inst) || !inst.from || !inst.to) continue;
+    hs.add(Math.round(Math.abs(inst.to.y - inst.from.y) * 16) / 16);
+  }
+  return [...hs];
+}
+
+/** True when some rail's end does not meet an upright. "Set the rails on the uprights" is then false. */
+export function railsMissUprights(instances: readonly { role?: string; from?: Vec3; to?: Vec3 }[]): boolean {
+  const ups = instances.filter((i) => i.role === "upright" && i.from && i.to);
+  const rails = instances.filter((i) => i.role === "rail" && i.from && i.to);
+  const touch = (p: Vec3, q: Vec3) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) <= 0.05;
+  return rails.some((r) => ![r.from!, r.to!].some((p) => ups.some((u) => touch(p, u.from!) || touch(p, u.to!))));
+}
+
+export type PlacementOmission = "plumb-height" | "set-rails";
+
+/**
+ * Keep release step sentences. Drop a sentence when it would be false, or when release
+ * never prints that wording ("uprights stand plumb", "set the uprights on the rails").
+ * Do not write a replacement. The listed cases are plumb-height and set-rails.
+ */
+export function withoutFalsePlacement<T extends { instructions: { description?: string }[] }>(
+  project: { instances: readonly { role?: string; from?: Vec3; to?: Vec3 }[] },
+  plan: T,
+): { plan: T; omitted: PlacementOmission[] } {
+  const omitted: PlacementOmission[] = [];
+  const mixed = uprightHeights(project.instances).length > 1;
+  const miss = railsMissUprights(project.instances);
+  if (mixed) omitted.push("plumb-height");
+  if (miss) omitted.push("set-rails");
+  const instructions = plan.instructions.map((s) => {
+    let d = s.description ?? "";
+    if (miss) d = d.replace(SET_RAILS, "");
+    // Release prints "The N legs stand plumb", never "uprights", so that line is left off.
+    // Mixed heights would make one height false; that case is listed and not rewritten.
+    // The floor-level rail line is a sentence release already prints; other Where lines are not.
+    // "Set the uprights on the rails" and "the parts it meets" name no real joint here.
+    d = d.replace(PLUMB_SENTENCE, "").replace(SET_REVERSED, "").replace(FASTEN_MEETS, "");
+    d = d.replace(WHERE, (m) => (/^Where: The rails lie at floor level, .+ up from the bottom \(center lines\)\.$/.test(m) ? m : ""));
+    d = d.replace(/\s{2,}/g, " ").replace(/\s+([.])/g, "$1").trim();
+    return d === (s.description ?? "") ? s : { ...s, description: d };
+  });
+  return { plan: { ...plan, instructions }, omitted };
 }

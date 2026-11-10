@@ -99,12 +99,14 @@ function isFaceStock(item: CatalogItem): boolean {
 
 /**
  * The rack types seated in round 1. A cabinet, table, bed, or other pipe build is not one of these.
- * Hooks stay the release cantilever.
+ * Hooks stay the release cantilever. The test reads this list; adding a word here seats that rack.
  */
-function declaredRack(prompt: string | undefined): boolean {
+export const DECLARED_RACK_TYPES = ["shoe", "bike", "towel", "wine", "spice", "drying", "magazine", "dish", "plate", "kayak", "firewood", "spool"] as const;
+
+export function declaredRack(prompt: string | undefined): boolean {
   const text = (prompt ?? "").toLowerCase();
   if (/\b(?:peg|hook)s?\b/.test(text)) return false;
-  return /\b(?:shoe|bike|towel|wine|spice|drying|magazine|dish|plate|kayak|firewood|spool)\s+racks?\b/.test(text);
+  return new RegExp(`\\b(?:${DECLARED_RACK_TYPES.join("|")})\\s+racks?\\b`).test(text);
 }
 
 /**

@@ -2,32 +2,20 @@
   "release": "645a038664c94050467197a13ade2e8798933995",
   "prompts": [
     {
-      "prompt": "wine rack 24 wide 36 high 12 deep"
+      "prompt": "12 bottle wine rack"
     },
     {
-      "prompt": "wine rack 24 wide 36 high 12 deep",
+      "prompt": "12 bottle wine rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "shoe rack with cubbies"
+      "prompt": "12 bottle wine rack from pvc"
     },
     {
-      "prompt": "shoe rack with cubbies",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc 12 bottle wine rack"
     },
     {
-      "prompt": "spice rack 18 wide 24 high 4 deep"
-    },
-    {
-      "prompt": "spice rack 18 wide 24 high 4 deep",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "firewood rack"
-    },
-    {
-      "prompt": "firewood rack",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc pipe 12 bottle wine rack"
     },
     {
       "prompt": "2 tier shoe rack 32 wide"
@@ -37,6 +25,253 @@
       "material": "pvc-3-4-sch40"
     },
     {
+      "prompt": "2 tier shoe rack 32 wide from pvc"
+    },
+    {
+      "prompt": "pvc 2 tier shoe rack 32 wide"
+    },
+    {
+      "prompt": "pvc pipe 2 tier shoe rack 32 wide"
+    },
+    {
+      "prompt": "28 inch wide shoe rack to fit a 32 inch gap"
+    },
+    {
+      "prompt": "28 inch wide shoe rack to fit a 32 inch gap",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "28 inch wide shoe rack to fit a 32 inch gap from pvc"
+    },
+    {
+      "prompt": "pvc 28 inch wide shoe rack to fit a 32 inch gap"
+    },
+    {
+      "prompt": "pvc pipe 28 inch wide shoe rack to fit a 32 inch gap"
+    },
+    {
+      "prompt": "3 tier pvc shoe rack"
+    },
+    {
+      "prompt": "3 tier pvc shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Bike rack"
+    },
+    {
+      "prompt": "Bike rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Bike rack from pvc"
+    },
+    {
+      "prompt": "pvc Bike rack"
+    },
+    {
+      "prompt": "pvc pipe Bike rack"
+    },
+    {
+      "prompt": "Dish rack"
+    },
+    {
+      "prompt": "Dish rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Dish rack from pvc"
+    },
+    {
+      "prompt": "pvc Dish rack"
+    },
+    {
+      "prompt": "pvc pipe Dish rack"
+    },
+    {
+      "prompt": "Drying rack"
+    },
+    {
+      "prompt": "Drying rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Drying rack from pvc"
+    },
+    {
+      "prompt": "pvc Drying rack"
+    },
+    {
+      "prompt": "pvc pipe Drying rack"
+    },
+    {
+      "prompt": "Drying rack 36\" × 30\" × 12\""
+    },
+    {
+      "prompt": "Drying rack 36\" × 30\" × 12\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Drying rack 36\" × 30\" × 12\" from pvc"
+    },
+    {
+      "prompt": "pvc Drying rack 36\" × 30\" × 12\""
+    },
+    {
+      "prompt": "pvc pipe Drying rack 36\" × 30\" × 12\""
+    },
+    {
+      "prompt": "Drying rack 6\" × 30\" × 12\""
+    },
+    {
+      "prompt": "Drying rack 6\" × 30\" × 12\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Drying rack 6\" × 30\" × 12\" from pvc"
+    },
+    {
+      "prompt": "pvc Drying rack 6\" × 30\" × 12\""
+    },
+    {
+      "prompt": "pvc pipe Drying rack 6\" × 30\" × 12\""
+    },
+    {
+      "prompt": "Drying rack · 36\" W × 12\" D × 30\" H (size assumed)"
+    },
+    {
+      "prompt": "Drying rack · 36\" W × 12\" D × 30\" H (size assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Drying rack · 36\" W × 12\" D × 30\" H (size assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Drying rack · 36\" W × 12\" D × 30\" H (size assumed)"
+    },
+    {
+      "prompt": "pvc pipe Drying rack · 36\" W × 12\" D × 30\" H (size assumed)"
+    },
+    {
+      "prompt": "Drying rack · 6\" W × 12\" D × 30\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Drying rack · 6\" W × 12\" D × 30\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Drying rack · 6\" W × 12\" D × 30\" H (D, H assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Drying rack · 6\" W × 12\" D × 30\" H (D, H assumed)"
+    },
+    {
+      "prompt": "pvc pipe Drying rack · 6\" W × 12\" D × 30\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Firewood rack 8' × 4'"
+    },
+    {
+      "prompt": "Firewood rack 8' × 4'",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Firewood rack 8' × 4' from pvc"
+    },
+    {
+      "prompt": "pvc Firewood rack 8' × 4'"
+    },
+    {
+      "prompt": "pvc pipe Firewood rack 8' × 4'"
+    },
+    {
+      "prompt": "Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)"
+    },
+    {
+      "prompt": "Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)"
+    },
+    {
+      "prompt": "pvc pipe Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)"
+    },
+    {
+      "prompt": "Magazine rack"
+    },
+    {
+      "prompt": "Magazine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Magazine rack from pvc"
+    },
+    {
+      "prompt": "pvc Magazine rack"
+    },
+    {
+      "prompt": "pvc pipe Magazine rack"
+    },
+    {
+      "prompt": "PVC shoe rack 36 wide 12 deep 30 tall"
+    },
+    {
+      "prompt": "PVC shoe rack 36 wide 12 deep 30 tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Plate rack"
+    },
+    {
+      "prompt": "Plate rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Plate rack from pvc"
+    },
+    {
+      "prompt": "pvc Plate rack"
+    },
+    {
+      "prompt": "pvc pipe Plate rack"
+    },
+    {
+      "prompt": "Plate rack 36\" × 30\" × 12\""
+    },
+    {
+      "prompt": "Plate rack 36\" × 30\" × 12\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Plate rack 36\" × 30\" × 12\" from pvc"
+    },
+    {
+      "prompt": "pvc Plate rack 36\" × 30\" × 12\""
+    },
+    {
+      "prompt": "pvc pipe Plate rack 36\" × 30\" × 12\""
+    },
+    {
+      "prompt": "Plate rack · 36\" W × 12\" D × 30\" H (size assumed)"
+    },
+    {
+      "prompt": "Plate rack · 36\" W × 12\" D × 30\" H (size assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Plate rack · 36\" W × 12\" D × 30\" H (size assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Plate rack · 36\" W × 12\" D × 30\" H (size assumed)"
+    },
+    {
+      "prompt": "pvc pipe Plate rack · 36\" W × 12\" D × 30\" H (size assumed)"
+    },
+    {
       "prompt": "Quick & Easy 2-Tier Shoe Rack"
     },
     {
@@ -44,11 +279,253 @@
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "stackable shoe rack 32 wide"
+      "prompt": "Quick & Easy 2-Tier Shoe Rack from pvc"
     },
     {
-      "prompt": "stackable shoe rack 32 wide",
+      "prompt": "pvc Quick & Easy 2-Tier Shoe Rack"
+    },
+    {
+      "prompt": "pvc pipe Quick & Easy 2-Tier Shoe Rack"
+    },
+    {
+      "prompt": "Shoe rack"
+    },
+    {
+      "prompt": "Shoe rack",
       "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack"
+    },
+    {
+      "prompt": "Shoe rack 24\" wide"
+    },
+    {
+      "prompt": "Shoe rack 24\" wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack 24\" wide from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack 24\" wide"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack 24\" wide"
+    },
+    {
+      "prompt": "Shoe rack 24\" wide · 24\" W × 12\" D × 18\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Shoe rack 24\" wide · 24\" W × 12\" D × 18\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack 24\" wide · 24\" W × 12\" D × 18\" H (D, H assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack 24\" wide · 24\" W × 12\" D × 18\" H (D, H assumed)"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack 24\" wide · 24\" W × 12\" D × 18\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Shoe rack 30\" wide"
+    },
+    {
+      "prompt": "Shoe rack 30\" wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack 30\" wide from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack 30\" wide"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack 30\" wide"
+    },
+    {
+      "prompt": "Shoe rack 30\" wide · 30\" W × 12\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Shoe rack 30\" wide · 30\" W × 12\" D × 24\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack 30\" wide · 30\" W × 12\" D × 24\" H (D, H assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack 30\" wide · 30\" W × 12\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack 30\" wide · 30\" W × 12\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Shoe rack 32\" wide 32×12×16.25"
+    },
+    {
+      "prompt": "Shoe rack 32\" wide 32×12×16.25",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack 32\" wide 32×12×16.25 from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack 32\" wide 32×12×16.25"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack 32\" wide 32×12×16.25"
+    },
+    {
+      "prompt": "Shoe rack 32\" wide 32×12×18"
+    },
+    {
+      "prompt": "Shoe rack 32\" wide 32×12×18",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack 32\" wide 32×12×18 from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack 32\" wide 32×12×18"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack 32\" wide 32×12×18"
+    },
+    {
+      "prompt": "Shoe rack with cubbies"
+    },
+    {
+      "prompt": "Shoe rack with cubbies",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack with cubbies from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack with cubbies"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack with cubbies"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed)"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack · 36\" W × 12\" D × 18\" H (size assumed)"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack · 36\" W × 12\" D × 18\" H (size assumed)"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed) · 3 cubbies"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed) · 3 cubbies",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed) · 3 cubbies from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack · 36\" W × 12\" D × 18\" H (size assumed) · 3 cubbies"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack · 36\" W × 12\" D × 18\" H (size assumed) · 3 cubbies"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 21\" H (size assumed)"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 21\" H (size assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Shoe rack · 36\" W × 12\" D × 21\" H (size assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Shoe rack · 36\" W × 12\" D × 21\" H (size assumed)"
+    },
+    {
+      "prompt": "pvc pipe Shoe rack · 36\" W × 12\" D × 21\" H (size assumed)"
+    },
+    {
+      "prompt": "Spice rack"
+    },
+    {
+      "prompt": "Spice rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack"
+    },
+    {
+      "prompt": "pvc pipe Spice rack"
+    },
+    {
+      "prompt": "Spice rack 36\" × 24\" × 4\""
+    },
+    {
+      "prompt": "Spice rack 36\" × 24\" × 4\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack 36\" × 24\" × 4\" from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack 36\" × 24\" × 4\""
+    },
+    {
+      "prompt": "pvc pipe Spice rack 36\" × 24\" × 4\""
+    },
+    {
+      "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (W, D assumed)"
+    },
+    {
+      "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (W, D assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (W, D assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack · 36\" W × 4\" D × 24\" H (W, D assumed)"
+    },
+    {
+      "prompt": "pvc pipe Spice rack · 36\" W × 4\" D × 24\" H (W, D assumed)"
+    },
+    {
+      "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (size assumed)"
+    },
+    {
+      "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (size assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (size assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack · 36\" W × 4\" D × 24\" H (size assumed)"
+    },
+    {
+      "prompt": "pvc pipe Spice rack · 36\" W × 4\" D × 24\" H (size assumed)"
     },
     {
       "prompt": "Stackable 1x Board Shoe Rack"
@@ -58,81 +535,173 @@
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "shoe rack by the door 36 inches wide"
+      "prompt": "Stackable 1x Board Shoe Rack from pvc"
     },
     {
-      "prompt": "shoe rack by the door 36 inches wide",
+      "prompt": "pvc Stackable 1x Board Shoe Rack"
+    },
+    {
+      "prompt": "pvc pipe Stackable 1x Board Shoe Rack"
+    },
+    {
+      "prompt": "This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list."
+    },
+    {
+      "prompt": "This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list.",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "shoe rack"
+      "prompt": "This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list. from pvc"
     },
     {
-      "prompt": "shoe rack",
+      "prompt": "pvc This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list."
+    },
+    {
+      "prompt": "pvc pipe This is a wall spice rack, not a floor box. If a number disagrees with the cut list, trust the cut list."
+    },
+    {
+      "prompt": "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list."
+    },
+    {
+      "prompt": "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list.",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spice rack wall mounted 24 inches"
+      "prompt": "This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list. from pvc"
     },
     {
-      "prompt": "spice rack wall mounted 24 inches",
+      "prompt": "pvc This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list."
+    },
+    {
+      "prompt": "pvc pipe This is a wine rack, not a bookcase. Bottles lie on their sides. If a number disagrees with the cut list, trust the cut list."
+    },
+    {
+      "prompt": "Wine rack"
+    },
+    {
+      "prompt": "Wine rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spice rack"
+      "prompt": "Wine rack from pvc"
     },
     {
-      "prompt": "spice rack",
+      "prompt": "pvc Wine rack"
+    },
+    {
+      "prompt": "pvc pipe Wine rack"
+    },
+    {
+      "prompt": "Wine rack 24\" × 14 1/4\" × 12\""
+    },
+    {
+      "prompt": "Wine rack 24\" × 14 1/4\" × 12\"",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "plate rack wall mounted"
+      "prompt": "Wine rack 24\" × 14 1/4\" × 12\" from pvc"
     },
     {
-      "prompt": "plate rack wall mounted",
+      "prompt": "pvc Wine rack 24\" × 14 1/4\" × 12\""
+    },
+    {
+      "prompt": "pvc pipe Wine rack 24\" × 14 1/4\" × 12\""
+    },
+    {
+      "prompt": "Wine rack 24\" × 36\" × 12\""
+    },
+    {
+      "prompt": "Wine rack 24\" × 36\" × 12\"",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "plate rack"
+      "prompt": "Wine rack 24\" × 36\" × 12\" from pvc"
     },
     {
-      "prompt": "plate rack",
+      "prompt": "pvc Wine rack 24\" × 36\" × 12\""
+    },
+    {
+      "prompt": "pvc pipe Wine rack 24\" × 36\" × 12\""
+    },
+    {
+      "prompt": "Wine rack · 24\" W × 12\" D × 14 1/4\" H (size assumed) · 12 bottles"
+    },
+    {
+      "prompt": "Wine rack · 24\" W × 12\" D × 14 1/4\" H (size assumed) · 12 bottles",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "wall mounted spice rack 18 inches"
+      "prompt": "Wine rack · 24\" W × 12\" D × 14 1/4\" H (size assumed) · 12 bottles from pvc"
     },
     {
-      "prompt": "wall mounted spice rack 18 inches",
+      "prompt": "pvc Wine rack · 24\" W × 12\" D × 14 1/4\" H (size assumed) · 12 bottles"
+    },
+    {
+      "prompt": "pvc pipe Wine rack · 24\" W × 12\" D × 14 1/4\" H (size assumed) · 12 bottles"
+    },
+    {
+      "prompt": "Wine rack · 24\" W × 12\" D × 36\" H"
+    },
+    {
+      "prompt": "Wine rack · 24\" W × 12\" D × 36\" H",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "firewood rack outdoor"
+      "prompt": "Wine rack · 24\" W × 12\" D × 36\" H from pvc"
     },
     {
-      "prompt": "firewood rack outdoor",
+      "prompt": "pvc Wine rack · 24\" W × 12\" D × 36\" H"
+    },
+    {
+      "prompt": "pvc pipe Wine rack · 24\" W × 12\" D × 36\" H"
+    },
+    {
+      "prompt": "b35 protect magazine rack"
+    },
+    {
+      "prompt": "b35 protect magazine rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "entry shoe rack 24 wide"
+      "prompt": "b35 protect magazine rack from pvc"
     },
     {
-      "prompt": "entry shoe rack 24 wide",
+      "prompt": "pvc b35 protect magazine rack"
+    },
+    {
+      "prompt": "pvc pipe b35 protect magazine rack"
+    },
+    {
+      "prompt": "bottles lie in a wine rack"
+    },
+    {
+      "prompt": "bottles lie in a wine rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spice rack for kitchen wall 30 inches"
+      "prompt": "bottles lie in a wine rack from pvc"
     },
     {
-      "prompt": "spice rack for kitchen wall 30 inches",
+      "prompt": "pvc bottles lie in a wine rack"
+    },
+    {
+      "prompt": "pvc pipe bottles lie in a wine rack"
+    },
+    {
+      "prompt": "does not divide a shallow spice rack or run a divider through a jar lip"
+    },
+    {
+      "prompt": "does not divide a shallow spice rack or run a divider through a jar lip",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "wall plate rack"
+      "prompt": "does not divide a shallow spice rack or run a divider through a jar lip from pvc"
     },
     {
-      "prompt": "wall plate rack",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc does not divide a shallow spice rack or run a divider through a jar lip"
+    },
+    {
+      "prompt": "pvc pipe does not divide a shallow spice rack or run a divider through a jar lip"
     },
     {
       "prompt": "dowel drying rack"
@@ -142,6 +711,87 @@
       "material": "pvc-3-4-sch40"
     },
     {
+      "prompt": "dowel drying rack 12 wide"
+    },
+    {
+      "prompt": "dowel drying rack 12 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "dowel drying rack 6 wide"
+    },
+    {
+      "prompt": "dowel drying rack 6 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "dowel magazine rack"
+    },
+    {
+      "prompt": "dowel magazine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "dowel shoe rack"
+    },
+    {
+      "prompt": "dowel shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "dowel shoe rack 6 wide"
+    },
+    {
+      "prompt": "dowel shoe rack 6 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "dowel wine rack"
+    },
+    {
+      "prompt": "dowel wine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "drinking straw spice rack"
+    },
+    {
+      "prompt": "drinking straw spice rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "drying rack"
+    },
+    {
+      "prompt": "drying rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "drying rack from pvc"
+    },
+    {
+      "prompt": "pvc drying rack"
+    },
+    {
+      "prompt": "pvc pipe drying rack"
+    },
+    {
+      "prompt": "drying rack 36x18x60 with four rungs"
+    },
+    {
+      "prompt": "drying rack 36x18x60 with four rungs",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "drying rack 36x18x60 with four rungs from pvc"
+    },
+    {
+      "prompt": "pvc drying rack 36x18x60 with four rungs"
+    },
+    {
+      "prompt": "pvc pipe drying rack 36x18x60 with four rungs"
+    },
+    {
       "prompt": "drying rack 6 wide"
     },
     {
@@ -149,17 +799,792 @@
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "shoe rack 3 tiers 30 wide"
+      "prompt": "drying rack 6 wide from pvc"
     },
     {
-      "prompt": "shoe rack 3 tiers 30 wide",
+      "prompt": "pvc drying rack 6 wide"
+    },
+    {
+      "prompt": "pvc pipe drying rack 6 wide"
+    },
+    {
+      "prompt": "drying rack title"
+    },
+    {
+      "prompt": "drying rack title",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "wall mounted plate rack"
+      "prompt": "drying rack title from pvc"
     },
     {
-      "prompt": "wall mounted plate rack",
+      "prompt": "pvc drying rack title"
+    },
+    {
+      "prompt": "pvc pipe drying rack title"
+    },
+    {
+      "prompt": "entry shoe rack 24 wide"
+    },
+    {
+      "prompt": "entry shoe rack 24 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "entry shoe rack 24 wide from pvc"
+    },
+    {
+      "prompt": "pvc entry shoe rack 24 wide"
+    },
+    {
+      "prompt": "pvc pipe entry shoe rack 24 wide"
+    },
+    {
+      "prompt": "firewood rack"
+    },
+    {
+      "prompt": "firewood rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack"
+    },
+    {
+      "prompt": "pvc pipe firewood rack"
+    },
+    {
+      "prompt": "firewood rack 60 tall"
+    },
+    {
+      "prompt": "firewood rack 60 tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack 60 tall from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack 60 tall"
+    },
+    {
+      "prompt": "pvc pipe firewood rack 60 tall"
+    },
+    {
+      "prompt": "firewood rack 72 tall"
+    },
+    {
+      "prompt": "firewood rack 72 tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack 72 tall from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack 72 tall"
+    },
+    {
+      "prompt": "pvc pipe firewood rack 72 tall"
+    },
+    {
+      "prompt": "firewood rack 96 wide 48 tall"
+    },
+    {
+      "prompt": "firewood rack 96 wide 48 tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack 96 wide 48 tall from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack 96 wide 48 tall"
+    },
+    {
+      "prompt": "pvc pipe firewood rack 96 wide 48 tall"
+    },
+    {
+      "prompt": "firewood rack 96 wide 48 tall 18 inches deep"
+    },
+    {
+      "prompt": "firewood rack 96 wide 48 tall 18 inches deep",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack 96 wide 48 tall 18 inches deep from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack 96 wide 48 tall 18 inches deep"
+    },
+    {
+      "prompt": "pvc pipe firewood rack 96 wide 48 tall 18 inches deep"
+    },
+    {
+      "prompt": "firewood rack outdoor"
+    },
+    {
+      "prompt": "firewood rack outdoor",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack outdoor from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack outdoor"
+    },
+    {
+      "prompt": "pvc pipe firewood rack outdoor"
+    },
+    {
+      "prompt": "firewood rack: base rails before the uprights screwed to them"
+    },
+    {
+      "prompt": "firewood rack: base rails before the uprights screwed to them",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood rack: base rails before the uprights screwed to them from pvc"
+    },
+    {
+      "prompt": "pvc firewood rack: base rails before the uprights screwed to them"
+    },
+    {
+      "prompt": "pvc pipe firewood rack: base rails before the uprights screwed to them"
+    },
+    {
+      "prompt": "firewood stacks in a firewood rack"
+    },
+    {
+      "prompt": "firewood stacks in a firewood rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "firewood stacks in a firewood rack from pvc"
+    },
+    {
+      "prompt": "pvc firewood stacks in a firewood rack"
+    },
+    {
+      "prompt": "pvc pipe firewood stacks in a firewood rack"
+    },
+    {
+      "prompt": "house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs"
+    },
+    {
+      "prompt": "house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs from pvc"
+    },
+    {
+      "prompt": "pvc house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs"
+    },
+    {
+      "prompt": "pvc pipe house: drying rack 36″ wide × 18″ deep × 60″ tall with four rungs"
+    },
+    {
+      "prompt": "house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots"
+    },
+    {
+      "prompt": "house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots from pvc"
+    },
+    {
+      "prompt": "pvc house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots"
+    },
+    {
+      "prompt": "pvc pipe house: magazine rack 18″ wide × 12″ deep × 24″ tall with four slots"
+    },
+    {
+      "prompt": "house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots"
+    },
+    {
+      "prompt": "house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots from pvc"
+    },
+    {
+      "prompt": "pvc house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots"
+    },
+    {
+      "prompt": "pvc pipe house: plate rack 36″ wide × 12″ deep × 24″ tall with three slots"
+    },
+    {
+      "prompt": "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots"
+    },
+    {
+      "prompt": "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots from pvc"
+    },
+    {
+      "prompt": "pvc house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots"
+    },
+    {
+      "prompt": "pvc pipe house: wine rack 24″ wide × 12″ deep × 36″ tall with twelve slots"
+    },
+    {
+      "prompt": "house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots"
+    },
+    {
+      "prompt": "house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots from pvc"
+    },
+    {
+      "prompt": "pvc house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots"
+    },
+    {
+      "prompt": "pvc pipe house: wine rack 30″ wide × 12″ deep × 42″ tall with sixteen slots"
+    },
+    {
+      "prompt": "jar rack and spice rack: the top lip is flush with the uprights, shelves evenly spaced, one size on every label"
+    },
+    {
+      "prompt": "jar rack and spice rack: the top lip is flush with the uprights, shelves evenly spaced, one size on every label",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "jar rack and spice rack: the top lip is flush with the uprights, shelves evenly spaced, one size on every label from pvc"
+    },
+    {
+      "prompt": "pvc jar rack and spice rack: the top lip is flush with the uprights, shelves evenly spaced, one size on every label"
+    },
+    {
+      "prompt": "pvc pipe jar rack and spice rack: the top lip is flush with the uprights, shelves evenly spaced, one size on every label"
+    },
+    {
+      "prompt": "k-shoe rack"
+    },
+    {
+      "prompt": "k-shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "k-shoe rack from pvc"
+    },
+    {
+      "prompt": "pvc k-shoe rack"
+    },
+    {
+      "prompt": "pvc pipe k-shoe rack"
+    },
+    {
+      "prompt": "kayak rack"
+    },
+    {
+      "prompt": "kayak rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "kayak rack from pvc"
+    },
+    {
+      "prompt": "pvc kayak rack"
+    },
+    {
+      "prompt": "pvc pipe kayak rack"
+    },
+    {
+      "prompt": "magazine rack"
+    },
+    {
+      "prompt": "magazine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "magazine rack from pvc"
+    },
+    {
+      "prompt": "pvc magazine rack"
+    },
+    {
+      "prompt": "pvc pipe magazine rack"
+    },
+    {
+      "prompt": "noun \"dowel drying rack\""
+    },
+    {
+      "prompt": "noun \"dowel drying rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"drying rack\""
+    },
+    {
+      "prompt": "noun \"drying rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"drying rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"drying rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"drying rack\""
+    },
+    {
+      "prompt": "noun \"firewood rack\""
+    },
+    {
+      "prompt": "noun \"firewood rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"firewood rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"firewood rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"firewood rack\""
+    },
+    {
+      "prompt": "noun \"plate rack\""
+    },
+    {
+      "prompt": "noun \"plate rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"plate rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"plate rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"plate rack\""
+    },
+    {
+      "prompt": "noun \"shoe rack\""
+    },
+    {
+      "prompt": "noun \"shoe rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"shoe rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"shoe rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"shoe rack\""
+    },
+    {
+      "prompt": "noun \"spice rack\""
+    },
+    {
+      "prompt": "noun \"spice rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"spice rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"spice rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"spice rack\""
+    },
+    {
+      "prompt": "noun \"wall plate rack\""
+    },
+    {
+      "prompt": "noun \"wall plate rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"wall plate rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"wall plate rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"wall plate rack\""
+    },
+    {
+      "prompt": "noun \"wine rack bottles\""
+    },
+    {
+      "prompt": "noun \"wine rack bottles\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"wine rack bottles\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"wine rack bottles\""
+    },
+    {
+      "prompt": "pvc pipe noun \"wine rack bottles\""
+    },
+    {
+      "prompt": "noun \"wine rack\""
+    },
+    {
+      "prompt": "noun \"wine rack\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "noun \"wine rack\" from pvc"
+    },
+    {
+      "prompt": "pvc noun \"wine rack\""
+    },
+    {
+      "prompt": "pvc pipe noun \"wine rack\""
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles 18 inches tall"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles 18 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles 18 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc oak wine rack for 10 bottles 18 inches tall"
+    },
+    {
+      "prompt": "pvc pipe oak wine rack for 10 bottles 18 inches tall"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles, 18 inches tall"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles, 18 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles, 18 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc oak wine rack for 10 bottles, 18 inches tall"
+    },
+    {
+      "prompt": "pvc pipe oak wine rack for 10 bottles, 18 inches tall"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles, 18 inches wide"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles, 18 inches wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "oak wine rack for 10 bottles, 18 inches wide from pvc"
+    },
+    {
+      "prompt": "pvc oak wine rack for 10 bottles, 18 inches wide"
+    },
+    {
+      "prompt": "pvc pipe oak wine rack for 10 bottles, 18 inches wide"
+    },
+    {
+      "prompt": "oak wine rack for 12 bottles, 36 inches tall"
+    },
+    {
+      "prompt": "oak wine rack for 12 bottles, 36 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "oak wine rack for 12 bottles, 36 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc oak wine rack for 12 bottles, 36 inches tall"
+    },
+    {
+      "prompt": "pvc pipe oak wine rack for 12 bottles, 36 inches tall"
+    },
+    {
+      "prompt": "pine wine rack 30 wide with 20 slots"
+    },
+    {
+      "prompt": "pine wine rack 30 wide with 20 slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack 30 wide with 20 slots from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack 30 wide with 20 slots"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack 30 wide with 20 slots"
+    },
+    {
+      "prompt": "pine wine rack for 12 bottles"
+    },
+    {
+      "prompt": "pine wine rack for 12 bottles",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack for 12 bottles from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack for 12 bottles"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack for 12 bottles"
+    },
+    {
+      "prompt": "pine wine rack for 12 bottles, 24 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 12 bottles, 24 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack for 12 bottles, 24 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack for 12 bottles, 24 inches tall"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack for 12 bottles, 24 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 15 bottles 20 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 15 bottles 20 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack for 15 bottles 20 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack for 15 bottles 20 inches tall"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack for 15 bottles 20 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles 12 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles 12 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles 12 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack for 20 bottles 12 inches tall"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack for 20 bottles 12 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles 30 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles 30 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles 30 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack for 20 bottles 30 inches tall"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack for 20 bottles 30 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles, 12 inches tall"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles, 12 inches tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack for 20 bottles, 12 inches tall from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack for 20 bottles, 12 inches tall"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack for 20 bottles, 12 inches tall"
+    },
+    {
+      "prompt": "pine wine rack with 15 slots, 20 inches wide"
+    },
+    {
+      "prompt": "pine wine rack with 15 slots, 20 inches wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pine wine rack with 15 slots, 20 inches wide from pvc"
+    },
+    {
+      "prompt": "pvc pine wine rack with 15 slots, 20 inches wide"
+    },
+    {
+      "prompt": "pvc pipe pine wine rack with 15 slots, 20 inches wide"
+    },
+    {
+      "prompt": "plate rack"
+    },
+    {
+      "prompt": "plate rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "plate rack from pvc"
+    },
+    {
+      "prompt": "pvc plate rack"
+    },
+    {
+      "prompt": "pvc pipe plate rack"
+    },
+    {
+      "prompt": "plate rack 36 wide × 12 deep × 24 tall with three slots"
+    },
+    {
+      "prompt": "plate rack 36 wide × 12 deep × 24 tall with three slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "plate rack 36 wide × 12 deep × 24 tall with three slots from pvc"
+    },
+    {
+      "prompt": "pvc plate rack 36 wide × 12 deep × 24 tall with three slots"
+    },
+    {
+      "prompt": "pvc pipe plate rack 36 wide × 12 deep × 24 tall with three slots"
+    },
+    {
+      "prompt": "plate rack bays unequal"
+    },
+    {
+      "prompt": "plate rack bays unequal",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "plate rack bays unequal from pvc"
+    },
+    {
+      "prompt": "pvc plate rack bays unequal"
+    },
+    {
+      "prompt": "pvc pipe plate rack bays unequal"
+    },
+    {
+      "prompt": "plate rack wall mounted"
+    },
+    {
+      "prompt": "plate rack wall mounted",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "plate rack wall mounted from pvc"
+    },
+    {
+      "prompt": "pvc plate rack wall mounted"
+    },
+    {
+      "prompt": "pvc pipe plate rack wall mounted"
+    },
+    {
+      "prompt": "plate rack with 6 slots"
+    },
+    {
+      "prompt": "plate rack with 6 slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "plate rack with 6 slots from pvc"
+    },
+    {
+      "prompt": "pvc plate rack with 6 slots"
+    },
+    {
+      "prompt": "pvc pipe plate rack with 6 slots"
+    },
+    {
+      "prompt": "plywood wine rack"
+    },
+    {
+      "prompt": "plywood wine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "plywood wine rack from pvc"
+    },
+    {
+      "prompt": "pvc plywood wine rack"
+    },
+    {
+      "prompt": "pvc pipe plywood wine rack"
+    },
+    {
+      "prompt": "pvc bike rack"
+    },
+    {
+      "prompt": "pvc bike rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc dowel drying rack 12 wide"
+    },
+    {
+      "prompt": "pvc dowel drying rack 12 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc drying rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc pipe shoe rack"
+    },
+    {
+      "prompt": "pvc pipe shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc shoe rack"
+    },
+    {
+      "prompt": "pvc shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc shoe racks"
+    },
+    {
+      "prompt": "pvc shoe racks",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc shoe racks rail"
+    },
+    {
+      "prompt": "pvc shoe racks rail",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "pvc spice rack"
+    },
+    {
+      "prompt": "pvc spice rack",
       "material": "pvc-3-4-sch40"
     },
     {
@@ -170,18 +1595,199 @@
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "white shoe rack"
+      "prompt": "rolling shoe rack from pvc"
     },
     {
-      "prompt": "white shoe rack",
+      "prompt": "pvc rolling shoe rack"
+    },
+    {
+      "prompt": "pvc pipe rolling shoe rack"
+    },
+    {
+      "prompt": "shoe rack"
+    },
+    {
+      "prompt": "shoe rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "wine rack 12 bottles"
+      "prompt": "shoe rack from pvc"
     },
     {
-      "prompt": "wine rack 12 bottles",
+      "prompt": "shoe rack 3 tiers 30 wide"
+    },
+    {
+      "prompt": "shoe rack 3 tiers 30 wide",
       "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 3 tiers 30 wide from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 3 tiers 30 wide"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 3 tiers 30 wide"
+    },
+    {
+      "prompt": "shoe rack 3 x two shelves"
+    },
+    {
+      "prompt": "shoe rack 3 x two shelves",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 3 x two shelves from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 3 x two shelves"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 3 x two shelves"
+    },
+    {
+      "prompt": "shoe rack 30 wide"
+    },
+    {
+      "prompt": "shoe rack 30 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 30 wide from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 30 wide"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 30 wide"
+    },
+    {
+      "prompt": "shoe rack 30 wide 3 shelves"
+    },
+    {
+      "prompt": "shoe rack 30 wide 3 shelves",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 30 wide 3 shelves from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 30 wide 3 shelves"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 30 wide 3 shelves"
+    },
+    {
+      "prompt": "shoe rack 30x12x18 for a 28 inch gap"
+    },
+    {
+      "prompt": "shoe rack 30x12x18 for a 28 inch gap",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 30x12x18 for a 28 inch gap from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 30x12x18 for a 28 inch gap"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 30x12x18 for a 28 inch gap"
+    },
+    {
+      "prompt": "shoe rack 36 inches"
+    },
+    {
+      "prompt": "shoe rack 36 inches",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36 inches from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36 inches"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36 inches"
+    },
+    {
+      "prompt": "shoe rack 36 wide"
+    },
+    {
+      "prompt": "shoe rack 36 wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36 wide from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36 wide"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36 wide"
+    },
+    {
+      "prompt": "shoe rack 36 wide 12 deep 18 tall"
+    },
+    {
+      "prompt": "shoe rack 36 wide 12 deep 18 tall",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36 wide 12 deep 18 tall from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36 wide 12 deep 18 tall"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36 wide 12 deep 18 tall"
+    },
+    {
+      "prompt": "shoe rack 36 wide 18 tall with 4 shelves"
+    },
+    {
+      "prompt": "shoe rack 36 wide 18 tall with 4 shelves",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36 wide 18 tall with 4 shelves from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36 wide 18 tall with 4 shelves"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36 wide 18 tall with 4 shelves"
+    },
+    {
+      "prompt": "shoe rack 36 wide 24 high 12 deep"
+    },
+    {
+      "prompt": "shoe rack 36 wide 24 high 12 deep",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36 wide 24 high 12 deep from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36 wide 24 high 12 deep"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36 wide 24 high 12 deep"
+    },
+    {
+      "prompt": "shoe rack 36 wide 30 tall 12 deep"
+    },
+    {
+      "prompt": "shoe rack 36 wide 30 tall 12 deep",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36 wide 30 tall 12 deep from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36 wide 30 tall 12 deep"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36 wide 30 tall 12 deep"
     },
     {
       "prompt": "shoe rack by the door"
@@ -191,788 +1797,760 @@
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "pvc shoe rack"
+      "prompt": "shoe rack by the door from pvc"
     },
     {
-      "prompt": "shoe racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "shoe rack 24 wide"
-    },
-    {
-      "prompt": "pvc shoe rack 24 wide"
-    },
-    {
-      "prompt": "shoe racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "shoe rack 12 wide"
-    },
-    {
-      "prompt": "pvc shoe rack 12 wide"
-    },
-    {
-      "prompt": "shoe racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "shoe rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc shoe rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "shoe racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "shoe rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc shoe rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "shoe racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc shoe racks rail"
-    },
-    {
-      "prompt": "dowel shoe rack"
-    },
-    {
-      "prompt": "dowel shoe rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel shoe rack 12 wide"
-    },
-    {
-      "prompt": "shoe rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "bike rack"
-    },
-    {
-      "prompt": "pvc bike rack"
-    },
-    {
-      "prompt": "bike racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "bike rack 24 wide"
-    },
-    {
-      "prompt": "pvc bike rack 24 wide"
-    },
-    {
-      "prompt": "bike racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "bike rack 12 wide"
-    },
-    {
-      "prompt": "pvc bike rack 12 wide"
-    },
-    {
-      "prompt": "bike racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "bike rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc bike rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "bike racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "bike rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc bike rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "bike racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc bike racks rail"
-    },
-    {
-      "prompt": "dowel bike rack"
-    },
-    {
-      "prompt": "dowel bike rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel bike rack 12 wide"
-    },
-    {
-      "prompt": "bike rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "towel rack"
-    },
-    {
-      "prompt": "pvc towel rack"
-    },
-    {
-      "prompt": "towel racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "towel rack 24 wide"
-    },
-    {
-      "prompt": "pvc towel rack 24 wide"
-    },
-    {
-      "prompt": "towel racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "towel rack 12 wide"
-    },
-    {
-      "prompt": "pvc towel rack 12 wide"
-    },
-    {
-      "prompt": "towel racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "towel rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc towel rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "towel racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "towel rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc towel rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "towel racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc towel racks rail"
-    },
-    {
-      "prompt": "dowel towel rack"
-    },
-    {
-      "prompt": "dowel towel rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel towel rack 12 wide"
-    },
-    {
-      "prompt": "towel rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "wine rack"
-    },
-    {
-      "prompt": "pvc wine rack"
-    },
-    {
-      "prompt": "wine racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "wine rack 24 wide"
-    },
-    {
-      "prompt": "pvc wine rack 24 wide"
-    },
-    {
-      "prompt": "wine racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "wine rack 12 wide"
-    },
-    {
-      "prompt": "pvc wine rack 12 wide"
-    },
-    {
-      "prompt": "wine racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "wine rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc wine rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "wine racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "wine rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc wine rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "wine racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc wine racks rail"
-    },
-    {
-      "prompt": "dowel wine rack"
-    },
-    {
-      "prompt": "dowel wine rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel wine rack 12 wide"
-    },
-    {
-      "prompt": "wine rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc spice rack"
-    },
-    {
-      "prompt": "spice racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "spice rack 24 wide"
-    },
-    {
-      "prompt": "pvc spice rack 24 wide"
-    },
-    {
-      "prompt": "spice racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "spice rack 12 wide"
-    },
-    {
-      "prompt": "pvc spice rack 12 wide"
-    },
-    {
-      "prompt": "spice racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "spice rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc spice rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "spice racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "spice rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc spice rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "spice racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc spice racks rail"
-    },
-    {
-      "prompt": "dowel spice rack"
-    },
-    {
-      "prompt": "dowel spice rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel spice rack 12 wide"
-    },
-    {
-      "prompt": "spice rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "drying rack"
-    },
-    {
-      "prompt": "pvc drying rack"
-    },
-    {
-      "prompt": "drying racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "drying rack 24 wide"
-    },
-    {
-      "prompt": "pvc drying rack 24 wide"
-    },
-    {
-      "prompt": "drying racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "drying rack 12 wide"
-    },
-    {
-      "prompt": "pvc drying rack 12 wide"
-    },
-    {
-      "prompt": "drying racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "drying rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc drying rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "drying racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "drying rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc drying rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "drying racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc drying racks rail"
-    },
-    {
-      "prompt": "dowel drying rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel drying rack 12 wide"
-    },
-    {
-      "prompt": "drying rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "magazine rack"
-    },
-    {
-      "prompt": "pvc magazine rack"
-    },
-    {
-      "prompt": "magazine racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "magazine rack 24 wide"
-    },
-    {
-      "prompt": "pvc magazine rack 24 wide"
-    },
-    {
-      "prompt": "magazine racks 24 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "magazine rack 12 wide"
-    },
-    {
-      "prompt": "pvc magazine rack 12 wide"
-    },
-    {
-      "prompt": "magazine racks 12 wide",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "magazine rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc magazine rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "magazine racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "magazine rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "pvc magazine rack 96 wide 48 tall"
-    },
-    {
-      "prompt": "magazine racks 96 wide 48 tall",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc magazine racks rail"
-    },
-    {
-      "prompt": "dowel magazine rack"
-    },
-    {
-      "prompt": "dowel magazine rack 12 wide"
-    },
-    {
-      "prompt": "pvc dowel magazine rack 12 wide"
-    },
-    {
-      "prompt": "magazine rack wall mounted",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "dish rack"
-    },
-    {
-      "prompt": "pvc dish rack"
-    },
-    {
-      "prompt": "dish racks",
-      "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "dish rack 24 wide"
-    },
-    {
-      "prompt": "pvc dish rack 24 wide"
-    },
-    {
-      "prompt": "dish racks 24 wide",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc shoe rack by the door"
     },
     {
-      "prompt": "dish rack 12 wide"
+      "prompt": "pvc pipe shoe rack by the door"
     },
     {
-      "prompt": "pvc dish rack 12 wide"
+      "prompt": "shoe rack by the door 36 inches"
     },
     {
-      "prompt": "dish racks 12 wide",
+      "prompt": "shoe rack by the door 36 inches",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "dish rack 36 wide 12 deep 30 tall"
     },
     {
-      "prompt": "pvc dish rack 36 wide 12 deep 30 tall"
+      "prompt": "shoe rack by the door 36 inches from pvc"
     },
     {
-      "prompt": "dish racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc shoe rack by the door 36 inches"
     },
     {
-      "prompt": "dish rack 96 wide 48 tall"
+      "prompt": "pvc pipe shoe rack by the door 36 inches"
     },
     {
-      "prompt": "pvc dish rack 96 wide 48 tall"
+      "prompt": "shoe rack by the door 36 inches wide"
     },
     {
-      "prompt": "dish racks 96 wide 48 tall",
+      "prompt": "shoe rack by the door 36 inches wide",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc dish racks rail"
-    },
-    {
-      "prompt": "dowel dish rack"
     },
     {
-      "prompt": "dowel dish rack 12 wide"
+      "prompt": "shoe rack by the door 36 inches wide from pvc"
     },
     {
-      "prompt": "pvc dowel dish rack 12 wide"
+      "prompt": "pvc shoe rack by the door 36 inches wide"
     },
     {
-      "prompt": "dish rack wall mounted",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc pipe shoe rack by the door 36 inches wide"
     },
     {
-      "prompt": "pvc plate rack"
+      "prompt": "shoe rack for a 26 inch entry"
     },
     {
-      "prompt": "plate racks",
+      "prompt": "shoe rack for a 26 inch entry",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "plate rack 24 wide"
     },
     {
-      "prompt": "pvc plate rack 24 wide"
+      "prompt": "shoe rack for a 26 inch entry from pvc"
     },
     {
-      "prompt": "plate racks 24 wide",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc shoe rack for a 26 inch entry"
     },
     {
-      "prompt": "plate rack 12 wide"
+      "prompt": "pvc pipe shoe rack for a 26 inch entry"
     },
     {
-      "prompt": "pvc plate rack 12 wide"
+      "prompt": "shoe rack tiers clear 6 in+"
     },
     {
-      "prompt": "plate racks 12 wide",
+      "prompt": "shoe rack tiers clear 6 in+",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "plate rack 36 wide 12 deep 30 tall"
     },
     {
-      "prompt": "pvc plate rack 36 wide 12 deep 30 tall"
+      "prompt": "shoe rack tiers clear 6 in+ from pvc"
     },
     {
-      "prompt": "plate racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc shoe rack tiers clear 6 in+"
     },
     {
-      "prompt": "plate rack 96 wide 48 tall"
+      "prompt": "pvc pipe shoe rack tiers clear 6 in+"
     },
     {
-      "prompt": "pvc plate rack 96 wide 48 tall"
+      "prompt": "shoe rack with 4 shelves"
     },
     {
-      "prompt": "plate racks 96 wide 48 tall",
+      "prompt": "shoe rack with 4 shelves",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc plate racks rail"
     },
     {
-      "prompt": "dowel plate rack"
+      "prompt": "shoe rack with 4 shelves from pvc"
     },
     {
-      "prompt": "dowel plate rack 12 wide"
+      "prompt": "pvc shoe rack with 4 shelves"
     },
     {
-      "prompt": "pvc dowel plate rack 12 wide"
+      "prompt": "pvc pipe shoe rack with 4 shelves"
     },
     {
-      "prompt": "kayak rack"
+      "prompt": "shoe rack with cubbies"
     },
     {
-      "prompt": "pvc kayak rack"
-    },
-    {
-      "prompt": "kayak racks",
+      "prompt": "shoe rack with cubbies",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "kayak rack 24 wide"
     },
     {
-      "prompt": "pvc kayak rack 24 wide"
+      "prompt": "shoe rack with cubbies from pvc"
     },
     {
-      "prompt": "kayak racks 24 wide",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc shoe rack with cubbies"
     },
     {
-      "prompt": "kayak rack 12 wide"
+      "prompt": "pvc pipe shoe rack with cubbies"
     },
     {
-      "prompt": "pvc kayak rack 12 wide"
+      "prompt": "spice rack"
     },
     {
-      "prompt": "kayak racks 12 wide",
+      "prompt": "spice rack",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "kayak rack 36 wide 12 deep 30 tall"
-    },
-    {
-      "prompt": "pvc kayak rack 36 wide 12 deep 30 tall"
     },
     {
-      "prompt": "kayak racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
+      "prompt": "spice rack from pvc"
     },
     {
-      "prompt": "kayak rack 96 wide 48 tall"
+      "prompt": "pvc pipe spice rack"
     },
     {
-      "prompt": "pvc kayak rack 96 wide 48 tall"
+      "prompt": "spice rack 18 wide 24 high 4 deep"
     },
     {
-      "prompt": "kayak racks 96 wide 48 tall",
+      "prompt": "spice rack 18 wide 24 high 4 deep",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc kayak racks rail"
-    },
-    {
-      "prompt": "dowel kayak rack"
     },
     {
-      "prompt": "dowel kayak rack 12 wide"
+      "prompt": "spice rack 18 wide 24 high 4 deep from pvc"
     },
     {
-      "prompt": "pvc dowel kayak rack 12 wide"
+      "prompt": "pvc spice rack 18 wide 24 high 4 deep"
     },
     {
-      "prompt": "kayak rack wall mounted",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc pipe spice rack 18 wide 24 high 4 deep"
     },
     {
-      "prompt": "pvc firewood rack"
+      "prompt": "spice rack 18 wide 3 deep 24 tall"
     },
     {
-      "prompt": "firewood racks",
+      "prompt": "spice rack 18 wide 3 deep 24 tall",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "firewood rack 24 wide"
     },
     {
-      "prompt": "pvc firewood rack 24 wide"
+      "prompt": "spice rack 18 wide 3 deep 24 tall from pvc"
     },
     {
-      "prompt": "firewood racks 24 wide",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc spice rack 18 wide 3 deep 24 tall"
     },
     {
-      "prompt": "firewood rack 12 wide"
+      "prompt": "pvc pipe spice rack 18 wide 3 deep 24 tall"
     },
     {
-      "prompt": "pvc firewood rack 12 wide"
+      "prompt": "spice rack for kitchen wall 30 inches"
     },
     {
-      "prompt": "firewood racks 12 wide",
+      "prompt": "spice rack for kitchen wall 30 inches",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "firewood rack 36 wide 12 deep 30 tall"
     },
     {
-      "prompt": "pvc firewood rack 36 wide 12 deep 30 tall"
+      "prompt": "spice rack for kitchen wall 30 inches from pvc"
     },
     {
-      "prompt": "firewood racks 36 wide 12 deep 30 tall",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc spice rack for kitchen wall 30 inches"
     },
     {
-      "prompt": "firewood rack 96 wide 48 tall"
+      "prompt": "pvc pipe spice rack for kitchen wall 30 inches"
     },
     {
-      "prompt": "pvc firewood rack 96 wide 48 tall"
+      "prompt": "spice rack wall mounted 24 inches"
     },
     {
-      "prompt": "firewood racks 96 wide 48 tall",
+      "prompt": "spice rack wall mounted 24 inches",
       "material": "pvc-3-4-sch40"
-    },
-    {
-      "prompt": "pvc firewood racks rail"
     },
     {
-      "prompt": "dowel firewood rack"
+      "prompt": "spice rack wall mounted 24 inches from pvc"
     },
     {
-      "prompt": "dowel firewood rack 12 wide"
+      "prompt": "pvc spice rack wall mounted 24 inches"
     },
     {
-      "prompt": "pvc dowel firewood rack 12 wide"
-    },
-    {
-      "prompt": "firewood rack wall mounted",
-      "material": "pvc-3-4-sch40"
+      "prompt": "pvc pipe spice rack wall mounted 24 inches"
     },
     {
       "prompt": "spool rack"
     },
     {
+      "prompt": "spool rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "spool rack from pvc"
+    },
+    {
       "prompt": "pvc spool rack"
     },
     {
-      "prompt": "spool racks",
+      "prompt": "pvc pipe spool rack"
+    },
+    {
+      "prompt": "stackable shoe rack 32 wide"
+    },
+    {
+      "prompt": "stackable shoe rack 32 wide",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spool rack 24 wide"
+      "prompt": "stackable shoe rack 32 wide from pvc"
     },
     {
-      "prompt": "pvc spool rack 24 wide"
+      "prompt": "pvc stackable shoe rack 32 wide"
     },
     {
-      "prompt": "spool racks 24 wide",
+      "prompt": "pvc pipe stackable shoe rack 32 wide"
+    },
+    {
+      "prompt": "still builds a wine rack, not a single bottle"
+    },
+    {
+      "prompt": "still builds a wine rack, not a single bottle",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spool rack 12 wide"
+      "prompt": "still builds a wine rack, not a single bottle from pvc"
     },
     {
-      "prompt": "pvc spool rack 12 wide"
+      "prompt": "pvc still builds a wine rack, not a single bottle"
     },
     {
-      "prompt": "spool racks 12 wide",
+      "prompt": "pvc pipe still builds a wine rack, not a single bottle"
+    },
+    {
+      "prompt": "thin magazine rack"
+    },
+    {
+      "prompt": "thin magazine rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spool rack 36 wide 12 deep 30 tall"
+      "prompt": "thin magazine rack from pvc"
     },
     {
-      "prompt": "pvc spool rack 36 wide 12 deep 30 tall"
+      "prompt": "pvc thin magazine rack"
     },
     {
-      "prompt": "spool racks 36 wide 12 deep 30 tall",
+      "prompt": "pvc pipe thin magazine rack"
+    },
+    {
+      "prompt": "towel rack"
+    },
+    {
+      "prompt": "towel rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "spool rack 96 wide 48 tall"
+      "prompt": "towel rack from pvc"
     },
     {
-      "prompt": "pvc spool rack 96 wide 48 tall"
+      "prompt": "pvc towel rack"
     },
     {
-      "prompt": "spool racks 96 wide 48 tall",
+      "prompt": "pvc pipe towel rack"
+    },
+    {
+      "prompt": "towel rack 10 wide"
+    },
+    {
+      "prompt": "towel rack 10 wide",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "pvc spool racks rail"
+      "prompt": "towel rack 10 wide from pvc"
     },
     {
-      "prompt": "dowel spool rack"
+      "prompt": "pvc towel rack 10 wide"
     },
     {
-      "prompt": "dowel spool rack 12 wide"
+      "prompt": "pvc pipe towel rack 10 wide"
     },
     {
-      "prompt": "pvc dowel spool rack 12 wide"
+      "prompt": "twelve-slot wine rack"
     },
     {
-      "prompt": "spool rack wall mounted",
+      "prompt": "twelve-slot wine rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "PVC shoe rack 36 wide 12 deep 30 tall"
+      "prompt": "twelve-slot wine rack from pvc"
     },
     {
-      "prompt": "something to hold my firewood",
+      "prompt": "pvc twelve-slot wine rack"
+    },
+    {
+      "prompt": "pvc pipe twelve-slot wine rack"
+    },
+    {
+      "prompt": "wall mounted plate rack"
+    },
+    {
+      "prompt": "wall mounted plate rack",
       "material": "pvc-3-4-sch40"
     },
     {
-      "prompt": "firewood rack 96 wide 48 tall",
+      "prompt": "wall mounted plate rack from pvc"
+    },
+    {
+      "prompt": "pvc wall mounted plate rack"
+    },
+    {
+      "prompt": "pvc pipe wall mounted plate rack"
+    },
+    {
+      "prompt": "wall mounted spice rack"
+    },
+    {
+      "prompt": "wall mounted spice rack",
       "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wall mounted spice rack from pvc"
+    },
+    {
+      "prompt": "pvc wall mounted spice rack"
+    },
+    {
+      "prompt": "pvc pipe wall mounted spice rack"
+    },
+    {
+      "prompt": "wall mounted spice rack 18 inches"
+    },
+    {
+      "prompt": "wall mounted spice rack 18 inches",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wall mounted spice rack 18 inches from pvc"
+    },
+    {
+      "prompt": "pvc wall mounted spice rack 18 inches"
+    },
+    {
+      "prompt": "pvc pipe wall mounted spice rack 18 inches"
+    },
+    {
+      "prompt": "wall mounted wine rack"
+    },
+    {
+      "prompt": "wall mounted wine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wall mounted wine rack from pvc"
+    },
+    {
+      "prompt": "pvc wall mounted wine rack"
+    },
+    {
+      "prompt": "pvc pipe wall mounted wine rack"
+    },
+    {
+      "prompt": "wall plate rack"
+    },
+    {
+      "prompt": "wall plate rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wall plate rack from pvc"
+    },
+    {
+      "prompt": "pvc wall plate rack"
+    },
+    {
+      "prompt": "pvc pipe wall plate rack"
+    },
+    {
+      "prompt": "white shoe rack"
+    },
+    {
+      "prompt": "white shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "white shoe rack from pvc"
+    },
+    {
+      "prompt": "pvc white shoe rack"
+    },
+    {
+      "prompt": "pvc pipe white shoe rack"
+    },
+    {
+      "prompt": "wine rack"
+    },
+    {
+      "prompt": "wine rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack from pvc"
+    },
+    {
+      "prompt": "pvc wine rack"
+    },
+    {
+      "prompt": "pvc pipe wine rack"
+    },
+    {
+      "prompt": "wine rack 12 bottles"
+    },
+    {
+      "prompt": "wine rack 12 bottles",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 12 bottles from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 12 bottles"
+    },
+    {
+      "prompt": "pvc pipe wine rack 12 bottles"
+    },
+    {
+      "prompt": "wine rack 12 bottles from pvc",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 12 wide 30 tall for 20 bottles"
+    },
+    {
+      "prompt": "wine rack 12 wide 30 tall for 20 bottles",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 12 wide 30 tall for 20 bottles from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 12 wide 30 tall for 20 bottles"
+    },
+    {
+      "prompt": "pvc pipe wine rack 12 wide 30 tall for 20 bottles"
+    },
+    {
+      "prompt": "wine rack 24 wide 12 tall 12 deep with 30 slots"
+    },
+    {
+      "prompt": "wine rack 24 wide 12 tall 12 deep with 30 slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 12 tall 12 deep with 30 slots from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 12 tall 12 deep with 30 slots"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 12 tall 12 deep with 30 slots"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 high 12 deep"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 high 12 deep"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep with twelve slots"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep with twelve slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep with twelve slots from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 high 12 deep with twelve slots"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 high 12 deep with twelve slots"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 tall 12 deep with 12 slots as many as fit"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep with twelve slots"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep with twelve slots",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep with twelve slots from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 tall 12 deep with twelve slots"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 tall 12 deep with twelve slots"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep, as many bottles as fit"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep, as many bottles as fit",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 tall 12 deep, as many bottles as fit from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 tall 12 deep, as many bottles as fit"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 tall 12 deep, as many bottles as fit"
+    },
+    {
+      "prompt": "wine rack 36 tall as many bottles as fit"
+    },
+    {
+      "prompt": "wine rack 36 tall as many bottles as fit",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 36 tall as many bottles as fit from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 36 tall as many bottles as fit"
+    },
+    {
+      "prompt": "pvc pipe wine rack 36 tall as many bottles as fit"
+    },
+    {
+      "prompt": "wine rack for 12 bottles"
+    },
+    {
+      "prompt": "wine rack for 12 bottles",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack for 12 bottles from pvc"
+    },
+    {
+      "prompt": "pvc wine rack for 12 bottles"
+    },
+    {
+      "prompt": "pvc pipe wine rack for 12 bottles"
+    },
+    {
+      "prompt": "wine rack that holds 12 bottles, 30 inches wide"
+    },
+    {
+      "prompt": "wine rack that holds 12 bottles, 30 inches wide",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack that holds 12 bottles, 30 inches wide from pvc"
+    },
+    {
+      "prompt": "pvc wine rack that holds 12 bottles, 30 inches wide"
+    },
+    {
+      "prompt": "pvc pipe wine rack that holds 12 bottles, 30 inches wide"
+    },
+    {
+      "prompt": "wine rack that holds 8 bottles"
+    },
+    {
+      "prompt": "wine rack that holds 8 bottles",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack that holds 8 bottles from pvc"
+    },
+    {
+      "prompt": "pvc wine rack that holds 8 bottles"
+    },
+    {
+      "prompt": "pvc pipe wine rack that holds 8 bottles"
+    },
+    {
+      "prompt": "conduit shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "conduit shoe racks",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "EMT shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "EMT shoe racks",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wood shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wood shoe racks",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "straw shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "straw shoe racks",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe racks"
+    },
+    {
+      "prompt": "bike rack"
+    },
+    {
+      "prompt": "bike rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "bike racks"
+    },
+    {
+      "prompt": "pvc bike racks"
+    },
+    {
+      "prompt": "3 tier pvc bike rack"
+    },
+    {
+      "prompt": "pvc pipe bike rack"
+    },
+    {
+      "prompt": "towel racks"
+    },
+    {
+      "prompt": "pvc towel racks"
+    },
+    {
+      "prompt": "3 tier pvc towel rack"
+    },
+    {
+      "prompt": "wine racks"
+    },
+    {
+      "prompt": "pvc wine racks"
+    },
+    {
+      "prompt": "3 tier pvc wine rack"
+    },
+    {
+      "prompt": "spice racks"
+    },
+    {
+      "prompt": "pvc spice racks"
+    },
+    {
+      "prompt": "3 tier pvc spice rack"
+    },
+    {
+      "prompt": "drying racks"
+    },
+    {
+      "prompt": "pvc drying racks"
+    },
+    {
+      "prompt": "3 tier pvc drying rack"
+    },
+    {
+      "prompt": "magazine racks"
+    },
+    {
+      "prompt": "pvc magazine racks"
+    },
+    {
+      "prompt": "3 tier pvc magazine rack"
+    },
+    {
+      "prompt": "dish rack"
+    },
+    {
+      "prompt": "dish rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "dish racks"
+    },
+    {
+      "prompt": "pvc dish racks"
+    },
+    {
+      "prompt": "3 tier pvc dish rack"
+    },
+    {
+      "prompt": "pvc pipe dish rack"
+    },
+    {
+      "prompt": "plate racks"
+    },
+    {
+      "prompt": "pvc plate racks"
+    },
+    {
+      "prompt": "3 tier pvc plate rack"
+    },
+    {
+      "prompt": "kayak racks"
+    },
+    {
+      "prompt": "pvc kayak racks"
+    },
+    {
+      "prompt": "3 tier pvc kayak rack"
+    },
+    {
+      "prompt": "firewood racks"
+    },
+    {
+      "prompt": "pvc firewood racks"
+    },
+    {
+      "prompt": "3 tier pvc firewood rack"
+    },
+    {
+      "prompt": "spool racks"
+    },
+    {
+      "prompt": "pvc spool racks"
+    },
+    {
+      "prompt": "3 tier pvc spool rack"
     },
     {
       "prompt": "tv console"
@@ -1039,9 +2617,6 @@
     },
     {
       "prompt": "pvc cart"
-    },
-    {
-      "prompt": "drinking straw spice rack"
     },
     {
       "prompt": "paper towel roll rack"

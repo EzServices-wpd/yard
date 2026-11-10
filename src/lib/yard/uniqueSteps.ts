@@ -1,5 +1,4 @@
 import { unitItemSteps } from "./unitItems";
-import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { uniqueSteps as uniqueDefault } from "./steps";
 import { uniqueTableSteps } from "./tableSteps";
 import { jobFurnitureSteps } from "./jobFurniture";
@@ -11,38 +10,7 @@ import type { AssemblyStep, YardProject } from "./types";
 import { isBoughtHardwareName } from "./boughtHardware";
 import { SCREWS_PER_HOOK } from "./hookCount";
 
-/**
- * Sentences already printed for a pipe carcase. No post height, and no sentence that
- * sets every rail on every post.
- */
-function seatedRackSteps(project: YardProject): AssemblyStep[] {
-  const w = project.overall.width.toFixed(1);
-  const d = project.overall.depth.toFixed(1);
-  return [
-    {
-      step: 1,
-      title: "Lay out the footprint on the bench",
-      description: `Tape a rectangle ${w}" × ${d}" on the bench. Mark centerlines both ways. The faces go up from this outline.`,
-      tips: "A square base keeps every later part true.",
-    },
-    {
-      step: 2,
-      title: "Cut every marked length",
-      description: "PVC cutter or a fine hacksaw. Deburr so each end seats in the fitting. The cut list is the full list — same letter is the same cut.",
-      tips: "A ragged end will not bottom out in a slip tee.",
-    },
-    {
-      step: 3,
-      title: "Check plumb and square",
-      description: "Stand it up. Sight the long edges. If a face racks, find the soft joint and re-join it.",
-      tips: "A lean now is a lean forever.",
-    },
-  ];
-}
-
 export function uniqueSteps(project: YardProject): AssemblyStep[] {
-  // A seated pipe rack reuses the release pipe sentences. It does not grow a new placement line.
-  if (isSeatedPipeFrame(project)) return seatedRackSteps(project);
   // F47: unit items (one clip, a clip chain, a washer stack, a bead bracelet) keep their own steps.
   const unit = unitItemSteps(project);
   if (unit) return unit;

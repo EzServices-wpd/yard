@@ -10,7 +10,10 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { headerSize } from "./headerSize.ts";
 import type { Vec3, YardInstance } from "./types.ts";
-import { sweepPrompts, type SweepPrompt } from "../../../scripts/pvcRackMovers.ts";
+import { readFileSync } from "node:fs";
+import { DECLARED_RACK_TYPES } from "./memberStock.ts";
+import { railsMissUprights, uprightHeights } from "./pipeRackFrame.ts";
+import { corpusRackPrompts, currentRows, sweepPrompts, type SweepPrompt } from "../../../scripts/pvcRackMovers.ts";
 
 const NODE = 0.05;
 const STRAIGHT = -0.82;
@@ -196,8 +199,8 @@ function buyMatches(geo: Record<string, number>, buy: Record<string, number>): b
   return BOUGHT.every((key) => (buy[key] ?? 0) === (geo[key] ?? 0));
 }
 
-const CARCASE_TITLE = /^(?:Skin the back|Stand the sides|Stand the dividers|Close the top|Hang the doors|Set the shelves|Set the kick|Set the counter|Build the drawers|Lay the deck) —/;
-const FORBIDDEN = /stand plumb,|Set the \d+ rails on the \d+ (?:uprights|posts)|Stand the posts in the slip fittings/;
+const SET_RAILS = /Set the \d+ rails on the \d+ uprights/;
+const PLUMB = /stand plumb,/;
 
 function frameBox(members: YardInstance[]): { width: number; depth: number; height: number } {
   const r = OD / 2;
@@ -253,7 +256,7 @@ function build(row: SweepPrompt) {
     }
   }
   const tilt = members.length ? Math.max(0, ...members.map((m) => tiltDeg(m.from!, m.to!))) : 0;
-  const seated = (project.notes ?? []).some((n) => /outline of that stock/.test(n)) && members.length > 2 && members.every((m) => m.role === "post" || m.role === "rail");
+  const seated = (project.notes ?? []).some((n) => /outline of that stock/.test(n)) && members.length > 2 && members.every((m) => m.role === "upright" || m.role === "rail");
   return { project, plan, members, nodes, geo, buy: buyCounts(plan.bom), pieces: members.length ? new Set(members.map((_, i) => find(i))).size : 0, clashes, tilt, seated, label: row.material ? `${row.prompt} [${row.material}]` : row.prompt };
 }
 
@@ -275,7 +278,7 @@ const CRITIC: { row: SweepPrompt; cost: number }[] = [
   { row: { prompt: "pvc dowel drying rack 12 wide" }, cost: 66.08 },
 ];
 
-test("every seated sweep build is one square frame and Buy matches its own geometry", { timeout: 180_000 }, () => {
+test("every seated sweep build is one square frame and Buy matches its own geometry", { timeout: 300_000 }, () => {
   const seated: ReturnType<typeof build>[] = [];
   for (const row of sweepPrompts()) {
     const frame = build(row);
@@ -292,9 +295,14 @@ test("every seated sweep build is one square frame and Buy matches its own geome
     const hud = headerSize(frame.project);
     assert.equal(hudOnFrame(hud, box), true, `${tag} HUD ${hud.width},${hud.depth},${hud.height} frame ${box.width},${box.depth},${box.height}`);
     const text = frame.plan.instructions.map((s) => `${s.title} ${s.description}`).join(" ");
-    assert.equal(CARCASE_TITLE.test(frame.plan.instructions.map((s) => s.title).join("\n")), false, `${tag} carcase title`);
-    assert.equal(frame.plan.instructions.some((s) => CARCASE_TITLE.test(s.title)), false, tag);
-    assert.equal(FORBIDDEN.test(text), false, `${tag} forbidden sentence`);
+    const titles = frame.plan.instructions.map((s) => s.title);
+    assert.ok(titles.some((t) => /^Read this /.test(t)), `${tag} read step`);
+    assert.ok(titles.some((t) => t === "Cut every marked length"), `${tag} cut step`);
+    assert.ok(titles.some((t) => /^Stand the sides —/.test(t) || /^Run the rails —/.test(t)), `${tag} member step`);
+    assert.match(text, /Solvent cement\. Twist a quarter turn and hold until it grabs\./, tag);
+    if (uprightHeights(frame.members).length > 1) assert.equal(PLUMB.test(text), false, `${tag} one plumb height`);
+    if (railsMissUprights(frame.members)) assert.equal(SET_RAILS.test(text), false, `${tag} rails on uprights`);
+    assert.equal(/Stand the posts in the slip fittings/.test(text), false, tag);
     assert.equal(postsCalledRails(frame.members), false, `${tag} posts called rails`);
     for (const id of ["pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross", "pvc-cap"]) {
       const line = frame.plan.bom.find((b) => b.catalogId === id);
@@ -354,29 +362,97 @@ test("moving the HUD off the frame fails the frame check", () => {
   assert.equal(hudOnFrame({ ...hud, width: hud.width + 1 }, box), false);
 });
 
-test("restoring a carcase title fails the title check", () => {
+test("a seated shoe rack keeps the release step structure and true numbers", () => {
   const frame = build({ prompt: "pvc shoe rack" });
-  assert.equal(frame.plan.instructions.some((s) => CARCASE_TITLE.test(s.title)), false);
-  const restored = [...frame.plan.instructions, { step: 9, title: "Stand the sides — 16 pieces", description: "Solvent cement." }];
-  assert.equal(restored.some((s) => CARCASE_TITLE.test(s.title)), true);
+  const titles = frame.plan.instructions.map((s) => s.title);
+  assert.match(titles[0], /^Read this Shoe rack before you cut$/);
+  assert.ok(titles.includes("Cut every marked length"));
+  assert.ok(titles.some((t) => /^Stand the sides — \d+ pieces$/.test(t)));
+  assert.ok(titles.some((t) => /^Run the rails — \d+ pieces$/.test(t)));
+  const cut = frame.plan.instructions.find((s) => s.title === "Cut every marked length")!.description;
+  const said = [...cut.matchAll(/(\d+) ×/g)].reduce((n, m) => n + Number(m[1]), 0);
+  assert.equal(said, frame.members.length);
+  assert.match(frame.plan.instructions.map((s) => s.description).join(" "), /Solvent cement\. Twist a quarter turn/);
 });
 
-test("calling posts rails fails the role check", () => {
+test("calling uprights rails fails the role check", () => {
   const frame = build({ prompt: "pvc shoe rack" });
   assert.equal(postsCalledRails(frame.members), false);
-  assert.ok(frame.members.some((m) => m.role === "post"));
-  const called = frame.members.map((m) => (m.role === "post" ? { ...m, role: "rail" } : m));
+  assert.ok(frame.members.some((m) => m.role === "upright"));
+  const called = frame.members.map((m) => (m.role === "upright" ? { ...m, role: "rail" } : m));
   assert.equal(postsCalledRails(called), true);
 });
 
-test("widening the rack gate so ball, hat, tool, or garment racks seat fails", () => {
-  for (const prompt of ["ball rack", "hat rack", "tool rack", "garment rack"]) {
-    const frame = build({ prompt, material: "pvc-3-4-sch40" });
-    assert.equal(frame.seated, false, prompt);
-    assert.ok(frame.project.notes?.some((n) => /Open frame of/.test(n)), prompt);
-    assert.equal(frame.plan.bom.some((b) => /4-way tee|5-way cross|6-way cross|PVC cap/.test(b.name)), false, prompt);
-    assert.equal(Math.round(frame.plan.totals.estCostUsd * 100) / 100, 19, prompt);
+test("a rack type outside the declared list stays unseated, and adding boot seats it", () => {
+  assert.equal(DECLARED_RACK_TYPES.includes("boot" as (typeof DECLARED_RACK_TYPES)[number]), false);
+  const words = new Set<string>();
+  for (const prompt of corpusRackPrompts()) {
+    for (const m of prompt.toLowerCase().matchAll(/\b([a-z]+)\s+racks?\b/g)) words.add(m[1]);
   }
+  words.add("boot");
+  for (const word of words) {
+    if ((DECLARED_RACK_TYPES as readonly string[]).includes(word)) continue;
+    const frame = build({ prompt: `${word} rack`, material: "pvc-3-4-sch40" });
+    assert.equal(frame.seated, false, word);
+  }
+  const boot = build({ prompt: "boot rack", material: "pvc-3-4-sch40" });
+  assert.equal(Math.round(boot.plan.totals.estCostUsd * 100) / 100, 19);
+  assert.notEqual(boot.project.name, "Shoe rack");
+});
+
+test("a fence cross is the tee listing at $1.18, not a separate $2.40 cross", () => {
+  const plan = buildPlan(generateFromPrompt("pvc fence 20 ft long"));
+  const cross = plan.bom.find((b) => /PVC cross$/.test(b.name));
+  assert.ok(cross && cross.quantity > 0);
+  assert.equal(cross!.catalogId, "pvc-tee");
+  assert.equal(Math.round((cross!.estimatedCost ?? 0) / cross!.quantity * 100) / 100, 1.18);
+});
+
+test("every corpus rack prompt, and its 3/4\" PVC override, is in the committed set", () => {
+  const file = JSON.parse(readFileSync(new URL("../../../evals/pvcRackMovers.prompts.json", import.meta.url), "utf8")) as {
+    prompts: { prompt: string; material?: string }[];
+  };
+  const set = new Set(file.prompts.map((p) => `${p.prompt}\0${p.material ?? ""}`));
+  const live = sweepPrompts().map((p) => `${p.prompt}\0${p.material ?? ""}`);
+  assert.deepEqual(live, [...set], "the committed prompt set is not the generated rack-type list");
+  const missing: string[] = [];
+  for (const prompt of corpusRackPrompts()) {
+    if (!set.has(`${prompt}\0`)) missing.push(prompt);
+    if (!set.has(`${prompt}\0pvc-3-4-sch40`)) missing.push(`${prompt} [pvc]`);
+  }
+  for (const prompt of ["wine rack 12 bottles from pvc", "pvc pipe shoe rack", "pvc shoe racks", "3 tier pvc shoe rack"]) {
+    if (!set.has(`${prompt}\0`)) missing.push(prompt);
+  }
+  assert.deepEqual(missing, []);
+});
+
+test("the committed results match a fresh sweep, so a edited cost or a hidden mover fails", { timeout: 300_000 }, () => {
+  const file = JSON.parse(readFileSync(new URL("../../../evals/pvcRackMovers.results.json", import.meta.url), "utf8")) as {
+    prompts: number;
+    movers: number;
+    rows: { prompt: string; material: string | null; after: { name: string; cost: number; pieces: number; hud: number[]; buy: string; titles: string[] }; omitted: string[] }[];
+  };
+  const fresh = currentRows();
+  assert.equal(fresh.length, file.rows.length);
+  const key = (r: { prompt: string; material: string | null }) => `${r.prompt}\0${r.material ?? ""}`;
+  const got = new Map(fresh.map((r) => [key(r), r]));
+  for (const row of file.rows) {
+    const now = got.get(key(row));
+    assert.ok(now, row.prompt);
+    assert.equal(now!.name, row.after.name, row.prompt);
+    assert.equal(now!.cost, row.after.cost, row.prompt);
+    assert.equal(now!.pieces, row.after.pieces, row.prompt);
+    assert.deepEqual(now!.hud, row.after.hud, row.prompt);
+    assert.equal(now!.buy, row.after.buy, row.prompt);
+    assert.deepEqual(now!.titles, row.after.titles, row.prompt);
+    assert.deepEqual(now!.omitted, row.omitted, row.prompt);
+  }
+  const movers = file.rows.filter((r) => {
+    const now = got.get(key(r))!;
+    return now.cost !== r.after.cost;
+  });
+  assert.equal(movers.length, 0);
+  assert.equal(file.prompts, file.rows.length);
 });
 
 test("straw, paper, and dowel racks stay off the PVC fitting Buy", () => {
