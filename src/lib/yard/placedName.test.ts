@@ -21,11 +21,12 @@ const SIDE = /^(?:left|right|front|back|center|centre)\s+/i;
 const THROUGH = /^(?:Screw through|Set the joints the stock uses, through|Tape or glue through)\b/i;
 const COUNTED = /(?:Drive|drives) \d+ × #8 |with \d+ × #8 |counted in another step|brings the build to \d+/;
 
+const shoeRack = (tall: number, deep: number) => `shoe rack 36 wide ${tall} tall ${deep} deep`;
 const EXAMPLES = [
-  "shoe rack 36 wide 18 tall 12 deep",
-  "shoe rack 36 wide 24 tall 16 deep",
-  "shoe rack 36 wide 30 tall 16 deep",
-  "shoe rack 36 wide 78 tall 16 deep",
+  shoeRack(18, 12),
+  shoeRack(24, 16),
+  shoeRack(30, 16),
+  shoeRack(78, 16),
   "dresser 54.375 wide 36 tall 18.75 deep",
   "wardrobe 40x72",
   "mudroom bench 48 wide 20 tall 16 deep",
@@ -164,7 +165,7 @@ describe("a fastening sentence names only a part already placed", () => {
   });
 
   it("a sentence moved back in front of the back fails", () => {
-    const { project, plan } = planOf("shoe rack 36 wide 18 tall 12 deep");
+    const { project, plan } = planOf(shoeRack(18, 12));
     const steps = plan.instructions.map((s) => ({ ...s }));
     const back = steps.findIndex((s) => /to the back of the box/.test(s.title));
     const divider = steps.findIndex((s) => /dividers/.test(s.title));
