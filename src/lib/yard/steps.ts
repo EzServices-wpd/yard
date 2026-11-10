@@ -3241,8 +3241,16 @@ export function stickGroupPhrase(project: YardProject, role: string): string | n
   if (!said) return null;
   const qty = GROUP_WORD[said[1].toLowerCase()] ?? Number(said[1]);
   if (qty !== places) return null;
+  return `${said[1].toLowerCase()} ${shopPlural(spec.word ?? role, places)}`;
+}
+
+/** "9 sticks each" for a role the written step counts as groups. */
+export function stickGroupEach(project: YardProject, role: string): string | null {
+  if (!stickGroupPhrase(project, role)) return null;
+  const list = project.instances.filter((i) => (i.role || "member") === role);
+  const places = memberStations(list);
   const each = list.length / places;
-  return `${said[1].toLowerCase()} ${shopPlural(spec.word ?? role, places)}, ${each} stick${each === 1 ? "" : "s"} each`;
+  return `${each} stick${each === 1 ? "" : "s"} each`;
 }
 
 function uniqueForgeSteps(project: YardProject): AssemblyStep[] {

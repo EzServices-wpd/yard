@@ -274,7 +274,14 @@ export function densifyPartsPlateTalkKeep(text: string, cutList: CutLine[], proj
 function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { title?: boolean } = {}): string {
   const entries = partsPlateEntries(cutList);
   if (!entries.length || !text) return text;
-  let out = text;
+  const held: string[] = [];
+  const hold = (m: string) => {
+    held.push(m);
+    return `\u0001${held.length - 1}\u0001`;
+  };
+  let out = text
+    .replace(/Fasten the seat to [^.]+\./g, hold)
+    .replace(/(?:Screw through|Set the joints the stock uses, through|Tape or glue through) the [a-z][a-z ]+ and the back into each divider\./g, hold);
 
   // Dimension lines: "Back — 34.50" / "Left side — 20 × 18" / "Top (cut round…) — 40"
   // Require a digit after the em-dash so rhetorical "open shelf — not a mini…" is not plated.
@@ -365,7 +372,7 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
     out = out.replace(/\bboth uprights\b/gi, `both ${pair.both} uprights`);
   }
 
-  return out;
+  return out.replace(/\u0001(\d+)\u0001/g, (_m, i: string) => held[Number(i)] ?? "");
 }
 
 

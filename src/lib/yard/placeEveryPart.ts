@@ -9,7 +9,7 @@ import { binderKind, countSlipFittings, slipFittingPhrase, slipInstancesFromPane
 import { inchFrac } from "./inchText";
 import type { AssemblyStep, YardProject } from "./types";
 import { supportsOf, type SupportInfo } from "./supportGraph";
-import { stickGroupPhrase } from "./steps";
+import { stickGroupEach, stickGroupPhrase } from "./steps";
 import { panelWorldCorners } from "./geometry";
 import { wantsFixedGlueShelves } from "./honesty";
 import { isFixedSpanShelf } from "./shelfSpan";
@@ -222,6 +222,21 @@ function supportTalk(project: YardProject, info: SupportInfo | undefined): strin
   return bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0];
 }
 
+/** "Left upright" and "Right upright" are both uprights. Letters and trailing numbers stay off. */
+function plainSeatOnto(project: YardProject, info: SupportInfo): string {
+  const counts = new Map<string, number>();
+  for (const id of info.on) {
+    const raw = project.panels.find((p) => p.id === id)?.name ?? "";
+    const bare = raw.replace(/^[A-Z]{1,2}\s+/, "").replace(/\s+\d+$/, "").trim().toLowerCase();
+    const key = /\bupright$/.test(bare) ? "upright" : bare;
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const bits = [...counts.entries()].map(([w, n]) => (n === 1 ? `the ${w}` : n === 2 ? `both ${plural(w, 2)}` : `the ${n} ${plural(w, n)}`));
+  if (bits.length <= 1) return bits[0] ?? "the parts it meets";
+  return `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}`;
+}
+
 /** A cut-list letter is not part of the name a step speaks: "B Lid" is "Lid". */
 function spokenName(name: string): string {
   return name.replace(/^[A-Z]{1,2} (?=(?:Lid|Backrest|Seat lid)\b)/, "");
@@ -235,7 +250,7 @@ function hingeSentence(project: YardProject, part: Part, panel: YardProject["pan
   if (!panel || !/\blid\b/i.test(panel.name)) return null;
   if (!project.panels.some((q) => /\bhinge/i.test(q.name))) return null;
   if (!(panel.turns || panel.hinged || isLid(panel))) return null;
-  const name = spokenName(part.name);
+  const name = spokenName(part.name).toLowerCase();
   return `Hang the ${name} on its hinges: screw each hinge's free leaf to the ${name} with the short hinge screws. The ${name} itself takes no screws: it rests on the walls and swings open.`;
 }
 
@@ -245,7 +260,15 @@ function placeSentence(project: YardProject, part: Part, info: SupportInfo | und
   const panel = project.panels.find((p) => p.id === part.key);
   const hung = hingeSentence(project, part, panel);
   if (hung) return hung;
-  const who = panel ? spokenName(part.name) : (stickGroupPhrase(project, part.key) ?? part.name);
+  const who = panel ? spokenName(part.name) : part.key === "body" ? "body" : (stickGroupPhrase(project, part.key) ?? part.name);
+  if (!panel && !info?.on.length) {
+    const grouped = stickGroupPhrase(project, part.key);
+    const each = stickGroupEach(project, part.key);
+    if (grouped && each) return `Fasten the ${grouped} (${each}) to the parts they meet with ${fix}`;
+  }
+  if (panel && /\bseat\b/i.test(panel.name) && !/\blid\b/i.test(panel.name) && info?.on.length) {
+    return `Fasten the seat to ${plainSeatOnto(project, info)} with ${fix}`;
+  }
   // A span rail is glued on edge under its shelf. The floor template ("mounts to the wall") is not that joint.
   if (panel && /^Front rail\b/.test(panel.name)) {
     const shelf = project.panels.find((s) => {
