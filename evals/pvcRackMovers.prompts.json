@@ -50,6 +50,22 @@
       "prompt": "pvc pipe 28 inch wide shoe rack to fit a 32 inch gap"
     },
     {
+      "prompt": "2x2 shoe rack"
+    },
+    {
+      "prompt": "2x2 shoe rack",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "2x2 shoe rack from pvc"
+    },
+    {
+      "prompt": "pvc 2x2 shoe rack"
+    },
+    {
+      "prompt": "pvc pipe 2x2 shoe rack"
+    },
+    {
       "prompt": "3 tier pvc shoe rack"
     },
     {
@@ -1854,6 +1870,22 @@
       "prompt": "pvc pipe shoe rack for a 26 inch entry"
     },
     {
+      "prompt": "shoe rack from 2x2"
+    },
+    {
+      "prompt": "shoe rack from 2x2",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack from 2x2 from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack from 2x2"
+    },
+    {
+      "prompt": "pvc pipe shoe rack from 2x2"
+    },
+    {
       "prompt": "shoe rack tiers clear 6 in+"
     },
     {
@@ -1902,6 +1934,33 @@
       "prompt": "pvc pipe shoe rack with cubbies"
     },
     {
+      "prompt": "shoe rack with cubbies from 2x2"
+    },
+    {
+      "prompt": "shoe rack with cubbies from 2x2",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack with cubbies from 2x2 from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack with cubbies from 2x2"
+    },
+    {
+      "prompt": "pvc pipe shoe rack with cubbies from 2x2"
+    },
+    {
+      "prompt": "shoe rack with cubbies from 3/4 inch dowel"
+    },
+    {
+      "prompt": "shoe rack with cubbies from 3/4 inch dowel",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack with cubbies from pvc",
+      "material": "pvc-3-4-sch40"
+    },
+    {
       "prompt": "spice rack"
     },
     {
@@ -1929,6 +1988,33 @@
     },
     {
       "prompt": "pvc pipe spice rack 18 wide 24 high 4 deep"
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 2x2"
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 2x2",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 2x2 from pvc"
+    },
+    {
+      "prompt": "pvc spice rack 18 wide 24 high 4 deep from 2x2"
+    },
+    {
+      "prompt": "pvc pipe spice rack 18 wide 24 high 4 deep from 2x2"
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 3/4 inch dowel"
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from 3/4 inch dowel",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "spice rack 18 wide 24 high 4 deep from pvc",
+      "material": "pvc-3-4-sch40"
     },
     {
       "prompt": "spice rack 18 wide 3 deep 24 tall"
@@ -2269,6 +2355,33 @@
     },
     {
       "prompt": "pvc pipe wine rack 24 wide 36 high 12 deep"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 2x2"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 2x2",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 2x2 from pvc"
+    },
+    {
+      "prompt": "pvc wine rack 24 wide 36 high 12 deep from 2x2"
+    },
+    {
+      "prompt": "pvc pipe wine rack 24 wide 36 high 12 deep from 2x2"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 3/4 inch dowel"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from 3/4 inch dowel",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "wine rack 24 wide 36 high 12 deep from pvc",
+      "material": "pvc-3-4-sch40"
     },
     {
       "prompt": "wine rack 24 wide 36 high 12 deep with twelve slots"

@@ -4,6 +4,7 @@
  * canary reads these fields.
  */
 import { partLetters } from "./pdfDraw";
+import { orderStepsBySupport } from "./supportOrder";
 import { cutListName } from "./shopPlural";
 import type { NestResult, PlacedPart } from "./nesting";
 import type { BuildPlan, CutLine, YardProject } from "./types";
@@ -79,8 +80,10 @@ function piecesWithIds(nest: NestResult | null, rows: CutLine[]): NestResult | n
   return { ...nest, sheets: nest.sheets.map((s) => ({ ...s, parts: s.parts.map(withIds) })) };
 }
 
-/** Adds partIds to every cut-list row and every sheet-layout piece. */
+/** Adds partIds to every cut-list row and every sheet-layout piece. Steps are permuted first, after every sentence is already written. */
 export function withPartIds(project: YardProject, plan: BuildPlan): BuildPlan {
+  const instructions = orderStepsBySupport(project, plan.instructions);
+  if (instructions !== plan.instructions) plan = { ...plan, instructions };
   if (!plan.cutList.length) return plan;
   const ids = cutRowPartIds(project, plan.cutList);
   const cutList = plan.cutList.map((c) => ({ ...c, partIds: ids.get(c) ?? [] }));
