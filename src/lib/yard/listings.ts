@@ -444,6 +444,56 @@ export const LISTINGS: ListingOffer[] = [
     checkedAt: CHECK,
   },
   {
+    catalogId: "pvc-cross",
+    retailer: "homedepot",
+    title: "Charlotte 3/4\" Sch 40 PVC cross",
+    href: "https://www.homedepot.com/p/Charlotte-Pipe-3-4-in-PVC-Schedule-40-S-x-S-x-S-x-S-Cross-PVC024100600HD/203812455",
+    packQty: 1,
+    packPrice: 5.73,
+    lengthIn: 0,
+    checkedAt: "2026-11-09",
+  },
+  {
+    catalogId: "pvc-cross",
+    retailer: "homedepot",
+    title: "FORMUFIT 3/4\" furniture-grade PVC cross, 8 pack",
+    href: "https://www.homedepot.com/p/Formufit-3-4-in-Furniture-Grade-PVC-Cross-in-White-8-Pack-F034CRX-WH-8/205749468",
+    packQty: 8,
+    packPrice: 22.99,
+    lengthIn: 0,
+    checkedAt: "2026-11-09",
+  },
+  {
+    catalogId: "pvc-4-way-tee",
+    retailer: "homedepot",
+    title: "FORMUFIT 3/4\" furniture-grade PVC 4-way tee, 8 pack",
+    href: "https://www.homedepot.com/p/Formufit-3-4-in-Furniture-Grade-PVC-4-Way-Tee-in-White-8-Pack-F0344WT-WH-8/205749450",
+    packQty: 8,
+    packPrice: 20.99,
+    lengthIn: 0,
+    checkedAt: "2026-11-09",
+  },
+  {
+    catalogId: "pvc-5-way-cross",
+    retailer: "homedepot",
+    title: "FORMUFIT 3/4\" furniture-grade PVC 5-way cross, 8 pack",
+    href: "https://www.homedepot.com/p/Formufit-3-4-in-Furniture-Grade-PVC-5-Way-Cross-in-White-8-Pack-F0345WC-WH-8/205749456",
+    packQty: 8,
+    packPrice: 17.99,
+    lengthIn: 0,
+    checkedAt: "2026-11-09",
+  },
+  {
+    catalogId: "pvc-cap",
+    retailer: "homedepot",
+    title: "Charlotte 3/4\" Sch 40 PVC cap",
+    href: "https://www.homedepot.com/p/Charlotte-Pipe-3-4-in-PVC-Socket-Schedule-40-Pressure-Cap-PVC021160800HD/203811671",
+    packQty: 1,
+    packPrice: 0.91,
+    lengthIn: 0,
+    checkedAt: "2026-11-09",
+  },
+  {
     catalogId: "screws-8",
     retailer: "homedepot",
     title: "#8 x 1-1/4\" wood screws, 1 lb",
@@ -1154,6 +1204,8 @@ export function offersFor(
     dims ? sameSize(o, dims) : true,
   );
   const fromListings = rows.length > 0;
+  // A fitting with no checked listing shows no offer. Do not borrow the plain tee or invent a price.
+  if (!rows.length && /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross|cap)$/.test(catalogId)) return [];
   if (!rows.length) {
     const item = getCatalogItem(catalogId);
     const q = item?.searchQuery || item?.name || humanizeCatalogSlug(catalogId);
@@ -1221,6 +1273,8 @@ function guessCatalogId(line: BomLine): string | null {
   // Exterior package rows (Titebond III, exterior screws, finish, glides, liner) shop by their own search.
   if (line.catalogId?.startsWith("outdoor-")) return line.catalogId;
   if (line.catalogId) {
+    // A fitting keeps its own id. A 4-way tee is not the plain tee, and a cross is not one either.
+    if (/^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross|cap)$/.test(line.catalogId)) return line.catalogId;
     if (LISTINGS.some((o) => o.catalogId === line.catalogId)) return line.catalogId;
     if (FORGE_CATALOG.some((c) => c.id === line.catalogId)) return line.catalogId;
   }
@@ -1260,6 +1314,11 @@ function guessCatalogId(line: BomLine): string | null {
   }
   if (/solvent|pvc cement/.test(hay)) return "pvc-cement";
   if (/pvc/.test(hay) && /3-way|side[- ]?outlet/.test(hay)) return "pvc-side-outlet";
+  if (/pvc/.test(hay) && /4-way tee/.test(hay)) return "pvc-4-way-tee";
+  if (/pvc/.test(hay) && /5-way cross/.test(hay)) return "pvc-5-way-cross";
+  if (/pvc/.test(hay) && /6-way cross/.test(hay)) return "pvc-6-way-cross";
+  if (/pvc/.test(hay) && /\bcaps?\b/.test(hay)) return "pvc-cap";
+  if (/pvc/.test(hay) && /\bcross\b/.test(hay)) return "pvc-cross";
   if (/pvc tee|\btee\b/.test(hay) && /pvc|slip/.test(hay)) return "pvc-tee";
   if (/45/.test(hay) && /elbow|pvc/.test(hay)) return "pvc-elbow-45";
   if (/elbow/.test(hay) && /pvc/.test(hay)) return "pvc-elbow-90";

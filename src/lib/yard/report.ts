@@ -25,7 +25,8 @@ import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
-import { binderBom, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
 import { windowBom, windowCuts, windowIssues, windowSteps } from "./windows";
@@ -2000,6 +2001,19 @@ function fractionPlanText(plan: BuildPlan): BuildPlan {
  * Named solid-wood builds have no ¾" sheet: steps, tips and Buy notes speak about the
  * real boards (wood splits, edges get eased) — never sheet-only ply / nest / banding talk.
  */
+/** A rack's Buy names each joint by the pipes that meet. A joint with no catalog fitting never reaches this list. */
+function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number): BuildPlan["bom"] {
+  const lines = binderBom(item, project.instances, project.joinMethod, couplings);
+  if (!slipRack) return lines;
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));
+  const out = buyCatalogWays(lines, members);
+  const caps = countSlipFittings(project.instances, radius).caps;
+  if (caps <= 0) return out;
+  const size = out.find((line) => /PVC/.test(line.name))?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
+  return [...out, { name: `${size} PVC cap`, quantity: caps, unit: "ea", catalogId: "pvc-cap", searchQuery: `${size} PVC cap`, notes: `Match ${size} pipe.` }];
+}
+
 function boardStockWording(project: YardProject, plan: BuildPlan): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const board = !!item && item.category === "lumber" && item.formFactor === "board";
@@ -2214,7 +2228,10 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
-  const glue = item ? binderBom(item, project.instances, project.joinMethod) : [];
+  // Only a seated pipe frame names each joint. Every other slip build keeps the release Buy.
+  const seatedRack = isSeatedPipeFrame(project);
+  const slipCouplings = seatedRack ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
+  const glue = item ? rackSlipLines(project, item, seatedRack, slipCouplings) : [];
   const spring = project.shape?.params?.rubberBands
     ? [{
         name: "Rubber bands",

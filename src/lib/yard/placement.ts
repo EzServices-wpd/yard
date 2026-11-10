@@ -12,6 +12,7 @@ import { doorHingeCount, hingeCenters } from "./hingedLeaf";
 import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
 import { ANATOMY_NOTE } from "./classAnatomy";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { panelWorldCorners } from "./geometry";
 import { partLetters } from "./pdfDraw";
 import { frac } from "./pdfKit";
@@ -929,6 +930,8 @@ function dropStale(desc: string, pl: StepPlacement): string {
 export function withPlacementTalk(project: YardProject, plan: BuildPlan): BuildPlan {
   // Door/window framing plans carry their own stud-layout numbers (kings, jacks, header) — see framing steps.
   if ((!project.panels.length && !project.instances.length) || !plan.instructions.length || project.windowPkg || project.kind === "opening") return plan;
+  // A seated rack keeps the release sentences. A height for every post, or a rail set on every post, is not one of them.
+  if (isSeatedPipeFrame(project)) return plan;
   // Glued sheet figures (cardboard) are folded boxes; their steps place each box by hand, no marks or spacers.
   if ((project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE)) && project.kind === "figure") return plan;
   const pls = stepPlacements(project, plan.instructions, plan.cutList, plan.partsKind === "whole");
