@@ -5,8 +5,11 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
+import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
-import type { CatalogItem, Panel, Vec3, YardInstance, YardProject } from "./types";
+import { uncataloguedJoints } from "./joints";
+import { seatPipeRack } from "./pipeRackFrame";
+import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
 
 export type MemberSection = { width: number; height: number };
 
@@ -94,6 +97,29 @@ function isFaceStock(item: CatalogItem): boolean {
   return isSheetStock(item) || item.formFactor === "board";
 }
 
+const LOAD_KINDS: readonly PanelType[] = ["shelf", "top", "bottom", "deck", "counter", "bay"];
+
+function isLoadSurface(panel: Panel): boolean {
+  return LOAD_KINDS.includes(panel.type) || /\b(?:shelf|seat|top|bottom|deck)\b/i.test(panel.name);
+}
+
+function isPipeStock(item: CatalogItem): boolean {
+  return item.formFactor === "pipe" || item.formFactor === "tube";
+}
+
+function isRackPrompt(prompt: string | undefined): boolean {
+  const text = (prompt ?? "").toLowerCase();
+  return /\bracks?\b/.test(text) && !/rail|peg|hook/.test(text);
+}
+
+/** Standards plus arms, and nothing a person sets a load on. That stays the wall-arm cantilever. */
+function isWallArmForm(project: YardProject): boolean {
+  const arms = project.panels.filter((panel) => /\barm\b/i.test(panel.name));
+  if (arms.length < 2) return false;
+  if (project.panels.some((panel) => isLoadSurface(panel))) return false;
+  return project.panels.filter((panel) => panel.type === "upright" || /\b(?:standard|upright|post)\b/i.test(panel.name)).length >= 2;
+}
+
 /**
  * A rack keeps its tiers only in sheet or board stock.
  * Pipe, round, and stick stock are cut lengths — an open frame, not sheet panels.
@@ -153,9 +179,11 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
 
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
   if (!project.panels.length) return project;
-  const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
-  if (rack && !isFaceStock(item)) return openMemberRack(project, item);
-  if (rack) {
+  const rack = isRackPrompt(project.prompt);
+  const pipeRack = rack && isPipeStock(item) && !isWallArmForm(project);
+  // Dowel and stick racks stay the release cantilever. A wall-arm rack does too, in any stock.
+  if (rack && !isFaceStock(item) && !pipeRack) return openMemberRack(project, item);
+  if (rack && !pipeRack) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
     if (shelves.length) {
       const posts = project.panels.filter((panel) => panel.type === "upright" || /post|upright/i.test(panel.name));
@@ -238,9 +266,24 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
     // A top, seat, or shelf gets slats across it even in thin stock, so it rests on the frame under it
     // (a display model in thin stock says so in its notes).
-    const nAcross = bearing
-      ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
-      : midN < 0.2 ? 1 : 2;
+    // A 3/4" fitting needs about 2.75" of pipe between nodes, so a pipe rack
+    // draws that pitch. One centre line when the face cannot hold two.
+    const room = midN - section;
+    const pitchCount = () => {
+      if (!(room >= 2.75 - 1e-6)) return 1;
+      let n = Math.floor(room / 2.75) + 1;
+      while (n > 2 && room / (n - 1) < 2.75 - 1e-6) n -= 1;
+      return n >= 2 && room / (n - 1) < 2.75 - 1e-6 ? 1 : Math.max(1, n);
+    };
+    const nAcross = pipeRack
+      ? bearing
+        ? pitchCount()
+        : room >= 2.75 - 1e-6
+          ? 2
+          : 1
+      : bearing
+        ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
+        : midN < 0.2 ? 1 : 2;
     const usable = whole ? Math.max(stockL * 0.86, stockL - 0.25) : Math.max(stockL * 0.9, 0.5);
     const cover = whole ? stockL : Math.min(stockL, longN);
     const nAlong = longN <= cover * 1.02 ? 1 : Math.max(1, Math.ceil(longN / usable));
@@ -461,7 +504,7 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
         `For a piece that holds weight every day, ¾" plywood or 1×12 boards build the same shape from the same cut list.`,
     );
   }
-  return {
+  const recast: YardProject = {
     ...project,
     panels: [],
     fitted: undefined,
@@ -471,6 +514,23 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     primaryMaterialId: item.id,
     notes: bearing && section < 0.5 ? notes : [note, ...notes],
   };
+  if (!pipeRack) return recast;
+  const seated = seatPipeRack(recast.instances, item);
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const missed = seated.ok
+    ? uncataloguedJoints(seated.instances.map((inst) => ({ from: inst.from, to: inst.to, radius })))
+    : 0;
+  if (!seated.ok || missed > 0) {
+    const kept = getCatalogItem(project.primaryMaterialId ?? "")?.name ?? "its stock";
+    const noun = project.name.toLowerCase().replace(/\s+\d.*$/, "");
+    const refused = `${item.name} can't build this ${noun}, so it stays ${kept} at the same size. Pick a lumber stock to switch it.`;
+    return { ...project, notes: [...(project.notes ?? []), refused] };
+  }
+  const eighth = (n: number) => Math.round(n * 8) / 8;
+  const name = /^Storage unit\b/i.test(recast.name)
+    ? `Rack ${eighth(project.overall.width)}" × ${eighth(project.overall.height)}" × ${eighth(project.overall.depth)}"`
+    : recast.name;
+  return { ...recast, name, instances: seated.instances };
 }
 
 /**

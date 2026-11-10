@@ -12,7 +12,10 @@ import type { BomLine, CatalogItem, JoinMethod, Panel, Vec3, YardInstance } from
 import { dist } from "./connect";
 
 /** Catalog ids binderBom adds for slip stock (cement and fittings), not cut parts. */
-export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling"]);
+export const SLIP_FITTING_IDS = new Set(["pvc-cement", "pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling", "pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross", "pvc-cap"]);
+
+/** A fitting with no checked listing. Buy shows the line and no offer, and does not borrow another fitting's price. */
+export const UNLISTED_SLIP = /^pvc-(?:4-way-tee|5-way-cross|6-way-cross|cross|cap)$/;
 
 /** Wood screws are bought by the box. Say the count inside so "2 boxes" never reads as 2 screws. */
 export const SCREWS_PER_BOX = 50;
@@ -79,38 +82,59 @@ export function binderKind(item: CatalogItem, override?: JoinMethod | null): Bin
   return "glue";
 }
 
-function keyOf(p: Vec3) {
-  return `${p.x.toFixed(2)}|${p.y.toFixed(2)}|${p.z.toFixed(2)}`;
-}
+/** Ends this close are one fitting. A rounded string key splits a joint that is 0.01" off. */
+const JOINT_CLUSTER = 0.05;
 
 export function jointNodes(
   members: { from?: Vec3; to?: Vec3; radius: number }[],
 ): JointNode[] {
-  const map = new Map<string, JointNode>();
+  type End = { at: Vec3; dir: Vec3; r: number };
+  const ends: End[] = [];
   for (const m of members) {
     if (!m.from || !m.to) continue;
-    const ends: [Vec3, Vec3][] = [
+    const pairs: [Vec3, Vec3][] = [
       [m.from, m.to],
       [m.to, m.from],
     ];
-    for (const [at, other] of ends) {
-      const k = keyOf(at);
-      let node = map.get(k);
-      if (!node) {
-        node = { p: at, r: m.radius, dirs: [] };
-        map.set(k, node);
-      } else if (m.radius > node.r) node.r = m.radius;
+    for (const [at, other] of pairs) {
       const dx = other.x - at.x;
       const dy = other.y - at.y;
       const dz = other.z - at.z;
       const len = Math.hypot(dx, dy, dz) || 1;
-      const dir = { x: dx / len, y: dy / len, z: dz / len };
-      if (!node.dirs.some((d) => d.x * dir.x + d.y * dir.y + d.z * dir.z > 0.97)) {
-        node.dirs.push(dir);
-      }
+      ends.push({ at, dir: { x: dx / len, y: dy / len, z: dz / len }, r: m.radius });
     }
   }
-  return [...map.values()];
+  const parent = ends.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const near = (a: Vec3, b: Vec3) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) <= JOINT_CLUSTER;
+  for (let i = 0; i < ends.length; i++) {
+    for (let j = i + 1; j < ends.length; j++) {
+      if (near(ends[i].at, ends[j].at)) parent[find(j)] = find(i);
+    }
+  }
+  const groups = new Map<number, End[]>();
+  ends.forEach((e, i) => {
+    const r = find(i);
+    groups.set(r, [...(groups.get(r) ?? []), e]);
+  });
+  const nodes: JointNode[] = [];
+  for (const group of groups.values()) {
+    const node: JointNode = {
+      p: {
+        x: group.reduce((s, e) => s + e.at.x, 0) / group.length,
+        y: group.reduce((s, e) => s + e.at.y, 0) / group.length,
+        z: group.reduce((s, e) => s + e.at.z, 0) / group.length,
+      },
+      r: 0,
+      dirs: [],
+    };
+    for (const e of group) {
+      if (e.r > node.r) node.r = e.r;
+      if (!node.dirs.some((d) => d.x * e.dir.x + d.y * e.dir.y + d.z * e.dir.z > 0.97)) node.dirs.push(e.dir);
+    }
+    nodes.push(node);
+  }
+  return nodes;
 }
 
 function pairDots(dirs: Vec3[]): number[] {
@@ -123,12 +147,159 @@ function pairDots(dirs: Vec3[]): number[] {
   return out;
 }
 
+/** Four directions are a catalog cross only when they lie in one plane. */
+export function dirsSharePlane(dirs: Vec3[]): boolean {
+  let normal: Vec3 | null = null;
+  for (let i = 0; i < dirs.length && !normal; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const c = {
+        x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y,
+        y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z,
+        z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x,
+      };
+      if (Math.hypot(c.x, c.y, c.z) > 0.2) {
+        normal = c;
+        break;
+      }
+    }
+  }
+  if (!normal) return true;
+  const L = Math.hypot(normal.x, normal.y, normal.z);
+  return dirs.every((d) => Math.abs(d.x * normal.x + d.y * normal.y + d.z * normal.z) / L <= 0.08);
+}
+
+const WAY_RIGHT = 0.08;
+
+function dirDot(a: Vec3, b: Vec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function planeNormal(dirs: Vec3[]): Vec3 | null {
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const c = {
+        x: dirs[i].y * dirs[j].z - dirs[i].z * dirs[j].y,
+        y: dirs[i].z * dirs[j].x - dirs[i].x * dirs[j].z,
+        z: dirs[i].x * dirs[j].y - dirs[i].y * dirs[j].x,
+      };
+      if (Math.hypot(c.x, c.y, c.z) > 0.2) return c;
+    }
+  }
+  return null;
+}
+
+/** Post continuing through, plus two rails at right angles. Not four coplanar pipes. */
+function sideOutlet(dirs: Vec3[]): boolean {
+  const straight: [number, number][] = [];
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) if (dirDot(dirs[i], dirs[j]) < STRAIGHT) straight.push([i, j]);
+  }
+  if (straight.length !== 1) return false;
+  const [a, b] = straight[0];
+  const rest = [0, 1, 2, 3].filter((k) => k !== a && k !== b);
+  const rails = [dirs[rest[0]], dirs[rest[1]]];
+  if (Math.abs(dirDot(rails[0], rails[1])) > WAY_RIGHT) return false;
+  for (const rail of rails) {
+    if (Math.abs(dirDot(rail, dirs[a])) > WAY_RIGHT || Math.abs(dirDot(rail, dirs[b])) > WAY_RIGHT) return false;
+  }
+  return true;
+}
+
+/** Four pipes in one plane and a fifth square to that plane. */
+function fiveWay(dirs: Vec3[]): boolean {
+  for (let i = 0; i < dirs.length; i++) {
+    const rest = dirs.filter((_, k) => k !== i);
+    if (!dirsSharePlane(rest)) continue;
+    const normal = planeNormal(rest);
+    if (!normal) continue;
+    const align = Math.abs(dirDot(dirs[i], normal)) / Math.hypot(normal.x, normal.y, normal.z);
+    if (align >= 0.96) return true;
+  }
+  return false;
+}
+
+/** Three pairs of opposite pipes, each pair square to the others. */
+function sixWay(dirs: Vec3[]): boolean {
+  const used = new Set<number>();
+  const axes: Vec3[] = [];
+  for (let i = 0; i < dirs.length; i++) {
+    if (used.has(i)) continue;
+    let mate = -1;
+    for (let j = i + 1; j < dirs.length; j++) {
+      if (!used.has(j) && dirDot(dirs[i], dirs[j]) < STRAIGHT) mate = j;
+    }
+    if (mate < 0) return false;
+    used.add(i);
+    used.add(mate);
+    axes.push(dirs[i]);
+  }
+  return axes.length === 3 && Math.abs(dirDot(axes[0], axes[1])) <= WAY_RIGHT && Math.abs(dirDot(axes[0], axes[2])) <= WAY_RIGHT && Math.abs(dirDot(axes[1], axes[2])) <= WAY_RIGHT;
+}
+
+/** A catalog fitting for four or more pipes, read from the direction set. Anything else is not bought. */
+export function highWay(dirs: Vec3[]): "cross" | "tee4" | "cross5" | "cross6" | "miss" {
+  if (dirs.length === 4 && dirsSharePlane(dirs)) return "cross";
+  if (dirs.length === 4 && sideOutlet(dirs)) return "tee4";
+  if (dirs.length === 5 && fiveWay(dirs)) return "cross5";
+  if (dirs.length === 6 && sixWay(dirs)) return "cross6";
+  return "miss";
+}
+
+/** Joints a catalog fitting cannot make. A rack in pipe is refused rather than sold one of these. */
+export function uncataloguedJoints(members: { from?: Vec3; to?: Vec3; radius: number }[]): number {
+  let miss = 0;
+  for (const node of jointNodes(members)) {
+    const n = node.dirs.length;
+    if (n <= 2) continue;
+    if (n === 3) {
+      const dots = pairDots(node.dirs);
+      const square = dots.length === 3 && dots.every((d) => Math.abs(d) <= SQUARE);
+      const tee = dots.filter((d) => d < STRAIGHT).length === 1 && dots.filter((d) => Math.abs(d) <= WAY_RIGHT).length === 2;
+      if (!square && !tee) miss += 1;
+      continue;
+    }
+    if (highWay(node.dirs) === "miss") miss += 1;
+  }
+  return miss;
+}
+
+type WayLine = { name: string; quantity: number; estimatedCost?: number; unit?: string; catalogId?: string; searchQuery?: string; notes?: string };
+
+/**
+ * Replace a rack's undifferentiated crosses with the fitting each direction set is.
+ * An unlisted fitting carries no invented price; the catalog row, when there is one, sets it later.
+ */
+export function buyCatalogWays<T extends WayLine>(lines: T[], members: { from?: Vec3; to?: Vec3; radius: number }[]): T[] {
+  const counts = { cross: 0, tee4: 0, cross5: 0, cross6: 0 };
+  for (const node of jointNodes(members)) {
+    if (node.dirs.length < 4) continue;
+    const kind = highWay(node.dirs);
+    if (kind === "miss") continue;
+    counts[kind] += 1;
+  }
+  const sized = lines.find((line) => /PVC/.test(line.name));
+  const size = sized?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
+  let out = lines.flatMap((line) => {
+    if (!/PVC cross$/.test(line.name)) return [line];
+    if (counts.cross <= 0) return [];
+    return [{ ...line, quantity: counts.cross, estimatedCost: 0, catalogId: "pvc-cross" }];
+  });
+  const add = (qty: number, name: string, id: string) => {
+    if (qty <= 0) return;
+    out = [...out, { name, quantity: qty, unit: "ea", catalogId: id, searchQuery: name, estimatedCost: 0, notes: `Match ${size} pipe.` } as T];
+  };
+  add(counts.tee4, `${size} PVC 4-way tee`, "pvc-4-way-tee");
+  add(counts.cross5, `${size} PVC 5-way cross`, "pvc-5-way-cross");
+  add(counts.cross6, `${size} PVC 6-way cross`, "pvc-6-way-cross");
+  return out;
+}
+
 /**
  * The fitting follows the pipes that meet, not the part name.
  * 2 at 90° is an elbow, 2 nearly straight is a coupling, 2 at 45° is a 45° elbow.
  * 3 pipes within about 3° of mutually perpendicular are a 3-way corner.
  * Any other meeting of 3 (a straight run with a branch, or an angled crown) is a tee.
- * 4 or more is a cross.
+ * Four or more is a cross until a rack's Buy reads the direction set.
  */
 export function classifyJoint(node: JointNode): JointClass {
   const n = node.dirs.length;
@@ -456,7 +627,7 @@ export function binderBom(
     push(c.corners, `${size} PVC 3-way corner`, "pvc-side-outlet", `${size} schedule 40 PVC 3-way elbow`, 2.37, "Side-outlet elbow. Three sockets at right angles, one along each axis.");
     push(extraCouplings, `${size} PVC coupling`, "pvc-coupling", `${size} schedule 40 PVC coupling`, 0.68);
     push(c.tees, `${size} PVC tee`, "pvc-tee", `${size} schedule 40 PVC tee`, 1.15);
-    push(c.crosses, `${size} PVC cross`, "pvc-tee", `${size} schedule 40 PVC cross`, 2.4);
+    push(c.crosses, `${size} PVC cross`, "pvc-cross", `${size} schedule 40 PVC cross`, 0);
     push(c.elbows90, `${size} PVC 90° elbow`, "pvc-elbow-90", `${size} schedule 40 PVC 90 elbow`, 0.95);
     push(c.elbows45, `${size} PVC 45° elbow`, "pvc-elbow-45", `${size} schedule 40 PVC 45 elbow`, 0.95);
     return lines;

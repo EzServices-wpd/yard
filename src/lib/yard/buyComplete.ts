@@ -16,9 +16,11 @@ import { hungBuild, PT_LUMBER } from "./outdoor";
 import { getCatalogItem } from "./catalog";
 import { CEDAR, EXTERIOR_PLY } from "./checkedStock";
 import { bomLinesFromForge, buildForgeBom } from "./bom";
-import { binderBom, binderKind, slipInstancesFromPanels, stockRunCouplings } from "./joints";
+import { binderBom, binderKind, slipInstancesFromPanels, stockRunCouplings, UNLISTED_SLIP } from "./joints";
 
 const hasLink = (b: BomLine) => (b.offers ?? []).some((o) => !!o.href);
+/** These fittings have no checked listing. An empty offer list is the result, not a missing link. */
+const unlistedSlip = (b: BomLine) => !!b.catalogId && UNLISTED_SLIP.test(b.catalogId);
 
 /** Cut-list stock with no Buy row of its own (the clear panes of a feeder cut from an acrylic sheet). */
 export function cutStockOffBuy(plan: Pick<BuildPlan, "bom" | "cutList" | "partsKind">): string[] {
@@ -107,7 +109,7 @@ export function buyComplete(project: YardProject, plan: BuildPlan): BuildPlan {
     const [row] = decorateBom([{ name: `#8 x ${len}" ${outdoor ? "exterior-coated or stainless " : ""}wood screws`, quantity: 1, unit: "box (50 ct)", catalogId: "screws-8" }]);
     if (row.estimatedCost && row.estimatedCost > 0) { bom.push({ ...row, notes: "The screws the steps drive." }); sizes.add(z); }
   }
-  bom = bom.map((b) => (hasLink(b) ? b : { ...b, offers: estimateOffers(b.searchQuery || b.name, Math.max(1, b.quantity), b.estimatedCost ?? 0) }));
+  bom = bom.map((b) => (hasLink(b) || unlistedSlip(b) ? b : { ...b, offers: estimateOffers(b.searchQuery || b.name, Math.max(1, b.quantity), b.estimatedCost ?? 0) }));
   return { ...plan, bom };
 }
 
@@ -147,7 +149,7 @@ export function stepHardwareOffBuy(plan: Pick<BuildPlan, "bom" | "instructions">
 
 /** Rows with no store link (C15). */
 export function unlinkedBuy(plan: Pick<BuildPlan, "bom">): string[] {
-  return plan.bom.filter((b) => !hasLink(b)).map((b) => b.name);
+  return plan.bom.filter((b) => !hasLink(b) && !unlistedSlip(b)).map((b) => b.name);
 }
 
 /** Lumber sizes the notes name ("Three courses of 2×6") that Buy does not sell (C15). */
