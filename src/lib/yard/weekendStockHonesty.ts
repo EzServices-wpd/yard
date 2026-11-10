@@ -38,7 +38,8 @@ import {
   mediaHoldTipDeg,
 } from "./weekendFamily";
 import { isWholeStock } from "./geometry";
-import { binderBom, binderKind, effectiveJoin, memberSpan } from "./joints";
+import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, memberSpan } from "./joints";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock, stripJoinWords, weekendSizedStockPhrases } from "./promptHelpers";
 import { stripHeldPurpose } from "./heldObjects";
 import {
@@ -1295,7 +1296,18 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
     });
     return { ...b, name: stockLabel, ...(offers ? { offers } : {}) };
   });
-  const binders = binderBom(item, project.instances, project.joinMethod);
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const slipRack = isSeatedPipeFrame(project);
+  let binders = binderBom(item, project.instances, project.joinMethod, slipRack ? countSlipFittings(project.instances, radius).couplings : 0);
+  if (slipRack) {
+    const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));
+    binders = buyCatalogWays(binders, members);
+    const caps = countSlipFittings(project.instances, radius).caps;
+    if (caps > 0) {
+      const size = binders.find((line) => /PVC/.test(line.name))?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
+      binders = [...binders, { name: `${size} PVC cap`, quantity: caps, unit: "ea", catalogId: "pvc-cap", searchQuery: `${size} PVC cap`, notes: `Match ${size} pipe.` }];
+    }
+  }
   for (const line of binders) {
     if (!bom.some((b) => b.name === line.name)) bom = [...bom, line];
   }

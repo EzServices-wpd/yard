@@ -6,6 +6,9 @@
  */
 import { createId } from "@/lib/utils";
 import { isWholeStock, toPrimitive } from "./geometry";
+import { uncataloguedJoints } from "./joints";
+import { frameCollapsed, frameSpan, onePlaneShelf, outlineRoles, rigidSlipPipe, seatPipeRack, unlistedFrameFitting } from "./pipeRackFrame";
+import { purposeOf, titleWithPurpose } from "./purpose";
 import type { CatalogItem, Panel, Vec3, YardInstance, YardProject } from "./types";
 
 export type MemberSection = { width: number; height: number };
@@ -95,6 +98,18 @@ function isFaceStock(item: CatalogItem): boolean {
 }
 
 /**
+ * The rack types seated in round 1. A cabinet, table, bed, or other pipe build is not one of these.
+ * Hooks stay the release cantilever. The test reads this list; adding a word here seats that rack.
+ */
+export const DECLARED_RACK_TYPES = ["shoe", "bike", "towel", "wine", "spice", "drying", "magazine", "dish", "plate", "kayak", "firewood", "spool"] as const;
+
+export function declaredRack(prompt: string | undefined): boolean {
+  const text = (prompt ?? "").toLowerCase();
+  if (/\b(?:peg|hook)s?\b/.test(text)) return false;
+  return new RegExp(`\\b(?:${DECLARED_RACK_TYPES.join("|")})\\s+racks?\\b`).test(text);
+}
+
+/**
  * A rack keeps its tiers only in sheet or board stock.
  * Pipe, round, and stick stock are cut lengths — an open frame, not sheet panels.
  */
@@ -151,11 +166,13 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
   };
 }
 
-export function recastPanelsAsStock(project: YardProject, item: CatalogItem): YardProject {
+export function recastPanelsAsStock(project: YardProject, item: CatalogItem, allowSeat = true): YardProject {
   if (!project.panels.length) return project;
   const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
-  if (rack && !isFaceStock(item)) return openMemberRack(project, item);
-  if (rack) {
+  // Only a named rack in rigid 3/4" Sch 40 pipe is seated. Everything else is the release build.
+  const pipeRack = allowSeat && rigidSlipPipe(item) && declaredRack(project.prompt);
+  if (rack && !isFaceStock(item) && !pipeRack) return openMemberRack(project, item);
+  if (rack && !pipeRack) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
     if (shelves.length) {
       const posts = project.panels.filter((panel) => panel.type === "upright" || /post|upright/i.test(panel.name));
@@ -238,9 +255,24 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     const section = Math.max(prim.width, prim.height, item.dims.diameter ?? 0, 0.08);
     // A top, seat, or shelf gets slats across it even in thin stock, so it rests on the frame under it
     // (a display model in thin stock says so in its notes).
-    const nAcross = bearing
-      ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
-      : midN < 0.2 ? 1 : 2;
+    // A 3/4" fitting needs about 2.75" of pipe between nodes, so a pipe rack
+    // draws that pitch. One centre line when the face cannot hold two.
+    const room = midN - section;
+    const pitchCount = () => {
+      if (!(room >= 2.75 - 1e-6)) return 1;
+      let n = Math.floor(room / 2.75) + 1;
+      while (n > 2 && room / (n - 1) < 2.75 - 1e-6) n -= 1;
+      return n >= 2 && room / (n - 1) < 2.75 - 1e-6 ? 1 : Math.max(1, n);
+    };
+    const nAcross = pipeRack
+      ? bearing
+        ? pitchCount()
+        : room >= 2.75 - 1e-6
+          ? 2
+          : 1
+      : bearing
+        ? Math.max(3, Math.min(8, Math.round(midN / Math.max(section * 1.5, 1))))
+        : midN < 0.2 ? 1 : 2;
     const usable = whole ? Math.max(stockL * 0.86, stockL - 0.25) : Math.max(stockL * 0.9, 0.5);
     const cover = whole ? stockL : Math.min(stockL, longN);
     const nAlong = longN <= cover * 1.02 ? 1 : Math.max(1, Math.ceil(longN / usable));
@@ -461,7 +493,7 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
         `For a piece that holds weight every day, ¾" plywood or 1×12 boards build the same shape from the same cut list.`,
     );
   }
-  return {
+  const recast: YardProject = {
     ...project,
     panels: [],
     fitted: undefined,
@@ -471,6 +503,29 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem): Ya
     primaryMaterialId: item.id,
     notes: bearing && section < 0.5 ? notes : [note, ...notes],
   };
+  if (!pipeRack) return recast;
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const accept = (drawn: YardInstance[], seatedInst: YardInstance[]): YardInstance[] | null => {
+    const hadShelf = drawn.some((inst) => inst.role === "shelf" || inst.role === "deck" || inst.role === "top");
+    const span = frameSpan(seatedInst);
+    const missed = uncataloguedJoints(seatedInst.map((inst) => ({ from: inst.from, to: inst.to, radius })));
+    const blocked = unlistedFrameFitting(seatedInst, item);
+    const collapsed = !span || frameCollapsed(project.overall, span) || onePlaneShelf(project.overall.depth, span.depth, hadShelf);
+    if (missed > 0 || blocked || collapsed) return null;
+    return outlineRoles(seatedInst);
+  };
+  const seated = seatPipeRack(recast.instances, item);
+  const taken = seated.ok ? accept(recast.instances, seated.instances) : null;
+  // A refused frame is the release build: the open cantilever only when release used it.
+  // Refused frames keep the release drawing. The pitch grid is only for a frame that seats.
+  if (!taken) return recastPanelsAsStock(project, item, false);
+  // The release cantilever's name and its other notes. The open-frame line is the outline note.
+  const open = openMemberRack(project, item);
+  const purpose = purposeOf(project.prompt ?? "");
+  const named = purpose ? titleWithPurpose(open.name, purpose) : open.name;
+  const outline = `Same ${named} in ${item.name}. Each face is the outline of that stock, not a solid tile.`;
+  const seatedNotes = (open.notes ?? []).map((n) => (/^Open frame of /.test(n) ? outline : n));
+  return { ...recast, name: named, notes: seatedNotes, instances: taken, overall: open.overall };
 }
 
 /**
