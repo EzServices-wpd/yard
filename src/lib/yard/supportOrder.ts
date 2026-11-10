@@ -39,7 +39,6 @@ const STOP = new Set([
   "foot",
   "feet",
   "arm",
-  "shelf",
   "board",
   "panel",
   "frame",
@@ -207,15 +206,12 @@ function kissEdges(project: YardProject): Map<string, Set<string>> {
 export function supportEdges(project: YardProject): Map<string, Set<string>> {
   const boxes = partBoxes(project).filter((b) => !b.turns);
   const edges = new Map<string, Set<string>>();
-  // A real bearing overlaps in the plan. A skinny strip (a 3/4" wall cleat) is fastened to the
-  // shelf, not a bearer the shelf waits for. An edge kiss is left alone.
-  const bearer = (b: Aabb) => b.max[0] - b.min[0] >= 1.25 && b.max[2] - b.min[2] >= 1.25;
+  // Any contact the upper part sits on is a support, including a 3/4" cleat or rail.
   const stack = (upper: Aabb, lower: Aabb) => {
     const y = upper.min[1] - lower.max[1];
     return (
       y <= STACK &&
       y >= -STACK &&
-      bearer(lower) &&
       overlap(upper, lower, 0) >= BEAR &&
       overlap(upper, lower, 2) >= BEAR
     );
@@ -287,9 +283,6 @@ function placement(steps: AssemblyStep[], known: Set<string>): Map<string, numbe
   return at;
 }
 
-const ANCHOR =
-  /\b(?:rests on|fastened to|fasten(?:ed|ing|s)?\b[^.]{0,80}?\bto|screw(?:ed|s|ing)?\b[^.]{0,80}?\b(?:to|into|through)|attach(?:ed|es|ing)?\b[^.]{0,80}?\bto|hang(?:s|ing)?\b[^.]{0,40}?\bon|glue(?:d|s)?\b[^.]{0,60}?\bto|on (?:the|both|each|its)\b)\b/gi;
-
 function phrases(name: string): string[] {
   const family = name
     .replace(/\s+\d+$/, "")
@@ -308,27 +301,26 @@ function phrases(name: string): string[] {
   return [...out];
 }
 
-/** Part names a support clause points at, besides the parts this step itself places. */
+/** Part names this step's words point at, besides the parts this step itself places. */
 function namedSupports(step: AssemblyStep, known: string[], placing: Set<string>): string[] {
   const text = `${step.title}. ${step.description ?? ""}`.toLowerCase();
   const hits = new Set<string>();
-  for (const match of text.matchAll(ANCHOR)) {
-    const clause = text.slice((match.index ?? 0) + match[0].length).split(".")[0] ?? "";
-    for (const name of known) {
-      if (placing.has(name) || hits.has(name)) continue;
-      for (const phrase of phrases(name)) {
-        const body = phrase
-          .split(/\s+/)
-          .map((w, i, arr) => (i === arr.length - 1 ? `${w}s?` : w))
-          .join("\\s+");
-        if (new RegExp(`\\b${body}\\b`, "i").test(clause)) {
-          hits.add(name);
-          break;
-        }
+  for (const name of known) {
+    if (placing.has(name)) continue;
+    for (const phrase of phrases(name)) {
+      const body = phrase
+        .split(/\s+/)
+        .map((w, i, arr) =>
+          i === arr.length - 1 ? (w === "shelf" ? "shel(?:f|ves)" : `${w}s?`) : w,
+        )
+        .join("\\s+");
+      if (new RegExp(`\\b${body}\\b`, "i").test(text)) {
+        hits.add(name);
+        break;
       }
     }
   }
-  return [...hits];
+  return hits.size ? [...hits] : [];
 }
 
 function keyOf(step: AssemblyStep, fault: Fault): string {
@@ -403,6 +395,26 @@ function keys(project: YardProject, steps: AssemblyStep[]): Set<string> {
   return new Set(orderFaults(project, steps).map((f) => keyOf(steps[f.at], f)));
 }
 
+export type UnresolvedFault = { kind: "geom" | "test" | "hang"; part: string; on: string };
+
+/**
+ * The only definition of an unresolved support fault.
+ * A step still places, tests, or hangs a part before the part it rests on, butts into, or must follow.
+ * A name mention and an edge kiss only veto a move. They are not unresolved faults.
+ */
+export function unresolvedFaults(project: YardProject, steps: AssemblyStep[]): UnresolvedFault[] {
+  const out: UnresolvedFault[] = [];
+  const seen = new Set<string>();
+  for (const f of orderFaults(project, steps)) {
+    if (f.kind !== "geom" && f.kind !== "test" && f.kind !== "hang") continue;
+    const key = `${f.kind}|${f.part}|${f.on}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ kind: f.kind, part: f.part, on: f.on });
+  }
+  return out;
+}
+
 function motivating(project: YardProject, steps: AssemblyStep[]): Fault[] {
   return orderFaults(project, steps).filter(
     (f) => f.kind === "geom" || f.kind === "test" || f.kind === "hang",
@@ -427,13 +439,7 @@ export function orderStepsBySupport(project: YardProject, steps: AssemblyStep[])
     for (const fault of faults) {
       const late = fault.kind === "geom" ? at.get(fault.on) : at.get(fault.part);
       // Only swap with the very next step, and only when that step is the one this step is waiting on.
-      // A hang step that itself places parts must stay: moving it also moves those parts.
       if (late !== fault.at + 1) continue;
-      if (
-        fault.kind === "hang" &&
-        (cur[fault.at].partsUsed ?? []).some((n) => n !== "*" && n !== "all")
-      )
-        continue;
       for (const candidate of [moved(cur, fault.at, late)]) {
         if (!candidate) continue;
         const after = keys(project, candidate);
