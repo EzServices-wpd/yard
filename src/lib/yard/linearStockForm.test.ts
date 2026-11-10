@@ -7,6 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
+import { headerSize } from "./headerSize.ts";
 import type { Vec3, YardInstance } from "./types.ts";
 
 const NODE = 0.05;
@@ -245,10 +246,37 @@ const BUILT = [
   "plate rack",
   "3 tier shoe rack",
   "kayak rack",
-  "pvc spice rack",
-  "pvc mug rack",
-  "pvc book rack",
+  "firewood rack 96 wide 48 tall",
 ];
+
+const CARCASE_TITLE = /^(?:Skin the back|Stand the sides|Stand the dividers|Close the top|Hang the doors|Set the shelves|Set the kick|Set the counter|Build the drawers|Lay the deck) —/;
+
+/** Outside of the pipes, measured here. Not the engine's extent. */
+function frameBox(members: YardInstance[]): { width: number; depth: number; height: number } {
+  const r = 1.05 / 2;
+  let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (const m of members) {
+    const a = m.from!;
+    const b = m.to!;
+    const L = hypot(a, b) || 1;
+    const u = { x: (b.x - a.x) / L, y: (b.y - a.y) / L, z: (b.z - a.z) / L };
+    const pad = {
+      x: r * Math.sqrt(Math.max(0, 1 - u.x * u.x)),
+      y: r * Math.sqrt(Math.max(0, 1 - u.y * u.y)),
+      z: r * Math.sqrt(Math.max(0, 1 - u.z * u.z)),
+    };
+    for (const p of [a, b]) {
+      minX = Math.min(minX, p.x - pad.x); maxX = Math.max(maxX, p.x + pad.x);
+      minY = Math.min(minY, p.y - pad.y); maxY = Math.max(maxY, p.y + pad.y);
+      minZ = Math.min(minZ, p.z - pad.z); maxZ = Math.max(maxZ, p.z + pad.z);
+    }
+  }
+  return { width: maxX - minX, depth: maxZ - minZ, height: maxY - Math.min(0, minY) };
+}
+
+function buyAgrees(geo: Record<string, number>, buy: Record<string, number>, key: "cap" | "cross5"): boolean {
+  return (buy[key] ?? 0) === (geo[key] ?? 0);
+}
 
 test("a seated PVC rack is one square frame and Buy matches the geometry", () => {
   for (const prompt of BUILT) {
@@ -282,6 +310,14 @@ test("a seated PVC rack is one square frame and Buy matches the geometry", () =>
       assert.ok((line.offers ?? []).some((o) => o.href), `${prompt} ${id} has no store link`);
       assert.ok((line.estimatedCost ?? 0) > 0, `${prompt} ${id} unpriced`);
     }
+    const box = frameBox(frame.members);
+    const hud = headerSize(frame.project);
+    assert.ok(Math.abs(hud.width - box.width) < 0.05, `${prompt} HUD width ${hud.width} frame ${box.width}`);
+    assert.ok(Math.abs(hud.depth - box.depth) < 0.05, `${prompt} HUD depth ${hud.depth} frame ${box.depth}`);
+    assert.ok(Math.abs(hud.height - box.height) < 0.05, `${prompt} HUD height ${hud.height} frame ${box.height}`);
+    assert.equal(frame.plan.instructions.some((s) => CARCASE_TITLE.test(s.title)), false, `${prompt} carcase title`);
+    assert.equal(buyAgrees(frame.geo, frame.buy, "cap"), true, `${prompt} caps`);
+    assert.equal(buyAgrees(frame.geo, frame.buy, "cross5"), true, `${prompt} 5-way`);
   }
 });
 
@@ -311,10 +347,21 @@ test("a coupling 2 inches from a corner fails the fitting pitch", () => {
   assert.ok(pitch < 2.75, `mutation pitch ${pitch} should fail the 2.75 inch check`);
 });
 
-test("a spice rack keeps a front and a back, so the header depth is the pipe box", () => {
+test("dropping caps or 5-way crosses fails the Buy check", () => {
+  const frame = frameOf("firewood rack 96 wide 48 tall", "pvc-3-4-sch40");
+  assert.ok((frame.geo.cross5 ?? 0) > 0, "this rack has no 5-way cross, so dropping one would not be caught");
+  assert.equal(buyAgrees(frame.geo, frame.buy, "cross5"), true);
+  assert.equal(buyAgrees(frame.geo, { ...frame.buy, cross5: (frame.buy.cross5 ?? 0) - 1 }, "cross5"), false);
+  assert.equal(buyAgrees({ cap: 2 }, { cap: 2 }, "cap"), true);
+  assert.equal(buyAgrees({ cap: 2 }, { cap: 0 }, "cap"), false);
+});
+
+test("a one-plane spice rack stays the release open frame", () => {
   const frame = frameOf("pvc spice rack");
-  assert.ok(frame.project.overall.depth >= 3.5 && frame.project.overall.depth <= 4.5, `depth ${frame.project.overall.depth}`);
-  assert.ok(frame.project.notes?.some((n) => /Each face is the outline/.test(n)));
+  assert.equal(frame.refused, false);
+  assert.equal(frame.project.primaryMaterialId, "pvc-3-4-sch40");
+  assert.ok(frame.project.notes?.some((n) => /Open frame of/.test(n)));
+  assert.equal(frame.project.notes?.some((n) => /can't build this/.test(n)), false);
 });
 
 test("a coat rack stays the release open frame", () => {

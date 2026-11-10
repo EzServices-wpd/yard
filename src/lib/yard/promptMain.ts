@@ -562,17 +562,7 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
   // A switched stock replaces the typed species: the species leaves the title.
-  return alignOutlineNote(withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt));
-}
-
-/** The outline note is written before the title takes the typed noun. Say the title the card shows. */
-function alignOutlineNote(project: YardProject): YardProject {
-  const [first, ...rest] = project.notes ?? [];
-  const m = first?.match(/^Same (.+) in /);
-  if (!m || m[1] === project.name) return project;
-  const title = project.name.replace(/\s+\d.*$/, "").trim();
-  if (m[1] === title || m[1].startsWith(`${title} `)) return project;
-  return { ...project, notes: [`Same ${project.name} in ${first!.slice(m[0].length)}`, ...rest] };
+  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
 }
 
 /**
@@ -604,12 +594,9 @@ function withPurposeTitle(project: YardProject, prompt: string): YardProject {
   const stem = (s: string) => s.replace(/\s*\d[\s\S]*$/, "").trim();
   const [first, ...rest] = project.notes ?? [];
   const bare = (s: string) => s.replace(/^[A-Z][a-z]+\s+(?=[A-Z])/, "");
-  const spoken = (from: string) => (from === stem(project.name) ? stem(name) : bare(stem(name)));
-  const candidates = [stem(project.name), bare(stem(project.name))].filter((f): f is string => Boolean(f));
-  const hit = candidates
-    .flatMap((from) => [{ from: `Same ${from}`, to: `Same ${spoken(from)}` }, { from, to: spoken(from) }])
-    .find((c) => first?.startsWith(c.from));
-  const notes = first && hit ? [`${hit.to}${first.slice(hit.from.length)}`, ...rest] : project.notes;
+  const from = [stem(project.name), bare(stem(project.name))].find((f) => f && first?.startsWith(f));
+  const to = from === stem(project.name) ? stem(name) : bare(stem(name));
+  const notes = first && from ? [`${to}${first.slice(from.length)}`, ...rest] : project.notes;
   return { ...project, name, notes };
 }
 

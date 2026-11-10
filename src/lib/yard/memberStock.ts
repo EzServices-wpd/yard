@@ -5,12 +5,12 @@
  * Buy still names the unit you purchase (the sheet, the brick pack).
  */
 import { createId } from "@/lib/utils";
+import { getCatalogItem } from "./catalog";
 import { isWholeStock, toPrimitive } from "./geometry";
 import { uncataloguedJoints } from "./joints";
-import { frameCollapsed, frameSpan, onePlaneShelf, rigidSlipPipe, seatPipeRack, unlistedFrameFitting } from "./pipeRackFrame";
-import { rodArrayFailures } from "./rodArrays";
-import { hiddenOverlaps } from "./solids";
-import type { CatalogItem, Panel, PanelType, Vec3, YardInstance, YardProject } from "./types";
+import { frameCollapsed, frameSpan, onePlaneShelf, outlineRoles, rigidSlipPipe, seatPipeRack, unlistedFrameFitting } from "./pipeRackFrame";
+import { purposeOf, titleWithPurpose } from "./purpose";
+import type { CatalogItem, Panel, Vec3, YardInstance, YardProject } from "./types";
 
 export type MemberSection = { width: number; height: number };
 
@@ -98,18 +98,14 @@ function isFaceStock(item: CatalogItem): boolean {
   return isSheetStock(item) || item.formFactor === "board";
 }
 
-const LOAD_KINDS: readonly PanelType[] = ["shelf", "top", "bottom", "deck", "counter", "bay"];
-
-function isLoadSurface(panel: Panel): boolean {
-  return LOAD_KINDS.includes(panel.type) || /\b(?:shelf|seat|top|bottom|deck)\b/i.test(panel.name);
-}
-
-/** Standards plus arms, and nothing a person sets a load on. That stays the wall-arm cantilever. */
-function isWallArmForm(project: YardProject): boolean {
-  const arms = project.panels.filter((panel) => /\barm\b/i.test(panel.name));
-  if (arms.length < 2) return false;
-  if (project.panels.some((panel) => isLoadSurface(panel))) return false;
-  return project.panels.filter((panel) => panel.type === "upright" || /\b(?:standard|upright|post)\b/i.test(panel.name)).length >= 2;
+/**
+ * The rack types seated in round 1. A cabinet, table, bed, or other pipe build is not one of these.
+ * Hooks stay the release cantilever.
+ */
+function declaredRack(prompt: string | undefined): boolean {
+  const text = (prompt ?? "").toLowerCase();
+  if (/\b(?:peg|hook)s?\b/.test(text)) return false;
+  return /\b(?:shoe|bike|towel|wine|spice|drying|magazine|dish|plate|kayak|firewood|spool)\s+racks?\b/.test(text);
 }
 
 /**
@@ -172,8 +168,8 @@ function openMemberRack(project: YardProject, item: CatalogItem): YardProject {
 export function recastPanelsAsStock(project: YardProject, item: CatalogItem, allowSeat = true): YardProject {
   if (!project.panels.length) return project;
   const rack = /\bracks?\b/.test((project.prompt ?? "").toLowerCase()) && !/rail|peg|hook/.test((project.prompt ?? "").toLowerCase());
-  // Seating follows the stock and the frame. Straw, paper tube, dowel, and a wall-arm cantilever stay the release build.
-  const pipeRack = allowSeat && rack && rigidSlipPipe(item) && !isWallArmForm(project);
+  // Only a named rack in rigid 3/4" Sch 40 pipe is seated. Everything else is the release build.
+  const pipeRack = allowSeat && rigidSlipPipe(item) && declaredRack(project.prompt);
   if (rack && !isFaceStock(item) && !pipeRack) return openMemberRack(project, item);
   if (rack && !pipeRack) {
     const shelves = project.panels.filter((panel) => panel.type === "shelf" || /shelf/i.test(panel.name));
@@ -515,53 +511,21 @@ export function recastPanelsAsStock(project: YardProject, item: CatalogItem, all
     const blocked = unlistedFrameFitting(seatedInst, item);
     const collapsed = !span || frameCollapsed(project.overall, span) || onePlaneShelf(project.overall.depth, span.depth, hadShelf);
     if (missed > 0 || blocked || collapsed) return null;
-    return seatedInst;
+    return outlineRoles(seatedInst);
   };
   const seated = seatPipeRack(recast.instances, item);
   const taken = seated.ok ? accept(recast.instances, seated.instances) : null;
-  if (!taken) {
-    // Not one rigid frame. The release cantilever keeps the size the header already shows.
-    return openMemberRack(project, item);
+  if (!taken) return openMemberRack(project, item);
+  // Same name the release cantilever uses, so a later pass still reads Firewood rack, not Firewood unit.
+  const r = (n: number) => Math.round(n * 8) / 8;
+  let name = recast.name;
+  if (/^Storage unit\b/i.test(recast.name)) {
+    name = `Rack ${r(project.overall.width)}" × ${r(project.overall.height)}" × ${r(project.overall.depth)}"`;
+    const purpose = purposeOf(project.prompt ?? "");
+    if (purpose) name = titleWithPurpose(name, purpose);
   }
-  const eighth = (n: number) => Math.round(n * 8) / 8;
-  const name = /^Storage unit\b/i.test(recast.name)
-    ? `Rack ${eighth(project.overall.width)}" × ${eighth(project.overall.height)}" × ${eighth(project.overall.depth)}"`
-    : recast.name;
-  const fitted = fitPipeBox(taken, project.overall, item.dims.diameter ?? 1.05);
-  return { ...recast, name, instances: fitted };
-}
-
-/** Move the outer grid lines so the pipe skin meets the size the header already states. */
-function fitPipeBox(instances: YardInstance[], overall: { width: number; height: number; depth: number }, od: number): YardInstance[] {
-  const next = instances.map((inst) => ({
-    ...inst,
-    from: inst.from ? { ...inst.from } : inst.from,
-    to: inst.to ? { ...inst.to } : inst.to,
-  }));
-  const want: Record<"x" | "y" | "z", number> = { x: overall.width - od, y: overall.height - od / 2, z: overall.depth - od };
-  for (const axis of ["x", "y", "z"] as const) {
-    const vals = next.flatMap((inst) => [inst.from?.[axis], inst.to?.[axis]]).filter((n): n is number => n != null);
-    if (!vals.length) continue;
-    const lo = Math.min(...vals);
-    const hi = Math.max(...vals);
-    const delta = want[axis] - (hi - lo);
-    if (delta < 0.05 || delta > 1.5) continue;
-    const dLo = axis === "y" && lo < 0.6 ? 0 : -delta / 2;
-    const dHi = axis === "y" && lo < 0.6 ? delta : delta / 2;
-    for (const inst of next) {
-      for (const p of [inst.from, inst.to]) {
-        if (!p) continue;
-        if (Math.abs(p[axis] - lo) <= 0.02) p[axis] = Math.round((p[axis] + dLo) * 10000) / 10000;
-        else if (Math.abs(p[axis] - hi) <= 0.02) p[axis] = Math.round((p[axis] + dHi) * 10000) / 10000;
-      }
-      if (inst.from && inst.to) {
-        const len = Math.hypot(inst.to.x - inst.from.x, inst.to.y - inst.from.y, inst.to.z - inst.from.z);
-        inst.position = { x: (inst.from.x + inst.to.x) / 2, y: (inst.from.y + inst.to.y) / 2, z: (inst.from.z + inst.to.z) / 2 };
-        if (inst.cutLength != null) inst.cutLength = Math.round(len * 8) / 8;
-      }
-    }
-  }
-  return next;
+  const seatedNotes = name === recast.name ? recast.notes : recast.notes.map((n) => n.replace(/^Same .+? in /, `Same ${name} in `));
+  return { ...recast, name, notes: seatedNotes, instances: taken };
 }
 
 /**

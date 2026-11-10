@@ -6,6 +6,7 @@
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { clean, frac } from "./pdfKit";
 import { drawnExtent } from "./pdfDraw";
+import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { isUnitItem } from "./unitItems";
 import { specOf, type YardSpec } from "./spec";
 import { isBedLongWide, typedOffBy } from "./typedAxesRead";
@@ -49,6 +50,17 @@ function shownSize(project: YardProject, assumed: Partial<Record<Axis, boolean>>
   // A pocket build's size is its fitted unit on every axis: the drawn extent would fold the proud fronts into the depth
   // the note already names (#109 B1: pocket vanity 17" deep, never 17 3/4").
   if (project.pocket?.unit) return { width: o.width, height: o.height, depth: o.depth };
+  // A seated pipe frame's size is the frame that was built, not the panel box it was drawn from.
+  if (isSeatedPipeFrame(project)) {
+    const frame = drawnExtent(project);
+    if (frame) {
+      return {
+        width: frame.max.x - frame.min.x,
+        depth: frame.max.z - frame.min.z,
+        height: frame.max.y - Math.min(0, frame.min.y),
+      };
+    }
+  }
   const at = (a: Axis) => (assumed[a] && ext && ext[a] > 0 ? ext[a] : o[a]);
   // C11: a whole bought item's depth is its real piece, so it reads the model's finished depth too.
   const depth = assumed.depth && ext && ext.depth > 0 ? ext.depth : isUnitItem(project) ? modelFinishedDepth(project.panels, o.depth) : o.depth;
