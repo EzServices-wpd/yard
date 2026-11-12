@@ -476,13 +476,13 @@ function refitBetween(p: Panel, was: Panel[], now: Panel[]): Panel {
 type PosAxis = "x" | "y" | "z";
 const AXES: [PosAxis, "width" | "height" | "depth"][] = [["x", "width"], ["y", "height"], ["z", "depth"]];
 
-function envelopeOf(panels: Panel[]) {
+export function envelopeOf(panels: Panel[]) {
   const b = panels.map(panelBox);
   return { x: [Math.min(...b.map((q) => q.x0)), Math.max(...b.map((q) => q.x1))], y: [Math.min(...b.map((q) => q.y0)), Math.max(...b.map((q) => q.y1))], z: [Math.min(...b.map((q) => q.z0)), Math.max(...b.map((q) => q.z1))] } as Record<PosAxis, number[]>;
 }
 
 /** A face that thins keeps its outer face where it was: one on the far side of the envelope moves out. */
-function keepOuterFace(p: Panel, was: Panel, env: Record<PosAxis, number[]>): Panel {
+export function keepOuterFace(p: Panel, was: Panel, env: Record<PosAxis, number[]>): Panel {
   if (p.yaw || p.polygon) return p;
   const pos = { ...p.position };
   for (const [a, k] of AXES) {
