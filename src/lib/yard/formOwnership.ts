@@ -90,6 +90,8 @@ export function routesToLearner(prompt: string, p: YardProject, half: boolean): 
   if (genericBoxOverAsk(prompt, p)) return true;
   // Refiner :20: a closed storage carcase that holds the typed size and interior counts read the whole ask.
   if (closedCarcaseReadsAsk(prompt, p, () => (half ? ignoredTypedWords(p, prompt) : []))) return false;
+  // Refiner :20: an unmatched sheet shell of the typed envelope is the engine own build; the learner does not replace it with a placeholder.
+  if (p.unmatched && /sheet|cardboard/i.test(p.primaryMaterialId ?? "") && (p.notes ?? []).some((n) => /closed shell of the typed envelope/.test(n))) return false;
   // A real half-read ("lap desk" → Desk) still learns; "Dutch Windmill" / a purpose ask read every word.
   if (half && !readAll(prompt, p)) return true;
   if (engineKeepsPrompt(prompt, p, half)) return false;
