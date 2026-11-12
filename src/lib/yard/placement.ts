@@ -767,7 +767,14 @@ function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPla
 
 type Stick = { id: string; role: string; a: V3; b: V3 };
 
-function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: StepPlacement) {
+function statedRoleCount(title: string, role: string): number | null {
+  const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, both: 2 };
+  const m = title.match(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|both)\\s+(?:[a-z]+\\s+){0,2}${role}s?\\b`, "i"));
+  if (!m) return null;
+  return words[m[1].toLowerCase()] ?? Number(m[1]);
+}
+
+function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: StepPlacement, title = "") {
   const sticks: Stick[] = project.instances
     .filter((i) => ids.includes(i.id) && i.from && i.to)
     .map((i) => ({ id: i.id, role: (i.role ?? "member").toLowerCase(), a: i.from!, b: i.to! }));
@@ -808,8 +815,12 @@ function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: 
     if (plumb.length) {
       const xs = [...new Set(plumb.map((st) => Math.round(st.a.x * 16) / 16))].sort((a, b) => a - b);
       const zs = [...new Set(plumb.map((st) => Math.round(st.a.z * 16) / 16))].sort((a, b) => a - b);
-      const h = Math.max(...plumb.map((st) => Math.abs(st.b.y - st.a.y)));
-      let t = `${plumb.length === 1 ? `The ${role} stands` : `The ${plumb.length} ${word} stand`} plumb, ${f(h)} tall`;
+      const stickH = Math.max(...plumb.map((st) => Math.abs(st.b.y - st.a.y)));
+      const said = role === "leg" || role === "ear" ? statedRoleCount(title, role) : null;
+      const stacked = said != null && said < plumb.length;
+      const count = stacked ? said : plumb.length;
+      const h = stacked ? Math.max(...plumb.map((st) => Math.max(st.a.y, st.b.y))) - Math.min(...plumb.map((st) => Math.min(st.a.y, st.b.y))) : stickH;
+      let t = `${count === 1 ? `The ${role} stands` : `The ${count} ${word} stand`} plumb, ${f(h)} tall`;
       if (xs.length === 2 && zs.length <= 2) {
         const dx = xs[1] - xs[0];
         t += zs.length === 2 ? `, centers ${f(dx)} apart one way and ${f(zs[1] - zs[0])} the other — measure the diagonals equal` : `, centers ${f(dx)} apart`;
@@ -820,7 +831,9 @@ function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: 
     if (slant.length) {
       const lo = Math.min(...slant.map((st) => Math.min(st.a.y, st.b.y))) - base;
       const hi = Math.max(...slant.map((st) => Math.max(st.a.y, st.b.y))) - base;
-      out.sentences.push(`${slant.length === 1 ? `The slanted ${role} runs` : `The ${slant.length} slanted ${word} run`} from ${Math.abs(lo) < EPS ? refWord : `${f(lo)} up`} to ${f(hi)} up — end to end on the joints in the picture.`);
+      const said = role === "leg" || role === "ear" ? statedRoleCount(title, role) : null;
+      const count = said != null && said < slant.length ? said : slant.length;
+      out.sentences.push(`${count === 1 ? `The slanted ${role} runs` : `The ${count} slanted ${word} run`} from ${Math.abs(lo) < EPS ? refWord : `${f(lo)} up`} to ${f(hi)} up — end to end on the joints in the picture.`);
       for (const st of slant) out.measures.push({ kind: "center", id: st.id, value: (st.a.y + st.b.y) / 2 - base });
     }
   }
@@ -907,7 +920,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       return true;
     });
     const instIds = st.fresh.filter((id) => !byId.has(id));
-    if (instIds.length) instanceTalk(project, instIds, craft, out);
+    if (instIds.length) instanceTalk(project, instIds, craft, out, s.title);
     st.fresh.forEach((id) => placed.add(id));
     st.onto.forEach((id) => placed.add(id));
     return out;

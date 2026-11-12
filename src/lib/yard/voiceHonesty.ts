@@ -274,7 +274,15 @@ export function densifyPartsPlateTalkKeep(text: string, cutList: CutLine[], proj
 function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { title?: boolean } = {}): string {
   const entries = partsPlateEntries(cutList);
   if (!entries.length || !text) return text;
-  let out = text;
+  const held: string[] = [];
+  const hold = (m: string) => {
+    held.push(m);
+    return `\u0001${held.length - 1}\u0001`;
+  };
+  let out = text.replace(
+    /Fasten the seat to [^.]+\.|Screw through the shoe shelf and the back into each divider\.|Screw through the bottom shelf and the back into each divider\.|Glue and screw the front apron between the uprights\.|Set the front apron between the uprights\.|Tape or glue the front apron between the uprights\.|between the lid and the main box\.|Hang the seat lid on its hinges:[^.]+\.|and the backrest to the back [^.]+\./g,
+    hold,
+  );
 
   // Dimension lines: "Back — 34.50" / "Left side — 20 × 18" / "Top (cut round…) — 40"
   // Require a digit after the em-dash so rhetorical "open shelf — not a mini…" is not plated.
@@ -363,7 +371,7 @@ function densifyPartsPlateTalkRaw(text: string, cutList: CutLine[], opts: { titl
     out = out.replace(/\bboth uprights\b/gi, `both ${pair.both} uprights`);
   }
 
-  return out;
+  return out.replace(/\u0001(\d+)\u0001/g, (_m, i: string) => held[Number(i)] ?? "");
 }
 
 
@@ -569,9 +577,9 @@ function densifyNamedJoinTalk(desc: string, title: string, entries: PlateEntry[]
 
   // Lid stay first — must not inherit piano-hinge join from body mention of piano hinge.
   if (/lid stay|lid support/i.test(hayTitle) && !/with\s+1\s+lid stay/i.test(d)) {
-    const lid = entries.find((e) => e.family === "lid");
+    d = d.replace(/between the (?:[A-Z]{1,2} )?Lid\b/g, "between the lid");
     if (!/one join:/i.test(d)) {
-      d = `One join: attach 1 lid stay (lid support) between ${lid ? `the ${plateRef(lid, "Lid")}` : "the lid"} and the main box. ${d}`;
+      d = `One join: attach 1 lid stay (lid support) between the lid and the main box. ${d}`;
     }
     return d;
   }

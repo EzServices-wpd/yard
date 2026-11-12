@@ -1132,13 +1132,15 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
             ? "standing adult"
             : "standing kid"
         } at ${riseRun}.`,
-        tips: "Square the tread before the braces.",
+        tips: panels.some((p) => /\bbrace/i.test(p.name)) ? "Square the tread before the braces." : "Square the frame before the tread goes on.",
         partsUsed: names(uprights),
       },
       {
         step: 3,
-        title: "Brace the step frame",
-        description: `Braces keep the ${riseRun} tread from racking.`,
+        title: panels.some((p) => /\bbrace/i.test(p.name)) ? "Brace the step frame" : "Set the rails",
+        description: panels.some((p) => /\bbrace/i.test(p.name))
+          ? `Braces keep the ${riseRun} tread from racking.`
+          : `The rails keep the ${riseRun} tread from racking.`,
         tips: "Guidance only.",
         partsUsed: names(panels),
       },
@@ -1165,6 +1167,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
     const frame = panels.filter((p) => /backrest|apron/i.test(p.name));
     const sides = panels.filter((p) => /side rail/i.test(p.name));
     const sheetCuts = panels.map((p) => `${p.name} ${fmtSheetCut(p.size.width, p.size.height, p.size.depth)}".`);
+    const postWord = posts.some((p) => /\bposts?\b/i.test(p.name)) ? "posts" : `${posts.length === 1 ? "leg" : "legs"}`;
+    const standPosts = postWord === "posts" && posts.length === 4 ? "Stand the four posts and frame them" : `Stand the ${posts.length} ${postWord} and frame them`;
     return [
       {
         step: 1,
@@ -1182,8 +1186,8 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       },
       {
         step: 3,
-        title: "Stand the four posts and frame them",
-        description: `${[...posts, ...frame].map(cutLine).join("; ")}. Screw the front apron across the front posts and the backrest to the back posts. Glue the joints too.`,
+        title: standPosts,
+        description: `${[...posts, ...frame].map(cutLine).join("; ")}. Screw the front apron across the front ${postWord} and the backrest to the back ${postWord}. Glue the joints too.`,
         tips: "Square the frame before the deck goes on.",
         partsUsed: names([...posts, ...frame]),
       },
@@ -1204,7 +1208,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
       {
         step: 5,
         title: "Level it",
-        description: "Level the frame on the floor. Shim a foot if the floor is out — do not twist the posts. Add a mattress that fits the deck.",
+        description: `Level the frame on the floor. Shim a foot if the floor is out — do not twist the ${postWord}. Add a mattress that fits the deck.`,
         tips: "Guidance only — person load is heuristic, not stamped engineering.",
         partsUsed: ["*"],
       },
@@ -1737,7 +1741,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         ? [{
             step: 4,
             title: "Set cubby dividers",
-            description: `${cubbies.map(cutLine).join("; ")}. Space them evenly. ${stockThrough(project, `the seat, ${bayName.toLowerCase()}, and back into each divider`)} These carry sit load across the span.`,
+            description: `${cubbies.map(cutLine).join("; ")}. Space them evenly. ${stockThrough(project, `the ${bayName.toLowerCase()} and the back into each divider`)} These carry sit load across the span.`,
             tips: "Dividers only exist when the cut list has them.",
             partsUsed: names(cubbies),
           }]
@@ -1746,7 +1750,7 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
         ? [{
             step: 4,
             title: "Set the front apron",
-            description: `${aprons.map(cutLine).join("; ")}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron under the front edge of the seat between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron under the front edge of the seat between the uprights." : "Tape or glue the front apron under the front edge of the seat between the uprights."}`,
+            description: `${aprons.map(cutLine).join("; ")}. ${stockJoinVerb(project) === "Screw" ? "Glue and screw the front apron between the uprights." : stockJoinVerb(project) === "Set" ? "Set the front apron between the uprights." : "Tape or glue the front apron between the uprights."}`,
             tips: "The apron is the rail under the front edge, not a cubby wall.",
             partsUsed: names(aprons),
           }]
@@ -3194,6 +3198,61 @@ function uniqueRecastCarcaseSteps(project: YardProject): AssemblyStep[] {
   return steps;
 }
 
+/**
+ * How many places a role stands. Sticks laminated or stacked into one leg share a foot,
+ * so 36 sticks at four corners are four legs. One stick per foot is one leg each.
+ */
+export function memberStations(list: { id: string; from?: { x: number; y: number; z: number }; to?: { x: number; y: number; z: number } }[]): number {
+  const feet = list.map((i) => {
+    const a = i.from, b = i.to;
+    if (a && b) return a.y <= b.y ? a : b;
+    return a ?? b;
+  }).filter((p): p is { x: number; y: number; z: number } => !!p);
+  if (feet.length < 2) return list.length;
+  const dist = (i: number, j: number) => Math.hypot(feet[i].x - feet[j].x, feet[i].z - feet[j].z);
+  const dists: number[] = [];
+  for (let i = 0; i < feet.length; i++) for (let j = i + 1; j < feet.length; j++) dists.push(dist(i, j));
+  dists.sort((a, b) => a - b);
+  const min = dists.find((d) => d > 1e-6) ?? 0;
+  // Laminated sticks sit about one width apart. A real second leg is several widths away.
+  // No such gap: every stick is its own leg.
+  if (!min || !dists.some((d) => d >= min * 2)) return feet.length;
+  const thresh = min * 1.5;
+  const parent = feet.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  for (let i = 0; i < feet.length; i++) for (let j = i + 1; j < feet.length; j++) if (dist(i, j) <= thresh + 1e-6) parent[find(j)] = find(i);
+  return new Set(parent.map((_, i) => find(i))).size;
+}
+
+const GROUP_WORD: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, both: 2 };
+
+/**
+ * When the written step counts stations rather than sticks ("four legs", "two ears"),
+ * say both: "four legs, 9 sticks each". Otherwise the stick count is the unit.
+ */
+export function stickGroupPhrase(project: YardProject, role: string): string | null {
+  const list = project.instances.filter((i) => (i.role || "member") === role);
+  const places = memberStations(list);
+  if (places < 1 || places >= list.length || list.length % places !== 0) return null;
+  const spec = roleScript(project).find((s) => s.role === role);
+  if (!spec) return null;
+  const word = (spec.word ?? role).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const said = spec.title.match(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|both)\\s+(?=(?:[a-z]+\\s+){0,3}${word}s?\\b)`, "i"));
+  if (!said) return null;
+  const qty = GROUP_WORD[said[1].toLowerCase()] ?? Number(said[1]);
+  if (qty !== places) return null;
+  return `${said[1].toLowerCase()} ${shopPlural(spec.word ?? role, places)}`;
+}
+
+/** "9 sticks each" for a role the written step counts as groups. */
+export function stickGroupEach(project: YardProject, role: string): string | null {
+  if (!stickGroupPhrase(project, role)) return null;
+  const list = project.instances.filter((i) => (i.role || "member") === role);
+  const places = memberStations(list);
+  const each = list.length / places;
+  return `${each} stick${each === 1 ? "" : "s"} each`;
+}
+
 function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
   if (project.kind === "eiffel") return uniqueEiffelSteps(project);
   if (isRecastCarcase(project)) return uniqueRecastCarcaseSteps(project);
@@ -3381,12 +3440,31 @@ function uniqueForgeSteps(project: YardProject): AssemblyStep[] {
         : (spec as { word?: string }).word ?? spec.role;
     const named = shopPlural(roleWord, listI.length);
     const rawTitle = listI.length === 1 && /segments in an S/i.test(spec.title) ? "Glue the neck" : spec.title;
-    const title = whole && /^cut\b/i.test(rawTitle) ? rawTitle.replace(/^cut\b/i, "Place") : rawTitle;
+    const titled = whole && /^cut\b/i.test(rawTitle) ? rawTitle.replace(/^cut\b/i, "Place") : rawTitle;
+    // Sticks stacked into one leg (or one ear) are not that many legs. A title that already
+    // names the stations ("the four legs", "the two ears") keeps that count. The parts list
+    // holds every stick.
+    const places = memberStations(listI);
+    const countWord = roleWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const said = titled.match(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|both)\\s+(?=(?:[a-z]+\\s+){0,3}${countWord}s?\\b)`, "i"));
+    const saidN = said ? ({ one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, both: 2 } as Record<string, number>)[said[1].toLowerCase()] ?? Number(said[1]) : null;
+    const stacked = saidN != null && places < listI.length && saidN === places;
+    const title = stacked
+      ? titled
+      : titled.replace(new RegExp(`\\b(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|both)\\s+(?=(?:[a-z]+\\s+){0,3}${countWord}s?\\b)`, "i"), (match, num: string) => {
+          const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, both: 2 };
+          const qty = words[num.toLowerCase()] ?? Number(num);
+          return qty === listI.length || qty === places ? match : "";
+        }).replace(/\s{2,}/g, " ").trim();
     const why = listI.length === 1 && /segments in an S/i.test(spec.title) ? "One neck piece. Glue it where it meets the body." : spec.why;
+    const each = places > 0 && listI.length % places === 0 ? listI.length / places : 0;
+    const countLead = stacked && said
+      ? `${said[1].charAt(0).toUpperCase()}${said[1].slice(1).toLowerCase()} ${shopPlural(roleWord, places)}, ${each} stick${each === 1 ? "" : "s"} each. `
+      : stacked ? "" : `${listI.length} ${named}. `;
     steps.push({
       step: n++,
-      title: `${title} — ${listI.length} ${named}`,
-      description: `${listI.length} ${named}. ${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${whole ? why.replace(/\bcut\b/gi, "place") : why}`,
+      title: stacked ? title : `${title} — ${listI.length} ${named}`,
+      description: `${countLead}${(spec as { hold?: string }).hold ?? hold} ${spec.extra ?? ""} Dry-fit the joint, then join. ${whole ? why.replace(/\bcut\b/gi, "place") : why}`,
       partsUsed: [spec.role],
       tips: why,
     });

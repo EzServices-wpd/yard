@@ -148,7 +148,7 @@ function mentions(step: AssemblyStep, part: Part, names?: Set<string>): boolean 
 function isBuild(step: AssemblyStep): boolean {
   // "Level it" checks the finished box; it places no part.
   // A glue-up makes blanks; it places no part either.
-  return !PREP.test(step.title) && !/^(?:Cut|Glue up|Join sheet splices)\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
+  return !PREP.test(step.title) && !/^(?:Cut|Glue up|Join sheet splices|Splice)\b/i.test(step.title) && !/^Level it\b/i.test(step.title);
 }
 
 const POSITION = /^(left|right|front|back|top|bottom|lower|upper|middle|inner|outer|center|centre)$/;
