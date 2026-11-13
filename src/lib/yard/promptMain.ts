@@ -190,7 +190,7 @@ function finishHouse(
   let next = allowSpecies ? applyNamedLumberPrimaryHonesty(project, prompt) : project;
   next = enforceHonesty(next, {
     rebuild: (spec) => {
-      const built = buildFitted(spec, prompt, primitive);
+      const built = buildFitted(spec, prompt, primitive, materialOverride);
       return allowSpecies ? applyNamedLumberPrimaryHonesty(built, prompt) : built;
     },
     honorUnit,
@@ -1546,7 +1546,7 @@ function generateRaw(
   const stockAsk = requestedStock(prompt, materialOverride);
   const craftAsk = !!stockAsk && !carcaseKind(stockAsk);
   if (opts.fittedOverride && !climbIdentityLabel(lower)) {
-    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit, materialOverride);
+    return honestHouse(buildFitted(opts.fittedOverride, prompt, false, materialOverride), prompt, !!opts.honorUnit, materialOverride);
   }
 
   // Odd-shape pack beats window/door/pocket steals ("shelves around a window", "corner cabinet with angled front").
@@ -1588,7 +1588,7 @@ function generateRaw(
       if (pocket) return finishHouse(enforceHonesty(buildPocket(pocket, prompt)), prompt, false, materialOverride);
     }
     const brief = parseBrief(prompt);
-    if (brief) return honestHouse(buildFitted(brief, prompt, !!opts.primitiveStandIn), prompt, false, materialOverride, !!opts.primitiveStandIn);
+    if (brief) return honestHouse(buildFitted(brief, prompt, !!opts.primitiveStandIn, materialOverride), prompt, false, materialOverride, !!opts.primitiveStandIn);
     return finishHouse(enforceHonesty(buildClosetFromPrompt(prompt, size)), prompt, false, materialOverride);
   }
 

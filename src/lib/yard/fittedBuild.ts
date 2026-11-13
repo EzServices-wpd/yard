@@ -44,6 +44,7 @@ import {
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { detectMaterial, isWireStock } from "./promptHelpers";
+import { getCatalogItem } from "./catalog";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import {
@@ -119,7 +120,17 @@ const depthTypedIn = (prompt: string) =>
   /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
   /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
 
-export function buildFitted(spec: FittedSpec, prompt = "", primitive = false): YardProject {
+/** PVC, dowel, closet rod, and any stock thicker than 1 1/2" cannot carry a shelf someone sits a thing on. */
+function interiorShelfStockBlocked(prompt: string, materialId?: string): boolean {
+  const picked = materialId ? getCatalogItem(materialId) : undefined;
+  const item = picked && !isWireStock(picked) ? picked : detectMaterial(prompt);
+  if (!item || isWireStock(item)) return false;
+  if (item.formFactor === "pipe" || item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "stick") return true;
+  const thick = item.dims.thickness ?? item.dims.diameter ?? Math.min(item.dims.width ?? 0, item.dims.height ?? 0);
+  return thick > 1.5;
+}
+
+export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, materialId?: string): YardProject {
   if (spec.walls && (spec.walls.leftAngleDeg > 0.2 || spec.walls.rightAngleDeg > 0.2)) {
     const pocket = buildPocket(
       {
@@ -2916,11 +2927,10 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false): Y
   // A typed count is built as typed, or the build is refused (shelfCountRefusal).
   if (rodY != null && !countTyped) shelves = Math.min(shelves, shelvesThatFit(shelfZone1 - zoneY0, P));
   // Storage, cabinet and shelving carcases ship an empty box when no family default
-  // names a count (program storage's fallback is 0). Above the clear-shelf limit they
-  // get the count that family already builds — bookcase's for open storage, the
-  // cabinet family's for a cabinet — and the same placement as those families.
-  // A typed "no shelves", a drawer-filled carcase, a planter, and a stand-in
-  // rebuilt as a storage unit for another noun (a bike rack) stay empty.
+  // names a count (program storage's fallback is 0). A plain one whose opening can
+  // hold a shelf gets that family's count, capped by shelvesThatFit so every gap
+  // stays at the clear-shelf limit. A purpose stand-in, a frame stock, and stock
+  // thicker than 1 1/2" stay empty. The fallback's storage-unit stand-in does too.
   if (
     shelves === 0 &&
     !countTyped &&
@@ -2928,16 +2938,19 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false): Y
     !(drawersFillLower && !u.upperStart) &&
     spec.program === "storage" &&
     !primitive &&
+    !interiorShelfStockBlocked(prompt, materialId) &&
     house?.family === "floor-carcase" &&
     house.use === "store" &&
+    W - P * 2 + 1e-6 >= closetShelfClearIn() &&
     !isPlanterBox(frontLower) &&
     !isHingedLidChest(frontLower) &&
     !isOpenTopChest(frontLower) &&
     !isStorageBox(frontLower) &&
     !isToyChest(frontLower)
   ) {
-    const n = tallInteriorShelfCount(prompt, shelfZone1 - zoneY0);
-    if (n != null) shelves = n;
+    const n = tallInteriorShelfCount(prompt);
+    const fit = shelvesThatFit(shelfZone1 - zoneY0, P);
+    if (n != null && fit > 0) shelves = Math.min(n, fit);
   }
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
@@ -3127,7 +3140,9 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false): Y
                 ? `Printer stand with ${shelves} shelf line${shelves === 1 ? "" : "s"}.`
                 : `Printer stand carcase. Shelf only when typed.`
           : shelves
-            ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
+            ? (spec.affordances ?? house?.affordances ?? []).includes("cubbies") || wantsShoes(frontLower)
+              ? `${shelves} fixed shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
+              : `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",
     ...(rodYs.length
       ? [
