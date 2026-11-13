@@ -123,8 +123,8 @@ function withWireNote(project: YardProject, item: CatalogItem): YardProject {
 }
 
 
-function honestHouse(project: YardProject, prompt: string, honorUnit = false, materialOverride?: string): YardProject {
-  return finishHouse(project, prompt, honorUnit, materialOverride);
+function honestHouse(project: YardProject, prompt: string, honorUnit = false, materialOverride?: string, primitive = false): YardProject {
+  return finishHouse(project, prompt, honorUnit, materialOverride, primitive);
 }
 
 /** The stock the user just asked for: a catalog pick, else the last "from …" clause. */
@@ -183,6 +183,7 @@ function finishHouse(
   prompt: string,
   honorUnit: boolean,
   materialOverride?: string,
+  primitive = false,
 ): YardProject {
   const stock = requestedStock(prompt, materialOverride);
   const kind = carcaseKind(stock);
@@ -190,7 +191,7 @@ function finishHouse(
   let next = allowSpecies ? applyNamedLumberPrimaryHonesty(project, prompt) : project;
   next = enforceHonesty(next, {
     rebuild: (spec) => {
-      const built = buildFitted(spec, prompt);
+      const built = buildFitted(spec, prompt, primitive, materialOverride);
       return allowSpecies ? applyNamedLumberPrimaryHonesty(built, prompt) : built;
     },
     honorUnit,
@@ -678,7 +679,7 @@ function generateTyped(...args: Parameters<typeof generateRaw>): YardProject {
       "popsicle sticks";
     remapped = `${craft} ${remapped}`;
   }
-  const built = generateCore(remapped, ...(args.slice(1) as []));
+  const built = generateCore(remapped, args[1], args[2], { ...(args[3] ?? {}), primitiveStandIn: true });
   const subject = subjectFromPrompt(noun).replace(/\b\w/g, (c) => c.toUpperCase());
   // The title names the model's size, like every other build's.
   const size = built.overall;
@@ -1423,6 +1424,8 @@ function generateRaw(
     pocketOverride?: import("./types").PocketSpec;
     honorUnit?: boolean;
     noCompose?: boolean;
+    /** The fallback rebuilt this as a storage-unit stand-in for another noun. It stays an empty carcase. */
+    primitiveStandIn?: boolean;
   } = {},
 ): YardProject {
   prompt = normalizeUserPrompt(prompt);
@@ -1547,7 +1550,7 @@ function generateRaw(
   const stockAsk = requestedStock(prompt, materialOverride);
   const craftAsk = !!stockAsk && !carcaseKind(stockAsk);
   if (opts.fittedOverride && !climbIdentityLabel(lower)) {
-    return honestHouse(buildFitted(opts.fittedOverride, prompt), prompt, !!opts.honorUnit, materialOverride);
+    return honestHouse(buildFitted(opts.fittedOverride, prompt, false, materialOverride), prompt, !!opts.honorUnit, materialOverride);
   }
 
   // Odd-shape pack beats window/door/pocket steals ("shelves around a window", "corner cabinet with angled front").
@@ -1589,7 +1592,7 @@ function generateRaw(
       if (pocket) return finishHouse(enforceHonesty(buildPocket(pocket, prompt)), prompt, false, materialOverride);
     }
     const brief = parseBrief(prompt);
-    if (brief) return honestHouse(buildFitted(brief, prompt), prompt, false, materialOverride);
+    if (brief) return honestHouse(buildFitted(brief, prompt, !!opts.primitiveStandIn, materialOverride), prompt, false, materialOverride, !!opts.primitiveStandIn);
     return finishHouse(enforceHonesty(buildClosetFromPrompt(prompt, size)), prompt, false, materialOverride);
   }
 

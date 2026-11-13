@@ -44,6 +44,7 @@ import {
 import { namedStockFromPrompt } from "./weekendStockHonesty";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import { detectMaterial, isWireStock } from "./promptHelpers";
+import { getCatalogItem } from "./catalog";
 import { buildCornerUnit, cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { buildOddShape, isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import {
@@ -55,7 +56,7 @@ import {
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
   SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes, shelfCountTyped,
 } from "./fittedShared";
-import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, typedRodDemand, typedShelfDemand } from "./shelfClear";
+import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, tallInteriorShelfCount, typedRodDemand, typedShelfDemand } from "./shelfClear";
 import { lippedShelfYs } from "./shelfLips";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
@@ -66,6 +67,7 @@ import { detectProgram } from "./fittedDetect";
 import { ROD_DIA, rodCenters, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote } from "./hangingClearance";
 import { buildSinkVanity } from "./sinkVanity";
 import { purposeOf } from "./purpose";
+import { typedCounts } from "./typedFeatures";
 import { buildItemCrate } from "./realObjects";
 import { PET_ANIMAL } from "./fallbackPrimitive";
 import {
@@ -118,7 +120,17 @@ const depthTypedIn = (prompt: string) =>
   /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
   /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
 
-export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
+/** Frame stock, stock thicker than 1 1/2", and sheet thinner than 1/2" cannot carry a pin shelf. */
+function interiorShelfStockBlocked(prompt: string, materialId?: string): boolean {
+  const picked = materialId ? getCatalogItem(materialId) : undefined;
+  const item = picked && !isWireStock(picked) ? picked : detectMaterial(prompt);
+  if (!item || isWireStock(item)) return false;
+  if (item.formFactor === "pipe" || item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "stick") return true;
+  const thick = item.dims.thickness ?? item.dims.diameter ?? Math.min(item.dims.width ?? 0, item.dims.height ?? 0);
+  return thick > 1.5 || thick < 0.5;
+}
+
+export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, materialId?: string): YardProject {
   if (spec.walls && (spec.walls.leftAngleDeg > 0.2 || spec.walls.rightAngleDeg > 0.2)) {
     const pocket = buildPocket(
       {
@@ -2914,6 +2926,34 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // Only the default count is trimmed, down to what keeps a closet gap above the rod.
   // A typed count is built as typed, or the build is refused (shelfCountRefusal).
   if (rodY != null && !countTyped) shelves = Math.min(shelves, shelvesThatFit(shelfZone1 - zoneY0, P));
+  // Storage, cabinet and shelving carcases ship an empty box when no family default
+  // names a count (program storage's fallback is 0). A plain one whose opening can
+  // hold a shelf gets that family's count, capped by shelvesThatFit so every gap
+  // stays at the clear-shelf limit. A purpose stand-in, a drawer carcase, frame
+  // stock, stock thicker than 1 1/2", and sheet thinner than 1/2" stay empty.
+  // A drawer carcase keeps its slides on the uprights. Thin sheet gets no pin step.
+  if (
+    shelves === 0 &&
+    !countTyped &&
+    typedCounts(prompt).shelves !== 0 &&
+    !(drawersFillLower && !u.upperStart) &&
+    !panels.some((p) => p.type === "drawer") &&
+    spec.program === "storage" &&
+    !primitive &&
+    !interiorShelfStockBlocked(prompt, materialId) &&
+    house?.family === "floor-carcase" &&
+    house.use === "store" &&
+    W - P * 2 + 1e-6 >= closetShelfClearIn() &&
+    !isPlanterBox(frontLower) &&
+    !isHingedLidChest(frontLower) &&
+    !isOpenTopChest(frontLower) &&
+    !isStorageBox(frontLower) &&
+    !isToyChest(frontLower)
+  ) {
+    const n = tallInteriorShelfCount(prompt);
+    const fit = shelvesThatFit(shelfZone1 - zoneY0, P);
+    if (n != null && fit > 0) shelves = Math.min(n, fit);
+  }
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
     const y1 = shelfZone1;
@@ -3102,7 +3142,9 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
                 ? `Printer stand with ${shelves} shelf line${shelves === 1 ? "" : "s"}.`
                 : `Printer stand carcase. Shelf only when typed.`
           : shelves
-            ? `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
+            ? (spec.affordances ?? house?.affordances ?? []).includes("cubbies") || wantsShoes(frontLower)
+              ? `${shelves} fixed shelf line${shelves === 1 ? "" : "s"}. Glue and screw; do not pin them.`
+              : `${shelves} adjustable shelf line${shelves === 1 ? "" : "s"}.`
             : "Solid carcase.",
     ...(rodYs.length
       ? [
