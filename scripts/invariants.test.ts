@@ -24,8 +24,10 @@ test("invariant ratchet: no new violation, no stale baseline entry", () => {
 // #127 r3 (Chief): every wall/structural/lag/anchor/anti-tip line is tied by id, and the general fastener lines still
 // tied only by words are a visible count that may only fall (the follow-up PR takes it to 0).
 // General fastener Buy lines (#8 boxes, nails, brads, glides, screw eyes, pan-head) no step carries by id yet, over the
-// corpus (365 prompts): a ratchet that may only fall (it must equal the count). The follow-up PR moves them to ids and sets this to 0.
-const I46_GENERAL_WORD_TIED_MAX = 343;
+// corpus (366 prompts): a ratchet that may only fall (it must equal the count). The follow-up PR moves them to ids and sets this to 0.
+// 334: nine "Outdoor furniture glides (nylon, nail-in)" lines left this count. The name matched /nail/, and those builds
+// (hung, mounted, posted, outdoor) no longer buy floor glides.
+const I46_GENERAL_WORD_TIED_MAX = 334;
 test("I46 ties: wall fasteners all by id; general fasteners word-tied is counted and never grows", () => {
   let wallById = 0, general = 0;
   const untied: string[] = [];
