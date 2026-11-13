@@ -19,14 +19,19 @@
  */
 import { getCatalogItem } from "./catalog";
 import {
+  binderBom,
+  buyCatalogWays,
   clusterJointNodes,
   countSlipFittings,
   highWay,
   slipFittingPhrase,
-  uncataloguedJoints,
 } from "./joints";
+import { fractionizeInches } from "./inchText";
+import { kerfFor, packLengths } from "./linearPack";
+import { decorateBom } from "./listings";
 import { isSeatedPipeFrame, rigidSlipPipe } from "./pipeRackFrame";
-import type { CatalogItem, Vec3, YardInstance, YardProject } from "./types";
+import type { BuildPlan, CatalogItem, Vec3, YardInstance, YardProject } from "./types";
+import { stampWeekendCuts, weekendCutLines } from "./weekendStockHonesty";
 
 /** Same node test the rack census uses. */
 const NODE = 0.05;
@@ -179,22 +184,75 @@ export function isOpenPipeJointFrame(project: {
   return !!item && rigidSlipPipe(item);
 }
 
+/** Right-angle tolerance shared with the rack's 4-way test (about 5°). Straight is the coupling test. */
+const STRAIGHT = -0.82;
+const SQUARE = 0.08;
+
+function pairDots(dirs: Vec3[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < dirs.length; i++) for (let j = i + 1; j < dirs.length; j++) out.push(dot(dirs[i], dirs[j]));
+  return out;
+}
+
 /**
- * Buy may count fittings from the joints. A seated rack already does.
- * An open frame does only once every meeting is an end and every joint is a catalog fitting.
+ * The catalog fitting for one meeting, or null when the pipes are not square or straight.
+ * A loose angle is not sold as a tee or a cross.
  */
-export function usesGeometryJoints(project: YardProject): boolean {
-  if (isSeatedPipeFrame(project)) return true;
-  if (!isOpenPipeJointFrame(project)) return false;
-  if (hasInteriorMeeting(project.instances)) return false;
-  const item = getCatalogItem(project.primaryMaterialId);
-  if (!item) return false;
-  const radius = (item.dims.diameter ?? 1.05) / 2;
-  const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));
-  // A joint no catalog fitting makes stays on the release Buy. Open ends alone are not a meeting.
-  if (uncataloguedJoints(members) > 0) return false;
-  const counts = countSlipFittings(project.instances, radius);
-  return counts.tees + counts.elbows90 + counts.elbows45 + counts.couplings + counts.crosses + counts.corners > 0;
+export function catalogMeeting(dirs: Vec3[]): "coupling" | "elbow90" | "tee" | "corner" | "cross" | "tee4" | "cross5" | "cross6" | null {
+  const n = dirs.length;
+  if (n < 2) return null;
+  if (n === 2) {
+    const d = dot(dirs[0], dirs[1]);
+    if (d < STRAIGHT) return "coupling";
+    if (Math.abs(d) <= SQUARE) return "elbow90";
+    return null;
+  }
+  if (n === 3) {
+    const dots = pairDots(dirs);
+    if (dots.length === 3 && dots.every((d) => Math.abs(d) <= SQUARE)) return "corner";
+    if (dots.filter((d) => d < STRAIGHT).length === 1 && dots.filter((d) => Math.abs(d) <= SQUARE).length === 2) return "tee";
+    return null;
+  }
+  if (n === 4 && highWay(dirs) === "cross") return squarePlanarCross(dirs) ? "cross" : null;
+  if (n === 4 && highWay(dirs) === "tee4") return "tee4";
+  if (n === 5 && highWay(dirs) === "cross5") {
+    for (let i = 0; i < dirs.length; i++) {
+      const rest = dirs.filter((_, k) => k !== i);
+      if (squarePlanarCross(rest)) return "cross5";
+    }
+    return null;
+  }
+  if (n === 6 && highWay(dirs) === "cross6") return "cross6";
+  return null;
+}
+
+/** Two opposite pairs in one plane, and those axes square to each other. */
+function squarePlanarCross(dirs: Vec3[]): boolean {
+  if (dirs.length !== 4) return false;
+  const used = new Set<number>();
+  const axes: Vec3[] = [];
+  for (let i = 0; i < 4; i++) {
+    if (used.has(i)) continue;
+    let mate = -1;
+    for (let j = i + 1; j < 4; j++) if (!used.has(j) && dot(dirs[i], dirs[j]) < STRAIGHT) mate = j;
+    if (mate < 0) return false;
+    used.add(i);
+    used.add(mate);
+    axes.push(dirs[i]);
+  }
+  return axes.length === 2 && Math.abs(dot(axes[0], axes[1])) <= SQUARE;
+}
+
+/** Every meeting of pipes is square or straight. An open end is not a meeting. */
+export function meetingsAreSquare(instances: readonly { from?: Vec3; to?: Vec3 }[], radius: number): boolean {
+  const nodes = clusterJointNodes(instances.map((inst) => ({ from: inst.from, to: inst.to, radius })));
+  let meetings = 0;
+  for (const node of nodes) {
+    if (node.dirs.length < 2) continue;
+    meetings += 1;
+    if (!catalogMeeting(node.dirs)) return false;
+  }
+  return meetings > 0;
 }
 
 /**
@@ -286,13 +344,14 @@ function clean(instances: YardInstance[], od: number): boolean {
 }
 
 /**
- * Split each meeting of an open pipe frame into pipe ends.
- * Returns the same project when there is nothing to joint, or when jointing would ship a bad frame.
+ * Split each exact meeting into pipe ends. Null when this is not an open pipe frame,
+ * when nothing meets in the middle, or when the split would clash, gap, or pass through.
+ * Ends that are not already on the other pipe are not moved.
  */
-export function seatOpenPipeJoints(project: YardProject): YardProject {
-  if (!isOpenPipeJointFrame(project)) return project;
+export function splitOpenPipe(project: YardProject): YardInstance[] | null {
+  if (!isOpenPipeJointFrame(project)) return null;
   const item = getCatalogItem(project.primaryMaterialId ?? "");
-  if (!item) return project;
+  if (!item) return null;
   const od = item.dims.diameter ?? 1.05;
   const ends: Seg[] = [];
   const rest: YardInstance[] = [];
@@ -300,7 +359,7 @@ export function seatOpenPipeJoints(project: YardProject): YardProject {
     if (!inst.from || !inst.to || inst.round || dist(inst.from, inst.to) < 0.2) rest.push(inst);
     else ends.push({ inst, a: { ...inst.from }, b: { ...inst.to }, cuts: [] });
   }
-  if (ends.length < 2) return project;
+  if (ends.length < 2) return null;
 
   let any = false;
   const move = new Map<string, Vec3>();
@@ -323,13 +382,13 @@ export function seatOpenPipeJoints(project: YardProject): YardProject {
         const dir = unit(other, origin);
         if (!dir) return true;
         const hit = rayMeet(origin, dir, host.a, host.b);
-        if (!hit) return true;
+        if (!hit || dist(origin, hit) > NODE) return true;
         if (!wantMove(`${gi}:${which}`, hit)) return false;
         host.cuts.push(hit);
         any = true;
         return true;
       };
-      if (!meetEnd(B, A, "a", i) || !meetEnd(B, A, "b", i) || !meetEnd(A, B, "a", j) || !meetEnd(A, B, "b", j)) return project;
+      if (!meetEnd(B, A, "a", i) || !meetEnd(B, A, "b", i) || !meetEnd(A, B, "a", j) || !meetEnd(A, B, "b", j)) return null;
       const x = segSeg(A.a, A.b, B.a, B.b);
       if (x.d > NODE) continue;
       if (!interior(x.pa, A.a, A.b) || !interior(x.pb, B.a, B.b)) continue;
@@ -339,7 +398,7 @@ export function seatOpenPipeJoints(project: YardProject): YardProject {
       any = true;
     }
   }
-  if (!any) return project;
+  if (!any) return null;
 
   for (const [key, p] of move) {
     const [idx, which] = key.split(":");
@@ -351,7 +410,7 @@ export function seatOpenPipeJoints(project: YardProject): YardProject {
   const next: YardInstance[] = [];
   for (const seg of ends) {
     const parts = piecesOf(seg.a, seg.b, seg.cuts);
-    if (!parts) return project;
+    if (!parts) return null;
     const moved =
       parts.length !== 1 || dist(parts[0].from, seg.inst.from!) > 1e-4 || dist(parts[0].to, seg.inst.to!) > 1e-4;
     if (!moved) {
@@ -371,6 +430,114 @@ export function seatOpenPipeJoints(project: YardProject): YardProject {
     });
   }
   const instances = [...next, ...rest];
-  if (!clean(instances, od)) return project;
-  return { ...project, instances };
+  if (!clean(instances, od)) return null;
+  return instances;
+}
+
+const MANAGED_FITTING = new Set(["pvc-tee", "pvc-elbow-90", "pvc-elbow-45", "pvc-side-outlet", "pvc-coupling", "pvc-cross", "pvc-4-way-tee", "pvc-5-way-cross", "pvc-6-way-cross"]);
+
+export type OpenPipeDeal = { segments: YardInstance[]; split: boolean };
+
+/**
+ * Segments to price, or null when the frame must stay exactly as release built it.
+ * A split is kept only when every meeting on it is square or straight.
+ */
+export function openPipeDeal(project: YardProject): OpenPipeDeal | null {
+  if (!isOpenPipeJointFrame(project)) return null;
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  const radius = (item?.dims.diameter ?? 1.05) / 2;
+  if (!hasInteriorMeeting(project.instances)) {
+    return meetingsAreSquare(project.instances, radius) ? { segments: project.instances, split: false } : null;
+  }
+  const segments = splitOpenPipe(project);
+  if (!segments || !meetingsAreSquare(segments, radius)) return null;
+  return { segments, split: true };
+}
+
+function money(n: number): string {
+  return `~$${n >= 100 ? n.toFixed(0) : n.toFixed(2)}`;
+}
+
+/**
+ * Cut list and Buy follow the segments. Step text stays the release text for the
+ * original rails and legs; the existing fittings sentence is the only addition,
+ * and only when every joint is square or straight.
+ */
+export function applyOpenPipeFrame(project: YardProject, plan: BuildPlan): BuildPlan {
+  const deal = openPipeDeal(project);
+  if (!deal) return plan;
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item) return plan;
+  const radius = (item.dims.diameter ?? 1.05) / 2;
+  const couplings = countSlipFittings(deal.segments, radius).couplings;
+  const members = deal.segments.map((inst) => ({ from: inst.from, to: inst.to, radius }));
+  const fresh = decorateBom(
+    buyCatalogWays(binderBom(item, deal.segments, project.joinMethod, couplings), members).filter((line) => line.catalogId !== "pvc-cement"),
+  );
+  const phrase = openPipeFittingPhrase(item, deal.segments, true).trim();
+  if (!phrase || !phraseAgrees(phrase, fresh)) return plan;
+  const seen = new Set<string>();
+  let bom = plan.bom.flatMap((line) => {
+    if (!line.catalogId || !MANAGED_FITTING.has(line.catalogId)) return [line];
+    const next = fresh.find((fit) => fit.name === line.name);
+    seen.add(line.name);
+    if (!next) return [];
+    const same = next.quantity === line.quantity && next.catalogId === line.catalogId && Math.abs((next.estimatedCost ?? 0) - (line.estimatedCost ?? 0)) < 0.005;
+    return [same ? line : next];
+  });
+  for (const line of fresh) if (!seen.has(line.name)) bom = [...bom, line];
+  let cutList = plan.cutList;
+  if (deal.split) {
+    cutList = stampWeekendCuts(weekendCutLines({ ...project, instances: deal.segments })).map((line) =>
+      line.notes ? { ...line, notes: fractionizeInches(line.notes) } : line,
+    );
+    const cuts = deal.segments.map((seg) => seg.cutLength ?? (seg.from && seg.to ? dist(seg.from, seg.to) : 0)).filter((n) => n > 0);
+    const sticks = packLengths(cuts, item.dims.length ?? 120, kerfFor(item, false)).sticks;
+    const pipeAt = bom.findIndex((line) => line.catalogId === item.id);
+    if (pipeAt >= 0 && bom[pipeAt].quantity !== sticks && sticks > 0) {
+      const repriced = decorateBom([{ ...bom[pipeAt], quantity: sticks, estimatedCost: undefined, offers: undefined }])[0];
+      bom = bom.map((line, i) => (i === pipeAt ? repriced : line));
+    }
+  }
+  const i = plan.instructions.findIndex((step) => /solvent cement/i.test(step.description ?? ""));
+  if (i < 0 || plan.instructions.some((step) => (step.description ?? "").includes("The fittings are"))) return plan;
+  const instructions = plan.instructions.map((step, k) => (k === i ? { ...step, description: `${step.description ?? ""} ${phrase}`.trim() } : step));
+  const cost = Math.round(bom.reduce((sum, line) => sum + (line.estimatedCost ?? 0), 0) * 100) / 100;
+  const sameMoney = Math.abs(cost - plan.totals.estCostUsd) < 0.005;
+  return {
+    ...plan,
+    bom,
+    cutList,
+    instructions,
+    totals: { ...plan.totals, estCostUsd: cost },
+    feasibility: sameMoney
+      ? plan.feasibility
+      : { ...plan.feasibility, summary: plan.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, money(cost)) },
+  };
+}
+
+/** The fittings sentence names only lines Buy carries, in the same counts. */
+function fittingStem(name: string): string {
+  return name
+    .replace(/corners$/, "corner")
+    .replace(/couplings$/, "coupling")
+    .replace(/crosses$/, "cross")
+    .replace(/tees$/, "tee")
+    .replace(/elbows$/, "elbow");
+}
+
+function phraseAgrees(phrase: string, lines: { name: string; quantity: number }[]): boolean {
+  const body = phrase.replace(/^The fittings are /, "").replace(/, the same fittings on the Buy list\.$/, "");
+  const bits = body.split(/, | and /);
+  const used = new Set<number>();
+  for (const bit of bits) {
+    const match = bit.match(/^(\d+) (.+)$/);
+    if (!match) return false;
+    const qty = Number(match[1]);
+    const want = fittingStem(match[2]);
+    const at = lines.findIndex((line, i) => !used.has(i) && line.quantity === qty && fittingStem(line.name) === want);
+    if (at < 0) return false;
+    used.add(at);
+  }
+  return used.size === lines.length;
 }

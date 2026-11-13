@@ -26,7 +26,7 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
-import { hasInteriorMeeting, isOpenPipeJointFrame, openPipeFittingPhrase, usesGeometryJoints } from "./openPipeJoints";
+import { applyOpenPipeFrame } from "./openPipeJoints";
 import { isSeatedPipeFrame, withoutFalsePlacement } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
@@ -1748,7 +1748,10 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
   // C3: whole purchased pieces have no cut list to restate as a cut step.
   const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
-  return isUnitItem(project) ? fin : cutStepFromList(fin);
+  // The cut step is written from the release list first. Segment cuts replace the list after that,
+  // so the step still names the original rails and legs.
+  const cut = isUnitItem(project) ? fin : cutStepFromList(fin);
+  return applyOpenPipeFrame(project, cut);
 }
 
 /**
@@ -1882,22 +1885,7 @@ function buildPlanInner(project: YardProject): BuildPlan {
     : plan;
   const spoken = positivePlan(spliceStep(withExtra));
   // A release plumb height or "set the rails on the uprights" that the pipes contradict is left off.
-  const placed = isSeatedPipeFrame(project) ? withoutFalsePlacement(project, spoken).plan : spoken;
-  return nameOpenPipeFittings(project, placed);
-}
-
-/** One existing fitting sentence, on the first step that cements. Seated racks already name joints their own way. */
-function nameOpenPipeFittings<T extends { instructions: { description?: string }[] }>(project: YardProject, plan: T): T {
-  // Name the fittings once the meetings are real joints. A seated rack keeps its own step text.
-  if (isSeatedPipeFrame(project) || !isOpenPipeJointFrame(project) || hasInteriorMeeting(project.instances)) return plan;
-  const item = getCatalogItem(project.primaryMaterialId);
-  if (!item) return plan;
-  const phrase = openPipeFittingPhrase(item, project.instances, usesGeometryJoints(project)).trim();
-  if (!phrase || plan.instructions.some((s) => (s.description ?? "").includes("The fittings are"))) return plan;
-  const i = plan.instructions.findIndex((s) => /solvent cement/i.test(`${s.description ?? ""}`));
-  if (i < 0) return plan;
-  const instructions = plan.instructions.map((s, k) => (k === i ? { ...s, description: `${s.description ?? ""} ${phrase}`.trim() } : s));
-  return { ...plan, instructions };
+  return isSeatedPipeFrame(project) ? withoutFalsePlacement(project, spoken).plan : spoken;
 }
 
 /** Pieces the "Cut the …" step tells you to cut ("4 Posts …", "16 Rafter layers …"), or null with no such step. */
@@ -2021,13 +2009,12 @@ function fractionPlanText(plan: BuildPlan): BuildPlan {
  * real boards (wood splits, edges get eased) — never sheet-only ply / nest / banding talk.
  */
 /** A rack's Buy names each joint by the pipes that meet. A joint with no catalog fitting never reaches this list. */
-function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number, capsToo: boolean): BuildPlan["bom"] {
+function rackSlipLines(project: YardProject, item: CatalogItem, slipRack: boolean, couplings: number): BuildPlan["bom"] {
   const lines = binderBom(item, project.instances, project.joinMethod, couplings);
   if (!slipRack) return lines;
   const radius = (item.dims.diameter ?? 1.05) / 2;
   const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));
   const out = buyCatalogWays(lines, members);
-  if (!capsToo) return out;
   const caps = countSlipFittings(project.instances, radius).caps;
   if (caps <= 0) return out;
   const size = out.find((line) => /PVC/.test(line.name))?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
@@ -2248,12 +2235,11 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
-  // A seated rack, and an open pipe frame whose meetings are real joints, name each fitting.
-  // Every other slip build keeps the release Buy.
-  const geometryJoints = usesGeometryJoints(project);
-  const slipCouplings = geometryJoints ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
-  // Caps stay on the seated-rack Buy. An open frame buys the fitting at each meeting.
-  const glue = item ? rackSlipLines(project, item, geometryJoints, slipCouplings, isSeatedPipeFrame(project)) : [];
+  // Only a seated pipe frame names each joint here. An open frame is applied later, and only
+  // when every joint is square or straight. Every other slip build keeps the release Buy.
+  const seatedRack = isSeatedPipeFrame(project);
+  const slipCouplings = seatedRack ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
+  const glue = item ? rackSlipLines(project, item, seatedRack, slipCouplings) : [];
   const spring = project.shape?.params?.rubberBands
     ? [{
         name: "Rubber bands",

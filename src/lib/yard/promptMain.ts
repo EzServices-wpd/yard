@@ -63,7 +63,6 @@ import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
 import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
 import { restSeatedFrame } from "./frameFloor";
-import { seatOpenPipeJoints } from "./openPipeJoints";
 import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { detectFlatPrompt, buildFlatProject } from "./flatLayout";
 import { detectShapeClass, materializeShape, shapeSummary, RIDE_HANDLE_STOCK } from "./shapeTemplates";
@@ -795,11 +794,8 @@ function primaryFromParts(p: YardProject): YardProject {
  * reaching down (a model plane on its wings, a coaster) is lowered until that part sits on the floor.
  */
 function settleOnFloor(project: YardProject): YardProject {
-  // Open pipe frames gain the same end-to-end joints a seated rack already has.
-  const jointed = seatOpenPipeJoints(project);
   // A seated pipe frame, wall-hung or not, rests on the outside of its lowest pipe.
-  if (isSeatedPipeFrame(jointed)) return restSeatedFrame(jointed);
-  project = jointed;
+  if (isSeatedPipeFrame(project)) return restSeatedFrame(project);
   if (project.assumptions?.installMode && project.assumptions.installMode !== "freestanding") return project;
   if (project.windowPkg || project.pocket) return project;
   const boxes = projectBoxes(project);
