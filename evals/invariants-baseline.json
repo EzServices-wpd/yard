@@ -85,21 +85,9 @@
    "class": "F12",
    "msg": "step 10 \"Foam, then interior\" lights every part"
   },
-  "I6|L-shaped corner desk 60 by 48 30 tall": {
-   "class": "F12",
-   "msg": "step 7 \"Fasten and finish\" lights every part"
-  },
   "I6|linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep": {
    "class": "F12",
    "msg": "step 8 \"Shim, then lag into studs\" lights every part"
-  },
-  "I7|L-shaped corner desk 60 by 48 30 tall": {
-   "class": "F1",
-   "msg": "Desk top A spans 60\" (limit 33\")"
-  },
-  "I7|TV console 70 wide 30 tall 16 deep": {
-   "class": "F1",
-   "msg": "Bottom spans 69\" (limit 33\")"
   },
   "I7|coat rack with bench 48 wide": {
    "class": "F1",
@@ -116,10 +104,6 @@
   "I7|corner bookshelf 60 wide 84 tall": {
    "class": "F1",
    "msg": "Triangle shelf 2 spans 59\" (limit 33\")"
-  },
-  "I7|kitchen island 60x36x36": {
-   "class": "F1",
-   "msg": "Bottom shelf spans 59\" (limit 33\")"
   },
   "I8|bunk bed 82 long 44 wide": {
    "class": "F2",

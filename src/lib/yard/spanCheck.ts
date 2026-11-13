@@ -6,6 +6,7 @@
 import { createId } from "@/lib/utils";
 import type { Panel, YardProject } from "./types";
 import { inchFrac } from "./inchText";
+import { solidsOverlap } from "./solids";
 
 export type SpanLoad = "person" | "shelf" | "surface" | "light";
 
@@ -480,6 +481,153 @@ function drawerNear(panels: Panel[], x0: number, x1: number, y0: number, y1: num
       overlap(x0, x1, q.position.x, q.position.x + q.size.width) > -0.5 &&
       overlap(y0, y1, q.position.y, q.position.y + q.size.height) > 0,
   );
+}
+
+/** Keep a new support off the parts beside it. 1/8" is the cut-list grid and clears I26's 1/32". */
+const FOOT_GAP = 0.125;
+
+function subtractRanges(span: [number, number], blocks: [number, number][]): [number, number][] {
+  let free: [number, number][] = [span];
+  for (const [b0, b1] of blocks) {
+    const next: [number, number][] = [];
+    for (const [a0, a1] of free) {
+      if (b1 <= a0 || b0 >= a1) {
+        next.push([a0, a1]);
+        continue;
+      }
+      if (b0 - a0 > 0.5) next.push([a0, b0]);
+      if (a1 - b1 > 0.5) next.push([b1, a1]);
+    }
+    free = next;
+  }
+  return free;
+}
+
+/**
+ * The longest run under the plate that does not share solid space with another part.
+ * A support 2" or taller has to cover half the plate; a shorter one has to cover nine tenths (a slat the span check counts).
+ */
+function supportFoot(
+  panels: Panel[],
+  plate: Panel,
+  longX: boolean,
+  span0: number,
+  span1: number,
+  y0: number,
+  y1: number,
+): { at: number; len: number } | null {
+  const across0 = longX ? plate.position.z : plate.position.x;
+  const across = longX ? plate.size.depth : plate.size.width;
+  const h = y1 - y0;
+  if (h < 1) return null;
+  const need = (h >= 2 ? 0.5 : 0.9) * across;
+  const blocks: [number, number][] = [];
+  for (const q of panels) {
+    if (q === plate) continue;
+    if (overlap(y0, y1, q.position.y, q.position.y + q.size.height) <= 1 / 32) continue;
+    const spanOv = longX
+      ? overlap(span0, span1, q.position.x, q.position.x + q.size.width)
+      : overlap(span0, span1, q.position.z, q.position.z + q.size.depth);
+    if (spanOv <= 1 / 32) continue;
+    const b0 = (longX ? q.position.z : q.position.x) - FOOT_GAP;
+    const b1 = (longX ? q.position.z + q.size.depth : q.position.x + q.size.width) + FOOT_GAP;
+    blocks.push([b0, b1]);
+  }
+  const snapUp = (n: number) => Math.ceil((n - 1e-6) * 8) / 8;
+  const snapDown = (n: number) => Math.floor((n + 1e-6) * 8) / 8;
+  let best: { at: number; len: number } | null = null;
+  for (const [a0, a1] of subtractRanges([across0, across0 + across], blocks)) {
+    const at = snapUp(Math.max(a0, across0));
+    const end = snapDown(Math.min(a1, across0 + across));
+    const len = Math.round((end - at) * 8) / 8;
+    if (len + 1e-6 < need || len < 2) continue;
+    if (!best || len > best.len) best = { at, len };
+  }
+  return best;
+}
+
+function placeUnderPlate(panels: Panel[], project: YardProject, plate: Panel, allow: number): number {
+  const longX = plate.size.width >= plate.size.depth;
+  const t = Math.max(0.5, Math.min(1.5, plate.size.height));
+  const boxes = usableBoxes(panels, project);
+  const end0 = longX ? plate.position.x : plate.position.z;
+  const end1 = end0 + (longX ? plate.size.width : plate.size.depth);
+  let count = 0;
+  for (const [a, b] of spanGaps(plate, panels)) {
+    const len = b - a;
+    if (len <= allow * TOL) continue;
+    const k = Math.ceil(len / allow);
+    for (let i = 1; i < k; i++) {
+      const at = a + (len * i) / k;
+      if (at <= end0 + 0.5 || at >= end1 - 0.5) continue;
+      const y1 = plate.position.y;
+      const y0 = plateBelow(panels, plate);
+      // Only a support that stands on the floor. One that stands on a shelf has to wait for that shelf, and the
+      // floor step would name it first (I14). A triangle shelf keeps the span warning it already carries.
+      if (y0 > 0.3 || plate.outline) continue;
+      const h = y1 - y0;
+      if (h < 1) continue;
+      const along0 = Math.round((at - t / 2) * 8) / 8;
+      const along1 = along0 + t;
+      const foot = supportFoot(panels, plate, longX, along0, along1, y0, y1);
+      if (!foot) continue;
+      const piece = longX
+        ? { x: along0, y: y0, z: foot.at, w: t, h, d: foot.len }
+        : { x: foot.at, y: y0, z: along0, w: foot.len, h, d: t };
+      if (hitsUse(piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, boxes)) continue;
+      if (drawerNear(panels, piece.x, piece.x + piece.w, piece.y, piece.y + piece.h)) continue;
+      const draft: Panel = {
+        id: "pending",
+        type: "divider",
+        name: "pending",
+        position: { x: piece.x, y: piece.y, z: piece.z },
+        size: { width: piece.w, height: piece.h, depth: piece.d },
+        materialId: plate.materialId,
+      };
+      if (panels.some((q) => solidsOverlap(draft, q, 1 / 32))) continue;
+      const n = panels.filter((p) => p.name.startsWith("Center support")).length + 1;
+      // A cleat, not a divider: the divider step stands on the bottom, and this support has to be on the floor first.
+      pushPanel(panels, "cleat", `Center support ${n}`, piece.x, piece.y, piece.z, piece.w, piece.h, piece.d, plate.materialId);
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Every horizontal the span check still flags (a shelf, a bottom, a top) gets a center support under it.
+ * The support is a real panel: the cut list, Buy and the steps read the same model. A seat is already
+ * handled above. "no middle leg" stays open.
+ */
+export function supportClearSpans(project: YardProject, prompt = ""): YardProject {
+  if (!project.panels.length || project.pocket || project.windowPkg || project.refused || wantsOpenSpan(prompt)) return project;
+  if (!spanFindings(project).some((f) => f.load !== "person")) return project;
+  const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
+  const skipped = new Set<string>();
+  let added = 0;
+  for (let guard = 0; guard < 12; guard++) {
+    const findings = spanFindings({ ...project, panels }).filter((f) => f.load !== "person" && !skipped.has(f.panelId));
+    const hit = findings.find((f) => {
+      const plate = panels.find((p) => p.id === f.panelId);
+      return !!plate && !plate.outline && plateBelow(panels, plate) <= 0.3;
+    });
+    if (!hit) break;
+    const plate = panels.find((p) => p.id === hit.panelId)!;
+    const before = panels.length;
+    if (!placeUnderPlate(panels, project, plate, hit.allow)) {
+      skipped.add(plate.id);
+      continue;
+    }
+    const again = spanFindings({ ...project, panels }).find((f) => f.panelId === plate.id);
+    if (again && again.span > hit.span - 0.5) {
+      panels.splice(before);
+      skipped.add(plate.id);
+      continue;
+    }
+    added += panels.length - before;
+  }
+  if (!added) return project;
+  return { ...project, panels };
 }
 
 /**
