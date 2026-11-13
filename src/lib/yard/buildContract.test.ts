@@ -994,20 +994,20 @@ describe("compile enforces the 1/4\" plywood rule", () => {
   });
 });
 
-describe("the potting-bench lower shelf is carried by a center support", () => {
-  it("stands a center support under the shelf, so the structure check no longer calls it floating", () => {
+describe("the potting-bench lower shelf stays a disclosed contradiction", () => {
+  it("keeps the glue note, the floating check, and the pin step, and does not declare a joint", () => {
     offline(() => {
       const frame = roundTrip(FRAME, "frame-storage");
-      assert.equal(frame.graph.constraints.some((row) => row.id === "potting-shelf"), false);
-      assert.equal(frame.graph.constraints.find((row) => row.kind === "structure" && row.issues)?.issues?.some((issue) => issue.code === "floating" && /lower shelf/i.test(issue.part)), false);
+      const parked = frame.graph.constraints.find((row) => row.id === "potting-shelf");
+      assert.match(parked?.detail ?? "", /glues and screws/i);
+      assert.match(parked?.detail ?? "", /floating/i);
+      assert.match(parked?.detail ?? "", /pin shelf/i);
+      assert.equal(frame.graph.constraints.find((row) => row.kind === "structure" && row.issues)?.issues?.some((issue) => issue.code === "floating" && /lower shelf/i.test(issue.part)), true);
       assert.ok(frame.plan.instructions.some((step) => /pin 1 adjustable shelf/i.test(step.title)));
       assert.ok(frame.project.notes.some((note) => /glue and screw it into the leg faces/i.test(note)));
       const shelf = frame.graph.parts.find((part) => part.role === "shelf")!;
-      const support = frame.graph.parts.find((part) => part.name.startsWith("Center support"));
-      assert.ok(support);
       const shelfJoints = frame.graph.joints.filter((joint) => joint.a === shelf.id || joint.b === shelf.id);
-      assert.deepEqual(shelfJoints.map((joint) => joint.basis), ["contact"]);
-      assert.ok(shelfJoints.every((joint) => joint.a === support!.id || joint.b === support!.id));
+      assert.equal(shelfJoints.length, 0);
       assert.equal(frame.graph.joints.some((joint) => joint.reviewedJoin), false);
       assert.deepEqual(reviewedFastenerUses(frame.graph), []);
       assert.deepEqual(frame.compiled.buy.filter(isCarcassScrewLine), []);
@@ -1118,7 +1118,7 @@ describe("furniture screws come from reviewed joints", () => {
       assert.equal(oakScrew.name, bookScrew.name);
       assert.match(oakScrew.notes ?? "", /44 screws/);
       assert.equal(benchScrew.name, '#8 x 2-1/2" wood screws');
-      assert.match(benchScrew.notes ?? "", /31 screws/);
+      assert.match(benchScrew.notes ?? "", /28 screws/);
       assert.match(benchScrew.notes ?? "", /butt/);
       for (const row of [book, threeQuarter, half, oak]) {
         const back = row.graph.parts.find((part) => part.source === "panel" && part.type === "back");

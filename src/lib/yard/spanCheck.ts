@@ -594,6 +594,22 @@ function placeUnderPlate(panels: Panel[], project: YardProject, plate: Panel, al
   return count;
 }
 
+/** Split S: only a raised bottom carried by a toe kick that stands on the floor, in stock at least 1/2" thick. */
+function onFloorKick(panels: Panel[], plate: Panel, primary?: string): boolean {
+  if (plate.size.height < 0.5 - 1e-6) return false;
+  // Split S: an oversize plate on a second stock (a 4x10 bottom on a 1/2" build) nests its cleat on a sheet Buy never counts.
+  if (primary && plate.materialId !== primary) return false;
+  return panels.some(
+    (k) =>
+      k !== plate &&
+      /kick/i.test(k.name) &&
+      k.materialId === plate.materialId &&
+      k.position.y <= 0.3 &&
+      Math.abs(k.position.y + k.size.height - plate.position.y) < 0.05 &&
+      overlap(plate.position.x, plate.position.x + plate.size.width, k.position.x, k.position.x + k.size.width) > 4,
+  );
+}
+
 /**
  * Every horizontal the span check still flags (a shelf, a bottom, a top) gets a center support under it.
  * The support is a real panel: the cut list, Buy and the steps read the same model. A seat is already
@@ -609,7 +625,7 @@ export function supportClearSpans(project: YardProject, prompt = ""): YardProjec
     const findings = spanFindings({ ...project, panels }).filter((f) => f.load !== "person" && !skipped.has(f.panelId));
     const hit = findings.find((f) => {
       const plate = panels.find((p) => p.id === f.panelId);
-      return !!plate && !plate.outline && plateBelow(panels, plate) <= 0.3;
+      return !!plate && !plate.outline && plateBelow(panels, plate) <= 0.3 && onFloorKick(panels, plate, project.primaryMaterialId);
     });
     if (!hit) break;
     const plate = panels.find((p) => p.id === hit.panelId)!;
