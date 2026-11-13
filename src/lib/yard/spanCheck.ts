@@ -485,6 +485,8 @@ function drawerNear(panels: Panel[], x0: number, x1: number, y0: number, y1: num
 
 /** Keep a new support off the parts beside it. 1/8" is the cut-list grid and clears I26's 1/32". */
 const FOOT_GAP = 0.125;
+/** A toe-kick void. Taller than this is the knee, a shelf bay, or the space under a wall-hung piece. */
+const KICK_MAX = 4.5;
 
 function subtractRanges(span: [number, number], blocks: [number, number][]): [number, number][] {
   let free: [number, number][] = [span];
@@ -562,11 +564,11 @@ function placeUnderPlate(panels: Panel[], project: YardProject, plate: Panel, al
       if (at <= end0 + 0.5 || at >= end1 - 0.5) continue;
       const y1 = plate.position.y;
       const y0 = plateBelow(panels, plate);
-      // Only a support that stands on the floor. One that stands on a shelf has to wait for that shelf, and the
-      // floor step would name it first (I14). A triangle shelf keeps the span warning it already carries.
+      // Only the toe-kick void under a plate that sits on the floor. A taller post lands in a knee or under a
+      // wall-hung shelf, and a support stood on another shelf is placed before that shelf (I14).
       if (y0 > 0.3 || plate.outline) continue;
       const h = y1 - y0;
-      if (h < 1) continue;
+      if (h < 1 || h > KICK_MAX) continue;
       const along0 = Math.round((at - t / 2) * 8) / 8;
       const along1 = along0 + t;
       const foot = supportFoot(panels, plate, longX, along0, along1, y0, y1);
@@ -595,12 +597,14 @@ function placeUnderPlate(panels: Panel[], project: YardProject, plate: Panel, al
 }
 
 /**
- * Every horizontal the span check still flags (a shelf, a bottom, a top) gets a center support under it.
+ * A raised bottom or shelf sitting in a toe-kick void gets a center support under it.
  * The support is a real panel: the cut list, Buy and the steps read the same model. A seat is already
- * handled above. "no middle leg" stays open.
+ * handled above. A wall-hung piece and a tall post through a knee stay out. "no middle leg" stays open.
  */
 export function supportClearSpans(project: YardProject, prompt = ""): YardProject {
   if (!project.panels.length || project.pocket || project.windowPkg || project.refused || wantsOpenSpan(prompt)) return project;
+  // A wall-hung piece is carried by the wall. A post down to the floor is not a support for it.
+  if (project.assumptions?.installMode === "wall") return project;
   if (!spanFindings(project).some((f) => f.load !== "person")) return project;
   const panels = project.panels.map((p) => ({ ...p, position: { ...p.position }, size: { ...p.size } }));
   const skipped = new Set<string>();
@@ -609,7 +613,10 @@ export function supportClearSpans(project: YardProject, prompt = ""): YardProjec
     const findings = spanFindings({ ...project, panels }).filter((f) => f.load !== "person" && !skipped.has(f.panelId));
     const hit = findings.find((f) => {
       const plate = panels.find((p) => p.id === f.panelId);
-      return !!plate && !plate.outline && plateBelow(panels, plate) <= 0.3;
+      if (!plate || plate.outline) return false;
+      const y0 = plateBelow(panels, plate);
+      const h = plate.position.y - y0;
+      return y0 <= 0.3 && h >= 1 && h <= KICK_MAX;
     });
     if (!hit) break;
     const plate = panels.find((p) => p.id === hit.panelId)!;
