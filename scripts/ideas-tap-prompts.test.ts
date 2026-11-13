@@ -97,6 +97,6 @@ test("the guard catches the 10-26 class: generic, runaway and stand-in taps", ()
   assert.equal(wrongBuild(card("brooklyn-bridge", "Brooklyn bridge", "brooklyn bridge 138.5 wide 11.5 tall 6 deep")), null);
   assert.match(wrongBuild(card("brooklyn-bridge", "Brooklyn bridge", "brooklyn bridge 20 tall"))!, /^\d+ parts at 250\.9×/);
   assert.match(wrongBuild(card("firewood-unit", "Firewood unit", "firewood unit"))!, /unmatched body/);
-  assert.match(wrongBuild(card("toolbox", "Toolbox", "toolbox 18 wide 18 tall 16 deep"))!, /stand-in/);
+  assert.equal(wrongBuild(card("toolbox", "Toolbox", "toolbox 18 wide 18 tall 16 deep")), null);
   assert.match(wrongBuild(card("bookcase", "Dresser", "bookcase 36 wide 72 tall 12 deep"))!, /is not a Dresser/);
 });

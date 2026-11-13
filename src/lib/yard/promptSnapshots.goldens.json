@@ -1429,29 +1429,29 @@
     "id": "toolbox",
     "prompt": "toolbox",
     "bucket": "unknown-fallback",
-    "name": "Toolbox 20\" × 8\" × 10\"",
-    "kind": "closet",
-    "material": "plywood-3-4-4x8",
+    "name": "Toolbox 20\" × 7 1/4\" × 10\"",
+    "kind": "custom",
+    "material": "lumber-1x8-8",
     "overall": {
       "width": 20,
-      "height": 8,
+      "height": 7.25,
       "depth": 10
     },
     "panels": 5,
     "instances": 0,
     "uniqueParts": [
-      "Back",
+      "Back side",
       "Bottom",
-      "Front",
-      "Left side",
-      "Right side"
+      "Front side",
+      "Left end",
+      "Right end"
     ],
     "notesHead": [
-      "Yard built a toolbox as a simple open box sized for it. Change any size in Measure.",
-      "Toolbox 20\" × 8\" × 10\". ¾\" plywood."
+      "Glue and screw the sides between the ends, then screw the 1/2\" plywood bottom in from the sides and ends. A hand hold in each end makes it a carry crate.",
+      "Assumed 20\" wide (default size) — type a width to lock it."
     ],
     "signals": {
-      "mentionsYardBuilt": true,
+      "mentionsYardBuilt": false,
       "craftStock": false,
       "hasKnee24": false,
       "partBudgetOk": true

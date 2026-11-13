@@ -118,7 +118,8 @@ const NO_FEET_WORDS = /\b(?:bird\s*house|birdhouses?|wren\s+house|martin\s+house
  * note is written before withMount records a wall or post mount.
  */
 function refusesFloorGlides(project: YardProject): boolean {
-  if (NO_FEET_WORDS.test(`${promptOf(project)} ${project.name ?? ""}`) || holdsSoilOrWater(promptOf(project), project.name)) return true;
+  // A hand-hold carry box (garden tote, trug, toolbox) has no furniture feet.
+  if (project.panels.some((p) => /hand hold/i.test(p.cutNote ?? "")) || NO_FEET_WORDS.test(`${promptOf(project)} ${project.name ?? ""}`) || holdsSoilOrWater(promptOf(project), project.name)) return true;
   if (hungBuild(project) || mountedBuild(project) || postedBuild(project)) return true;
   if (fixedInGround(project) || groundContactLegs(project)) return true;
   return false;

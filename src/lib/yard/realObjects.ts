@@ -6,10 +6,68 @@
  */
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
+import { STOP, sentenceCase, typedHeadNoun, headPhrase as nounPhrase } from "./headNoun";
 import type { Purpose } from "./purpose";
 import type { Panel, YardProject } from "./types";
 
-export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder" | "easel" | "stand";
+export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder" | "easel" | "stand" | "tote";
+
+/** A carried open box: the head is a tote, or a carry-purpose stem plus "box" ("toolbox", "tackle box", "sewing tote"). */
+const CARRY_HEAD = /^(?:tote|caddy|trug)$/;
+const CARRY_STEM = /^(?:tool|tackle|fishing|sewing|picnic|beach|craft)$/;
+/** Soft species stay on the tote. Hardwood, and the word "hardwood", take the release build. */
+const HARDWOOD = /\b(?:hardwood|maple|oak|walnut|cherry|birch|poplar|ash|alder|beech|hickory|aspen|sycamore|elm|butternut|cottonwood|mahogany|teak|sapele|padauk|purpleheart|ipe|ebony|rosewood|wenge|zebrawood|mesquite|osage|locust|sweetgum)\b/;
+
+type OneBy = { id: string; face: number; thick: number };
+const ONE_BY: { re: RegExp; board: OneBy }[] = [
+  { re: /\b1\s*[x×]\s*4\b|\bone by four\b/i, board: { id: "lumber-1x4-8", face: 3.5, thick: 0.75 } },
+  { re: /\b1\s*[x×]\s*6\b|\bone by six\b/i, board: { id: "lumber-1x6-8", face: 5.5, thick: 0.75 } },
+  { re: /\b1\s*[x×]\s*8\b|\bone by eight\b/i, board: { id: "lumber-1x8-8", face: 7.25, thick: 0.75 } },
+  { re: /\b1\s*[x×]\s*10\b|\bone by ten\b/i, board: { id: "lumber-1x10-8", face: 9.25, thick: 0.75 } },
+  { re: /\b1\s*[x×]\s*12\b|\bone by twelve\b/i, board: { id: "lumber-1x12-8", face: 11.25, thick: 0.75 } },
+];
+const ONE_BY_IDS = new Map(ONE_BY.map((b) => [b.board.id, b.board]));
+const DEFAULT_BOARD = ONE_BY_IDS.get("lumber-1x8-8")!;
+
+/** Plywood, PVC, hardwood, a 2×/4× ("tall") board, or a three-number ("triple") size is not this tote. */
+export function carryStockBlocks(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  if (/\bply(?:wood)?\b|\bpvc\b/.test(lower) || HARDWOOD.test(lower)) return true;
+  if (/\btriple\b/.test(lower) || /\b[124]\s*[x×]\s*\d+\s*[x×]\s*\d+/.test(lower)) return true;
+  // A typed W × D × H size ("18x16x18", "18 by 10 by 8", 20" x 10" x 8") keeps the release build at that size.
+  if (/\d[\d./]*\s*["″]?\s*(?:[x×]|by)\s*\d[\d./]*\s*["″]?\s*(?:[x×]|by)\s*\d/.test(lower)) return true;
+  if (/\b(?:2|4)\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(lower)) return true;
+  // "tall" as a stock word. "5 tall" is a height and stays on the tote.
+  if (/\btall\b/.test(lower) && !/\d[\d./]*\s*(?:["″]|in(?:ch(?:es)?)?\s*)?tall\b/.test(lower)) return true;
+  return false;
+}
+
+export function isCarryTote(prompt: string): boolean {
+  if (carryStockBlocks(prompt)) return false;
+  const lower = prompt.toLowerCase();
+  // A planter, toy, bread, or sand box keeps its own form.
+  if (/planter|toy|bread|sand/.test(lower)) return false;
+  if (/\bhods?\b/.test(lower)) return false;
+  if (/\b(?:shower|bath)\b/.test(lower) && /\bcadd(?:y|ies)\b/.test(lower)) return false;
+  const words = nounPhrase(prompt)
+    .replace(/\d[\d./]*\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?/g, " ")
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 1 && !STOP.test(w));
+  const head = typedHeadNoun(prompt) ?? "";
+  const prev = words.length > 1 ? words[words.length - 2].replace(/(?<!s)s$/, "") : "";
+  if (CARRY_HEAD.test(head)) return true;
+  if (CARRY_STEM.test(head.replace(/box$/, "")) && /box$/.test(head)) return true;
+  if (/\btool\s*box\b/.test(lower) && (head === "box" || head === "toolbox" || CARRY_HEAD.test(head))) return true;
+  return head === "box" && CARRY_STEM.test(prev);
+}
+
+/** The 1× board the words name, or the tote's own board when Build again passes it back. */
+export function carryBoard(prompt: string, materialOverride?: string): OneBy {
+  const named = ONE_BY.find((b) => b.re.test(prompt));
+  if (named) return named.board;
+  const again = materialOverride ? ONE_BY_IDS.get(materialOverride) : undefined;
+  return again ?? DEFAULT_BOARD;
+}
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy)\b/;
@@ -29,6 +87,12 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   const lower = prompt.toLowerCase();
   if (CRAFT.test(`${lower} ${materialOverride ?? ""}`) || MODEL.test(lower)) return null;
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
+  // An open tote with a handle, before a "box" substring can claim the house carcase.
+  // A non-1× override (plywood, PVC, a 2×) is the release build. The tote's own 1× is only the board Build again hands back.
+  if (isCarryTote(prompt)) {
+    if (materialOverride && !ONE_BY_IDS.has(materialOverride)) return null;
+    return "tote";
+  }
   // "X for kids" is the kids' X.
   const head = `${/\bfor\s+(?:kids?|children|toddlers?)\b/.test(lower) ? "kids " : ""}${headPhrase(lower)}`;
   if (/\bmirrors?(?:\s+frames?)?$|\bframed\s+mirrors?$/.test(head) && !/\bno\s+mirrors?\b/.test(lower)) return "mirror";
@@ -323,14 +387,54 @@ function buildStand(prompt: string, size?: { width: number; height: number; dept
   return project(prompt, name, panels, W, H + 0.5, D, notes, id);
 }
 
-export function buildRealObject(prompt: string, kind: RealObject, size?: { width: number; height: number; depth: number }): YardProject {
+export function buildRealObject(prompt: string, kind: RealObject, size?: { width: number; height: number; depth: number }, materialOverride?: string): YardProject {
   if (kind === "mirror") return buildMirror(prompt, size);
   if (kind === "baby-gate") return buildBabyGate(prompt, size);
   if (kind === "firewood-rack") return buildFirewoodRack(prompt, size);
   if (kind === "rung-ladder") return buildRungLadder(prompt, size);
   if (kind === "easel") return buildEasel(prompt, size);
   if (kind === "stand") return buildStand(prompt, size);
+  if (kind === "tote") return buildCarryTote(prompt, size, materialOverride);
   return buildCover(prompt, size);
+}
+
+/**
+ * Open tote: the same open-top carry box as a stored-item crate (ends with a hand hold, sides between them,
+ * a plywood bottom), titled with the typed noun. Not the house carcase.
+ */
+function buildCarryTote(prompt: string, size?: { width: number; height: number; depth: number }, materialOverride?: string): YardProject {
+  const lower = prompt.toLowerCase();
+  const board = carryBoard(prompt, materialOverride);
+  const t = board.thick;
+  const typedH = size?.height ?? axis(lower, "tall|high|height");
+  const wall = typedH ?? board.face;
+  const wantW = size?.width ?? axis(lower, "wide|width|long|length") ?? 20;
+  const wantD = size?.depth ?? axis(lower, "deep|depth") ?? 10;
+  const run = Math.max(6, wantW - 2 * t);
+  const across = Math.max(4, wantD - 2 * t);
+  const W = run + 2 * t;
+  const D = across + 2 * t;
+  const plyId = "plywood-1-2-4x8";
+  const plyT = 0.5;
+  const hold = `Cut a 1" × 4" hand hold centred across it, 1 1/2" down from the top edge (drill two 1" holes and jigsaw between).`;
+  const panels: Panel[] = [
+    panel("side", "Left end", 0, 0, 0, t, wall, D, board.id, { cutNote: hold }),
+    panel("side", "Right end", W - t, 0, 0, t, wall, D, board.id, { cutNote: hold }),
+    panel("side", "Back side", t, 0, 0, run, wall, t, board.id),
+    panel("side", "Front side", t, 0, D - t, run, wall, t, board.id),
+    panel("bottom", "Bottom", t, 0, t, run, plyT, across, plyId),
+  ];
+  const title = sentenceCase(
+    nounPhrase(prompt)
+      .replace(/\d[\d./]*\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?/g, " ")
+      .split(/[^a-z]+/)
+      .filter((w) => w.length > 1 && !STOP.test(w))
+      .join(" ") || "Tote",
+  );
+  const name = `${title} ${inchFrac(W)}" × ${inchFrac(wall)}" × ${inchFrac(D)}"`;
+  return project(prompt, name, panels, W, wall, D, [
+    `Glue and screw the sides between the ends, then screw the 1/2" plywood bottom in from the sides and ends. A hand hold in each end makes it a carry crate.`,
+  ], board.id);
 }
 
 /**

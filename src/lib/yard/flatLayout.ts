@@ -12,6 +12,7 @@ import { withHome } from "./assembly";
 import { analyzePieces } from "./connect";
 import { stickEdges, segmentInstances } from "./stickFrames";
 import type { FlatPlane, PaperSize } from "./flat";
+import { titleKeepsHead } from "./headNoun";
 import { detectWeekendMech, isMediaDeviceStand, wantsMediaTipHold } from "./weekendFamily";
 import type { CatalogItem, StructureKind, YardInstance, YardProject } from "./types";
 
@@ -91,8 +92,9 @@ export function detectFlatPrompt(prompt: string): FlatIntent | null {
 
   let label = craftPictureFrame ? "Picture frame" : "Frame";
   for (const s of SUBJECTS) {
-    if (s.re.test(lower)) {
-      label = craftPictureFrame && s.id === "frame" ? "Picture frame" : s.label;
+    const m = lower.match(s.re);
+    if (m) {
+      label = craftPictureFrame && s.id === "frame" ? "Picture frame" : titleKeepsHead(prompt, s.label, m[0]);
       break;
     }
   }

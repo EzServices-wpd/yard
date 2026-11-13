@@ -12,6 +12,7 @@
 import { checkParts } from "./partCeiling";
 import { getCatalogItem } from "./catalog";
 import { toPrimitive } from "./geometry";
+import { titleKeepsHead } from "./headNoun";
 import { inchFrac } from "./inchText";
 import { unionOutline } from "./shapeTemplates";
 import type { CatalogItem, Panel, Vec3 } from "./types";
@@ -78,6 +79,8 @@ export function detectBlockSubject(prompt: string): BlockSubject | null {
     const out: BlockSubject = { ...s };
     if (out.figure && /wood(?:en)?[\s-]*balls?|pose-?able|posable|articulated|jointed/.test(lower)) out.figure = "ball";
     if (out.neck && /\bcut\s*-?\s*outs?\b|\bsilhouette\b|\bflat\b/.test(lower)) out.cutout = true;
+    // The matched words name the build. A label that does not contain the typed head ("Castle" for "fort") is a different object.
+    out.label = titleKeepsHead(prompt, s.label, lower.match(re)?.[0] ?? null);
     return out;
   }
   return null;
@@ -1118,7 +1121,7 @@ function buildCastle(prompt: string, s: BlockSubject, item: CatalogItem, typed: 
       else b.member(sub(p, v3(0, merl / 2, 0)), add(p, v3(0, merl / 2, 0)), "battlement", { face: n });
     }
   }
-  const out = [`Castle · towers block: ${nT} round towers ${fmt(towerD)}" across with pointed roofs, walls between them with battlements, a ${fmt(gateW)}" gate and a drawbridge that lets down on two strings.`];
+  const out = [`${s.label} · towers block: ${nT} round towers ${fmt(towerD)}" across with pointed roofs, walls between them with battlements, a ${fmt(gateW)}" gate and a drawbridge that lets down on two strings.`];
   if (sheet) out.push(`All cut from ${k.item.name}: score the tower staves and roll them round, tape the roof gores to a point, and slot the walls into the towers.`);
   return finish(b, s, s.label, "castle", { towers: nT, drawbridge: 1, gateW: r16(gateW), towerD: r16(towerD) }, out);
 }
