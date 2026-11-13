@@ -3,7 +3,13 @@
  * "a place for my dog to sleep") is resolved to the form people build for that purpose before any noun match, so it
  * never falls to "Not learned yet" or a generic body. A request with its own head noun keeps it ("bookshelf that
  * fits a 55 inch TV" stays a bookshelf); typed axes ride along.
+ *
+ * A placeholder head ("something", "somewhere") plus a purpose verb names what the build is FOR, not the object
+ * to copy. "something to store my bikes" is a bike rack, never a Bicycle.
  */
+import { typedHeadNoun } from "./headNoun";
+import { DECLARED_RACK_TYPES } from "./memberStock";
+
 export type Purpose = { re: RegExp; form: string; why: string };
 
 export const PURPOSES: Purpose[] = [
@@ -31,6 +37,19 @@ export function resolvePurpose(prompt: string): { prompt: string; form: string; 
     const sizes = lower.match(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:wide|tall|high|deep|long)\b/g) ?? [];
     const n = m.slice(1).find(Boolean);
     return { prompt: [p.form, n ? `with ${Number(n) * 2} pegs` : p.form.includes("fishing") ? "with 12 pegs" : "", ...sizes].filter(Boolean).join(" "), form: p.form, why: p.why };
+  }
+  // Placeholder head + a stored object the engine already racks ("something to store my bikes" → bike rack).
+  // The object's own silhouette (a bicycle) is a different named thing and does not win.
+  const head = typedHeadNoun(prompt);
+  if (head && /^(?:something|somewhere|someplace|place|spot|way)$/.test(head)) {
+    const held = lower.match(/\b(?:store|organi[sz]e|hold|keep|hang|stack)\s+(?:(?:my|our|the|a|an)\s+)?([a-z]+(?:\s+[a-z]+){0,3})/);
+    const word = held?.[1].split(/\s+/).pop()?.replace(/(?<!s)s$/, "") ?? "";
+    const stem = word === "bicycle" ? "bike" : word;
+    if ((DECLARED_RACK_TYPES as readonly string[]).includes(stem)) {
+      const sizes = lower.match(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:wide|tall|high|deep|long)\b/g) ?? [];
+      const form = `${stem} rack`;
+      return { prompt: [form, ...sizes].join(" "), form, why: `${stem}s go on a ${stem} rack` };
+    }
   }
   return null;
 }

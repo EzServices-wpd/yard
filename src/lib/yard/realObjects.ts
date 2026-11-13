@@ -6,10 +6,27 @@
  */
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
+import { STOP, sentenceCase, typedHeadNoun, headPhrase as nounPhrase } from "./headNoun";
 import type { Purpose } from "./purpose";
 import type { Panel, YardProject } from "./types";
 
-export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder" | "easel" | "stand";
+export type RealObject = "mirror" | "baby-gate" | "firewood-rack" | "cover" | "rung-ladder" | "easel" | "stand" | "tote";
+
+/** A carried open box: the head is a tote, or a carry-purpose stem plus "box" ("toolbox", "tackle box", "sewing tote"). */
+const CARRY_HEAD = /^(?:tote|caddy|trug|hod)$/;
+const CARRY_STEM = /^(?:tool|tackle|fishing|sewing|picnic|beach|craft)$/;
+
+export function isCarryTote(prompt: string): boolean {
+  const words = nounPhrase(prompt)
+    .replace(/\d[\d./]*\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?/g, " ")
+    .split(/[^a-z]+/)
+    .filter((w) => w.length > 1 && !STOP.test(w));
+  const head = typedHeadNoun(prompt) ?? "";
+  const prev = words.length > 1 ? words[words.length - 2].replace(/(?<!s)s$/, "") : "";
+  if (CARRY_HEAD.test(head)) return true;
+  if (CARRY_STEM.test(head.replace(/box$/, "")) && /box$/.test(head)) return true;
+  return head === "box" && CARRY_STEM.test(prev);
+}
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
 const MODEL = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy)\b/;
@@ -29,6 +46,8 @@ export function realObjectKind(prompt: string, materialOverride?: string): RealO
   const lower = prompt.toLowerCase();
   if (CRAFT.test(`${lower} ${materialOverride ?? ""}`) || MODEL.test(lower)) return null;
   if (materialOverride && !/^lumber-|^plywood-/.test(materialOverride)) return null;
+  // An open tote with a handle, before a "box" substring can claim the house carcase.
+  if (isCarryTote(prompt)) return "tote";
   // "X for kids" is the kids' X.
   const head = `${/\bfor\s+(?:kids?|children|toddlers?)\b/.test(lower) ? "kids " : ""}${headPhrase(lower)}`;
   if (/\bmirrors?(?:\s+frames?)?$|\bframed\s+mirrors?$/.test(head) && !/\bno\s+mirrors?\b/.test(lower)) return "mirror";
@@ -330,7 +349,45 @@ export function buildRealObject(prompt: string, kind: RealObject, size?: { width
   if (kind === "rung-ladder") return buildRungLadder(prompt, size);
   if (kind === "easel") return buildEasel(prompt, size);
   if (kind === "stand") return buildStand(prompt, size);
+  if (kind === "tote") return buildCarryTote(prompt, size);
   return buildCover(prompt, size);
+}
+
+/**
+ * Open tote: the same open-top carry box as a stored-item crate (ends with a hand hold, sides between them,
+ * a plywood bottom), titled with the typed noun. Not the house carcase.
+ */
+function buildCarryTote(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
+  const lower = prompt.toLowerCase();
+  const t = 0.75;
+  const boards: [string, number][] = [["lumber-1x8-8", 7.25], ["lumber-1x10-8", 9.25], ["lumber-1x12-8", 11.25]];
+  const wantH = size?.height ?? axis(lower, "tall|high|height") ?? 8;
+  const [id, wall] = boards.find(([, f]) => f >= wantH * 0.85) ?? boards[2];
+  const wantW = size?.width ?? axis(lower, "wide|width|long|length") ?? 20;
+  const wantD = size?.depth ?? axis(lower, "deep|depth") ?? 10;
+  const run = Math.max(6, wantW - 2 * t);
+  const across = Math.max(4, wantD - 2 * t);
+  const W = run + 2 * t;
+  const D = across + 2 * t;
+  const hold = `Cut a 1" × 4" hand hold centred across it, 1 1/2" down from the top edge (drill two 1" holes and jigsaw between).`;
+  const panels: Panel[] = [
+    panel("side", "Left end", 0, 0, 0, t, wall, D, id, { cutNote: hold }),
+    panel("side", "Right end", W - t, 0, 0, t, wall, D, id, { cutNote: hold }),
+    panel("side", "Back side", t, 0, 0, run, wall, t, id),
+    panel("side", "Front side", t, 0, D - t, run, wall, t, id),
+    panel("bottom", "Bottom", t, 0, t, run, 0.5, across, "plywood-1-2-4x8"),
+  ];
+  const title = sentenceCase(
+    nounPhrase(prompt)
+      .replace(/\d[\d./]*\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?/g, " ")
+      .split(/[^a-z]+/)
+      .filter((w) => w.length > 1 && !STOP.test(w))
+      .join(" ") || "Tote",
+  );
+  const name = `${title} ${inchFrac(W)}" × ${inchFrac(wall)}" × ${inchFrac(D)}"`;
+  return project(prompt, name, panels, W, wall, D, [
+    `Glue and screw the sides between the ends, then screw the 1/2" plywood bottom in from the sides and ends. A hand hold in each end makes it a carry crate.`,
+  ], id);
 }
 
 /**
