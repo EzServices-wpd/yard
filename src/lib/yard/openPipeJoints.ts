@@ -252,13 +252,17 @@ function piecesOf(a: Vec3, b: Vec3, cuts: Vec3[]): { from: Vec3; to: Vec3 }[] | 
 function axialGap(list: { from?: Vec3; to?: Vec3 }[]): boolean {
   for (let i = 0; i < list.length; i++) {
     for (let j = 0; j < list.length; j++) {
-      if (i === j || !list[i].from || !list[i].to || !list[j].from || !list[j].to) continue;
+      const hostA = list[j].from;
+      const hostB = list[j].to;
+      const endA = list[i].from;
+      const endB = list[i].to;
+      if (i === j || !endA || !endB || !hostA || !hostB) continue;
       for (const which of ["from", "to"] as const) {
-        const origin = list[i][which]!;
-        const other = which === "from" ? list[i].to! : list[i].from!;
+        const origin = which === "from" ? endA : endB;
+        const other = which === "from" ? endB : endA;
         const dir = unit(other, origin);
         if (!dir) continue;
-        const hit = rayMeet(origin, dir, list[j].from, list[j].to);
+        const hit = rayMeet(origin, dir, hostA, hostB);
         if (hit && dist(origin, hit) > NODE) return true;
       }
     }
