@@ -537,7 +537,10 @@ export function countSlipFittings(instances: YardInstance[], radius: number) {
 }
 
 /** Bought slip fittings, in the same order and words Buy and the steps use. */
-export function slipFittingPhrase(item: CatalogItem, counts: ReturnType<typeof countSlipFittings>): string {
+export function slipFittingPhrase(
+  item: CatalogItem,
+  counts: ReturnType<typeof countSlipFittings> & { tee4?: number; cross5?: number; cross6?: number },
+): string {
   const size = pvcSizeLabel(item);
   const bits: string[] = [];
   const add = (qty: number, title: string, plural: string) => {
@@ -546,7 +549,10 @@ export function slipFittingPhrase(item: CatalogItem, counts: ReturnType<typeof c
   add(counts.corners, "3-way corner", "3-way corners");
   add(counts.couplings, "coupling", "couplings");
   add(counts.tees, "tee", "tees");
+  add(counts.tee4 ?? 0, "4-way tee", "4-way tees");
   add(counts.crosses, "cross", "crosses");
+  add(counts.cross5 ?? 0, "5-way cross", "5-way crosses");
+  add(counts.cross6 ?? 0, "6-way cross", "6-way crosses");
   add(counts.elbows90, "90° elbow", "90° elbows");
   add(counts.elbows45, "45° elbow", "45° elbows");
   if (!bits.length) return "";
