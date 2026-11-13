@@ -50,13 +50,20 @@ test("big ben is titled Big Ben with the engine's size; the linen canary is its 
   assert.match(ben.title, /^Big Ben · [\d /]+" W × [\d /]+" D × [\d /]+" H.* · Yard$/);
   assert.notEqual(ben.title, "Big ben · Yard");
   assert.equal(headFor({ q: "linen closet 31.5 wide 78 tall 16 deep" }).title, 'Linen · 31 1/2" W × 16" D × 78" H · Yard');
-  assert.equal(headFor({ q: PRIVATE }).title, NO_BUILD);
+  // The engine owns "toolbox", so the share title is that header. The private tail never appears in it.
+  const priv = headFor({ q: PRIVATE });
+  assert.match(priv.title, /^Toolbox · /);
+  assert.equal(priv.title.includes("wife"), false);
+  assert.equal(priv.title.includes("jane"), false);
   assert.deepEqual(workbenchHead(null), { title: NO_BUILD, desc: "Type a build and get a 3D model, cut list, Buy list and plan." });
 });
 
 test("the server's title (engine worker, inside its budget) is the same header", async () => {
   assert.deepEqual(await engineTitleWithin(workbenchToken({ q: "big ben" }), 30000), (({ name, size }) => ({ name, size }))(offline(() => cardFacts(workbenchToken({ q: "big ben" })))!));
-  assert.equal(await engineTitleWithin(workbenchToken({ q: PRIVATE }), 30000), null);
+  const priv = await engineTitleWithin(workbenchToken({ q: PRIVATE }), 30000);
+  assert.equal(priv?.name, "Toolbox");
+  assert.equal(JSON.stringify(priv).includes("wife"), false);
+  assert.equal(JSON.stringify(priv).includes("jane"), false);
   assert.equal(await engineTitleWithin(""), null);
 });
 
