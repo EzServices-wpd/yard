@@ -3,6 +3,8 @@
  * #112 (hanging clearance) uses this same height: ten shelves, rod left out, is 86 3/4".
  * Folded clothes want about 7" clear. No toe kick — the engine builds none on these cases.
  */
+import { purposeOf } from "./purpose";
+import { FORM_NEUTRAL } from "./genericBox";
 
 /** Clear opening a shelf stack is built to leave, face to face. */
 export const CLOSET_SHELF_CLEAR_IN = 7;
@@ -12,6 +14,49 @@ export const SHELF_CLEAR_FLOOR_IN = 4;
 export const MIN_HANG_ROOM_IN = 40;
 /** From the rod's stored y up to the shelf zone. The hat keeps this much room. */
 export const ROD_SHELF_LIFT_IN = 2;
+
+/** The bookcase family's default shelf count (fittedBuild shelvesAsked, fittedParse). */
+export const BOOKCASE_SHELF_COUNT = 5;
+/** The cabinet family's default shelf count (fittedParse cabinet branch). */
+export const CABINET_SHELF_COUNT = 2;
+/** The shelving family's default shelf count (fittedParse shelf / shelves / shelving branch). */
+export const SHELVING_SHELF_COUNT = 3;
+
+const CARCASE_WORD = /^(?:storage|units?|cabinets?|shel(?:f|ves|ving)|cubbies|cubby)$/;
+
+/** Head words before a with/for/from tail, with sizes, stock, and style words dropped. */
+function headWords(prompt: string): string[] {
+  const phrase = prompt.toLowerCase().replace(/^[a-z]+:\s*/, "").split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by)\s+/)[0];
+  return phrase.split(/[\s-]+/).filter((t) => !/\d/.test(t)).flatMap((t) => t.split(/[^a-z]+/)).filter((w) => w.length >= 3 && !FORM_NEUTRAL.test(w));
+}
+
+/**
+ * A plain storage, cabinet, shelving, or cubby unit. A stored subject (bike storage,
+ * wine storage, storage for bikes, a storage bed) is that subject's stand-in, not this carcase.
+ */
+export function plainShelfCarcase(prompt: string): boolean {
+  if (purposeOf(prompt)) return false;
+  const lower = prompt.toLowerCase();
+  if (!/\b(?:storage|cabinets?|shel(?:f|ves|ving)|cubbies|cubby)\b/.test(lower)) return false;
+  const held = lower.split(/\s+for\s+/).slice(1).join(" ");
+  if (held && headWords(held).some((w) => !CARCASE_WORD.test(w))) return false;
+  return headWords(lower).every((w) => CARCASE_WORD.test(w));
+}
+
+/**
+ * Shelf count for a plain storage, cabinet, or shelving carcase that was given none.
+ * Cabinet uses the cabinet family's count, shelving the shelving family's, and
+ * open storage the bookcase family's. The builder caps this with shelvesThatFit.
+ * Null when the ask is not that carcase.
+ */
+export function tallInteriorShelfCount(prompt: string): number | null {
+  if (!plainShelfCarcase(prompt)) return null;
+  const lower = prompt.toLowerCase();
+  if (/\bcabinets?\b/.test(lower) && !/\bracks?\b/.test(lower)) return CABINET_SHELF_COUNT;
+  if (/\bshel(?:f|ves|ving)\b/.test(lower) && !/\bcoat\b/.test(lower)) return SHELVING_SHELF_COUNT;
+  if (/\bstorage\b/.test(lower) || /\bcubb/.test(lower)) return BOOKCASE_SHELF_COUNT;
+  return null;
+}
 
 const SHELF_FAMILY = /\b(?:bookcases?|bookshel(?:f|ves)|wardrobes?|closets?|pantr(?:y|ies)|linens?)\b/i;
 const TYPED_SHELF = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:adjustable\s+|fixed\s+|open\s+)?shel(?:f|ves)\b/i;
