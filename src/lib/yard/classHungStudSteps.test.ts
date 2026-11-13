@@ -15,7 +15,7 @@ const all = (q: string) => {
   return { p, plan, text: [...(p.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`), ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`)].join("\n") };
 };
 
-test("glides: every hung build has no glide on Buy or in the notes; standing outdoor builds keep them", () => {
+test("glides: hung builds have none; deck and patio furniture keeps them", () => {
   for (const q of ["hanging birdhouse", "wall mounted birdhouse", "outdoor wall planter box", "outdoor hanging shelf", "hanging planter", "wall mounted outdoor planter"]) {
     const { p, text } = all(q);
     assert.ok(hungBuild(p), q);

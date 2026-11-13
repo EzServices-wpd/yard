@@ -71,13 +71,28 @@ function outdoorWood(project: YardProject, prompt: string | undefined | null): b
 /**
  * Typed words that hang a build instead of standing it (I9 glides class): "hanging birdhouse", "wall mounted
  * birdhouse", "outdoor wall planter box", "outdoor hanging shelf". Those builds are library forms whose installMode
- * stays freestanding, so the typed words decide too.
+ * stays freestanding until withMount, which runs after the outdoor note, so the typed words decide too.
  */
 const HUNG_WORDS = /\bhanging\b|\bhung\b|\bhangs?\s+(?:on|from)\b|\bwall[- ]?(?:mounted|mount|hung)\b|\bwall\s+(?:planter|shelf|shelves|box|birdhouse|rack)\b|\bon\s+(?:the|a)\s+(?:wall|fence)\b/i;
+/** Mounted on a wall, fence, post or pole. "mounted birdhouse" never says "wall", and installMode is still freestanding when the note is written. */
+const MOUNTED_WORDS = /\bmount(?:ed|ing)\b|\bpost[- ]?mounted\b|\bfence[- ]?mounted\b|\bon\s+(?:a|the)\s+(?:wall|fence|post|pole)\b/i;
+/** Carried by a post or pole (a planter on a post, a house on a pole), not stood on a finished floor. */
+const POSTED_WORDS = /\bposted\b|\bon\s+(?:(?:a|the)\s+)?(?:posts?|poles?)\b|\bpost[- ]?mounted\b/i;
+
+const promptOf = (project: Pick<YardProject, "prompt" | "typedPrompt">) => `${project.typedPrompt ?? ""} ${project.prompt ?? ""}`;
 
 /** Hung on a wall, fence or chain: no feet, no glides. One answer for the note, Buy and the I11 check. */
 export function hungBuild(project: YardProject): boolean {
-  return project.assumptions?.installMode === "wall" || HUNG_WORDS.test(project.prompt ?? "");
+  return project.assumptions?.installMode === "wall" || HUNG_WORDS.test(promptOf(project));
+}
+/** Screwed or lagged to a wall, fence, post or pole. */
+export function mountedBuild(project: YardProject): boolean {
+  const mode = project.assumptions?.installMode;
+  return mode === "wall" || mode === "alcove" || MOUNTED_WORDS.test(promptOf(project));
+}
+/** The build lives on a post or pole. */
+export function postedBuild(project: YardProject): boolean {
+  return POSTED_WORDS.test(promptOf(project));
 }
 const wallHung = hungBuild;
 
@@ -91,11 +106,27 @@ function fixedInGround(project: YardProject): boolean {
 }
 
 /**
- * I9: one answer for "does it stand on glides", read by the note and by Buy. Feet that stand on the ground outdoors
- * get glides; a hung, fixed-in-ground or ground-contact build gets none, and its note never mentions them.
+ * Sits in soil, on a lawn, or on a stand of its own. A house, feeder, hive, sandbox, planter,
+ * arch, or goal has no furniture feet. Deck and patio furniture is not in this list.
  */
+const NO_FEET_WORDS = /\b(?:bird\s*house|birdhouses?|wren\s+house|martin\s+house|bat\s+house|(?:bird\s+)?feeders?|bee\s*hives?|hive\s+box|sand\s*box(?:es)?|garden\s+arch|arch(?:way)?|arbors?|obelisks?|trellis|goals?|water\s+wheel|coasters?|(?:porch\s+)?swing(?:\s+frame)?)\b/i;
+
+/**
+ * Floor glides stay on furniture that stands on a finished floor, a deck, or a patio.
+ * Hung, mounted, posted, and in-ground builds never get them, and neither does an object
+ * with no furniture feet. The prompt is read here, not only installMode, because the outdoor
+ * note is written before withMount records a wall or post mount.
+ */
+function refusesFloorGlides(project: YardProject): boolean {
+  if (NO_FEET_WORDS.test(`${promptOf(project)} ${project.name ?? ""}`) || holdsSoilOrWater(promptOf(project), project.name)) return true;
+  if (hungBuild(project) || mountedBuild(project) || postedBuild(project)) return true;
+  if (fixedInGround(project) || groundContactLegs(project)) return true;
+  return false;
+}
+
+/** One answer for "does Buy and the note include floor glides". */
 export function takesGlides(project: YardProject): boolean {
-  return !wallHung(project) && !fixedInGround(project) && !groundContactLegs(project) && footTalk(project).feet;
+  return !refusesFloorGlides(project) && footTalk(project).feet;
 }
 
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */
@@ -136,13 +167,13 @@ export function footTalk(project: YardProject): { where: string; count: number; 
   return { where: "the bottom edges where it meets the ground", count: Math.max(4, sticks.length), feet: sticks.length >= 2 };
 }
 
-/** Plain-screw wording in a step becomes the exterior screw the Buy list carries. */
-function exteriorTalk(t: string | undefined): string | undefined {
+/** Plain-screw wording in a step becomes the exterior screw the Buy list carries. Floor-glide talk is added only when Buy has the glides. */
+function exteriorTalk(t: string | undefined, glides: boolean): string | undefined {
   if (!t) return t;
   return t
     .replace(/(#\s?\d+\s*[×x]\s*[\d¼½¾\/ -]+"?)\s+(?:wood\s+)?screws/g, "$1 exterior screws")
     .replace(/\bwood glue\b/gi, "Titebond III")
-    .replace(/A felt pad under each foot saves the floor\.?/g, "A glide under each foot keeps the end grain off wet ground.");
+    .replace(/\s*A felt pad under each foot saves the floor\.?/g, (m) => (glides ? m.replace(/A felt pad under each foot saves the floor\.?/, "A glide under each foot keeps the end grain off wet ground.") : ""));
 }
 
 /** Pressure-treated #2 lumber, Home Depot shelf prices checked 2026-10-15 (search links where no single product page fits). */
@@ -300,7 +331,8 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
         instructions = instructions.map((s) => ({ ...s, title: swap(s.title)!, description: swap(s.description)!, tips: swap(s.tips) }));
       }
     }
-    instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title)!, description: exteriorTalk(s.description)!, tips: exteriorTalk(s.tips) }));
+    const glides = takesGlides(project);
+    instructions = instructions.map((s) => ({ ...s, title: exteriorTalk(s.title, glides)!, description: exteriorTalk(s.description, glides)!, tips: exteriorTalk(s.tips, glides) }));
     insertStep({
       title: !takesGlides(project) ? "Seal it for outdoors — finish and end grain" : "Seal it for outdoors — finish, end grain and feet",
       description:
