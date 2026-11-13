@@ -13,6 +13,28 @@ export const MIN_HANG_ROOM_IN = 40;
 /** From the rod's stored y up to the shelf zone. The hat keeps this much room. */
 export const ROD_SHELF_LIFT_IN = 2;
 
+/** The bookcase family's default shelf count (fittedBuild shelvesAsked, fittedParse). */
+export const BOOKCASE_SHELF_COUNT = 5;
+/** The cabinet family's default shelf count (fittedParse cabinet branch). */
+export const CABINET_SHELF_COUNT = 2;
+/** The shelving family's default shelf count (fittedParse shelf / shelves / shelving branch). */
+export const SHELVING_SHELF_COUNT = 3;
+
+/**
+ * Shelf count for a storage, cabinet or shelving carcase that was given none.
+ * Cabinet uses the cabinet family's count, shelving the shelving family's, and
+ * open storage the bookcase family's. A rack or a coat hang is not one of these.
+ * Null when the ask is none of the three, or the interior is not above the clear-shelf limit.
+ */
+export function tallInteriorShelfCount(prompt: string, interiorIn: number): number | null {
+  if (!(interiorIn > closetShelfClearIn())) return null;
+  const lower = prompt.toLowerCase();
+  if (/\bcabinets?\b/.test(lower) && !/\bracks?\b/.test(lower)) return CABINET_SHELF_COUNT;
+  if (/\bshel(?:f|ves|ving)\b/.test(lower) && !/\bcoat\b/.test(lower)) return SHELVING_SHELF_COUNT;
+  if (/\bstorage\b/.test(lower)) return BOOKCASE_SHELF_COUNT;
+  return null;
+}
+
 const SHELF_FAMILY = /\b(?:bookcases?|bookshel(?:f|ves)|wardrobes?|closets?|pantr(?:y|ies)|linens?)\b/i;
 const TYPED_SHELF = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:adjustable\s+|fixed\s+|open\s+)?shel(?:f|ves)\b/i;
 const SHELF_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };

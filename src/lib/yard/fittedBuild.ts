@@ -55,7 +55,7 @@ import {
   spokenBottleCount, typedHeightInches, spokenSlotCount, spokenShelfThickness, spokenCubbyCount,
   SHELF_MIN_CLEAR, isKidsBookcase, KIDS_BOOKCASE_H, isStorageInOpening, formChangeNotes, shelfCountTyped,
 } from "./fittedShared";
-import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, typedRodDemand, typedShelfDemand } from "./shelfClear";
+import { closetShelfClearIn, MIN_HANG_ROOM_IN, rodPlanForTypedShelves, tallInteriorShelfCount, typedRodDemand, typedShelfDemand } from "./shelfClear";
 import { lippedShelfYs } from "./shelfLips";
 import {
   WINE_BOTTLE_CLEAR, WINE_RAIL_H, WINE_CRADLE_LIP, WINE_ROW_CLEAR, WINE_ROW_SLACK, WINE_ROW_MAX_CLEAR,
@@ -66,6 +66,7 @@ import { detectProgram } from "./fittedDetect";
 import { ROD_DIA, rodCenters, rodSeatZ, shelvesThatFit, sideHangFits, singleRodNote } from "./hangingClearance";
 import { buildSinkVanity } from "./sinkVanity";
 import { purposeOf } from "./purpose";
+import { typedCounts } from "./typedFeatures";
 import { buildItemCrate } from "./realObjects";
 import { PET_ANIMAL } from "./fallbackPrimitive";
 import {
@@ -2914,6 +2915,29 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // Only the default count is trimmed, down to what keeps a closet gap above the rod.
   // A typed count is built as typed, or the build is refused (shelfCountRefusal).
   if (rodY != null && !countTyped) shelves = Math.min(shelves, shelvesThatFit(shelfZone1 - zoneY0, P));
+  // Storage, cabinet and shelving carcases ship an empty box when no family default
+  // names a count (program storage's fallback is 0). Above the clear-shelf limit they
+  // get the count that family already builds — bookcase's for open storage, the
+  // cabinet family's for a cabinet — and the same placement as those families.
+  // A typed "no shelves", a drawer-filled carcase, and a prompt that is not a house
+  // carcase (a stairs fallback, a planter) stay empty.
+  if (
+    shelves === 0 &&
+    !countTyped &&
+    typedCounts(prompt).shelves !== 0 &&
+    !(drawersFillLower && !u.upperStart) &&
+    spec.program === "storage" &&
+    house?.family === "floor-carcase" &&
+    house.use === "store" &&
+    !isPlanterBox(frontLower) &&
+    !isHingedLidChest(frontLower) &&
+    !isOpenTopChest(frontLower) &&
+    !isStorageBox(frontLower) &&
+    !isToyChest(frontLower)
+  ) {
+    const n = tallInteriorShelfCount(prompt, shelfZone1 - zoneY0);
+    if (n != null) shelves = n;
+  }
   const shelfYs: number[] = (() => {
     const y0 = zoneY0;
     const y1 = shelfZone1;
