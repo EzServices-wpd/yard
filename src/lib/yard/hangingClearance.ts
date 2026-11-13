@@ -202,6 +202,8 @@ export function rodTalkWithoutParts(p: Pick<YardProject, "panels" | "notes">): s
  */
 export function hangingDepthRefusal(p: YardProject, prompt: string): YardProject | null {
   if (p.refused || !p.panels.length) return null;
+  // A carry tote (hand holds in the ends) is not a clothes-rod box, even when the words say wardrobe or armoire.
+  if (p.panels.some((x) => /hand hold/i.test(x.cutNote ?? ""))) return null;
   // Only a build that hangs clothes (the wardrobe/closet program) is refused for depth; a pantry or shoe rack is not.
   const prog = (p as { fitted?: { program?: string } }).fitted?.program;
   if (prog && prog !== "wardrobe" && prog !== "closet") return null;
@@ -225,6 +227,7 @@ function wideFor(n: number, t = 0.75): number {
  */
 export function rodCountRefusal(p: YardProject, prompt: string): YardProject | null {
   if (p.refused || !p.panels.length) return null;
+  if (p.panels.some((x) => /hand hold/i.test(x.cutNote ?? ""))) return null;
   const prog = p.fitted?.program;
   if (prog !== "wardrobe" && prog !== "closet") return null;
   const n = rodsAsked(prompt);

@@ -5,7 +5,8 @@
  * fits a 55 inch TV" stays a bookshelf); typed axes ride along.
  *
  * A placeholder head ("something", "somewhere") plus a purpose verb names what the build is FOR, not the object
- * to copy. "something to store my bikes" is a bike rack, never a Bicycle.
+ * to copy. A declared rack that is a real form wins ("something to store my magazines" is a magazine rack).
+ * Bike, kayak, towel and spool racks are still stand-ins, so those asks keep the release build.
  */
 import { typedHeadNoun } from "./headNoun";
 import { DECLARED_RACK_TYPES } from "./memberStock";
@@ -38,14 +39,17 @@ export function resolvePurpose(prompt: string): { prompt: string; form: string; 
     const n = m.slice(1).find(Boolean);
     return { prompt: [p.form, n ? `with ${Number(n) * 2} pegs` : p.form.includes("fishing") ? "with 12 pegs" : "", ...sizes].filter(Boolean).join(" "), form: p.form, why: p.why };
   }
-  // Placeholder head + a stored object the engine already racks ("something to store my bikes" → bike rack).
-  // The object's own silhouette (a bicycle) is a different named thing and does not win.
+  // Placeholder head + a stored object the engine already racks ("something to store my magazines" → magazine rack).
+  // A stand-in rack, and a shoe ask the release path already builds, keeps that build.
   const head = typedHeadNoun(prompt);
   if (head && /^(?:something|somewhere|someplace|place|spot|way)$/.test(head)) {
     const held = lower.match(/\b(?:store|organi[sz]e|hold|keep|hang|stack)\s+(?:(?:my|our|the|a|an)\s+)?([a-z]+(?:\s+[a-z]+){0,3})/);
     const word = held?.[1].split(/\s+/).pop()?.replace(/(?<!s)s$/, "") ?? "";
     const stem = word === "bicycle" ? "bike" : word;
-    if ((DECLARED_RACK_TYPES as readonly string[]).includes(stem)) {
+    // Bike, kayak, towel and spool racks are still stand-ins, so those asks keep the release build.
+    // "shoe" already builds a shoe rack; rewriting the prompt to the bare form drops its depth.
+    const SKIP_RACK = new Set(["bike", "kayak", "towel", "spool", "shoe"]);
+    if ((DECLARED_RACK_TYPES as readonly string[]).includes(stem) && !SKIP_RACK.has(stem)) {
       const sizes = lower.match(/\d+(?:\.\d+)?\s*(?:"|in(?:ch(?:es)?)?|ft|feet|foot|')?\s*(?:wide|tall|high|deep|long)\b/g) ?? [];
       const form = `${stem} rack`;
       return { prompt: [form, ...sizes].join(" "), form, why: `${stem}s go on a ${stem} rack` };

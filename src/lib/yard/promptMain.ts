@@ -74,7 +74,7 @@ import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct }
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
-import { buildRealObject, realObjectKind } from "./realObjects";
+import { buildRealObject, isCarryTote, realObjectKind } from "./realObjects";
 import { dollhouseTyped, isDollhouse, PLY_THICKNESS } from "./dollhouse";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
 import { positiveSentence } from "./positiveWording";
@@ -697,6 +697,8 @@ const CRAFT_STICK_OWNED = new Set(["bird-feeder", "jewelry-box"]);
 function generateCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A named object with a saved recipe builds from its defining parts (spec 001), never a template; the
   // recipe build is already sized, so only the outdoor package is added to it.
+  // A carry head (tote, caddy, trug, toolbox) is that open box. A learned recipe for an earlier word does not win.
+  if (isCarryTote(args[0] ?? "")) return engineCore(...args);
   const found = !args[2] && !args[3]?.fittedOverride && !args[3]?.pocketOverride ? findRecipe(normalizeUserPrompt(args[0])) : null;
   // A craft-stick model ("craft stick bird feeder") is the engine's stick build, never the full-size wood recipe.
   const recipe = found && /\b(?:craft|popsicle|lolly)\s*sticks?\b/i.test(args[0]) && CRAFT_STICK_OWNED.has(found.key) ? null : found;
@@ -1486,6 +1488,9 @@ function generateRaw(
   }
   // A deck, garden gate or swing set builds at real scale in lumber; craft stock or a model word keeps the stick model.
   if (!formOverride && !opts.fittedOverride) {
+    // The head noun wins: a tote, caddy or trug is the carry box before a frame word in front of it (a sawbuck) can.
+    const tote = realObjectKind(prompt, materialOverride);
+    if (tote === "tote") return buildRealObject(prompt, tote, opts.sizeOverride, materialOverride);
     const frame = outdoorFrameKind(prompt, materialOverride);
     if (frame) return refuseUnusedStock(withSwitchedSkin(buildOutdoorFrame(prompt, frame, opts.sizeOverride, materialOverride), materialOverride), materialOverride ?? typedStockId(prompt));
     // A real-scale lumber frame switched (or typed) to a stock it can't be built from keeps its form and says so.
