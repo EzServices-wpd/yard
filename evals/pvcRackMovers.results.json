@@ -29758,7 +29758,7 @@
       "after": {
         "name": "TV console",
         "cost": 123.76,
-        "pieces": 11,
+        "pieces": 12,
         "hud": [
           60,
           16,
@@ -29768,6 +29768,7 @@
         "titles": [
           "Confirm the footprint before the first cut",
           "Cut the 3/4\" Plywood 4×8 and 1/4\" plywood (backer)",
+          "Set the Center support 1",
           "Stand the main box",
           "Attach D Top to both F uprights",
           "Set remaining dividers",
