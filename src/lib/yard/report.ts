@@ -26,6 +26,7 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
+import { applyOpenPipeFrame, openSplitAgrees } from "./openPipeJoints";
 import { isSeatedPipeFrame, withoutFalsePlacement } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
@@ -1747,7 +1748,14 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
   // C3: whole purchased pieces have no cut list to restate as a cut step.
   const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
-  return isUnitItem(project) ? fin : cutStepFromList(fin);
+  // Release writes the cut step from its own list. A split frame replaces that list with the
+  // segments, then the same cut step is written again from the segments. If the steps, the
+  // cuts and Buy cannot all say the same lengths, the release plan is what ships.
+  const base = isUnitItem(project) ? fin : cutStepFromList(fin);
+  const opened = applyOpenPipeFrame(project, base);
+  if (opened === base || isUnitItem(project)) return opened;
+  const recut = cutStepFromList(opened);
+  return openSplitAgrees(project, recut) ? recut : base;
 }
 
 /**
@@ -2231,7 +2239,8 @@ function buildPlanCore(project: YardProject): BuildPlan {
   const item = getCatalogItem(project.primaryMaterialId);
   const pieces = project.instances.length;
   const forge = buildForgeBom(project.instances, project.primaryMaterialId);
-  // Only a seated pipe frame names each joint. Every other slip build keeps the release Buy.
+  // Only a seated pipe frame names each joint here. An open frame is applied later, and only
+  // when every joint is square or straight. Every other slip build keeps the release Buy.
   const seatedRack = isSeatedPipeFrame(project);
   const slipCouplings = seatedRack ? countSlipFittings(project.instances, (item!.dims.diameter ?? 1.05) / 2).couplings : 0;
   const glue = item ? rackSlipLines(project, item, seatedRack, slipCouplings) : [];
