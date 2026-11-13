@@ -26,7 +26,7 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
-import { applyOpenPipeFrame } from "./openPipeJoints";
+import { applyOpenPipeFrame, openSplitAgrees } from "./openPipeJoints";
 import { isSeatedPipeFrame, withoutFalsePlacement } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
@@ -1748,10 +1748,14 @@ function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: Build
   const summary = out.feasibility.summary.replace(/~\$[\d,]+(?:\.\d+)?/, `~$${sum >= 100 ? sum.toFixed(0) : sum.toFixed(2)}`);
   // C3: whole purchased pieces have no cut list to restate as a cut step.
   const fin = { ...out, bom: packWordsFromCart(out.bom), feasibility: { ...out.feasibility, summary }, totals: { ...out.totals, estCostUsd: sum } };
-  // The cut step is written from the release list first. Segment cuts replace the list after that,
-  // so the step still names the original rails and legs.
-  const cut = isUnitItem(project) ? fin : cutStepFromList(fin);
-  return applyOpenPipeFrame(project, cut);
+  // Release writes the cut step from its own list. A split frame replaces that list with the
+  // segments, then the same cut step is written again from the segments. If the steps, the
+  // cuts and Buy cannot all say the same lengths, the release plan is what ships.
+  const base = isUnitItem(project) ? fin : cutStepFromList(fin);
+  const opened = applyOpenPipeFrame(project, base);
+  if (opened === base || isUnitItem(project)) return opened;
+  const recut = cutStepFromList(opened);
+  return openSplitAgrees(project, recut) ? recut : base;
 }
 
 /**

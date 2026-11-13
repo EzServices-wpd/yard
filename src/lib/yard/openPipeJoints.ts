@@ -26,12 +26,13 @@ import {
   highWay,
   slipFittingPhrase,
 } from "./joints";
-import { fractionizeInches } from "./inchText";
-import { kerfFor, packLengths } from "./linearPack";
+import { bomLinesFromForge, buildForgeBom } from "./bom";
+import { fractionizeInches, inchFrac } from "./inchText";
 import { decorateBom } from "./listings";
 import { isSeatedPipeFrame, rigidSlipPipe } from "./pipeRackFrame";
+import { cutSummary } from "./steps";
 import type { BuildPlan, CatalogItem, Vec3, YardInstance, YardProject } from "./types";
-import { stampWeekendCuts, weekendCutLines } from "./weekendStockHonesty";
+import { namedStockDisplayName, stampWeekendCuts, weekendCutLines } from "./weekendStockHonesty";
 
 /** Same node test the rack census uses. */
 const NODE = 0.05;
@@ -459,9 +460,104 @@ function money(n: number): string {
 }
 
 /**
- * Cut list and Buy follow the segments. Step text stays the release text for the
- * original rails and legs; the existing fittings sentence is the only addition,
- * and only when every joint is square or straight.
+ * The Buy note the pipe line already uses, written for these segments.
+ * Null when that note's stick count is not the Buy count.
+ */
+function segmentPipeLine(project: YardProject, itemId: string) {
+  const forged = bomLinesFromForge(buildForgeBom(project.instances, project.primaryMaterialId)).find((line) => line.catalogId === itemId);
+  if (!forged?.notes) return null;
+  const told = forged.notes.match(/from (\d+) whole /);
+  if (!told || Number(told[1]) !== forged.quantity) return null;
+  const [priced] = decorateBom([{ ...forged, estimatedCost: undefined, offers: undefined }]);
+  return priced ?? null;
+}
+
+/**
+ * Step 1's cut count, from the existing cut summary, read off these segments.
+ * Null when Step 1 does not start with that summary, so a new sentence is not written.
+ */
+function retellStepOne(project: YardProject, instructions: BuildPlan["instructions"], segments: YardInstance[], cuts: { quantity: number; lengthIn: number }[]): BuildPlan["instructions"] | null {
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  const at = instructions.findIndex((step) => /before you cut/i.test(step.title));
+  if (at < 0) return null;
+  const description = instructions[at].description ?? "";
+  const label = namedStockDisplayName(project.prompt ?? "", item);
+  const oldSum = cutSummary(project.instances, label);
+  if (!description.startsWith(oldSum)) return null;
+  const aligned = alignMarkedCuts(cutSummary(segments, label), cuts);
+  if (!aligned) return null;
+  const next = aligned + description.slice(oldSum.length);
+  return instructions.map((step, i) => (i === at ? { ...step, description: next } : step));
+}
+
+/**
+ * The marked-cut clause uses the same "N × length" words, with each length written
+ * the way the cut list writes it. The cut summary rounds a length before it spells
+ * it; the cut list's spelling is the one the cut step and the Buy note already use.
+ * More than twelve lengths is the summary's own "and N more" line, which this does not rebuild.
+ */
+function alignMarkedCuts(summary: string, cuts: { quantity: number; lengthIn: number }[]): string | null {
+  const marked = summary.match(/marked cuts \(([^)]*)\)/);
+  if (!marked) return summary;
+  if (/more lengths/.test(marked[1])) return null;
+  const groups = new Map<string, { n: number; len: number }>();
+  let total = 0;
+  for (const cut of cuts) {
+    total += cut.quantity;
+    const text = inchFrac(cut.lengthIn);
+    const g = groups.get(text);
+    if (g) g.n += cut.quantity;
+    else groups.set(text, { n: cut.quantity, len: cut.lengthIn });
+  }
+  const bits = [...groups.values()].sort((a, b) => b.len - a.len).map((g) => `${g.n} × ${inchFrac(g.len)}"`);
+  if (!bits.length || bits.length > 12) return null;
+  let next = summary.replace(marked[0], `marked cuts (${bits.join(", ")})`);
+  next = next.replace(/(\d+) marked cuts/, `${total} marked cuts`);
+  if (/^\d+ pieces/.test(next)) next = next.replace(/^\d+ pieces/, `${total} pieces`);
+  return next;
+}
+
+/**
+ * A split whose steps, cut list and Buy all name the segments.
+ * A plan that still tells a length the cut list does not have does not agree.
+ */
+export function openSplitAgrees(project: YardProject, plan: BuildPlan): boolean {
+  const deal = openPipeDeal(project);
+  if (!deal?.split) return true;
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item) return false;
+  const label = namedStockDisplayName(project.prompt ?? "", item);
+  const summary = alignMarkedCuts(cutSummary(deal.segments, label), plan.cutList);
+  if (!summary) return false;
+  const step1 = plan.instructions.find((step) => /before you cut/i.test(step.title));
+  if (!step1?.description?.includes(summary)) return false;
+  const pipe = plan.bom.find((line) => line.catalogId === item.id);
+  const told = pipe?.notes?.match(/from (\d+) whole /);
+  if (!pipe || !told || Number(told[1]) !== pipe.quantity) return false;
+  const allowed = new Set(plan.cutList.map((line) => inchFrac(line.lengthIn)));
+  if (!allowed.size) return false;
+  const cutTo = pipe.notes?.match(/Cut to: ([^·]+)/);
+  const spelled = cutTo ? [...cutTo[1].matchAll(/(\d+(?: \d+\/\d+)?)"/g)].map((m) => m[1]) : [];
+  if (!spelled.length || spelled.some((len) => !allowed.has(len)) || [...allowed].some((len) => !spelled.includes(len))) return false;
+  const cutStep = plan.instructions.find((step) => /^Cut the\b/.test(step.title));
+  if (!cutStep?.description || !plan.cutList.every((line) => cutStep.description!.includes(`${line.quantity} ${line.label ? `${line.label} ` : ""}${line.name} ${inchFrac(line.lengthIn)} ×`))) return false;
+  const toldLengths = plan.instructions.flatMap((step) => {
+    const text = step.description ?? "";
+    const marked = text.match(/marked cuts \(([^)]*)\)/);
+    return [
+      ...(marked ? [...marked[1].matchAll(/(\d+) × (\d+(?: \d+\/\d+)?)"/g)].map((m) => m[2]) : []),
+      ...[...text.matchAll(/\d+ [A-Z] [A-Za-z]+ (\d+(?: \d+\/\d+)?) ×/g)].map((m) => m[1]),
+    ];
+  });
+  return toldLengths.every((len) => allowed.has(len));
+}
+
+/**
+ * Cut list, Buy and the fittings sentence follow the segments, and only when every
+ * joint is square or straight. On a split, Step 1's cut count and the Buy pipe note
+ * use the sentences they already use, read from the segments. The cut step is
+ * rewritten by the same cut-list pass that release uses. Anything that would need
+ * a new sentence returns the plan unchanged.
  */
 export function applyOpenPipeFrame(project: YardProject, plan: BuildPlan): BuildPlan {
   const deal = openPipeDeal(project);
@@ -487,21 +583,25 @@ export function applyOpenPipeFrame(project: YardProject, plan: BuildPlan): Build
   });
   for (const line of fresh) if (!seen.has(line.name)) bom = [...bom, line];
   let cutList = plan.cutList;
+  let instructions = plan.instructions;
   if (deal.split) {
     cutList = stampWeekendCuts(weekendCutLines({ ...project, instances: deal.segments })).map((line) =>
       line.notes ? { ...line, notes: fractionizeInches(line.notes) } : line,
     );
-    const cuts = deal.segments.map((seg) => seg.cutLength ?? (seg.from && seg.to ? dist(seg.from, seg.to) : 0)).filter((n) => n > 0);
-    const sticks = packLengths(cuts, item.dims.length ?? 120, kerfFor(item, false)).sticks;
-    const pipeAt = bom.findIndex((line) => line.catalogId === item.id);
-    if (pipeAt >= 0 && bom[pipeAt].quantity !== sticks && sticks > 0) {
-      const repriced = decorateBom([{ ...bom[pipeAt], quantity: sticks, estimatedCost: undefined, offers: undefined }])[0];
-      bom = bom.map((line, i) => (i === pipeAt ? repriced : line));
-    }
+    const pipe = segmentPipeLine({ ...project, instances: deal.segments }, item.id);
+    const told = retellStepOne(project, instructions, deal.segments, cutList);
+    if (!pipe || !told) return plan;
+    const spelled = [...new Map(cutList.map((line) => [inchFrac(line.lengthIn), line.lengthIn])).entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([text]) => `${text}"`)
+      .join(", ");
+    const notes = fractionizeInches(pipe.notes ?? "").replace(/Cut to: (?:(?! · ).)*/, `Cut to: ${spelled}`);
+    bom = bom.map((line) => (line.catalogId === item.id ? { ...line, ...pipe, notes } : line));
+    instructions = told;
   }
-  const i = plan.instructions.findIndex((step) => /solvent cement/i.test(step.description ?? ""));
-  if (i < 0 || plan.instructions.some((step) => (step.description ?? "").includes("The fittings are"))) return plan;
-  const instructions = plan.instructions.map((step, k) => (k === i ? { ...step, description: `${step.description ?? ""} ${phrase}`.trim() } : step));
+  const i = instructions.findIndex((step) => /solvent cement/i.test(step.description ?? ""));
+  if (i < 0 || instructions.some((step) => (step.description ?? "").includes("The fittings are"))) return plan;
+  instructions = instructions.map((step, k) => (k === i ? { ...step, description: `${step.description ?? ""} ${phrase}`.trim() } : step));
   const cost = Math.round(bom.reduce((sum, line) => sum + (line.estimatedCost ?? 0), 0) * 100) / 100;
   const sameMoney = Math.abs(cost - plan.totals.estCostUsd) < 0.005;
   return {
