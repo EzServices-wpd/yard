@@ -119,7 +119,7 @@ const depthTypedIn = (prompt: string) =>
   /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
   /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
 
-export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
+export function buildFitted(spec: FittedSpec, prompt = "", primitive = false): YardProject {
   if (spec.walls && (spec.walls.leftAngleDeg > 0.2 || spec.walls.rightAngleDeg > 0.2)) {
     const pocket = buildPocket(
       {
@@ -2919,14 +2919,15 @@ export function buildFitted(spec: FittedSpec, prompt = ""): YardProject {
   // names a count (program storage's fallback is 0). Above the clear-shelf limit they
   // get the count that family already builds — bookcase's for open storage, the
   // cabinet family's for a cabinet — and the same placement as those families.
-  // A typed "no shelves", a drawer-filled carcase, and a prompt that is not a house
-  // carcase (a stairs fallback, a planter) stay empty.
+  // A typed "no shelves", a drawer-filled carcase, a planter, and a stand-in
+  // rebuilt as a storage unit for another noun (a bike rack) stay empty.
   if (
     shelves === 0 &&
     !countTyped &&
     typedCounts(prompt).shelves !== 0 &&
     !(drawersFillLower && !u.upperStart) &&
     spec.program === "storage" &&
+    !primitive &&
     house?.family === "floor-carcase" &&
     house.use === "store" &&
     !isPlanterBox(frontLower) &&
