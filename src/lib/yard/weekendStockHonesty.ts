@@ -39,6 +39,7 @@ import {
 } from "./weekendFamily";
 import { isWholeStock } from "./geometry";
 import { binderBom, binderKind, buyCatalogWays, countSlipFittings, effectiveJoin, memberSpan } from "./joints";
+import { usesGeometryJoints } from "./openPipeJoints";
 import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { detectMaterial, hasExplicitSize, isWireStock, parseSize, stripLumberStock, stripJoinWords, weekendSizedStockPhrases } from "./promptHelpers";
 import { stripHeldPurpose } from "./heldObjects";
@@ -1297,12 +1298,13 @@ export function honestWeekendPlan(project: YardProject, plan: BuildPlan): BuildP
     return { ...b, name: stockLabel, ...(offers ? { offers } : {}) };
   });
   const radius = (item.dims.diameter ?? 1.05) / 2;
-  const slipRack = isSeatedPipeFrame(project);
+  const slipRack = usesGeometryJoints(project);
   let binders = binderBom(item, project.instances, project.joinMethod, slipRack ? countSlipFittings(project.instances, radius).couplings : 0);
   if (slipRack) {
     const members = project.instances.map((inst) => ({ from: inst.from, to: inst.to, radius }));
     binders = buyCatalogWays(binders, members);
-    const caps = countSlipFittings(project.instances, radius).caps;
+    // Caps stay on the seated-rack Buy. An open frame buys the fitting at each meeting.
+    const caps = isSeatedPipeFrame(project) ? countSlipFittings(project.instances, radius).caps : 0;
     if (caps > 0) {
       const size = binders.find((line) => /PVC/.test(line.name))?.name.match(/^(.*?)\s+PVC/)?.[1] ?? '3/4"';
       binders = [...binders, { name: `${size} PVC cap`, quantity: caps, unit: "ea", catalogId: "pvc-cap", searchQuery: `${size} PVC cap`, notes: `Match ${size} pipe.` }];
