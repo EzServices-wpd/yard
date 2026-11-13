@@ -8,7 +8,6 @@ import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
 import { checkBuild } from "./invariants";
-import { getCatalogItem } from "./catalog";
 import { isCarryTote, carryBoard, carryStockBlocks } from "./realObjects";
 import { resolvePurpose } from "./purposeForms";
 import { titleKeepsHead } from "./headNoun";
@@ -71,11 +70,11 @@ test("B1: a typed 1x board sets the walls, a typed height is kept, and other sto
   const tall = generateFromPrompt("toolbox 5 tall");
   assert.equal(tall.overall.height, 5);
   assert.equal(tall.primaryMaterialId, "lumber-1x8-8");
-  const plyT = getCatalogItem("plywood-1-4-4x8")!.dims.thickness!;
+  const plyT = 0.5;
   const bottom = generateFromPrompt("toolbox").panels.find((p) => p.name === "Bottom")!;
-  assert.equal(bottom.materialId, "plywood-1-4-4x8");
+  assert.equal(bottom.materialId, "plywood-1-2-4x8");
   assert.equal(bottom.size.height, plyT);
-  for (const q of ["toolbox from plywood", "pvc toolbox", "oak toolbox", "toolbox from 2x4", "1x6x8 toolbox"]) {
+  for (const q of ["toolbox from plywood", "pvc toolbox", "oak toolbox", "toolbox from 2x4", "1x6x8 toolbox", "toolbox 18x16x18", "toolbox 18 by 10 by 8", "caddy 12x8x6"]) {
     assert.equal(isCarryTote(q), false, q);
     assert.equal(carryStockBlocks(q), true, q);
   }

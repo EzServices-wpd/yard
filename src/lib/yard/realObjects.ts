@@ -6,7 +6,6 @@
  */
 import { createId } from "@/lib/utils";
 import { inchFrac } from "./inchText";
-import { getCatalogItem } from "./catalog";
 import { STOP, sentenceCase, typedHeadNoun, headPhrase as nounPhrase } from "./headNoun";
 import type { Purpose } from "./purpose";
 import type { Panel, YardProject } from "./types";
@@ -35,6 +34,8 @@ export function carryStockBlocks(prompt: string): boolean {
   const lower = prompt.toLowerCase();
   if (/\bply(?:wood)?\b|\bpvc\b/.test(lower) || HARDWOOD.test(lower)) return true;
   if (/\btriple\b/.test(lower) || /\b[124]\s*[x×]\s*\d+\s*[x×]\s*\d+/.test(lower)) return true;
+  // A typed W × D × H size ("18x16x18", "18 by 10 by 8", 20" x 10" x 8") keeps the release build at that size.
+  if (/\d[\d./]*\s*["″]?\s*(?:[x×]|by)\s*\d[\d./]*\s*["″]?\s*(?:[x×]|by)\s*\d/.test(lower)) return true;
   if (/\b(?:2|4)\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(lower)) return true;
   // "tall" as a stock word. "5 tall" is a height and stays on the tote.
   if (/\btall\b/.test(lower) && !/\d[\d./]*\s*(?:["″]|in(?:ch(?:es)?)?\s*)?tall\b/.test(lower)) return true;
@@ -413,8 +414,8 @@ function buildCarryTote(prompt: string, size?: { width: number; height: number; 
   const across = Math.max(4, wantD - 2 * t);
   const W = run + 2 * t;
   const D = across + 2 * t;
-  const plyId = "plywood-1-4-4x8";
-  const plyT = getCatalogItem(plyId)?.dims.thickness ?? 0.25;
+  const plyId = "plywood-1-2-4x8";
+  const plyT = 0.5;
   const hold = `Cut a 1" × 4" hand hold centred across it, 1 1/2" down from the top edge (drill two 1" holes and jigsaw between).`;
   const panels: Panel[] = [
     panel("side", "Left end", 0, 0, 0, t, wall, D, board.id, { cutNote: hold }),
@@ -432,7 +433,7 @@ function buildCarryTote(prompt: string, size?: { width: number; height: number; 
   );
   const name = `${title} ${inchFrac(W)}" × ${inchFrac(wall)}" × ${inchFrac(D)}"`;
   return project(prompt, name, panels, W, wall, D, [
-    `Glue and screw the sides between the ends, then screw the 1/4" plywood bottom in from the sides and ends. A hand hold in each end makes it a carry crate.`,
+    `Glue and screw the sides between the ends, then screw the 1/2" plywood bottom in from the sides and ends. A hand hold in each end makes it a carry crate.`,
   ], board.id);
 }
 
