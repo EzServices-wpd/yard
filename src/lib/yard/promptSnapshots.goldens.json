@@ -308,7 +308,7 @@
       "height": 24,
       "depth": 16
     },
-    "panels": 13,
+    "panels": 14,
     "instances": 0,
     "uniqueParts": [
       "Back",
@@ -318,6 +318,7 @@
       "Bay 2 shelf 2",
       "Bay divider 1",
       "Bottom",
+      "Center support 1",
       "Left door",
       "Left upright",
       "Right door",

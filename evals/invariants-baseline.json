@@ -97,10 +97,6 @@
    "class": "F1",
    "msg": "Desk top A spans 60\" (limit 33\")"
   },
-  "I7|TV console 70 wide 30 tall 16 deep": {
-   "class": "F1",
-   "msg": "Bottom spans 69\" (limit 33\")"
-  },
   "I7|coat rack with bench 48 wide": {
    "class": "F1",
    "msg": "Hat shelf spans 45\" (limit 33\")"
@@ -116,10 +112,6 @@
   "I7|corner bookshelf 60 wide 84 tall": {
    "class": "F1",
    "msg": "Triangle shelf 2 spans 59\" (limit 33\")"
-  },
-  "I7|kitchen island 60x36x36": {
-   "class": "F1",
-   "msg": "Bottom shelf spans 59\" (limit 33\")"
   },
   "I8|bunk bed 82 long 44 wide": {
    "class": "F2",

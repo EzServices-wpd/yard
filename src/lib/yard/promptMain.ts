@@ -32,7 +32,7 @@ import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { inchFrac, parseInch } from "./inchText";
-import { autoSupportSpans } from "./spanCheck";
+import { autoSupportSpans, supportClearSpans } from "./spanCheck";
 import { separateSpanSupports, withShelfSpanSupports } from "./shelfSpan";
 import { fixedProfile, isWholeStock, toPrimitive } from "./geometry";
 import { graphToInstances, rotationForDirection, type StructureGraph } from "./structureGraph";
@@ -768,7 +768,7 @@ function engineCore(...args: Parameters<typeof generateRaw>): YardProject {
   // A door style frames each front only after its slab size, reveal and position are final, so a style
   // switch changes the face construction and nothing else.
   const framedFronts = (p: YardProject) => (p.panels.length ? applySpokenFace(p, args[0], "fronts") : p);
-  const spanned = (p: YardProject) => hangingTalk(supportHangingBays(separateSpanSupports(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]))), args[0]);
+  const spanned = (p: YardProject) => hangingTalk(supportHangingBays(separateSpanSupports(supportClearSpans(autoSupportSpans(withShelfSpanSupports(p, args[0]), args[0]), args[0]))), args[0]);
   return settleOnFloor(hooksShowInModel(framedFronts(withPairedLeafReveals(withOutdoorNotes(spanned(stampStockThickness(pipeHouse(craftDisplay(stamped, args[0]), args[0]))))))));
 }
 
