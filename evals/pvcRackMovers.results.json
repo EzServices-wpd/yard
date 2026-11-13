@@ -10785,14 +10785,14 @@
       },
       "after": {
         "name": "Firewood unit 36\" × 30\" × 12\"",
-        "cost": 174.5,
+        "cost": 182.49,
         "pieces": 14,
         "hud": [
           36,
           12.75,
           30
         ],
-        "buy": "1×23/32\" BC exterior plywood 4×8=51.31; 1×1/4\" BC exterior plywood 4×8=31.82; 1×#8 x 1-1/4\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 2×Soft-close concealed cabinet hinges=17.98; 2×Cabinet bar pulls=25.96; 1×3/16\" shelf pins=6.49; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98",
+        "buy": "1×23/32\" BC exterior plywood 4×8=51.31; 1×1/4\" BC exterior plywood 4×8=31.82; 1×#8 x 1-1/4\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 2×Soft-close concealed cabinet hinges=17.98; 2×Cabinet bar pulls=25.96; 1×3/16\" shelf pins=6.49; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98; 1×Outdoor furniture glides (nylon, nail-in)=7.99",
         "titles": [
           "Confirm the footprint before the first cut",
           "Cut the 23/32\" BC exterior plywood 4×8 and 1/4\" plywood (backer)",
@@ -10802,7 +10802,7 @@
           "Set the center divider",
           "Pin 3 shelves (6 adjustable pieces) — 4 pins each",
           "Hang 2 doors — 2 concealed hinges each",
-          "Seal it for outdoors — finish and end grain",
+          "Seal it for outdoors — finish, end grain and feet",
           "Level it"
         ]
       },

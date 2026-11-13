@@ -36,7 +36,7 @@ import { measureKindFromProject } from "../src/lib/yard/space";
 import { buildFitted, typedHeightInches, WINE_ROW_CLEAR, WINE_ROW_MAX_CLEAR, WINE_OPEN_MIN } from "../src/lib/yard/fitted";
 import { guardFail, guardStart } from "./guard-known-failures";
 import { RAW_DECIMAL_INCH, RAW_LONG_DECIMAL, fractionizeInches, inchFrac, nestLabelLayout, nestPartDims, partCardDims } from "../src/lib/yard/inchText";
-import { DRAINAGE_NOTE, OUTDOOR_FIXED_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt } from "../src/lib/yard/outdoor";
+import { DRAINAGE_NOTE, OUTDOOR_FIXED_NOTE, OUTDOOR_NOTE, holdsSoilOrWater, isOutdoorPrompt, takesGlides } from "../src/lib/yard/outdoor";
 import { panelRenderLook, speciesOfStockLabel, SPECIES_TONE } from "../src/lib/yard/partStock";
 import { NAMED_LUMBER_SPECIES } from "../src/lib/yard/namedLumberSpecies";
 import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isAdirondackChair, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, isBedsideShelf, isBookBinBench, isBootTrayBench, isButcherCart, isDiningTable, isServingCart, isPlateRack, isMagazineRack, isSlotRack, slotRackTitle, isCoatCubbyWall, isDaybed, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isCoatHookBoard, isLadderShelfFurniture, ladderShelfTitleStem, isOpenCubbyWall, openCubbyWallTitle, isKitchenIsland, isLaundrySorter, isLeashRail, isPegRail, isFilingShelf, isPrinterStand, isLumberRack, isOpenKitchenShelving, isOutdoorSideTable, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isPrepTable, isSofaConsoleTable, isStandingShopTop, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isLiftOffLidChest, isMultiLidPrompt, spokenLidCount, isUtilityShelf, isWorkbench, wantsPrintHold, isFloorLampStand, floorLampTitleStem, isWallMediaLedge, isPictureLedge, pictureLedgeTitleStem } from "../src/lib/yard/family";
@@ -4585,8 +4585,10 @@ console.log("SOFT-TRUST OK", {
     const p = generateFromPrompt(q);
     const plan = buildPlan(p);
     const wall = p.assumptions?.installMode === "wall";
-    // Hung builds have no feet. Deck and patio furniture keeps the glide note, the same predicate as Buy.
-    if (!p.notes.includes(wall ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
+    // Same predicate as Buy. A planter has no furniture feet. A deck table, bench, or box does.
+    const glides = takesGlides(p);
+    if (!p.notes.includes(glides ? OUTDOOR_NOTE : OUTDOOR_FIXED_NOTE)) failOut("note missing", { q, notes: p.notes });
+    if (!glides && p.notes.some((n) => /\bglides?\b/i.test(n))) failOut("note names glides", { q, notes: p.notes });
     const glue = glueRows(plan.bom);
     if (glue.length !== 1 || glue[0].catalogId !== "outdoor-glue") failOut("exactly one glue — the exterior one", { q, glue: glue.map((b) => b.name) });
     const screws = woodScrewRows(plan.bom);
@@ -4594,15 +4596,16 @@ console.log("SOFT-TRUST OK", {
     if (screws.some((b) => b.catalogId !== "outdoor-screws")) failOut("indoor screws alongside the exterior screws", { q, screws: screws.map((b) => b.name) });
     if (plan.bom.some((b) => b.catalogId === "glue" || b.catalogId === "screws-8")) failOut("indoor glue/screw row survived", { q });
     if (!plan.bom.some((b) => b.catalogId === "outdoor-finish")) failOut("exterior finish missing", { q });
-    if (!wall && !plan.bom.some((b) => b.catalogId === "outdoor-glides")) failOut("glides missing", { q });
-    if (wall && plan.bom.some((b) => b.catalogId === "outdoor-glides")) failOut("glides on a hung build", { q });
+    if (glides && !plan.bom.some((b) => b.catalogId === "outdoor-glides")) failOut("glides missing", { q });
+    if (!glides && plan.bom.some((b) => b.catalogId === "outdoor-glides" || /\bglides?\b/i.test(b.name))) failOut("floor glides on a build with no furniture feet", { q, bom: plan.bom.map((b) => b.name) });
     for (const b of plan.bom.filter((r) => /^outdoor-/.test(r.catalogId ?? ""))) if (!b.offers?.length) failOut("outdoor Buy row without a store link", { q, row: b.name });
     const seal = plan.instructions.find((s) => /^Seal it for outdoors/.test(s.title));
     if (!seal) failOut("seal step missing", { q, steps: plan.instructions.map((s) => s.title) });
     if (!/end grain/i.test(seal!.description)) failOut("seal step does not name the end grain", { q });
-    if (!wall && !/(?:legs?|sides?)\s*\(the feet\)|\bfeet\b/.test(seal!.description)) failOut("seal step does not name the legs or feet", { q, d: seal!.description });
+    if (glides && !/(?:legs?|sides?)\s*\(the feet\)|\bfeet\b/.test(seal!.description)) failOut("seal step does not name the legs or feet", { q, d: seal!.description });
+    if (!glides && /\bglides?\b/i.test(`${seal!.title} ${seal!.description}`)) failOut("seal step names glides", { q, d: seal!.description });
+    if (!glides && !wall && !/bottom ends|ends of every board/.test(seal!.description)) failOut("seal step does not name the end grain that meets the ground", { q, d: seal!.description });
     if (wall && !/ends of every board/.test(seal!.description)) failOut("wall seal step does not name the board ends", { q });
-    if (wall && /\bglides?\b/i.test(`${seal!.title} ${seal!.description}`)) failOut("hung seal step names glides", { q });
     const last = plan.instructions[plan.instructions.length - 1];
     if (last !== seal && !/level|plumb|sit-test|check|hang|test/i.test(last.title)) failOut("seal step not just before the final check", { q, last: last.title });
     for (const s of plan.instructions) {

@@ -106,46 +106,27 @@ function fixedInGround(project: YardProject): boolean {
 }
 
 /**
- * Hung, mounted, posted, or set in the ground: it does not rest on a floor, a deck, or a patio.
- * The prompt is read here, not only installMode, because the outdoor note is written before withMount.
+ * Sits in soil, on a lawn, or on a stand of its own. A house, feeder, hive, sandbox, planter,
+ * arch, or goal has no furniture feet. Deck and patio furniture is not in this list.
  */
-function offTheFloor(project: YardProject): boolean {
-  return hungBuild(project) || mountedBuild(project) || postedBuild(project) || fixedInGround(project) || groundContactLegs(project);
-}
-
-/** A habitat that sits on its own walls (a birdhouse, a feeder, a hive), not deck or patio furniture. */
-const HABITAT = /\b(?:bird|bat|wren|bluebird|martin)\s*-?\s*(?:houses?|box(?:es)?)\b|\bbirdhouses?\b|\b(?:bird\s*)?feeders?\b|\bbeehives?\b|\bhive\s+box|\bnest(?:ing)?\s+box/i;
-
-function habitatBuild(project: YardProject): boolean {
-  return project.kind === "house" || HABITAT.test(`${project.typedPrompt ?? ""} ${project.prompt ?? ""} ${project.name}`);
-}
+const NO_FEET_WORDS = /\b(?:bird\s*house|birdhouses?|wren\s+house|martin\s+house|bat\s+house|(?:bird\s+)?feeders?|bee\s*hives?|hive\s+box|sand\s*box(?:es)?|garden\s+arch|arch(?:way)?|arbors?|obelisks?|trellis|goals?|water\s+wheel|coasters?|(?:porch\s+)?swing(?:\s+frame)?)\b/i;
 
 /**
- * The exterior package applies: an outdoor prompt, or a note that puts the build outside
- * ("Outdoors:", exterior screws, pressure-treated). A lemonade stand's note says exterior screws.
+ * Floor glides stay on furniture that stands on a finished floor, a deck, or a patio.
+ * Hung, mounted, posted, and in-ground builds never get them, and neither does an object
+ * with no furniture feet. The prompt is read here, not only installMode, because the outdoor
+ * note is written before withMount records a wall or post mount.
  */
-function exteriorPackage(project: YardProject): boolean {
-  const prompt = project.typedPrompt ?? project.prompt;
-  if (project.kind === "opening" || project.windowPkg) return false;
-  const notes = project.notes ?? [];
-  return isOutdoorPrompt(prompt) || outdoorBuild(project, prompt) || notes.some((n) => /^Outdoors:/.test(n) || /\b(?:exterior screws|pressure-treated)\b/i.test(n));
+function refusesFloorGlides(project: YardProject): boolean {
+  if (NO_FEET_WORDS.test(`${promptOf(project)} ${project.name ?? ""}`) || holdsSoilOrWater(promptOf(project), project.name)) return true;
+  if (hungBuild(project) || mountedBuild(project) || postedBuild(project)) return true;
+  if (fixedInGround(project) || groundContactLegs(project)) return true;
+  return false;
 }
 
-/** Indoor furniture or a closet carcase, freestanding, not a model or an opening. */
-function indoorFloorFurniture(project: YardProject): boolean {
-  if (project.historic || project.displayOnly || project.kind === "opening") return false;
-  if (project.assumptions?.installMode && project.assumptions.installMode !== "freestanding") return false;
-  return project.kind === "furniture" || project.kind === "closet";
-}
-
-/**
- * Floor glides go on furniture that stands on a finished floor, a deck, or a patio.
- * Hung, mounted, posted, and in-ground builds never get them, and neither does a habitat
- * that sits on its own walls (a birdhouse, a feeder, a hive).
- */
+/** One answer for "does Buy and the note include floor glides". */
 export function takesGlides(project: YardProject): boolean {
-  if (offTheFloor(project) || habitatBuild(project) || !footTalk(project).feet) return false;
-  return indoorFloorFurniture(project) || exteriorPackage(project);
+  return !refusesFloorGlides(project) && footTalk(project).feet;
 }
 
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */
@@ -192,7 +173,7 @@ function exteriorTalk(t: string | undefined, glides: boolean): string | undefine
   return t
     .replace(/(#\s?\d+\s*[×x]\s*[\d¼½¾\/ -]+"?)\s+(?:wood\s+)?screws/g, "$1 exterior screws")
     .replace(/\bwood glue\b/gi, "Titebond III")
-    .replace(/A felt pad under each foot saves the floor\.?\s*/g, glides ? "A glide under each foot keeps the end grain off wet ground. " : "");
+    .replace(/\s*A felt pad under each foot saves the floor\.?/g, (m) => (glides ? m.replace(/A felt pad under each foot saves the floor\.?/, "A glide under each foot keeps the end grain off wet ground.") : ""));
 }
 
 /** Pressure-treated #2 lumber, Home Depot shelf prices checked 2026-10-15 (search links where no single product page fits). */
