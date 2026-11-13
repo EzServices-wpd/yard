@@ -1,7 +1,6 @@
 /**
- * A fastening sentence may name only a part an earlier step, or this step, has placed.
- * Placement is read from the step's own title and its "One join: attach" line.
- * It does not use partsUsed, and it does not import the pass that moves the sentence.
+ * Finished step text. This file reads the plan a shopper would read.
+ * It does not import the clause mover, and it does not reuse that mover's part matcher.
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -9,179 +8,153 @@ import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { supportPromptSet } from "../../../scripts/support-order-prompts.ts";
-import type { AssemblyStep, YardProject } from "./types.ts";
+import type { AssemblyStep } from "./types.ts";
 
-const FROZEN =
-  /^(?:confirm|cut|read|lay out|do not|print|count|mark|level|seal|splice|prep|label|glue up|join sheet|drill|sand|finish|paint|before|shim)\b/i;
-const STOP = new Set([
-  "side", "edge", "face", "wall", "base", "part", "door", "rail", "post", "leg", "lid", "box", "step",
-  "end", "foot", "feet", "arm", "board", "panel", "frame", "apron", "riser", "tread",
-]);
-const SIDE = /^(?:left|right|front|back|center|centre)\s+/i;
-const THROUGH = /^(?:Screw through|Set the joints the stock uses, through|Tape or glue through)\b/i;
-const COUNTED = /(?:Drive|drives) \d+ × #8 |with \d+ × #8 |counted in another step|brings the build to \d+/;
+const MIXED =
+  /(?:Screw through|Tape or glue through|Set the joints the stock uses, through) the (?:[A-Z]{1,2} )?(?:top, bottom, and back into each divider|seat, shoe shelf, and back into each divider|seat, bottom shelf, and back into each divider|back and the nearest shelf or top)\./;
 
-const shoeRack = (tall: number, deep: number) => `shoe rack 36 wide ${tall} tall ${deep} deep`;
-const EXAMPLES = [
-  shoeRack(18, 12),
-  shoeRack(24, 16),
-  shoeRack(30, 16),
-  shoeRack(78, 16),
-  "dresser 54.375 wide 36 tall 18.75 deep",
-  "wardrobe 40x72",
-  "mudroom bench 48 wide 20 tall 16 deep",
-  "window seat",
-  "window seat 60 wide",
-];
-
-function family(name: string): string {
-  return name.replace(/\s+\d+$/, "").replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase();
+function planOf(prompt: string, materialId?: string) {
+  const project = generateFromPrompt(prompt, materialId);
+  return buildPlan(project).instructions;
 }
 
-function phrases(name: string): string[] {
-  const fam = family(name);
-  const out = new Set<string>();
-  const keep = (phrase: string) => {
-    const words = phrase.split(/\s+/).filter(Boolean);
-    if (!words.length || (words.length === 1 && STOP.has(words[0]))) return;
-    out.add(words.join(" "));
-  };
-  keep(fam);
-  const bare = fam.replace(SIDE, "");
-  if (bare !== fam) keep(bare);
-  return [...out];
+function step(steps: AssemblyStep[], title: RegExp): AssemblyStep {
+  const found = steps.find((s) => title.test(s.title));
+  assert.ok(found, title.source);
+  return found;
 }
 
-const escRe = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-function phraseRe(phrase: string): RegExp {
-  const words = phrase.split(/\s+/);
-  const body = words
-    .map((w, i) => (i === words.length - 1 ? (w === "shelf" ? "shel(?:f|ves)" : `${escRe(w)}s?`) : escRe(w)))
-    .join("\\s+");
-  return new RegExp(`\\b${body}\\b`, "i");
-}
-
-/** A face word ("back edge", "top of") is not the part. "through the back" is. */
-function mentions(sentence: string, phrase: string): boolean {
-  const re = new RegExp(phraseRe(phrase).source, "gi");
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(sentence))) {
-    const after = sentence.slice(m.index + m[0].length);
-    if (/^\s+(?:edges?|of|face|faces|ends?)\b/i.test(after)) continue;
-    const prior = sentence.slice(0, m.index);
-    if (/\bdrawer\s+$/i.test(prior)) continue;
-    return true;
-  }
-  return false;
-}
-
-function namesPart(sentence: string, name: string): boolean {
-  return phrases(name).some((p) => mentions(sentence, p));
-}
-
-/** The step that attaches this part: the title's object, a one-join subject, or "Lay the …". */
-function attaches(step: AssemblyStep, name: string): boolean {
-  if (FROZEN.test(step.title)) return false;
-  const hit = (text: string) => namesPart(text, name);
-  const join = step.description?.match(/One join: attach ([^.]+?) to /i);
-  if (join && hit(join[1])) return true;
-  const lay = step.description?.match(/^Lay the[^.]*/i);
-  if (lay && hit(lay[0])) return true;
-  const used = (step.partsUsed ?? []).some((u) => u.toLowerCase() === name.toLowerCase());
-  if (!used) return false;
-  const obj = step.title.split(/\s+to\b/i)[0];
-  if (hit(obj)) return true;
-  // "Glue 1 fixed shelf" places Shoe shelf; "Set the counter" places Vanity counter.
-  const last = family(name).split(/\s+/).pop() ?? "";
-  const word = last === "shelf" ? "shel(?:f|ves)" : `${escRe(last)}s?`;
-  return new RegExp(`\\b${word}\\b`, "i").test(obj);
-}
-
-function placedAt(steps: AssemblyStep[], names: string[]): Map<string, number> {
-  const at = new Map<string, number>();
-  for (const name of names) {
-    const i = steps.findIndex((s) => attaches(s, name));
-    if (i >= 0) at.set(name, i);
-  }
-  return at;
-}
-
-/**
- * Fastening sentences that name a part a later step attaches.
- * A one-join line and a "screw through …" line both fasten. A cut line and a "Where:" line do not.
- */
-function fasteningAhead(project: YardProject, steps: AssemblyStep[]): string[] {
-  const names = [...new Set(project.panels.filter((p) => !p.drawerId).map((p) => p.name))];
-  const at = placedAt(steps, names);
-  const out: string[] = [];
-  steps.forEach((step, i) => {
-    if (FROZEN.test(step.title)) return;
-    const sentences = (step.description ?? "").split(/(?<=[.!?])\s+/);
-    for (const sentence of sentences) {
-      const clauses = sentence.split(/;\s+/);
-      for (const clause of clauses) {
-        const join = /^One join: attach /i.test(clause.trim());
-        const fastens = THROUGH.test(clause.trim()) || join || (clauses.length > 1 && /\b(?:screw|screws|fasten)\b/i.test(clause));
-        // A "Drive N" line states this step's own count. A one-join line can still name a part too soon.
-        if (!fastens || (!join && COUNTED.test(clause))) continue;
-        for (const name of names) {
-          const j = at.get(name);
-          if (j == null || j <= i) continue;
-          if (namesPart(clause, name)) out.push(`${i + 1} ${step.title} fastens ${name} before step ${j + 1} ${steps[j].title}`);
-        }
-      }
-    }
+/** Drive N is still on this step, and no other sentence says where those screws go. */
+function bareDrive(description: string): boolean {
+  if (!/Drive \d+ × #8 /.test(description) || !/\bin this step\b/.test(description)) return false;
+  const sentences = description.split(/(?<=[.!?])\s+/);
+  return !sentences.some((s) => {
+    if (/Drive \d+ × #8 /.test(s)) return false;
+    if (/^Where:/.test(s) || /^That brings the build to /.test(s) || /^These screws are counted/.test(s)) return false;
+    return /\b(?:screw|screws|fasten|attach|nail|glue)\b/i.test(s);
   });
-  return out;
 }
 
-function planOf(prompt: string) {
-  const project = generateFromPrompt(prompt);
-  return { project, plan: buildPlan(project) };
-}
+describe("a Drive N step keeps the fastening sentence for the screws it counts", () => {
+  const kept: [string, RegExp, RegExp][] = [
+    ["shoe rack 36 wide", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
+    ["2x2 shoe rack", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
+    ["shoe rack 36 wide 24 high 12 deep", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
+    ["rolling shoe rack", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
+    ["pocket vanity", /Set remaining dividers/, /Screw through the back and the nearest shelf or top\./],
+    ["wardrobe 40x72", /Set remaining dividers/, /Screw through the A back and the nearest shelf or top\./],
+    ["dresser 54.375 wide 36 tall 18.75 deep", /Set remaining dividers/, /Screw through the back and the nearest shelf or top\./],
+    ["mudroom bench 48 wide 20 tall 16 deep", /Set cubby dividers/, /Screw through the C seat, shoe shelf, and back into each divider\./],
+    ["window seat", /Set cubby dividers/, /Screw through the D seat, bottom shelf, and back into each divider\./],
+  ];
 
-describe("a fastening sentence names only a part already placed", () => {
-  for (const prompt of EXAMPLES) {
-    it(prompt, () => {
-      const { project, plan } = planOf(prompt);
-      assert.deepEqual(fasteningAhead(project, plan.instructions), []);
+  for (const [prompt, title, sentence] of kept) {
+    it(`${prompt}: Drive N and its fastening sentence stay on the same step`, () => {
+      const steps = planOf(prompt);
+      const divider = steps.find((s) => title.test(s.title) && /Drive \d+ × #8 /.test(s.description ?? ""));
+      assert.ok(divider, prompt);
+      assert.match(divider.description ?? "", /Drive \d+ × #8 /, prompt);
+      assert.match(divider.description ?? "", /\bin this step\b/, prompt);
+      assert.match(divider.description ?? "", sentence, prompt);
+      assert.equal(bareDrive(divider.description ?? ""), false, prompt);
     });
   }
 
-  it("the step-order prompt set", { timeout: 180_000 }, () => {
+  it("no step keeps a bare Drive N while a later step holds the mixed fastening sentence", { timeout: 180_000 }, () => {
     const bad: string[] = [];
     for (const prompt of supportPromptSet()) {
-      let project;
+      let steps: AssemblyStep[];
       try {
-        project = generateFromPrompt(prompt);
+        steps = planOf(prompt);
       } catch {
         continue;
       }
-      const hits = fasteningAhead(project, buildPlan(project).instructions);
-      if (hits.length) bad.push(`${prompt} — ${hits[0]}`);
+      steps.forEach((later, i) => {
+        const text = later.description ?? "";
+        if (!MIXED.test(text)) return;
+        // The screws this sentence describes are counted on this step. A later back step
+        // says they are counted elsewhere and has no Drive N of its own.
+        if (/Drive \d+ × #8 /.test(text) && /\bin this step\b/.test(text)) return;
+        const orphan = steps.slice(0, i).find((s) => bareDrive(s.description ?? ""));
+        if (orphan) bad.push(`${prompt} — ${orphan.title} keeps Drive N, ${later.title} holds the sentence`);
+      });
     }
     assert.deepEqual(bad, []);
   });
 
-  it("a sentence moved back in front of the back fails", () => {
-    const { project, plan } = planOf(shoeRack(18, 12));
-    const steps = plan.instructions.map((s) => ({ ...s }));
-    const back = steps.findIndex((s) => /to the back of the box/.test(s.title));
-    const divider = steps.findIndex((s) => /dividers/.test(s.title));
-    assert.ok(back > divider);
-    const sentence = (steps[back].description ?? "").split(/(?<=[.!?])\s+/).find((s) => /Screw through\b/.test(s));
-    assert.ok(sentence, "the through-sentence now sits on the back step");
-    steps[back] = { ...steps[back], description: (steps[back].description ?? "").replace(sentence!, "").replace(/\s+/g, " ").trim() };
-    steps[divider] = { ...steps[divider], description: `${steps[divider].description} ${sentence}` };
-    const hits = fasteningAhead(project, steps);
-    assert.ok(hits.some((h) => /fastens Back before/.test(h)), hits.join("; "));
+  it("the thin linen top does not inherit the divider sentence", () => {
+    const steps = planOf("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep", "plywood-1-4-4x8");
+    const top = step(steps, /^Set the Top$/);
+    assert.match(top.description ?? "", /It is too thin for a screw/);
+    assert.doesNotMatch(top.description ?? "", /Screw through/);
+    const dividers = step(steps, /Set remaining dividers/);
+    assert.match(dividers.description ?? "", /Screw through the A back and the nearest shelf or top\./);
+  });
+});
+
+describe("the back names a shoe shelf only when that shelf is already placed", () => {
+  const beforeBack = [
+    undefined,
+    "lumber-1x12-8",
+    "lumber-2x4-8",
+    "plywood-3-4-4x8",
+    "plywood-1-2-4x8",
+    "pvc-1-sch40",
+    "pvc-1-2-sch40",
+    "pallet-board",
+  ];
+
+  for (const materialId of beforeBack) {
+    it(`rolling shoe rack${materialId ? ` ${materialId}` : ""}: shelf step before the back keeps the shelf on the back line`, () => {
+      const steps = planOf("rolling shoe rack", materialId);
+      const shelf = steps.findIndex((s) => /\bfixed shel/i.test(s.title));
+      const back = steps.findIndex((s) => /to the back of the box/.test(s.title));
+      assert.ok(shelf >= 0 && back > shelf, `shelf ${shelf} back ${back}`);
+      const join = (steps[back].description ?? "").match(/One join: attach[^.]*\./)?.[0] ?? "";
+      assert.match(join, /Shoe shelf/);
+    });
+  }
+
+  it("a shoe shelf placed after the back is not named on the back line", () => {
+    for (const prompt of ["shoe rack 36 wide", "2x2 shoe rack"]) {
+      const steps = planOf(prompt);
+      const shelf = steps.findIndex((s) => /\bfixed shel/i.test(s.title));
+      const back = steps.findIndex((s) => /to the back of the box/.test(s.title));
+      assert.ok(back >= 0 && shelf > back, `${prompt} shelf ${shelf} back ${back}`);
+      const join = (steps[back].description ?? "").match(/One join: attach[^.]*\./)?.[0] ?? "";
+      assert.doesNotMatch(join, /shoe shelf/i, prompt);
+      assert.match(steps[shelf].description ?? "", /through A Back into the shelf back edges/);
+    }
+  });
+});
+
+describe("a moved clause is a sentence on the step that counts its screws", () => {
+  it("the desktop clause keeps its capital on the desktop step", () => {
+    const steps = planOf("desk 60x30x29");
+    const knee = step(steps, /knee dividers/);
+    const desktop = step(steps, /Set the desktop/);
+    assert.match(knee.description ?? "", /screw through the bottom into it/);
+    assert.doesNotMatch(knee.description ?? "", /divider tops/);
+    assert.match(desktop.description ?? "", /Drive \d+ × #8 /);
+    assert.match(desktop.description ?? "", /The desktop screws down into the divider tops\./);
+    assert.equal((desktop.description ?? "").includes("the desktop screws down into the divider tops."), false);
+  });
+
+  it("the vanity counter sentence stands on the counter step", () => {
+    const steps = planOf("pocket vanity");
+    const knee = step(steps, /knee dividers/);
+    const counter = step(steps, /Set the counter/);
+    const sentence = "Screw through the bottom and the vanity counter into each divider.";
+    assert.equal((knee.description ?? "").includes(sentence), false);
+    assert.match(counter.description ?? "", /Drive \d+ × #8 /);
+    assert.ok((counter.description ?? "").endsWith(sentence), counter.description);
   });
 });
 
 describe("canaries keep their model, buy, price, cuts, and step text", () => {
   const pin = (prompt: string, cost: number, pieces: number, bom: number, steps: number, stepHash: string) => {
-    const { plan, project } = planOf(prompt);
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
     assert.equal(plan.totals.estCostUsd, cost, prompt);
     assert.equal(plan.totals.pieces, pieces, prompt);
     assert.equal(plan.bom.length, bom, prompt);
@@ -195,7 +168,8 @@ describe("canaries keep their model, buy, price, cuts, and step text", () => {
   };
 
   it("linen closet 31.5 × 78 × 16", () => {
-    const { project, plan } = planOf("linen closet 31.5 wide 78 tall 16 deep");
+    const project = generateFromPrompt("linen closet 31.5 wide 78 tall 16 deep");
+    const plan = buildPlan(project);
     assert.deepEqual([project.overall.width, project.overall.height, project.overall.depth], [31.5, 78, 16]);
     assert.equal(plan.totals.estCostUsd, 193.68);
     assert.equal(plan.totals.pieces, 11);
@@ -208,16 +182,18 @@ describe("canaries keep their model, buy, price, cuts, and step text", () => {
   it("Andersen 36x48, the popsicle Eiffel, pocket vanity, and the desk keep buy and cuts", () => {
     const andersen = pin("Andersen 36x48", 439.26, 14, 8, 10, "897052ca411715ec");
     const eiffel = pin("3 foot Eiffel Tower from popsicle sticks", 19.96, 784, 2, 10, "313e45c392b40b22");
-    const vanity = planOf("pocket vanity");
-    const desk = planOf("desk 60x30x29");
-    assert.equal(vanity.plan.totals.estCostUsd, 636.23);
-    assert.equal(vanity.plan.totals.pieces, 50);
-    assert.equal(vanity.plan.bom.length, 15);
-    assert.equal(vanity.plan.instructions.length, 17);
-    assert.equal(desk.plan.totals.estCostUsd, 381.97);
-    assert.equal(desk.plan.totals.pieces, 41);
-    assert.equal(desk.plan.bom.length, 8);
-    assert.equal(desk.plan.instructions.length, 12);
+    const vanity = generateFromPrompt("pocket vanity");
+    const vanityPlan = buildPlan(vanity);
+    const desk = generateFromPrompt("desk 60x30x29");
+    const deskPlan = buildPlan(desk);
+    assert.equal(vanityPlan.totals.estCostUsd, 636.23);
+    assert.equal(vanityPlan.totals.pieces, 50);
+    assert.equal(vanityPlan.bom.length, 15);
+    assert.equal(vanityPlan.instructions.length, 17);
+    assert.equal(deskPlan.totals.estCostUsd, 381.97);
+    assert.equal(deskPlan.totals.pieces, 41);
+    assert.equal(deskPlan.bom.length, 8);
+    assert.equal(deskPlan.instructions.length, 12);
     assert.deepEqual(andersen.overall.width, 46);
     assert.equal(eiffel.overall.height, 37.4);
   });

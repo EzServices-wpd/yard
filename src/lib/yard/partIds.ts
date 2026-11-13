@@ -81,7 +81,7 @@ function piecesWithIds(nest: NestResult | null, rows: CutLine[]): NestResult | n
   return { ...nest, sheets: nest.sheets.map((s) => ({ ...s, parts: s.parts.map(withIds) })) };
 }
 
-/** Adds partIds to every cut-list row and every sheet-layout piece. Steps are permuted first, then a fastening sentence that names a part still ahead moves onto the step that places it. */
+/** Adds partIds to every cut-list row and every sheet-layout piece. Steps are permuted first, then a fastening clause whose screws are all counted on a later step moves onto that step. */
 export function withPartIds(project: YardProject, plan: BuildPlan): BuildPlan {
   let instructions = orderStepsBySupport(project, plan.instructions);
   const named = fastenAfterPlacement(project, instructions);

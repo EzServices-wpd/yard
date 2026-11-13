@@ -1,10 +1,16 @@
 /**
- * A fastening sentence may name only a part an earlier step, or this step, has placed.
+ * A fastening clause moves onto a later step only when every screw that clause describes
+ * is counted on that later step.
  *
- * The thin back is attached after the dividers, and the divider sentence was written as if
- * the back were already on ("screw through the back into each divider"). That sentence moves,
- * unchanged, onto the step that attaches the part it names too soon. A count stays on the
- * step that stated it. Nothing new is written.
+ * Two clauses qualify. The knee-divider line "the desktop screws down into the divider tops"
+ * (or "the counter…") names only the top-into-divider screws, and those are inside the
+ * desktop or counter step's Drive N. "Screw through the bottom and the vanity counter into
+ * each divider." names one real joint, counter into divider, counted on the counter step.
+ *
+ * A mixed through-sentence also tells you to drive screws that this step still counts
+ * (top, bottom, seat, or shelf into the dividers, plus the back). Moving the whole sentence
+ * would strip that instruction off the Drive N that still counts those screws. Splitting it
+ * would be new wording, so the sentence stays where it was written.
  */
 import type { AssemblyStep, YardProject } from "./types";
 
@@ -17,6 +23,8 @@ const STOP = new Set([
 const SIDE = /^(?:left|right|front|back|center|centre)\s+/i;
 const THROUGH = /^(?:Screw through|Set the joints the stock uses, through|Tape or glue through)\b/i;
 const COUNTED = /(?:Drive|drives) \d+ × #8 |with \d+ × #8 |counted in another step|brings the build to \d+/;
+/** Counter into each divider is the only joint this sentence describes, and that joint is counted on the counter step. */
+const COUNTER_DIVIDERS = /^Screw through the bottom and the vanity counter into each divider\.$/;
 
 function family(name: string): string {
   return name.replace(/\s+\d+$/, "").replace(/\s*\([^)]*\)\s*$/, "").trim().toLowerCase();
@@ -141,7 +149,7 @@ export function fastenAfterPlacement(project: YardProject, steps: AssemblyStep[]
         if (rest) stays[i].push(rest);
         continue;
       }
-      if (!THROUGH.test(sentence.trim()) || COUNTED.test(sentence)) {
+      if (!THROUGH.test(sentence.trim()) || COUNTED.test(sentence) || !COUNTER_DIVIDERS.test(sentence.trim())) {
         stays[i].push(sentence);
         continue;
       }
