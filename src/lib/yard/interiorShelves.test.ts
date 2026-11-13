@@ -108,6 +108,23 @@ describe("storage, cabinet and shelving interiors", () => {
     assert.doesNotMatch(notes, /adjustable shelf/);
   });
 
+  it("a drawer carcase keeps its slides on the uprights", () => {
+    const p = generateFromPrompt("storage unit with 1 drawer");
+    const plan = buildPlan(p);
+    const hang = plan.instructions.find((s) => /slides/i.test(s.title));
+    assert.ok(hang, "drawer hang step");
+    assert.match(hang!.description ?? "", /uprights/);
+    assert.doesNotMatch(hang!.description ?? "", /dividers/);
+    assert.equal(p.panels.some((x) => /^Center divider\b/.test(x.name)), false);
+  });
+
+  it("quarter-inch stock grows no pin shelves", () => {
+    const p = generateFromPrompt("storage unit", "plywood-1-4-4x8");
+    const plan = buildPlan(p);
+    assert.equal(plan.instructions.some((s) => s.title.startsWith("Pin ")), false);
+    assert.equal(plan.bom.some((b) => /shelf pin/i.test(b.name)), false);
+  });
+
   it("a 3 inch cubby is still the wrong-size empty box", () => {
     const p = generateFromPrompt("storage cubby 3x3");
     assert.equal(levels(p), 0);

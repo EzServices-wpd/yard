@@ -120,14 +120,14 @@ const depthTypedIn = (prompt: string) =>
   /\d[\d.]*\s*(?:in|inch|inches|["″])?\s*(?:deep|depth)\b|\b(?:deep|depth)\b[^\d]{0,16}\d|\d[\d.]*\s*(?:in|inch|inches|["″])?\s*d(?![a-z])/i.test(prompt) ||
   /\d+[\d.]*\s*(?:x|by|×)\s*\d+[\d.]*\s*(?:x|by|×)\s*\d+/i.test(prompt);
 
-/** PVC, dowel, closet rod, and any stock thicker than 1 1/2" cannot carry a shelf someone sits a thing on. */
+/** Frame stock, stock thicker than 1 1/2", and sheet thinner than 1/2" cannot carry a pin shelf. */
 function interiorShelfStockBlocked(prompt: string, materialId?: string): boolean {
   const picked = materialId ? getCatalogItem(materialId) : undefined;
   const item = picked && !isWireStock(picked) ? picked : detectMaterial(prompt);
   if (!item || isWireStock(item)) return false;
   if (item.formFactor === "pipe" || item.formFactor === "dowel" || item.formFactor === "tube" || item.formFactor === "stick") return true;
   const thick = item.dims.thickness ?? item.dims.diameter ?? Math.min(item.dims.width ?? 0, item.dims.height ?? 0);
-  return thick > 1.5;
+  return thick > 1.5 || thick < 0.5;
 }
 
 export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, materialId?: string): YardProject {
@@ -2929,13 +2929,15 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
   // Storage, cabinet and shelving carcases ship an empty box when no family default
   // names a count (program storage's fallback is 0). A plain one whose opening can
   // hold a shelf gets that family's count, capped by shelvesThatFit so every gap
-  // stays at the clear-shelf limit. A purpose stand-in, a frame stock, and stock
-  // thicker than 1 1/2" stay empty. The fallback's storage-unit stand-in does too.
+  // stays at the clear-shelf limit. A purpose stand-in, a drawer carcase, frame
+  // stock, stock thicker than 1 1/2", and sheet thinner than 1/2" stay empty.
+  // A drawer carcase keeps its slides on the uprights. Thin sheet gets no pin step.
   if (
     shelves === 0 &&
     !countTyped &&
     typedCounts(prompt).shelves !== 0 &&
     !(drawersFillLower && !u.upperStart) &&
+    !panels.some((p) => p.type === "drawer") &&
     spec.program === "storage" &&
     !primitive &&
     !interiorShelfStockBlocked(prompt, materialId) &&
