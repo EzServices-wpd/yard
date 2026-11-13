@@ -100,9 +100,9 @@ describe("outdoor package (Critic item 7)", () => {
     const p = generateFromPrompt("cedar garden arbor");
     assert.ok(p.instances.filter((i) => i.role === "leg").every((i) => i.catalogId === "lumber-4x4-8"));
   });
-  it("floor glides are not bought for a cover or an outdoor table", () => {
+  it("glides on deck furniture with feet, not on a cover or a birdhouse", () => {
     assert.doesNotMatch(buy("sandbox cover"), /glides/);
-    assert.doesNotMatch(buy("picnic table"), /glides/);
     assert.doesNotMatch(buy("birdhouse"), /glides/);
+    assert.match(buy("picnic table"), /glides/);
   });
 });

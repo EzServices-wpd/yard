@@ -15,14 +15,14 @@ const all = (q: string) => {
   return { p, plan, text: [...(p.notes ?? []), ...plan.instructions.map((s) => `${s.title} ${s.description} ${s.tips ?? ""}`), ...plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`)].join("\n") };
 };
 
-test("glides: hung builds and standing outdoor builds have no glide on Buy or in the notes", () => {
+test("glides: hung builds have none; deck and patio furniture keeps them", () => {
   for (const q of ["hanging birdhouse", "wall mounted birdhouse", "outdoor wall planter box", "outdoor hanging shelf", "hanging planter", "wall mounted outdoor planter"]) {
     const { p, text } = all(q);
     assert.ok(hungBuild(p), q);
     assert.equal(takesGlides(p), false, q);
     assert.doesNotMatch(text, /\bglides?\b/i, q);
   }
-  for (const q of ["adirondack chair", "outdoor bench", "picnic table"]) assert.doesNotMatch(all(q).text, /\bglides?\b/i, q);
+  for (const q of ["adirondack chair", "outdoor bench", "picnic table"]) assert.match(all(q).text, /\bglides?\b/i, q);
 });
 
 test("I11 glides + I9 + I11 hold over the g1 sweep (whole class)", () => {

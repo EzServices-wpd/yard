@@ -1,7 +1,7 @@
 /**
- * Floor glides belong only on floor-standing indoor furniture that rests on a finished floor.
- * Hung, mounted, posted and outdoor builds never get them. The class fails on release
- * (a birdhouse, a mounted house, a house on a pole, a planter on a post, a picnic table all buy glides).
+ * Floor glides stay on furniture that stands on a finished floor, a deck, or a patio.
+ * Hung, mounted, posted, and in-ground builds never get them, and neither does a habitat
+ * that sits on its own walls. On release, a plain birdhouse, a mounted one, and one on a pole still buy glides.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -20,8 +20,10 @@ const CLASSES: { cls: string; prompts: string[] }[] = [
   { cls: "hung", prompts: ["hanging birdhouse", "hanging bird feeder", "outdoor hanging shelf", "hanging planter", "birdhouse hanging from a chain"] },
   { cls: "mounted", prompts: ["wall mounted birdhouse", "mounted birdhouse", "post-mounted birdhouse", "wall mounted outdoor planter", "fence mounted birdhouse"] },
   { cls: "posted", prompts: ["birdhouse on a post", "birdhouse on a pole", "planter on a post", "outdoor planter on a post", "planter on posts"] },
-  { cls: "outdoor", prompts: ["birdhouse", "wren house", "martin house", "bat house", "bird feeder", "barn birdhouse", "adirondack chair", "outdoor bench", "picnic table", "pine porch bench", "deck box", "garden bench"] },
+  { cls: "habitat", prompts: ["birdhouse", "wren house", "martin house", "bat house", "bird feeder", "barn birdhouse", "birdhouse cedar"] },
 ];
+
+const DECK = ["adirondack chair", "outdoor bench", "picnic table", "pine porch bench", "deck box", "garden bench", "teak outdoor side table", "lemonade stand"];
 
 test("floor glides: hung, mounted, posted and outdoor builds never buy or name them", () => {
   for (const { cls, prompts } of CLASSES) {
@@ -32,6 +34,15 @@ test("floor glides: hung, mounted, posted and outdoor builds never buy or name t
       assert.equal(plan.bom.some((b) => /\bglides?\b/i.test(b.name)), false, q);
       assert.doesNotMatch(text, /\bglides?\b/i, q);
     }
+  }
+});
+
+test("floor glides: deck and patio furniture that stands on its feet keeps them", () => {
+  for (const q of DECK) {
+    const { p, plan, text } = planOf(q);
+    assert.equal(takesGlides(p), true, q);
+    assert.ok(plan.bom.some((b) => /outdoor furniture glides/i.test(b.name)), q);
+    assert.match(text, /\bglides?\b/i, q);
   }
 });
 

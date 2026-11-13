@@ -16,16 +16,15 @@ test("I50: every two-stock stand buys each stock's own sheets, all exterior", ()
   for (const q of [...STANDS, "market stand", "snack stand 60 wide 80 tall 30 deep"]) assert.deepEqual(hits(q, ["I50", "C16"]), [], q);
 });
 
-test("I50: lemonade stand buys 15/32\" exterior x2 and 23/32\" exterior x1, $227.49", () => {
+test("I50: lemonade stand buys 15/32\" exterior x2 and 23/32\" exterior x1, $235.48", () => {
   const plan = buildPlan(generateFromPrompt("lemonade stand"));
   const sheets = plan.bom.filter((b) => /^plywood-/.test(b.catalogId ?? "")).map((b) => `${b.name} x${b.quantity}`);
   assert.deepEqual(sheets, ['15/32" BC exterior plywood 4×8 x2', '23/32" BC exterior plywood 4×8 x1']);
-  assert.equal(plan.bom.some((b) => /glide/i.test(b.name)), false);
-  assert.equal(plan.totals.estCostUsd, 227.49);
+  assert.equal(plan.totals.estCostUsd, 235.48);
 });
 
 test("I50: wide stands (124-192\" band) buy each stock's own sheet count, past 4 sheets of a stock (row 502)", () => {
-  for (const [q, half, three, usd] of [["lemonade stand 132 wide", 6, 2, 512.59], ["lemonade stand 144 wide", 8, 2, 598.15]] as const) {
+  for (const [q, half, three, usd] of [["lemonade stand 132 wide", 6, 2, 520.58], ["lemonade stand 144 wide", 8, 2, 606.14]] as const) {
     const plan = buildPlan(generateFromPrompt(q));
     const sheets = plan.bom.filter((b) => /^plywood-/.test(b.catalogId ?? "")).map((b) => `${b.name} x${b.quantity}`);
     assert.deepEqual(sheets, [`15/32" BC exterior plywood 4×8 x${half}`, `23/32" BC exterior plywood 4×8 x${three}`], q);
@@ -67,6 +66,6 @@ test("I50 fix stays inside the approved selling-stand scope", () => {
   // A stand whose 1/2" parts need a 4×10 (no 1/2" 4×10 in the catalog) keeps release's Buy, never a merged 3/4" row.
   const wide = rows("lemonade stand 108 wide");
   assert.deepEqual(wide.sheets, ['15/32" BC exterior plywood 4×8 x3', '3/4" Plywood 4×10 x3']);
-  assert.equal(wide.usd, 472.79);
+  assert.equal(wide.usd, 480.78);
   assert.ok(wide.notes.every((n) => (n.match(/From nest/g) ?? []).length <= 1), "one layout note per Buy row");
 });

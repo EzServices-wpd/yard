@@ -4585,9 +4585,8 @@ console.log("SOFT-TRUST OK", {
     const p = generateFromPrompt(q);
     const plan = buildPlan(p);
     const wall = p.assumptions?.installMode === "wall";
-    // Floor glides are indoor finished-floor hardware. An outdoor build, hung or standing, never names them.
-    if (!p.notes.includes(OUTDOOR_FIXED_NOTE)) failOut("note missing", { q, notes: p.notes });
-    if (p.notes.includes(OUTDOOR_NOTE) || p.notes.some((n) => /\bglides?\b/i.test(n))) failOut("note names glides", { q, notes: p.notes });
+    // Hung builds have no feet. Deck and patio furniture keeps the glide note, the same predicate as Buy.
+    if (!p.notes.includes(wall ? OUTDOOR_FIXED_NOTE : OUTDOOR_NOTE)) failOut("note missing", { q, notes: p.notes });
     const glue = glueRows(plan.bom);
     if (glue.length !== 1 || glue[0].catalogId !== "outdoor-glue") failOut("exactly one glue — the exterior one", { q, glue: glue.map((b) => b.name) });
     const screws = woodScrewRows(plan.bom);
@@ -4595,14 +4594,15 @@ console.log("SOFT-TRUST OK", {
     if (screws.some((b) => b.catalogId !== "outdoor-screws")) failOut("indoor screws alongside the exterior screws", { q, screws: screws.map((b) => b.name) });
     if (plan.bom.some((b) => b.catalogId === "glue" || b.catalogId === "screws-8")) failOut("indoor glue/screw row survived", { q });
     if (!plan.bom.some((b) => b.catalogId === "outdoor-finish")) failOut("exterior finish missing", { q });
-    if (plan.bom.some((b) => b.catalogId === "outdoor-glides" || /\bglides?\b/i.test(b.name))) failOut("floor glides on an outdoor build", { q, bom: plan.bom.map((b) => b.name) });
+    if (!wall && !plan.bom.some((b) => b.catalogId === "outdoor-glides")) failOut("glides missing", { q });
+    if (wall && plan.bom.some((b) => b.catalogId === "outdoor-glides")) failOut("glides on a hung build", { q });
     for (const b of plan.bom.filter((r) => /^outdoor-/.test(r.catalogId ?? ""))) if (!b.offers?.length) failOut("outdoor Buy row without a store link", { q, row: b.name });
     const seal = plan.instructions.find((s) => /^Seal it for outdoors/.test(s.title));
     if (!seal) failOut("seal step missing", { q, steps: plan.instructions.map((s) => s.title) });
     if (!/end grain/i.test(seal!.description)) failOut("seal step does not name the end grain", { q });
-    if (/\bglides?\b/i.test(`${seal!.title} ${seal!.description}`)) failOut("seal step names glides", { q, d: seal!.description });
-    if (!wall && !/bottom ends|ends of every board/.test(seal!.description)) failOut("seal step does not name the end grain that meets the ground", { q, d: seal!.description });
+    if (!wall && !/(?:legs?|sides?)\s*\(the feet\)|\bfeet\b/.test(seal!.description)) failOut("seal step does not name the legs or feet", { q, d: seal!.description });
     if (wall && !/ends of every board/.test(seal!.description)) failOut("wall seal step does not name the board ends", { q });
+    if (wall && /\bglides?\b/i.test(`${seal!.title} ${seal!.description}`)) failOut("hung seal step names glides", { q });
     const last = plan.instructions[plan.instructions.length - 1];
     if (last !== seal && !/level|plumb|sit-test|check|hang|test/i.test(last.title)) failOut("seal step not just before the final check", { q, last: last.title });
     for (const s of plan.instructions) {
@@ -4614,8 +4614,7 @@ console.log("SOFT-TRUST OK", {
   {
     const plan = buildPlan(generateFromPrompt("pine porch bench"));
     const seal = plan.instructions.find((s) => /^Seal it for outdoors/.test(s.title));
-    if (!seal || !/end grain/i.test(seal.description) || /\bglides?\b/i.test(`${seal.title} ${seal.description}`)) failOut("pine porch bench end grain not sealed, or glides named", seal?.description);
-    if (plan.bom.some((b) => /\bglides?\b/i.test(b.name))) failOut("pine porch bench bought floor glides", plan.bom.map((b) => b.name));
+    if (!seal || !/feet/i.test(seal.title) || !/glide into each/.test(seal.description)) failOut("pine porch bench feet not sealed and lifted", seal?.description);
   }
   // Soil or water: drainage holes + liner, indoors or out.
   for (const q of ["cedar patio planter box, 36 inches long", "cedar planter box"]) {

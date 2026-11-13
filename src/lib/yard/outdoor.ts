@@ -106,20 +106,29 @@ function fixedInGround(project: YardProject): boolean {
 }
 
 /**
- * Floor glides go only on floor-standing indoor furniture that rests on a finished floor.
- * Hung, mounted, posted and outdoor builds never get them: a birdhouse, a feeder, a wall shelf,
- * a planter on a post. The prompt is read here, not only installMode, because the outdoor note is
- * written before withMount records a wall or post mount.
+ * Hung, mounted, posted, or set in the ground: it does not rest on a floor, a deck, or a patio.
+ * The prompt is read here, not only installMode, because the outdoor note is written before withMount.
  */
-function refusesFloorGlides(project: YardProject): boolean {
+function offTheFloor(project: YardProject): boolean {
+  return hungBuild(project) || mountedBuild(project) || postedBuild(project) || fixedInGround(project) || groundContactLegs(project);
+}
+
+/** A habitat that sits on its own walls (a birdhouse, a feeder, a hive), not deck or patio furniture. */
+const HABITAT = /\b(?:bird|bat|wren|bluebird|martin)\s*-?\s*(?:houses?|box(?:es)?)\b|\bbirdhouses?\b|\b(?:bird\s*)?feeders?\b|\bbeehives?\b|\bhive\s+box|\bnest(?:ing)?\s+box/i;
+
+function habitatBuild(project: YardProject): boolean {
+  return project.kind === "house" || HABITAT.test(`${project.typedPrompt ?? ""} ${project.prompt ?? ""} ${project.name}`);
+}
+
+/**
+ * The exterior package applies: an outdoor prompt, or a note that puts the build outside
+ * ("Outdoors:", exterior screws, pressure-treated). A lemonade stand's note says exterior screws.
+ */
+function exteriorPackage(project: YardProject): boolean {
   const prompt = project.typedPrompt ?? project.prompt;
-  if (isOutdoorPrompt(prompt) || outdoorBuild(project, prompt)) return true;
-  // The exterior package also follows a note that puts the build outside (a recipe's "Outdoors:" line,
-  // pressure-treated stock, exterior screws), even when the prompt itself has no outdoor word.
-  if ((project.notes ?? []).some((n) => /^Outdoors:/.test(n) || /\b(?:exterior screws|pressure-treated)\b/i.test(n))) return true;
-  if (hungBuild(project) || mountedBuild(project) || postedBuild(project)) return true;
-  if (fixedInGround(project) || groundContactLegs(project)) return true;
-  return false;
+  if (project.kind === "opening" || project.windowPkg) return false;
+  const notes = project.notes ?? [];
+  return isOutdoorPrompt(prompt) || outdoorBuild(project, prompt) || notes.some((n) => /^Outdoors:/.test(n) || /\b(?:exterior screws|pressure-treated)\b/i.test(n));
 }
 
 /** Indoor furniture or a closet carcase, freestanding, not a model or an opening. */
@@ -129,9 +138,14 @@ function indoorFloorFurniture(project: YardProject): boolean {
   return project.kind === "furniture" || project.kind === "closet";
 }
 
-/** One answer for "does Buy and the note include floor glides". */
+/**
+ * Floor glides go on furniture that stands on a finished floor, a deck, or a patio.
+ * Hung, mounted, posted, and in-ground builds never get them, and neither does a habitat
+ * that sits on its own walls (a birdhouse, a feeder, a hive).
+ */
 export function takesGlides(project: YardProject): boolean {
-  return !refusesFloorGlides(project) && indoorFloorFurniture(project) && footTalk(project).feet;
+  if (offTheFloor(project) || habitatBuild(project) || !footTalk(project).feet) return false;
+  return indoorFloorFurniture(project) || exteriorPackage(project);
 }
 
 /** Notes on the project itself: the exterior package and the drainage rule, written once. */
