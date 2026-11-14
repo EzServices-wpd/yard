@@ -32,6 +32,7 @@ import { decorateBom } from "./listings";
 import { isSeatedPipeFrame, rigidSlipPipe } from "./pipeRackFrame";
 import { cutSummary } from "./steps";
 import type { BuildPlan, CatalogItem, Vec3, YardInstance, YardProject } from "./types";
+import { withSocketCuts } from "./socketTakeoff";
 import { namedStockDisplayName, stampWeekendCuts, weekendCutLines } from "./weekendStockHonesty";
 
 /** Same node test the rack census uses. */
@@ -430,7 +431,7 @@ export function splitOpenPipe(project: YardProject): YardInstance[] | null {
       });
     });
   }
-  const instances = [...next, ...rest];
+  const instances = withSocketCuts([...next, ...rest], item);
   if (!clean(instances, od)) return null;
   return instances;
 }

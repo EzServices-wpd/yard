@@ -24,9 +24,10 @@ test("a PVC ladder keeps the release legs and buys one tee per meeting", () => {
   const { plan, text } = textOf("pvc ladder 20x60");
   assert.match(text, /The 2 legs stand plumb, 60" tall/);
   assert.match(text, /Cut and mark the two rails — 2 legs/);
-  assert.match(text, /17 marked cuts \(5 × 18", 12 × 10"\)/);
-  assert.match(text, /12 B Leg 10 ×/);
-  assert.match(text, /5 A Rung 18 ×/);
+  assert.match(text, /17 marked cuts \(5 × 16 7\/8", 4 × 9 1\/2", 8 × 8 7\/8"\)/);
+  assert.match(text, /4 B Leg 9 1\/2 ×/);
+  assert.match(text, /8 C Leg 8 7\/8 ×/);
+  assert.match(text, /5 A Rung 16 7\/8 ×/);
   assert.doesNotMatch(text, /The 12 legs|The 14 legs|stand plumb, 10" tall|2 × 60"|2 A Leg 60/);
   assert.equal(text.match(/The fittings are 10 3\/4" PVC tees, the same fittings on the Buy list\./g)?.length, 1);
   const tees = plan.bom.find((b) => /PVC tee$/.test(b.name));
@@ -36,10 +37,10 @@ test("a PVC ladder keeps the release legs and buys one tee per meeting", () => {
   const pipe = plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40");
   const sticks = pipe?.notes?.match(/from (\d+) whole pipes?/);
   assert.equal(Number(sticks?.[1]), pipe?.quantity);
-  assert.match(pipe?.notes ?? "", /Cut to: 18", 10"/);
-  const legs = plan.cutList.find((c) => c.name === "Leg");
-  assert.equal(legs?.quantity, 12);
-  assert.equal(legs?.lengthIn, 10);
+  assert.match(pipe?.notes ?? "", /Cut to: 16 7\/8", 9 1\/2", 8 7\/8"/);
+  const legs = plan.cutList.filter((c) => c.name === "Leg");
+  assert.equal(legs.reduce((n, c) => n + c.quantity, 0), 12);
+  assert.deepEqual(legs.map((c) => c.lengthIn).sort((a, b) => b - a), [9.5, 8.875]);
   assert.equal(Math.round(plan.totals.estCostUsd * 100) / 100, 30.8);
 });
 
@@ -94,7 +95,7 @@ test("a square frame names the corners it already buys, and racks and canaries s
   const frame = textOf("pvc frame 24x36");
   assert.match(frame.text, /The 4 legs stand plumb, 36" tall/);
   assert.match(frame.text, /The fittings are 8 3\/4" PVC 3-way corners, the same fittings on the Buy list\./);
-  assert.equal(Math.round(frame.plan.totals.estCostUsd * 100) / 100, 49.51);
+  assert.equal(Math.round(frame.plan.totals.estCostUsd * 100) / 100, 43.75);
   const trellis = textOf("pvc trellis");
   assert.match(trellis.text, /The 2 legs stand plumb, 72" tall/);
   assert.match(trellis.text, /The 3 rails stand plumb, 72" tall/);
@@ -102,7 +103,7 @@ test("a square frame names the corners it already buys, and racks and canaries s
   const trellisPipe = trellis.plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40");
   const trellisSticks = trellisPipe?.notes?.match(/from (\d+) whole pipes?/);
   assert.equal(Number(trellisSticks?.[1]), trellisPipe?.quantity);
-  assert.match(trellisPipe?.notes ?? "", /Cut to: 6"/);
+  assert.match(trellisPipe?.notes ?? "", /Cut to: 5 1\/2", 4 7\/8"/);
   const stool60 = textOf("20x60 pvc step stool");
   const stoolPipe = stool60.plan.bom.find((b) => b.catalogId === "pvc-3-4-sch40");
   const stoolSticks = stoolPipe?.notes?.match(/from (\d+) whole pipes?/);
@@ -112,15 +113,15 @@ test("a square frame names the corners it already buys, and racks and canaries s
     assert.ok((cut?.description ?? "").includes(`${line.quantity} ${line.label} ${line.name} ${inchFrac(line.lengthIn)} ×`));
   }
   assert.equal(stoolPipe?.quantity, 4);
-  assert.match(stoolPipe?.notes ?? "", /Cut to: 60 1\/4", 60", 33", 27", 18", 6"/);
+  assert.match(stoolPipe?.notes ?? "", /Cut to: 59 3\/4", 59 1\/2", 31 7\/8", 26 1\/2", 16 7\/8", 4 7\/8"/);
   assert.doesNotMatch(stool60.text, /60 5\/16/);
-  assert.match(stool60.text, /12 marked cuts \(2 × 60 1\/4", 2 × 60", 2 × 33", 2 × 27", 3 × 18", 1 × 6"\)/);
+  assert.match(stool60.text, /12 marked cuts \(2 × 59 3\/4", 2 × 59 1\/2", 2 × 31 7\/8", 2 × 26 1\/2", 3 × 16 7\/8", 1 × 4 7\/8"\)/);
   assert.equal(Math.round(stool60.plan.totals.estCostUsd * 100) / 100, 53.63);
   const cross = trellis.plan.bom.find((b) => /PVC cross$/.test(b.name));
   assert.equal(cross?.catalogId, "pvc-cross");
   assert.notEqual(Math.round(((cross?.estimatedCost ?? 0) / (cross?.quantity ?? 1)) * 100) / 100, 1.18);
   const shoe = textOf("pvc shoe rack");
-  assert.equal(Math.round(shoe.plan.totals.estCostUsd * 100) / 100, 124.96);
+  assert.equal(Math.round(shoe.plan.totals.estCostUsd * 100) / 100, 119.2);
   assert.equal(shoe.text.includes("The fittings are"), false);
   const linen = textOf("linen closet 31.5 wide 78 tall 16 deep");
   assert.equal(Math.round(linen.plan.totals.estCostUsd * 100) / 100, 193.68);
