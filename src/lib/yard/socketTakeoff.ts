@@ -67,6 +67,9 @@ export function withSocketCuts(instances: readonly YardInstance[], item: Catalog
   if (!(takeoff > 0) || !item) return instances as YardInstance[];
   const radius = (item.dims.diameter ?? 1.05) / 2;
   const nodes = clusterJointNodes(instances.map((inst) => ({ from: inst.from, to: inst.to, radius })));
+  // Split X: the take-off is a socket. Only a frame whose every meeting is a square catalog fitting
+  // (no angled meeting, no straight butt of two pipes) has a socket at every fitting end.
+  if (!nodes.every((n) => n.dirs.length < 2 || squareFitting(n.dirs))) return instances as YardInstance[];
   let changed = false;
   const next = instances.map((inst) => {
     if (inst.catalogId !== item.id || inst.cutLength == null || !inst.from || !inst.to) return inst;
@@ -78,4 +81,19 @@ export function withSocketCuts(instances: readonly YardInstance[], item: Catalog
     return { ...inst, cutLength: cut };
   });
   return changed ? next : (instances as YardInstance[]);
+}
+
+/** Every pair of pipes in this meeting is square or straight through, and it is not two pipes butted end to end. */
+function squareFitting(dirs: Vec3[]): boolean {
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      const d = dirs[i].x * dirs[j].x + dirs[i].y * dirs[j].y + dirs[i].z * dirs[j].z;
+      if (!(Math.abs(d) < 0.08 || d < -0.95)) return false;
+    }
+  }
+  if (dirs.length === 2) {
+    const d = dirs[0].x * dirs[1].x + dirs[0].y * dirs[1].y + dirs[0].z * dirs[1].z;
+    if (d < -0.95) return false;
+  }
+  return true;
 }

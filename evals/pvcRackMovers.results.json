@@ -1,7 +1,7 @@
 {
   "release": "645a038664c94050467197a13ade2e8798933995",
   "prompts": 856,
-  "movers": 339,
+  "movers": 338,
   "rows": [
     {
       "prompt": "12 bottle wine rack",
@@ -32068,14 +32068,14 @@
       },
       "after": {
         "name": "Fence",
-        "cost": 590.48,
+        "cost": 630.8,
         "pieces": 763,
         "hud": [
           240,
           8,
           24.6
         ],
-        "buy": "54×3/4\" Schedule 40 PVC Pipe=311.04; 1×PVC solvent cement=7.48; 6×3/4\" PVC tee=7.08; 220×3/4\" PVC cross=259.6; 6×3/4\" PVC 90° elbow=5.28",
+        "buy": "61×3/4\" Schedule 40 PVC Pipe=351.36; 1×PVC solvent cement=7.48; 6×3/4\" PVC tee=7.08; 220×3/4\" PVC cross=259.6; 6×3/4\" PVC 90° elbow=5.28",
         "titles": [
           "Read this Fence before you cut",
           "Lay out the footprint on the bench",
