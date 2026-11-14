@@ -272,9 +272,9 @@ function minPitch(nodes: Node[]): number {
 }
 
 const CRITIC: { row: SweepPrompt; cost: number }[] = [
-  { row: { prompt: "pvc bike rack" }, cost: 107.73 },
-  { row: { prompt: "PVC shoe rack 36 wide 12 deep 30 tall" }, cost: 159.47 },
-  { row: { prompt: "pvc shoe racks rail" }, cost: 124.96 },
+  { row: { prompt: "pvc bike rack" }, cost: 101.97 },
+  { row: { prompt: "PVC shoe rack 36 wide 12 deep 30 tall" }, cost: 153.71 },
+  { row: { prompt: "pvc shoe racks rail" }, cost: 119.2 },
   { row: { prompt: "pvc dowel drying rack 12 wide" }, cost: 66.08 },
 ];
 

@@ -26,7 +26,8 @@ import { uniqueSteps } from "./uniqueSteps";
 import { decorateBom, estimateOffers } from "./listings";
 import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
-import { applyOpenPipeFrame, openSplitAgrees } from "./openPipeJoints";
+import { applyOpenPipeFrame, openPipeDeal, openSplitAgrees } from "./openPipeJoints";
+import { withSocketCuts } from "./socketTakeoff";
 import { isSeatedPipeFrame, withoutFalsePlacement } from "./pipeRackFrame";
 import { applyShopJoin, stockThickness, faceScrewInches, stepsUseFaceScrew } from "./shopJoin";
 import { spaceCutStep } from "./spaceCuts";
@@ -1700,6 +1701,13 @@ export function packWordsFromCart(bom: BuildPlan["bom"]): BuildPlan["bom"] {
 }
 
 function buildPlanBody(project: YardProject, shape: (p: YardProject, plan: BuildPlan) => BuildPlan = (_p, plan) => plan): BuildPlan {
+  // A split frame shortens its own segments later, and Step 1 is still told from these members.
+  // Every other slip build takes the socket allowance before Buy and the cut list are written.
+  if (!openPipeDeal(project)?.split) {
+    const stock = getCatalogItem(project.primaryMaterialId ?? "");
+    const seated = withSocketCuts(project.instances, stock);
+    if (seated !== project.instances) project = { ...project, instances: seated };
+  }
   // A lookup-fallback block is display-only: no cut list, Buy, price or steps, only a plain note.
   if (project.displayOnly) {
     return { feasibility: { status: "warnings", summary: `Yard couldn't learn this yet: the ${project.name.toLowerCase()} is shown as a rough block only.`, issues: [] }, cutList: [], bom: [], instructions: [], totals: { pieces: 0, estCostUsd: 0, packs: 0 }, generatedAt: new Date().toISOString(), sheetNest: null };
