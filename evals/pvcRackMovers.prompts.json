@@ -1806,6 +1806,22 @@
       "prompt": "pvc pipe shoe rack 36 wide 30 tall 12 deep"
     },
     {
+      "prompt": "shoe rack 36x18x12"
+    },
+    {
+      "prompt": "shoe rack 36x18x12",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "shoe rack 36x18x12 from pvc"
+    },
+    {
+      "prompt": "pvc shoe rack 36x18x12"
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36x18x12"
+    },
+    {
       "prompt": "shoe rack by the door"
     },
     {
