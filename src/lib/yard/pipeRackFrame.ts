@@ -7,6 +7,7 @@
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { binderKind, clusterJointNodes, highWay } from "./joints";
+import { withSocketCuts } from "./socketTakeoff";
 import { LISTINGS } from "./listings";
 import type { CatalogItem, Vec3, YardInstance } from "./types";
 
@@ -498,7 +499,7 @@ export function seatPipeRack(instances: YardInstance[], item: CatalogItem): Seat
   spans = joined.filter((s) => s.hi - s.lo >= FITTING_PITCH - 0.01);
   const why = faults(spans, od);
   if (why) return { ok: false, why: `${why} (${componentsOf(spans)} pieces)` };
-  return { ok: true, instances: toInstances(spans, stock) };
+  return { ok: true, instances: withSocketCuts(toInstances(spans, stock), item) };
 }
 
 /** Rigid 3/4" Schedule 40 PVC pipe whose catalog join is solvent slip. Straw, paper tube, and dowel are not. */

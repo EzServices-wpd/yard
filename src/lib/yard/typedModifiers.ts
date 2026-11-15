@@ -41,6 +41,8 @@ export function takesCasters(p: YardProject): boolean {
 
 /** Four locking swivel casters under the corners of the footprint; everything else rides 3" higher. */
 export function withCasters(p: YardProject, prompt: string): YardProject {
+  // Split S: a floor cleat from supportClearSpans would stand on nothing once the build rides on casters.
+  p = { ...p, panels: p.panels.filter((x) => !(x.type === "cleat" && /^Center support \d+$/.test(x.name))) };
   const minY = Math.min(...p.panels.map((x) => x.position.y));
   const feet = p.panels.filter((x) => x.position.y <= minY + 0.1 && x.materialId !== "hardware");
   const x0 = Math.min(...feet.map((x) => x.position.x)), x1 = Math.max(...feet.map((x) => x.position.x + x.size.width));

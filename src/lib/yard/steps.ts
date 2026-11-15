@@ -2940,7 +2940,7 @@ export function piecesOfStock(instances: YardInstance[], itemName: string) {
   return `${countWord(instances.length, "piece")}: ${bits.join(", ")}`;
 }
 
-function cutSummary(instances: YardInstance[], itemName: string) {
+export function cutSummary(instances: YardInstance[], itemName: string) {
   const marked = instances.filter((i) => i.cutLength);
   if (marked.length === 0) {
     return `${instances.length} full ${itemName}${instances.length === 1 ? "" : "s"}. Glue. Do not cut.`;
