@@ -4,6 +4,7 @@
  * canary reads these fields.
  */
 import { partLetters } from "./pdfDraw";
+import { applyFastenedPlacement } from "./fastenedAt";
 import { fastenAfterPlacement } from "./placedName";
 import { orderStepsBySupport } from "./supportOrder";
 import { cutListName } from "./shopPlural";
@@ -87,9 +88,11 @@ export function withPartIds(project: YardProject, plan: BuildPlan): BuildPlan {
   const named = fastenAfterPlacement(project, instructions);
   if (named !== instructions) instructions = named;
   if (instructions !== plan.instructions) plan = { ...plan, instructions };
-  if (!plan.cutList.length) return plan;
-  const ids = cutRowPartIds(project, plan.cutList);
-  const cutList = plan.cutList.map((c) => ({ ...c, partIds: ids.get(c) ?? [] }));
-  const sheetNest = plan.sheetNest ? { sheets: piecesWithIds(plan.sheetNest.sheets, cutList), backer: piecesWithIds(plan.sheetNest.backer, cutList) } : plan.sheetNest;
-  return { ...plan, cutList, ...(plan.sheetNest !== undefined ? { sheetNest } : {}) };
+  if (plan.cutList.length) {
+    const ids = cutRowPartIds(project, plan.cutList);
+    const cutList = plan.cutList.map((c) => ({ ...c, partIds: ids.get(c) ?? [] }));
+    const sheetNest = plan.sheetNest ? { sheets: piecesWithIds(plan.sheetNest.sheets, cutList), backer: piecesWithIds(plan.sheetNest.backer, cutList) } : plan.sheetNest;
+    plan = { ...plan, cutList, ...(plan.sheetNest !== undefined ? { sheetNest } : {}) };
+  }
+  return applyFastenedPlacement(project, plan);
 }

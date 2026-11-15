@@ -85,7 +85,7 @@ describe("span canaries stay the release build", () => {
       assert.equal(plan.instructions.length, 9, prompt);
       assert.equal(plan.totals.estCostUsd, 193.68, prompt);
       const hash = createHash("sha256").update(plan.instructions.map((s) => `${s.step}|${s.title}|${s.description}`).join("\n")).digest("hex").slice(0, 16);
-      assert.equal(hash, "2bb9e7d5e3d43112", prompt);
+      assert.equal(hash, "6de4416b65527f1c", prompt);
     }
   });
 
