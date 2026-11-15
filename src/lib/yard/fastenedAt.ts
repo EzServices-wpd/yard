@@ -6,7 +6,8 @@
  *
  * fastenedAt is the step that attaches the part: the earliest attach / set / lay /
  * glue / hang of that part, otherwise the listed step. Screw totals and the names
- * in rests-on, flush-with, under, through, and back-edge lines read fastenedAt.
+ * in "attach X to … with N" lines read fastenedAt. Placement talk (rests on, flush
+ * with, through) is left as placement.ts writes it.
  * This pass never inserts, deletes, or retitles a step.
  */
 import { placementIndex } from "./placeEveryPart";
@@ -190,7 +191,7 @@ function screwsBetween(joints: Joint[], as: Set<string>, bs: Set<string>): numbe
 function rewriteAttach(sentence: string, i: number, panels: Panel[], letters: Map<string, string>, at: Map<string, number>, joints: Joint[]): string | null {
   const m = sentence.match(/^(.*\battach\s+(?:the\s+)?(?:[A-Z]{1,2}\s+)?[A-Za-z][A-Za-z ]*?)\s+to\s+(?:the back edges of\s+)?(.+?)\s+with\s+(\d+)\s+×\s+(#8\s+×\s+[\d/ ]+"\s+screws)([\s\S]*)$/i);
   if (!m) return null;
-  if (/\bper\b/i.test(m[6])) return sentence;
+  if (/\bper\b/i.test(m[6]) || /back edges of/i.test(sentence)) return sentence;
   const keep = placedBy(at, i);
   const filtered = filterList(m[2], panels, letters, keep);
   if (!filtered.dropped) return sentence;
@@ -213,68 +214,6 @@ function rewriteAttach(sentence: string, i: number, panels: Panel[], letters: Ma
   return `${m[1].replace(/\s+$/, "")} ${bridge} ${filtered.text} with ${n} × ${m[4]}${rest}`;
 }
 
-const SPATIAL: RegExp[] = [
-  /\b((?:Its underside rests|Set it) on the top of )([^,.;]+)(,)/i,
-  /\b(flush with the [a-z ]+ of )([^.;]+)()/i,
-  /\b((?:Screw through|Set the joints the stock uses, through|Tape or glue through) )([^.;]+?)(?= into\b|\.|$)()/i,
-  /\b(from the inside face of )([^.;]+?)(?= and \d|\.|$)()/i,
-  /\b(from the front of )([^.;]+)()/i,
-];
-
-function laterIds(phrase: string, panels: Panel[], letters: Map<string, string>, at: Map<string, number>, i: number): string[] {
-  return panelsInPhrase(phrase, panels, letters)
-    .filter((p) => (at.get(p.id) ?? i) > i)
-    .map((p) => p.id);
-}
-
-/**
- * Drop part names that are attached later when the list still has a part that is
- * already on. A list that is entirely later comes back empty so the caller can
- * move or drop the sentence without leaving a broken "of" or "through".
- */
-function stillLater(text: string, i: number, panels: Panel[], letters: Map<string, string>, at: Map<string, number>): string[] {
-  const ids = new Set<string>();
-  const take = (phrase: string) => {
-    for (const item of listItems(phrase)) {
-      if (/\bor\b/i.test(item)) continue;
-      for (const id of laterIds(item, panels, letters, at, i)) ids.add(id);
-    }
-  };
-  for (const re of SPATIAL) {
-    const found = text.match(new RegExp(re.source, re.flags));
-    if (found) take(found[2]);
-  }
-  const under = text.match(/\bunder the front edge of (?:the\s+)?([^,.]{1,48}?)(?=\s+between|[.,]|$)/i);
-  if (under) take(under[1]);
-  const face = text.match(/\bfrom the inside face of ([^.;]+?)(?= and \d|\.|$)/i);
-  if (face) take(face[1]);
-  return [...ids];
-}
-
-function rewriteSpatial(sentence: string, i: number, panels: Panel[], letters: Map<string, string>, at: Map<string, number>): { text: string; changed: boolean; later: string[] } {
-  let text = sentence;
-  let changed = false;
-  let moveWhole = false;
-  const keep = placedBy(at, i);
-  for (const re of SPATIAL) {
-    const reG = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-    text = text.replace(reG, (full, head: string, list: string, tail: string = "") => {
-      const filtered = filterList(list, panels, letters, keep);
-      if (!filtered.dropped) return full;
-      if (!filtered.text) {
-        moveWhole = true;
-        return full;
-      }
-      changed = true;
-      return `${head}${filtered.text}${tail}`;
-    });
-  }
-  if (moveWhole) return { text: sentence, changed: false, later: stillLater(sentence, i, panels, letters, at) };
-  text = text.replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
-  text = text.replace(/\s*—\s*flush with the [a-z ]+ of\s*$/i, "").trim();
-  return { text, changed, later: stillLater(text, i, panels, letters, at) };
-}
-
 function isAccounting(sentence: string): boolean {
   return /In all, this step drives |Drive \d+ × #8 |These screws are counted in another step|brings the build to \d+/.test(sentence);
 }
@@ -286,7 +225,6 @@ function rewriteDescriptions(
   at: Map<string, number>,
   joints: Joint[],
 ): AssemblyStep[] {
-  const moves: { to: number; text: string; where: boolean }[] = [];
   const out = steps.map((step, i) => {
     if (FROZEN.test(step.title)) return step;
     const stay: string[] = [];
@@ -307,24 +245,10 @@ function rewriteDescriptions(
       const attached = rewriteAttach(original, i, panels, letters, at, joints);
       let sentence = attached ?? original;
       if (attached === "") {
-        if (/^Where:/.test(original)) pendingWhere = true;
+        stay.push(original);
         continue;
       }
-      const spatial = rewriteSpatial(sentence, i, panels, letters, at);
-      sentence = spatial.text;
-      if (!sentence) {
-        if (/^Where:/.test(original)) pendingWhere = true;
-        continue;
-      }
-      const where = /^Where:/.test(sentence) || /^Where:/.test(original);
-      if (spatial.later.length && !/\battach\b/i.test(sentence) && !/\bnext\b/i.test(sentence)) {
-        const to = Math.max(...spatial.later.map((id) => at.get(id)!));
-        if (to > i && to < steps.length) {
-          moves.push({ to, text: sentence.replace(/^Where:\s*/, ""), where });
-          if (where) pendingWhere = true;
-          continue;
-        }
-      }
+      // Placement talk (rests on, flush with, through) stays as placement.ts writes it; the honesty guard regenerates it.
       if (pendingWhere && !/^Where:/.test(sentence)) {
         sentence = `Where: ${sentence.replace(/^Where:\s*/, "")}`;
         pendingWhere = false;
@@ -334,14 +258,7 @@ function rewriteDescriptions(
     const description = joinSentences(stay);
     return description === (step.description ?? "") ? step : { ...step, description };
   });
-  for (const mv of moves) {
-    const dest = out[mv.to];
-    if ((dest.description ?? "").includes(mv.text)) continue;
-    const desc = (dest.description ?? "").trim();
-    const hasWhere = /\bWhere:/.test(desc);
-    const bit = mv.where && !hasWhere ? `Where: ${mv.text}` : mv.text;
-    out[mv.to] = { ...dest, description: desc ? `${desc} ${bit}` : bit };
-  }
+
   return out;
 }
 
@@ -431,6 +348,15 @@ function sameOrder(before: AssemblyStep[], after: AssemblyStep[]): boolean {
  * Rewrite screw totals and part names from parts attached at or before each step.
  * Titles and step sequence stay exactly as they were.
  */
+function understated(steps: AssemblyStep[]): boolean {
+  return steps.some((s) => {
+    const d = s.description ?? "";
+    const total = d.match(/(?:In all, this step drives|Drive) (\d+) × #8 /);
+    const said = [...d.matchAll(/with (\d+) × #8 /g)].reduce((n, m) => n + Number(m[1]), 0);
+    return !!total && said > 0 && Number(total[1]) < said;
+  });
+}
+
 export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): BuildPlan {
   if (!project.panels.length || plan.instructions.length < 2) return plan;
   const before = plan.instructions;
@@ -442,6 +368,8 @@ export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): B
   if (joints.length && joints.some((j) => j.screws > 0)) {
     const counted = recount(instructions, at, joints, plan);
     if (counted && stepScrewCount({ ...plan, instructions: counted }) === joints.reduce((n, j) => n + (j.screws > 0 ? j.screws : 0), 0)) {
+      // A step never states a total below the "with N" it already tells the reader to drive.
+      if (understated(counted) && !understated(before)) return plan;
       instructions = counted;
     }
   }
