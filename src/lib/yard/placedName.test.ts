@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { unplacedFastening } from "./placedName.ts";
@@ -11,63 +12,8 @@ import { buildPlan } from "./report.ts";
 import { supportPromptSet } from "../../../scripts/support-order-prompts.ts";
 import type { AssemblyStep } from "./types.ts";
 
-/** Prompts outside the reported shoe-rack, bench, window-seat, dresser, wardrobe, and vanity lines. */
-const NOVEL = [
-  "shoe cubby 30 wide",
-  "4 cubby shoe rack",
-  "shoe rack 24x16x12",
-  "shoe rack 48 wide 36 tall",
-  "cubby shelf 48x36",
-  "bookcase 30 wide 72 tall",
-  "bookcase 36x84x12",
-  "bookcase 24 wide with 5 shelves",
-  "low bookcase 48 wide",
-  "cube bookcase 30",
-  "kids bookcase 36 wide",
-  "bench 36 wide",
-  "bench 60 wide 18 tall",
-  "storage bench 42 wide",
-  "mudroom bench 36 wide",
-  "mudroom bench 60x18",
-  "window seat 48 wide",
-  "window seat 72x18x18",
-  "hall bench 40 wide",
-  "shoe bench 30 wide 18 tall",
-  "entry bench 48x18x16",
-  "cabinet 24x30x12",
-  "cabinet 36 wide 30 tall 18 deep",
-  "wall cabinet 30 wide 24 tall",
-  "base cabinet 24 wide",
-  "garage cabinet 36x72",
-  "bathroom cabinet 18 wide",
-  "tool cabinet 24x36",
-  "dresser 36 wide",
-  "dresser 48 wide 34 tall",
-  "dresser 60x36x18",
-  "6 drawer dresser 54 wide",
-  "nightstand dresser 24 wide",
-  "wardrobe 36 wide",
-  "wardrobe 48x80",
-  "wardrobe 30 wide 72 tall 24 deep",
-  "armoire 42 wide",
-  "closet cabinet 24x72",
-  "console 48 wide",
-  "console table 60x12x30",
-  "console 72 wide with shelves",
-  "entry console 36 wide",
-  "sofa console 50 wide",
-  "media console 60x18x24",
-  "tv console 48 wide",
-  "sideboard 54 wide",
-  "credenza 60x18x30",
-  "hutch 36 wide",
-  "linen cabinet 20 wide 72 tall",
-  "pantry cabinet 24x84",
-  "vanity 36 wide",
-  "bathroom vanity 30 wide",
-  "desk 48x24x30",
-  "shelf unit 36x48x12",
-];
+/** Prompts outside the reported lines. Kept out of src/ so the rack-prompt scanner does not adopt them. */
+const NOVEL = JSON.parse(readFileSync(new URL("../../../plan-baselines/novel-attach-prompts.json", import.meta.url), "utf8")) as string[];
 
 function planOf(prompt: string, materialId?: string) {
   const project = generateFromPrompt(prompt, materialId);
