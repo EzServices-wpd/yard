@@ -13,3 +13,16 @@ export function typedHeadNoun(prompt: string): string | null {
 
 /** Sentence case: "pirate ship" → "Pirate ship". */
 export const sentenceCase = (t: string) => t.trim().replace(/\s+/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+/**
+ * A form's own name is a different object when it does not contain the typed head noun ("Castle" for "fort",
+ * "Truck" for "fire engine"). The title is the words that matched the head, not that other name. A label that
+ * already says the head ("Train engine" for "steam train", "Castle" for "castle") stays.
+ */
+export function titleKeepsHead(prompt: string, label: string, matched: string | null): string {
+  const head = typedHeadNoun(prompt);
+  if (!head || !matched || label.toLowerCase().includes(head)) return label;
+  if (!matched.toLowerCase().includes(head)) return label;
+  const words = matched.replace(/^\s*(?:a|an|the|model)\s+/, "").trim();
+  return words ? sentenceCase(words) : label;
+}
