@@ -64,9 +64,13 @@ test("B1: a typed 1x board sets the walls, a typed height is kept, and other sto
   assert.equal(six.primaryMaterialId, "lumber-1x6-8");
   assert.equal(six.overall.height, 5.5);
   assert.ok(six.panels.filter((p) => /end|side/i.test(p.name)).every((p) => p.materialId === "lumber-1x6-8"));
-  const four = generateFromPrompt("1x4 garden tote");
+  // A typed 1×4 keeps release (its Buy would nest an unused 3/4" sheet); the tote's own 1×4 override still builds.
+  assert.equal(isCarryTote("1x4 garden tote"), false);
+  assert.equal(isCarryTote("toolbox from 1x4"), false);
+  const four = generateFromPrompt("toolbox", "lumber-1x4-8");
   assert.equal(four.primaryMaterialId, "lumber-1x4-8");
   assert.equal(four.overall.height, 3.5);
+  assert.ok(!buildPlan(four).bom.some((b) => b.catalogId === "plywood-3-4-4x8"));
   const tall = generateFromPrompt("toolbox 5 tall");
   assert.equal(tall.overall.height, 5);
   assert.equal(tall.primaryMaterialId, "lumber-1x8-8");
@@ -80,7 +84,7 @@ test("B1: a typed 1x board sets the walls, a typed height is kept, and other sto
   }
   const again = generateFromPrompt("toolbox", "lumber-1x8-8");
   assert.equal(again.primaryMaterialId, "lumber-1x8-8");
-  assert.equal(generateFromPrompt("1x4 toolbox", "lumber-1x8-8").primaryMaterialId, "lumber-1x4-8");
+  assert.equal(generateFromPrompt("1x6 toolbox", "lumber-1x8-8").primaryMaterialId, "lumber-1x6-8");
   assert.ok(again.panels.some((p) => /hand hold/i.test(p.cutNote ?? "")));
   assert.equal(carryBoard("toolbox", "lumber-1x6-8").id, "lumber-1x6-8");
   assert.notEqual(generateFromPrompt("toolbox", "plywood-3-4-4x8").primaryMaterialId, "lumber-1x8-8");

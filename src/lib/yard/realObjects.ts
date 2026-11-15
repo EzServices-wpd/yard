@@ -37,6 +37,8 @@ export function carryStockBlocks(prompt: string): boolean {
   // A typed W × D × H size ("18x16x18", "18 by 10 by 8", 20" x 10" x 8") keeps the release build at that size.
   if (/\d[\d./]*\s*["″]?\s*(?:[x×]|by)\s*\d[\d./]*\s*["″]?\s*(?:[x×]|by)\s*\d/.test(lower)) return true;
   if (/\b(?:2|4)\s*[x×]\s*(?:2|3|4|6|8|10|12)\b/.test(lower)) return true;
+  // A typed 1×4 is the named-species bind (lumber-1x4-8): its Buy nests a 3/4" sheet no tote part uses. Keep release.
+  if (/\b1\s*[x×]\s*4\b/.test(lower)) return true;
   // "tall" as a stock word. "5 tall" is a height and stays on the tote.
   if (/\btall\b/.test(lower) && !/\d[\d./]*\s*(?:["″]|in(?:ch(?:es)?)?\s*)?tall\b/.test(lower)) return true;
   return false;
