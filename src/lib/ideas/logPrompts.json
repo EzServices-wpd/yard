@@ -1,6 +1,6 @@
 {
   "soccer-goal": {"prompt": "soccer goal 48 wide 36 tall 12 deep from 3/4 PVC pipe", "dims": {"width": 48, "depth": 12, "height": 36}},
-  "toolbox": {"prompt": "1x6 toolbox 22 long", "dims": {"width": 22, "depth": 16, "height": 18}},
+  "toolbox": {"prompt": "1x6 toolbox 22 long", "dims": {"width": 22, "depth": 10, "height": 5.5}},
   "lighthouse": {"prompt": "2 foot lighthouse from popsicle sticks", "dims": {"width": 8, "depth": 8, "height": 24.5}},
   "brooklyn-bridge": {"prompt": "4 foot Brooklyn Bridge from popsicle sticks", "dims": {"width": 49, "depth": 5, "height": 4.3}},
   "windmill": {"prompt": "2 foot windmill from popsicle sticks", "dims": {"width": 17.8, "depth": 8.7, "height": 26.2}},

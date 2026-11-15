@@ -87,7 +87,6 @@ export function pickPrimitive(noun: string): Prim | null {
   if (/(box|chest|crate|bin|feeder|trough|bed|tub|crib|bassinet|cot|cradle)$/.test(head)) {
     if (/sandbox|bed$/.test(whole)) return prim("planter box", "open box", 48, 10, 48);
     if (/feeder|mailbox/.test(whole)) return prim("planter box", "open box", 10, 10, 8);
-    if (/toolbox/.test(whole)) return prim("planter box", "open box", 20, 8, 10);
     if (/crate/.test(head)) return prim("planter box", "open box", 14, 12, 14);
     if (BED_HEAD.test(head)) return prim("planter box", "open box", 48, 10, 48);
     return prim("planter box", "open box", 24, 16, 16);
