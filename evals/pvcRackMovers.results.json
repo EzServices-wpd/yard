@@ -1,6 +1,6 @@
 {
   "release": "645a038664c94050467197a13ade2e8798933995",
-  "prompts": 856,
+  "prompts": 861,
   "movers": 338,
   "rows": [
     {
@@ -21039,6 +21039,190 @@
       },
       "omitted": [
         "plumb-height",
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "shoe rack 36x18x12",
+      "material": null,
+      "before": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 76.86,
+        "pieces": 7,
+        "hud": [
+          36,
+          18,
+          12
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 1-1/4\" wood screws=8.47; 1×Wood glue=4.98"
+      },
+      "after": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 76.86,
+        "pieces": 7,
+        "hud": [
+          36,
+          18,
+          12
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 1×1/4\" plywood 4x8 (backer)=24.98; 1×#8 x 1-1/4\" wood screws=8.47; 1×Wood glue=4.98",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 3/4\" Plywood 4×8 and 1/4\" plywood (backer)",
+          "Stand the main box",
+          "Attach C Top to both D uprights",
+          "Set cubby dividers",
+          "Attach A Back to the back of the box",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "shoe rack 36x18x12",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99"
+      },
+      "after": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99",
+        "titles": [
+          "Read this Shoe rack 36\" × 12\" × 18\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 8 pieces",
+          "Run the rails — 55 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "shoe rack 36x18x12 from pvc",
+      "material": null,
+      "before": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99"
+      },
+      "after": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99",
+        "titles": [
+          "Read this Shoe rack 36\" × 12\" × 18\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 8 pieces",
+          "Run the rails — 55 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "pvc shoe rack 36x18x12",
+      "material": null,
+      "before": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99"
+      },
+      "after": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99",
+        "titles": [
+          "Read this Shoe rack 36\" × 12\" × 18\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 8 pieces",
+          "Run the rails — 55 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "pvc pipe shoe rack 36x18x12",
+      "material": null,
+      "before": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99"
+      },
+      "after": {
+        "name": "Shoe rack 36\" × 12\" × 18\"",
+        "cost": 128.28,
+        "pieces": 63,
+        "hud": [
+          35.45,
+          18.453,
+          11.6
+        ],
+        "buy": "4×3/4\" Schedule 40 PVC Pipe=23.04; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 10×3/4\" PVC tee=11.8; 10×3/4\" PVC cross=45.98; 8×3/4\" PVC 4-way tee=20.99",
+        "titles": [
+          "Read this Shoe rack 36\" × 12\" × 18\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 8 pieces",
+          "Run the rails — 55 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
         "set-rails"
       ]
     },
