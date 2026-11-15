@@ -64,20 +64,25 @@ test("B1: a typed 1x board sets the walls, a typed height is kept, and other sto
   assert.equal(six.primaryMaterialId, "lumber-1x6-8");
   assert.equal(six.overall.height, 5.5);
   assert.ok(six.panels.filter((p) => /end|side/i.test(p.name)).every((p) => p.materialId === "lumber-1x6-8"));
-  // A typed 1×4 keeps release (its Buy would nest an unused 3/4" sheet); the tote's own 1×4 override still builds.
-  assert.equal(isCarryTote("1x4 garden tote"), false);
-  assert.equal(isCarryTote("toolbox from 1x4"), false);
-  const four = generateFromPrompt("toolbox", "lumber-1x4-8");
+  // A typed 1×4 is the same tote: the bottom fits the 1×4 already bought, so Buy does not open a sheet.
+  assert.equal(isCarryTote("1x4 garden tote"), true);
+  assert.equal(isCarryTote("toolbox from 1x4"), true);
+  const four = generateFromPrompt("1x4 toolbox");
   assert.equal(four.primaryMaterialId, "lumber-1x4-8");
   assert.equal(four.overall.height, 3.5);
-  assert.ok(!buildPlan(four).bom.some((b) => b.catalogId === "plywood-3-4-4x8"));
+  assert.equal(four.kind, "custom");
+  assert.ok(four.panels.some((p) => /hand hold/i.test(p.cutNote ?? "")));
+  assert.ok(!buildPlan(four).bom.some((b) => /plywood/i.test(b.catalogId ?? "")));
+  const againFour = generateFromPrompt("toolbox", "lumber-1x4-8");
+  assert.equal(againFour.primaryMaterialId, "lumber-1x4-8");
+  assert.equal(againFour.overall.height, 3.5);
+  assert.ok(!buildPlan(againFour).bom.some((b) => b.catalogId === "plywood-3-4-4x8"));
   const tall = generateFromPrompt("toolbox 5 tall");
   assert.equal(tall.overall.height, 5);
   assert.equal(tall.primaryMaterialId, "lumber-1x8-8");
-  const plyT = 0.5;
   const bottom = generateFromPrompt("toolbox").panels.find((p) => p.name === "Bottom")!;
-  assert.equal(bottom.materialId, "plywood-1-2-4x8");
-  assert.equal(bottom.size.height, plyT);
+  assert.equal(bottom.materialId, "lumber-1x8-8");
+  assert.equal(bottom.size.height, 0.75);
   for (const q of ["toolbox from plywood", "pvc toolbox", "oak toolbox", "toolbox from 2x4", "1x6x8 toolbox", "toolbox 18x16x18", "toolbox 18 by 10 by 8", "caddy 12x8x6"]) {
     assert.equal(isCarryTote(q), false, q);
     assert.equal(carryStockBlocks(q), true, q);
