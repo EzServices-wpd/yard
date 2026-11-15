@@ -220,11 +220,13 @@ function frontOf(ctx: Ctx, ids: string[]): number | null {
 
 // ───────────────────────── per-role talk ─────────────────────────
 
-function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: AssemblyStep, out: StepPlacement) {
+function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, named: Set<string>, step: AssemblyStep, out: StepPlacement) {
   const text = `${step.title} ${step.description}`.toLowerCase();
   const first = group[0];
   const sups = [...new Set(group.flatMap((p) => supportsOf(ctx, p)))];
-  const supTalk = groupTalk(ctx, sups);
+  // Name a support only once a step has attached it. The height is still measured from the real supports.
+  const saidSups = sups.filter((id) => named.has(id));
+  const supTalk = groupTalk(ctx, saidSups);
   const tops = group.map((p) => ctx.box.get(p.id)!.max.y);
   const supTop0 = sups.length ? Math.max(...sups.map((id) => ctx.box.get(id)!.max.y)) : null;
   const flushTop = supTop0 != null && tops.every((t) => Math.abs(t - supTop0) < EPS);
@@ -234,7 +236,7 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
   const restsOn = ctx.panels.filter((q) => {
     if (group.some((g) => g.id === q.id) || placeRole(q) === "door" || placeRole(q) === "drawer" || placeRole(q) === "front") return false;
     const c = ctx.box.get(q.id)!;
-    return Math.abs(c.max.y - b1.min.y) < EPS && ov(b1.min.x, b1.max.x, c.min.x, c.max.x) > EPS && ov(b1.min.z, b1.max.z, c.min.z, c.max.z) > EPS && placeRole(q) !== "horizontal";
+    return named.has(q.id) && Math.abs(c.max.y - b1.min.y) < EPS && ov(b1.min.x, b1.max.x, c.min.x, c.max.x) > EPS && ov(b1.min.z, b1.max.z, c.min.z, c.max.z) > EPS && placeRole(q) !== "horizontal";
   });
   const onVerticals = restsOn.some((q) => isVertical(q));
   const ref = flushTop || onVerticals ? null : referenceUnder(ctx, first, placed, false);
@@ -258,8 +260,8 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
     const who = group.length === 1 ? nameOf(ctx, first) : `${countWord(group.length)} ${L ? `${L} ` : ""}${plural(fam)}`;
     const topWord = group.length === 1 ? `Top of ${who} sits` : `Tops of ${who} sit`;
     let s = `${topWord} ${f(t - ry)} up from ${refTalk(ctx, ref)}${floorTalk(t)}`;
-    if (supTop != null && Math.abs(supTop - t) < EPS) s += ` — flush with the top ends of ${supTalk}`;
-    else if (supBottom != null && Math.abs(ctx.box.get(first.id)!.min.y - supBottom) < EPS && !ref) s += ` — flush with the bottom ends of ${supTalk}`;
+    if (saidSups.length && supTop != null && Math.abs(supTop - t) < EPS) s += ` — flush with the top ends of ${supTalk}`;
+    else if (saidSups.length && supBottom != null && Math.abs(ctx.box.get(first.id)!.min.y - supBottom) < EPS && !ref) s += ` — flush with the bottom ends of ${supTalk}`;
     // Wall-hung on brackets/cleats: the wall height is the maker's call; the brackets locate it.
     if (!wallRest) out.sentences.push(`${s}.`);
     const underside = ctx.box.get(first.id)!.min.y - ry;
@@ -401,10 +403,11 @@ function isOuter(ctx: Ctx, q: Panel) {
   return Math.abs(c.min.x - minX) < 0.2 || Math.abs(c.max.x - maxX) < 0.2;
 }
 
-function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
+function railTalk(ctx: Ctx, group: Panel[], named: Set<string>, out: StepPlacement) {
   const first = group[0];
   const sups = [...new Set(group.flatMap((p) => railSupports(ctx, p)))];
-  const supTalk = groupTalk(ctx, sups);
+  const saidSups = sups.filter((id) => named.has(id));
+  const supTalk = groupTalk(ctx, saidSups);
   const ref: Panel | null = null;
   const ry = refY(ctx, ref);
   const tops = group.map((p) => ctx.box.get(p.id)!.max.y);
@@ -420,9 +423,9 @@ function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
   if (uniq.length === 1) {
     const t = uniq[0];
     let s = `${group.length === 1 ? "Top edge of" : "Top edges of"} ${who} ${group.length === 1 ? "sits" : "sit"} ${f(t - ry)} up from ${refTalk(ctx, ref)}`;
-    if (supTop != null && evenTops && Math.abs(supTop - t) < EPS) s += ` — flush with the tops of ${supTalk}`;
+    if (saidSups.length && supTop != null && evenTops && Math.abs(supTop - t) < EPS) s += ` — flush with the tops of ${supTalk}`;
     out.sentences.push(`${s}.`);
-    if (supTop != null && evenTops && supTop - t > EPS && supTop - t < t - ry) out.sentences.push(`Mark ${f(supTop - t)} down from the top of ${supTalk} (or ${f(t - ry)} up from ${refTalk(ctx, ref)}) and line the top edge up with the marks.`);
+    if (saidSups.length && supTop != null && evenTops && supTop - t > EPS && supTop - t < t - ry) out.sentences.push(`Mark ${f(supTop - t)} down from the top of ${supTalk} (or ${f(t - ry)} up from ${refTalk(ctx, ref)}) and line the top edge up with the marks.`);
   } else {
     out.sentences.push(`Top edges of the ${L ? `${L} ` : ""}${plural(fam)} sit ${listTalk(uniq.map((t) => f(t - ry)))} up from ${refTalk(ctx, ref)}.`);
     const gaps = uniq.slice(1).map((t, i) => t - uniq[i]);
@@ -431,7 +434,7 @@ function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
       out.measures.push({ kind: "spacing", ids: group.map((p) => p.id), value: gaps[0] });
     }
     // Parts that slide free on a rod (beads) have no fixed heights to mark.
-    if (sups.length && !group.every((p) => p.turns)) out.sentences.push(`Mark every height on ${supTalk} before you fix any ${fam}.`);
+    if (saidSups.length && !group.every((p) => p.turns)) out.sentences.push(`Mark every height on ${supTalk} before you fix any ${fam}.`);
   }
   // Inset from the outside faces of the supports (legs) or the unit front.
   if (sups.length && !first.yaw) {
@@ -447,7 +450,9 @@ function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
       const midZ = unitCenter(ctx).z;
       const side = legs || !alongX ? "outside" : (bb.min.z + bb.max.z) / 2 >= midZ ? "front" : "back";
       const faceWord = side === "outside" ? "Outside face" : side === "front" ? "Front face" : "Back face";
-      if (Math.abs(g) < EPS) out.sentences.push(`${faceWord} flush with the ${side} of ${supTalk}.`);
+      if (!saidSups.length) {
+        /* a support that is not attached yet is not named */
+      } else if (Math.abs(g) < EPS) out.sentences.push(`${faceWord} flush with the ${side} of ${supTalk}.`);
       else if (g > 0) out.sentences.push(`${faceWord} set ${side === "outside" ? "in" : "back"} ${f(g)} from the ${side} of ${supTalk}.`);
       else out.sentences.push(`${faceWord} stands ${f(-g)} proud of the ${side} of ${supTalk}.`);
     }
@@ -862,8 +867,10 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       }
       return [...g.values()];
     };
-    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out);
-    for (const g of groups("rail")) railTalk(ctx, g, out);
+    const named = new Set(placed);
+    for (const id of st.fresh) named.add(id);
+    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, named, s, out);
+    for (const g of groups("rail")) railTalk(ctx, g, named, out);
     for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out);
     for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out);
     const brackets = pos.filter((q) => roles.get(q.id) === "bracket");
