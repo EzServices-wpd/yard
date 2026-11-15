@@ -13,6 +13,7 @@ import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
 import { ANATOMY_NOTE } from "./classAnatomy";
 import { panelWorldCorners } from "./geometry";
+import { fastenedAt } from "./fastenedAt";
 import { partLetters } from "./pdfDraw";
 import { frac } from "./pdfKit";
 import { cutListName, shopPlural } from "./shopPlural";
@@ -450,11 +451,9 @@ function railTalk(ctx: Ctx, group: Panel[], named: Set<string>, out: StepPlaceme
       const midZ = unitCenter(ctx).z;
       const side = legs || !alongX ? "outside" : (bb.min.z + bb.max.z) / 2 >= midZ ? "front" : "back";
       const faceWord = side === "outside" ? "Outside face" : side === "front" ? "Front face" : "Back face";
-      if (!saidSups.length) {
-        /* a support that is not attached yet is not named */
-      } else if (Math.abs(g) < EPS) out.sentences.push(`${faceWord} flush with the ${side} of ${supTalk}.`);
-      else if (g > 0) out.sentences.push(`${faceWord} set ${side === "outside" ? "in" : "back"} ${f(g)} from the ${side} of ${supTalk}.`);
-      else out.sentences.push(`${faceWord} stands ${f(-g)} proud of the ${side} of ${supTalk}.`);
+      if (saidSups.length && Math.abs(g) < EPS) out.sentences.push(`${faceWord} flush with the ${side} of ${supTalk}.`);
+      else if (saidSups.length && g > 0) out.sentences.push(`${faceWord} set ${side === "outside" ? "in" : "back"} ${f(g)} from the ${side} of ${supTalk}.`);
+      else if (saidSups.length) out.sentences.push(`${faceWord} stands ${f(-g)} proud of the ${side} of ${supTalk}.`);
     }
   }
   const b0 = ctx.box.get(first.id)!;
@@ -845,6 +844,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const wall = project.assumptions?.installMode === "wall";
   const ctx: Ctx = { project, panels, box, letters, letterCount, floor: !wall && Math.abs(minY) < 0.1, unitBottom: minY };
   const sp = planStepParts(project, steps, letters);
+  const attached = fastenedAt(project, steps, cutList);
   const placed = new Set<string>();
   const byId = new Map(panels.map((p) => [p.id, p]));
   const chain = rotorChain(panels);
@@ -867,8 +867,9 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       }
       return [...g.values()];
     };
-    const named = new Set(placed);
-    for (const id of st.fresh) named.add(id);
+    // A support is named only once the step that attaches it has been reached.
+    const named = new Set<string>();
+    for (const [id, step] of attached) if (step <= i) named.add(id);
     for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, named, s, out);
     for (const g of groups("rail")) railTalk(ctx, g, named, out);
     for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out);

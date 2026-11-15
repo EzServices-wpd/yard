@@ -16,6 +16,8 @@ function built(prompt: string, material?: string) {
   return { project, plan };
 }
 
+const shoeRack = `shoe rack 36x18x12`;
+
 function buyScrews(plan: ReturnType<typeof buildPlan>): number {
   const line = plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""));
   return Number(line?.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
@@ -23,7 +25,7 @@ function buyScrews(plan: ReturnType<typeof buildPlan>): number {
 
 describe("fastened placement does not reorder steps", () => {
   const titles: [string, string[]?][] = [
-    ["shoe rack 36x18x12", [
+    [shoeRack, [
       "Confirm the footprint before the first cut",
       "Cut the 3/4\" Plywood 4×8 and 1/4\" plywood (backer)",
       "Stand the main box",
@@ -74,7 +76,7 @@ describe("fastened placement does not reorder steps", () => {
 
 describe("a part counts as placed when it is attached, not when it is first listed", () => {
   it("the thin back is listed on Stand the main box and attached on Attach A Back", () => {
-    const { project, plan } = built("shoe rack 36x18x12");
+    const { project, plan } = built(shoeRack);
     const back = project.panels.find((p) => p.name === "Back");
     assert.ok(back);
     const listed = placementIndex(project, plan.instructions).get(back.id);
@@ -85,7 +87,7 @@ describe("a part counts as placed when it is attached, not when it is first list
   });
 
   it("shoe-rack divider screws do not include the back, and the back step carries those screws", () => {
-    const { plan } = built("shoe rack 36x18x12");
+    const { plan } = built(shoeRack);
     const divider = plan.instructions.find((s) => s.title === "Set cubby dividers");
     const back = plan.instructions.find((s) => /to the back of the box/.test(s.title));
     const top = plan.instructions.find((s) => s.title === "Attach C Top to both D uprights");

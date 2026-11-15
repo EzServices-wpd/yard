@@ -9,7 +9,6 @@
  * in rests-on, flush-with, under, through, and back-edge lines read fastenedAt.
  * This pass never inserts, deletes, or retitles a step.
  */
-import { stepPlacements } from "./placement";
 import { placementIndex } from "./placeEveryPart";
 import { partLetters } from "./pdfDraw";
 import { cutListName } from "./shopPlural";
@@ -446,15 +445,6 @@ export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): B
       instructions = counted;
     }
   }
-  // Placement talk is regenerated from the finished order. A sentence it still emits has to stay on that step.
-  const pls = stepPlacements(project, instructions, plan.cutList, plan.partsKind === "whole");
-  instructions = instructions.map((s, i) => {
-    const missing = pls[i].sentences.filter((t) => !(s.description ?? "").includes(t));
-    if (!missing.length) return s;
-    const hasWhere = /\bWhere: /.test(s.description ?? "");
-    const extra = missing.map((t, k) => (!hasWhere && k === 0 ? `Where: ${t}` : t)).join(" ");
-    return { ...s, description: `${(s.description ?? "").trim()} ${extra}`.trim() };
-  });
   if (!sameOrder(before, instructions)) {
     throw new Error("fastened placement changed step order");
   }
