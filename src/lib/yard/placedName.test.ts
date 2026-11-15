@@ -1,17 +1,73 @@
 /**
- * Finished step text. This file reads the plan a shopper would read.
- * It does not import the clause mover, and it does not reuse that mover's part matcher.
+ * Finished step text. The shopper-facing assertions match the words on the plan.
+ * The corpus check calls the ordering invariant on that same finished plan.
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
+import { unplacedFastening } from "./placedName.ts";
 import { buildPlan } from "./report.ts";
 import { supportPromptSet } from "../../../scripts/support-order-prompts.ts";
 import type { AssemblyStep } from "./types.ts";
 
-const MIXED =
-  /(?:Screw through|Tape or glue through|Set the joints the stock uses, through) the (?:[A-Z]{1,2} )?(?:top, bottom, and back into each divider|seat, shoe shelf, and back into each divider|seat, bottom shelf, and back into each divider|back and the nearest shelf or top)\./;
+/** Prompts outside the reported shoe-rack, bench, window-seat, dresser, wardrobe, and vanity lines. */
+const NOVEL = [
+  "shoe cubby 30 wide",
+  "4 cubby shoe rack",
+  "shoe rack 24x16x12",
+  "shoe rack 48 wide 36 tall",
+  "cubby shelf 48x36",
+  "bookcase 30 wide 72 tall",
+  "bookcase 36x84x12",
+  "bookcase 24 wide with 5 shelves",
+  "low bookcase 48 wide",
+  "cube bookcase 30",
+  "kids bookcase 36 wide",
+  "bench 36 wide",
+  "bench 60 wide 18 tall",
+  "storage bench 42 wide",
+  "mudroom bench 36 wide",
+  "mudroom bench 60x18",
+  "window seat 48 wide",
+  "window seat 72x18x18",
+  "hall bench 40 wide",
+  "shoe bench 30 wide 18 tall",
+  "entry bench 48x18x16",
+  "cabinet 24x30x12",
+  "cabinet 36 wide 30 tall 18 deep",
+  "wall cabinet 30 wide 24 tall",
+  "base cabinet 24 wide",
+  "garage cabinet 36x72",
+  "bathroom cabinet 18 wide",
+  "tool cabinet 24x36",
+  "dresser 36 wide",
+  "dresser 48 wide 34 tall",
+  "dresser 60x36x18",
+  "6 drawer dresser 54 wide",
+  "nightstand dresser 24 wide",
+  "wardrobe 36 wide",
+  "wardrobe 48x80",
+  "wardrobe 30 wide 72 tall 24 deep",
+  "armoire 42 wide",
+  "closet cabinet 24x72",
+  "console 48 wide",
+  "console table 60x12x30",
+  "console 72 wide with shelves",
+  "entry console 36 wide",
+  "sofa console 50 wide",
+  "media console 60x18x24",
+  "tv console 48 wide",
+  "sideboard 54 wide",
+  "credenza 60x18x30",
+  "hutch 36 wide",
+  "linen cabinet 20 wide 72 tall",
+  "pantry cabinet 24x84",
+  "vanity 36 wide",
+  "bathroom vanity 30 wide",
+  "desk 48x24x30",
+  "shelf unit 36x48x12",
+];
 
 function planOf(prompt: string, materialId?: string) {
   const project = generateFromPrompt(prompt, materialId);
@@ -37,15 +93,15 @@ function bareDrive(description: string): boolean {
 
 describe("a Drive N step keeps the fastening sentence for the screws it counts", () => {
   const kept: [string, RegExp, RegExp][] = [
-    ["shoe rack 36 wide", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
-    ["2x2 shoe rack", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
-    ["shoe rack 36 wide 24 high 12 deep", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
-    ["rolling shoe rack", /Set cubby dividers/, /Screw through the D top, bottom, and back into each divider\./],
-    ["pocket vanity", /Set remaining dividers/, /Screw through the back and the nearest shelf or top\./],
-    ["wardrobe 40x72", /Set remaining dividers/, /Screw through the A back and the nearest shelf or top\./],
-    ["dresser 54.375 wide 36 tall 18.75 deep", /Set remaining dividers/, /Screw through the back and the nearest shelf or top\./],
-    ["mudroom bench 48 wide 20 tall 16 deep", /Set cubby dividers/, /Screw through the C seat, shoe shelf, and back into each divider\./],
-    ["window seat", /Set cubby dividers/, /Screw through the D seat, bottom shelf, and back into each divider\./],
+    ["shoe rack 36 wide", /Set cubby dividers/, /Screw through the D top and bottom into each divider\./],
+    ["2x2 shoe rack", /Set cubby dividers/, /Screw through the D top and bottom into each divider\./],
+    ["shoe rack 36 wide 24 high 12 deep", /Set cubby dividers/, /Screw through the D top and bottom into each divider\./],
+    ["rolling shoe rack", /Set cubby dividers/, /Screw through the D top and bottom into each divider\./],
+    ["pocket vanity", /Set remaining dividers/, /Screw through the nearest shelf or top\./],
+    ["wardrobe 40x72", /Set remaining dividers/, /Screw through the nearest shelf or top\./],
+    ["dresser 54.375 wide 36 tall 18.75 deep", /Set remaining dividers/, /Screw through the nearest shelf or top\./],
+    ["mudroom bench 48 wide 20 tall 16 deep", /Set cubby dividers/, /Screw through the C seat and shoe shelf into each divider\./],
+    ["window seat", /Set cubby dividers/, /Screw through the D seat and bottom shelf into each divider\./],
   ];
 
   for (const [prompt, title, sentence] of kept) {
@@ -60,35 +116,33 @@ describe("a Drive N step keeps the fastening sentence for the screws it counts",
     });
   }
 
-  it("no step keeps a bare Drive N while a later step holds the mixed fastening sentence", { timeout: 180_000 }, () => {
+  it("a fastening step does not name a part a later step attaches", { timeout: 180_000 }, () => {
     const bad: string[] = [];
-    for (const prompt of supportPromptSet()) {
-      let steps: AssemblyStep[];
+    for (const prompt of [...supportPromptSet(), ...NOVEL]) {
       try {
-        steps = planOf(prompt);
+        const project = generateFromPrompt(prompt);
+        const plan = buildPlan(project);
+        for (const fault of unplacedFastening(project, plan.instructions)) bad.push(`${prompt} — ${fault}`);
       } catch {
         continue;
       }
-      steps.forEach((later, i) => {
-        const text = later.description ?? "";
-        if (!MIXED.test(text)) return;
-        // The screws this sentence describes are counted on this step. A later back step
-        // says they are counted elsewhere and has no Drive N of its own.
-        if (/Drive \d+ × #8 /.test(text) && /\bin this step\b/.test(text)) return;
-        const orphan = steps.slice(0, i).find((s) => bareDrive(s.description ?? ""));
-        if (orphan) bad.push(`${prompt} — ${orphan.title} keeps Drive N, ${later.title} holds the sentence`);
-      });
     }
+    assert.equal(NOVEL.length >= 50, true);
     assert.deepEqual(bad, []);
   });
 
   it("the thin linen top does not inherit the divider sentence", () => {
-    const steps = planOf("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep", "plywood-1-4-4x8");
+    const project = generateFromPrompt("linen closet for a 31.5 inch bathroom alcove, 78 tall, 16 deep", "plywood-1-4-4x8");
+    const steps = buildPlan(project).instructions;
     const top = step(steps, /^Set the Top$/);
     assert.match(top.description ?? "", /It is too thin for a screw/);
     assert.doesNotMatch(top.description ?? "", /Screw through/);
     const dividers = step(steps, /Set remaining dividers/);
-    assert.match(dividers.description ?? "", /Screw through the A back and the nearest shelf or top\./);
+    assert.doesNotMatch(dividers.description ?? "", /Screw through/);
+    const back = steps.findIndex((s) => /to the back of the box/.test(s.title));
+    const topAt = steps.findIndex((s) => s === top);
+    assert.ok(back >= 0 && topAt > back);
+    assert.doesNotMatch(steps[back].description ?? "", /\bTop\b/);
   });
 });
 
@@ -112,6 +166,7 @@ describe("the back names a shoe shelf only when that shelf is already placed", (
       assert.ok(shelf >= 0 && back > shelf, `shelf ${shelf} back ${back}`);
       const join = (steps[back].description ?? "").match(/One join: attach[^.]*\./)?.[0] ?? "";
       assert.match(join, /Shoe shelf/);
+      assert.doesNotMatch(steps[shelf].description ?? "", /already on/);
     });
   }
 
