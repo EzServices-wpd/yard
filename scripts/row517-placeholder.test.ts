@@ -1,8 +1,8 @@
 /**
  * Row 517 (sweep 10-26): a prompt Yard couldn't learn shows the grey placeholder; pressing Build again (the morph
  * button, which a walker clicks as "Get the plan") used to rebuild the placeholder's leftover engine guess and price a
- * different object (toolbox → Planter box $50.43, lattice tower → a plywood lattice). Driven through the real store
- * the way run-prompt does: first build, the not-learned block, then the same words again.
+ * different object (lattice tower → a plywood lattice). A carry tote (toolbox) is its own build, so the second
+ * press stays that tote. Driven through the real store the way run-prompt does.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -20,7 +20,21 @@ const learns = (q: string) => {
   return !engineKeepsPrompt(q, p, half) && routesToLearner(q, p, half);
 };
 
-for (const q of ["toolbox", "toolbox 18x16x18", "lattice tower 24.5 tall"]) {
+for (const q of ["toolbox", "toolbox tote"]) {
+  test(`${q}: Build again stays the carry tote, never a different object`, () => {
+    useYard.getState().reset();
+    useYard.getState().generate(q, undefined, undefined, { fresh: true });
+    const first = useYard.getState().project;
+    assert.equal(learns(q), false, first.name);
+    assert.ok(first.panels.some((p) => /hand hold/i.test(p.cutNote ?? "")));
+    useYard.getState().generate(q);
+    const again = useYard.getState().project;
+    assert.equal(again.name, first.name);
+    assert.ok(again.panels.some((p) => /hand hold/i.test(p.cutNote ?? "")));
+  });
+}
+
+for (const q of ["lattice tower 24.5 tall"]) {
   test(`${q}: Build again on the not-learned placeholder learns the typed object again, never a different priced build`, () => {
     useYard.getState().reset();
     useYard.getState().generate(q, undefined, undefined, { fresh: true });
