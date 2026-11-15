@@ -19,7 +19,9 @@ test("a carry box cuts its bottom from the boards already bought", () => {
     assert.equal(p.panels.find((panel) => panel.name === "Bottom")?.materialId, p.primaryMaterialId, q);
     assert.deepEqual(sheetBuy(q).map((b) => b.catalogId), [], q);
     const boards = plan.bom.find((b) => b.catalogId === p.primaryMaterialId);
-    assert.ok(boards && (boards.estimatedCost ?? 0) > 0, `${q} board price ${boards?.estimatedCost}`);
+    assert.ok(boards && boards.quantity > 0, `${q} boards ${boards?.quantity}`);
+    const setBottom = plan.instructions.find((s) => /^Set the Bottom/.test(s.title));
+    assert.ok(!setBottom || /Where: Top of B Bottom sits/.test(setBottom.description), `${q} bottom placement stays in its Set step`);
     assert.deepEqual(checkBuild(p, q, plan).filter((v) => v.id === "I13" || v.id === "I28").map((v) => v.msg), [], q);
   }
 });
@@ -33,4 +35,15 @@ test("a checked cedar 1x6 price is not replaced by the scaled map", () => {
   const row = buildPlan(generateFromPrompt("sandbox cover 4 by 4")).bom.find((b) => b.catalogId === "lumber-1x6-8");
   assert.ok(row);
   assert.equal(row!.estimatedCost, 79.92);
+});
+
+test("a 2x4 frame does not rebuild a plywood top from studs", () => {
+  const p = generateFromPrompt("workbench 6 foot with lower shelf");
+  assert.match(p.panels.find((panel) => panel.name === "Work top")?.materialId ?? "", /^plywood-/);
+});
+
+test("an unpriced 1x board stays unpriced, not a scaled store price", () => {
+  const row = buildPlan(generateFromPrompt("toolbox")).bom.find((b) => b.catalogId === "lumber-1x8-8");
+  assert.ok(row);
+  assert.ok(!(row!.estimatedCost && row!.estimatedCost > 0), `1x8 price ${row!.estimatedCost}`);
 });

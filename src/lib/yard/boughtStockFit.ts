@@ -73,7 +73,8 @@ export function fitSheetPartsOntoBoughtBoards(project: YardProject): YardProject
   // Only the board the build is already buying as its primary stock. A plywood cat tree's 1× posts,
   // or a 2×6 bench's 1× aprons, are not a reason to turn the sheet parts into boards.
   const stock = boardStock(project.primaryMaterialId ?? "");
-  if (!panels.length || !stock || project.refused || /\bply(?:wood)?\b/i.test(project.prompt ?? "")) return project;
+  // 1× boards only: a 2×4 frame (workbench legs) is not a reason to rebuild a plywood top from studs.
+  if (!panels.length || !stock || stock.thick > 1 || project.refused || /\bply(?:wood)?\b/i.test(project.prompt ?? "")) return project;
   const boardPanels = panels.filter((p) => p.materialId === project.primaryMaterialId && !p.polygon && !p.turns);
   if (!boardPanels.length) return project;
   let area = boardPanels.reduce((sum, p) => sum + faceArea(p), 0);

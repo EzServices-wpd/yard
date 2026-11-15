@@ -1975,18 +1975,11 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
     const thick = catalog?.dims.height ?? 0.75;
     const size = line.name.match(/([1-4])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
     const piece = thick >= 3 ? "post" : "board";
-    // A 1× the catalog never priced (1×6, 1×8, 1×10, 1×12) scales from the same 1×4 map.
-    // Pine keeps the priced 1×4. A checked price already on the line (cedar 1×6 outdoors) stays.
-    const oneBy = catalog?.category === "lumber" && catalog.formFactor === "board" && Math.abs(thick - 0.75) < 0.05;
-    const already = line.estimatedCost != null && line.estimatedCost > 0;
-    const speciesRate = species && species.id !== "pine" ? speciesBoardUsd(species) : null;
-    const scaleSpecies = speciesRate != null && (sold || (oneBy && !already));
-    const scalePlain = speciesRate == null && !sold && oneBy && !already;
-    const base = scaleSpecies ? speciesRate : scalePlain ? (getCatalogItem(CATALOG_LUMBER_BIND)?.unitCostUsd ?? null) : null;
-    const each = base != null ? Math.round(base * ((face * thick) / (3.5 * 0.75)) * 100) / 100 : null;
+    const per1x4 = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
+    const each = per1x4 != null ? Math.round(per1x4 * ((face * thick) / (3.5 * 0.75)) * 100) / 100 : null;
     if (each != null && line.quantity > 0) {
       const total = Math.round(each * line.quantity * 100) / 100;
-      const query = species && species.id !== "pine" ? `${species.display} ${size} ${piece} 8 ft` : (line.searchQuery ?? catalog?.searchQuery ?? line.name);
+      const query = `${species!.display} ${size} ${piece} 8 ft`;
       line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
       changed = true;
     } else if (species && species.id !== "pine" && catalog?.category === "lumber") {

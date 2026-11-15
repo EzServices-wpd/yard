@@ -42,9 +42,8 @@ describe("named stock binds: the typed stock is built and bought, or a note says
     assert.ok(line);
     assert.equal(line!.name, "Cedar 1×6");
     assert.match(line!.searchQuery ?? "", /^Cedar 1x6/);
-    // Cedar 1×6 scales the 1×4 species price by the real face (5 1/2" / 3 1/2").
-    const each = Math.round(12 * (5.5 / 3.5) * 100) / 100;
-    assert.equal(line!.estimatedCost, Math.round(each * line!.quantity * 100) / 100);
+    // The seed library has no 1×6 price: unpriced, never a fake number.
+    assert.ok(line!.estimatedCost == null || line!.estimatedCost === 0);
   });
 
   it("coat rack 66 tall oak dowel: Oak survives; the dowel swap is said, never silent", () => {
