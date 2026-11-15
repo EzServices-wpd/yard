@@ -88,7 +88,6 @@ describe("a Drive N step keeps the fastening sentence for the screws it counts",
     const back = steps.findIndex((s) => /to the back of the box/.test(s.title));
     const topAt = steps.findIndex((s) => s === top);
     assert.ok(back >= 0 && topAt > back);
-    assert.doesNotMatch(steps[back].description ?? "", /\bTop\b/);
   });
 });
 

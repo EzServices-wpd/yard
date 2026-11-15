@@ -184,49 +184,6 @@ function alreadyOnLater(
   return named(claim).some((part) => late.has(part));
 }
 
-/**
- * "to the back edges of A, B, and C" names A, B, and C as already in place.
- * Drop a name only when every part that item names is attached later and some other name stays.
- * An emptied list has no approved wording, so the sentence is left for review.
- */
-function dropUnplacedEdges(
-  sentence: string,
-  i: number,
-  named: (text: string) => string[],
-  ahead: (text: string, i: number) => string[],
-): string {
-  const m = sentence.match(/back edges of ([^.]+?) with /i);
-  if (!m || m.index == null) return sentence;
-  const items = listItems(m[1]);
-  const later = (item: string) => itemEntirelyLater(item, i, named, ahead);
-  const drop = items.filter(later);
-  if (!drop.length || drop.length === items.length) return sentence;
-  let list = m[1];
-  for (const item of drop) list = withoutItem(list, item);
-  if (!list.trim() || list === m[1]) return sentence;
-  return sentence.slice(0, m.index) + `back edges of ${list} with ` + sentence.slice(m.index + m[0].length);
-}
-
-/** Take one name out of a comma/and list and leave the separators the sentence already used. */
-function withoutItem(list: string, item: string): string {
-  const esc = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const patterns = [
-    new RegExp(`,\\s*${esc}(?=,|\\s+and\\b|$)`, "i"),
-    new RegExp(`^${esc}\\s*,\\s*`, "i"),
-    new RegExp(`^${esc}\\s+and\\s+`, "i"),
-    new RegExp(`\\s+and\\s+${esc}$`, "i"),
-  ];
-  for (const re of patterns) {
-    if (!re.test(list)) continue;
-    return list
-      .replace(re, "")
-      .replace(/,\s+and\b/i, " and")
-      .replace(/\s{2,}/g, " ")
-      .trim();
-  }
-  return list;
-}
-
 function keepThrough(
   text: string,
   i: number,
@@ -271,14 +228,14 @@ export function fastenAfterPlacement(project: YardProject, steps: AssemblyStep[]
           const late = ahead(clause, i);
           const fastens = /\b(?:screw|screws|fasten)\b/i.test(clause);
           if (!late.length || !fastens || COUNTED.test(clause)) {
-            const next = dropUnplacedEdges(keepThrough(clause, i, named, ahead), i, named, ahead);
+            const next = keepThrough(clause, i, named, ahead);
             if (next !== clause) changed = true;
             if (next) kept.push(next);
             continue;
           }
           const target = Math.max(...late.map((name) => at.get(name)!));
           if (named(clause).some((name) => (at.get(name) ?? i) > target)) {
-            const next = dropUnplacedEdges(keepThrough(clause, i, named, ahead), i, named, ahead);
+            const next = keepThrough(clause, i, named, ahead);
             if (next !== clause) changed = true;
             if (next) kept.push(next);
             continue;
@@ -304,7 +261,7 @@ export function fastenAfterPlacement(project: YardProject, steps: AssemblyStep[]
           }
         }
       }
-      const next = dropUnplacedEdges(keepThrough(sentence, i, named, ahead), i, named, ahead);
+      const next = keepThrough(sentence, i, named, ahead);
       if (next !== sentence) changed = true;
       if (next) stays[i].push(next);
     }
