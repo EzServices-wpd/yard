@@ -16,8 +16,15 @@ import { panelWorldCorners } from "./geometry";
 import { partLetters } from "./pdfDraw";
 import { frac } from "./pdfKit";
 import { cutListName, shopPlural } from "./shopPlural";
+import { tabletopBuild, smallHungBuild } from "./buyComplete";
+import { closableAt } from "./fastenedAt";
+import { unletterWhole } from "./wholeItems";
 import { planStepParts } from "./stepParts";
 import type { AssemblyStep, BuildPlan, Panel, YardProject } from "./types";
+
+/** A part may be named only when its own placement step is this step or an earlier one. */
+type CanName = (id: string) => boolean;
+const NAME_ANY: CanName = () => true;
 
 type V3 = { x: number; y: number; z: number };
 type Box = { min: V3; max: V3 };
@@ -188,11 +195,11 @@ function supportsOf(ctx: Ctx, p: Panel): string[] {
 }
 
 /** Placed horizontal panel directly under p (bottom panel first), else null → floor / unit bottom. */
-function referenceUnder(ctx: Ctx, p: Panel, placed: Set<string>, anyHorizontal: boolean): Panel | null {
+function referenceUnder(ctx: Ctx, p: Panel, placed: Set<string>, anyHorizontal: boolean, canName: CanName = NAME_ANY): Panel | null {
   const b = ctx.box.get(p.id)!;
   let best: Panel | null = null;
   for (const q of ctx.panels) {
-    if (q.id === p.id || !placed.has(q.id) || placeRole(q) !== "horizontal") continue;
+    if (q.id === p.id || !placed.has(q.id) || !canName(q.id) || placeRole(q) !== "horizontal") continue;
     if (!anyHorizontal && !(q.type === "bottom" || /\bbottom\b/i.test(q.name))) continue;
     const c = ctx.box.get(q.id)!;
     if (c.max.y > b.min.y + EPS) continue;
@@ -220,10 +227,13 @@ function frontOf(ctx: Ctx, ids: string[]): number | null {
 
 // ───────────────────────── per-role talk ─────────────────────────
 
-function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: AssemblyStep, out: StepPlacement) {
+function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: AssemblyStep, out: StepPlacement, canName: CanName = NAME_ANY) {
   const text = `${step.title} ${step.description}`.toLowerCase();
   const first = group[0];
-  const sups = [...new Set(group.flatMap((p) => supportsOf(ctx, p)))];
+  // Geometry still sees every contact. The words name only parts already placed: a top must not
+  // say it rests on a divider the next step sets.
+  const supsAll = [...new Set(group.flatMap((p) => supportsOf(ctx, p)))];
+  const sups = supsAll.filter(canName);
   const supTalk = groupTalk(ctx, sups);
   const tops = group.map((p) => ctx.box.get(p.id)!.max.y);
   const supTop0 = sups.length ? Math.max(...sups.map((id) => ctx.box.get(id)!.max.y)) : null;
@@ -231,15 +241,16 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
   // A top flush with the ends of its sides reads from the floor; inside parts read from the bottom panel.
   // Parts it sits on (divider tops, rails, cleats): the underside is located by them.
   const b1 = ctx.box.get(first.id)!;
-  const restsOn = ctx.panels.filter((q) => {
+  const restsAll = ctx.panels.filter((q) => {
     if (group.some((g) => g.id === q.id) || placeRole(q) === "door" || placeRole(q) === "drawer" || placeRole(q) === "front") return false;
     const c = ctx.box.get(q.id)!;
     return Math.abs(c.max.y - b1.min.y) < EPS && ov(b1.min.x, b1.max.x, c.min.x, c.max.x) > EPS && ov(b1.min.z, b1.max.z, c.min.z, c.max.z) > EPS && placeRole(q) !== "horizontal";
   });
-  const onVerticals = restsOn.some((q) => isVertical(q));
-  const ref = flushTop || onVerticals ? null : referenceUnder(ctx, first, placed, false);
+  const restsOn = restsAll.filter((q) => canName(q.id));
+  const onVerticals = restsAll.some((q) => isVertical(q));
+  const ref = flushTop || onVerticals ? null : referenceUnder(ctx, first, placed, false, canName);
   const ry = refY(ctx, ref);
-  const wallRest = !ctx.floor && restsOn.length > 0 && !sups.length;
+  const wallRest = !ctx.floor && restsAll.length > 0 && !supsAll.length;
   for (const p of group) {
     const t = ctx.box.get(p.id)!.max.y;
     if (!wallRest) out.measures.push({ kind: "top", id: p.id, refId: ref?.id ?? null, refY: ry, value: t - ry });
@@ -334,7 +345,7 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
       .map((q) => ({ q, c: ctx.box.get(q.id)! }))
       .filter(({ c }) => c.min.y >= b.max.y - EPS && ov(b.min.x, b.max.x, c.min.x, c.max.x) > (b.max.x - b.min.x) * 0.5)
       .sort((a, c) => a.c.min.y - c.c.min.y)[0];
-    if (above) {
+    if (above && canName(above.q.id)) {
       const lo = ref ? `the top of ${nameOf(ctx, ref)} (${f(ry)})` : `${f(ry)}`;
       out.sentences.push(`Adjustable: those are the default spots — the pins let you set a ${fam} anywhere between ${lo} and the underside of ${nameOf(ctx, above.q)} (${f(above.c.min.y)}).`);
     }
@@ -349,13 +360,14 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
   if (!out.arrows.length && !wallRest) out.arrows.push(...heightChain(ctx, uniq.slice(0, 6), ry, z, b0.max.x, refMaxX));
 }
 
-function dividerTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
+function dividerTalk(ctx: Ctx, p: Panel, out: StepPlacement, canName: CanName = NAME_ANY) {
   const b = ctx.box.get(p.id)!;
   const near = (dir: -1 | 1) => {
     let best: { q: Panel; d: number } | null = null;
     for (const q of ctx.panels) {
       // Measure to the walls a divider stands between (sides, other dividers) — not kick strips or rails.
-      if (q.id === p.id || !isVertical(q) || !(q.type === "upright" || q.type === "divider")) continue;
+      // Only a wall already placed: the other bay wall is the one this step can point at.
+      if (q.id === p.id || !canName(q.id) || !isVertical(q) || !(q.type === "upright" || q.type === "divider")) continue;
       const c = ctx.box.get(q.id)!;
       if (ov(b.min.y, b.max.y, c.min.y, c.max.y) <= EPS || ov(b.min.z, b.max.z, c.min.z, c.max.z) <= EPS) continue;
       const d = dir < 0 ? b.min.x - c.max.x : c.min.x - b.max.x;
@@ -379,7 +391,7 @@ function dividerTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
     out.sentences.push(`${who} stands ${f(n.d)} from ${face(n.q)}.`);
   } else return;
   const base = ctx.panels.find((q) => {
-    if (q.id === p.id || placeRole(q) !== "horizontal") return false;
+    if (q.id === p.id || !canName(q.id) || placeRole(q) !== "horizontal") return false;
     const c = ctx.box.get(q.id)!;
     return c.max.y >= b.min.y - 0.1 && c.max.y <= b.min.y + 0.8 && ov(b.min.x, b.max.x, c.min.x, c.max.x) > EPS;
   });
@@ -401,9 +413,9 @@ function isOuter(ctx: Ctx, q: Panel) {
   return Math.abs(c.min.x - minX) < 0.2 || Math.abs(c.max.x - maxX) < 0.2;
 }
 
-function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
+function railTalk(ctx: Ctx, group: Panel[], out: StepPlacement, canName: CanName = NAME_ANY) {
   const first = group[0];
-  const sups = [...new Set(group.flatMap((p) => railSupports(ctx, p)))];
+  const sups = [...new Set(group.flatMap((p) => railSupports(ctx, p)))].filter(canName);
   const supTalk = groupTalk(ctx, sups);
   const ref: Panel | null = null;
   const ry = refY(ctx, ref);
@@ -499,12 +511,12 @@ function railInset(ctx: Ctx, p: Panel, sups: string[]): number | null {
   return (b.min.x + b.max.x) / 2 >= u.x ? xMax - b.max.x : b.min.x - xMin;
 }
 
-function bracketTalk(ctx: Ctx, group: Panel[], out: StepPlacement) {
+function bracketTalk(ctx: Ctx, group: Panel[], out: StepPlacement, canName: CanName = NAME_ANY) {
   if (!group.length) return;
   const bs = group.map((p) => ({ p, c: ctx.box.get(p.id)! })).sort((a, b) => a.c.min.x - b.c.min.x);
   const top = Math.max(...bs.map(({ c }) => c.max.y));
   const shelf = ctx.panels.find((q) => {
-    if (placeRole(q) !== "horizontal") return false;
+    if (!canName(q.id) || placeRole(q) !== "horizontal") return false;
     const c = ctx.box.get(q.id)!;
     return Math.abs(c.min.y - top) < 0.1;
   });
@@ -567,12 +579,12 @@ function overhangTalk(ctx: Ctx, p: Panel, under: Panel[]): string {
 }
 
 /** Bought glass / hung panels: bottom edge height and side-to-side spot. */
-function hungTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
+function hungTalk(ctx: Ctx, p: Panel, out: StepPlacement, canName: CanName = NAME_ANY) {
   const b = ctx.box.get(p.id)!;
   const below = ctx.panels
     .filter((q) => q.id !== p.id && placeRole(q) === "horizontal")
     .map((q) => ({ q, c: ctx.box.get(q.id)! }))
-    .filter(({ c }) => c.max.y <= b.min.y + EPS && ov(b.min.x, b.max.x, c.min.x, c.max.x) > EPS)
+    .filter(({ q, c }) => canName(q.id) && c.max.y <= b.min.y + EPS && ov(b.min.x, b.max.x, c.min.x, c.max.x) > EPS)
     .sort((a, c) => c.c.max.y - a.c.max.y)[0];
   const ry = ctx.floor ? 0 : ctx.unitBottom;
   out.measures.push({ kind: "top", id: p.id, refId: null, refY: ry, value: b.min.y - ry });
@@ -587,7 +599,7 @@ function hungTalk(ctx: Ctx, p: Panel, out: StepPlacement) {
     let best: { q: Panel; d: number } | null = null;
     for (const q of ctx.panels) {
       // Measure to the walls a divider stands between (sides, other dividers) — not kick strips or rails.
-      if (q.id === p.id || !isVertical(q) || !(q.type === "upright" || q.type === "divider")) continue;
+      if (q.id === p.id || !canName(q.id) || !isVertical(q) || !(q.type === "upright" || q.type === "divider")) continue;
       const c = ctx.box.get(q.id)!;
       if (ov(b.min.y, b.max.y, c.min.y, c.max.y) <= EPS) continue;
       const d = dir < 0 ? b.min.x - c.max.x : c.min.x - b.max.x;
@@ -721,7 +733,7 @@ function frontTalk(ctx: Ctx, fronts: Panel[], out: StepPlacement) {
   out.sentences.push(`${lead}: ${uniq.length === 1 ? uniq[0] : uniq.map((t, i) => `bank ${i + 1} — ${t}`).join("; ")}. Hold each front with double-sided tape or clamps, check the gaps, then screw it on from inside the box.`);
 }
 
-function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPlacement) {
+function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPlacement, canName: CanName = NAME_ANY) {
   out.hardware.push("slide");
   // Banks: drawers stacked in the same x range.
   const banks: Panel[][] = [];
@@ -736,7 +748,7 @@ function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPla
   for (const bk of banks) {
     bk.sort((a, b) => ctx.box.get(a.id)!.min.y - ctx.box.get(b.id)!.min.y);
     const low = bk[0];
-    const ref = referenceUnder(ctx, low, new Set([...placed, ...ctx.panels.map((p) => p.id)]), true);
+    const ref = referenceUnder(ctx, low, new Set([...placed, ...ctx.panels.map((p) => p.id)]), true, canName);
     const ry = refY(ctx, ref);
     const vals: number[] = [];
     for (const d of bk) {
@@ -749,7 +761,7 @@ function slideTalk(ctx: Ctx, drawers: Panel[], placed: Set<string>, out: StepPla
     lines.push({ talk, key: talk });
     const lb = ctx.box.get(low.id)!;
     for (const q of ctx.panels) {
-      if (!isVertical(q)) continue;
+      if (!isVertical(q) || !canName(q.id)) continue;
       const c = ctx.box.get(q.id)!;
       if (ov(lb.min.y, lb.max.y, c.min.y, c.max.y) <= EPS || ov(lb.min.z, lb.max.z, c.min.z, c.max.z) <= EPS) continue;
       if (Math.abs(c.max.x - lb.min.x) < 1.2 || Math.abs(c.min.x - lb.max.x) < 1.2) sideIds.add(q.id);
@@ -843,12 +855,38 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const placed = new Set<string>();
   const byId = new Map(panels.map((p) => [p.id, p]));
   const chain = rotorChain(panels);
+  const placedAt = closableAt(project, steps, cutList);
+  // A part the words mention early is talked about on the step that actually places it.
+  const deferred = new Map<number, string[]>();
+  sp.forEach((st, i) => {
+    if (st.kind !== "build") return;
+    for (const id of st.fresh) {
+      const n = placedAt.get(id);
+      if (n != null && n > i) {
+        const list = deferred.get(n) ?? [];
+        list.push(id);
+        deferred.set(n, list);
+      }
+    }
+  });
   return steps.map((s, i) => {
     const out: StepPlacement = { sentences: [], measures: [], arrows: [], positioned: [], hardware: [] };
     const st = sp[i];
     const text = `${s.title} ${s.description}`.toLowerCase();
     if (st.kind !== "build") return out;
-    const fresh = st.fresh.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
+    // The step that places part P names only parts whose own placement step is P's step or earlier.
+    const canName: CanName = (id) => {
+      const n = placedAt.get(id);
+      return n != null && n <= i;
+    };
+    const due = [
+      ...st.fresh.filter((id) => {
+        const n = placedAt.get(id);
+        return n == null || n <= i;
+      }),
+      ...(deferred.get(i) ?? []),
+    ];
+    const fresh = due.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const roles = new Map(fresh.map((p) => [p.id, placeRole(p)]));
     // A rotor part is located by the axle and the parts it threads against, never by a height off the floor.
     const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!) && !chain.has(p.id));
@@ -862,12 +900,12 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       }
       return [...g.values()];
     };
-    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out);
-    for (const g of groups("rail")) railTalk(ctx, g, out);
-    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out);
-    for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out);
+    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out, canName);
+    for (const g of groups("rail")) railTalk(ctx, g, out, canName);
+    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out, canName);
+    for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out, canName);
     const brackets = pos.filter((q) => roles.get(q.id) === "bracket");
-    if (brackets.length) bracketTalk(ctx, brackets, out);
+    if (brackets.length) bracketTalk(ctx, brackets, out, canName);
     // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
     const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const pick = (role: PlaceRole, word: RegExp) => {
@@ -895,7 +933,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     }
     if (/\bslides?\b/.test(text)) {
       const drawers = pick("drawer", /drawer/);
-      if (drawers.length) slideTalk(ctx, drawers, placed, out);
+      if (drawers.length) slideTalk(ctx, drawers, placed, out, canName);
     }
     // One arrow per span (two dividers share the gap between them).
     const key = (m: PlacementArrow) => [m.a, m.b].map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`).sort().join("|");
@@ -906,9 +944,9 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       seenArrow.add(k);
       return true;
     });
-    const instIds = st.fresh.filter((id) => !byId.has(id));
+    const instIds = due.filter((id) => !byId.has(id));
     if (instIds.length) instanceTalk(project, instIds, craft, out);
-    st.fresh.forEach((id) => placed.add(id));
+    due.forEach((id) => placed.add(id));
     st.onto.forEach((id) => placed.add(id));
     return out;
   });
@@ -923,6 +961,85 @@ function dropStale(desc: string, pl: StepPlacement): string {
   }
   if (pl.hardware.includes("hinge")) d = d.replace(/,?\s*3[–-]4"\s*from top and bottom(?:, the others evenly spaced between)?/g, "");
   return d.replace(/\s{2,}/g, " ").trim();
+}
+
+const AFTER_WHERE =
+  /^(?:Drive |In all, |These screws |That brings |Screw through |One join|The desktop screws|Tape or glue|Set the joints)/;
+
+/**
+ * Swap the Where block for the sentences this step's final order actually earns.
+ * A support named while it was still ahead of this step is dropped. Accounting that
+ * was appended after Where stays where it was.
+ */
+function replaceWhere(desc: string, sentences: string[]): string {
+  const at = desc.indexOf("Where:");
+  if (at < 0) return desc;
+  const before = desc.slice(0, at).trimEnd();
+  const tail = desc.slice(at).replace(/^Where:\s*/, "");
+  const after: string[] = [];
+  for (const sentence of tail.split(/(?<=[.!?])\s+/).filter(Boolean)) {
+    // A fastening line parked after Where ("Fasten B Back … with N screws") is not placement talk.
+    if (AFTER_WHERE.test(sentence) || /^(?:Fasten|Attach|Glue|Screw|Hang|Pin) /.test(sentence) || /\bwith \d+ × #8\b/.test(sentence)) after.push(sentence);
+  }
+  const where = sentences.length ? sentences.map((t, k) => (k === 0 ? `Where: ${t}` : t)).join(" ") : "";
+  return [before, where, ...after].filter(Boolean).join(" ").replace(/[ \t]{2,}/g, " ").trim();
+}
+
+/** A step that gained its placement talk only after the real placement index was known. */
+function appendWhere(desc: string, sentences: string[]): string {
+  const where = sentences.map((t, k) => (k === 0 ? `Where: ${t}` : t)).join(" ");
+  const parts = desc.split(/(?<=[.!?])\s+/).filter(Boolean);
+  let k = parts.length;
+  while (k > 0 && AFTER_WHERE.test(parts[k - 1])) k--;
+  return [...parts.slice(0, k), where, ...parts.slice(k)].join(" ").replace(/[ \t]{2,}/g, " ").trim();
+}
+
+/** Steps that receive a part the words named before the step that actually places it. */
+function arrivedSteps(project: YardProject, steps: AssemblyStep[], cutList: BuildPlan["cutList"]): Set<number> {
+  const placedAt = closableAt(project, steps, cutList);
+  const letters = partLetters(project, cutList);
+  const arrived = new Set<number>();
+  planStepParts(project, steps, letters).forEach((st, i) => {
+    if (st.kind !== "build") return;
+    for (const id of st.fresh) {
+      const n = placedAt.get(id);
+      if (n != null && n > i) arrived.add(n);
+    }
+  });
+  return arrived;
+}
+
+/**
+ * Placement talk is written before the later passes reorder steps. Rebuild the Where
+ * block from the finished order so a sentence only names parts already placed.
+ */
+/** Later passes strip cut letters off whole pieces and say "the bottom" for a table or a hung piece. */
+function settlePlacementWords(project: YardProject, plan: BuildPlan, description: string): string {
+  let d = unletterWhole(description, plan.cutList);
+  if (tabletopBuild(project) || smallHungBuild(project)) d = d.replace(/\bup from the floor\b/g, "up from the bottom");
+  return d;
+}
+
+export function resyncPlacementTalk(project: YardProject, plan: BuildPlan): BuildPlan {
+  if ((!project.panels.length && !project.instances.length) || !plan.instructions.length || project.windowPkg || project.kind === "opening") return plan;
+  if ((project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE)) && project.kind === "figure") return plan;
+  const pls = stepPlacements(project, plan.instructions, plan.cutList, plan.partsKind === "whole");
+  const arrived = arrivedSteps(project, plan.instructions, plan.cutList);
+  let changed = false;
+  const instructions = plan.instructions.map((s, i) => {
+    if (!s.description?.includes("Where:")) {
+      if (!arrived.has(i) || !pls[i].sentences.length) return s;
+      const description = settlePlacementWords(project, plan, appendWhere(s.description ?? "", pls[i].sentences));
+      if (description === (s.description ?? "")) return s;
+      changed = true;
+      return { ...s, description };
+    }
+    const description = settlePlacementWords(project, plan, replaceWhere(s.description, pls[i].sentences));
+    if (description === s.description) return s;
+    changed = true;
+    return { ...s, description };
+  });
+  return changed ? { ...plan, instructions } : plan;
 }
 
 /** Final plan pass: append the WHERE sentences to every step that positions a part. */
