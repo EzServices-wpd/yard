@@ -2,6 +2,7 @@
  * Every model part is placed in one step, after the parts it rests on.
  * A missing step is written from the part, not from a class template.
  */
+import { panelWorldCorners } from "./geometry";
 import { faceScrewInches, stockThickness } from "./shopJoin";
 import { panelStockThickness } from "./modelJoints";
 import { getCatalogItem } from "./catalog";
@@ -333,6 +334,11 @@ function namesSupport(project: YardProject, step: AssemblyStep, info: SupportInf
   if (info.how === "floor") return wallMounted(project) ? /\bwall\b|\bstuds?\b|anchor/.test(text) : /floor|stand|footprint|on the marks|bench/.test(text);
   if (info.how === "hinges") return /hinge/.test(text);
   if (info.how === "front") return /drawer box|drawer/.test(text) && /screw|glue/.test(text);
+  // A part that meets the floor, whose step already stands it there, is placed. The support graph may
+  // have fastened it to a neighbor; a second line would only repeat the step that stands it.
+  const panel = project.panels.find((p) => p.id === info.key);
+  const atFloor = !!panel && Math.min(...panelWorldCorners(panel).map((q) => q.y)) <= 0.1;
+  if (atFloor && /floor|stand|footprint|on the marks|bench/.test(text)) return true;
   if (!/glue|screw|bolt|dowel|biscuit|pocket|cement|pin|nail|tape|tab/.test(text)) return false;
   // The support's family word ("leg front") or its assembly word ("leg", "body", "floor").
   const words = project.panels.length
