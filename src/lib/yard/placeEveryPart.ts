@@ -488,7 +488,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   // An inserted step whose parts all moved to a later step places nothing: it goes.
   const ghost = (s: AssemblyStep) => (s.tips === INSERTED || s.tips === LIFTED) && Array.isArray(s.partsUsed) && !s.partsUsed.length;
   // Merged steps sit at their family's first slot: order them by support once more.
-  out = supportOrder(project, mergeFamilies(mergeSameTitles(out.filter((s) => !ghost(s)))), parts, supports);
+  out = supportOrder(project, mergeFamilies(mergeSameTitles(out.filter((s) => !ghost(s))), parts, supports), parts, supports);
   if (project.panels.length) out = supportOrder(project, lowerSupports(project, out, parts, supports, fix), parts, supports);
   // A builder that wrote no build steps (a recipe) gets every build step from the model: those are its
   // steps, not fallbacks.
@@ -782,7 +782,7 @@ function splitByLayer(
  * Back-to-back inserted steps that place one numbered family with the same verb are one step
  * ("Fasten the 7 door 2 slats"): nothing sits between them, so the order holds.
  */
-function mergeFamilies(steps: AssemblyStep[]): AssemblyStep[] {
+function mergeFamilies(steps: AssemblyStep[], parts: Part[] = [], supports?: Map<string, SupportInfo>): AssemblyStep[] {
   const out: AssemblyStep[] = [];
   const verbOf = (s: AssemblyStep) => s.title.split(" ")[0];
   const famOf = (s: AssemblyStep) => {
@@ -797,7 +797,16 @@ function mergeFamilies(steps: AssemblyStep[]): AssemblyStep[] {
     const prev = out[out.length - 1];
     const fam = famOf(s);
     const numbered = (t: AssemblyStep) => (t.partsUsed ?? []).every((n) => familyOf(n) !== n);
-    if (prev && fam && famOf(prev) === fam && verbOf(prev) === verbOf(s) && numbered(prev) && numbered(s)) {
+    const supportKey = (step: AssemblyStep) => {
+      const used = new Set((step.partsUsed ?? []).map((n) => n.toLowerCase()));
+      const ons: string[] = [];
+      for (const p of parts) {
+        if (!used.has(p.name.toLowerCase())) continue;
+        ons.push(...(supports?.get(p.key)?.on ?? []));
+      }
+      return ons.slice().sort().join(",");
+    };
+    if (prev && fam && famOf(prev) === fam && verbOf(prev) === verbOf(s) && numbered(prev) && numbered(s) && supportKey(prev) === supportKey(s)) {
       const names = [...(prev.partsUsed ?? []), ...(s.partsUsed ?? [])];
       const whole = new Set(names).size >= (famSize.get(fam) ?? 0);
       out[out.length - 1] = { ...prev, title: `${verbOf(s)} the ${whole ? familyTitle(names) : listNames(names)}`, description: `${prev.description} ${s.description}`, partsUsed: names };
