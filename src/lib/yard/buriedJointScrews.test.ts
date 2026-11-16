@@ -91,3 +91,27 @@ describe("buried contact buys the screws the step drives", () => {
     });
   }
 });
+
+describe("a deep overlap that is not a rail in a leg buys no screws", () => {
+  const NONE: [string, string | undefined, string, string][] = [
+    ["shoe rack from 2x2", undefined, "Shoe shelf", "Cubby divider 1"],
+    ["wall mounted ironing board cabinet 48 high 16 wide 6 deep from 2x2", undefined, "Ironing board", "Support leg"],
+    ["compost bin from 3/4 inch dowel", "plywood-1-4-4x8", "Back post 1", "Back post 2"],
+    ["doll bed", "plywood-1-4-4x8", "Leg back left", "Leg back right"],
+    ["router table from 2x2", undefined, "Table top", "Insert plate"],
+  ];
+  for (const [prompt, material, a, b] of NONE) {
+    it(`${prompt}: ${a} / ${b}`, () => {
+      const project = material ? generateFromPrompt(prompt, material) : generateFromPrompt(prompt);
+      const plan = buildPlan(project);
+      const ids = (n: string) => project.panels.filter((p) => p.name === n).map((p) => p.id);
+      const A = ids(a), B = ids(b);
+      assert.ok(A.length && B.length, `${prompt}: parts missing`);
+      const joints = BUY_JOINTS.get(project) ?? panelJoints(project.panels);
+      const hit = joints.find((j) => (A.includes(j.a) && B.includes(j.b)) || (A.includes(j.b) && B.includes(j.a)));
+      assert.equal(hit, undefined, `${prompt}: ${a} / ${b} counted ${hit?.screws} screws`);
+      const bought = buyScrews(plan);
+      if (bought) assert.equal(stepScrewCount(plan), bought.total);
+    });
+  }
+});

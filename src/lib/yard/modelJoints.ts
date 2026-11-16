@@ -57,6 +57,15 @@ function thinnest(p: Panel) {
 /** A collar bored onto an axle is glued to the axle, never screwed to what it sits against. */
 const isAxleCollar = (p: Panel) => /^collar(?: \d+)?$/i.test(p.name) && !!p.polygon?.holes?.length;
 
+/** The same longest axes and a thinnest axis in common: the two boxes lie the same way. */
+function sameLay(A: Box, B: Box): boolean {
+  const ext = (b: Box) => [0, 1, 2].map((k) => b.max[k] - b.min[k]);
+  const ea = ext(A), eb = ext(B);
+  const longest = (e: number[]) => [0, 1, 2].filter((k) => e[k] >= Math.max(...e) - 0.01).join();
+  const thin = (e: number[]) => [0, 1, 2].filter((k) => e[k] <= Math.min(...e) + 0.01);
+  return longest(ea) === longest(eb) && thin(ea).some((k) => thin(eb).includes(k));
+}
+
 /** Joints between panels. `noScrew(a, b)` marks pairs held some other way (shelf pins). */
 export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => boolean = () => false): ModelJoint[] {
   const parts = panels.filter((p) => !HARDWARE_TYPES.has(p.type) && !isBoughtHardwareName(p.name) && !/drawer front|false front/i.test(p.name) && thinnest(p) > 0.1);
@@ -70,7 +79,12 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       const gaps = [0, 1, 2].map((k) => Math.max(A.min[k], B.min[k]) - Math.min(A.max[k], B.max[k]));
       // A bury (overlap deeper than an inch on every axis) is the same joint as a face.
       // A shaped part's box is not its wood, so only plain boxes bury.
-      const embedded = plainBox(parts[i]) && plainBox(parts[j]) && embeddedGaps(gaps);
+      // Two parts that lie the same way (same long axis, a thin axis in common) and overlap that deep are one
+      // drawn through the other, not a rail in a leg. A declared joint (a lap, a miter) is cut and held its own way.
+      const declaredPair =
+        parts[i].joints?.some((x) => x.with === parts[j].id) || parts[j].joints?.some((x) => x.with === parts[i].id);
+      const embedded =
+        plainBox(parts[i]) && plainBox(parts[j]) && embeddedGaps(gaps) && !declaredPair && !sameLay(A, B);
       // Contact axis: the one with the least overlap. Touching (gap ≈ 0) or let in up to 1".
       const axis = gaps.indexOf(Math.max(...gaps));
       const g = gaps[axis];
