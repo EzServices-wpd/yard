@@ -194,6 +194,27 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
     const on = skin ? faceOn : lower.length ? lower : below.length ? below : touching.length ? touching : near(others, 1).map((id) => others.find((q) => q.id === id)!);
     out.set(p.id, { key: p.id, name: p.name, how: "side", on: on.map((q) => (typeof q === "string" ? q : q.id)) });
   }
+  // A corner board let down over two walls (a sandbox seat) is carried by every wall it covers, not only
+  // the nearest one. Otherwise it is placed as soon as that one wall is up, before the other wall it spans.
+  for (const p of panels) {
+    const info = out.get(p.id);
+    if (!info || info.on.length >= 2 || info.how === "floor" || info.how === "hinges" || info.how === "slides" || info.how === "front") continue;
+    const A = boxes.get(p.id)!;
+    const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
+    if (ext[1] > Math.min(ext[0], ext[2])) continue;
+    const carriers = structural.filter((q) => {
+      if (q.id === p.id) return false;
+      const B = boxes.get(q.id)!;
+      const hx = B.max[0] - B.min[0], hy = B.max[1] - B.min[1], hz = B.max[2] - B.min[2];
+      // A wall standing on edge: tall compared with its thickness. A wide wall is still a wall.
+      if (hy <= Math.min(hx, hz) * 2) return false;
+      const yOver = Math.min(A.max[1], B.max[1]) - Math.max(A.min[1], B.min[1]);
+      if (yOver < 0.25 || overlap(A, B, 0) < 0.25 || overlap(A, B, 2) < 0.25) return false;
+      return A.max[1] >= B.max[1] - 0.15 || Math.abs(A.min[1] - B.max[1]) <= 0.15;
+    }).map((q) => q.id);
+    if (carriers.length < 2) continue;
+    out.set(p.id, { ...info, how: info.how === "rests" ? "rests" : "side", on: [...new Set([...info.on, ...carriers])] });
+  }
   // A batten or cleat that only ties boards together fastens across them: the boards go first, so a board
   // and its batten never wait on each other.
   const isTie = (p: Panel) => p.type === "cleat" || /\b(?:batten|cleat)s?\b/i.test(p.name);
