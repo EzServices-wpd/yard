@@ -516,6 +516,11 @@ export type AssemblyStep = {
   fastenersUsed?: FastenerUse[];
   tips?: string;
   imageDataUrl?: string;
+  /**
+   * The Where sentences this placement pass wrote. A later pass replaces that block from the
+   * finished step order, then drops the field. A person never reads it.
+   */
+  placementOwned?: string[];
 };
 
 export type BuildPlan = {
