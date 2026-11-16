@@ -44,7 +44,8 @@ import { buildOddShape, isOddShapePrompt } from "./oddShapes";
 import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPlatformBed, isWallMediaLedge, isPictureLedge , isAdirondackChair, isPorchSwingFrame, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, namesSitChair, identityTitleStem, wantsShoes } from "./family";
 import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
-import { normalizeUserPrompt, strangerPlainShopTalk, untypedAxisAssumedNotes } from "./voiceHonesty";
+import { publishAssumedSize, typedAxisFlags } from "./assumedRecord";
+import { normalizeUserPrompt, strangerPlainShopTalk } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
 import { pickWindow, buildWindowProject, looksLikeDoorFrame, buildDoorProject } from "./windows";
@@ -257,8 +258,11 @@ const USE_DEFAULT_SIZE: Record<string, { length?: number; height?: number }> = {
 };
 
 /**
- * Every build says which axes it assumed. Fitted builds read typed axes from typedExtents;
- * anything else only when no size was typed at all. Bench edits (Measure / overrides) are typed facts.
+ * Every build says which axes it assumed, from the built box (assumedRecord.ts).
+ * Fitted builds read typed axes from typedExtents. Anything else: a typed axis is kept,
+ * and the axes the person did not type are still said — a length no longer hides the
+ * depth and height the builder filled in. A prompt with digits but no axis that landed
+ * (a lumber size, "3 foot", a window call size) stays as it was. Bench edits are typed facts.
  */
 function withAssumedAxes(project: YardProject, args: Parameters<typeof generateRaw>): YardProject {
   const [prompt = "", , formOverride, opts] = args;
@@ -267,14 +271,21 @@ function withAssumedAxes(project: YardProject, args: Parameters<typeof generateR
   if (project.fitted) {
     typed = typedExtents(prompt)?.labeled ?? typed;
   } else {
-    const counts = /\b\d+\s*-?\s*(?:legs?|doors?|drawers?|shel(?:f|ves)|cubb(?:y|ies)|hooks?|pegs?|steps?|treads?|tiers?|rows?|bottles?|slots?|bins?|arms?|rungs?|lids?|brackets?)\b/g;
-    const sized = /\d/.test(stripLumberStock(prompt.toLowerCase()).replace(counts, " ")) ||
-      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*-?\s*(?:ft|foot|feet|inch|inches)\b/i.test(prompt);
-    if (sized) return project;
+    const flags = typedAxisFlags(prompt, project);
+    const any = flags.width || flags.height || flags.depth;
+    // A builder that already wrote an Assumed axis note owns that record (a free-standing
+    // frame's depth). Adding another here would rewrite the pinned step text. A build that
+    // wrote none — a tote with only a length — gets the record for every untyped axis.
+    const recorded = (project.notes ?? []).some((n) => /^Assumed\s+\d/i.test(n));
+    if (!any || recorded) {
+      const counts = /\b\d+\s*-?\s*(?:legs?|doors?|drawers?|shel(?:f|ves)|cubb(?:y|ies)|hooks?|pegs?|steps?|treads?|tiers?|rows?|bottles?|slots?|bins?|arms?|rungs?|lids?|brackets?)\b/g;
+      const sized = /\d/.test(stripLumberStock(prompt.toLowerCase()).replace(counts, " ")) ||
+        /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*-?\s*(?:ft|foot|feet|inch|inches)\b/i.test(prompt);
+      if (sized) return project;
+    }
+    typed = flags;
   }
-  // Cue notes land on the notes next; an axis one of them already explains is not assumed.
-  const extra = untypedAxisAssumedNotes(prompt, [...(project.fitted?.cueNotes ?? []), ...(project.notes ?? [])], project.overall, typed);
-  return extra.length ? { ...project, notes: [...(project.notes ?? []), ...extra] } : project;
+  return publishAssumedSize(project, prompt, typed);
 }
 
 /** A front feature typed both ways resolved by one rule (later cue wins): the note says which won. */
