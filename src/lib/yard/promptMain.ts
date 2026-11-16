@@ -74,6 +74,7 @@ import { hasProductDrawing, isBareProductPrompt, isSpecProduct, modeledProduct }
 import { heldCollection, heldObjectFor, heldPhrase, namedBuildClass, stripPetUse, type HeldObject } from "./heldObjects";
 import { buildHeldStand, buildTieredPlantStand, plantStandTiers } from "./heldStand";
 import { buildClimb, climbKind } from "./climb";
+import { fitSheetPartsOntoBoughtBoards } from "./boughtStockFit";
 import { buildRealObject, isCarryTote, realObjectKind } from "./realObjects";
 import { dollhouseTyped, isDollhouse, PLY_THICKNESS } from "./dollhouse";
 import { buildOutdoorFrame, outdoorFrameKind } from "./outdoorFrames";
@@ -541,9 +542,11 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   const members0 = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
   // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
   const members = outdoorBuild(members0, prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
+  // Fit sheet parts onto the board stock already in the build before any per-part sheet purchase.
+  const fittedBoards = fitSheetPartsOntoBoughtBoards(members);
   // Before the assumed-size notes, so an untyped depth that was deepened is the depth those notes name.
   const recipe = findRecipe(prompt);
-  const stood = stabilizeOpenFrame(members, prompt, args[3]?.sizeOverride, recipe ? typedSize(prompt, recipe) : undefined);
+  const stood = stabilizeOpenFrame(fittedBoards, prompt, args[3]?.sizeOverride, recipe ? typedSize(prompt, recipe) : undefined);
   const done = withAxisOrderNote(
     withPlainStockNotes(withFrontCueNotes(typedStockKeptNote(withAssumedAxes(stood, args), prompt), prompt), prompt),
     args,
