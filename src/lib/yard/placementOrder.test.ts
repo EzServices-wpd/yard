@@ -3,6 +3,7 @@
  * The rests-on line is built from parts already placed. A support set later is left out of the sentence.
  */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
@@ -188,5 +189,76 @@ describe("placement sentences name only parts already placed", () => {
     }
     assert.ok(checked >= 80, `only ${checked} prompts compiled`);
     assert.deepEqual(bad, []);
+  });
+
+  it("no step repeats a sentence back to back, and a moved relation is not copied twice", { timeout: 300_000 }, () => {
+    const prompts = [...new Set([...corpus(), ...EXAMPLES, ...NOVEL, "record crate", "2x4 bench under $40", "reindeer", "peg rack"])];
+    const bad: string[] = [];
+    for (const prompt of prompts) {
+      let plan;
+      try {
+        plan = built(prompt).plan;
+      } catch {
+        continue;
+      }
+      for (const step of plan.instructions) {
+        const sentences = (step.description ?? "").split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+        for (let k = 1; k < sentences.length; k++) {
+          if (sentences[k] === sentences[k - 1]) bad.push(`${prompt} — ${step.title}: ${sentences[k].slice(0, 80)}`);
+        }
+      }
+    }
+    assert.deepEqual(bad, []);
+  });
+
+  it("a relation dropped for a later part is said on the step that places that part", () => {
+    const crate = built("record crate").plan;
+    const all = crate.instructions.map((s) => s.description).join("\n");
+    assert.match(all, /flush with the bottom ends of both A ends/);
+    assert.match(all, /Front edge set back 3\/4" from the front of both A ends/);
+    const bottom = crate.instructions.find((s) => /Set the Bottom/.test(s.title));
+    assert.match(bottom?.description ?? "", /Where:/);
+    assert.doesNotMatch(bottom?.description ?? "", /both A ends/);
+
+    const bench = built("2x4 bench under $40").plan;
+    const benchText = bench.instructions.map((s) => s.description).join("\n");
+    assert.match(benchText, /22 5\/16" from the inside face of D Front left leg/);
+    const support = bench.instructions.find((s) => /Center support/.test(s.title));
+    assert.match(support?.description ?? "", /Where:/);
+    assert.doesNotMatch(support?.description ?? "", /Front left leg/);
+
+    const cabinet = built("bathroom cabinet 18 wide").plan.instructions.map((s) => s.description).join("\n");
+    assert.match(cabinet, /3 1\/2" from the inside face of C Left upright/);
+    assert.match(cabinet, /3 1\/2" from the inside face of C Right upright/);
+
+    const peg = built("peg rack").plan.instructions.map((s) => s.description).join("\n");
+    assert.match(peg, /Set it on the top of C; overhang 4 1\/2" past the front \(rear edge flush\)/);
+    assert.match(peg, /Marked height:/);
+
+    const deer = built("reindeer").plan.instructions.map((s) => s.description).join("\n");
+    assert.match(deer, /proud of the front of J and K/);
+
+    const island = built("kitchen island 60x36x36").plan.instructions.map((s) => s.description).join("\n");
+    assert.match(island, /Marked heights:/);
+  });
+
+  it("canary step text matches release except the two approved edits", () => {
+    const hash = (prompt: string) => {
+      const { plan } = built(prompt);
+      const steps = plan.instructions.map((s) => `${s.step}|${s.title}|${s.description ?? ""}|${s.tips ?? ""}`).join("\n");
+      return createHash("sha1").update(steps).digest("hex").slice(0, 12);
+    };
+    assert.equal(hash("linen closet 31.5 wide 78 tall 16 deep"), "1d20c65fe910");
+    assert.equal(hash("Andersen 100 Series 36 by 48 double hung window, frame the rough opening"), "db34aa76b46e");
+    assert.equal(hash("3 foot Eiffel Tower from popsicle sticks"), "e065bbf1fdf4");
+    assert.equal(hash("eiffel tower"), "20c8a931a0d9");
+    assert.equal(hash("cat tree"), "c75df32aa124");
+    assert.equal(hash("step stool"), "ad3068a4e7fc");
+    const vanity = built("pocket vanity").plan.instructions.find((s) => /Attach G Top/.test(s.title));
+    assert.match(vanity?.description ?? "", /flush with the top ends of both B uprights/);
+    assert.doesNotMatch(vanity?.description ?? "", /rests on the top of D/);
+    const desk = built("desk 60x30x29").plan.instructions.find((s) => /Stand the main box/.test(s.title));
+    assert.match(desk?.description ?? "", /flush with the bottom ends of both C uprights\./);
+    assert.doesNotMatch(desk?.description ?? "", /F dividers/);
   });
 });

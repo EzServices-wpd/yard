@@ -17,6 +17,7 @@ import { partLetters } from "./pdfDraw";
 import { frac } from "./pdfKit";
 import { cutListName, shopPlural } from "./shopPlural";
 import { tabletopBuild, smallHungBuild } from "./buyComplete";
+import { positiveText } from "./positiveWording";
 import { closableAt } from "./fastenedAt";
 import { unletterWhole } from "./wholeItems";
 import { planStepParts } from "./stepParts";
@@ -279,7 +280,9 @@ function horizontalTalk(ctx: Ctx, group: Panel[], placed: Set<string>, step: Ass
       const on = groupTalk(ctx, restsOn.map((q) => q.id));
       let r = wallRest ? `Set it on the top of ${on}` : `Its underside rests on the top of ${on}, ${f(b1.min.y - ry)} up from ${refTalk(ctx, ref)}`;
       // Overhang only for parts that sit on a base with nothing at their ends (tops, bracket shelves).
-      const oh = sups.length ? "" : overhangTalk(ctx, first, restsOn);
+      // Overhang is read from every part the piece actually sits between. Dropping a support
+      // that is placed later must not invent a new overhang against the parts that remain.
+      const oh = supsAll.length ? "" : overhangTalk(ctx, first, restsOn);
       if (oh) r += `; ${oh}`;
       out.sentences.push(`${r}.`);
       out.measures.push({ kind: "rest", id: first.id, value: b1.min.y - ry });
@@ -838,6 +841,66 @@ function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: 
   }
 }
 
+/** Panels a placement sentence names, by the same letter and family talk the templates write. */
+function idsInSentence(ctx: Ctx, sentence: string): string[] {
+  const hit = new Set<string>();
+  const byKey = new Map<string, Panel[]>();
+  for (const p of ctx.panels) {
+    const nm = nameOf(ctx, p);
+    if (nm.length > 1 && sentence.includes(nm)) hit.add(p.id);
+    const L = ctx.letters.get(p.id);
+    if (!L) continue;
+    const fam = cutListName(p.name, p.type).toLowerCase().replace(/^(?:left|right|front|back|upper|lower|inner|outer|near|far)\s+/, "");
+    const stem = fam.replace(/y$/, "ie");
+    const key = `${L}|${stem}`;
+    byKey.set(key, [...(byKey.get(key) ?? []), p]);
+  }
+  for (const [key, list] of byKey) {
+    const [L, stem] = key.split("|");
+    const both = new RegExp(`\\bboth ${L} ${stem}s\\b`, "i").test(sentence);
+    const each = new RegExp(`\\b(?:each|all \\d+) ${L} ${stem}s?\\b`, "i").test(sentence);
+    const one = new RegExp(`\\b${L} ${stem}\\b`, "i").test(sentence);
+    // "of C and H" and "proud of the front of E" name the letter. "C Left upright" does not.
+    if (new RegExp(`(?:^|\\bof\\s+|\\band\\s+|,\\s*)${L}\\b(?!\\s+(?!and\\b|or\\b)[A-Za-z]|-)`, "i").test(sentence)) {
+      // "C Right yoke prong ... tops of C" names the other C as well as the one spelled out.
+      list.forEach((p) => hit.add(p.id));
+    }
+    if (both && list.length <= 2) list.forEach((p) => hit.add(p.id));
+    if (each) list.forEach((p) => hit.add(p.id));
+    if (one) {
+      const specific = list.filter((p) => sentence.includes(nameOf(ctx, p)));
+      if (specific.length) specific.forEach((p) => hit.add(p.id));
+      else if (!(list.length > 2 && both)) list.forEach((p) => hit.add(p.id));
+    }
+  }
+  return [...hit];
+}
+
+/** The open sentence only adds already-placed partners' names. The shortened sentence stays. */
+function nameDropOnly(full: string, partial: string): boolean {
+  const f = full.replace(/[.!?]$/, "");
+  const p = partial.replace(/[.!?]$/, "");
+  if (f.length <= p.length || !f.startsWith(p)) return false;
+  const extra = f.slice(p.length);
+  if (/\d/.test(extra)) return false;
+  return /^(?:,| and| or)\b/.test(extra);
+}
+
+function isRestSentence(sentence: string): boolean {
+  return /^Its underside rests on\b/.test(sentence) || /^Set it on the top of\b/.test(sentence);
+}
+
+/** A top already located by a height or a flush line does not gain a second rests-on on a later step. */
+function locatedWithoutRest(stay: string[]): boolean {
+  return stay.some((s) => /^Top(?:s| edges?)?\b/.test(s) || /flush with the (?:top|bottom) ends\b/.test(s));
+}
+
+function uniqueSentences(list: string[]): string[] {
+  const out: string[] = [];
+  for (const s of list) if (s && !out.includes(s)) out.push(s);
+  return out;
+}
+
 // ───────────────────────── the pass ─────────────────────────
 
 /** Placement records per step, from the geometry. Same records feed text, arrows, guards. */
@@ -869,11 +932,21 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       }
     }
   });
+  // Relations withheld on an earlier step, said here once the later partner is placed.
+  const carried = new Map<number, string[]>();
+  const takeCarried = (i: number) => carried.get(i) ?? [];
+  const give = (dest: number, sentence: string) => {
+    const list = carried.get(dest) ?? [];
+    if (!list.includes(sentence)) list.push(sentence);
+    carried.set(dest, list);
+  };
   return steps.map((s, i) => {
-    const out: StepPlacement = { sentences: [], measures: [], arrows: [], positioned: [], hardware: [] };
     const st = sp[i];
     const text = `${s.title} ${s.description}`.toLowerCase();
-    if (st.kind !== "build") return out;
+    if (st.kind !== "build") {
+      const out: StepPlacement = { sentences: uniqueSentences(takeCarried(i)), measures: [], arrows: [], positioned: [], hardware: [] };
+      return out;
+    }
     // The step that places part P names only parts whose own placement step is P's step or earlier.
     const canName: CanName = (id) => {
       const n = placedAt.get(id);
@@ -886,69 +959,103 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       }),
       ...(deferred.get(i) ?? []),
     ];
-    const fresh = due.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
-    const roles = new Map(fresh.map((p) => [p.id, placeRole(p)]));
-    // A rotor part is located by the axle and the parts it threads against, never by a height off the floor.
-    const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!) && !chain.has(p.id));
-    out.positioned = pos.map((p) => p.id);
-    // Group horizontals and rails by letter (same size family) so repeats read as one sentence.
-    const groups = (role: PlaceRole) => {
-      const g = new Map<string, Panel[]>();
-      for (const p of pos.filter((q) => roles.get(q.id) === role)) {
-        const k = letters.get(p.id) ?? p.name;
-        g.set(k, [...(g.get(k) ?? []), p]);
+    const emit = (name: CanName): StepPlacement => {
+      const out: StepPlacement = { sentences: [], measures: [], arrows: [], positioned: [], hardware: [] };
+      const fresh = due.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
+      const roles = new Map(fresh.map((p) => [p.id, placeRole(p)]));
+      // A rotor part is located by the axle and the parts it threads against, never by a height off the floor.
+      const pos = fresh.filter((p) => POSITIONED_ROLES.includes(roles.get(p.id)!) && !chain.has(p.id));
+      out.positioned = pos.map((p) => p.id);
+      // Group horizontals and rails by letter (same size family) so repeats read as one sentence.
+      const groups = (role: PlaceRole) => {
+        const g = new Map<string, Panel[]>();
+        for (const p of pos.filter((q) => roles.get(q.id) === role)) {
+          const k = letters.get(p.id) ?? p.name;
+          g.set(k, [...(g.get(k) ?? []), p]);
+        }
+        return [...g.values()];
+      };
+      for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out, name);
+      for (const g of groups("rail")) railTalk(ctx, g, out, name);
+      for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out, name);
+      for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out, name);
+      const brackets = pos.filter((q) => roles.get(q.id) === "bracket");
+      if (brackets.length) bracketTalk(ctx, brackets, out, name);
+      // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
+      const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
+      const pick = (role: PlaceRole, word: RegExp) => {
+        // A hollow drawer's five parts are placed as the one drawer they make.
+        const one = (list: Panel[]) => (role === "drawer" ? list.filter((q, k) => !q.drawerId || (q.drawerPart === "side" && list.findIndex((r) => r.drawerId === q.drawerId && r.drawerPart === "side") === k)) : list);
+        const a = inStep.filter((p) => placeRole(p) === role);
+        if (a.length) return one(a);
+        return word.test(text) ? one(panels.filter((p) => placeRole(p) === role)) : [];
+      };
+      if (/\bhinges?\b/.test(text)) {
+        const doors = pick("door", /\bdoors?\b/);
+        if (doors.length) hingeTalk(ctx, doors, s, out);
       }
-      return [...g.values()];
+      if (/\bpulls?\b|\bknobs?\b/.test(text)) {
+        const fronts = pick("front", /drawer front/);
+        const doorsNow = /\bdoors?\b/.test(text) ? pick("door", /\bdoors?\b/) : [];
+        const drawers = fronts.length ? [] : /drawer/.test(text) ? pick("drawer", /drawer/) : [];
+        if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) pullTalk(ctx, doorsNow, "door", out);
+        if (fronts.length) pullTalk(ctx, fronts, "drawer front", out);
+        else if (drawers.length) pullTalk(ctx, drawers, "drawer front", out);
+      }
+      if (/drawer fronts?/.test(text)) {
+        const fronts = pick("front", /drawer front/);
+        if (fronts.length) frontTalk(ctx, fronts, out);
+      }
+      if (/\bslides?\b/.test(text)) {
+        const drawers = pick("drawer", /drawer/);
+        if (drawers.length) slideTalk(ctx, drawers, placed, out, name);
+      }
+      // One arrow per span (two dividers share the gap between them).
+      const key = (m: PlacementArrow) => [m.a, m.b].map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`).sort().join("|");
+      const seenArrow = new Set<string>();
+      out.arrows = out.arrows.filter((m) => {
+        const k = key(m);
+        if (seenArrow.has(k)) return false;
+        seenArrow.add(k);
+        return true;
+      });
+      const instIds = due.filter((id) => !byId.has(id));
+      if (instIds.length) instanceTalk(project, instIds, craft, out);
+      return out;
     };
-    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out, canName);
-    for (const g of groups("rail")) railTalk(ctx, g, out, canName);
-    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out, canName);
-    for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out, canName);
-    const brackets = pos.filter((q) => roles.get(q.id) === "bracket");
-    if (brackets.length) bracketTalk(ctx, brackets, out, canName);
-    // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
-    const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
-    const pick = (role: PlaceRole, word: RegExp) => {
-      // A hollow drawer's five parts are placed as the one drawer they make.
-      const one = (list: Panel[]) => (role === "drawer" ? list.filter((q, k) => !q.drawerId || (q.drawerPart === "side" && list.findIndex((r) => r.drawerId === q.drawerId && r.drawerPart === "side") === k)) : list);
-      const a = inStep.filter((p) => placeRole(p) === role);
-      if (a.length) return one(a);
-      return word.test(text) ? one(panels.filter((p) => placeRole(p) === role)) : [];
-    };
-    if (/\bhinges?\b/.test(text)) {
-      const doors = pick("door", /\bdoors?\b/);
-      if (doors.length) hingeTalk(ctx, doors, s, out);
-    }
-    if (/\bpulls?\b|\bknobs?\b/.test(text)) {
-      const fronts = pick("front", /drawer front/);
-      const doorsNow = /\bdoors?\b/.test(text) ? pick("door", /\bdoors?\b/) : [];
-      const drawers = fronts.length ? [] : /drawer/.test(text) ? pick("drawer", /drawer/) : [];
-      if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) pullTalk(ctx, doorsNow, "door", out);
-      if (fronts.length) pullTalk(ctx, fronts, "drawer front", out);
-      else if (drawers.length) pullTalk(ctx, drawers, "drawer front", out);
-    }
-    if (/drawer fronts?/.test(text)) {
-      const fronts = pick("front", /drawer front/);
-      if (fronts.length) frontTalk(ctx, fronts, out);
-    }
-    if (/\bslides?\b/.test(text)) {
-      const drawers = pick("drawer", /drawer/);
-      if (drawers.length) slideTalk(ctx, drawers, placed, out, canName);
-    }
-    // One arrow per span (two dividers share the gap between them).
-    const key = (m: PlacementArrow) => [m.a, m.b].map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`).sort().join("|");
-    const seenArrow = new Set<string>();
-    out.arrows = out.arrows.filter((m) => {
-      const k = key(m);
-      if (seenArrow.has(k)) return false;
-      seenArrow.add(k);
-      return true;
+    // Full templates, then the same templates naming only parts already placed.
+    const open = emit(NAME_ANY);
+    const closed = emit(canName);
+    const stay = [...closed.sentences];
+    const namesLater = (sentence: string) => idsInSentence(ctx, sentence).some((id) => {
+      const n = placedAt.get(id);
+      return n != null && n > i;
     });
-    const instIds = due.filter((id) => !byId.has(id));
-    if (instIds.length) instanceTalk(project, instIds, craft, out);
+    const laterStep = (sentence: string) => {
+      const stepsLater = idsInSentence(ctx, sentence).map((id) => placedAt.get(id)).filter((n): n is number => n != null && n > i);
+      return stepsLater.length ? Math.max(...stepsLater) : null;
+    };
+    for (const sentence of open.sentences) {
+      if (stay.includes(sentence)) continue;
+      if (stay.some((partial) => nameDropOnly(sentence, partial))) continue;
+      // A rests-on line that disappears entirely, while a height or flush line still
+      // locates the part, is not copied onto the later step (the vanity top on D).
+      // A rests-on line that only lost a later name still moves whole, so that name is not dropped.
+      if (isRestSentence(sentence) && locatedWithoutRest(stay) && !stay.some(isRestSentence)) continue;
+      const dest = laterStep(sentence);
+      if (dest != null && dest > i && dest < steps.length) give(dest, sentence);
+    }
+    // A step that had a Where keeps one: any sentence that does not name a later part stays.
+    if (!stay.length) {
+      for (const sentence of open.sentences) if (!namesLater(sentence) && !stay.includes(sentence)) stay.push(sentence);
+    }
     due.forEach((id) => placed.add(id));
     st.onto.forEach((id) => placed.add(id));
-    return out;
+    // Two groups may say the same line ("That is 9\" apart"). Keep both. A relation
+    // carried from an earlier step is added only when this step does not already say it.
+    const sentences = [...stay];
+    for (const extra of takeCarried(i)) if (!sentences.includes(extra)) sentences.push(extra);
+    return { ...closed, sentences };
   });
 }
 
@@ -956,7 +1063,14 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
 function dropStale(desc: string, pl: StepPlacement): string {
   let d = desc;
   if (pl.measures.some((m) => m.kind === "top")) {
-    d = d.replace(/\s*Marked heights?:[^.]*\.(?:\s*\d[^.]*\.)*/g, "");
+    // A pin step's Where replaces the old AFF list (linen). A zero inch in that list is an
+    // I37 zero, so that line goes too. Any other Marked heights line stays: the Where does
+    // not restate every shelf the drill line points at.
+    d = d.replace(/\s*Marked heights?:[^.]*\.(?:\s*\d[^.]*\.)*/g, (line) => {
+      if (/\bpin\b/i.test(desc)) return "";
+      if (/(?:^|[\s;])0(?:"|″)/.test(line)) return "";
+      return line;
+    });
     d = d.replace(/\s*\((?:shelf )?top face ~[^)]*\)/g, "");
   }
   if (pl.hardware.includes("hinge")) d = d.replace(/,?\s*3[–-]4"\s*from top and bottom(?:, the others evenly spaced between)?/g, "");
@@ -966,27 +1080,45 @@ function dropStale(desc: string, pl: StepPlacement): string {
 const AFTER_WHERE =
   /^(?:Drive |In all, |These screws |That brings |Screw through |One join|The desktop screws|Tape or glue|Set the joints)/;
 
-/** Sentences placement.ts writes. Anything else in the Where tail (a fittings line, a fasten line) stays. */
-const PLACEMENT_SENTENCE =
-  /^(?:Tops? (?:edge )?of |Tops of the |Top edges? of |Its underside |Set it on the top of |Front edge |Back face |Outside face |Front face |Mark |Or cut a spacer |That is |Gaps top to top |Square a pencil |Adjustable: |Bracket centers |Snap one level |Level the bracket |Slide center |Hinge centers |Pull |Drawer fronts?|Bottom edge of |Center |(?:All \d+ |The (?:\d+ )?slanted |The \d+ |The )\S+ (?:lie|lies|stand|stands|run|runs|stack)\b)/;
+function joinWhere(sentences: string[]): string {
+  return sentences.map((t, k) => (k === 0 ? `Where: ${t}` : t)).join(" ");
+}
+
+function sameSentences(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((s, i) => s === b[i]);
+}
+
+function tidyWords(desc: string): string {
+  return desc.replace(/\s{2,}/g, " ").replace(/\s+([.!?])/g, "$1").trim();
+}
 
 /**
- * Swap the Where block for the sentences this step's final order actually earns.
- * A support named while it was still ahead of this step is dropped. Accounting that
- * was appended after Where stays where it was.
+ * Replace the exact Where block this pass wrote. Sentences it did not write
+ * (a fittings line, a fasten line, a Marked heights line) stay, once.
  */
-function replaceWhere(desc: string, sentences: string[]): string {
-  const at = desc.indexOf("Where:");
-  if (at < 0) return desc;
-  const before = desc.slice(0, at).trimEnd();
-  const tail = desc.slice(at).replace(/^Where:\s*/, "");
-  const after: string[] = [];
-  for (const sentence of tail.split(/(?<=[.!?])\s+/).filter(Boolean)) {
-    // Only the sentences this pass writes are replaced. A fittings line or a fasten line stays.
-    if (!PLACEMENT_SENTENCE.test(sentence)) after.push(sentence);
+function swapOwned(desc: string, owned: string[], next: string[]): string {
+  const replacement = next.length ? joinWhere(next) : "";
+  if (owned.length) {
+    const block = joinWhere(owned);
+    const at = desc.indexOf(block);
+    if (at >= 0) return tidyWords(desc.slice(0, at) + replacement + desc.slice(at + block.length));
+    let d = desc;
+    let removed = 0;
+    for (const sentence of owned) {
+      const i = d.indexOf(sentence);
+      if (i < 0) continue;
+      d = d.slice(0, i) + d.slice(i + sentence.length);
+      removed++;
+    }
+    d = tidyWords(d);
+    if (!next.length) return d.replace(/\s*Where:\s*(?=\s|$)/, " ").replace(/\s{2,}/g, " ").trim();
+    if (removed && next.every((s) => d.includes(s))) return d;
+    if (!removed && next.every((s) => desc.includes(s))) return desc;
+    return appendWhere(d, next);
   }
-  const where = sentences.length ? sentences.map((t, k) => (k === 0 ? `Where: ${t}` : t)).join(" ") : "";
-  return [before, where, ...after].filter(Boolean).join(" ").replace(/[ \t]{2,}/g, " ").trim();
+  if (!next.length) return desc;
+  if (next.every((s) => desc.includes(s))) return desc;
+  return appendWhere(desc, next);
 }
 
 /** A step that gained its placement talk only after the real placement index was known. */
@@ -998,25 +1130,6 @@ function appendWhere(desc: string, sentences: string[]): string {
   return [...parts.slice(0, k), where, ...parts.slice(k)].join(" ").replace(/[ \t]{2,}/g, " ").trim();
 }
 
-/** Steps that receive a part the words named before the step that actually places it. */
-function arrivedSteps(project: YardProject, steps: AssemblyStep[], cutList: BuildPlan["cutList"]): Set<number> {
-  const placedAt = closableAt(project, steps, cutList);
-  const letters = partLetters(project, cutList);
-  const arrived = new Set<number>();
-  planStepParts(project, steps, letters).forEach((st, i) => {
-    if (st.kind !== "build") return;
-    for (const id of st.fresh) {
-      const n = placedAt.get(id);
-      if (n != null && n > i) arrived.add(n);
-    }
-  });
-  return arrived;
-}
-
-/**
- * Placement talk is written before the later passes reorder steps. Rebuild the Where
- * block from the finished order so a sentence only names parts already placed.
- */
 /** Later passes strip cut letters off whole pieces and say "the bottom" for a table or a hung piece. */
 function settlePlacementWords(project: YardProject, plan: BuildPlan, description: string): string {
   let d = unletterWhole(description, plan.cutList);
@@ -1024,24 +1137,49 @@ function settlePlacementWords(project: YardProject, plan: BuildPlan, description
   return d;
 }
 
+function asWritten(project: YardProject, plan: BuildPlan, sentence: string): string {
+  return positiveText(settlePlacementWords(project, plan, sentence)) ?? sentence;
+}
+
+function dropOwned(step: AssemblyStep): AssemblyStep {
+  if (!step.placementOwned) return step;
+  const { placementOwned: _owned, ...rest } = step;
+  return rest;
+}
+
+/**
+ * Placement talk is written before the later passes reorder steps. Rebuild the Where
+ * block from the finished order by replacing the sentences this pass wrote, and only those.
+ */
 export function resyncPlacementTalk(project: YardProject, plan: BuildPlan): BuildPlan {
-  if ((!project.panels.length && !project.instances.length) || !plan.instructions.length || project.windowPkg || project.kind === "opening") return plan;
-  if ((project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE)) && project.kind === "figure") return plan;
+  const skip = (!project.panels.length && !project.instances.length) || !plan.instructions.length || !!project.windowPkg || project.kind === "opening";
+  const figure = (project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE)) && project.kind === "figure";
+  if (skip || figure) {
+    if (!plan.instructions.some((s) => s.placementOwned)) return plan;
+    return { ...plan, instructions: plan.instructions.map(dropOwned) };
+  }
   const pls = stepPlacements(project, plan.instructions, plan.cutList, plan.partsKind === "whole");
-  const arrived = arrivedSteps(project, plan.instructions, plan.cutList);
   let changed = false;
   const instructions = plan.instructions.map((s, i) => {
-    if (!s.description?.includes("Where:")) {
-      if (!arrived.has(i) || !pls[i].sentences.length) return s;
-      const description = settlePlacementWords(project, plan, appendWhere(s.description ?? "", pls[i].sentences));
-      if (description === (s.description ?? "")) return s;
-      changed = true;
-      return { ...s, description };
+    const owned = s.placementOwned ?? [];
+    const next = pls[i].sentences;
+    const ownedWritten = owned.map((t) => asWritten(project, plan, t));
+    const nextWritten = next.map((t) => asWritten(project, plan, t));
+    if (sameSentences(owned, next) || sameSentences(ownedWritten, nextWritten)) {
+      const bare = dropOwned(s);
+      if (bare !== s) changed = true;
+      return bare;
     }
-    const description = settlePlacementWords(project, plan, replaceWhere(s.description, pls[i].sentences));
-    if (description === s.description) return s;
+    let description = swapOwned(s.description ?? "", owned, nextWritten);
+    if (description === (s.description ?? "")) description = swapOwned(s.description ?? "", ownedWritten, nextWritten);
+    if (description !== (s.description ?? "")) description = settlePlacementWords(project, plan, description);
+    if (description === (s.description ?? "")) {
+      const bare = dropOwned(s);
+      if (bare !== s) changed = true;
+      return bare;
+    }
     changed = true;
-    return { ...s, description };
+    return { ...dropOwned(s), description };
   });
   return changed ? { ...plan, instructions } : plan;
 }
@@ -1057,8 +1195,8 @@ export function withPlacementTalk(project: YardProject, plan: BuildPlan): BuildP
     const pl = pls[i];
     if (!pl.sentences.length) return s;
     const base = dropStale(s.description, pl);
-    const where = pl.sentences.map((t, k) => (k === 0 ? `Where: ${t}` : t)).join(" ");
-    return { ...s, description: `${base.replace(/\s*$/, "")}${/[.!?]$/.test(base) ? "" : "."} ${where}` };
+    const where = joinWhere(pl.sentences);
+    return { ...s, description: `${base.replace(/\s*$/, "")}${/[.!?]$/.test(base) ? "" : "."} ${where}`, placementOwned: pl.sentences };
   });
   return { ...plan, instructions };
 }
