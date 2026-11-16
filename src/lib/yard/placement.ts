@@ -966,6 +966,10 @@ function dropStale(desc: string, pl: StepPlacement): string {
 const AFTER_WHERE =
   /^(?:Drive |In all, |These screws |That brings |Screw through |One join|The desktop screws|Tape or glue|Set the joints)/;
 
+/** Sentences placement.ts writes. Anything else in the Where tail (a fittings line, a fasten line) stays. */
+const PLACEMENT_SENTENCE =
+  /^(?:Tops? (?:edge )?of |Tops of the |Top edges? of |Its underside |Set it on the top of |Front edge |Back face |Outside face |Front face |Mark |Or cut a spacer |That is |Gaps top to top |Square a pencil |Adjustable: |Bracket centers |Snap one level |Level the bracket |Slide center |Hinge centers |Pull |Drawer fronts?|Bottom edge of |Center |The (?:\d+ |slanted )?\S+ (?:stands?|lie|lies|runs?|run) |All \d+ )/;
+
 /**
  * Swap the Where block for the sentences this step's final order actually earns.
  * A support named while it was still ahead of this step is dropped. Accounting that
@@ -978,8 +982,8 @@ function replaceWhere(desc: string, sentences: string[]): string {
   const tail = desc.slice(at).replace(/^Where:\s*/, "");
   const after: string[] = [];
   for (const sentence of tail.split(/(?<=[.!?])\s+/).filter(Boolean)) {
-    // A fastening line parked after Where ("Fasten B Back … with N screws") is not placement talk.
-    if (AFTER_WHERE.test(sentence) || /^(?:Fasten|Attach|Glue|Screw|Hang|Pin) /.test(sentence) || /\bwith \d+ × #8\b/.test(sentence)) after.push(sentence);
+    // Only the sentences this pass writes are replaced. A fittings line or a fasten line stays.
+    if (!PLACEMENT_SENTENCE.test(sentence)) after.push(sentence);
   }
   const where = sentences.length ? sentences.map((t, k) => (k === 0 ? `Where: ${t}` : t)).join(" ") : "";
   return [before, where, ...after].filter(Boolean).join(" ").replace(/[ \t]{2,}/g, " ").trim();

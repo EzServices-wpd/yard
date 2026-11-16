@@ -1,0 +1,49 @@
+{
+  "examples": [
+    "shoe rack 36x18x12",
+    "shoe rack 36x24x12",
+    "shoe rack with cubbies 36 x 18 x 12",
+    "mudroom bench 48x18",
+    "mudroom bench 48x20",
+    "window seat 48x20",
+    "wardrobe 40x72",
+    "dresser 54.375 wide 36 tall 18.75 deep",
+    "dresser 54.5 wide",
+    "pocket vanity",
+    "pine 1x10 bookcase",
+    "desk 60x29x30"
+  ],
+  "shoeRacks": [
+    "shoe rack 36x18x12",
+    "shoe rack 36x24x12",
+    "shoe rack with cubbies 36 x 18 x 12"
+  ],
+  "benches": [
+    "mudroom bench 48x18",
+    "mudroom bench 48x20",
+    "window seat 48x20"
+  ],
+  "tops": [
+    "wardrobe 40x72",
+    "dresser 54.375 wide 36 tall 18.75 deep",
+    "dresser 54.5 wide",
+    "pocket vanity",
+    "pine 1x10 bookcase"
+  ],
+  "desks": [
+    "desk 60x29x30",
+    "desk 60x30x29"
+  ],
+  "novel": [
+    "entry bench 48 wide",
+    "storage bench 48 wide with cubbies",
+    "shoe bench 42 wide",
+    "window seat 36 wide",
+    "mudroom bench 36 wide",
+    "hall bench 60 wide",
+    "closet organizer 60 wide 84 tall 16 deep",
+    "bookcase 48 wide 84 tall 12 deep",
+    "pantry cabinet 30 wide 84 tall 16 deep",
+    "cube storage 30 wide 30 tall 12 deep"
+  ]
+}

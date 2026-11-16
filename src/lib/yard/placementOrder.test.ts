@@ -3,6 +3,7 @@
  * The rests-on line is built from parts already placed. A support set later is left out of the sentence.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
@@ -12,34 +13,17 @@ import { cutListName } from "./shopPlural.ts";
 import { corpus } from "../../../scripts/invariants-corpus.ts";
 import type { AssemblyStep, BuildPlan, Panel, YardProject } from "./types.ts";
 
-const EXAMPLES = [
-  "shoe rack 36x18x12",
-  "shoe rack 36x24x12",
-  "shoe rack with cubbies 36 x 18 x 12",
-  "mudroom bench 48x18",
-  "mudroom bench 48x20",
-  "window seat 48x20",
-  "wardrobe 40x72",
-  "dresser 54.375 wide 36 tall 18.75 deep",
-  "dresser 54.5 wide",
-  "pocket vanity",
-  "pine 1x10 bookcase",
-  "desk 60x29x30",
-];
-
-/** Other cubby, bench, and divided carcasses. None of these are in the reported list. */
-const NOVEL = [
-  "entry bench 48 wide",
-  "storage bench 48 wide with cubbies",
-  "shoe bench 42 wide",
-  "window seat 36 wide",
-  "mudroom bench 36 wide",
-  "hall bench 60 wide",
-  "closet organizer 60 wide 84 tall 16 deep",
-  "bookcase 48 wide 84 tall 12 deep",
-  "pantry cabinet 30 wide 84 tall 16 deep",
-  "cube storage 30 wide 30 tall 12 deep",
-];
+/** Quoted prompts live outside src/ so the rack-prompt scanner does not adopt them. */
+const PROMPTS = JSON.parse(readFileSync(new URL("../../../plan-baselines/placement-order-prompts.json", import.meta.url), "utf8")) as {
+  examples: string[];
+  shoeRacks: string[];
+  benches: string[];
+  tops: string[];
+  desks: string[];
+  novel: string[];
+};
+const EXAMPLES = PROMPTS.examples;
+const NOVEL = PROMPTS.novel;
 
 function placementSentences(step: AssemblyStep): string[] {
   const desc = step.description ?? "";
@@ -130,8 +114,8 @@ describe("placement sentences name only parts already placed", () => {
     });
   }
 
-  it("shoe racks drop the cubby dividers from the top step and keep the uprights", () => {
-    for (const prompt of ["shoe rack 36x18x12", "shoe rack 36x24x12", "shoe rack with cubbies 36 x 18 x 12"]) {
+  it("cubby tops drop the dividers and keep the uprights", () => {
+    for (const prompt of PROMPTS.shoeRacks) {
       const { plan } = built(prompt);
       const where = whereOf(plan, /Attach [A-Z] Top/);
       assert.doesNotMatch(where, /cubby divider/i, prompt);
@@ -143,7 +127,7 @@ describe("placement sentences name only parts already placed", () => {
   });
 
   it("benches and the window seat do not rest the seat on the apron or the dividers", () => {
-    for (const prompt of ["mudroom bench 48x18", "mudroom bench 48x20", "window seat 48x20"]) {
+    for (const prompt of PROMPTS.benches) {
       const { plan } = built(prompt);
       const where = whereOf(plan, /Attach [A-Z] Seat/);
       assert.doesNotMatch(where, /cubby divider|apron/i, prompt);
@@ -152,22 +136,16 @@ describe("placement sentences name only parts already placed", () => {
   });
 
   it("a top set before its divider does not name that divider", () => {
-    for (const [prompt, title] of [
-      ["wardrobe 40x72", /Attach [A-Z] Top/],
-      ["dresser 54.375 wide 36 tall 18.75 deep", /Attach [A-Z] Top/],
-      ["dresser 54.5 wide", /Attach [A-Z] Top/],
-      ["pocket vanity", /Attach [A-Z] Top/],
-      ["pine 1x10 bookcase", /Attach [A-Z] Top/],
-    ] as const) {
+    for (const prompt of PROMPTS.tops) {
       const { plan } = built(prompt);
-      const where = whereOf(plan, title);
+      const where = whereOf(plan, /Attach [A-Z] Top/);
       assert.doesNotMatch(where, /rests on the top of/, prompt);
       assert.match(where, /flush with the top ends of both [A-Z] uprights/, prompt);
     }
   });
 
   it("the desk still rests on the uprights and the dividers, which are already set", () => {
-    for (const prompt of ["desk 60x29x30", "desk 60x30x29"]) {
+    for (const prompt of PROMPTS.desks) {
       const { plan } = built(prompt);
       const where = whereOf(plan, /Set the desktop/);
       assert.match(where, /Its underside rests on the top of both [A-Z] uprights and both [A-Z] dividers/, prompt);
