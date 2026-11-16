@@ -1297,6 +1297,8 @@ export function untypedAxisAssumedNotes(
   notes: string[],
   overall: { width: number; height: number; depth: number },
   typed: { width: boolean; height: boolean; depth: boolean },
+  /** Inches the header prints. Defaults to the built box. A proud front's depth is the finished one. */
+  shown: { width: number; height: number; depth: number } = overall,
 ): string[] {
   // A derived axis ("… deep, worked out from 2 steps …") already says where it came from.
   const assumed = notes
@@ -1312,9 +1314,9 @@ export function untypedAxisAssumedNotes(
   ];
   const out: string[] = [];
   for (const [axis, word, ask, covered] of axes) {
-    const v = overall[axis];
+    const v = shown[axis];
     if (typed[axis] || !Number.isFinite(v) || covered.test(assumed)) continue;
-    if (typedNums.some((n) => Math.abs(n - v) < 0.01)) continue;
+    if (typedNums.some((n) => Math.abs(n - v) < 0.01 || Math.abs(n - overall[axis]) < 0.01)) continue;
     out.push(`Assumed ${inchFrac(v)}" ${word} (default size) — type ${ask} to lock it.`);
   }
   return out;
