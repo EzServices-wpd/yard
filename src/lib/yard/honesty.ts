@@ -12,6 +12,8 @@ import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
 import { mattressDeck } from "./fittedParse";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
+import { placeBinding } from "./sizePhrases";
+import { looksLikeFitted } from "./fittedDetect";
 import { lippedShelfYs } from "./shelfLips";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -142,11 +144,13 @@ function mattressFree(t: TypedExtents | null, prompt: string): TypedExtents | nu
 export function typedExtents(prompt: string): TypedExtents | null {
   prompt = normalizeUserPrompt(prompt);
   const bareTable = tableSpanFromPrompt(prompt);
+  const place = placeBinding(prompt, looksLikeFitted);
   if (
     !hasExplicitSize(prompt) &&
     !/\d+(?:\.\d+)?\s*(?:wide|tall|high|deep|long|width|height|depth|length)/i.test(prompt) &&
     !Number.isFinite(bareTable) &&
-    !Number.isFinite(spokenDiameterInches(prompt))
+    !Number.isFinite(spokenDiameterInches(prompt)) &&
+    !place.host
   ) {
     const trip = unlabeledTriple(prompt);
     const feet = footprintFeet(prompt);
@@ -269,8 +273,25 @@ export function typedExtents(prompt: string): TypedExtents | null {
     }
   }
 
+  // A size bound to a place is opening order (width × height × depth), whatever the noun is called.
+  // A size of the build written before that place keeps the order it already had.
+  if (place.host && !place.productFirst) {
+    if (place.axes.width != null && labeledWide == null) {
+      out.width = place.axes.width;
+      out.labeled.width = true;
+    }
+    if (place.axes.height != null && height == null) {
+      out.height = place.axes.height;
+      out.labeled.height = true;
+    }
+    if (place.axes.depth != null && depth == null) {
+      out.depth = place.axes.depth;
+      out.labeled.depth = true;
+    }
+  }
+
   // Bookcase: the taller of the last two numbers is the height, not an 84" depth.
-  if (!saidAxis && program === "bookcase" && trip && trip.c != null) {
+  if (!(place.host && !place.productFirst) && !saidAxis && program === "bookcase" && trip && trip.c != null) {
     const taller = Math.max(trip.b, trip.c);
     const shallower = Math.min(trip.b, trip.c);
     if (taller >= 36 && shallower <= 24 && taller >= shallower + 12) {

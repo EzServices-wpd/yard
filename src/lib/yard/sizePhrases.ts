@@ -123,3 +123,109 @@ export function fitClause(text: string): FitClause | null {
   const said = m[0].slice(0, m[0].length - m[3].length) + m[3].split(/\s+/).slice(0, words.length).join(" ");
   return { text: said, inches, noun, space: SPACE_NOUN.test(noun), ceiling: /^ceilings?$/.test(noun) };
 }
+
+/**
+ * Where a size is bound, read from the sentence rather than from a list of space nouns.
+ * A measure inside a place phrase (in / into / fits / fitted to / between / for + a size) belongs to
+ * the place the build goes into. A measure on the build itself ("crate 16x12x10") does not.
+ * The noun can be one the reader has never seen (cranny, cutout, bay). An unlabeled triple in that
+ * phrase is opening order, width × height × depth. `productFirst` means a size of the build is
+ * written before the place, and that size stays the build.
+ */
+export type PlaceBinding = {
+  host: boolean;
+  at: number;
+  productFirst: boolean;
+  axes: Partial<Record<Axis, number>>;
+};
+
+const PLACE_LEAD =
+  /\b(?:fitted\s+(?:to|in(?:to)?)|to\s+fit|(?:that|which)\s+fits?|fits?(?:\s+in(?:to)?)?|fitting|in(?:to|side)?|within|between|for)\b/gi;
+const PLACE_TRIPLE =
+  /(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|")?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(?:\s*(?:in(?:ch(?:es)?)?|")?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?/i;
+const PLACE_AXIS =
+  /(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|")?\s*(wide|width|tall|high|height|deep|depth)\b/gi;
+
+/** "24x30x10 niche": a triple and then one noun, nothing else. The caller decides whether that noun is a product. */
+export function leadingTripleNoun(prompt: string): { width: number; height: number; depth: number; noun: string } | null {
+  const m = prompt
+    .trim()
+    .match(/^(?:(?:a|an|the|my|our)\s+)?(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?\s+([a-z][a-z-]{2,})\s*$/i);
+  if (!m?.[3]) return null;
+  return { width: Number(m[1]), height: Number(m[2]), depth: Number(m[3]), noun: m[4].toLowerCase() };
+}
+
+export function placeBinding(prompt: string, isProduct: (noun: string) => boolean = () => true): PlaceBinding {
+  const text = prompt.replace(/×/g, "x");
+  const axes: Partial<Record<Axis, number>> = {};
+  const set = (a: Axis, n: number) => {
+    if (axes[a] == null && Number.isFinite(n) && n > 0 && n <= 240) axes[a] = n;
+  };
+  let at = -1;
+  const apart = text.match(/\bbetween\b[^.]{0,80}?(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|")?\s*apart\b/i);
+  if (apart) {
+    set("width", Number(apart[1]));
+    at = apart.index ?? 0;
+  }
+  const between = text.match(/(\d+(?:\.\d+)?)\s*-?\s*(?:inches|inch|in(?![a-z])|ft|feet|foot|')\s+(?:of\s+(?:space|room)\s+)?between\b/i);
+  if (between) {
+    set("width", Number(between[1]) * (/ft|feet|foot|'/i.test(between[0]) ? 12 : 1));
+    if (at < 0) at = between.index ?? 0;
+  }
+  for (const lead of text.matchAll(new RegExp(PLACE_LEAD.source, "gi"))) {
+    const span = text.slice(lead.index, lead.index + 140);
+    const word = lead[0].toLowerCase();
+    const trip = span.match(PLACE_TRIPLE);
+    if (trip && Number(trip[1]) >= 6 && (trip.index ?? 0) < 80) {
+      set("width", Number(trip[1]));
+      if (trip[3] != null) {
+        set("height", Number(trip[2]));
+        set("depth", Number(trip[3]));
+      } else set("height", Number(trip[2]));
+      if (at < 0) at = lead.index ?? 0;
+    }
+    for (const ax of span.matchAll(PLACE_AXIS)) {
+      const w = ax[2].toLowerCase();
+      set(w.startsWith("w") ? "width" : w.startsWith("d") ? "depth" : "height", Number(ax[1]));
+      if (at < 0) at = lead.index ?? 0;
+    }
+    const bare = span.match(
+      /(\d+(?:\.\d+)?)\s*-?\s*(inches|inch(?![a-z])|in(?![a-z])\.?|"|feet|foot|ft(?![a-z])\.?|')\s+(?!(?:wide|width|deep|depth|tall|high|height|long|length)\b)([a-z]+)/i,
+    );
+    if (bare && axes.width == null) {
+      const inches = Number(bare[1]) * (/^(?:feet|foot|ft|')/i.test(bare[2]) ? 12 : 1);
+      const noun = bare[3].toLowerCase();
+      // "30 inches from pvc" is stock, not a place named "from".
+      if (PHRASE_END.test(noun) || /^ceilings?$/.test(noun) || !(inches >= 1 && inches <= 120)) continue;
+      const forLead = word === "for";
+      // "for a 6 inch hole" is a part. "for a 22 inch vase" is an object. A place triple above already won.
+      // "in / fits a 10 inch cranny" is the place, including under 12", whatever the noun is called.
+      if (forLead) {
+        const fc = fitClause(span) ?? fitClause(text);
+        if (inches < 12 || (fc != null && !fc.space)) continue;
+      }
+      set("width", inches);
+      if (at < 0) at = lead.index ?? 0;
+    }
+  }
+  if (!Object.keys(axes).length) {
+    const lead = leadingTripleNoun(text);
+    if (lead && !isProduct(lead.noun)) {
+      return {
+        host: true,
+        at: 0,
+        productFirst: false,
+        axes: { width: lead.width, height: lead.height, depth: lead.depth },
+      };
+    }
+  }
+  // A size of the build written before the place ("28\" x 12\" x 72\" for a 30\" space", "30w to fit")
+  // keeps that size. Quotes and a w suffix still count; the place's own triple does not, it sits after `at`.
+  const head = at > 0 ? text.slice(0, at) : "";
+  const productFirst =
+    head.length > 0 &&
+    (typedSizeTuple(head) != null ||
+      /\b\d+(?:\.\d+)?\s*w\b/i.test(head) ||
+      /\d\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:wide|width)\b/i.test(head));
+  return { host: Object.keys(axes).length > 0, at, productFirst, axes };
+}

@@ -50,8 +50,11 @@ export function classifyAnatomy(prompt: string): AnatomyHit {
     !/drawer|slide\s*rail/.test(hay) &&
     /\d+\s*(?:x|×|by)\s*\d+/.test(hay);
   // A window or door word that names a box, cabinet, or seat is that object, not a rough opening.
+  // "under the window" is where a build goes, not a window to frame.
+  const windowAsPlace = /\b(?:under|over|above|below|beside|behind)\s+(?:the\s+)?windows?\b/.test(hay);
   if (
     (WINDOW_OPENING.test(hay) || sliderWindow) &&
+    !windowAsPlace &&
     !/stained/.test(hay) &&
     !/window seat/.test(hay) &&
     !isPlanterBox(hay) &&

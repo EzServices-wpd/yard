@@ -9,7 +9,7 @@ import { shelfCountRefusal, tooSmallRefusal } from "./tooSmall";
 import { largestBuilding, largestScale, MAX_PARTS, scaledSizes, TooManyParts } from "./partCeiling";
 import { suspensionRatioRefusal } from "./formLandmarks";
 import { withArticle } from "./article";
-import { sizePhrases } from "./sizePhrases";
+import { placeBinding, sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
 import { builderOwnText, READ_MODIFIER } from "./builderName";
@@ -1600,7 +1600,7 @@ function generateRaw(
     weekendMech !== "launcher" &&
     weekendMech !== "pot-hold" &&
     (weekendMech !== "media-hold" || houseMedia) &&
-    (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia) &&
+    (kindHint === "closet" || looksLikeFitted(prompt) || houseMedia || placeBinding(prompt, looksLikeFitted).host) &&
     // A garden arch "from paper towel" is still an arch. Weekend forms are not carcases.
     !detectWeekendFamily(prompt)
   ) {

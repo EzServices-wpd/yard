@@ -1,4 +1,5 @@
-import { OPENING_SPACE } from "./fittedShared";
+import { placeBinding } from "./sizePhrases";
+import { looksLikeFitted } from "./fittedDetect";
 import { withSaidHardware } from "./hardwareSaid";
 import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
@@ -40,7 +41,7 @@ import { cutListName, sheetCutDims, isBoundingDrawerPanel, explodeDrawerBoxCuts,
 import { oddCutName } from "./oddShapes";
 import { realObjectKind } from "./realObjects";
 import { isSheetStockCut, spliceCutListToSheet, fitsOnSheet, SHEET_4X8, plySheetCatalogId, planSheetNest, nestSheetCounts, nestSheetsByStock, isLumberLegCut, flagCrossGrain, type PlanSheetNest } from "./nesting";
-import { honestPlan, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
+import { honestPlan, typedExtents, wantsFixedGlueShelves, wantsRackAffordance } from "./honesty";
 import { isBedsideShelf, isBootTrayBench, isCoatHookBoard, isDryingRack, isFoldingTable, isIroningWallMount, isKeyMailShelf, isLaundrySorter, isLeashRail, isPegRail, isLumberRack, isOutdoorSideTable, isServingCart, isButcherCart, isDiningTable, isSlotRack, isPlateRack, isPegboard, isPlanterBox, isPlatformBed, isPorchSwingFrame, isPottingBench, isToolRail, isToyChest, isHingedLidChest, isLiftOffLidPrompt, isUtilityShelf, isWorkbench, sitBenchTitleStem, isLoungeChair, isRockingChair, isOttoman, isSeatingLoungeClass, identityTitleStem } from "./family";
 import { honestWeekendPlan, namedStockDisplayName, namedStockFromPrompt } from "./weekendStockHonesty";
 import { CATALOG_LUMBER_BIND, namedLegLumberFromPrompt, namedLumberFromPrompt } from "./namedLumberSpecies";
@@ -1269,8 +1270,6 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
  * leave it unset are freestanding and are not checked.
  */
 const HOST_OPENING_KINDS = new Set(["alcove", "pocket", "window", "door"]);
-/** Words that name a space the build goes into: the brief's alcove words, plus a closet, a gap, a pocket, a doorway, or the space between or beside things. */
-const SPACE_WORDS = new RegExp(`${OPENING_SPACE.source}|\\b(?:closet|gap|pocket|doorway)\\b|\\bspace\\s+(?:between|next\\s+to|beside)\\b`);
 
 function hostOpening(project: YardProject): { width: number; height: number; depth: number } | null {
   if (project.pocket) {
@@ -1278,8 +1277,20 @@ function hostOpening(project: YardProject): { width: number; height: number; dep
     return { width: w.backWidth, height: w.height, depth: Math.max(w.leftDepth, w.rightDepth) };
   }
   const fitted = project.fitted?.opening;
-  const prompt = (project.typedPrompt ?? project.prompt ?? "").toLowerCase();
-  if (fitted && (HOST_OPENING_KINDS.has(fitted.kind) || SPACE_WORDS.test(prompt))) {
+  const prompt = project.typedPrompt ?? project.prompt ?? "";
+  // A measure bound to a place is the hole, on only the axes that measure names. The noun does not
+  // have to be one we have seen before. A closet, wardrobe or pantry is itself the opening.
+  const place = placeBinding(prompt, looksLikeFitted);
+  if (place.host) {
+    return {
+      width: place.axes.width ?? Infinity,
+      height: place.axes.height ?? Infinity,
+      depth: place.axes.depth ?? Infinity,
+    };
+  }
+  const program = project.fitted?.program;
+  const openingProgram = program === "closet" || program === "wardrobe" || program === "pantry";
+  if (fitted && (HOST_OPENING_KINDS.has(fitted.kind) || openingProgram)) {
     // Only a size the person typed is the hole. An untyped axis is the build's own default
     // (a spice cabinet's 4 1/2" depth), not a measure of the opening.
     const typed = project.fitted?.typedAxes ?? { width: true, height: true, depth: true };
@@ -1290,6 +1301,16 @@ function hostOpening(project: YardProject): { width: number; height: number; dep
     };
   }
   const declared = project.opening;
+  // A closet built straight from a place ("pocket space 8 wide") stores the hole on `opening`,
+  // with no fitted spec. Only an axis the person typed is that hole.
+  if (!project.fitted && declared && HOST_OPENING_KINDS.has(declared.kind)) {
+    const te = typedExtents(prompt);
+    return {
+      width: te?.labeled.width ? declared.width : Infinity,
+      height: te?.labeled.height ? declared.height : Infinity,
+      depth: te?.labeled.depth ? declared.depth : Infinity,
+    };
+  }
   if (project.id.startsWith("recipe-") && declared && HOST_OPENING_KINDS.has(declared.kind)) {
     return { width: declared.width, height: declared.height, depth: declared.depth };
   }

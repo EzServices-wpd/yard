@@ -43,6 +43,7 @@ import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { clothesRodDefaultDepth } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
+import { placeBinding } from "./sizePhrases";
 import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
@@ -107,10 +108,13 @@ export function framedSleep(lower: string): { width: number; length: number } {
 
 export function parseBrief(prompt: string): FittedSpec | null {
   prompt = normalizeUserPrompt(prompt);
+  const place = placeBinding(prompt, looksLikeFitted);
   const craftLower = prompt.toLowerCase();
   // Tip-rail picture/photo/art ledge is hung-open house densify (isPictureLedge) — do not null brief.
   if (/soft-?launch|leaves?\s+free/.test(craftLower) && /(?:paper\s*)?plane|marble|ramp|trough|cedar|popsicle|weekend|craft/.test(craftLower) && !/mudroom|closet|desk|headboard|shoe|cabinet/.test(craftLower)) return null;
-  if (!looksLikeFitted(prompt)) return null;
+  // A size bound to a place ("24x30x10 niche", "fits a 10 inch cranny") is a fitted opening
+  // even when the noun has never been listed.
+  if (!looksLikeFitted(prompt) && !place.host) return null;
   // A numbered degree on a shelf is the odd-shape corner, not a 90° triangle.
   if (isOddShapePrompt(prompt)) return oddSpecFromPrompt(prompt);
   // Corner-unit class — triangle / quarter-round plates in a 90° corner, never a flat rectangle.
@@ -668,12 +672,23 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // so stock fills never flip labeled flags.
   // Universal densify gate (opening-storage + vanity + chest + floor-carcase class defaults) — not a program whitelist.
   const classDefaultTitleHonesty = isClassDefaultDensifyPrompt(prompt);
+  // Typed means the person named the axis. A class default that already filled `width` is not typed.
+  const saidAxisWord = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
+  const tripleOwns = !saidAxisWord && !!(trip.w && trip.h && trip.d);
   const typedAxes = classDefaultTitleHonesty
     ? typedClassDefaultAxes(prompt)
     : {
-        width: Number.isFinite(width),
-        height: Number.isFinite(height) && height !== 0,
-        depth: Number.isFinite(depth),
+        width:
+          Number.isFinite(spokenAxisInches(t, "w")) ||
+          place.axes.width != null ||
+          Number.isFinite(openingWidthFromPrompt(t)) ||
+          Number.isFinite(nounSpanFromPrompt(t)) ||
+          Number.isFinite(deskWidthFromPrompt(t)) ||
+          (program === "table" && Number.isFinite(tableSpanFromPrompt(t))) ||
+          tripleOwns ||
+          (!saidAxisWord && !!trip.w),
+        height: Number.isFinite(spokenAxisInches(t, "h")) || place.axes.height != null || tripleOwns,
+        depth: Number.isFinite(spokenAxisInches(t, "d")) || place.axes.depth != null || tripleOwns,
       };
 
   // A 4×8 raised bed is the footprint. The wall stays a bed height, not 8 feet tall.
@@ -1220,6 +1235,16 @@ export function parseBrief(prompt: string): FittedSpec | null {
       if (bare || !said("deep|depth")) depth = small.item.clear.d + 1;
     }
   }
+  // The place's own size wins, in opening order. A size of the build written before the place stays.
+  if (place.host && !place.productFirst) {
+    const spokenW = Number.isFinite(spokenAxisInches(t, "w"));
+    const spokenH = Number.isFinite(spokenAxisInches(t, "h"));
+    const spokenD = Number.isFinite(spokenAxisInches(t, "d"));
+    if (place.axes.width != null && !spokenW) width = place.axes.width;
+    if (place.axes.height != null && !spokenH) height = place.axes.height;
+    if (place.axes.depth != null && !spokenD) depth = place.axes.depth;
+  }
+
   const unit: FittedUnit = {
 
     width,
@@ -1446,7 +1471,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
       width,
       height,
       depth,
-      kind: walls ? "pocket" : OPENING_SPACE.test(lower) ? "alcove" : "room",
+      kind: walls ? "pocket" : OPENING_SPACE.test(lower) || (place.host && !looksLikeFitted(prompt)) ? "alcove" : "room",
     },
     unit,
     walls,
