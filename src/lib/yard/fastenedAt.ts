@@ -362,7 +362,7 @@ function understated(steps: AssemblyStep[]): boolean {
  * close (a back listed while the box is stood, fastened after). A verb match earlier than the listing
  * names some other part: the screws wait until the part is actually in a step.
  */
-function closableAt(project: YardProject, steps: AssemblyStep[], cutList: BuildPlan["cutList"]): Map<string, number> {
+export function closableAt(project: YardProject, steps: AssemblyStep[], cutList: BuildPlan["cutList"]): Map<string, number> {
   const listed = placementIndex(project, steps);
   const attached = fastenedAt(project, steps, cutList);
   const at = new Map<string, number>();

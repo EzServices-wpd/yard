@@ -516,6 +516,11 @@ export type AssemblyStep = {
   fastenersUsed?: FastenerUse[];
   tips?: string;
   imageDataUrl?: string;
+  /**
+   * The exact sentences the placement pass wrote into `description`. A later rebuild
+   * replaces these by identity and then drops the field. A person never reads it.
+   */
+  placementOwned?: string[];
 };
 
 export type BuildPlan = {
