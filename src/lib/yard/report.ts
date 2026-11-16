@@ -1,3 +1,4 @@
+import { OPENING_SPACE } from "./fittedShared";
 import { withSaidHardware } from "./hardwareSaid";
 import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
@@ -1266,6 +1267,8 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
  * leave it unset are freestanding and are not checked.
  */
 const HOST_OPENING_KINDS = new Set(["alcove", "pocket", "window", "door"]);
+/** Words that name a space the build goes into: the brief's alcove words, plus a closet, a gap, a pocket, a doorway, or the space between or beside things. */
+const SPACE_WORDS = new RegExp(`${OPENING_SPACE.source}|\\b(?:closet|gap|pocket|doorway)\\b|\\bspace\\s+(?:between|next\\s+to|beside)\\b`);
 
 function hostOpening(project: YardProject): { width: number; height: number; depth: number } | null {
   if (project.pocket) {
@@ -1273,8 +1276,16 @@ function hostOpening(project: YardProject): { width: number; height: number; dep
     return { width: w.backWidth, height: w.height, depth: Math.max(w.leftDepth, w.rightDepth) };
   }
   const fitted = project.fitted?.opening;
-  if (fitted && HOST_OPENING_KINDS.has(fitted.kind)) {
-    return { width: fitted.width, height: fitted.height, depth: fitted.depth };
+  const prompt = (project.typedPrompt ?? project.prompt ?? "").toLowerCase();
+  if (fitted && (HOST_OPENING_KINDS.has(fitted.kind) || SPACE_WORDS.test(prompt))) {
+    // Only a size the person typed is the hole. An untyped axis is the build's own default
+    // (a spice cabinet's 4 1/2" depth), not a measure of the opening.
+    const typed = project.fitted?.typedAxes ?? { width: true, height: true, depth: true };
+    return {
+      width: typed.width ? fitted.width : Infinity,
+      height: typed.height ? fitted.height : Infinity,
+      depth: typed.depth ? fitted.depth : Infinity,
+    };
   }
   const declared = project.opening;
   if (project.id.startsWith("recipe-") && declared && HOST_OPENING_KINDS.has(declared.kind)) {

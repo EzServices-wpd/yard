@@ -66,8 +66,13 @@ test("a typed opening that is actually tight still warns, and a roomy one does n
     "bookshelf fitted to a 10 x 40 x 12 opening",
     "bookcase between the walls 10 wide",
     "nook shelf 10 wide 24 tall 8 deep",
-    // The old noun skip silenced this recess. The recess is a host, and 4 1/2" deep is under 8".
-    "spice cabinet in a 6 inch recess",
+    // A closet, a gap, a pocket or a doorway is a host too, even when the fitted kind reads "room".
+    "shelves for a closet 10 wide 30 tall 12 deep",
+    "closet organizer for a 30 x 80 x 6 closet",
+    "shelf for a pocket 9 wide 20 tall 6 deep",
+    "shelf in a doorway 10 wide",
+    "rolling pantry for the gap between the fridge and the wall 6 wide",
+    "linen closet 10 wide 30 tall 6 deep",
   ];
   for (const q of tight) {
     const found = messages(q).filter((m) => m.includes("Opening is tight"));
@@ -77,6 +82,10 @@ test("a typed opening that is actually tight still warns, and a roomy one does n
     "built-in bookcase 36 wide 84 tall 12 deep",
     "bookshelf fitted to a 36 x 80 x 12 opening",
     "recessed cabinet 8 deep",
+    // A roomy typed width with an untyped depth: the 4 1/2" is the cabinet's own default, not the hole.
+    "spice cabinet in a 30 inch recess",
+    "medicine cabinet for a 30 inch niche",
+    "coat rack in a 48 inch alcove",
     "linen closet 31.5 wide 78 tall 16 deep",
     "pocket vanity",
     "desk 60 inches wide by 30 deep by 29 high with drawers and 24 inch knee space",
