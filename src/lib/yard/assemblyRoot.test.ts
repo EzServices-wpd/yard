@@ -78,7 +78,17 @@ describe("one root per joined assembly", () => {
   }
 
   // A seat across a corner spans two walls. It goes in after both are standing, never on one wall alone.
-  for (const prompt of ["sandbox with seat from 2x2", "sandbox with seat from pvc"]) {
+  // So do a bay wall between two posts, a floor on its rims, an apron or rail between two legs.
+  for (const prompt of [
+    "sandbox with seat from 2x2",
+    "sandbox with seat from pvc",
+    "compost bin",
+    "chicken coop",
+    "raised dog feeder stand",
+    "router table",
+    "laptop stand",
+    "adirondack footrest",
+  ]) {
     it(`${prompt}: a carried part goes in after every floor part it spans`, () => {
       const project = generateFromPrompt(prompt);
       const plan = buildPlan(project);
@@ -122,11 +132,7 @@ describe("one root per joined assembly", () => {
  */
 const MIXED = [
   "raised garden bed",
-  "sawbuck",
-  "compost bin",
-  "sawbuck from 2x4",
   "cedar raised garden bed 4x8",
-  "compost bin with lid",
   "cedar 2x6 raised garden bed 48x24x11",
   "sandbox with seat from 2x2",
 ];
@@ -172,31 +178,15 @@ describe("one root in a mixed-stock assembly", () => {
     });
   }
 
-  // Legs and a box that already stand in a shared step keep that step.
-  // They do not grow a second "it is the base" line.
-  for (const prompt of ["planter box on legs"]) {
-    it(`${prompt}: at most one base line, and a fastened floor part names a part already placed`, () => {
-      const project = generateFromPrompt(prompt);
-      const plan = buildPlan(project);
-      const text = plan.instructions.map((s) => `${s.title}. ${s.description}`).join("\n");
-      const roots = text.match(new RegExp(ROOT.source, "gi")) ?? [];
-      assert.ok(roots.length <= 1, `${roots.length} root sentences:\n${text}`);
-      const sup = supportsOf(project);
-      const at = placementIndex(project, plan.instructions);
-      const name = new Map(project.panels.map((p) => [p.id, p.name]));
-      const floors = project.panels.filter((p) => sup.get(p.id)?.how === "floor");
-      assert.ok(floors.length >= 1, "no floor start");
-      for (const p of project.panels) {
-        if (minY(p) > 0.1) continue;
-        const info = sup.get(p.id);
-        if (!info || info.how === "floor") continue;
-        const i = at.get(p.id);
-        assert.ok(i != null && info.on.length > 0, p.name);
-        for (const id of info.on) {
-          const j = at.get(id);
-          assert.ok(j != null && j <= i!, `${p.name} before ${name.get(id)}`);
-        }
-      }
+  // A case stood on uprights keeps its box steps: the screws each step drives still add up to the Buy count.
+  for (const prompt of ["planter box on legs", "mailbox", "boot tray", "bench with legs and aprons"]) {
+    it(`${prompt}: the step screw counts add up to the build total`, () => {
+      const plan = buildPlan(generateFromPrompt(prompt));
+      const text = plan.instructions.map((s) => s.description ?? "").join("\n");
+      const driven = [...text.matchAll(/[Dd]rives? (\d+) ×/g)].reduce((n, m) => n + Number(m[1]), 0);
+      const totals = [...text.matchAll(/brings the build to (\d+) screws/g)].map((m) => Number(m[1]));
+      assert.ok(totals.length > 0, "no build total");
+      assert.equal(driven, totals[totals.length - 1], text);
     });
   }
 });

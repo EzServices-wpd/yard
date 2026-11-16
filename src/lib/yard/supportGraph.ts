@@ -13,7 +13,6 @@
 import { rotorChain } from "./solids";
 import { panelWorldCorners } from "./geometry";
 import { panelStockThickness } from "./modelJoints";
-import { supportEdges } from "./supportOrder";
 import type { Panel, YardInstance, YardProject } from "./types";
 import { doorHingesLeft } from "./operateFaces";
 
@@ -38,14 +37,14 @@ export const isDrawerFront = (p: Panel) => /drawer front|false front/i.test(p.na
 
 const isCaster = (p: Panel) => p.materialId === "hardware" && /^Caster \d+$/.test(p.name);
 
-export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
+export function panelSupports(panels: Panel[], wall = false): Map<string, SupportInfo> {
   // C13: casters screw under the piece last. The piece is built as it stands on its own bottom; each caster
   // is then fastened to the part right above it, so it is never "the base the next parts fasten to".
   const casters = panels.filter(isCaster);
   if (casters.length && casters.length < panels.length) {
     const rest = panels.filter((p) => !isCaster(p));
     const lift = Math.min(...rest.map((p) => boxOf(p).min[1]));
-    const out = panelSupports(rest.map((p) => ({ ...p, position: { ...p.position, y: p.position.y - lift } })));
+    const out = panelSupports(rest.map((p) => ({ ...p, position: { ...p.position, y: p.position.y - lift } })), wall);
     for (const c of casters) {
       const C = boxOf(c);
       const host = rest
@@ -261,7 +260,8 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
     }
   }
   // One root per joined assembly, after every other rule has named what a part hangs or rests on.
-  oneRootPerAssembly(out, panels, boxes);
+  // A wall-hung piece is laid on the bench and hung: the wall holds it, so its starts stay as they are.
+  if (!wall) oneRootPerAssembly(out, panels, boxes);
   return acyclic(out, panels, boxes);
 }
 
@@ -289,9 +289,8 @@ function faceContact(A: Box, B: Box): boolean {
  * and an inset bottom are one assembly when they meet or already fasten, whatever their stock or part type. The root is the
  * floor part the most others already wait on, then the one with the most neighbors off the floor,
  * then the most contacts, the largest, the lowest, then the id. Every other floor part fastens to a
- * neighbor closer to that root. A side joint can turn around so the second post fastens to the board
- * instead of the board waiting on every post. A part that sits on this one is not that neighbor, and
- * a flat board that covers two walls keeps every wall it names. Pieces that never meet stay separate
+ * floor neighbor closer to that root, never to a part that spans it. A part that sits on this one is
+ * not that neighbor. A case stood on uprights keeps its starts. Pieces that never meet stay separate
  * starts. A part outside the component (a door, a drawer front) that hangs on one member leaves the
  * members as they are: it names only that member.
  */
@@ -332,29 +331,11 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
     }
     return false;
   };
-  // A flat board let down over two or more walls. Those walls stay in its support list.
-  const wallsUnder = (id: string) => {
-    const A = boxes.get(id);
-    if (!A) return [] as string[];
-    const ext = [0, 1, 2].map((k) => A.max[k] - A.min[k]);
-    if (ext[1] > Math.min(ext[0], ext[2])) return [] as string[];
-    const carriers = parts.filter((p) => {
-      if (p.id === id) return false;
-      const B = boxes.get(p.id)!;
-      const hx = B.max[0] - B.min[0], hy = B.max[1] - B.min[1], hz = B.max[2] - B.min[2];
-      if (hy <= Math.min(hx, hz) * 2) return false;
-      const yOver = Math.min(A.max[1], B.max[1]) - Math.max(A.min[1], B.min[1]);
-      if (yOver < 0.25 || overlap(A, B, 0) < 0.25 || overlap(A, B, 2) < 0.25) return false;
-      return A.max[1] >= B.max[1] - 0.15 || Math.abs(A.min[1] - B.max[1]) <= 0.15;
-    }).map((p) => p.id);
-    return carriers.length >= 2 ? carriers : [];
-  };
   const sitsOn = (carrier: string, other: string) => {
     const self = boxes.get(carrier)!, top = boxes.get(other)!;
     return Math.abs(self.max[1] - top.min[1]) <= 0.1 && overlap(self, top, 0) >= 0.25 && overlap(self, top, 2) >= 0.25;
   };
   const byId = new Map(panels.map((p) => [p.id, p]));
-  const hosts = supportEdges({ panels, instances: [] } as unknown as YardProject);
   const seen = new Set<string>();
   for (const start of parts) {
     if (seen.has(start.id)) continue;
@@ -368,11 +349,9 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
       for (const n of adj.get(id) ?? []) if (!seen.has(n)) stack.push(n);
     }
     const floors = comp.filter((id) => out.get(id)?.how === "floor");
-    if (floors.length <= 1) continue;
-    // A stood case is built from its uprights. Rewriting those posts reverses the rails and the pinned step order.
-    if (comp.some((id) => byId.get(id)?.type === "upright")) continue;
-    // A wall cleat build is hung. Its bench base stays the base in front of the cleat.
-    if (comp.some((id) => byId.get(id)?.type === "cleat" || /\bcleat\b/i.test(byId.get(id)?.name ?? ""))) continue;
+    // A case already stands on its uprights: the box recipe stands them together and counts their
+    // screws in that step. Rewriting one of its members splits that step, so a case keeps its starts.
+    if (floors.length <= 1 || comp.some((id) => byId.get(id)?.type === "upright")) continue;
     // A door or a drawer front hangs on one member and is not in this contact component. Collapsing
     // the members would stand that part before the other members it spans.
     const inComp = new Set(comp);
@@ -399,19 +378,6 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
       }
     }
     const leads = (id: string) => id === root || reaches(id, root);
-    // Drop a side joint that points at this part, so the part can fasten the other way. Never drop
-    // the walls under a corner board, a part that sits on this one, or the holder's only way back to the root.
-    const release = (holder: string, id: string) => {
-      const info = out.get(holder);
-      if (!info?.on.includes(id) || info.how !== "side" || wallsUnder(holder).includes(id) || sitsOn(id, holder)) return false;
-      const saved = info.on;
-      out.set(holder, { ...info, on: saved.filter((x) => x !== id) });
-      if (reaches(holder, id) || !leads(holder)) {
-        out.set(holder, { ...info, on: saved });
-        return false;
-      }
-      return true;
-    };
     const floorSet = new Set(floors);
     const tryAttach = (id: string, holder: string) => {
       const part = byId.get(id);
@@ -420,40 +386,10 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
       // Steps place a repeated name at its first mention. A second part of that name cannot
       // wait on something the first mention is already past.
       if (panels.some((p) => p.id !== id && p.name === part.name)) return false;
-      // A rail or a cleat the order check stands after this part stays after it.
-      // A wall board may turn around, so the second post fastens to that board.
-      const holderPanel = byId.get(holder);
-      if (!floorSet.has(holder) && hosts.get(holderPanel?.name ?? "")?.has(part.name) && holderPanel?.type !== "side") return false;
-      // Uprights share a "stand the legs" step. Fastening one of them onto a rail the step cannot
-      // move past leaves that upright before the rail. A rail-stock leg has its own step and can.
-      if (part.type === "upright" && holderPanel?.type === "rail") return false;
-      // A shelf across several legs keeps waiting on those legs. Turning that around
-      // pulls the shelf in front of the rails whose screw total is counted later.
-      const holderInfo = out.get(holder);
-      if (holderPanel?.type !== "rail" && (holderInfo?.on.length ?? 0) > 2 && holderInfo!.on.includes(id)) return false;
-      // A shelf or deck already waits on this part. Moving it onto a rail drags that shelf
-      // past the rails the screw count assumes come later. Rails may still turn around.
-      if (!floorSet.has(holder) && [...out.values()].some((info) => {
-        if (info.key === id || info.key === holder || !(info.on ?? []).includes(id)) return false;
-        const waiter = byId.get(info.key);
-        if (!waiter || waiter.type === "rail") return false;
-        // Wall boards are the joint being turned. A shelf waiting on a leg is not.
-        if (waiter.type === "side" && holderPanel?.type === "side") return false;
-        return true;
-      })) return false;
-      // A board that still has to follow some other floor part cannot take this part yet.
-      if (!floorSet.has(holder)) {
-        const followed = hosts.get(byId.get(holder)?.name ?? "");
-        if (followed) {
-          for (const hostName of followed) {
-            if (hostName === part.name) continue;
-            const host = panels.find((p) => p.name === hostName);
-            if (!host || host.id === root || leads(host.id)) continue;
-            if (floorSet.has(host.id) && out.get(host.id)?.how === "floor") return false;
-          }
-        }
-      }
-      if (reaches(holder, id) && !release(holder, id)) return false;
+      // A floor part fastens only to another floor part of its assembly. A board, rail or floor that
+      // spans two floor parts waits for both; holding one of them on it would place the board first.
+      if (!floorSet.has(holder)) return false;
+      if (reaches(holder, id)) return false;
       if (!leads(holder)) return false;
       const info = out.get(id);
       if (!info) return false;
@@ -592,7 +528,7 @@ function acyclicRoles(out: Map<string, SupportInfo>, groups: Map<string, YardIns
 /** Supports for every part key the steps place (panel ids, or role names on stick builds). */
 export function supportsOf(project: YardProject): Map<string, SupportInfo> {
   if (!project.panels.length) return roleSupports(project.instances);
-  const out = panelSupports(project.panels);
+  const out = panelSupports(project.panels, project.assumptions?.installMode === "wall");
   // A part set into another (a mirror in the door's rabbet) is mounted on that part, never the nearest one.
   for (const p of project.panels) {
     const host = p.joints?.find((j) => j.kind === "rabbet" || j.kind === "dado")?.with;
