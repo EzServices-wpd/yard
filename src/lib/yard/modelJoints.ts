@@ -2,8 +2,10 @@
  * Joints read from the model itself — the screws Buy asks for come from these, per joint type.
  *
  * Panels: two parts whose boxes touch (or are let in up to 1") on one axis and overlap on the other
- * two make one joint. Edge-to-face butt joints take a screw every 8" of joint, at least 2; face-to-face
- * glue-ups take a screw per 64 sq in, at least 2; a thin back takes a screw every 8" of its edge.
+ * two make one joint. So does a bury: the boxes overlap more than an inch on every axis (a rail or
+ * stretcher inside a leg). The same screw rule covers both. Edge-to-face butt joints take a screw
+ * every 8" of joint, at least 2; face-to-face glue-ups take a screw per 64 sq in, at least 2; a thin
+ * back takes a screw every 8" of its edge.
  * Doors, drawers, glass and mirrors hang on their own hardware; shelves on pins take no screws.
  *
  * Sticks: members meet at welded ends. Every member past the first at a node is one joint, 2 screws
@@ -17,6 +19,19 @@ import type { Panel, YardInstance } from "./types";
 
 export type JointKind = "butt" | "face" | "back" | "frame";
 export type ModelJoint = { a: string; b: string; kind: JointKind; screws: number };
+
+/** Deeper than this on every axis, the parts are buried in each other, not meeting on a face. */
+export const EMBED_IN = 1;
+
+/** True when every axis overlaps by more than an inch. `gaps` are positive when the boxes are apart. */
+export function embeddedGaps(gaps: readonly number[]): boolean {
+  return gaps.length === 3 && gaps.every((g) => g < -EMBED_IN);
+}
+
+/** A box that is the part. A polygon, a strut or a cone is a shape drawn inside a larger box. */
+export function plainBox(p: Panel): boolean {
+  return !p.polygon && !p.strut && !p.form;
+}
 
 const HARDWARE_TYPES = new Set(["door", "drawer", "glass_panel", "mirror"]);
 
@@ -42,6 +57,15 @@ function thinnest(p: Panel) {
 /** A collar bored onto an axle is glued to the axle, never screwed to what it sits against. */
 const isAxleCollar = (p: Panel) => /^collar(?: \d+)?$/i.test(p.name) && !!p.polygon?.holes?.length;
 
+/** The same longest axes and a thinnest axis in common: the two boxes lie the same way. */
+function sameLay(A: Box, B: Box): boolean {
+  const ext = (b: Box) => [0, 1, 2].map((k) => b.max[k] - b.min[k]);
+  const ea = ext(A), eb = ext(B);
+  const longest = (e: number[]) => [0, 1, 2].filter((k) => e[k] >= Math.max(...e) - 0.01).join();
+  const thin = (e: number[]) => [0, 1, 2].filter((k) => e[k] <= Math.min(...e) + 0.01);
+  return longest(ea) === longest(eb) && thin(ea).some((k) => thin(eb).includes(k));
+}
+
 /** Joints between panels. `noScrew(a, b)` marks pairs held some other way (shelf pins). */
 export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => boolean = () => false): ModelJoint[] {
   const parts = panels.filter((p) => !HARDWARE_TYPES.has(p.type) && !isBoughtHardwareName(p.name) && !/drawer front|false front/i.test(p.name) && thinnest(p) > 0.1);
@@ -53,15 +77,24 @@ export function panelJoints(panels: Panel[], noScrew: (a: Panel, b: Panel) => bo
       const A = boxes[i], B = boxes[j];
       // Positive = clear gap, negative = overlap length on that axis.
       const gaps = [0, 1, 2].map((k) => Math.max(A.min[k], B.min[k]) - Math.min(A.max[k], B.max[k]));
+      // A bury (overlap deeper than an inch on every axis) is the same joint as a face.
+      // A shaped part's box is not its wood, so only plain boxes bury.
+      // Two parts that lie the same way (same long axis, a thin axis in common) and overlap that deep are one
+      // drawn through the other, not a rail in a leg. A declared joint (a lap, a miter) is cut and held its own way.
+      const declaredPair =
+        parts[i].joints?.some((x) => x.with === parts[j].id) || parts[j].joints?.some((x) => x.with === parts[i].id);
+      const embedded =
+        plainBox(parts[i]) && plainBox(parts[j]) && embeddedGaps(gaps) && !declaredPair && !sameLay(A, B);
       // Contact axis: the one with the least overlap. Touching (gap ≈ 0) or let in up to 1".
       const axis = gaps.indexOf(Math.max(...gaps));
       const g = gaps[axis];
-      if (g > tol || g < -1) continue;
+      if (!embedded && (g > tol || g < -EMBED_IN)) continue;
       const others = [0, 1, 2].filter((k) => k !== axis).map((k) => -gaps[k]);
       if (others.some((o) => o < 0.25)) continue;
       const declared =
         parts[i].joints?.some((x) => x.with === parts[j].id) || parts[j].joints?.some((x) => x.with === parts[i].id);
-      if (g < -tol && !declared && g < -0.8) continue;
+      // A shallow clip (more than 0.8" and not a bury) is a joint only when the model declares it.
+      if (!embedded && g < -tol && !declared && g < -0.8) continue;
       // A span divider in a shelf notch does not share solid wood, so it is not a screw joint.
       const dividerHere = /^Center divider\b/.test(parts[i].name) || /^Center divider\b/.test(parts[j].name);
       if (dividerHere && (parts[i].polygon || parts[j].polygon) && !solidsOverlap(parts[i], parts[j])) continue;

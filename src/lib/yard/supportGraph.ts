@@ -12,7 +12,7 @@
  */
 import { rotorChain } from "./solids";
 import { panelWorldCorners } from "./geometry";
-import { panelStockThickness } from "./modelJoints";
+import { EMBED_IN, embeddedGaps, panelStockThickness, plainBox as plainBoxPart } from "./modelJoints";
 import type { Panel, YardInstance, YardProject } from "./types";
 import { doorHingesLeft } from "./operateFaces";
 
@@ -259,10 +259,9 @@ export function panelSupports(panels: Panel[], wall = false): Map<string, Suppor
   // A wall-hung piece is laid on the bench and hung: the wall holds it, so its starts stay as they are.
   if (!wall) oneRootPerAssembly(out, panels, boxes);
   // A plain box buried in another (overlap deeper than an inch on every axis) is a joint: a lap,
-  // a notch, a rail or stretcher inside a leg. The face test stops at an inch, so that rail kept
-  // only its nearest part and a step fastened it before the other leg was placed. When every
-  // support it already has is one of those hosts, the hosts replace that nearest-part fallback.
-  // A part that already meets a real face keeps that support. Done after the assembly root is chosen.
+  // a notch, a rail or stretcher inside a leg. The face test stops at an inch, so a rail buried
+  // in one leg and meeting another on a face kept only the face. Buried hosts are supports too.
+  // A face it already meets stays. Done after the assembly root is chosen.
   for (const p of panels) {
     const info = out.get(p.id);
     if (!info || info.how === "floor" || info.how === "hinges" || !plainBox(p)) continue;
@@ -271,13 +270,12 @@ export function panelSupports(panels: Panel[], wall = false): Map<string, Suppor
       if (q.id === p.id || !plainBox(q)) return false;
       const B = boxes.get(q.id)!;
       const gaps = [0, 1, 2].map((k) => gapOn(A, B, k));
-      if (!gaps.every((g) => g < -1)) return false;
+      if (!embeddedGaps(gaps)) return false;
       return B.min[1] < A.max[1] - 0.1;
     }).map((q) => q.id);
-    // Only the nearest-part fallback: every support it already has is one of these hosts, and
-    // it missed the rest. A part that already meets a real face keeps that support.
-    if (hosts.length < 2 || !info.on.length || info.on.some((id) => !hosts.includes(id)) || hosts.length <= info.on.length) continue;
-    out.set(p.id, { ...info, on: hosts });
+    const missing = hosts.filter((id) => !info.on.includes(id));
+    if (!missing.length) continue;
+    out.set(p.id, { ...info, on: [...info.on, ...missing] });
   }
   return acyclic(out, panels, boxes);
 }
@@ -295,14 +293,14 @@ function screwShy(p: Panel): boolean {
 
 /** A box that is the part. A polygon, a strut or a cone is a shape drawn inside a larger box. */
 function plainBox(p: Panel): boolean {
-  return !p.polygon && !p.strut && !p.form;
+  return plainBoxPart(p);
 }
 
 /** Boxes meet on a face (touching, or let in up to an inch) and overlap on the other two axes. */
 function faceContact(A: Box, B: Box): boolean {
   const gaps = [0, 1, 2].map((k) => gapOn(A, B, k));
   const axis = gaps.indexOf(Math.max(...gaps));
-  if (gaps[axis] > 0.1 || gaps[axis] < -1) return false;
+  if (gaps[axis] > 0.1 || gaps[axis] < -EMBED_IN) return false;
   return [0, 1, 2].filter((k) => k !== axis).every((k) => -gaps[k] >= 0.25);
 }
 

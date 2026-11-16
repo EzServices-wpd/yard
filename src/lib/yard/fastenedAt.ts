@@ -357,10 +357,32 @@ function understated(steps: AssemblyStep[]): boolean {
   });
 }
 
+/**
+ * The step that can drive a part's screws. An attach verb later than the first listing is the real
+ * close (a back listed while the box is stood, fastened after). A verb match earlier than the listing
+ * names some other part: the screws wait until the part is actually in a step.
+ */
+function closableAt(project: YardProject, steps: AssemblyStep[], cutList: BuildPlan["cutList"]): Map<string, number> {
+  const listed = placementIndex(project, steps);
+  const attached = fastenedAt(project, steps, cutList);
+  const at = new Map<string, number>();
+  for (const id of new Set([...listed.keys(), ...attached.keys()])) {
+    const a = attached.get(id);
+    const b = listed.get(id);
+    if (a == null || b == null) {
+      const i = a ?? b;
+      if (i != null) at.set(id, i);
+      continue;
+    }
+    at.set(id, Math.max(a, b));
+  }
+  return at;
+}
+
 export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): BuildPlan {
   if (!project.panels.length || plan.instructions.length < 2) return plan;
   const before = plan.instructions;
-  const at = fastenedAt(project, before, plan.cutList);
+  const at = closableAt(project, before, plan.cutList);
   const letters = partLetters(project, plan.cutList);
   const panels = project.panels;
   const joints = (BUY_JOINTS.get(project) ?? []) as Joint[];

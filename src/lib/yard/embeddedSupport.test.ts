@@ -80,6 +80,17 @@ describe("a rail buried in a leg is a support", () => {
     const sup = panelSupports([leg, letIn]);
     assert.ok(sup.get("Apron")?.on.includes("Leg"));
   });
+
+  it("a rail buried in one leg and meeting the other on a face keeps both", () => {
+    const buriedLeg = part("Buried leg", "upright", 0, 0, 0, 3.5, 30, 3.5);
+    const faceLeg = part("Face leg", "upright", 24, 0, 0, 1.5, 30, 3.5);
+    const rail = part("Rail", "rail", 0, 10, 1, 24, 3.5, 1.5);
+    assert.equal(buriedIn(rail, buriedLeg), true);
+    assert.equal(buriedIn(rail, faceLeg), false);
+    const on = panelSupports([buriedLeg, faceLeg, rail]).get("Rail")?.on ?? [];
+    assert.ok(on.includes("Buried leg"), on.join(","));
+    assert.ok(on.includes("Face leg"), on.join(","));
+  });
 });
 
 const NOVEL = [
