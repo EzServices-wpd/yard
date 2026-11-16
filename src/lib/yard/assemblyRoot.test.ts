@@ -78,7 +78,17 @@ describe("one root per joined assembly", () => {
   }
 
   // A seat across a corner spans two walls. It goes in after both are standing, never on one wall alone.
-  for (const prompt of ["sandbox with seat from 2x2", "sandbox with seat from pvc"]) {
+  // So do a bay wall between two posts, a floor on its rims, an apron or rail between two legs.
+  for (const prompt of [
+    "sandbox with seat from 2x2",
+    "sandbox with seat from pvc",
+    "compost bin",
+    "chicken coop",
+    "raised dog feeder stand",
+    "router table",
+    "laptop stand",
+    "adirondack footrest",
+  ]) {
     it(`${prompt}: a carried part goes in after every floor part it spans`, () => {
       const project = generateFromPrompt(prompt);
       const plan = buildPlan(project);
@@ -113,4 +123,70 @@ describe("one root per joined assembly", () => {
       assert.doesNotMatch(step!, ROOT);
     }
   });
+});
+
+/**
+ * Mixed stock in one joined assembly: posts and boards, legs and rails.
+ * One base sentence for the assembly. Every other part that meets the floor
+ * is fastened to a part already placed.
+ */
+const MIXED = [
+  "raised garden bed",
+  "cedar raised garden bed 4x8",
+  "cedar 2x6 raised garden bed 48x24x11",
+  "sandbox with seat from 2x2",
+];
+
+describe("one root in a mixed-stock assembly", () => {
+  for (const prompt of MIXED) {
+    it(`${prompt}: one base line, and every other floor part names a part already placed`, () => {
+      const project = generateFromPrompt(prompt);
+      assert.equal(project.refused, undefined, project.refused);
+      const plan = buildPlan(project);
+      const steps = plan.instructions.map((s) => `${s.title}. ${s.description}`);
+      const text = steps.join("\n");
+      const roots = text.match(new RegExp(ROOT.source, "gi")) ?? [];
+      assert.equal(roots.length, 1, `${roots.length} root sentences:\n${text}`);
+
+      const sup = supportsOf(project);
+      const at = placementIndex(project, plan.instructions);
+      const name = new Map(project.panels.map((p) => [p.id, p.name]));
+      for (const p of project.panels) {
+        if (minY(p) > 0.1) continue;
+        const info = sup.get(p.id);
+        if (!info || info.how === "floor" || info.how === "hinges" || info.how === "slides" || info.how === "front") continue;
+        const i = at.get(p.id);
+        assert.ok(i != null, `${p.name} is not placed`);
+        assert.ok(info.on.length > 0, `${p.name} fastens to nobody`);
+        const placed = plan.instructions[i!];
+        const step = `${placed.title} ${placed.description}`;
+        assert.doesNotMatch(step, ROOT, `${p.name} is still called the base`);
+        for (const id of info.on) {
+          const j = at.get(id);
+          assert.ok(j != null && j <= i!, `${p.name} (step ${i! + 1}) before ${name.get(id)} (step ${(j ?? -2) + 1})`);
+        }
+        const own = new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(placed.title);
+        if (own) {
+          const low = step.toLowerCase();
+          const named = info.on.some((id) => {
+            const n = name.get(id) ?? "";
+            return n && (low.includes(n.toLowerCase()) || low.includes(familyWord(n)));
+          });
+          assert.ok(named, `${p.name} is not named against ${info.on.map((id) => name.get(id)).join(", ")}`);
+        }
+      }
+    });
+  }
+
+  // A case stood on uprights keeps its box steps: the screws each step drives still add up to the Buy count.
+  for (const prompt of ["planter box on legs", "mailbox", "boot tray", "bench with legs and aprons"]) {
+    it(`${prompt}: the step screw counts add up to the build total`, () => {
+      const plan = buildPlan(generateFromPrompt(prompt));
+      const text = plan.instructions.map((s) => s.description ?? "").join("\n");
+      const driven = [...text.matchAll(/[Dd]rives? (\d+) ×/g)].reduce((n, m) => n + Number(m[1]), 0);
+      const totals = [...text.matchAll(/brings the build to (\d+) screws/g)].map((m) => Number(m[1]));
+      assert.ok(totals.length > 0, "no build total");
+      assert.equal(driven, totals[totals.length - 1], text);
+    });
+  }
 });
