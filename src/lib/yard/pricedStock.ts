@@ -44,6 +44,11 @@ function sameSection(a: Pick<BoardPick, "width" | "thick">, b: Pick<BoardPick, "
   return Math.abs(a.width - b.width) < SECTION && Math.abs(a.thick - b.thick) < SECTION;
 }
 
+/** "lumber-1x6-8" → "1x6". A pallet board is not a 1×4 just because the inches match. */
+export function boardNominal(id: string): string | null {
+  return /^lumber-(\d+x\d+)-\d+$/.exec(id)?.[1] ?? null;
+}
+
 /**
  * The priced board of the same section whose length is closest to `want`.
  * Null when `want` is already priced, or when no priced length of that section exists.
@@ -61,12 +66,14 @@ export function pickNearestPricedLength(want: BoardPick, boards: readonly BoardP
   return alts[0] ?? null;
 }
 
-/** Catalog id the picker puts on the build: this id when it is priced or has no priced sibling length. */
+/** Catalog id the picker puts on the build: this id when it is priced, free on purpose, or has no priced sibling length. */
 export function pricedBoardId(id: string): string {
   const item = getCatalogItem(id);
   const want = boardPickOf(item);
-  if (!want) return id;
-  const boards = FORGE_CATALOG.map(boardPickOf).filter((b): b is BoardPick => !!b);
+  const nominal = boardNominal(id);
+  // Only another length of the same nominal (1×6, 2×10). A $0 pallet stays a pallet.
+  if (!want || !nominal || (item?.unitCostUsd != null && item.unitCostUsd <= 0)) return id;
+  const boards = FORGE_CATALOG.map(boardPickOf).filter((b): b is BoardPick => !!b && boardNominal(b.id) === nominal);
   return pickNearestPricedLength(want, boards)?.id ?? id;
 }
 

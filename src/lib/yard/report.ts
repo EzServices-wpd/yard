@@ -4,7 +4,7 @@ import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
 import { checkedOffer, storeTermsFromBuy } from "./listings";
 import { CEDAR, checkedRow, HARDWARE } from "./checkedStock";
-import { boardPriceUsd, checkedSpeciesBoardUsd, pricedBoardId } from "./pricedStock";
+import { boardNominal, boardPriceUsd, checkedSpeciesBoardUsd, pricedBoardId } from "./pricedStock";
 import { buyComplete, stepTextForPlace } from "./buyComplete";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
@@ -1941,9 +1941,10 @@ export function cutStepCount(plan: BuildPlan): number | null {
 /** Overlap of a half-lap splice: Buy adds it per joint, the splice step cuts it. */
 const SPLICE_LAP = 12;
 
-/** The shortest priced catalogue board of the same section that is at least `len` long. */
+/** The shortest priced catalogue board of the same nominal that is at least `len` long. */
 export function longerLumber(item: CatalogItem, len: number): CatalogItem | undefined {
-  return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01 && boardPriceUsd(c) != null)
+  const nominal = boardNominal(item.id);
+  return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01 && boardPriceUsd(c) != null && (nominal == null ? c.id === item.id : boardNominal(c.id) === nominal))
     .sort((x, y) => (x.dims.length ?? 0) - (y.dims.length ?? 0))[0];
 }
 

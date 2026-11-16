@@ -9,7 +9,7 @@ import { generateFromPrompt } from "./promptMain";
 import { weekendSizedStockPhrases } from "./promptHelpers";
 import { carryBoard } from "./realObjects";
 import { buildPlan } from "./report";
-import { boardPickOf, boardPriceUsd, checkedSpeciesBoardUsd, pickNearestPricedLength, pricedBoardId, type BoardPick } from "./pricedStock";
+import { boardNominal, boardPickOf, boardPriceUsd, checkedSpeciesBoardUsd, pickNearestPricedLength, pricedBoardId, type BoardPick } from "./pricedStock";
 
 /** Sections with no priced length and no checked species listing. Prices that were once guessed are not restored. */
 export const UNPRICED_BOARD_IDS = ["lumber-1x6-8", "lumber-1x8-8", "lumber-1x10-8", "lumber-1x12-8"] as const;
@@ -41,6 +41,12 @@ describe("the board picker only chooses a priced length of the same section", ()
     assert.equal(pickNearestPricedLength(want, boards)?.id, "lumber-1x8-6");
   });
 
+  it("a free pallet stays a pallet, not the priced 1×4 of the same inches", () => {
+    assert.equal(pricedBoardId("pallet-board"), "pallet-board");
+    assert.equal(boardNominal("pallet-board"), null);
+    assert.equal(boardNominal("lumber-2x10-10"), "2x10");
+  });
+
   it("every catalog board the picker can emit is priced, or is a section with no priced length", () => {
     const fromPhrases = weekendSizedStockPhrases().map(([, id]) => id).filter((id) => id.startsWith("lumber-"));
     const fromCarry = ["1x4 toolbox", "1x6 toolbox", "1x8 toolbox", "1x10 caddy", "1x12 crate"].map((q) => carryBoard(q).id);
@@ -48,7 +54,10 @@ describe("the board picker only chooses a priced length of the same section", ()
     const unpriced: string[] = [];
     for (const id of ids) {
       const chosen = pricedBoardId(id);
-      const price = boardPriceUsd(FORGE_CATALOG.find((c) => c.id === chosen));
+      const item = FORGE_CATALOG.find((c) => c.id === chosen);
+      // A catalog $0 is a real free price (a pallet), not a missing one.
+      if (item?.unitCostUsd === 0) continue;
+      const price = boardPriceUsd(item);
       if (price != null && price > 0) continue;
       unpriced.push(chosen);
       const want = boardPickOf(FORGE_CATALOG.find((c) => c.id === chosen));
