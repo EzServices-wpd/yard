@@ -8,7 +8,8 @@ import { FORGE_CATALOG } from "./catalog";
 import { generateFromPrompt } from "./promptMain";
 import { weekendSizedStockPhrases } from "./promptHelpers";
 import { carryBoard } from "./realObjects";
-import { buildPlan } from "./report";
+import { buildPlan, longerLumber } from "./report";
+import { getCatalogItem } from "./catalog";
 import { boardNominal, boardPickOf, boardPriceUsd, checkedSpeciesBoardUsd, pickNearestPricedLength, pricedBoardId, type BoardPick } from "./pricedStock";
 
 /** Sections with no priced length and no checked species listing. Prices that were once guessed are not restored. */
@@ -45,6 +46,15 @@ describe("the board picker only chooses a priced length of the same section", ()
     assert.equal(pricedBoardId("pallet-board"), "pallet-board");
     assert.equal(boardNominal("pallet-board"), null);
     assert.equal(boardNominal("lumber-2x10-10"), "2x10");
+  });
+
+  it("pallet builds keep their stock: the pallet is bought as a pallet, and a part past 4 ft still takes the longer board of its section", () => {
+    const dog = buildPlan(generateFromPrompt("dog bed from a pallet")).bom;
+    assert.ok(dog.some((b) => b.catalogId === "pallet-board"));
+    assert.equal(dog.some((b) => b.catalogId === "lumber-1x4-8"), false);
+    assert.equal(longerLumber(getCatalogItem("pallet-board")!, 72)?.id, "lumber-1x4-8");
+    const table = buildPlan(generateFromPrompt("pallet dining table 72 long"));
+    assert.equal(table.instructions.some((s) => /half-lap splice/.test(s.description ?? "")), false);
   });
 
   it("every catalog board the picker can emit is priced, or is a section with no priced length", () => {
