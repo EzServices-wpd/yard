@@ -1243,26 +1243,44 @@ function closetIssues(project: YardProject): FeasibilityIssue[] {
     }
     return issues;
   }
-  const { width, height, depth } = project.overall;
-  const coatRack =
-    /coat/i.test(project.name) ||
-    isCoatHookBoard((project.prompt ?? "").toLowerCase()) ||
-    (/coat/.test((project.prompt ?? "").toLowerCase()) && /rack|hook|rail|peg|tree/.test((project.prompt ?? "").toLowerCase()));
-  const headboard =
-    /headboard/i.test(project.name) ||
-    /headboard/.test((project.prompt ?? "").toLowerCase());
-  const floatingIssue =
-    (project.panels.some((p) => /cleat/i.test(p.name) || /bracket/i.test(p.name)) ||
-      /floating|wall-?mounted|wall\s+shelves?/i.test(project.name) ||
-      /floating|wall-?mounted|wall\s+shelves?/.test((project.prompt ?? "").toLowerCase())) &&
-    /shel/i.test(`${project.name} ${project.prompt ?? ""}`);
-  if (!isUnitItem(project) && !project.id.startsWith("recipe-") && !coatRack && !headboard && !floatingIssue && !/crate/i.test(project.name) && !/ironing/i.test(project.name) && !/ironing/.test((project.prompt ?? "").toLowerCase()) && !/medicine/i.test(project.name) && !/medicine/.test((project.prompt ?? "").toLowerCase()) && !/over-toilet/i.test(project.name) && !/spice/i.test(project.name) && !(/spice/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && !/wine/i.test(project.name) && !(/wine/.test((project.prompt ?? "").toLowerCase()) && /rack/.test((project.prompt ?? "").toLowerCase())) && (width < 12 || height < 12 || depth < 8)) {
+  // Clearance minima belong to a hole the build sits in, never to the build's own envelope.
+  const host = hostOpening(project);
+  if (host && (host.width < 12 || host.height < 12 || host.depth < 8)) {
     issues.push({
       severity: "warning",
       message: "Opening is tight — confirm the measure before you cut.",
     });
   }
   return issues;
+}
+
+/**
+ * The hole a build is placed in, when one was typed or a recipe declared it.
+ * Clearance minima (under 12" wide, under 12" tall, under 8" deep) read this hole only.
+ *
+ * A typed host is `fitted.opening` when its kind is alcove, pocket, window, or door —
+ * parseBrief sets alcove only from words that name a space, and pocket from pocket walls —
+ * or the pocket itself. Kind "room" is the build's own envelope, not a host. A builder that
+ * copies that envelope onto `project.opening` and labels it alcove (pegboard, shoe rail) is
+ * not a typed hole. A recipe declares a host by stamping `project.opening`; recipes that
+ * leave it unset are freestanding and are not checked.
+ */
+const HOST_OPENING_KINDS = new Set(["alcove", "pocket", "window", "door"]);
+
+function hostOpening(project: YardProject): { width: number; height: number; depth: number } | null {
+  if (project.pocket) {
+    const w = project.pocket.walls;
+    return { width: w.backWidth, height: w.height, depth: Math.max(w.leftDepth, w.rightDepth) };
+  }
+  const fitted = project.fitted?.opening;
+  if (fitted && HOST_OPENING_KINDS.has(fitted.kind)) {
+    return { width: fitted.width, height: fitted.height, depth: fitted.depth };
+  }
+  const declared = project.opening;
+  if (project.id.startsWith("recipe-") && declared && HOST_OPENING_KINDS.has(declared.kind)) {
+    return { width: declared.width, height: declared.height, depth: declared.depth };
+  }
+  return null;
 }
 
 function packPlan(
