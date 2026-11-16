@@ -60,6 +60,7 @@ import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock, hasExplicitStock } from "./promptHelpers";
 import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
+import { pricedBoardId } from "./pricedStock";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
 import { memberView, recastPanelsAsStock, type MemberView } from "./memberStock";
@@ -356,7 +357,7 @@ function withLumberMembers(project: YardProject): YardProject {
     const board = BOARDS.find(([w]) => face <= w + 0.01);
     if (!board) return p;
     changed = true;
-    return { ...p, materialId: board[1] };
+    return { ...p, materialId: pricedBoardId(board[1]) };
   });
   return changed ? { ...project, panels: next } : project;
 }
@@ -403,7 +404,10 @@ function withOutdoorFurnitureStock(project: YardProject, prompt: string): YardPr
   // An outdoor frame build (picnic table, deck) already chose exterior stock per member: never re-pick it by name
   // (a "Top cleat" is not a top slat, and a table has no arms).
   if ((project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n))) return project;
-  const pick = (label: string) => OUTDOOR_STOCK.find(([re]) => re.test(label))?.[1];
+  const pick = (label: string) => {
+    const id = OUTDOOR_STOCK.find(([re]) => re.test(label))?.[1];
+    return id ? pricedBoardId(id) : undefined;
+  };
   let changed = false;
   const instances = (project.instances ?? []).map((i) => {
     if (i.catalogId !== "lumber-2x4-8") return i;
