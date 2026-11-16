@@ -8,7 +8,9 @@
  */
 import { typedAxesTalk } from "./headerSize";
 import { modelFinishedDepth } from "./modelSize";
-import { isBedLongWide, typedAxesOf, type Axis } from "./typedAxesRead";
+import { isBedLongWide, labeledAxisAll, typedAxesOf, type Axis } from "./typedAxesRead";
+import { typedExtents } from "./honesty";
+import { drawnExtent } from "./pdfDraw";
 import type { YardProject } from "./types";
 import { untypedAxisAssumedNotes } from "./voiceHonesty";
 
@@ -26,7 +28,7 @@ export function typedAxisFlags(prompt: string, project: YardProject): AxisFlags 
  * already wrote is left alone (a proud depth it stated as the box stays that sentence).
  * The unlabelled name triple stays W × H × D; the header is the labelled W × D × H.
  */
-export function publishAssumedSize(project: YardProject, prompt: string, typed: AxisFlags): YardProject {
+export function publishAssumedSize(project: YardProject, prompt: string, typed: AxisFlags, sized = false): YardProject {
   // A bare build's note names the box (a chair's back and a proud door stay as they were).
   // A partial prompt whose depth the header already shows as the finished depth names that
   // finished depth, so the new note and the header are the same number.
@@ -34,11 +36,27 @@ export function publishAssumedSize(project: YardProject, prompt: string, typed: 
   const partial = typed.width || typed.height || typed.depth;
   const proud = partial && typedAxesTalk(project).assumed.depth && fin > project.overall.depth + 1 / 16;
   const shown = proud ? { ...project.overall, depth: fin } : project.overall;
+  // A size the person typed is never "default size", even where the build stands off it
+  // (outside walls, a rough opening, a reader that dropped it). And the note only names a
+  // number the drawn model is: a pocket unit or a frame drawn smaller than its box says nothing new.
+  let said = typed;
+  if (sized) {
+    if (project.pocket?.unit) return project;
+    const raw = typedExtents(prompt)?.labeled;
+    const words = labeledAxisAll(prompt);
+    const box = !project.instances.length && project.panels.length ? drawnExtent(project) : null;
+    const drawn: Record<Axis, number> | null = box
+      ? { width: box.max.x - box.min.x, height: box.max.y - Math.min(0, box.min.y), depth: box.max.z - box.min.z }
+      : null;
+    const off = (a: Axis) => !!drawn && Math.abs(drawn[a] - shown[a]) > 1 / 16;
+    const pick = (a: Axis) => typed[a] || !!raw?.[a] || !!words[a]?.length || off(a);
+    said = { width: pick("width"), height: pick("height"), depth: pick("depth") };
+  }
   const extra = untypedAxisAssumedNotes(
     prompt,
     [...(project.fitted?.cueNotes ?? []), ...(project.notes ?? [])],
     project.overall,
-    typed,
+    said,
     shown,
   );
   return extra.length ? { ...project, notes: [...(project.notes ?? []), ...extra] } : project;

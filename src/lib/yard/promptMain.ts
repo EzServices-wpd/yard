@@ -277,13 +277,12 @@ function withAssumedAxes(project: YardProject, args: Parameters<typeof generateR
     // frame's depth). Adding another here would rewrite the pinned step text. A build that
     // wrote none — a tote with only a length — gets the record for every untyped axis.
     const recorded = (project.notes ?? []).some((n) => /^Assumed\s+\d/i.test(n));
-    if (!any || recorded) {
-      const counts = /\b\d+\s*-?\s*(?:legs?|doors?|drawers?|shel(?:f|ves)|cubb(?:y|ies)|hooks?|pegs?|steps?|treads?|tiers?|rows?|bottles?|slots?|bins?|arms?|rungs?|lids?|brackets?)\b/g;
-      const sized = /\d/.test(stripLumberStock(prompt.toLowerCase()).replace(counts, " ")) ||
-        /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*-?\s*(?:ft|foot|feet|inch|inches)\b/i.test(prompt);
-      if (sized) return project;
-    }
+    const counts = /\b\d+\s*-?\s*(?:legs?|doors?|drawers?|shel(?:f|ves)|cubb(?:y|ies)|hooks?|pegs?|steps?|treads?|tiers?|rows?|bottles?|slots?|bins?|arms?|rungs?|lids?|brackets?)\b/g;
+    const sized = /\d/.test(stripLumberStock(prompt.toLowerCase()).replace(counts, " ")) ||
+      /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s*-?\s*(?:ft|foot|feet|inch|inches)\b/i.test(prompt);
+    if ((!any || recorded) && sized) return project;
     typed = flags;
+    return publishAssumedSize(project, prompt, typed, sized);
   }
   return publishAssumedSize(project, prompt, typed);
 }
