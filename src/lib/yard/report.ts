@@ -2,8 +2,9 @@ import { OPENING_SPACE } from "./fittedShared";
 import { withSaidHardware } from "./hardwareSaid";
 import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
-import { storeTermsFromBuy } from "./listings";
-import { checkedRow, HARDWARE } from "./checkedStock";
+import { checkedOffer, storeTermsFromBuy } from "./listings";
+import { CEDAR, checkedRow, HARDWARE } from "./checkedStock";
+import { boardNominal, boardPriceUsd, checkedSpeciesBoardUsd, pricedBoardId } from "./pricedStock";
 import { buyComplete, stepTextForPlace } from "./buyComplete";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
@@ -178,8 +179,9 @@ function closetCuts(project: YardProject): CutLine[] {
       id = "plywood-1-4-4x8";
       matName = getCatalogItem(id)?.name ?? '1/4" Plywood 4×8';
     }
-    // A part longer than its board is bought as the longer board of the same size when the catalogue sells one.
-    const sold = getCatalogItem(id ?? "");
+    // A part longer than its board is bought as the longer priced board of the same size when the catalogue sells one.
+    const sold = getCatalogItem(pricedBoardId(id ?? ""));
+    if (sold && sold.id !== id) { id = sold.id; matName = sold.name; }
     if (sold?.category === "lumber" && sold.dims.length && dims.lengthIn > sold.dims.length + 0.01) {
       const longer = longerLumber(sold, dims.lengthIn);
       if (longer) { id = longer.id; matName = longer.name; }
@@ -1939,9 +1941,10 @@ export function cutStepCount(plan: BuildPlan): number | null {
 /** Overlap of a half-lap splice: Buy adds it per joint, the splice step cuts it. */
 const SPLICE_LAP = 12;
 
-/** The shortest catalogue board of the same section that is at least `len` long. */
+/** The shortest priced catalogue board of the same section (and nominal, when it has one) that is at least `len` long. */
 export function longerLumber(item: CatalogItem, len: number): CatalogItem | undefined {
-  return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01)
+  const nominal = boardNominal(item.id);
+  return FORGE_CATALOG.filter((c) => c.category === "lumber" && c.dims.width === item.dims.width && c.dims.height === item.dims.height && (c.dims.length ?? 0) >= len - 0.01 && boardPriceUsd(c) != null && (nominal == null || boardNominal(c.id) === nominal))
     .sort((x, y) => (x.dims.length ?? 0) - (y.dims.length ?? 0))[0];
 }
 
@@ -2012,8 +2015,19 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
       line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
       changed = true;
     } else if (species && species.id !== "pine" && catalog?.category === "lumber") {
-      // Unpriced row (no fake price): the search still names the species and size that was typed.
-      line = { ...line, searchQuery: `${species.display} ${size} ${piece} 8 ft` };
+      const query = `${species.display} ${size} ${piece} 8 ft`;
+      // A checked listing for this species and this board (cedar 1×6) is the price. A missing listing stays unpriced.
+      const checked = !(line.estimatedCost != null && line.estimatedCost > 0) ? checkedSpeciesBoardUsd(line.catalogId ?? "", species.id) : null;
+      const listing = checked != null ? CEDAR[line.catalogId ?? ""] : undefined;
+      if (listing && line.quantity > 0) {
+        const { offers, lineTotal } = checkedOffer(listing, line.quantity);
+        const notes = line.notes?.replace(/ · No price — plus unpriced items/g, "");
+        line = { ...line, estimatedCost: lineTotal, offers, searchQuery: query, ...(notes != null ? { notes } : {}) };
+        changed = true;
+      } else {
+        // Unpriced row (no fake price): the search still names the species and size that was typed.
+        line = { ...line, searchQuery: query };
+      }
     }
     return line;
   });

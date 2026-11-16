@@ -2,6 +2,7 @@ import { UNIT_SIZES } from "./unitSizes";
 import { checkParts } from "./partCeiling";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
+import { pricedBoardId } from "./pricedStock";
 import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
 import { stripHeldPurpose } from "./heldObjects";
 import { toPrimitive } from "./geometry";
@@ -582,7 +583,7 @@ export function weekendCraftStockPhrases(): [RegExp, string][] {
 
 /** Size / tube / sheet stock after named lumber (also plural-safe for dowel/straw/toothpick). */
 export function weekendSizedStockPhrases(): [RegExp, string][] {
-  return [
+  const phrases: [RegExp, string][] = [
     [/toothpicks?/, "toothpick"],
     [/drinking straw|plastic straw|\bstraws?\b/, "straw-plastic"],
     [/pvc|schedule.?40|sch.?40/, "pvc-3-4-sch40"],
@@ -619,6 +620,8 @@ export function weekendSizedStockPhrases(): [RegExp, string][] {
     [/\bchipboard\b|cardboard\s+(?:card|model|craft)/, "chipboard-sheet"],
     [/\bcardboard\b(?!\s*(?:tubes?|rolls?|cores?))|\bcorrugated\b/, "cardboard-corrugated-sheet"],
   ];
+  // An unpriced length of a board yields to the nearest priced length of that same section.
+  return phrases.map(([re, id]) => [re, id.startsWith("lumber-") ? pricedBoardId(id) : id]);
 }
 
 /** Spoken craft-stock test for follow-on / explicit-stock paths (plural-safe). */

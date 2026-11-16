@@ -8,6 +8,7 @@ import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
 import { UNVERIFIED } from "./promptMain";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
+import { pricedBoardId } from "./pricedStock";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
@@ -212,6 +213,8 @@ function realBoards(recipe: Recipe, panels: Panel[]) {
  * the board) another board of the same length as one board thick (a 1.4×0.96 rail is a 1×2, never a 3 1/2" 2×4 face; a 1×4 is never a glued post).
  */
 export function closestBoards(materialId: string, size: Panel["size"], named = false, across = false): { id: string; to: Panel["size"] }[] {
+  // An unpriced length is not a candidate: the nearest priced length of that section is.
+  materialId = pricedBoardId(materialId);
   // A named board binds when the part is about its face (a 3.6" post is a 4×4); a 5" deck board named "2×4" is re-picked.
   const face = getCatalogItem(materialId)?.dims.width ?? 0;
   if (named && [size.width, size.height, size.depth].sort((a, b) => a - b)[1] > face * 1.1 + 0.05) named = false;
