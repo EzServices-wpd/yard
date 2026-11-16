@@ -22,7 +22,6 @@ const PROMPTS = [
   "cedar 1x6 tote 18 long",
   "record crate",
   "lp crate",
-  "sandbox with seat from 2x2",
   "toy airplane with propeller from pvc",
   "cedar planter box 24 long",
   "garden bench",
@@ -73,6 +72,31 @@ describe("one root per joined assembly", () => {
             return n && (low.includes(n.toLowerCase()) || low.includes(familyWord(n)));
           });
           assert.ok(named, `${p.name} is not named against ${info.on.map((id) => name.get(id)).join(", ")}`);
+        }
+      }
+    });
+  }
+
+  // A seat across a corner spans two walls. It goes in after both are standing, never on one wall alone.
+  for (const prompt of ["sandbox with seat from 2x2", "sandbox with seat from pvc"]) {
+    it(`${prompt}: a carried part goes in after every floor part it spans`, () => {
+      const project = generateFromPrompt(prompt);
+      const plan = buildPlan(project);
+      const at = placementIndex(project, plan.instructions);
+      const box = (p: Panel) => {
+        const c = panelWorldCorners(p);
+        return [0, 1, 2].map((k) => {
+          const v = c.map((q) => [q.x, q.y, q.z][k]);
+          return [Math.min(...v), Math.max(...v)];
+        });
+      };
+      const floor = project.panels.filter((p) => minY(p) <= 0.1);
+      for (const p of project.panels.filter((x) => minY(x) > 0.1)) {
+        const b = box(p);
+        for (const f of floor) {
+          const a = box(f);
+          if (![0, 1, 2].every((k) => Math.min(a[k][1], b[k][1]) - Math.max(a[k][0], b[k][0]) >= -0.1)) continue;
+          assert.ok((at.get(f.id) ?? -1) <= (at.get(p.id) ?? -1), `${p.name} goes in before ${f.name}`);
         }
       }
     });

@@ -309,6 +309,11 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
     // Uprights are the posts a case is stood from; their step order is that case, so they stay as they are.
     const posted = comp.some((id) => panels.find((p) => p.id === id)?.type === "upright");
     if (posted || floors.length <= 1 || comp.some((id) => out.get(id)?.how !== "floor")) continue;
+    // An assembly that already carries other parts (a seat across a corner, a cover over the poles) keeps
+    // every member on the floor: a carried part waits only on the member it names, so a single root would
+    // let it go in before the other members it spans are standing.
+    const inComp = new Set(comp);
+    if ([...out.values()].some((info) => !inComp.has(info.key) && (info.on ?? []).some((s) => inComp.has(s)))) continue;
     const used = new Map<string, number>();
     for (const id of comp) for (const s of out.get(id)?.on ?? []) used.set(s, (used.get(s) ?? 0) + 1);
     const nonFloorNeighbors = (id: string) => (adj.get(id) ?? []).filter((n) => out.get(n)?.how !== "floor").length;
