@@ -1,11 +1,14 @@
 /**
  * What each part really rests on, read from the model's geometry (not from its name).
  *
- * A part whose underside is at the floor rests on the floor. A flat span between two uprights hangs on
- * those end supports. Otherwise it rests on the parts whose top
- * face meets its underside; failing that, on the lower parts it is fastened against (side contact).
- * Doors hang on the box sides, drawer fronts on their drawer boxes, drawer boxes on the box sides.
- * Stick members rest on the members that share their lower end.
+ * A part whose underside is at the floor can rest on the floor. Parts that touch the floor and are
+ * joined to each other are one assembly: exactly one of them is the root (the part the most others
+ * touch, ties broken by size, then height, then id), and every other one is fastened to the neighbor
+ * that leads back to that root. A part joined to an earlier part is never itself a root.
+ * A flat span between two uprights hangs on those end supports. Otherwise a part rests on the parts
+ * whose top face meets its underside; failing that, on the lower parts it is fastened against (side
+ * contact). Doors hang on the box sides, drawer fronts on their drawer boxes, drawer boxes on the box
+ * sides. Stick members rest on the members that share their lower end.
  */
 import { rotorChain } from "./solids";
 import { panelWorldCorners } from "./geometry";
@@ -234,7 +237,120 @@ export function panelSupports(panels: Panel[]): Map<string, SupportInfo> {
       out.set(t.id, { key: t.id, name: t.name, how: "side", on: (crossed.length ? crossed : boards).map((m) => m.id) });
     }
   }
+  // One root per joined assembly, after every other rule has named what a part hangs or rests on.
+  oneRootPerAssembly(out, panels, boxes);
   return acyclic(out, panels, boxes);
+}
+
+/** Parts that fasten to the carcase. A door, a drawer front, or a piece of hardware hangs on its own rule. */
+function joinsAssembly(p: Panel): boolean {
+  return p.type !== "door" && !isDrawerFront(p) && p.materialId !== "hardware" && !/\bhinge/i.test(p.name);
+}
+
+/** Boxes meet on a face (touching, or let in up to an inch) and overlap on the other two axes. */
+function faceContact(A: Box, B: Box): boolean {
+  const gaps = [0, 1, 2].map((k) => gapOn(A, B, k));
+  const axis = gaps.indexOf(Math.max(...gaps));
+  if (gaps[axis] > 0.1 || gaps[axis] < -1) return false;
+  return [0, 1, 2].filter((k) => k !== axis).every((k) => -gaps[k] >= 0.25);
+}
+
+/**
+ * Floor contact is not a root. Ends, sides, and an inset bottom of one box all meet the floor; so can
+ * the legs and a center support of one bench. They are one assembly. The root is the floor part the
+ * others already wait on, or, when nobody does (every part was marked as the base), the part the most
+ * others touch. This only applies when every joined part was marked as the floor and none is an
+ * upright: a gate, a bench or a stood case already has posts, and those posts stay the roots. Any
+ * other floor part that meets a neighbor not waiting on it fastens to that neighbor. A part something
+ * sits on stays a root, so a center support stays under the bottom it carries.
+ */
+function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxes: Map<string, Box>): void {
+  const parts = panels.filter((p) => joinsAssembly(p) && out.has(p.id));
+  const adj = new Map<string, string[]>(parts.map((p) => [p.id, []]));
+  for (let i = 0; i < parts.length; i++) {
+    for (let j = i + 1; j < parts.length; j++) {
+      const a = parts[i].id, b = parts[j].id;
+      const declared = parts[i].joints?.some((x) => x.with === b) || parts[j].joints?.some((x) => x.with === a);
+      if (!declared && !faceContact(boxes.get(a)!, boxes.get(b)!)) continue;
+      adj.get(a)!.push(b);
+      adj.get(b)!.push(a);
+    }
+  }
+  const vol = (id: string) => {
+    const b = boxes.get(id)!;
+    return (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]);
+  };
+  const reaches = (from: string, to: string) => {
+    const walk = new Set<string>();
+    const s = [from];
+    while (s.length) {
+      const x = s.pop()!;
+      if (x === to) return true;
+      if (walk.has(x)) continue;
+      walk.add(x);
+      for (const n of out.get(x)?.on ?? []) s.push(n);
+    }
+    return false;
+  };
+  const seen = new Set<string>();
+  for (const start of parts) {
+    if (seen.has(start.id)) continue;
+    const comp: string[] = [];
+    const stack = [start.id];
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      comp.push(id);
+      for (const n of adj.get(id) ?? []) if (!seen.has(n)) stack.push(n);
+    }
+    const floors = comp.filter((id) => out.get(id)?.how === "floor");
+    // A mixed assembly already stands on its posts. Rewriting those posts reverses the rails, shelves and legs.
+    // Uprights are the posts a case is stood from; their step order is that case, so they stay as they are.
+    const posted = comp.some((id) => panels.find((p) => p.id === id)?.type === "upright");
+    if (posted || floors.length <= 1 || comp.some((id) => out.get(id)?.how !== "floor")) continue;
+    const used = new Map<string, number>();
+    for (const id of comp) for (const s of out.get(id)?.on ?? []) used.set(s, (used.get(s) ?? 0) + 1);
+    const nonFloorNeighbors = (id: string) => (adj.get(id) ?? []).filter((n) => out.get(n)?.how !== "floor").length;
+    const rank = (a: string, b: string) =>
+      (used.get(b) ?? 0) - (used.get(a) ?? 0) ||
+      nonFloorNeighbors(b) - nonFloorNeighbors(a) ||
+      (adj.get(b)?.length ?? 0) - (adj.get(a)?.length ?? 0) ||
+      vol(b) - vol(a) ||
+      boxes.get(a)!.min[1] - boxes.get(b)!.min[1] ||
+      (a < b ? -1 : a > b ? 1 : 0);
+    const root = [...floors].sort(rank)[0];
+    const holdOf = (id: string, neighbors: string[]) => {
+      const restsOn = (n: string) => {
+        const A = boxes.get(id)!, B = boxes.get(n)!;
+        return Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
+      };
+      return [...neighbors].sort((a, b) =>
+        (a === root ? -1 : b === root ? 1 : 0) ||
+        (out.get(a)?.how === "floor" ? 0 : 1) - (out.get(b)?.how === "floor" ? 0 : 1) ||
+        (restsOn(a) ? 0 : 1) - (restsOn(b) ? 0 : 1) ||
+        rank(a, b),
+      )[0];
+    };
+    // Parts nobody waits on move first, so a support is still a floor part while it is chosen.
+    for (const id of [...floors].filter((x) => x !== root).sort((a, b) => (used.get(a) ?? 0) - (used.get(b) ?? 0) || rank(a, b))) {
+      const info = out.get(id);
+      if (!info || info.how !== "floor") continue;
+      const neighbors = adj.get(id) ?? [];
+      // Something sits on this part (a bottom on a center support). It stays on the floor, ahead of what it carries.
+      const carries = neighbors.some((n) => {
+        const self = boxes.get(id)!, other = boxes.get(n)!;
+        return Math.abs(self.max[1] - other.min[1]) <= 0.1 && overlap(self, other, 0) >= 0.25 && overlap(self, other, 2) >= 0.25;
+      });
+      if (carries) continue;
+      const safe = neighbors.filter((n) => n !== id && !reaches(n, id));
+      const pick = safe.length ? holdOf(id, safe) : undefined;
+      if (!pick) continue;
+      const A = boxes.get(id)!, B = boxes.get(pick)!;
+      const rests = Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
+      out.set(id, { ...info, how: rests ? "rests" : "side", on: [pick] });
+    }
+  }
 }
 
 /**
