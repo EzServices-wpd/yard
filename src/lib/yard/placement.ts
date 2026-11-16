@@ -968,7 +968,7 @@ const AFTER_WHERE =
 
 /** Sentences placement.ts writes. Anything else in the Where tail (a fittings line, a fasten line) stays. */
 const PLACEMENT_SENTENCE =
-  /^(?:Tops? (?:edge )?of |Tops of the |Top edges? of |Its underside |Set it on the top of |Front edge |Back face |Outside face |Front face |Mark |Or cut a spacer |That is |Gaps top to top |Square a pencil |Adjustable: |Bracket centers |Snap one level |Level the bracket |Slide center |Hinge centers |Pull |Drawer fronts?|Bottom edge of |Center |The (?:\d+ |slanted )?\S+ (?:stands?|lie|lies|runs?|run) |All \d+ )/;
+  /^(?:Tops? (?:edge )?of |Tops of the |Top edges? of |Its underside |Set it on the top of |Front edge |Back face |Outside face |Front face |Mark |Or cut a spacer |That is |Gaps top to top |Square a pencil |Adjustable: |Bracket centers |Snap one level |Level the bracket |Slide center |Hinge centers |Pull |Drawer fronts?|Bottom edge of |Center |(?:All \d+ |The (?:\d+ )?slanted |The \d+ |The )\S+ (?:lie|lies|stand|stands|run|runs|stack)\b)/;
 
 /**
  * Swap the Where block for the sentences this step's final order actually earns.
