@@ -96,6 +96,9 @@ test("a place under a window is the opening, not a window unit, and a freestandi
 
   const book = built("bookcase 10 wide");
   assert.equal(book.tight, false);
+  const pair = built("70 in by 28 in table");
+  assert.equal(pair.place.host, false);
+  assert.deepEqual([pair.overall.width, pair.overall.depth, pair.overall.height], [70, 28, 30]);
   const deepBook = built("bookcase 30 wide 48 tall 6 deep");
   assert.equal(deepBook.tight, false);
   assert.equal(built("shelf for a 22 inch vase").overall.width, 36);

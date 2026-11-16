@@ -139,8 +139,9 @@ export type PlaceBinding = {
   axes: Partial<Record<Axis, number>>;
 };
 
+// "in" the preposition, not the inch unit in "70 in by 28 in".
 const PLACE_LEAD =
-  /\b(?:fitted\s+(?:to|in(?:to)?)|to\s+fit|(?:that|which)\s+fits?|fits?(?:\s+in(?:to)?)?|fitting|in(?:to|side)?|within|between|for)\b/gi;
+  /\b(?:fitted\s+(?:to|in(?:to)?)|to\s+fit|(?:that|which)\s+fits?|fits?(?:\s+in(?:to)?)?|fitting|into|inside|(?<![\d.][\s-]{0,2})in|within|between|for)\b/gi;
 const PLACE_TRIPLE =
   /(\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|")?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(?:\s*(?:in(?:ch(?:es)?)?|")?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?/i;
 const PLACE_AXIS =
