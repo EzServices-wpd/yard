@@ -189,4 +189,66 @@ describe("one root in a mixed-stock assembly", () => {
       assert.equal(driven, totals[totals.length - 1], text);
     });
   }
+
+  // Two leg pairs meet. The long rails span both pairs, so each pair keeps one start
+  // and both rails wait until every leg is standing.
+  for (const prompt of ["sawbuck", "sawbuck from 2x4"]) {
+    it(`${prompt}: one base line per leg pair, and the long rails wait for every leg`, () => {
+      const project = generateFromPrompt(prompt);
+      const plan = buildPlan(project);
+      const text = plan.instructions.map((s) => `${s.title}. ${s.description}`).join("\n");
+      const roots = text.match(new RegExp(ROOT.source, "gi")) ?? [];
+      assert.equal(roots.length, 2, text);
+      const sup = supportsOf(project);
+      const at = placementIndex(project, plan.instructions);
+      const legs = project.panels.filter((p) => /leg/i.test(p.name));
+      assert.equal(legs.length, 4);
+      for (const rail of project.panels.filter((p) => /long rail/i.test(p.name))) {
+        const on = sup.get(rail.id)?.on ?? [];
+        assert.equal(on.length, 4, `${rail.name} dropped a leg`);
+        const i = at.get(rail.id)!;
+        for (const leg of legs) assert.ok((at.get(leg.id) ?? 99) <= i, `${rail.name} before ${leg.name}`);
+      }
+    });
+  }
+
+  // Bay walls span two posts that do not touch. Each post keeps a start, and the wall waits for both.
+  for (const prompt of ["compost bin", "compost bin with lid"]) {
+    it(`${prompt}: posts that do not meet keep a start, and each wall waits for both posts`, () => {
+      const project = generateFromPrompt(prompt);
+      const plan = buildPlan(project);
+      const text = plan.instructions.map((s) => `${s.title}. ${s.description}`).join("\n");
+      const roots = text.match(new RegExp(ROOT.source, "gi")) ?? [];
+      assert.equal(roots.length, 4, text);
+      const sup = supportsOf(project);
+      const at = placementIndex(project, plan.instructions);
+      const walls = project.panels.filter((p) => /bay wall|slat/i.test(p.name));
+      assert.ok(walls.length >= 2);
+      for (const wall of walls) {
+        const on = sup.get(wall.id)?.on ?? [];
+        assert.ok(on.length >= 2, wall.name);
+        const i = at.get(wall.id)!;
+        for (const id of on) assert.ok((at.get(id) ?? 99) <= i, `${wall.name} before a post it spans`);
+      }
+    });
+  }
+
+  for (const prompt of ["potting bench", "potting table", "trestle table", "bench with legs and aprons", "firewood rack"]) {
+    it(`${prompt}: a part that spans several members is placed after every one of them`, () => {
+      const project = generateFromPrompt(prompt);
+      assert.equal(project.refused, undefined, project.refused);
+      const plan = buildPlan(project);
+      const sup = supportsOf(project);
+      const at = placementIndex(project, plan.instructions);
+      const name = new Map(project.panels.map((p) => [p.id, p.name]));
+      const spanned = project.panels.filter((p) => (sup.get(p.id)?.on.length ?? 0) >= 2);
+      assert.ok(spanned.length >= 2, spanned.map((p) => p.name).join(", "));
+      for (const part of spanned) {
+        const i = at.get(part.id)!;
+        for (const id of sup.get(part.id)!.on) {
+          assert.ok((at.get(id) ?? 99) <= i, `${part.name} before ${name.get(id)}`);
+        }
+      }
+    });
+  }
 });
