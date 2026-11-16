@@ -289,7 +289,8 @@ function faceContact(A: Box, B: Box): boolean {
  * and an inset bottom are one assembly when they meet or already fasten, whatever their stock or part type. The root is the
  * floor part the most others already wait on, then the one with the most neighbors off the floor,
  * then the most contacts, the largest, the lowest, then the id. Every other floor part fastens to a
- * floor neighbor closer to that root, never to a part that spans it. A part that sits on this one is
+ * floor neighbor it meets, never to a part that spans it. A pair that only meets each other, with a
+ * rail between that pair and the rest, still shares one start: the rail keeps both ends. A part that sits on this one is
  * not that neighbor. A case stood on uprights keeps its starts. Pieces that never meet stay separate
  * starts. A part outside the component (a door, a drawer front) that hangs on one member leaves the
  * members as they are: it names only that member.
@@ -379,6 +380,20 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
     }
     const leads = (id: string) => id === root || reaches(id, root);
     const floorSet = new Set(floors);
+    // Still on the floor, or fastened through to a part that is. The chain may be a local pair
+    // the spanning rails have not joined to the assembly root.
+    const grounded = (id: string) => {
+      const walk = new Set<string>();
+      const s = [id];
+      while (s.length) {
+        const x = s.pop()!;
+        if (walk.has(x)) continue;
+        walk.add(x);
+        if (out.get(x)?.how === "floor") return true;
+        for (const n of out.get(x)?.on ?? []) s.push(n);
+      }
+      return false;
+    };
     const tryAttach = (id: string, holder: string) => {
       const part = byId.get(id);
       // A thin face stays a floor start: the joint sentence would buy glue; the floor sentence does not.
@@ -389,8 +404,23 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
       // A floor part fastens only to another floor part of its assembly. A board, rail or floor that
       // spans two floor parts waits for both; holding one of them on it would place the board first.
       if (!floorSet.has(holder)) return false;
-      if (reaches(holder, id)) return false;
-      if (!leads(holder)) return false;
+      // The neighbor has to be one this part meets. Sharing a rail is not meeting: the rail stays
+      // after both ends, and the two ends share a start only when they touch.
+      const holderPanel = byId.get(holder);
+      const declared = part.joints?.some((x) => x.with === holder) || holderPanel?.joints?.some((x) => x.with === id);
+      if (!declared && !faceContact(boxes.get(id)!, boxes.get(holder)!)) return false;
+      if (reaches(holder, id) || !grounded(holder)) return false;
+      // A board that already meets several floor parts is a span. It can take a part only when it
+      // leads back to the assembly root. A pair of legs that only meet each other can still share a start.
+      if (!leads(holder)) {
+        const also = (adj.get(holder) ?? []).filter((n) => {
+          if (n === id || out.get(n)?.how !== "floor") return false;
+          const other = byId.get(n);
+          const joint = holderPanel?.joints?.some((x) => x.with === n) || other?.joints?.some((x) => x.with === holder);
+          return joint || faceContact(boxes.get(holder)!, boxes.get(n)!);
+        });
+        if (also.length > 0) return false;
+      }
       const info = out.get(id);
       if (!info) return false;
       const A = boxes.get(id)!, B = boxes.get(holder)!;
