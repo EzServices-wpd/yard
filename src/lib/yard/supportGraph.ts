@@ -369,6 +369,10 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
     }
     const floors = comp.filter((id) => out.get(id)?.how === "floor");
     if (floors.length <= 1) continue;
+    // A stood case is built from its uprights. Rewriting those posts reverses the rails and the pinned step order.
+    if (comp.some((id) => byId.get(id)?.type === "upright")) continue;
+    // A wall cleat build is hung. Its bench base stays the base in front of the cleat.
+    if (comp.some((id) => byId.get(id)?.type === "cleat" || /\bcleat\b/i.test(byId.get(id)?.name ?? ""))) continue;
     // A door or a drawer front hangs on one member and is not in this contact component. Collapsing
     // the members would stand that part before the other members it spans.
     const inComp = new Set(comp);
@@ -423,6 +427,20 @@ function oneRootPerAssembly(out: Map<string, SupportInfo>, panels: Panel[], boxe
       // Uprights share a "stand the legs" step. Fastening one of them onto a rail the step cannot
       // move past leaves that upright before the rail. A rail-stock leg has its own step and can.
       if (part.type === "upright" && holderPanel?.type === "rail") return false;
+      // A shelf across several legs keeps waiting on those legs. Turning that around
+      // pulls the shelf in front of the rails whose screw total is counted later.
+      const holderInfo = out.get(holder);
+      if (holderPanel?.type !== "rail" && (holderInfo?.on.length ?? 0) > 2 && holderInfo!.on.includes(id)) return false;
+      // A shelf or deck already waits on this part. Moving it onto a rail drags that shelf
+      // past the rails the screw count assumes come later. Rails may still turn around.
+      if (!floorSet.has(holder) && [...out.values()].some((info) => {
+        if (info.key === id || info.key === holder || !(info.on ?? []).includes(id)) return false;
+        const waiter = byId.get(info.key);
+        if (!waiter || waiter.type === "rail") return false;
+        // Wall boards are the joint being turned. A shelf waiting on a leg is not.
+        if (waiter.type === "side" && holderPanel?.type === "side") return false;
+        return true;
+      })) return false;
       // A board that still has to follow some other floor part cannot take this part yet.
       if (!floorSet.has(holder)) {
         const followed = hosts.get(byId.get(holder)?.name ?? "");

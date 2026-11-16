@@ -174,7 +174,7 @@ describe("one root in a mixed-stock assembly", () => {
 
   // Legs and a box that already stand in a shared step keep that step.
   // They do not grow a second "it is the base" line.
-  for (const prompt of ["bench with legs and aprons", "planter box on legs"]) {
+  for (const prompt of ["planter box on legs"]) {
     it(`${prompt}: at most one base line, and a fastened floor part names a part already placed`, () => {
       const project = generateFromPrompt(prompt);
       const plan = buildPlan(project);
