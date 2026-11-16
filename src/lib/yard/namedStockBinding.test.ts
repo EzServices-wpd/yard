@@ -42,8 +42,9 @@ describe("named stock binds: the typed stock is built and bought, or a note says
     assert.ok(line);
     assert.equal(line!.name, "Cedar 1×6");
     assert.match(line!.searchQuery ?? "", /^Cedar 1x6/);
-    // The seed library has no 1×6 price: unpriced, never a fake number.
-    assert.ok(line!.estimatedCost == null || line!.estimatedCost === 0);
+    // Cedar 1×6 is the checked Home Depot board (checkedStock), not a scaled estimate.
+    assert.equal(line!.estimatedCost, Math.round(19.98 * line!.quantity * 100) / 100);
+    assert.ok((line!.offers ?? []).some((o) => o.unitPrice === 19.98));
   });
 
   it("coat rack 66 tall oak dowel: Oak survives; the dowel swap is said, never silent", () => {

@@ -5,6 +5,8 @@
  * "record") picks the variant and never the class.
  */
 import { createId } from "@/lib/utils";
+import { getCatalogItem } from "./catalog";
+import { pricedBoardId } from "./pricedStock";
 import { inchFrac } from "./inchText";
 import { STOP, sentenceCase, typedHeadNoun, headPhrase as nounPhrase } from "./headNoun";
 import type { Purpose } from "./purpose";
@@ -61,12 +63,20 @@ export function isCarryTote(prompt: string): boolean {
   return head === "box" && CARRY_STEM.test(prev);
 }
 
+/** The board the words name, or the priced length of that same section when this length has no price. */
+function pricedOneBy(board: OneBy): OneBy {
+  const id = pricedBoardId(board.id);
+  if (id === board.id) return board;
+  const item = getCatalogItem(id);
+  return { id, face: item?.dims.width ?? board.face, thick: item?.dims.height ?? item?.dims.thickness ?? board.thick };
+}
+
 /** The 1× board the words name, or the tote's own board when Build again passes it back. */
 export function carryBoard(prompt: string, materialOverride?: string): OneBy {
   const named = ONE_BY.find((b) => b.re.test(prompt));
-  if (named) return named.board;
+  if (named) return pricedOneBy(named.board);
   const again = materialOverride ? ONE_BY_IDS.get(materialOverride) : undefined;
-  return again ?? DEFAULT_BOARD;
+  return pricedOneBy(again ?? DEFAULT_BOARD);
 }
 
 const CRAFT = /popsicle|craft\s*sticks?|toothpicks?|skewers?|cardboard|chipboard|lego|\bstraws?\b|balsa|dowels?|pipe\s*cleaners?|paper|foam|clay/;
