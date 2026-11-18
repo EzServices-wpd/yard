@@ -23832,11 +23832,11 @@
         "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
       },
       "after": {
-        "name": "Spice rack 36\" × 24\" × 4\"",
+        "name": "Spice rack 30\" × 24\" × 4\"",
         "cost": 79.32,
         "pieces": 9,
         "hud": [
-          36,
+          30,
           4,
           24
         ],
@@ -25872,15 +25872,15 @@
         "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
       },
       "after": {
-        "name": "Spice rack 36\" × 24\" × 4\"",
-        "cost": 79.32,
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 70.85,
         "pieces": 9,
         "hud": [
-          36,
+          18,
           4,
           24
         ],
-        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "buy": "1×3/4\" Plywood 4×8=38.43; 1×#8 x 1-1/4\" wood screws=8.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
         "titles": [
           "Confirm the hang before the first cut",
           "Cut the 3/4\" Plywood 4×8",
