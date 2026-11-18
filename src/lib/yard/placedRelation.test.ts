@@ -111,6 +111,9 @@ function faults(project: YardProject, plan: BuildPlan): string[] {
     const sentences = desc.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
     const seen = new Set<string>();
     for (const sentence of sentences) {
+      // A sentence that places a subject ("Tops of the H shelves sit …", "F Left divider stands …") starts that
+      // subject's block. A line ("Front edge flush …") repeated under a different subject is that subject's own.
+      if (/\b(?:sit|sits|stand|stands)\b/.test(sentence)) seen.clear();
       if (seen.has(sentence)) out.push(`${step.title} repeats: ${sentence.slice(0, 80)}`);
       seen.add(sentence);
     }

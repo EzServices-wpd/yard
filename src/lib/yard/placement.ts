@@ -905,12 +905,18 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     // Parts this step places, plus every part an earlier step placed. A relation names only these.
     const known = new Set<string>([...placed, ...st.fresh]);
     const canName: CanName = (id) => known.has(id);
-    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out, canName);
-    for (const g of groups("rail")) railTalk(ctx, g, out, canName);
-    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out, canName);
-    for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out, canName);
+    // Each talk call writes one subject's block. A block's own sentences ("Outside face set in …") belong to
+    // that subject, so a repeat under a different subject is a different fact and stays.
+    const blocks: number[] = [];
+    const cut = () => {
+      blocks.push(out.sentences.length);
+    };
+    for (const g of groups("horizontal")) (cut(), horizontalTalk)(ctx, g, placed, s, out, canName);
+    for (const g of groups("rail")) (cut(), railTalk)(ctx, g, out, canName);
+    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) (cut(), dividerTalk)(ctx, p, out, canName);
+    for (const p of fresh.filter((q) => q.type === "mirror")) (cut(), hungTalk)(ctx, p, out, canName);
     const brackets = pos.filter((q) => roles.get(q.id) === "bracket");
-    if (brackets.length) bracketTalk(ctx, brackets, out, canName);
+    if (brackets.length) (cut(), bracketTalk)(ctx, brackets, out, canName);
     // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
     const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const pick = (role: PlaceRole, word: RegExp) => {
@@ -922,23 +928,23 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     };
     if (/\bhinges?\b/.test(text)) {
       const doors = pick("door", /\bdoors?\b/);
-      if (doors.length) hingeTalk(ctx, doors, s, out);
+      if (doors.length) (cut(), hingeTalk)(ctx, doors, s, out);
     }
     if (/\bpulls?\b|\bknobs?\b/.test(text)) {
       const fronts = pick("front", /drawer front/);
       const doorsNow = /\bdoors?\b/.test(text) ? pick("door", /\bdoors?\b/) : [];
       const drawers = fronts.length ? [] : /drawer/.test(text) ? pick("drawer", /drawer/) : [];
-      if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) pullTalk(ctx, doorsNow, "door", out);
-      if (fronts.length) pullTalk(ctx, fronts, "drawer front", out);
-      else if (drawers.length) pullTalk(ctx, drawers, "drawer front", out);
+      if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) (cut(), pullTalk)(ctx, doorsNow, "door", out);
+      if (fronts.length) (cut(), pullTalk)(ctx, fronts, "drawer front", out);
+      else if (drawers.length) (cut(), pullTalk)(ctx, drawers, "drawer front", out);
     }
     if (/drawer fronts?/.test(text)) {
       const fronts = pick("front", /drawer front/);
-      if (fronts.length) frontTalk(ctx, fronts, out);
+      if (fronts.length) (cut(), frontTalk)(ctx, fronts, out);
     }
     if (/\bslides?\b/.test(text)) {
       const drawers = pick("drawer", /drawer/);
-      if (drawers.length) slideTalk(ctx, drawers, placed, out, canName);
+      if (drawers.length) (cut(), slideTalk)(ctx, drawers, placed, out, canName);
     }
     // One arrow per span (two dividers share the gap between them).
     const key = (m: PlacementArrow) => [m.a, m.b].map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`).sort().join("|");
@@ -950,14 +956,21 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       return true;
     });
     const instIds = st.fresh.filter((id) => !byId.has(id));
-    if (instIds.length) instanceTalk(project, instIds, craft, out);
-    // Two groups can compose the same line once a later name is gone. Say it once.
-    const seenSentence = new Set<string>();
-    out.sentences = out.sentences.filter((t) => {
-      if (seenSentence.has(t)) return false;
-      seenSentence.add(t);
-      return true;
-    });
+    if (instIds.length) (cut(), instanceTalk)(project, instIds, craft, out);
+    // Once a later name is gone, a block can repeat its own line, or two subjects can compose the very same
+    // block. Say each once. A line repeated under a different subject is that subject's own and stays.
+    const bounds = [...new Set([0, ...blocks, out.sentences.length])].sort((x, y) => x - y);
+    const seenBlock = new Set<string>();
+    const kept: string[] = [];
+    for (let k = 0; k + 1 < bounds.length; k++) {
+      const inBlock = new Set<string>();
+      const lines = out.sentences.slice(bounds[k], bounds[k + 1]).filter((t) => !inBlock.has(t) && !!inBlock.add(t));
+      const key = lines.join("\n");
+      if (!lines.length || seenBlock.has(key)) continue;
+      seenBlock.add(key);
+      kept.push(...lines);
+    }
+    out.sentences = kept;
     st.fresh.forEach((id) => placed.add(id));
     st.onto.forEach((id) => placed.add(id));
     return out;
