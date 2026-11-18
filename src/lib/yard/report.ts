@@ -17,7 +17,7 @@ import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
 import { adjustableShelfTalk, isFixedSpanShelf } from "./shelfSpan";
-import { LAG_ROW, stepsInstallWallAnchors } from "./wallAnchorSteps";
+import { LAG_ROW, anchorKind, fastenerId, stepsInstallWallAnchors, tiedById } from "./wallAnchorSteps";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -1678,7 +1678,33 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 
 export function buildPlan(project: YardProject): BuildPlan {
   // C12: the last pass: every store search a Buy row links to says that row's Buy name.
-  return storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))));
+  return liftedFastenersById(project, storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)))));
+}
+
+/**
+ * A build lifted out of craft sticks into real stock is new to Buy = steps: its screw, nail and brad lines are carried
+ * by id on the build steps that drive them (the I46 direction), so it never adds a word-tied fastener line.
+ */
+function liftedFastenersById(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!project.craftLifted) return plan;
+  const general = plan.bom.filter((b) => !tiedById(b) && !anchorKind(b) && /screw|nail|brad/i.test(b.name));
+  if (!general.length) return plan;
+  const driving = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title) && /\b(?:screws?|nails?|brads?|fasten)\b/i.test(`${s.title} ${s.description ?? ""}`));
+  const steps = driving.length ? driving : plan.instructions.filter((s) => !/^(?:Cut|Confirm|Level)\b/i.test(s.title)).slice(0, 1);
+  if (!steps.length) return plan;
+  const share = (b: (typeof general)[number], k: number) => {
+    // The joint count Buy states (I46 checks the steps sum to it); else the line's own quantity.
+    const joints = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+    const n = Number.isFinite(joints) ? joints : Math.max(1, Math.round(b.quantity));
+    return Math.floor(n / steps.length) + (k < n % steps.length ? 1 : 0);
+  };
+  const instructions = plan.instructions.map((s) => {
+    const k = steps.indexOf(s);
+    if (k < 0) return s;
+    const add = general.map((b) => ({ id: fastenerId(b), qty: share(b, k) })).filter((f) => f.qty > 0);
+    return add.length ? { ...s, fastenersUsed: [...(s.fastenersUsed ?? []), ...add] } : s;
+  });
+  return { ...plan, instructions };
 }
 
 /**

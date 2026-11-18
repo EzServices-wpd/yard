@@ -1,4 +1,5 @@
 import { seedIds } from "../stableId";
+import { partsAboveStatedHeight } from "./partsWithinHeight";
 import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
@@ -27,7 +28,7 @@ import { hooksShowInModel } from "./boughtHardware";
 import { bedCourses, CASTER_H, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
-import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
+import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, mustNotBeCraft, realStockFor, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog";
@@ -444,7 +445,17 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
     if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    // Craft sticks are a default only for a model. A build that came out in craft stock with none typed, for
+    // something load-bearing, outdoors or sized for a person, is built again in real stock (¾" plywood).
+    const craftBuilt = (p: YardProject) => /^(?:popsicle|craft|toothpick|bamboo-skewer|straw|balsa|cardboard|chipboard)/.test(p.primaryMaterialId ?? "");
+    const seeded0 = generateSeeded(...args);
+    const seeded = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake)
+      ? withinStatedHeight({
+          ...generateSeeded(typedAtIntake, realStockFor(typedAtIntake), ...(args.slice(2) as [])),
+          craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
+        })
+      : seeded0;
+    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(seeded), args[0]) : seeded;
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
     // Row 438: a typed rod count over the finished bays is built as double hang, trimmed to the count.
@@ -2515,6 +2526,16 @@ const SAME_OBJECT = /\b(rocket)\s+ship\b/g;
 const STOCK_PHRASE = /\bbutcher[\s-]+block\b/g;
 /** Common misspellings of a builder's own name. */
 const SPELLING: [RegExp, string][] = [[/\banderson\b/g, "andersen"]];
+/**
+ * A build lifted into real stock states the height its parts reach: a stand-in sized for sticks, rebuilt in ¾" boards,
+ * can stand a board's thickness taller than the size it was given (the stated size is the parts' envelope).
+ */
+function withinStatedHeight(p: YardProject): YardProject {
+  const over = partsAboveStatedHeight(p);
+  if (!over.length || p.pocket?.unit) return p;
+  return { ...p, overall: { ...p.overall, height: p.overall.height + Math.max(...over.map((o) => o.over)) } };
+}
+
 const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
 
 /**
@@ -2529,7 +2550,11 @@ export function ignoredTypedWords(project: YardProject, prompt: string): string[
     .replace(/[a-z]+/g, (w) => SPELLING.reduce((x, [re, to]) => x.replace(re, to), w)).split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
   // Row 51: the size is part of the signature. A word read as a size ("knee high", "as wide as a queen bed", "a full
   // sheet of plywood") changes the build's overall size, so it is read, not ignored.
-  const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}|${q.overall.width}|${q.overall.height}|${q.overall.depth}`;
+  // A build lifted out of craft sticks is judged on the craft build it replaced: the lift reads no word.
+  const sig = (q: YardProject) => {
+    const s = q.craftLifted ?? { kind: q.kind, panels: q.panels.length, instances: q.instances.length, overall: q.overall };
+    return `${s.kind}|${s.panels}|${s.instances}|${s.overall.width}|${s.overall.height}|${s.overall.depth}`;
+  };
   // Row 51 widened: the builder owns its own name (not a title that only echoes the typed words) and its kind's nouns.
   const own = builderOwnText(project, prompt);
   // Row 51: on a fitted carcase, a carcase noun ("closet organizer", "over the toilet cabinet") names the carcase itself.
