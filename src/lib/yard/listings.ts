@@ -19,6 +19,8 @@ import {
 } from "./shop";
 import { hardwareCatalogIdFromHay } from "./voiceHonesty";
 import { affiliateDisclosure, outboundHref, storeOf, type Store } from "./outbound";
+import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
+import { CEDAR } from "./checkedStock";
 
 export type ListingOffer = {
   catalogId: string;
@@ -1406,9 +1408,46 @@ function searchOffers(
   return sortOffersByPrice(offers);
 }
 
+/**
+ * A Buy row named for a species ("Walnut 1×3", "Cedar 1×6") shares its board id with the pine board of the same
+ * size, and every listing for that id is pine. Such a row is priced as its species, never from those listings:
+ * - the board size has a catalog price: the species estimate per 1×4, scaled by the real face (as before);
+ * - else a checked listing for this species and board (cedar 1×6): that listing;
+ * - else the board size has a checked pine listing: the species estimate, scaled the same way;
+ * - else no price, and the store search names the species.
+ * Null for a row that is not a named non-pine species board. One rule for every pass that prices Buy.
+ */
+export function speciesBoardLine(line: BomLine, id: string | null | undefined): BomLine | null {
+  const species = speciesOfBoardLabel(line.name);
+  const item = id ? getCatalogItem(id) : undefined;
+  if (!species || species.id === "pine" || !item || item.category !== "lumber") return null;
+  const face = item.dims.width ?? 3.5;
+  const thick = item.dims.height ?? 0.75;
+  const size = line.name.match(/([1-4])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
+  const query = `${species.display} ${size} ${thick >= 3 ? "post" : "board"} 8 ft`;
+  const catalogSold = item.unitCostUsd != null && item.unitCostUsd > 0;
+  const checked = species.id === "cedar" ? CEDAR[item.id] : undefined;
+  const listed = LISTINGS.some((o) => o.catalogId === item.id && o.packPrice > 0);
+  const per1x4 = speciesBoardUsd(species);
+  const qty = line.quantity;
+  if (qty > 0 && per1x4 != null && (catalogSold || (!checked && listed))) {
+    const each = Math.round(per1x4 * ((face * thick) / (3.5 * 0.75)) * 100) / 100;
+    const total = Math.round(each * qty * 100) / 100;
+    return { ...line, catalogId: item.id, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, qty, total) };
+  }
+  if (qty > 0 && checked && checked.packPrice > 0) {
+    const { offers, lineTotal } = checkedOffer(checked, qty);
+    const notes = line.notes?.replace(/ · No price — plus unpriced items/g, "");
+    return { ...line, catalogId: item.id, estimatedCost: lineTotal, offers, searchQuery: query, ...(notes != null ? { notes } : {}) };
+  }
+  return { ...line, catalogId: item.id, estimatedCost: undefined, searchQuery: query, offers: searchOffers(query, line.asin, Math.max(1, qty), undefined) };
+}
+
 export function decorateBom(lines: BomLine[]): BomLine[] {
   return lines.map((line) => {
     const id = guessCatalogId(line);
+    const species = speciesBoardLine(line, id);
+    if (species) return species;
     const item = id ? getCatalogItem(id) : undefined;
     const hasListings = Boolean(id && LISTINGS.some((o) => o.catalogId === id));
     // Orphan catalogId (no LISTINGS, no FORGE item) must not synthesize kebab titles / $9.99 —
