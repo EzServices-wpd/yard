@@ -283,6 +283,11 @@ export function typedExtents(prompt: string): TypedExtents | null {
     if (place.axes.height != null && height == null) {
       out.height = place.axes.height;
       out.labeled.height = true;
+    } else if (height == null) {
+      // The place's numbers are its own axes. A pair is width × depth, so the same numbers never
+      // also stand for a typed height; the height stays the build's own.
+      delete out.height;
+      out.labeled.height = false;
     }
     if (place.axes.depth != null && depth == null) {
       out.depth = place.axes.depth;

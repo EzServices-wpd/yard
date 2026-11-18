@@ -129,7 +129,7 @@ export function fitClause(text: string): FitClause | null {
  * A measure inside a place phrase (in / into / fits / fitted to / between / for + a size) belongs to
  * the place the build goes into. A measure on the build itself ("crate 16x12x10") does not.
  * The noun can be one the reader has never seen (cranny, cutout, bay). An unlabeled triple in that
- * phrase is opening order, width × height × depth. `productFirst` means a size of the build is
+ * phrase is opening order, width × height × depth; an unlabeled pair is width × depth and never a height. `productFirst` means a size of the build is
  * written before the place, and that size stays the build.
  */
 export type PlaceBinding = {
@@ -182,7 +182,11 @@ export function placeBinding(prompt: string, isProduct: (noun: string) => boolea
       if (trip[3] != null) {
         set("height", Number(trip[2]));
         set("depth", Number(trip[3]));
-      } else set("height", Number(trip[2]));
+      } else {
+        // Two numbers name a footprint: width × depth. A pair never fills the height, which stays the
+        // build's own (typed, or its class default and said so). Only a triple names a height.
+        set("depth", Number(trip[2]));
+      }
       if (at < 0) at = lead.index ?? 0;
     }
     for (const ax of span.matchAll(PLACE_AXIS)) {

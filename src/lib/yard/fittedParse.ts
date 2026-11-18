@@ -675,8 +675,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
   // Typed means the person named the axis. A class default that already filled `width` is not typed.
   const saidAxisWord = /wide|width|deep|depth|tall|high|height|long|length/.test(lower);
   const tripleOwns = !saidAxisWord && !!(trip.w && trip.h && trip.d);
+  // A measure bound to a place is typed on the axes it names, on every path (a dresser's class-default
+  // path too), so the note never calls a typed place width or depth a class default.
+  const placeTyped = place.host && !place.productFirst ? place.axes : {};
   const typedAxes = classDefaultTitleHonesty
-    ? typedClassDefaultAxes(prompt)
+    ? (() => {
+        const t = typedClassDefaultAxes(prompt);
+        return { width: t.width || placeTyped.width != null, height: t.height || placeTyped.height != null, depth: t.depth || placeTyped.depth != null };
+      })()
     : {
         width:
           Number.isFinite(spokenAxisInches(t, "w")) ||
