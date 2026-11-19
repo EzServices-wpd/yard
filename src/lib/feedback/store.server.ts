@@ -6,6 +6,7 @@
 import { restPipe, Budget, RETAIN_DAYS, type Pipe } from "@/lib/yard/ideaLog.server";
 import type { FeedbackRecord } from "./shop";
 import type { EventRecord } from "./events";
+import type { DigestBuild, DigestInput } from "./digest";
 
 export const K = {
   budget: (m: string) => `ideas:cmds:${m}`,
@@ -28,6 +29,8 @@ export const K = {
 export const EV_DAY_CAP = 1200;
 export const EV_INSTANCE_PER_MIN = 60;
 export const EV_KEEP_SECONDS = 3 * 86_400;
+/** Builds the digest looks up per run (one MGET). */
+export const DIGEST_BUILDS = 200;
 export const FEEDBACK_KEEP = 2000;
 /**
  * Feedback older than this is deleted on the next write and by the twice-daily cron. The same RETAIN_DAYS (85) as the
@@ -84,6 +87,31 @@ export class ShopStore {
     const cmds: (string | number)[][] = [["HINCRBY", K.ev(d), field, 1], ["EXPIRE", K.ev(d), EV_KEEP_SECONDS]];
     if (rec.build) cmds.push(["SET", K.build(rec.bid), JSON.stringify({ ...rec.build, first: rec.at }), "NX", "EX", FEEDBACK_DAYS * 86_400]);
     return (await this.run(cmds.length + 1, cmds, now)) ? "saved" : "dropped";
+  }
+
+  /**
+   * The digest's read: the feedback list, the day's events, and what the digest shows for each build that has a
+   * thumbs-down, a note, an export or a Buy click (at most DIGEST_BUILDS). Budgeted like every other call; read-only.
+   */
+  async digestInput(dayStr: string, now = new Date()): Promise<DigestInput | null> {
+    if (!this.pipe) return null;
+    const got = await this.run(3, [["LRANGE", K.feedback, 0, FEEDBACK_KEEP - 1], ["HGETALL", K.ev(dayStr)]], now);
+    if (!got) return null;
+    const feedback = ((got[0] as string[] | null) ?? []).flatMap((x) => { try { return [JSON.parse(x)]; } catch { return []; } });
+    const flat = (got[1] as string[] | null) ?? [];
+    const events: Record<string, number> = {};
+    for (let i = 0; i + 1 < flat.length; i += 2) events[flat[i]] = Number(flat[i + 1]) || 0;
+    const want = new Set<string>();
+    for (const f of Object.keys(events)) if (!/\|build\|/.test(f)) want.add(f.split("|")[0]);
+    for (const f of feedback) if (f.bid && String(f.at).slice(0, 10) === dayStr) want.add(f.bid);
+    const bids = [...want].slice(0, DIGEST_BUILDS);
+    const builds: Record<string, DigestBuild | null> = {};
+    if (bids.length) {
+      const b = await this.run(2, [["MGET", ...bids.map(K.build)]], now);
+      const vals = (b?.[0] as (string | null)[] | null) ?? [];
+      bids.forEach((bid, i) => { try { builds[bid] = vals[i] ? (JSON.parse(vals[i]!) as DigestBuild) : null; } catch { builds[bid] = null; } });
+    }
+    return { day: dayStr, feedback, events, builds };
   }
 
   /** Per-instance limiter (no IP: a plain sliding minute over all callers). */
