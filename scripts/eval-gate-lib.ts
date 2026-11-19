@@ -7,6 +7,7 @@
  * merge-base main with the same corpus and the same grader: `--root <checkout>` (run with that checkout as cwd
  * so its tsconfig resolves its own "@/..." imports).
  */
+import { honestChecks } from "./eval-gate-honest.ts";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -28,6 +29,9 @@ export const REPORT_ONLY_IDS: ReadonlySet<string> = new Set(["I26", "I27", "I28"
 export const TYPED_RULE_IDS = ["I31", "I35", "I36", "I38"] as const;
 export type Engine = {
   root: string;
+  /** The engine's own stand-in marks, read by the honest checks; absent on an older tree. */
+  genericFormMark?: (p: any) => string | null;
+  genericBoxOverAsk?: (prompt: string, p: any) => boolean;
   generateFromPrompt: (q: string) => any;
   ignoredTypedWords: (p: any, q: string) => string[];
   checkBuild: (p: any, q: string, plan?: any) => { id: string; cls: string; msg: string }[];
@@ -45,7 +49,10 @@ export async function loadEngine(root = HEAD_ROOT): Promise<Engine> {
   const [pm, inv, rep, pdf, pocket] = await Promise.all([import(y("promptMain.ts")), import(y("invariants.ts")), import(y("report.ts")), import(y("pdf.ts")), import(y("pocket.ts"))]);
   const bf = join(root, "evals/invariants-baseline.json");
   const baseline = existsSync(bf) ? JSON.parse(readFileSync(bf, "utf8")).known : {};
-  return { root, generateFromPrompt: pm.generateFromPrompt, ignoredTypedWords: pm.ignoredTypedWords ?? (() => []), checkBuild: inv.checkBuild, buildPlan: rep.buildPlan, headerTitle: pdf.headerTitle, POCKET_DREAM: pocket.POCKET_DREAM, baseline, graded: (id: string) => !REPORT_ONLY_IDS.has(id), refusals: loadExpectedRefusals(HEAD_ROOT) };
+  // The honest checks (scripts/eval-gate-honest.ts) read the engine's own stand-in marks; an older tree may lack them.
+  const fo = await import(y("formOwnership.ts")).catch(() => ({}));
+  const gb = await import(y("genericBox.ts")).catch(() => ({}));
+  return { root, generateFromPrompt: pm.generateFromPrompt, ignoredTypedWords: pm.ignoredTypedWords ?? (() => []), checkBuild: inv.checkBuild, buildPlan: rep.buildPlan, headerTitle: pdf.headerTitle, POCKET_DREAM: pocket.POCKET_DREAM, baseline, graded: (id: string) => !REPORT_ONLY_IDS.has(id), refusals: loadExpectedRefusals(HEAD_ROOT), genericFormMark: (fo as any).genericFormMark, genericBoxOverAsk: (gb as any).genericBoxOverAsk };
 }
 /** Same rule as scripts/eval-lib.ts: evals never touch the network (no xAI, no stores). */
 export function offline<T>(f: () => T): T {
@@ -244,6 +251,8 @@ export type PromptResult = {
   honor: { honored: number; checkable: number; demandsFrom: string; items: HonorItem[] };
   /** Every checkBuild hit. scored = graded (not in REPORT_ONLY_IDS); a geometry report-only hit is listed but never grades. */
   invariants: { id: string; cls: string; msg: string; known: boolean; scored: boolean }[];
+  /** Honest-gate hits (H-standin, H-craft, H-unpriced): each is a hard fail. */
+  honest?: { cls: string; msg: string }[];
   /** Set when the build refused or was expected to: honest = graded pass, otherwise X-refusal (eval-gate-refusal.ts). */
   refusal?: Refusal;
   error?: string;
@@ -272,6 +281,10 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
     for (const v of scored) classes.add(v.cls);
     for (const i of h.items) if (i.ok !== true) classes.add(`T-${i.kind}`);
     let grade = gradeOf({ empty: h.empty, nounOk: h.nounOk, scoredIds: scored.map((v) => v.id), honored, checkable });
+    // Honest gate: a stand-in, craft stock on a real build, or an unpriced Buy line is a hard fail.
+    const honest = h.empty ? [] : honestChecks(E, e.prompt, p, plan);
+    for (const x of honest) classes.add(x.cls);
+    if (honest.length) grade = "fail";
     // An honest, expected refusal is the right answer (pass, no failure class); a wrong or unexpected one fails.
     const refusal = judgeRefusal(E, e.prompt, e.demands, p, plan, E.refusals) ?? undefined;
     if (refusal?.honest && !scored.length) { grade = "pass"; classes.clear(); }
@@ -279,7 +292,7 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
     let header: string | null = null;
     try { header = E.headerTitle(p); } catch { /* no header */ }
     const o = p.overall;
-    return { ...base, grade, classes: [...classes].sort(), header, overall: o ? `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` : null, pieces: plan.totals.pieces, usd: r2(plan.totals.estCostUsd), honor: { honored, checkable, demandsFrom: e.demandsFrom, items: h.items }, invariants, ...(refusal ? { refusal } : {}) };
+    return { ...base, grade, classes: [...classes].sort(), header, overall: o ? `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` : null, pieces: plan.totals.pieces, usd: r2(plan.totals.estCostUsd), honor: { honored, checkable, demandsFrom: e.demandsFrom, items: h.items }, invariants, ...(honest.length && !(refusal?.honest && !scored.length) ? { honest } : {}), ...(refusal ? { refusal } : {}) };
   });
 }
 
