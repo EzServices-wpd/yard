@@ -187,8 +187,12 @@ function StepCapture() {
   return null;
 }
 
-/** The bench lighting: drei's "warehouse" preset file (Poly Haven empty_warehouse_01, CC0), served from our own origin. */
-export const BENCH_HDRI = "/hdri/empty_warehouse_01_1k.hdr";
+/**
+ * The bench lighting: drei's "warehouse" preset file (Poly Haven empty_warehouse_01, CC0), served from our own origin.
+ * Perf fix 3: the 256 × 128 version (108 KB, from the 1k file by a 4 × 4 linear-light box filter; mean radiance within
+ * 0.3%), not the 1.67 MB 1k file. Diffuse light is the same; reflections of the window are softer.
+ */
+export const BENCH_HDRI = "/hdri/empty_warehouse_01_256.hdr";
 
 export function WorkspaceCanvas() {
   const project = useYard((s) => s.project);
