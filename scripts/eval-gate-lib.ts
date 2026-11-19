@@ -258,10 +258,18 @@ export type PromptResult = {
   error?: string;
 };
 export function gradeOne(E: Engine, e: Entry): PromptResult {
+  return gradeBuild(E, e, e.prompt);
+}
+
+/**
+ * Grades the build made from `builtFrom` against the TYPED words' demands (e.prompt). The gate builds from the typed
+ * words; the reader harness (scripts/reader-eval.ts) builds from the reader's rewrite and grades it the same way.
+ */
+export function gradeBuild(E: Engine, e: Entry, builtFrom: string): PromptResult {
   return offline(() => {
     const base = { prompt: e.prompt, sources: e.sources, ids: e.ids };
     let p: any, plan: any;
-    try { p = E.generateFromPrompt(e.prompt); plan = E.buildPlan(p); } catch (err) {
+    try { p = E.generateFromPrompt(builtFrom); plan = E.buildPlan(p); } catch (err) {
       const items: HonorItem[] = e.demands.head_noun ? [{ demand: `noun "${e.demands.head_noun.quote}"`, kind: "noun", ok: false, shows: "build threw" }] : [];
       return { ...base, grade: "fail", classes: ["X-build"], header: null, overall: null, pieces: null, usd: null, honor: { honored: 0, checkable: Math.max(1, items.length), demandsFrom: e.demandsFrom, items }, invariants: [], error: String(err).slice(0, 160) };
     }
@@ -271,7 +279,7 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
     const invariants = vs.filter((x) => { const k = `${x.id}|${x.msg}`; if (seen.has(k)) return false; seen.add(k); return true; })
       .map((x) => ({ id: x.id, cls: x.cls, msg: x.msg, known: `${x.id}|${e.prompt}` in E.baseline, scored: E.graded(x.id) }))
       .sort((a, b) => (a.id + a.msg < b.id + b.msg ? -1 : 1));
-    const h = honor(E, e.demands, p, plan, e.prompt, e.expect);
+    const h = honor(E, e.demands, p, plan, builtFrom, e.expect);
     const honored = h.items.filter((i) => i.ok === true).length;
     const checkable = h.items.length;
     // Only graded hits count (row 181): a geometry report-only ID (I26, I27, I28, I30, I32, I37) is listed, never a class or a grade.

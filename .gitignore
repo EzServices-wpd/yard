@@ -16,3 +16,6 @@ dist
 
 # Eval-gate row cache (scripts/build-cache.ts)
 .cache/
+
+# reader eval harness output (scripts/reader-eval.ts)
+.reader-eval/
