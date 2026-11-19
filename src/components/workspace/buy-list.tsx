@@ -1,12 +1,16 @@
 "use client";
 
 import { ShoppingCart } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, type MouseEvent } from "react";
 import { usd } from "@/lib/utils";
 import { buyListCart, isLocalStockRow } from "@/lib/yard/amazonCart";
 import { tagNote } from "@/lib/yard/listings";
 import { affiliateConfig, outboundHref, outboundIsAffiliate, OUTBOUND_REL, OUTBOUND_TARGET, storeOf, withSubId, wrapTemplate } from "@/lib/yard/outbound";
 import type { BomLine, BuildPlan } from "@/lib/yard/types";
+import { useYard } from "@/lib/yard/store";
+import { buildIdOf } from "@/lib/feedback/buildId";
+import { sendEvent } from "@/lib/feedback/sendEvent";
+import { STORES } from "@/lib/feedback/events";
 
 // ── "Also at" store links: part of the Buy list (they render only on its rows) ──
 /**
@@ -105,10 +109,18 @@ export function BuyList({ plan }: { plan: BuildPlan }) {
   const disclosure = tagNote() || (also.some((l) => l.length) ? ALSO_AT_DISCLOSURE : "");
   const itemCount = cart.lines.length;
 
+  const project = useYard((s) => s.project);
   if (!plan.bom.length) return null;
+  // A2: a click on any store link in the list is a Buy click for this build (the link itself is unchanged).
+  const onBuyClick = (e: MouseEvent) => {
+    const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+    if (!a || !/^https?:/i.test(a.href) || new URL(a.href).origin === window.location.origin) return;
+    const s = storeOf(a.href) as string;
+    sendEvent({ bid: buildIdOf(project), ev: "buy", store: (STORES as readonly string[]).includes(s) ? s : "other" });
+  };
 
   return (
-    <section data-yard-buy-list="1">
+    <section data-yard-buy-list="1" onClickCapture={onBuyClick} onAuxClickCapture={onBuyClick}>
       <h3 className="font-display text-lg text-fg">Buy</h3>
       <p className="mt-1 text-xs text-muted">
         {plan.partsKind === "whole"

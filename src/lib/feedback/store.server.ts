@@ -5,6 +5,7 @@
  */
 import { restPipe, Budget, RETAIN_DAYS, type Pipe } from "@/lib/yard/ideaLog.server";
 import type { FeedbackRecord } from "./shop";
+import type { EventRecord } from "./events";
 
 export const K = {
   budget: (m: string) => `ideas:cmds:${m}`,
@@ -15,7 +16,18 @@ export const K = {
   feedback: "feedback:list",
   day: (d: string) => `feedback:day:${d}`,
   client: (d: string, cid: string) => `feedback:cid:${d}:${cid}`, // a counter only, gone after a day
+  ev: (d: string) => `ev:${d}`, // hash: field "<bid>|<event>|<detail>" → count, kept 3 days (the digest reads yesterday's)
+  evCount: (d: string) => `ev:n:${d}`, // the day's event counter, for the hard cap
+  build: (bid: string) => `bld:${bid}`, // JSON: what the digest shows for a build; first write wins, 85 days
 };
+/**
+ * Hard daily cap on build events. One event costs at most 7 commands (budget INCRBY ×2, INCR, EXPIRE, HINCRBY,
+ * EXPIRE, SET), so 1,200 a day × 7 × 31 ≈ 260K a month; with feedback's ≈ 102K that stays inside the shared 450K.
+ * Over the cap the event is refused before any write (429), and the monthly Budget still stops everything at 450K.
+ */
+export const EV_DAY_CAP = 1200;
+export const EV_INSTANCE_PER_MIN = 60;
+export const EV_KEEP_SECONDS = 3 * 86_400;
 export const FEEDBACK_KEEP = 2000;
 /**
  * Feedback older than this is deleted on the next write and by the twice-daily cron. The same RETAIN_DAYS (85) as the
@@ -50,6 +62,28 @@ export class ShopStore {
       this.budget.saw(Number(out?.[0]));
       return out ? out.slice(1) : null;
     } catch { return null; }
+  }
+
+  private evHits: number[] = [];
+
+  /**
+   * A build event: counted per build, per event and detail, for the day. The day's hard cap is checked before any
+   * write. A build event also records what the digest shows for that build (the first write wins).
+   */
+  async addEvent(rec: EventRecord, now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
+    if (!this.pipe) return "off";
+    const t = now.getTime();
+    this.evHits = this.evHits.filter((x) => t - x < 60_000);
+    if (this.evHits.length >= EV_INSTANCE_PER_MIN) return "limited";
+    this.evHits.push(t);
+    const d = day(now);
+    const gate = await this.run(3, [["INCR", K.evCount(d)], ["EXPIRE", K.evCount(d), EV_KEEP_SECONDS]], now);
+    if (!gate) return "dropped";
+    if (Number(gate[0]) > EV_DAY_CAP) return "limited";
+    const field = `${rec.bid}|${rec.ev}|${rec.detail}`;
+    const cmds: (string | number)[][] = [["HINCRBY", K.ev(d), field, 1], ["EXPIRE", K.ev(d), EV_KEEP_SECONDS]];
+    if (rec.build) cmds.push(["SET", K.build(rec.bid), JSON.stringify({ ...rec.build, first: rec.at }), "NX", "EX", FEEDBACK_DAYS * 86_400]);
+    return (await this.run(cmds.length + 1, cmds, now)) ? "saved" : "dropped";
   }
 
   /** Per-instance limiter (no IP: a plain sliding minute over all callers). */
