@@ -37,5 +37,8 @@ test("a build that owns the head noun, or a storage carcase answering to a stora
     ["desk tray organizer", /^Desk\b/],
     ["vanity table", /^Vanity\b/],
     ["garage wall cabinet no doors 48 wide 30 tall 12 deep", /cabinet/i],
+    // A verb ends the noun phrase: the rack holds the bottles, it is not a "holds".
+    ['wine rack holds 12 bottles', /^Wine rack\b/],
+    ["dining table seats 6", /table/i],
   ] as const) assert.match(built(prompt).name ?? "", name, prompt);
 });
