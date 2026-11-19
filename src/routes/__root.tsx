@@ -11,7 +11,8 @@ const APP_NAME = "Yard";
 /** Production domain. Env override still wins if set on Vercel. */
 const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
 const ogImage = `https://${host}/og.jpg`;
-const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
+/** The X banner, served from our own origin (public/x-banner.jpg, 1200 × 264): no meta points at a third-party host. */
+const xBanner = `https://${host}/x-banner.jpg`;
 
 
 /**
@@ -65,7 +66,9 @@ export const Route = createRootRoute({
       { title: "Page not found · Yard" },
       { name: "description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { property: "og:title", content: "Page not found · Yard" },
+      { property: "og:description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { name: "twitter:title", content: "Page not found · Yard" },
+      { name: "twitter:description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { name: "robots", content: "noindex" },
     ],
     links: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }, { rel: "icon", href: "/favicon.ico", sizes: "any" }, { rel: "stylesheet", href: appCss }],
