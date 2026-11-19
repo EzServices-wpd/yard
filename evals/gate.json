@@ -1,15 +1,15 @@
 {
  "note": "Eval gate (scripts/eval-gate.ts): engine-direct, no xAI. grade: fail = no build, head noun not honored, or a floats/miscount/missing-hardware/outdoor-ply invariant (I1/I3/I9/I13); partial = any other invariant or a typed word not honored; pass = clean. points = 2·pass + partial. Canaries are a hard fail, outside the totals.",
  "totals": {
-  "prompts": 511,
-  "pass": 350,
-  "partial": 40,
-  "fail": 121,
-  "points": 740,
-  "maxPoints": 1022,
-  "honored": 919,
-  "checkable": 981,
-  "honorPct": 93.7
+  "prompts": 661,
+  "pass": 423,
+  "partial": 53,
+  "fail": 185,
+  "points": 899,
+  "maxPoints": 1322,
+  "honored": 1108,
+  "checkable": 1204,
+  "honorPct": 92
  },
  "canaries": {
   "ok": true,
@@ -2369,6 +2369,17 @@
    "checkable": 88,
    "honorPct": 98.9
   },
+  "everyday150": {
+   "prompts": 150,
+   "pass": 73,
+   "partial": 13,
+   "fail": 64,
+   "points": 159,
+   "maxPoints": 300,
+   "honored": 189,
+   "checkable": 223,
+   "honorPct": 84.8
+  },
   "grok100": {
    "prompts": 100,
    "pass": 41,
@@ -2448,22 +2459,22 @@
   }
  },
  "byClass": {
-  "H-unpriced": 37,
-  "H-standin": 34,
-  "F21": 24,
-  "F1": 20,
-  "T-noun": 19,
-  "T-size": 19,
-  "F12": 14,
-  "F17": 14,
-  "F3": 11,
-  "H-craft": 10,
+  "H-standin": 60,
+  "H-unpriced": 42,
+  "T-noun": 40,
+  "F17": 38,
+  "F21": 29,
+  "T-size": 29,
+  "F1": 28,
+  "H-craft": 19,
+  "F12": 17,
+  "F3": 16,
+  "F7": 9,
+  "C15": 5,
+  "F11": 5,
+  "F9": 5,
   "F2": 4,
-  "F7": 4,
-  "F9": 4,
   "T-count": 4,
-  "C15": 3,
-  "F11": 3,
   "T-feature": 3,
   "F47": 1,
   "T-budget": 1,
@@ -2628,6 +2639,41 @@
      "scored": false
     }
    ]
+  },
+  {
+   "prompt": "2 step stool for kitchen",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e54"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Step stool with 2 steps · 16\" W × 22\" D × 18\" H (size assumed)",
+   "overall": "16W × 22D × 18H",
+   "pieces": 18,
+   "usd": 60.87,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"stool\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Step stool with 2 steps"
+     },
+     {
+      "demand": "count \"2 step\" steps=2",
+      "kind": "count",
+      "ok": true,
+      "shows": "2 steps"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "20 paper clip chain",
@@ -2809,6 +2855,41 @@
      "scored": true
     }
    ]
+  },
+  {
+   "prompt": "3 floating shelves 24 in each",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e18"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Floating shelves · 24\" W × 8\" D × 24 3/4\" H (D, H assumed) · 3 shelves",
+   "overall": "24W × 8D × 24.75H",
+   "pieces": 9,
+   "usd": 70.85,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"floating shelves each\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Floating shelves 24\" × 24 3/4\" × 8\""
+     },
+     {
+      "demand": "size \"24 in\" unknown=24",
+      "kind": "size",
+      "ok": true,
+      "shows": "24W×8D×24.75H"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "3 foot Eiffel Tower from popsicle sticks",
@@ -5405,6 +5486,100 @@
    "invariants": []
   },
   {
+   "prompt": "aquarium stand for 55 gal",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e96"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Aquarium Stand For Gal · 48\" W × 24\" D × 42\" H (size assumed)",
+   "overall": "48W × 24D × 42H",
+   "pieces": 9,
+   "usd": 54.45,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"aquarium stand\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Aquarium Stand For Gal 48\" × 42\" × 24\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Aquarium Stand For Gal 48\" × 42\" × 24\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "arbor for the garden entrance",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e86"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin"
+   ],
+   "header": "Arbor · 61 1/2\" W × 17\" D × 84 1/2\" H (size assumed)",
+   "overall": "61.5W × 17D × 84.5H",
+   "pieces": 132,
+   "usd": 42.93,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"arbor\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Arbor"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "stick-lattice model for a real-use ask: \"Arbor\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
    "prompt": "armoire with doors 36 wide 24 deep 72 tall",
    "sources": [
     "grok100"
@@ -5564,6 +5739,167 @@
    ]
   },
   {
+   "prompt": "baby crib, standard matress",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e43"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Baby Crib, Standard Matress · 27 7/8\" W × 11 1/2\" D × 8\" H (size assumed)",
+   "overall": "27.875W × 11.5D × 8H",
+   "pieces": 5,
+   "usd": 13.42,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"baby crib\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Baby Crib, Standard Matress"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: unmatched body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "unmatched body: \"Baby Crib, Standard Matress\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "backyard swing set",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e58"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F3"
+   ],
+   "header": "Swing set 10' beam x 7' 8\" tall · 69\" W × 120\" D × 92\" H (size assumed)",
+   "overall": "69W × 120D × 92H",
+   "pieces": 8,
+   "usd": 302.58,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"backyard swing\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Swing set 10' beam × 7' 8\" tall"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "zero: 0″ dimension (step)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I3",
+     "cls": "F3",
+     "msg": "cut list has 8 pieces, model 10",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "balance beam for kids 8 ft",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e59"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin"
+   ],
+   "header": "Balance Beam For Kids · 97\" W × 31 11/16\" D × 15 3/16\" H",
+   "overall": "97W × 31.6875D × 15.1875H",
+   "pieces": 93,
+   "usd": 19.96,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"balance beam\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Balance Beam For Kids"
+     },
+     {
+      "demand": "size \"8 ft\" unknown=96",
+      "kind": "size",
+      "ok": true,
+      "shows": "97W×31.7D×15.2H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: unmatched body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "unmatched body: \"Balance Beam For Kids\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
    "prompt": "banquette for dining nook 60 inches",
    "sources": [
     "grok100"
@@ -5606,6 +5942,66 @@
      "msg": "template leak: shoe wording",
      "known": false,
      "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "bar cart",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e114"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-standin"
+   ],
+   "header": "Bar Cart · 48\" W × 24\" D × 42\" H (size assumed)",
+   "overall": "48W × 24D × 42H",
+   "pieces": 9,
+   "usd": 54.45,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bar cart\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bar Cart 48\" × 42\" × 24\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I22",
+     "cls": "F17",
+     "msg": "names \"Wagon\" but built a simple stand-in",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Bar Cart 48\" × 42\" × 24\"\" is not the asked-for object"
     }
    ]
   },
@@ -5896,6 +6292,35 @@
    ]
   },
   {
+   "prompt": "bat house",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e82"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bat house · 18 1/2\" W × 5 1/2\" D × 27 1/4\" H (size assumed)",
+   "overall": "18.5W × 5.5D × 27.25H",
+   "pieces": 12,
+   "usd": 102.86,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bat house\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bat house"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors",
    "sources": [
     "nightly-sweep"
@@ -6085,6 +6510,86 @@
    "invariants": []
   },
   {
+   "prompt": "bed for my dog 30 x 40",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e149"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-standin",
+    "T-size"
+   ],
+   "header": "Bed For My Dog · 48\" W × 48\" D × 10\" H (D assumed)",
+   "overall": "48W × 48D × 10H",
+   "pieces": 5,
+   "usd": 51.88,
+   "honor": {
+    "honored": 1,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bed\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bed For My Dog 48\" × 10\" × 48\""
+     },
+     {
+      "demand": "size \"30 x 40\" unknown=30",
+      "kind": "size",
+      "ok": false,
+      "shows": "48W×48D×10H"
+     },
+     {
+      "demand": "size \"30 x 40\" unknown=40",
+      "kind": "size",
+      "ok": false,
+      "shows": "48W×48D×10H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I22",
+     "cls": "F17",
+     "msg": "names \"Bed\" but built a simple stand-in",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Bed For My Dog 48\" × 10\" × 48\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
    "prompt": "bedroom armoire 40 wide with doors",
    "sources": [
     "grok100"
@@ -6135,6 +6640,113 @@
     {
      "cls": "H-craft",
      "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
+   "prompt": "bedside tabel, small",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e23"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F1",
+    "F17",
+    "T-noun"
+   ],
+   "header": "Nightstand · 40\" W × 40 3/4\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 12,
+   "usd": 220.4,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bedside tabel\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Nightstand 40\" × 30\" × 40\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I31",
+     "cls": "F17",
+     "msg": "Drawer is 37 1/2\" wide, more than one 36\" drawer column",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I7",
+     "cls": "F1",
+     "msg": "Shelf spans 40\" (limit 33\")",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "bee hive box",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e83"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Bee Hive Box · 24\" W × 16\" D × 16\" H (size assumed)",
+   "overall": "24W × 16D × 16H",
+   "pieces": 5,
+   "usd": 51.88,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bee hive bo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bee Hive Box 24\" × 16\" × 16\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Bee Hive Box 24\" × 16\" × 16\"\" is not the asked-for object"
     }
    ]
   },
@@ -6261,6 +6873,64 @@
    ]
   },
   {
+   "prompt": "bench for the end of the bed",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e139"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bench · 48\" W × 16\" D × 18\" H (size assumed)",
+   "overall": "48W × 16D × 18H",
+   "pieces": 13,
+   "usd": 70.25,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bench 48\" × 18\" × 16\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "big ben",
    "sources": [
     "live-walk"
@@ -6288,6 +6958,66 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "bike rack for 3 bikes garage",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e8"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-standin"
+   ],
+   "header": "Bike Rack For Bikes Garage · 48\" W × 16\" D × 48\" H (size assumed)",
+   "overall": "48W × 16D × 48H",
+   "pieces": 6,
+   "usd": 86.84,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bike rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bike Rack For Bikes Garage 48\" × 48\" × 16\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I22",
+     "cls": "F17",
+     "msg": "names \"Bicycle\" but built a simple stand-in",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Bike Rack For Bikes Garage 48\" × 48\" × 16\"\" is not the asked-for object"
+    }
+   ]
   },
   {
    "prompt": "binder clip",
@@ -6439,6 +7169,35 @@
      "scored": false
     }
    ]
+  },
+  {
+   "prompt": "bird house for bluebirds",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e81"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Birdhouse · 6 7/8\" W × 7 1/2\" D × 11 13/16\" H (size assumed)",
+   "overall": "6.875W × 7.5D × 11.8125H",
+   "pieces": 7,
+   "usd": 60.92,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bird house\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Birdhouse"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "birdhouse",
@@ -7121,6 +7880,47 @@
    ]
   },
   {
+   "prompt": "book shelf 30\" wide 48\" tall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e13"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Book shelf unit · 30\" W × 11\" D × 48\" H (D assumed) · 2 shelves",
+   "overall": "30W × 11D × 48H",
+   "pieces": 7,
+   "usd": 93.33,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"book shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Book shelf unit 30\" × 48\" × 11\""
+     },
+     {
+      "demand": "size \"30\" wide\" W=30",
+      "kind": "size",
+      "ok": true,
+      "shows": "30W×11D×48H"
+     },
+     {
+      "demand": "size \"48\" tall\" H=48",
+      "kind": "size",
+      "ok": true,
+      "shows": "30W×11D×48H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "bookcase",
    "sources": [
     "nightly-sweep"
@@ -7503,6 +8303,47 @@
       "kind": "count",
       "ok": true,
       "shows": "3 shelves"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "bookcase 5 ft tall 3 ft wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e12"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bookcase · 36\" W × 12\" D × 60\" H (D assumed)",
+   "overall": "36W × 12D × 60H",
+   "pieces": 16,
+   "usd": 131.76,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bookcase\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bookcase 36\" × 60\""
+     },
+     {
+      "demand": "size \"5 ft tall\" H=60",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×12D×60H"
+     },
+     {
+      "demand": "size \"3 ft wide\" W=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×12D×60H"
      }
     ]
    },
@@ -7945,6 +8786,41 @@
    "invariants": []
   },
   {
+   "prompt": "bookshelf about 4 feet tall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e150"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bookcase 48\" tall · 36\" W × 12\" D × 48\" H (W, D assumed)",
+   "overall": "36W × 12D × 48H",
+   "pieces": 16,
+   "usd": 131.76,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bookshelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bookcase 48\" tall"
+     },
+     {
+      "demand": "size \"4 feet tall\" H=48",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×12D×48H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "bookshelf to fit a 30 inch nook",
    "sources": [
     "live-walk"
@@ -8066,6 +8942,35 @@
       "kind": "material",
       "ok": true,
       "shows": "plywood-3-4-4x8"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "boot tray rack",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e104"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Shoe rack · 36\" W × 12\" D × 18\" H (size assumed)",
+   "overall": "36W × 12D × 18H",
+   "pieces": 8,
+   "usd": 85.33,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"boot tray rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Shoe rack 36\" × 18\" × 12\""
      }
     ]
    },
@@ -8467,6 +9372,81 @@
      "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
     }
    ]
+  },
+  {
+   "prompt": "bunk beds for 2 kids",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e41"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-unpriced"
+   ],
+   "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (size assumed)",
+   "overall": "82W × 44D × 65H",
+   "pieces": 50,
+   "usd": 388.44,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bunk beds\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bunk bed 82\" long × 44\" wide × 65\" tall"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-unpriced",
+     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
+    }
+   ]
+  },
+  {
+   "prompt": "butcher block cart",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e111"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Butcher block cart · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 10,
+   "usd": 83.86,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"butcher block cart\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Butcher block cart 36\" × 30\" × 16\""
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "butcher block countertop 6 foot",
@@ -8883,6 +9863,125 @@
    "invariants": []
   },
   {
+   "prompt": "cat house outdoor",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e80"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F17"
+   ],
+   "header": "Cat House Outdoor · 25\" W × 19\" D × 22 1/2\" H (size assumed)",
+   "overall": "25W × 19D × 22.5H",
+   "pieces": 116,
+   "usd": 42.93,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"cat house\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Cat House Outdoor"
+     },
+     {
+      "demand": "feature \"outdoor\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "cat scratching post",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e92"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F7"
+   ],
+   "header": "Scratching post · 18\" W × 18\" D × 30\" H (H assumed)",
+   "overall": "18W × 18D × 30H",
+   "pieces": 3,
+   "usd": 85.94,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"cat scratching post\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Scratching post 18\" × 30\" × 18\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I46",
+     "cls": "F7",
+     "msg": "Buy lists GRK RSS #9 x 3-1/8 structural screws; no step carries that line",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "cat tree 5'6\" tall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e91"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Cat tree · 28\" W × 28\" D × 66\" H (W, D assumed)",
+   "overall": "28W × 28D × 66H",
+   "pieces": 20,
+   "usd": 136.08,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"cat tree\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Cat tree"
+     },
+     {
+      "demand": "size \"5'6\" tall\" H=66",
+      "kind": "size",
+      "ok": true,
+      "shows": "28W×28D×66H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "cat tree with three platforms",
    "sources": [
     "live-walk"
@@ -9202,6 +10301,37 @@
    "invariants": []
   },
   {
+   "prompt": "changing tabel for nursery",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e44"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Changing table · 40\" W × 40\" D × 36\" H (size assumed)",
+   "overall": "40W × 40D × 36H",
+   "pieces": 9,
+   "usd": 68.88,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"changing tabel\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Changing table 40\" × 36\" × 40\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "cheap raised garden bed 4x8",
    "sources": [
     "review18"
@@ -9446,6 +10576,60 @@
    ]
   },
   {
+   "prompt": "chicken coop for 6 chickens",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e78"
+   ],
+   "grade": "fail",
+   "classes": [
+    "C15",
+    "F7"
+   ],
+   "header": "Chicken coop · 48\" W × 36\" D × 72\" H (size assumed)",
+   "overall": "48W × 36D × 72H",
+   "pieces": 27,
+   "usd": 460.6,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"chicken coop\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Chicken coop 48\" × 72\" × 36\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "C15",
+     "cls": "C15",
+     "msg": "step \"Stand the legs and screw the floor frame between them\" fits carriage bolts, not on Buy",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I9",
+     "cls": "F7",
+     "msg": "steps or notes use carriage bolts; Buy has none",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I9",
+     "cls": "F7",
+     "msg": "steps or notes use latchs; Buy has none",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "chicken tractor",
    "sources": [
     "eval46"
@@ -9479,6 +10663,35 @@
      "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
+  },
+  {
+   "prompt": "childrens easel",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e52"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Kids art easel · 24\" W × 20\" D × 48\" H (size assumed)",
+   "overall": "24W × 20D × 48H",
+   "pieces": 8,
+   "usd": 48.27,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"childrens easel\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Kids art easel 24\" × 4'"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "clipper ship",
@@ -9551,6 +10764,37 @@
       "kind": "size",
       "ok": true,
       "shows": "72W×24D×96H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "closet organizer for reach in closet",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e122"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Closet · 36\" W × 16 3/4\" D × 84\" H (size assumed)",
+   "overall": "36W × 16D × 84H",
+   "pieces": 16,
+   "usd": 241.1,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"closet organizer\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Closet"
      }
     ]
    },
@@ -9711,6 +10955,45 @@
    ]
   },
   {
+   "prompt": "coat hooks board",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e135"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F3"
+   ],
+   "header": "Coat hook board · 36\" W × 5 1/16\" D × 6\" H (size assumed) · 7 hooks",
+   "overall": "36W × 4.8125D × 6H",
+   "pieces": 2,
+   "usd": 69.4,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"coat hooks board\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Coat hook board 36\" × 6\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I3",
+     "cls": "F3",
+     "msg": "cut list has 2 pieces, model 7",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "coat peg rail",
    "sources": [
     "live-walk"
@@ -9852,6 +11135,68 @@
    ]
   },
   {
+   "prompt": "coat rack with a bench, entry way",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e100"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F1",
+    "F3",
+    "T-noun"
+   ],
+   "header": "Coat bench · 48\" W × 16\" D × 72\" H (size assumed)",
+   "overall": "48W × 16D × 72H",
+   "pieces": 12,
+   "usd": 147.67,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"coat rack\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Coat bench 48\" × 72\" × 16\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Cubby divider 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Cubby divider 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I3",
+     "cls": "F3",
+     "msg": "cut list has 12 pieces, model 20",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I7",
+     "cls": "F1",
+     "msg": "Hat shelf spans 45\" (limit 33\")",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "coffee table",
    "sources": [
     "nightly-sweep"
@@ -9875,6 +11220,41 @@
       "kind": "noun",
       "ok": true,
       "shows": "Coffee table 40\" × 18\" × 40\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "coffee table 4 feet long",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e25"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Coffee table · 48\" W × 22\" D × 18\" H (D, H assumed)",
+   "overall": "48W × 22D × 18H",
+   "pieces": 9,
+   "usd": 48.51,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"coffee table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Coffee table 48\" × 18\" × 22\""
+     },
+     {
+      "demand": "size \"4 feet long\" L=48",
+      "kind": "size",
+      "ok": true,
+      "shows": "48W×22D×18H"
      }
     ]
    },
@@ -11469,6 +12849,152 @@
    ]
   },
   {
+   "prompt": "compost bin 3ft x 3ft x 3ft",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e68"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Compost bin · 36\" W × 35 15/16\" D × 36\" H",
+   "overall": "36W × 35.9375D × 36H",
+   "pieces": 21,
+   "usd": 125.25,
+   "honor": {
+    "honored": 4,
+    "checkable": 4,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"compost bin\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Compost bin"
+     },
+     {
+      "demand": "size \"3ft x 3ft x 3ft\" W=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×35.95D×36H"
+     },
+     {
+      "demand": "size \"3ft x 3ft x 3ft\" D=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×35.95D×36H"
+     },
+     {
+      "demand": "size \"3ft x 3ft x 3ft\" H=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×35.95D×36H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 1 runs into Back slats 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 1 runs into Back slats 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 1 runs into Back slats 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 1 runs into Back slats 4 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 1 runs into Back slats 5 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 2 runs into Back slats 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 2 runs into Back slats 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 2 runs into Back slats 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 2 runs into Back slats 4 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back post 2 runs into Back slats 5 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front post 1 runs into Front slats 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front post 1 runs into Front slats 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front post 2 runs into Front slats 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front post 2 runs into Front slats 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "compost bin outdoor",
    "sources": [
     "grok100"
@@ -11601,6 +13127,41 @@
      "scored": false
     }
    ]
+  },
+  {
+   "prompt": "computer desk 5 ft",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e31"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Desk · 60\" W × 24 3/4\" D × 29\" H (D, H assumed)",
+   "overall": "60W × 24D × 29H",
+   "pieces": 41,
+   "usd": 356.99,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"computer desk\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Desk 60\" × 29\" × 24\""
+     },
+     {
+      "demand": "size \"5 ft\" unknown=60",
+      "kind": "size",
+      "ok": true,
+      "shows": "60W×24D×29H"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "console table 48 long 12 deep",
@@ -11777,6 +13338,43 @@
    ],
    "ids": [
     "sweep:d1-deterministic-steps"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Corner shelf · 12\" W × 12\" D × 60\" H (H assumed)",
+   "overall": "12W × 12D × 60H",
+   "pieces": 8,
+   "usd": 70.85,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"corner shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Corner shelf"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "zero: 0″ dimension (step)",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
+   "prompt": "corner shelf for living room",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e16"
    ],
    "grade": "pass",
    "classes": [],
@@ -12132,6 +13730,45 @@
    "invariants": []
   },
   {
+   "prompt": "craft table for scrapbooking in my spare room",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e141"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F17"
+   ],
+   "header": "Table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 68.88,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"craft table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Table 40\" × 30\" × 40\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "cribbage board",
    "sources": [
     "eval46",
@@ -12178,6 +13815,35 @@
    ]
   },
   {
+   "prompt": "cutting board",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e132"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Cutting Board · 18\" W × 12\" D × 3/4\" H (size assumed)",
+   "overall": "18W × 12D × 0.75H",
+   "pieces": 1,
+   "usd": 37.96,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"cutting board\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Cutting Board"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "dark stained bookshelf",
    "sources": [
     "nightly-sweep"
@@ -12207,12 +13873,130 @@
    "invariants": []
   },
   {
+   "prompt": "daybed with trundle",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e42"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Daybed · 75\" W × 39\" D × 22\" H (size assumed)",
+   "overall": "75W × 39D × 22H",
+   "pieces": 13,
+   "usd": 117.98,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"daybed\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Daybed 75\" × 22\" × 39\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "deck box",
    "sources": [
     "nightly-sweep"
    ],
    "ids": [
     "sweep:c19-derived-counts"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F21"
+   ],
+   "header": "Deck box · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 6,
+   "usd": 176.51,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"deck bo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Deck box"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Back is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Bottom is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Front is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "deck box for cushions",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e75"
    ],
    "grade": "fail",
    "classes": [
@@ -12663,6 +14447,41 @@
    ]
   },
   {
+   "prompt": "desk with drawers on one side",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e33"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Desk · 48\" W × 24 3/4\" D × 29\" H (size assumed)",
+   "overall": "48W × 24D × 29H",
+   "pieces": 41,
+   "usd": 356.99,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"desk\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Desk 48\" × 29\" × 24\""
+     },
+     {
+      "demand": "feature \"with drawers\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "dining banquette 72 inches",
    "sources": [
     "grok100"
@@ -12741,6 +14560,47 @@
      },
      {
       "demand": "size \"72 by 36\" unknown=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "72W×36D×30H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "dining table 72x36",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e28"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Dining table · 72\" W × 36\" D × 30\" H (H assumed)",
+   "overall": "72W × 36D × 30H",
+   "pieces": 9,
+   "usd": 68.88,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"dining table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Dining table 72\" × 30\" × 36\""
+     },
+     {
+      "demand": "size \"72x36\" unknown=72",
+      "kind": "size",
+      "ok": true,
+      "shows": "72W×36D×30H"
+     },
+     {
+      "demand": "size \"72x36\" unknown=36",
       "kind": "size",
       "ok": true,
       "shows": "72W×36D×30H"
@@ -12840,6 +14700,61 @@
    ]
   },
   {
+   "prompt": "dog bed frame raised",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e93"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F12",
+    "F17",
+    "T-noun"
+   ],
+   "header": "Dog bed · 36\" W × 28\" D × 8 1/2\" H (size assumed)",
+   "overall": "36W × 28D × 8.5H",
+   "pieces": 15,
+   "usd": 51.57,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"dog bed frame raised\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Dog bed 36\" × 28\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: internal field (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I6",
+     "cls": "F12",
+     "msg": "step 6 \"Sand every edge and add the cushion\" lights every part",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "dog crate 36 wide",
    "sources": [
     "eval46"
@@ -12871,6 +14786,58 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "dog feeding station with 2 bowls",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e94"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Dog Feeding Station Bowls · 24\" W × 12\" D × 12\" H (D, H assumed)",
+   "overall": "24W × 12D × 12H",
+   "pieces": 9,
+   "usd": 45.23,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"dog feeding station\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Dog Feeding Station Bowls 24\" × 12\" × 12\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Dog Feeding Station Bowls 24\" × 12\" × 12\"\" is not the asked-for object"
+    }
+   ]
   },
   {
    "prompt": "dog house for a large dog",
@@ -12955,6 +14922,35 @@
    ]
   },
   {
+   "prompt": "dog ramp for the couch",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e90"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Dog ramp · 54\" W × 16\" D × 18\" H (size assumed)",
+   "overall": "54W × 16D × 18H",
+   "pieces": 4,
+   "usd": 90.31,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"dog ramp\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Dog ramp 54\" × 18\" × 16\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "doll house",
    "sources": [
     "nightly-sweep"
@@ -12982,6 +14978,51 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "doll house about 3 foot tall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e49"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F17"
+   ],
+   "header": "Doll House About · 41\" W × 31 3/8\" D × 36\" H (W, D assumed)",
+   "overall": "41W × 31.375D × 36H",
+   "pieces": 180,
+   "usd": 19.96,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"doll house\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Doll House About"
+     },
+     {
+      "demand": "size \"3 foot tall\" H=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "41W×31.4D×36H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "dowel drying rack",
@@ -13246,6 +15287,47 @@
    "invariants": []
   },
   {
+   "prompt": "dresser with 6 drawers 5 ft wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e123"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Dresser 60\" wide · 60\" W × 18 3/4\" D × 36\" H (D, H assumed)",
+   "overall": "60W × 18D × 36H",
+   "pieces": 36,
+   "usd": 359.48,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"dresser\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Dresser 60\" wide"
+     },
+     {
+      "demand": "size \"5 ft wide\" W=60",
+      "kind": "size",
+      "ok": true,
+      "shows": "60W×18D×36H"
+     },
+     {
+      "demand": "count \"6 drawers\" drawers=6",
+      "kind": "count",
+      "ok": true,
+      "shows": "6 drawers"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "drinking straw",
    "sources": [
     "nightly-sweep"
@@ -13304,6 +15386,35 @@
       "kind": "size",
       "ok": true,
       "shows": "6W×12D×30H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "drying rack for clothes",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e121"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Drying rack · 36\" W × 12\" D × 30\" H (size assumed)",
+   "overall": "36W × 12D × 30H",
+   "pieces": 6,
+   "usd": 46.9,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"drying rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Drying rack 36\" × 30\" × 12\""
      }
     ]
    },
@@ -13440,6 +15551,64 @@
    "invariants": []
   },
   {
+   "prompt": "end table for the couch",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e24"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "End table · 20\" W × 20\" D × 22\" H (size assumed)",
+   "overall": "20W × 20D × 22H",
+   "pieces": 9,
+   "usd": 45.95,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"end table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "End table 20\" × 22\" × 20\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "entertainment center for the living room",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e125"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Entertainment center · 60\" W × 16\" D × 22\" H (size assumed)",
+   "overall": "60W × 16D × 22H",
+   "pieces": 12,
+   "usd": 123.76,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"entertainment center\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Entertainment center 60\" × 22\" × 16\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "entry shoe rack 24 wide",
    "sources": [
     "grok100"
@@ -13469,6 +15638,35 @@
       "kind": "size",
       "ok": true,
       "shows": "24W×12D×18H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "entryway bench with cubbies",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e101"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bench · 48\" W × 16\" D × 18\" H (size assumed) · 3 cubbies",
+   "overall": "48W × 16D × 18H",
+   "pieces": 8,
+   "usd": 85.33,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"entryway bench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bench 48\" × 18\" × 16\""
      }
     ]
    },
@@ -13544,6 +15742,111 @@
     {
      "cls": "H-unpriced",
      "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
+    }
+   ]
+  },
+  {
+   "prompt": "farmhouse dining table seats 6",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e27"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Dining table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 68.88,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"farmhouse dining table seats\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Dining table 40\" × 30\" × 40\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "fence panel 6 ft",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e84"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-standin",
+    "T-size"
+   ],
+   "header": "Fence Panel · 24\" W × 1\" D × 48\" H (size assumed)",
+   "overall": "24W × 1D × 48H",
+   "pieces": 5,
+   "usd": 72.41,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"fence panel\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Fence Panel 24\" × 48\" × 1\""
+     },
+     {
+      "demand": "size \"6 ft\" unknown=72",
+      "kind": "size",
+      "ok": false,
+      "shows": "24W×1D×48H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I22",
+     "cls": "F17",
+     "msg": "names \"Wall\" but built a simple stand-in",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Fence Panel 24\" × 48\" × 1\"\" is not the asked-for object"
     }
    ]
   },
@@ -13952,6 +16255,56 @@
    "invariants": []
   },
   {
+   "prompt": "firewood rack 8 foot",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e76"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Firewood rack · 96\" W × 24\" D × 48\" H (D assumed)",
+   "overall": "96W × 24D × 48H",
+   "pieces": 13,
+   "usd": 70.22,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"firewood rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Firewood rack 8' × 4'"
+     },
+     {
+      "demand": "size \"8 foot\" unknown=96",
+      "kind": "size",
+      "ok": true,
+      "shows": "96W×24D×48H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Top tie left is 3.50\" thick, not a whole number of 1.5\" 2×4 Stud (8 ft) layers",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Top tie right is 3.50\" thick, not a whole number of 1.5\" 2×4 Stud (8 ft) layers",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "firewood rack outdoor",
    "sources": [
     "grok100"
@@ -14031,6 +16384,35 @@
      "scored": true
     }
    ]
+  },
+  {
+   "prompt": "fish tank stand 40 gallon",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e95"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Stand for a 20 gallon high aquarium · 25\" W × 13\" D × 28\" H (size assumed)",
+   "overall": "25W × 13D × 28H",
+   "pieces": 12,
+   "usd": 59.77,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"fish tank stand gallon\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Stand for a 20 gallon high aquarium"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "floating desk",
@@ -14157,6 +16539,35 @@
       "kind": "noun",
       "ok": true,
       "shows": "Record shelf"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "floating shelfs for kitchen",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e17"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Floating shelves · 36\" W × 8\" D × 24 3/4\" H (size assumed)",
+   "overall": "36W × 8D × 24.75H",
+   "pieces": 9,
+   "usd": 70.85,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"floating shelfs\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Floating shelves 36\" × 24 3/4\" × 8\""
      }
     ]
    },
@@ -14358,6 +16769,113 @@
    ]
   },
   {
+   "prompt": "folding table for laundry room",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e120"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F3"
+   ],
+   "header": "Folding table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 92.8,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Folding table 40\" × 30\" × 40\""
+     },
+     {
+      "demand": "feature \"folding\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "zero: 0″ dimension (step)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I3",
+     "cls": "F3",
+     "msg": "cut list has 9 pieces, model 13",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "frame for a mirror 2ft x 3ft",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e131"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin",
+    "T-size"
+   ],
+   "header": "Frame For Mirror X · 25\" W × 25\" D × 24\" H",
+   "overall": "25W × 25D × 24H",
+   "pieces": 108,
+   "usd": 19.96,
+   "honor": {
+    "honored": 2,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"frame\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Frame For Mirror X"
+     },
+     {
+      "demand": "size \"2ft x 3ft\" unknown=24",
+      "kind": "size",
+      "ok": true,
+      "shows": "25W×25D×24H"
+     },
+     {
+      "demand": "size \"2ft x 3ft\" unknown=36",
+      "kind": "size",
+      "ok": false,
+      "shows": "25W×25D×24H"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "stick-lattice model for a real-use ask: \"Frame For Mirror X\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
    "prompt": "frigate",
    "sources": [
     "nightly-sweep"
@@ -14385,6 +16903,46 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "full size bed frame",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e38"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "T-noun"
+   ],
+   "header": "Platform bed 82\" long x 61\" wide x 14\" tall · 82\" W × 61\" D × 14\" H (H assumed)",
+   "overall": "82W × 61D × 14H",
+   "pieces": 23,
+   "usd": 261.64,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"full bed frame\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Platform bed 82\" long × 61\" wide × 14\" tall"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "galleon",
@@ -14451,6 +17009,87 @@
    "invariants": []
   },
   {
+   "prompt": "gamming desk w/ monitor shelf",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e34"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "T-noun"
+   ],
+   "header": "Desk · 48\" W × 24 3/4\" D × 29\" H (size assumed)",
+   "overall": "48W × 24D × 29H",
+   "pieces": 41,
+   "usd": 356.99,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"gamming desk w/ monitor shelf\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Desk 48\" × 29\" × 24\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "garage cabinet with doors 36 wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e10"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Garage cabinet · 36\" W × 16 3/4\" D × 30\" H (D, H assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 12,
+   "usd": 165.72,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"garage cabinet\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Garage cabinet 36\" × 30\" × 16\""
+     },
+     {
+      "demand": "size \"36 wide\" W=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×16D×30H"
+     },
+     {
+      "demand": "feature \"with doors\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "garage shelving 48 wide 72 tall 18 deep",
    "sources": [
     "nightly-sweep"
@@ -14494,6 +17133,43 @@
       "kind": "size",
       "ok": true,
       "shows": "48W×18D×72H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "garage shelving unit 8 ft long",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e2"
+   ],
+   "grade": "partial",
+   "classes": [
+    "T-size"
+   ],
+   "header": "Storage unit · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 12,
+   "usd": 121.78,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"garage shelving unit\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Storage unit 36\" × 30\" × 16\""
+     },
+     {
+      "demand": "size \"8 ft long\" L=96",
+      "kind": "size",
+      "ok": false,
+      "shows": "36W×16D×30H"
      }
     ]
    },
@@ -14562,6 +17238,62 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "garden bed 3x6 cedar",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e62"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin",
+    "T-size"
+   ],
+   "header": "Garden Bed · 27 7/8\" W × 27 7/8\" D × 18 11/16\" H",
+   "overall": "27.875W × 27.875D × 18.6875H",
+   "pieces": 16,
+   "usd": 101.92,
+   "honor": {
+    "honored": 2,
+    "checkable": 4,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"garden bed\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Garden Bed"
+     },
+     {
+      "demand": "size \"3x6\" unknown=36",
+      "kind": "size",
+      "ok": false,
+      "shows": "27.9W×27.9D×18.7H"
+     },
+     {
+      "demand": "size \"3x6\" unknown=72",
+      "kind": "size",
+      "ok": false,
+      "shows": "27.9W×27.9D×18.7H"
+     },
+     {
+      "demand": "material \"cedar\"",
+      "kind": "material",
+      "ok": true,
+      "shows": "lumber-1x4-8"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "stick-lattice model for a real-use ask: \"Garden Bed\" is not the asked-for object"
+    }
+   ]
   },
   {
    "prompt": "garden bench",
@@ -14772,6 +17504,41 @@
      "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
+  },
+  {
+   "prompt": "garden gate 3 ft wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e85"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Garden gate · 36\" W × 2 1/4\" D × 48\" H (D, H assumed)",
+   "overall": "36W × 2.25D × 48H",
+   "pieces": 12,
+   "usd": 130.43,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"garden gate\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Garden gate 36\" × 48\""
+     },
+     {
+      "demand": "size \"3 ft wide\" W=36",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×2.25D×48H"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "garden planter box",
@@ -15457,6 +18224,43 @@
    "invariants": []
   },
   {
+   "prompt": "hall tree",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e102"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-unpriced"
+   ],
+   "header": "Hall tree · 36\" W × 16\" D × 72\" H (size assumed)",
+   "overall": "36W × 16D × 72H",
+   "pieces": 13,
+   "usd": 82.33,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"hall tree\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Hall tree 36\" × 72\" × 16\""
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-unpriced",
+     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
+    }
+   ]
+  },
+  {
    "prompt": "hanging bird feeder",
    "sources": [
     "nightly-sweep"
@@ -15626,6 +18430,35 @@
    ]
   },
   {
+   "prompt": "headboard for a full bed",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e136"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Headboard · 54\" W × 3/4\" D × 48\" H (size assumed)",
+   "overall": "54W × 0.75D × 48H",
+   "pieces": 1,
+   "usd": 57.4,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"headboard\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Headboard 54\" × 48\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "headboard for a queen bed",
    "sources": [
     "nightly-sweep"
@@ -15649,6 +18482,35 @@
       "kind": "noun",
       "ok": true,
       "shows": "Headboard 60\" × 48\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "heavy duty garage shelf for paint cans",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e4"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Shelf unit · 36\" W × 12\" D × 18\" H (size assumed) · 3 shelves",
+   "overall": "36W × 12D × 18H",
+   "pieces": 12,
+   "usd": 83.35,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"heavy duty garage shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Shelf unit 36\" × 18\" × 12\""
      }
     ]
    },
@@ -16194,6 +19056,46 @@
    "invariants": []
   },
   {
+   "prompt": "key holder for wall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e105"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F12",
+    "T-noun"
+   ],
+   "header": "Peg rail 36\" · 6 pegs · 36\" W × 3 11/16\" D × 5 1/4\" H (size assumed)",
+   "overall": "36W × 4D × 5.25H",
+   "pieces": 7,
+   "usd": 56.42,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"key holder\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Peg rail 36\" · 6 pegs"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I6",
+     "cls": "F12",
+     "msg": "step 4 \"Clear wall mount — PDF states mount height\" lights every part",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "key holder wall mounted",
    "sources": [
     "grok100"
@@ -16238,6 +19140,113 @@
      "scored": true
     }
    ]
+  },
+  {
+   "prompt": "kid size picnic table",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e51"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Picnic table 6' x 29\" tall · 63\" W × 72\" D × 29\" H (size assumed)",
+   "overall": "63W × 72D × 29H",
+   "pieces": 25,
+   "usd": 214.52,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"picnic table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Picnic table 6' × 29\" tall"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "kids art easel double sided",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e148"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin",
+    "T-noun"
+   ],
+   "header": "Easel · 12\" W × 3 13/16\" D × 9\" H (size assumed)",
+   "overall": "12W × 3.8125D × 9H",
+   "pieces": 28,
+   "usd": 19.96,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"art easel double sided\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Easel"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "stick-lattice model for a real-use ask: \"Easel\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
+   "prompt": "kids bookshelf with slanted shelves",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e14"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bookcase · 36\" W × 12\" D × 42\" H (size assumed) · 5 shelves",
+   "overall": "36W × 12D × 42H",
+   "pieces": 16,
+   "usd": 93.33,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bookshelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bookcase"
+     },
+     {
+      "demand": "feature \"with slanted shelves\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "kids play kitchen",
@@ -16353,6 +19362,66 @@
     {
      "cls": "H-standin",
      "msg": "simple stand-in: \"Kids Playhouse For Year Old 48\" × 60\" × 48\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "kids table and 2 chairs",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e47"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F11"
+   ],
+   "header": "Table with Chair · 58\" W × 40\" D × 36\" H (size assumed)",
+   "overall": "58W × 40D × 36H",
+   "pieces": 9,
+   "usd": 63.9,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Table with Chair"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Leg 1, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Leg 2, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Leg 3, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Leg 4, which it rests on",
+     "known": false,
+     "scored": true
     }
    ]
   },
@@ -16657,6 +19726,88 @@
    ]
   },
   {
+   "prompt": "kitchen island on casters about 4 ft",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e109"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F1"
+   ],
+   "header": "Kitchen island · 48\" W × 16 3/4\" D × 39\" H (D, H assumed)",
+   "overall": "48W × 16D × 39H",
+   "pieces": 25,
+   "usd": 293.62,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"kitchen island\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Kitchen island 48\" × 39\" × 16\""
+     },
+     {
+      "demand": "size \"4 ft\" unknown=48",
+      "kind": "size",
+      "ok": true,
+      "shows": "48W×16D×39H"
+     },
+     {
+      "demand": "feature \"casters\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I7",
+     "cls": "F1",
+     "msg": "Bottom shelf spans 47\" (limit 33\")",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "kitchen tabel for 4 ppl",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e29"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 68.88,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"kitchen tabel\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Table 40\" × 30\" × 40\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "knee high coffee table",
    "sources": [
     "nightly-sweep"
@@ -16684,6 +19835,53 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "ladder shelf leaning against wall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e20"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F12",
+    "F17"
+   ],
+   "header": "Ladder shelf · 24\" W × 17\" D × 70\" H (size assumed) · 5 shelves",
+   "overall": "24W × 17D × 70H",
+   "pieces": 9,
+   "usd": 61.86,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"ladder shelf leaning against wall\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Ladder shelf"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I6",
+     "cls": "F12",
+     "msg": "step 4 \"Fix 5 shelves between the side frames\" lights every part",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "laptop stand",
@@ -16738,6 +19936,35 @@
    ]
   },
   {
+   "prompt": "laundry room shelf",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e119"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Shelf unit · 36\" W × 12\" D × 18\" H (size assumed) · 3 shelves",
+   "overall": "36W × 12D × 18H",
+   "pieces": 12,
+   "usd": 83.35,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"laundry room shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Shelf unit 36\" × 18\" × 12\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "laundry sorter 3 bins",
    "sources": [
     "grok100"
@@ -16783,6 +20010,53 @@
    ]
   },
   {
+   "prompt": "lean to shed against the house",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e77"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "F7"
+   ],
+   "header": "Lean to shed · 78\" W × 55 7/16\" D × 89 15/16\" H (size assumed)",
+   "overall": "78W × 55.4375D × 89.9375H",
+   "pieces": 97,
+   "usd": 910.52,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"lean\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Lean to shed 6' × 4'"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I9",
+     "cls": "F7",
+     "msg": "steps or notes use hinges; Buy has none",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "leaning tower of pisa",
    "sources": [
     "nightly-sweep"
@@ -16810,6 +20084,43 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "learning tower for toddler",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e55"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft"
+   ],
+   "header": "Lattice tower · 8\" W × 8\" D × 24 1/2\" H (size assumed)",
+   "overall": "8W × 8D × 24.5H",
+   "pieces": 498,
+   "usd": 19.96,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"learning tower\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Lattice tower"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
   },
   {
    "prompt": "lemonade stand",
@@ -17879,6 +21190,43 @@
    ]
   },
   {
+   "prompt": "loft bed for a teenager twin",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e40"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-unpriced"
+   ],
+   "header": "Loft bed 82\" long x 44\" wide x 72\" tall · 82\" W × 44\" D × 72\" H (H assumed)",
+   "overall": "82W × 44D × 72H",
+   "pieces": 34,
+   "usd": 232.63,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"loft bed\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Loft bed 82\" long × 44\" wide × 72\" tall"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-unpriced",
+     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
+    }
+   ]
+  },
+  {
    "prompt": "longship",
    "sources": [
     "nightly-sweep"
@@ -17906,6 +21254,66 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "mail organizer for the wall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e106"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-standin"
+   ],
+   "header": "Mail Organizer For Wall · 24\" W × 6\" D × 12\" H (size assumed)",
+   "overall": "24W × 6D × 12H",
+   "pieces": 3,
+   "usd": 51.44,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"mail organizer\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Mail Organizer For Wall 24\" × 12\" × 6\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I22",
+     "cls": "F17",
+     "msg": "names \"Wall\" but built a simple stand-in",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Mail Organizer For Wall 24\" × 12\" × 6\"\" is not the asked-for object"
+    }
+   ]
   },
   {
    "prompt": "mailbox post",
@@ -18175,6 +21583,76 @@
    "invariants": []
   },
   {
+   "prompt": "media console low",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e126"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Media console · 60\" W × 16\" D × 22\" H (size assumed)",
+   "overall": "60W × 16D × 22H",
+   "pieces": 12,
+   "usd": 123.76,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"media console low\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Media console"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "medicine cabinet",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e115"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F3"
+   ],
+   "header": "Medicine cabinet · 16\" W × 4\" D × 24\" H (size assumed)",
+   "overall": "16W × 4D × 24H",
+   "pieces": 8,
+   "usd": 141.79,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"medicine cabinet\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Medicine cabinet 16\" × 24\" × 4\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I3",
+     "cls": "F3",
+     "msg": "cut list has 8 pieces, model 9",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "medicine cabinet wall mounted 16 deep",
    "sources": [
     "grok100"
@@ -18224,6 +21702,35 @@
      "scored": true
     }
    ]
+  },
+  {
+   "prompt": "microwave cart",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e110"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Cart for a countertop microwave · 21\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "21W × 16D × 30H",
+   "pieces": 12,
+   "usd": 61.42,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"microwave cart\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Cart for a countertop microwave"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "mobile workbench",
@@ -18425,6 +21932,288 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "mudroom locker",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e103"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Mudroom locker · 54\" W × 16\" D × 72\" H (size assumed)",
+   "overall": "54W × 16D × 72H",
+   "pieces": 23,
+   "usd": 244.46,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"mudroom locker\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Mudroom locker"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Bench seat 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Bench seat 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Bench seat 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Top shelf 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Top shelf 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Top shelf 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 1 runs into Back with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 1 runs into Bench seat 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 1 runs into Kick 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 1 runs into Top shelf 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 1 runs into Top with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Back with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Bench seat 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Bench seat 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Kick 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Kick 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Top shelf 1 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Top shelf 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 2 runs into Top with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Back with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Bench seat 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Bench seat 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Kick 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Kick 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Top shelf 2 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Top shelf 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 3 runs into Top with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 4 runs into Back with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 4 runs into Bench seat 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 4 runs into Kick 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 4 runs into Top shelf 3 with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Side 4 runs into Top with no joint cut for it",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Back is 0.48\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Kick 1 is 1.28\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Top is 1.44\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
+     "known": true,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Top shelf 1 is 1.44\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
+     "known": true,
+     "scored": false
+    }
+   ]
   },
   {
    "prompt": "murphy bed",
@@ -18652,6 +22441,69 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "night stand 18x18",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e22"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin"
+   ],
+   "header": "Night Stand · 19\" W × 8\" D × 8\" H",
+   "overall": "19W × 8D × 8H",
+   "pieces": 18,
+   "usd": 19.96,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"night stand\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Night Stand"
+     },
+     {
+      "demand": "size \"18x18\" unknown=18",
+      "kind": "size",
+      "ok": true,
+      "shows": "19W×8D×8H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: unmatched body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "unmatched body: \"Night Stand\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
   },
   {
    "prompt": "nightstand",
@@ -18931,6 +22783,41 @@
    "invariants": []
   },
   {
+   "prompt": "nite stand with a drawer",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e21"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Storage unit · 36\" W × 16 3/4\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 11,
+   "usd": 127.79,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"nite stand\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Storage unit 36\" × 30\" × 16\""
+     },
+     {
+      "demand": "feature \"with a drawer\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "office bookcase with doors 42 wide",
    "sources": [
     "grok100"
@@ -19049,6 +22936,51 @@
    ]
   },
   {
+   "prompt": "outdoor bar table",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e74"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F17"
+   ],
+   "header": "Outdoor side table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 117.24,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bar table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Outdoor side table 40\" × 30\" × 40\""
+     },
+     {
+      "demand": "feature \"outdoor\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "outdoor bench",
    "sources": [
     "nightly-sweep"
@@ -19075,6 +23007,114 @@
       "kind": "noun",
       "ok": true,
       "shows": "Bench 48\" × 18\" × 16\""
+     },
+     {
+      "demand": "feature \"outdoor\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Center support 1 is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Center support 2 is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Back apron is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Back left leg is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Back right leg is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-unpriced",
+     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
+    }
+   ]
+  },
+  {
+   "prompt": "outdoor bench for the patio",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e70"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F21",
+    "H-unpriced"
+   ],
+   "header": "Patio bench · 48\" W × 16\" D × 18\" H (size assumed)",
+   "overall": "48W × 16D × 18H",
+   "pieces": 16,
+   "usd": 138.73,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Patio bench 48\" × 18\" × 16\""
      },
      {
       "demand": "feature \"outdoor\"",
@@ -20139,6 +24179,69 @@
    ]
   },
   {
+   "prompt": "outdoor shower",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e89"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin"
+   ],
+   "header": "Outdoor Shower · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 42.93,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"shower\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Outdoor Shower"
+     },
+     {
+      "demand": "feature \"outdoor\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: unmatched body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "unmatched body: \"Outdoor Shower\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
    "prompt": "outdoor storage bench",
    "sources": [
     "nightly-sweep"
@@ -20209,6 +24312,47 @@
       "kind": "size",
       "ok": true,
       "shows": "60W×20.03D×19.2H"
+     },
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     },
+     {
+      "demand": "feature \"outdoor\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "outdoor storage bench for pool toys",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e146"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Outdoor storage bench · 48\" W × 20\" D × 19 3/16\" H (size assumed)",
+   "overall": "48W × 20D × 19.1875H",
+   "pieces": 23,
+   "usd": 159.95,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Outdoor storage bench"
      },
      {
       "demand": "feature \"storage\"",
@@ -20436,6 +24580,51 @@
    "invariants": []
   },
   {
+   "prompt": "over the toliet storage",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e117"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Storage unit · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 5,
+   "usd": 76.86,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "generic fallback box: \"Storage unit 36\" × 30\" × 16\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
    "prompt": "over toilet cabinet",
    "sources": [
     "grok100"
@@ -20529,6 +24718,64 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "overhead storage rack for garage ceiling",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e9"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Overhead Storage Rack For Garage Ceiling · 24\" W × 6\" D × 12\" H (size assumed)",
+   "overall": "24W × 6D × 12H",
+   "pieces": 3,
+   "usd": 51.44,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"overhead rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Overhead Storage Rack For Garage Ceiling 24\" × 12\" × 6\""
+     },
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Overhead Storage Rack For Garage Ceiling 24\" × 12\" × 6\"\" is not the asked-for object"
+    }
+   ]
   },
   {
    "prompt": "painted bench",
@@ -20746,6 +24993,45 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "pantry shelves",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e108"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F9"
+   ],
+   "header": "Pantry · 36\" W × 16 3/4\" D × 84\" H (size assumed) · 4 shelves",
+   "overall": "36W × 16D × 84H",
+   "pieces": 16,
+   "usd": 241.1,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"pantry shelves\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Pantry"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I11",
+     "cls": "F9",
+     "msg": "template leak: closet wording",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "paper clip",
@@ -21080,6 +25366,35 @@
    ]
   },
   {
+   "prompt": "patio table",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e73"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 117.24,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"patio table\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Table 40\" × 30\" × 40\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "peg rack",
    "sources": [
     "live-walk"
@@ -21128,6 +25443,71 @@
     {
      "cls": "H-standin",
      "msg": "simple stand-in: \"Peg Rack 24\" × 12\" × 6\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "pegboard wall for tools 4x8",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e6"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Pegboard · 4\" W × 3 1/16\" D × 36\" H (D, H assumed)",
+   "overall": "4W × 3.0625D × 36H",
+   "pieces": 5,
+   "usd": 51.44,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"pegboard wall\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Pegboard 4\" × 36\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Peg 1 runs into Peg 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Peg 1 runs into Peg 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Peg 2 runs into Peg 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Peg 2 runs into Peg 4 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Peg 3 runs into Peg 4 with no joint cut for it",
+     "known": false,
+     "scored": false
     }
    ]
   },
@@ -21399,6 +25779,43 @@
    ]
   },
   {
+   "prompt": "picnic tabel 8 foot",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e72"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Picnic table 8' x 29\" tall · 63\" W × 96\" D × 29\" H (H assumed)",
+   "overall": "63W × 96D × 29H",
+   "pieces": 25,
+   "usd": 214.52,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"picnic tabel\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Picnic table 8' × 29\" tall"
+     },
+     {
+      "demand": "size \"8 foot\" unknown=96",
+      "kind": "size",
+      "ok": true,
+      "shows": "63W×96D×29H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "picnic table",
    "sources": [
     "eval46",
@@ -21427,6 +25844,65 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "picture frame 11 x 14",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e130"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F1",
+    "T-size"
+   ],
+   "header": "Picture frame · 11x14 photo · 10 3/4x13 3/4 window · 13\" W × 4 1/2\" D × 16 1/16\" H",
+   "overall": "13W × 4.5D × 16.0625H",
+   "pieces": 70,
+   "usd": 38.94,
+   "honor": {
+    "honored": 2,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"picture frame\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Picture frame · 11×14 photo · 10 3/4×13 3/4 window"
+     },
+     {
+      "demand": "size \"11 x 14\" unknown=11",
+      "kind": "size",
+      "ok": false,
+      "shows": "13W×4.5D×16.06H"
+     },
+     {
+      "demand": "size \"11 x 14\" unknown=14",
+      "kind": "size",
+      "ok": true,
+      "shows": "13W×4.5D×16.06H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Acrylic reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Backer reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "pipe cleaner",
@@ -21489,6 +25965,35 @@
    "invariants": []
   },
   {
+   "prompt": "plant stand 3 tier",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e97"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "3-tier plant stand · 30\" W × 27\" D × 32\" H (size assumed)",
+   "overall": "30W × 27D × 32H",
+   "pieces": 19,
+   "usd": 84.85,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"plant stand\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "3-tier plant stand"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "plant stand for a bay window",
    "sources": [
     "live-walk"
@@ -21537,6 +26042,80 @@
     {
      "cls": "H-standin",
      "msg": "simple stand-in: \"Plant Stand For Bay Window 48\" × 42\" × 24\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "planter box for my deck railing",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e64"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F21"
+   ],
+   "header": "Planter box · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 5,
+   "usd": 105.23,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"planter bo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Planter box 36\" × 30\" × 16\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Back is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Bottom is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Front is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
     }
    ]
   },
@@ -21674,6 +26253,168 @@
     {
      "cls": "H-unpriced",
      "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
+    }
+   ]
+  },
+  {
+   "prompt": "play kitchen for my daughter",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e48"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Play Kitchen For My Daughter · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 19.96,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"play kitchen\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Play Kitchen For My Daughter"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: unmatched body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "unmatched body: \"Play Kitchen For My Daughter\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "playhouse for my kids backyard 6x6",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e147"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "F21",
+    "H-standin",
+    "T-size"
+   ],
+   "header": "Playhouse For My Kids Backyard · 48\" W × 48\" D × 60\" H (H assumed)",
+   "overall": "48W × 48D × 60H",
+   "pieces": 20,
+   "usd": 461.02,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"playhouse\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Playhouse For My Kids Backyard 48\" × 60\" × 48\""
+     },
+     {
+      "demand": "size \"6x6\" unknown=72",
+      "kind": "size",
+      "ok": false,
+      "shows": "48W×48D×60H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Back is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Bottom is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left door is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left upright is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right door is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right upright is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I22",
+     "cls": "F17",
+     "msg": "names \"House\" but built a simple stand-in",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Playhouse For My Kids Backyard 48\" × 60\" × 48\"\" is not the asked-for object"
     }
    ]
   },
@@ -22180,6 +26921,181 @@
    ]
   },
   {
+   "prompt": "porch swing 5 foot",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e71"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F1",
+    "T-size"
+   ],
+   "header": "Porch swing frame · 48\" W × 36\" D × 78\" H (size assumed)",
+   "overall": "48W × 36D × 78H",
+   "pieces": 28,
+   "usd": 161.71,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"porch swing\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Porch swing frame 48\" × 78\""
+     },
+     {
+      "demand": "size \"5 foot\" unknown=60",
+      "kind": "size",
+      "ok": false,
+      "shows": "48W×36D×78H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Back post reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Back slat 1 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Back slat 2 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Back slat 3 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Centre seat rail reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Hanger reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Seat cross rail reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Seat rail reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Seat slat 1 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Seat slat 2 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Seat slat 3 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Seat slat 4 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Centre seat rail is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Seat cross rail is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Seat rail is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
+   "prompt": "pot rack hanging",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e112"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Storage unit · 36\" W × 12\" D × 30\" H (size assumed)",
+   "overall": "36W × 12D × 30H",
+   "pieces": 12,
+   "usd": 83.35,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"pot rack hanging\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Storage unit 36\" × 30\" × 12\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "potting bench",
    "sources": [
     "nightly-sweep"
@@ -22207,6 +27123,301 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "potting bench w/ a shelf underneath, about waist high",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e69"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F1",
+    "F17",
+    "T-noun"
+   ],
+   "header": "Potting bench · 48\" W × 24\" D × 36\" H (W, D assumed)",
+   "overall": "48W × 24D × 36H",
+   "pieces": 9,
+   "usd": 64.73,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"potting bench w/ a shelf underneath\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Potting bench 48\" × 36\" × 24\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I7",
+     "cls": "F1",
+     "msg": "Lower shelf spans 45\" (limit 33\")",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "privacy screen for patio",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e87"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-craft",
+    "H-standin"
+   ],
+   "header": "Privacy Screen For Patio · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 42.93,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"privacy screen\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Privacy Screen For Patio"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: unmatched body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "unmatched body: \"Privacy Screen For Patio\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
+  },
+  {
+   "prompt": "puppet theater for kids",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e50"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Puppet Theater For Kids · 36\" W × 12 3/4\" D × 48\" H (size assumed)",
+   "overall": "36W × 12D × 48H",
+   "pieces": 12,
+   "usd": 184.69,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"puppet theater\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Puppet Theater For Kids 36\" × 48\" × 12\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Puppet Theater For Kids 36\" × 48\" × 12\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "queen headboard",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e39"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Headboard · 60\" W × 3/4\" D × 48\" H (size assumed)",
+   "overall": "60W × 0.75D × 48H",
+   "pieces": 1,
+   "usd": 57.4,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"queen headboard\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Headboard 60\" × 48\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "queen murphy bed",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e137"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F1"
+   ],
+   "header": "Murphy bed · 66\" W × 18\" D × 86\" H (size assumed)",
+   "overall": "66W × 18D × 86H",
+   "pieces": 16,
+   "usd": 637.29,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"queen murphy bed\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Murphy bed"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Bed face reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Bed frame left rail reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Bed frame right rail reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Fold bracket 1 reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Fold-out leg reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Plinth reaches neither the floor nor a wall",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Bed face runs into Fold-out leg with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Left side runs into Top with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Right side runs into Top with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Fold-out leg is 3.44\" thick, not a whole number of 1.5\" 2×6 (8 ft) layers",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I28",
+     "cls": "F32",
+     "msg": "Plinth is 3.44\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
+     "known": false,
+     "scored": false
+    }
+   ]
   },
   {
    "prompt": "queen platform bed 60 by 80",
@@ -22328,6 +27539,54 @@
    ]
   },
   {
+   "prompt": "rabbit hutch 2 story",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e79"
+   ],
+   "grade": "fail",
+   "classes": [
+    "C15",
+    "F7",
+    "T-noun"
+   ],
+   "header": "Rabbit hutch · 48\" W × 24\" D × 40\" H (size assumed)",
+   "overall": "48W × 24D × 40H",
+   "pieces": 16,
+   "usd": 269.89,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"rabbit hutch story\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Rabbit hutch 48\" × 40\" × 24\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "C15",
+     "cls": "C15",
+     "msg": "step \"Stand the legs and screw the floor frame between them\" fits carriage bolts, not on Buy",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I9",
+     "cls": "F7",
+     "msg": "steps or notes use carriage bolts; Buy has none",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "rain barrel stand",
    "sources": [
     "eval46"
@@ -22378,6 +27637,47 @@
       "kind": "noun",
       "ok": true,
       "shows": "Raised garden bed"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "raised garden bed 4 by 8",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e60"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Raised garden bed · 48\" W × 96\" D × 16 1/2\" H",
+   "overall": "48W × 96D × 16.5H",
+   "pieces": 16,
+   "usd": 133.71,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"raised garden bed\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Raised garden bed"
+     },
+     {
+      "demand": "size \"4 by 8\" unknown=48",
+      "kind": "size",
+      "ok": true,
+      "shows": "48W×96D×16.5H"
+     },
+     {
+      "demand": "size \"4 by 8\" unknown=96",
+      "kind": "size",
+      "ok": true,
+      "shows": "48W×96D×16.5H"
      }
     ]
    },
@@ -22537,6 +27837,57 @@
    "invariants": []
   },
   {
+   "prompt": "raised planter box 2x6 feet",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e61"
+   ],
+   "grade": "partial",
+   "classes": [
+    "T-size"
+   ],
+   "header": "Planter box · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 5,
+   "usd": 114.93,
+   "honor": {
+    "honored": 1,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"raised planter bo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Planter box 36\" × 30\" × 16\""
+     },
+     {
+      "demand": "size \"2x6 feet\" unknown=2",
+      "kind": "size",
+      "ok": false,
+      "shows": "36W×16D×30H"
+     },
+     {
+      "demand": "size \"2x6 feet\" unknown=72",
+      "kind": "size",
+      "ok": false,
+      "shows": "36W×16D×30H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "raised vegetable bed",
    "sources": [
     "nightly-sweep"
@@ -22623,6 +27974,35 @@
      "msg": "simple stand-in: \"Recipe Box 24\" × 16\" × 16\"\" is not the asked-for object"
     }
    ]
+  },
+  {
+   "prompt": "record player stand",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e127"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Stand for a turntable · 19\" W × 15\" D × 26\" H (size assumed)",
+   "overall": "19W × 15D × 26H",
+   "pieces": 12,
+   "usd": 61.42,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"record player stand\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Stand for a turntable"
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "record shelf 24 wide",
@@ -23164,6 +28544,81 @@
    ]
   },
   {
+   "prompt": "rustic coffee table with shelf underneath",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e26"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F11",
+    "F7",
+    "T-noun"
+   ],
+   "header": "Coffee table with Shelf · 76\" W × 40\" D × 18\" H (size assumed) · 3 shelves",
+   "overall": "76W × 40D × 18H",
+   "pieces": 21,
+   "usd": 136.33,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"coffee table underneath\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Coffee table with Shelf"
+     },
+     {
+      "demand": "feature \"with shelf\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Back apron, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Front apron, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Left apron, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I14",
+     "cls": "F11",
+     "msg": "Top is placed before Right apron, which it rests on",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I46",
+     "cls": "F7",
+     "msg": "Back is in no step that fastens it",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "sailing ship",
    "sources": [
     "nightly-sweep"
@@ -23420,6 +28875,92 @@
    ]
   },
   {
+   "prompt": "sandbox with seats",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e57"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Sandbox · 48 1/8\" W × 48 1/8\" D × 10\" H (size assumed)",
+   "overall": "48.125W × 48.125D × 10H",
+   "pieces": 16,
+   "usd": 145.82,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"sandbo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Sandbox"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back wall runs into Corner seat 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back wall runs into Corner seat 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front wall runs into Corner seat 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front wall runs into Corner seat 4 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Left wall runs into Corner seat 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Left wall runs into Corner seat 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Right wall runs into Corner seat 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Right wall runs into Corner seat 4 with no joint cut for it",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "sawbuck",
    "sources": [
     "eval46"
@@ -23587,6 +29128,35 @@
    "invariants": []
   },
   {
+   "prompt": "sawhorses pair",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e145"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Sawhorse · 21\" W × 36\" D × 30\" H (size assumed)",
+   "overall": "21W × 36D × 30H",
+   "pieces": 8,
+   "usd": 21.32,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"sawhorses\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Sawhorse 36\" × 30\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "schooner",
    "sources": [
     "nightly-sweep"
@@ -23610,6 +29180,96 @@
       "kind": "noun",
       "ok": true,
       "shows": "Schooner"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "serving tray with handles",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e133"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Serving Tray Handles · 30\" W × 15\" D × 2\" H (size assumed)",
+   "overall": "30W × 15D × 2H",
+   "pieces": 5,
+   "usd": 47.92,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"serving tray\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Serving Tray Handles 30\" × 2\" × 15\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Serving Tray Handles 30\" × 2\" × 15\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
+   "prompt": "sewing tabel",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e140"
+   ],
+   "grade": "fail",
+   "classes": [
+    "T-noun"
+   ],
+   "header": "Table · 40\" W × 40\" D × 30\" H (size assumed)",
+   "overall": "40W × 40D × 30H",
+   "pieces": 9,
+   "usd": 68.88,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"sewing tabel\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Table 40\" × 30\" × 40\""
      }
     ]
    },
@@ -23779,6 +29439,70 @@
    "invariants": []
   },
   {
+   "prompt": "shelfs for my garage",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e1"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Storage unit · 36\" W × 12\" D × 18\" H (size assumed)",
+   "overall": "36W × 12D × 18H",
+   "pieces": 12,
+   "usd": 83.35,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"shelfs\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Storage unit 36\" × 18\" × 12\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "shelfs for the basement 6 foot tall",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e142"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Storage unit · 36\" W × 12\" D × 72\" H (W, D assumed)",
+   "overall": "36W × 12D × 72H",
+   "pieces": 12,
+   "usd": 131.76,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"shelfs\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Storage unit 36\" × 72\" × 12\""
+     },
+     {
+      "demand": "size \"6 foot tall\" H=72",
+      "kind": "size",
+      "ok": true,
+      "shows": "36W×12D×72H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "ship",
    "sources": [
     "nightly-sweep"
@@ -23814,6 +29538,35 @@
    ],
    "ids": [
     "sweep:c19-derived-counts"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bench · 48\" W × 16\" D × 18\" H (size assumed)",
+   "overall": "48W × 16D × 18H",
+   "pieces": 8,
+   "usd": 85.33,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"shoe bench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bench 48\" × 18\" × 16\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "shoe bench for the entryway",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e99"
    ],
    "grade": "pass",
    "classes": [],
@@ -23963,6 +29716,41 @@
       "kind": "size",
       "ok": true,
       "shows": "36W×4D×18H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "shoe rack for the closet floor 2 ft 6 in wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e98"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Shoe rack 30\" wide · 30\" W × 12\" D × 18\" H (D, H assumed)",
+   "overall": "30W × 12D × 18H",
+   "pieces": 8,
+   "usd": 76.86,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"shoe rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Shoe rack 30\" wide"
+     },
+     {
+      "demand": "size \"2 ft 6 in wide\" W=30",
+      "kind": "size",
+      "ok": true,
+      "shows": "30W×12D×18H"
      }
     ]
    },
@@ -24193,6 +29981,35 @@
    "invariants": []
   },
   {
+   "prompt": "small bookshelf for my sons room",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e11"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bookcase · 36\" W × 12\" D × 84\" H (size assumed)",
+   "overall": "36W × 12D × 84H",
+   "pieces": 16,
+   "usd": 131.76,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bookshelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bookcase"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "small chicken coop 3 by 4",
    "sources": [
     "grok100"
@@ -24258,6 +30075,35 @@
      "scored": true
     }
    ]
+  },
+  {
+   "prompt": "small desk for my kids homework not too big",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e30"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Desk · 48\" W × 24 3/4\" D × 29\" H (size assumed)",
+   "overall": "48W × 24D × 29H",
+   "pieces": 41,
+   "usd": 356.99,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"desk\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Desk 48\" × 29\" × 24\""
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "small jewelry box",
@@ -24567,6 +30413,35 @@
    "invariants": []
   },
   {
+   "prompt": "spice rack for back of the pantry door",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e107"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Spice rack · 36\" W × 4\" D × 24\" H (size assumed)",
+   "overall": "36W × 4D × 24H",
+   "pieces": 9,
+   "usd": 79.32,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"spice rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Spice rack 36\" × 24\" × 4\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "spice rack for kitchen wall 30 inches",
    "sources": [
     "grok100"
@@ -24785,6 +30660,58 @@
    ]
   },
   {
+   "prompt": "standing desk frame 60x30",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e32"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "T-noun"
+   ],
+   "header": "Desk · 60\" W × 30\" D × 29\" H (H assumed)",
+   "overall": "60W × 30D × 29H",
+   "pieces": 41,
+   "usd": 381.97,
+   "honor": {
+    "honored": 2,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"standing desk frame\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Desk 60\" × 29\" × 30\""
+     },
+     {
+      "demand": "size \"60x30\" unknown=60",
+      "kind": "size",
+      "ok": true,
+      "shows": "60W×30D×29H"
+     },
+     {
+      "demand": "size \"60x30\" unknown=30",
+      "kind": "size",
+      "ok": true,
+      "shows": "60W×30D×29H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
+  },
+  {
    "prompt": "statue of liberty",
    "sources": [
     "live-walk",
@@ -24894,6 +30821,78 @@
       "kind": "count",
       "ok": true,
       "shows": "2 steps"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "step stool for the bathroom sink",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e53"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-unpriced"
+   ],
+   "header": "Step stool with 2 steps · 16\" W × 22\" D × 18\" H (W assumed)",
+   "overall": "16W × 22D × 18H",
+   "pieces": 18,
+   "usd": 60.87,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"step stool\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Step stool with 2 steps"
+     }
+    ]
+   },
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-unpriced",
+     "msg": "2 Buy line(s) with no price: Non-slip pads; Water-resistant finish"
+    }
+   ]
+  },
+  {
+   "prompt": "storage bins shelf for the garage",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e7"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bin shelf unit · 36\" W × 12\" D × 18\" H (size assumed) · 3 shelves",
+   "overall": "36W × 12D × 18H",
+   "pieces": 12,
+   "usd": 83.35,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"bins shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bin shelf unit 36\" × 18\" × 12\""
+     },
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
      }
     ]
    },
@@ -25185,6 +31184,70 @@
    "invariants": []
   },
   {
+   "prompt": "tall linnen cabinet",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e118"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Linnen cabinet · 36\" W × 16 3/4\" D × 84\" H (size assumed)",
+   "overall": "36W × 16D × 84H",
+   "pieces": 12,
+   "usd": 241.1,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"linnen cabinet\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Linnen cabinet 36\" × 84\" × 16\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "tall narrow bookshelf 12 inches wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e15"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bookcase 12\" wide · 12\" W × 12\" D × 84\" H (D, H assumed)",
+   "overall": "12W × 12D × 84H",
+   "pieces": 10,
+   "usd": 93.33,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"narrow bookshelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bookcase 12\" wide"
+     },
+     {
+      "demand": "size \"12 inches wide\" W=12",
+      "kind": "size",
+      "ok": true,
+      "shows": "12W×12D×84H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "tall ship",
    "sources": [
     "nightly-sweep"
@@ -25212,6 +31275,46 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "tee pee play tent",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e56"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "T-noun"
+   ],
+   "header": "Teepee · 53 11/16\" W × 56 3/8\" D × 72 13/16\" H (size assumed)",
+   "overall": "53.6875W × 56.375D × 72.8125H",
+   "pieces": 5,
+   "usd": 36.47,
+   "honor": {
+    "honored": 0,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"tee pee play tent\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Teepee"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "the White House model",
@@ -25264,6 +31367,64 @@
       "kind": "noun",
       "ok": true,
       "shows": "Kids tipi"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "toddler bed fram",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e36"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Toddler Bed Fram · 83 7/8\" W × 57 7/8\" D × 14 1/2\" H (size assumed)",
+   "overall": "83.875W × 57.875D × 14.5H",
+   "pieces": 16,
+   "usd": 41.07,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"toddler bed fram\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Toddler Bed Fram"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "tomato cage wood",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e66"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Bean pole tower · 39 1/2\" W × 34 3/8\" D × 84 13/16\" H (size assumed)",
+   "overall": "39.5W × 34.375D × 84.8125H",
+   "pieces": 18,
+   "usd": 50.44,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"tomato cage wood\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bean pole tower"
      }
     ]
    },
@@ -25358,6 +31519,35 @@
       "kind": "feature",
       "ok": true,
       "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "tool shelf for my garge",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e144"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Shelf unit · 36\" W × 12\" D × 18\" H (size assumed) · 3 shelves",
+   "overall": "36W × 12D × 18H",
+   "pieces": 12,
+   "usd": 83.35,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"tool shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Shelf unit 36\" × 18\" × 12\""
      }
     ]
    },
@@ -25503,6 +31693,58 @@
    "invariants": []
   },
   {
+   "prompt": "towel rack for the bathroom",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e116"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin"
+   ],
+   "header": "Towel Rack For Bathroom · 24\" W × 6\" D × 12\" H (size assumed)",
+   "overall": "24W × 6D × 12H",
+   "pieces": 3,
+   "usd": 51.44,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"towel rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Towel Rack For Bathroom 24\" × 12\" × 6\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Towel Rack For Bathroom 24\" × 12\" × 6\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
    "prompt": "toy airplane",
    "sources": [
     "eval46",
@@ -25556,6 +31798,99 @@
       "kind": "noun",
       "ok": true,
       "shows": "Toy chest"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "toy box with lid for toddler",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e45"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Toy chest · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 6,
+   "usd": 115.27,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"toy bo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Toy chest"
+     },
+     {
+      "demand": "feature \"with lid\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "toy chest with safety hinge",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e46"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Toy chest · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 6,
+   "usd": 115.27,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"toy chest\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Toy chest"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "trash can enclosure for 2 cans",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e88"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Trash can enclosure for 2 cans · 68\" W × 42 1/2\" D × 50 3/4\" H (size assumed)",
+   "overall": "68W × 40.5D × 50.75H",
+   "pieces": 69,
+   "usd": 483.06,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"trash can enclosure\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Trash can enclosure for 2 cans 68\" × 50\""
      }
     ]
    },
@@ -25682,6 +32017,35 @@
    ]
   },
   {
+   "prompt": "trellis for cucumbers in my garden",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e67"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Trellis For Cucumbers In My Garden · 25 11/16\" W × 2\" D × 72 13/16\" H (size assumed)",
+   "overall": "25.6875W × 2D × 72.8125H",
+   "pieces": 17,
+   "usd": 118.93,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"trellis\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Trellis For Cucumbers In My Garden"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "tv console 60 inch",
    "sources": [
     "nightly-sweep"
@@ -25785,6 +32149,94 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "tv stand for a 65\" tv",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e124"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "TV stand · 61\" W × 16\" D × 22\" H (D, H assumed)",
+   "overall": "61W × 16D × 22H",
+   "pieces": 12,
+   "usd": 123.76,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"tv stand\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "TV stand 61\" × 22\" × 16\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "twin bed frame with storage drawers",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e37"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "T-noun"
+   ],
+   "header": "Platform bed 82\" long x 45\" wide x 14\" tall · 82\" W × 45\" D × 14\" H (H assumed)",
+   "overall": "82W × 45D × 14H",
+   "pieces": 21,
+   "usd": 188.99,
+   "honor": {
+    "honored": 2,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"twin bed frame\"",
+      "kind": "noun",
+      "ok": false,
+      "shows": "Platform bed 82\" long × 45\" wide × 14\" tall"
+     },
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     },
+     {
+      "demand": "feature \"with storage drawers\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I31",
+     "cls": "F17",
+     "msg": "asks for some drawers, the model has 0",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "twin bunk bed",
@@ -26045,6 +32497,88 @@
    "invariants": []
   },
   {
+   "prompt": "vertical garden planter",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e63"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "F21"
+   ],
+   "header": "Planter box · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 5,
+   "usd": 105.23,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"vertical garden planter\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Planter box 36\" × 30\" × 16\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Back is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Bottom is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Front is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    }
+   ]
+  },
+  {
    "prompt": "viking longship",
    "sources": [
     "nightly-sweep"
@@ -26138,6 +32672,41 @@
    "invariants": []
   },
   {
+   "prompt": "vinyl record storage",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e128"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Record shelf · 36\" W × 14\" D × 42\" H (size assumed)",
+   "overall": "36W × 14D × 42H",
+   "pieces": 10,
+   "usd": 95.31,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"vinyl record\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Record shelf"
+     },
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "waist high workbench",
    "sources": [
     "nightly-sweep"
@@ -26212,6 +32781,63 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "wall clock 12 inch",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e134"
+   ],
+   "grade": "fail",
+   "classes": [
+    "F17",
+    "H-craft",
+    "H-standin"
+   ],
+   "header": "Wall Clock · 13 5/16\" W × 8\" D × 12 1/2\" H",
+   "overall": "13.3125W × 8D × 12.5H",
+   "pieces": 49,
+   "usd": 19.96,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"wall clock\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Wall Clock"
+     },
+     {
+      "demand": "size \"12 inch\" unknown=12",
+      "kind": "size",
+      "ok": true,
+      "shows": "13.3W×8D×12.5H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "stick-lattice model for a real-use ask: \"Wall Clock\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
   },
   {
    "prompt": "wall clock frame",
@@ -26794,6 +33420,74 @@
     ]
    },
    "invariants": []
+  },
+  {
+   "prompt": "wall shelf for plants in the window",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e19"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Shelf for a 10\" potted plant · 11\" W × 11\" D × 9 1/4\" H (size assumed)",
+   "overall": "11W × 11D × 9.25H",
+   "pieces": 9,
+   "usd": 42.95,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"wall shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Shelf for a 10″ potted plant"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "wall shelf for tools above my workbench",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e5"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F1"
+   ],
+   "header": "Wall shelf · 48\" W × 8\" D × 2 1/4\" H (size assumed) · 1 shelf",
+   "overall": "48W × 8D × 2.25H",
+   "pieces": 2,
+   "usd": 51.44,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"wall shelf\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Wall shelf 48\" × 2 1/4\" × 8\""
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I7",
+     "cls": "F1",
+     "msg": "Shelf spans 48\" (limit 33\")",
+     "known": false,
+     "scored": true
+    }
+   ]
   },
   {
    "prompt": "wall-mounted birdhouse",
@@ -27715,6 +34409,72 @@
    ]
   },
   {
+   "prompt": "window flower box 36\"",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e65"
+   ],
+   "grade": "fail",
+   "classes": [
+    "H-standin",
+    "T-size"
+   ],
+   "header": "Window Flower Box · 24\" W × 16\" D × 16\" H (size assumed)",
+   "overall": "24W × 16D × 16H",
+   "pieces": 5,
+   "usd": 64.86,
+   "honor": {
+    "honored": 1,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"window flower bo\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Window Flower Box 24\" × 16\" × 16\""
+     },
+     {
+      "demand": "size \"36\"\" unknown=36",
+      "kind": "size",
+      "ok": false,
+      "shows": "24W×16D×16H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: generic box (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Window Flower Box 24\" × 16\" × 16\"\" is not the asked-for object"
+    }
+   ]
+  },
+  {
    "prompt": "window seat 60 wide",
    "sources": [
     "nightly-sweep"
@@ -27744,6 +34504,47 @@
       "kind": "size",
       "ok": true,
       "shows": "60W×16D×18H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "window seat w storage, window is 5 ft wide",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e138"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Window seat · 60\" W × 16\" D × 18\" H (D, H assumed)",
+   "overall": "60W × 16D × 18H",
+   "pieces": 9,
+   "usd": 85.33,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"window seat w\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Window seat 60\" × 18\" × 16\""
+     },
+     {
+      "demand": "size \"5 ft wide\" W=60",
+      "kind": "size",
+      "ok": true,
+      "shows": "60W×16D×18H"
+     },
+     {
+      "demand": "feature \"storage\"",
+      "kind": "feature",
+      "ok": true,
+      "shows": "present"
      }
     ]
    },
@@ -27885,6 +34686,35 @@
    "invariants": []
   },
   {
+   "prompt": "wine rack holds 12 bottles",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e113"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Wine rack · 24\" W × 12\" D × 14 1/4\" H (size assumed) · 12 bottles",
+   "overall": "24W × 12D × 14.25H",
+   "pieces": 13,
+   "usd": 87.79,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"wine rack\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Wine rack 24\" × 14 1/4\" × 12\""
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "wooden bird feeder",
    "sources": [
     "nightly-sweep"
@@ -28002,6 +34832,35 @@
    ]
   },
   {
+   "prompt": "wooden floor lamp",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e129"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Floor lamp stand · 23 1/2\" W × 22 3/8\" D × 24 1/2\" H (size assumed)",
+   "overall": "23.5W × 22.375D × 24.5H",
+   "pieces": 160,
+   "usd": 19.96,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"floor lamp\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Floor lamp stand"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
    "prompt": "wooden jewelry box",
    "sources": [
     "nightly-sweep"
@@ -28074,6 +34933,107 @@
      "msg": "Standard craft stick drawn 1.1875\" across, a pack's size, not one piece's",
      "known": false,
      "scored": true
+    }
+   ]
+  },
+  {
+   "prompt": "work bench 8'",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e143"
+   ],
+   "grade": "partial",
+   "classes": [
+    "F17"
+   ],
+   "header": "Bench · 96\" W × 16\" D × 18\" H (D, H assumed)",
+   "overall": "96W × 16D × 18H",
+   "pieces": 15,
+   "usd": 78.15,
+   "honor": {
+    "honored": 2,
+    "checkable": 2,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"work bench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Bench 96\" × 18\" × 16\""
+     },
+     {
+      "demand": "size \"8'\" unknown=96",
+      "kind": "size",
+      "ok": true,
+      "shows": "96W×16D×18H"
+     }
+    ]
+   },
+   "invariants": [
+    {
+     "id": "I23",
+     "cls": "F17",
+     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back apron runs into Center support 4 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 3 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front apron runs into Center support 4 with no joint cut for it",
+     "known": false,
+     "scored": false
     }
    ]
   },
@@ -28199,6 +35159,76 @@
      "scored": true
     }
    ]
+  },
+  {
+   "prompt": "workbench for my garage 6' x 2'",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e3"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Workbench · 72\" W × 24\" D × 36\" H (H assumed)",
+   "overall": "72W × 24D × 36H",
+   "pieces": 8,
+   "usd": 111.06,
+   "honor": {
+    "honored": 3,
+    "checkable": 3,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"workbench\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Workbench 72\" × 36\" × 24\""
+     },
+     {
+      "demand": "size \"6' x 2'\" unknown=72",
+      "kind": "size",
+      "ok": true,
+      "shows": "72W×24D×36H"
+     },
+     {
+      "demand": "size \"6' x 2'\" unknown=24",
+      "kind": "size",
+      "ok": true,
+      "shows": "72W×24D×36H"
+     }
+    ]
+   },
+   "invariants": []
+  },
+  {
+   "prompt": "writing desk for a small apartment",
+   "sources": [
+    "everyday150"
+   ],
+   "ids": [
+    "e35"
+   ],
+   "grade": "pass",
+   "classes": [],
+   "header": "Desk · 48\" W × 24 3/4\" D × 29\" H (size assumed)",
+   "overall": "48W × 24D × 29H",
+   "pieces": 41,
+   "usd": 356.99,
+   "honor": {
+    "honored": 1,
+    "checkable": 1,
+    "demandsFrom": "typed-rules",
+    "items": [
+     {
+      "demand": "noun \"writing desk\"",
+      "kind": "noun",
+      "ok": true,
+      "shows": "Desk 48\" × 29\" × 24\""
+     }
+    ]
+   },
+   "invariants": []
   },
   {
    "prompt": "zip tie",
