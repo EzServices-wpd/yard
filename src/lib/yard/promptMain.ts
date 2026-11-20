@@ -2564,6 +2564,9 @@ export function modifierNamedWords(prompt: string, p: YardProject): string[] {
   const modifiers = ws.slice(0, -1);
   const name = (p.name ?? "").toLowerCase().replace(/\d[\d\s./'"″′×x-]*/g, " ").split(/[^a-z]+/).filter((w) => w.length > 2).map(singular);
   if (!name.length || ownWords(p).includes(head) || !modifiers.includes(name[name.length - 1])) return [];
+  // A build named by two or more typed modifier words together ("dog house", "garden bench") is a compound class the engine
+  // knows: the head noun does not unseat it, and dropping its words would build the head's bare class instead.
+  if (name.length >= 2 && name.every((w) => modifiers.includes(w))) return [];
   if (p.fitted && STORAGE_PROGRAM.test(p.fitted.program) && STORAGE_NOUN.test(head)) return [];
   // On a fitted piece of furniture a form word names its form: a "vanity table" is the vanity.
   if (p.fitted && FORM_HEAD.test(head)) return [];
