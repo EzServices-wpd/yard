@@ -32288,21 +32288,20 @@
       },
       "after": {
         "name": "Fence",
-        "cost": 49.88,
-        "pieces": 41,
+        "cost": 19.96,
+        "pieces": 107,
         "hud": [
-          27.9,
+          25,
           8,
-          25.9
+          24.5
         ],
-        "buy": "4×1×4 Board (8 ft)=16; 4×#8 × 1-1/4\" wood screws=33.88",
+        "buy": "1×Standard Popsicle Sticks=14.98; 1×Wood glue=4.98",
         "titles": [
-          "Read this Fence before you cut",
+          "Read this Fence before you glue",
           "Lay out the footprint on the bench",
-          "Cut the 1×4 Board (8 ft)",
-          "Raise the legs, one bay at a time — 12 legs",
-          "Add the diagonals and web — 20 braces",
-          "Lace the horizontal rails — 9 rails",
+          "Raise the legs, one bay at a time — 47 legs",
+          "Add the diagonals and web — 44 braces",
+          "Lace the horizontal rails — 16 rails",
           "Check plumb and square"
         ]
       },

@@ -2456,6 +2456,7 @@
   "F12": 14,
   "F17": 14,
   "F3": 11,
+  "H-craft": 9,
   "F2": 4,
   "F7": 4,
   "F9": 4,
@@ -4873,10 +4874,10 @@
    "classes": [
     "H-standin"
    ],
-   "header": "Thing To Raise My Laptop · 24\" W × 24\" D × 24\" H (size assumed)",
-   "overall": "24W × 24D × 24H",
-   "pieces": 6,
-   "usd": 51.88,
+   "header": "Thing To Raise My Laptop · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -4891,6 +4892,13 @@
     ]
    },
    "invariants": [
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
     {
      "id": "I37",
      "cls": "F9",
@@ -6077,12 +6085,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Bedroom Armoire · 40\" W × 24\" D × 24\" H (D, H assumed)",
-   "overall": "40W × 24D × 24H",
-   "pieces": 7,
-   "usd": 98.78,
+   "header": "Bedroom Armoire · 41\" W × 21 5/8\" D × 21 11/16\" H (D, H assumed)",
+   "overall": "41W × 21.625D × 21.6875H",
+   "pieces": 80,
+   "usd": 19.96,
    "honor": {
     "honored": 3,
     "checkable": 3,
@@ -6098,7 +6107,7 @@
       "demand": "size \"40 wide\" W=40",
       "kind": "size",
       "ok": true,
-      "shows": "40W×24D×24H"
+      "shows": "41W×21.6D×21.7H"
      },
      {
       "demand": "feature \"with doors\"",
@@ -6108,19 +6117,15 @@
      }
     ]
    },
-   "invariants": [
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back wall runs into Center support 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    }
-   ],
+   "invariants": [],
    "honest": [
     {
      "cls": "H-standin",
-     "msg": "closed shell of the typed envelope: \"Bedroom Armoire\" is not the asked-for object"
+     "msg": "anatomy-class fallback: \"Bedroom Armoire\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -9906,12 +9911,13 @@
    "ids": [],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Cold Frame · 27 7/8\" W × 27 7/8\" D × 25 7/8\" H (size assumed)",
-   "overall": "27.875W × 27.875D × 25.875H",
-   "pieces": 16,
-   "usd": 32.47,
+   "header": "Cold Frame · 25\" W × 25\" D × 24 1/2\" H (size assumed)",
+   "overall": "25W × 25D × 24.5H",
+   "pieces": 108,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -9930,6 +9936,10 @@
     {
      "cls": "H-standin",
      "msg": "stick-lattice model for a real-use ask: \"Cold Frame\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -11752,12 +11762,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Cornhole Boards Set · 27 7/8\" W × 11 1/2\" D × 8\" H (size assumed)",
-   "overall": "27.875W × 11.5D × 8H",
-   "pieces": 8,
-   "usd": 12.47,
+   "header": "Cornhole Boards Set · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -11791,6 +11802,10 @@
     {
      "cls": "H-standin",
      "msg": "unmatched body: \"Cornhole Boards Set\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -11804,12 +11819,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Cornhole Set Boards · 27 7/8\" W × 11 1/2\" D × 8\" H (size assumed)",
-   "overall": "27.875W × 11.5D × 8H",
-   "pieces": 8,
-   "usd": 12.47,
+   "header": "Cornhole Set Boards · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -11843,6 +11859,10 @@
     {
      "cls": "H-standin",
      "msg": "unmatched body: \"Cornhole Set Boards\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -15020,12 +15040,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Guitar Stand Floor · 12 1/2\" W × 12 1/8\" D × 25 7/8\" H (size assumed)",
-   "overall": "12.5W × 12.125D × 25.875H",
-   "pieces": 20,
-   "usd": 24.94,
+   "header": "Guitar Stand Floor · 9 5/8\" W × 9 3/16\" D × 24 1/2\" H (size assumed)",
+   "overall": "9.625W × 9.1875D × 24.5H",
+   "pieces": 47,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -15044,6 +15065,10 @@
     {
      "cls": "H-standin",
      "msg": "stick-lattice model for a real-use ask: \"Guitar Stand Floor\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -16053,12 +16078,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Kids Play Kitchen · 24\" W × 24\" D × 24\" H (size assumed)",
-   "overall": "24W × 24D × 24H",
-   "pieces": 6,
-   "usd": 51.88,
+   "header": "Kids Play Kitchen · 25\" W × 8 11/16\" D × 8\" H (size assumed)",
+   "overall": "25W × 8.6875D × 8H",
+   "pieces": 24,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -16076,6 +16102,13 @@
     {
      "id": "I37",
      "cls": "F9",
+     "msg": "engine-word: No class matched (note)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
      "msg": "no-class: unmatched body (model)",
      "known": false,
      "scored": false
@@ -16085,6 +16118,10 @@
     {
      "cls": "H-standin",
      "msg": "unmatched body: \"Kids Play Kitchen\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -17654,12 +17691,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Mailbox Post · 39 7/8\" W × 21 7/8\" D × 25 7/8\" H (size assumed)",
-   "overall": "39.875W × 21.875D × 25.875H",
-   "pieces": 12,
-   "usd": 24.47,
+   "header": "Mailbox Post · 37\" W × 19\" D × 24 1/2\" H (size assumed)",
+   "overall": "37W × 19D × 24.5H",
+   "pieces": 76,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -17678,6 +17716,10 @@
     {
      "cls": "H-standin",
      "msg": "anatomy-class fallback: \"Mailbox Post\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -23006,12 +23048,13 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin"
    ],
-   "header": "Sandbox · 39 7/8\" W × 21 7/8\" D × 25 7/8\" H (size assumed)",
-   "overall": "39.875W × 21.875D × 25.875H",
-   "pieces": 12,
-   "usd": 56.94,
+   "header": "Sandbox · 37\" W × 19\" D × 24 1/2\" H (size assumed)",
+   "overall": "37W × 19D × 24.5H",
+   "pieces": 76,
+   "usd": 42.93,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -23036,6 +23079,10 @@
     {
      "cls": "H-standin",
      "msg": "anatomy-class fallback: \"Sandbox\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
@@ -24169,10 +24216,10 @@
    "classes": [
     "F17"
    ],
-   "header": "Bicycle · 17 3/16\" W × 14 3/8\" D × 8\" H (size assumed)",
-   "overall": "17.1875W × 14.375D × 8H",
-   "pieces": 7,
-   "usd": 12.47,
+   "header": "Bicycle · 14 5/16\" W × 11 5/8\" D × 8\" H (size assumed)",
+   "overall": "14.3125W × 11.625D × 8H",
+   "pieces": 18,
+   "usd": 19.96,
    "honor": {
     "honored": 0,
     "checkable": 0,
@@ -24515,13 +24562,14 @@
    ],
    "grade": "fail",
    "classes": [
+    "H-craft",
     "H-standin",
     "T-count"
    ],
-   "header": "Ladder · 19 1/8\" W × 8\" D × 109 5/16\" H (size assumed)",
-   "overall": "19.125W × 8D × 109.3125H",
-   "pieces": 10,
-   "usd": 46.9,
+   "header": "Ladder · 19\" W × 8\" D × 96 1/2\" H (size assumed)",
+   "overall": "19W × 8D × 96.5H",
+   "pieces": 88,
+   "usd": 19.96,
    "honor": {
     "honored": 1,
     "checkable": 2,
@@ -24546,6 +24594,10 @@
     {
      "cls": "H-standin",
      "msg": "stick-lattice model for a real-use ask: \"Ladder\" is not the asked-for object"
+    },
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
     }
    ]
   },
