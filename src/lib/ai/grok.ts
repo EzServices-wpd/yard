@@ -178,6 +178,37 @@ const RECIPE_SYSTEM = [
   "A lid, door or other hinged part touches the part it hinges to along one edge, lists it in 'on', and has a moving entry with motion hinge; a cold frame's lid slopes from a low front to a taller back.",
 ].join("\n");
 
+/** grok-4.5, the model lookupRecipe calls. $2 / 1M input, $0.30 / 1M cached, $6 / 1M output (docs.x.ai pricing). */
+export const RECIPE_MAX_TOKENS = 8000;
+const RECIPE_PRICE = { in: 2e-6, cached: 0.3e-6, out: 6e-6 };
+/** The chat body lookupRecipe sends. A shadow run calls this itself so it never touches the visitor cap or Upstash. */
+export function recipeRequest(prompt: string, feedback?: string[]) {
+  const user = feedback?.length ? `${prompt}\nThe last recipe failed these checks; fix them: ${feedback.join("; ")}` : prompt;
+  return {
+    model: "grok-4.5" as const,
+    temperature: 0.2,
+    max_tokens: RECIPE_MAX_TOKENS,
+    reasoning_effort: "medium" as const,
+    messages: [{ role: "system" as const, content: RECIPE_SYSTEM }, { role: "user" as const, content: user }],
+    response_format: { type: "json_object" as const },
+  };
+}
+/** Reserved before each recipe call: chars/3 input tokens (the reader's upper bound) plus the full max_tokens of output, reasoning included. */
+export function recipeWorstCaseUsd(prompt: string, feedback?: string[]): number {
+  const chars = recipeRequest(prompt, feedback).messages.reduce((n, m) => n + m.content.length, 0) + 64;
+  return Math.ceil(chars / 3) * RECIPE_PRICE.in + RECIPE_MAX_TOKENS * RECIPE_PRICE.out;
+}
+/** Billed price from usage. Ticks win; otherwise grok-4.5's rates. Zero or garbage is NaN so the caller keeps the reserve. */
+export function recipeBilledUsd(u: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number }; cost_in_usd_ticks?: number }): number {
+  if (typeof u.cost_in_usd_ticks === "number" && Number.isFinite(u.cost_in_usd_ticks) && u.cost_in_usd_ticks > 0) return u.cost_in_usd_ticks / 1e10;
+  const prompt = typeof u.prompt_tokens === "number" && u.prompt_tokens > 0 ? u.prompt_tokens : NaN;
+  const out = typeof u.completion_tokens === "number" && u.completion_tokens >= 0 ? u.completion_tokens : NaN;
+  if (!Number.isFinite(prompt) || !Number.isFinite(out)) return NaN;
+  const cached = Math.min(Math.max(u.prompt_tokens_details?.cached_tokens ?? 0, 0), prompt);
+  const usd = (prompt - cached) * RECIPE_PRICE.in + cached * RECIPE_PRICE.cached + out * RECIPE_PRICE.out;
+  return usd > 0 ? usd : NaN;
+}
+
 export const lookupRecipe = createServerFn({ method: "POST" })
   .validator((input: { prompt: string; feedback?: string[] }) => input)
   .handler(async ({ data }) => {
@@ -190,11 +221,11 @@ export const lookupRecipe = createServerFn({ method: "POST" })
         return { ok: true as const, recipeJson: hit, lookupId, cached: true };
       }
     }
-    const user = data.feedback?.length ? `${data.prompt}\nThe last recipe failed these checks; fix them: ${data.feedback.join("; ")}` : data.prompt;
+    const req = recipeRequest(data.prompt, data.feedback);
     // grok-4.5 spends part of max_tokens on reasoning: 1600 cut long recipes off mid-JSON, which read as
     // "missing fields". Give the reply room for a full part list. Medium effort (default is high): cornhole and
     // dog feeder replies ran past the 155s bound on high.
-    const result = await chat([{ role: "system", content: RECIPE_SYSTEM }, { role: "user", content: user }], 8000, { json: true, effort: "medium" });
+    const result = await chat(req.messages, RECIPE_MAX_TOKENS, { json: true, effort: "medium" });
     if (!result.ok) return { ok: false as const, error: result.error };
     const recipeJson = JSON.stringify(parseModelJson(result.text));
     // The recipe bot proposes only this server-held copy, by id; it never takes recipe JSON from the client.

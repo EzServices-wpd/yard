@@ -20,6 +20,7 @@
     "eval:gate": "npx -y tsx scripts/eval-gate.ts",
     "eval:stale": "npx -y tsx scripts/eval-gate-stale.ts",
     "eval:reader": "npx -y tsx scripts/reader-eval.ts",
+    "eval:reader:friday": "npx -y tsx scripts/reader-eval-friday.ts",
     "eval:props": "npx -y tsx --test scripts/props.test.ts"
   },
   "dependencies": {

@@ -12,14 +12,15 @@
  *   npx tsx scripts/reader-eval.ts --prompts … --out … --live --cap-usd 2
  *       real xAI calls (XAI_API_KEY). Each call reserves its worst case first; the run stops calling once the next
  *       call could pass --cap-usd. --cap-usd is required with --live and can never exceed MAX_CAP_USD.
- *   options: --max <n> (first n prompts), --only-reader (only prompts the reader would be asked about)
+ *   options: --max <n> (first n prompts), --only-reader (only prompts the reader would be asked about),
+ *   --learner (stand-ins also go to the recipe learner, same reserve-then-settle cap; dry run makes no call)
  *
  * Writes into --out: without.json, with.json (graded rows), builds.jsonl (both builds per prompt), replies.json
  * (raw reader replies, replayable), diff.md (what the reader changed, worst first) and summary.json.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { HEAD_ROOT, gradeBuild, loadCorpus, loadEngine, norm, type Entry, type PromptResult } from "./eval-gate-lib.ts";
+import { HEAD_ROOT, gradeBuild, gradeBuilt, loadCorpus, loadEngine, norm, type Entry, type PromptResult } from "./eval-gate-lib.ts";
 import { typedDemands } from "./eval-gate-typed.ts";
 
 export const MAX_CAP_USD = 5;
@@ -30,6 +31,7 @@ const flag = (k: string) => argv.includes(k);
 
 type Replies = Record<string, string>; // normalized prompt → the reader's raw message content
 export type Side = { buildFrom: string; used: boolean; reason: string; replied: "saved" | "live" | "none" | "skipped" | "error"; usd: number };
+export type CallQuote = { prompt: string; kind: "reader" | "learner"; seq: number; worst: number };
 
 /** A local spend budget with the server's reserve-then-settle shape: a call reserves its worst case first. */
 export class Spend {
@@ -74,18 +76,27 @@ export function diffMarkdown(d: ReturnType<typeof diffRows>, meta: { mode: strin
   return L.join("\n");
 }
 
-async function main() {
-  const live = flag("--live");
-  const cap = arg("--cap-usd");
-  if (live && !cap) throw new Error("--live needs --cap-usd (at most $" + MAX_CAP_USD + ")");
-  if (live && !process.env.XAI_API_KEY) throw new Error("--live needs XAI_API_KEY in the environment");
-  const spend = new Spend(live ? Number(cap) : MAX_CAP_USD);
+export type RunResult = {
+  mode: string; prompts: number; asked: number; spent: number; projected: number; out: string;
+  learnerAsked: number; learnerProjected: number; learnerRefused: number; learnerLive: number;
+  calls: CallQuote[];
+  without: { pass: number; partial: number; fail: number };
+  with: { pass: number; partial: number; fail: number };
+  learner: { pass: number; partial: number; fail: number };
+  better: number; worse: number; movedSameGrade: number;
+  learnerBetter: number; learnerWorse: number; learnerMoved: number;
+  worsePrompts: string[]; learnerWorsePrompts: string[];
+  changed: number; learnerChanged: number;
+};
+
+export async function runEval(opts: { promptsFile: string; outDir: string; live: boolean; learner: boolean; repliesFile?: string; learnerRepliesFile?: string; max?: number; onlyReader?: boolean; spend: Spend }): Promise<RunResult> {
+  const live = opts.live;
+  const spend = opts.spend;
   // A dry run cannot reach the network at all: any fetch throws, as in the gate (offline()).
   if (!live) globalThis.fetch = (() => { throw new Error("dry run: no network"); }) as typeof fetch;
-  const out = resolve(arg("--out") ?? join(HEAD_ROOT, ".reader-eval"));
+  const out = resolve(opts.outDir);
   mkdirSync(out, { recursive: true });
-  const file = arg("--prompts");
-  if (!file) throw new Error("--prompts <corpus file or JSON array> is required");
+  const file = opts.promptsFile;
   const j = JSON.parse(readFileSync(resolve(file), "utf8"));
   const known = new Map(loadCorpus().map((e) => [e.prompt, e]));
   let entries: Entry[] = (Array.isArray(j) ? j : j.prompts).map((x: string | { prompt: string }) => norm(typeof x === "string" ? x : x.prompt))
@@ -93,17 +104,29 @@ async function main() {
   const E = await loadEngine(HEAD_ROOT);
   const R = await import(join(HEAD_ROOT, "src/lib/yard/aiReader/core.ts"));
   const W = await import(join(HEAD_ROOT, "src/lib/yard/aiReader/rewrite.ts"));
-  if (flag("--only-reader")) entries = entries.filter((e) => R.needsReader(e.prompt));
-  if (arg("--max")) entries = entries.slice(0, Number(arg("--max")));
+  if (opts.onlyReader) entries = entries.filter((e) => R.needsReader(e.prompt));
+  if (opts.max) entries = entries.slice(0, opts.max);
 
-  const rf = resolve(arg("--replies") ?? join(out, "replies.json"));
+  const rf = resolve(opts.repliesFile ?? join(out, "replies.json"));
   const replies: Replies = existsSync(rf) ? JSON.parse(readFileSync(rf, "utf8")) : {};
   const sides: Record<string, Side> = {};
+  const calls: CallQuote[] = [];
   let projected = 0;
+  let learnerAsked = 0, learnerProjected = 0, learnerRefused = 0, learnerLive = 0;
+  const learnerProjects: Record<string, unknown> = {};
+  const learn = opts.learner ? await import("../src/lib/yard/recipeBuild.ts") : null;
+  const own = opts.learner ? await import("../src/lib/yard/formOwnership.ts") : null;
+  const pocket = opts.learner ? await import("../src/lib/yard/pocket.ts") : null;
+  const grok = opts.learner ? await import("../src/lib/ai/grok.ts") : null;
+  const lrf = resolve(opts.learnerRepliesFile ?? join(out, "learner-replies.json"));
+  const learnerReplies: Record<string, unknown> = opts.learner && existsSync(lrf) ? JSON.parse(readFileSync(lrf, "utf8")) : {};
   for (const e of entries) {
     const q = e.prompt;
-    if (!R.needsReader(q)) { sides[q] = { buildFrom: q, used: false, reason: "the parser reads these words: no call", replied: "skipped", usd: 0 }; continue; }
-    projected += R.worstCaseUsd(q);
+    if (!R.needsReader(q)) { sides[q] = { buildFrom: q, used: false, reason: "the parser reads these words: no call", replied: "skipped", usd: 0 }; }
+    else {
+    const worstReader = R.worstCaseUsd(q);
+    calls.push({ prompt: q, kind: "reader", seq: 1, worst: worstReader });
+    projected += worstReader;
     let content: string | undefined = replies[q];
     let replied: Side["replied"] = content ? "saved" : "none";
     let usd = 0;
@@ -127,17 +150,100 @@ async function main() {
     const spec = content ? R.parseReply(q, { choices: [{ message: { content } }] }) : null;
     const choice = W.chooseBuildPrompt(q, spec, (x: string) => E.generateFromPrompt(x));
     sides[q] = { buildFrom: choice.buildPrompt, used: choice.used, reason: choice.reason, replied, usd };
+    }
+    if (learn && own && pocket && grok && !pocket.looksLikePocket(sides[q].buildFrom)) {
+      const project = E.generateFromPrompt(sides[q].buildFrom);
+      const half = E.ignoredTypedWords(project, sides[q].buildFrom).length > 0;
+      if (own.routesToLearner(sides[q].buildFrom, project, half)) {
+        learnerAsked++;
+        const w1 = grok.recipeWorstCaseUsd(q);
+        const w2 = grok.recipeWorstCaseUsd(q, ["x".repeat(2000)]);
+        calls.push({ prompt: q, kind: "learner", seq: 1, worst: w1 }, { prompt: q, kind: "learner", seq: 2, worst: w2 });
+        learnerProjected += w1 + w2;
+        const saved = learnerReplies[q];
+        if (!live && !saved) continue;
+        const lookup = async (prompt: string, feedback?: string[]) => {
+          if (!live) return saved;
+          const worst = grok.recipeWorstCaseUsd(prompt, feedback);
+          if (!spend.reserve(worst)) { learnerRefused++; throw new Error(learn.UNAVAILABLE); }
+          const ctl = new AbortController();
+          const timer = setTimeout(() => ctl.abort(), 150_000);
+          let settled = false;
+          try {
+            const res = await fetch("https://api.x.ai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.XAI_API_KEY}` }, body: JSON.stringify(grok.recipeRequest(prompt, feedback)), signal: ctl.signal });
+            const body = await res.json().catch(() => null);
+            const billed = body?.usage ? grok.recipeBilledUsd(body.usage) : worst;
+            const usd = Number.isFinite(billed) ? Math.min(Math.max(billed, 0), worst) : worst;
+            spend.settle(worst, usd);
+            settled = true;
+            const text = body?.choices?.[0]?.message?.content;
+            if (!res.ok || typeof text !== "string") throw new Error(learn.UNAVAILABLE);
+            const { parseModelJson } = await import("../src/lib/yard/parseJson.ts");
+            const recipe = parseModelJson(text);
+            learnerLive++;
+            return recipe;
+          } catch (err) {
+            if (!settled) spend.settle(worst, worst);
+            throw new Error(learn.UNAVAILABLE);
+          } finally { clearTimeout(timer); }
+        };
+        const out = await learn.lookupAndBuild(q, lookup, () => learn.roughBlock(q, project));
+        if (!out.unavailable) {
+          learnerProjects[q] = out.project;
+          if (out.recipe) { learnerReplies[q] = out.recipe; writeFileSync(lrf, JSON.stringify(learnerReplies)); }
+        }
+      }
+    }
   }
   const without = entries.map((e) => gradeBuild(E, e, e.prompt));
   const withR = entries.map((e) => gradeBuild(E, e, sides[e.prompt].buildFrom));
+  const learnerRows = entries.map((e, i) => {
+    const p = learnerProjects[e.prompt];
+    if (!p) return withR[i];
+    try { return gradeBuilt(E, e, p, E.buildPlan(p), e.prompt); } catch { return withR[i]; }
+  });
   const d = diffRows(without, withR, sides);
+  const dL = diffRows(without, learnerRows, sides);
   const mode = live ? "live" : "dry run";
   const meta = { mode, prompts: entries.length, asked: entries.filter((e) => R.needsReader(e.prompt)).length, spent: spend.billed, projected };
+  const worsePrompts = d.rows.filter((r) => r.delta < 0).map((r) => r.prompt);
+  const learnerWorsePrompts = dL.rows.filter((r) => r.delta < 0).map((r) => r.prompt);
+  const result: RunResult = {
+    ...meta, out, learnerAsked, learnerProjected, learnerRefused, learnerLive, calls,
+    without: d.without, with: d.with, learner: dL.with,
+    better: d.better, worse: d.worse, movedSameGrade: d.movedSameGrade,
+    learnerBetter: dL.better, learnerWorse: dL.worse, learnerMoved: dL.rows.filter((r) => r.moved).length,
+    worsePrompts, learnerWorsePrompts,
+    changed: d.rows.filter((r) => r.moved).length, learnerChanged: dL.rows.filter((r) => r.moved).length,
+  };
   writeFileSync(join(out, "without.json"), JSON.stringify(without, null, 1));
   writeFileSync(join(out, "with.json"), JSON.stringify(withR, null, 1));
+  writeFileSync(join(out, "learner.json"), JSON.stringify(learnerRows, null, 1));
   writeFileSync(join(out, "builds.jsonl"), entries.map((e) => JSON.stringify({ prompt: e.prompt, ...sides[e.prompt] })).join("\n") + "\n");
   writeFileSync(join(out, "diff.md"), diffMarkdown(d, meta));
-  writeFileSync(join(out, "summary.json"), JSON.stringify({ ...meta, without: d.without, with: d.with, better: d.better, worse: d.worse, movedSameGrade: d.movedSameGrade, replies: { saved: Object.values(sides).filter((s) => s.replied === "saved").length, live: Object.values(sides).filter((s) => s.replied === "live").length, none: Object.values(sides).filter((s) => s.replied === "none").length, error: Object.values(sides).filter((s) => s.replied === "error").length } }, null, 1));
-  console.log(`reader eval (${mode}): ${entries.length} prompts, ${meta.asked} for the reader · without ${d.without.pass}/${d.without.partial}/${d.without.fail} · with ${d.with.pass}/${d.with.partial}/${d.with.fail} · better ${d.better}, worse ${d.worse} · spent $${spend.billed.toFixed(4)}${live ? "" : `, a live run would reserve ≤ $${projected.toFixed(4)}`} → ${out}`);
+  writeFileSync(join(out, "summary.json"), JSON.stringify({ ...result, replies: { saved: Object.values(sides).filter((s) => s.replied === "saved").length, live: Object.values(sides).filter((s) => s.replied === "live").length, none: Object.values(sides).filter((s) => s.replied === "none").length, error: Object.values(sides).filter((s) => s.replied === "error").length } }, null, 1));
+  console.log(`reader eval (${mode}): ${entries.length} prompts, ${meta.asked} for the reader${opts.learner ? `, ${learnerAsked} for the learner` : ""} · without ${d.without.pass}/${d.without.partial}/${d.without.fail} · with ${d.with.pass}/${d.with.partial}/${d.with.fail} · better ${d.better}, worse ${d.worse} · spent $${spend.billed.toFixed(4)}${live ? "" : `, a live run would reserve ≤ $${(projected + learnerProjected).toFixed(4)}`} → ${out}`);
+  return result;
+}
+
+async function main() {
+  const live = flag("--live");
+  const cap = arg("--cap-usd");
+  if (live && !cap) throw new Error("--live needs --cap-usd (at most $" + MAX_CAP_USD + ")");
+  if (live && !process.env.XAI_API_KEY) throw new Error("--live needs XAI_API_KEY in the environment");
+  const file = arg("--prompts");
+  if (!file) throw new Error("--prompts <corpus file or JSON array> is required");
+  const spend = new Spend(live ? Number(cap) : MAX_CAP_USD);
+  await runEval({
+    promptsFile: file,
+    outDir: arg("--out") ?? join(HEAD_ROOT, ".reader-eval"),
+    live,
+    learner: flag("--learner"),
+    repliesFile: arg("--replies"),
+    learnerRepliesFile: arg("--learner-replies"),
+    max: arg("--max") ? Number(arg("--max")) : undefined,
+    onlyReader: flag("--only-reader"),
+    spend,
+  });
 }
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()!)) await main();

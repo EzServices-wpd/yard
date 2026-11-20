@@ -265,15 +265,10 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
  * Grades the build made from `builtFrom` against the TYPED words' demands (e.prompt). The gate builds from the typed
  * words; the reader harness (scripts/reader-eval.ts) builds from the reader's rewrite and grades it the same way.
  */
-export function gradeBuild(E: Engine, e: Entry, builtFrom: string): PromptResult {
-  return offline(() => {
-    const base = { prompt: e.prompt, sources: e.sources, ids: e.ids };
-    let p: any, plan: any;
-    try { p = E.generateFromPrompt(builtFrom); plan = E.buildPlan(p); } catch (err) {
-      const items: HonorItem[] = e.demands.head_noun ? [{ demand: `noun "${e.demands.head_noun.quote}"`, kind: "noun", ok: false, shows: "build threw" }] : [];
-      return { ...base, grade: "fail", classes: ["X-build"], header: null, overall: null, pieces: null, usd: null, honor: { honored: 0, checkable: Math.max(1, items.length), demandsFrom: e.demandsFrom, items }, invariants: [], error: String(err).slice(0, 160) };
-    }
-    let vs: { id: string; cls: string; msg: string }[] = [];
+/** Grades a project already in hand (the learner's build) the same way gradeBuild grades one it just made. */
+export function gradeBuilt(E: Engine, e: Entry, p: any, plan: any, builtFrom: string): PromptResult {
+  const base = { prompt: e.prompt, sources: e.sources, ids: e.ids };
+  let vs: { id: string; cls: string; msg: string }[] = [];
     try { vs = E.checkBuild(p, e.prompt, plan); } catch (err) { vs = [{ id: "I1", cls: "F1", msg: `checkBuild threw: ${String(err).slice(0, 80)}` }]; }
     const seen = new Set<string>();
     const invariants = vs.filter((x) => { const k = `${x.id}|${x.msg}`; if (seen.has(k)) return false; seen.add(k); return true; })
@@ -300,7 +295,18 @@ export function gradeBuild(E: Engine, e: Entry, builtFrom: string): PromptResult
     let header: string | null = null;
     try { header = E.headerTitle(p); } catch { /* no header */ }
     const o = p.overall;
-    return { ...base, grade, classes: [...classes].sort(), header, overall: o ? `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` : null, pieces: plan.totals.pieces, usd: r2(plan.totals.estCostUsd), honor: { honored, checkable, demandsFrom: e.demandsFrom, items: h.items }, invariants, ...(honest.length && !(refusal?.honest && !scored.length) ? { honest } : {}), ...(refusal ? { refusal } : {}) };
+  return { ...base, grade, classes: [...classes].sort(), header, overall: o ? `${r16(o.width)}W × ${r16(o.depth)}D × ${r16(o.height)}H` : null, pieces: plan.totals.pieces, usd: r2(plan.totals.estCostUsd), honor: { honored, checkable, demandsFrom: e.demandsFrom, items: h.items }, invariants, ...(honest.length && !(refusal?.honest && !scored.length) ? { honest } : {}), ...(refusal ? { refusal } : {}) };
+}
+
+export function gradeBuild(E: Engine, e: Entry, builtFrom: string): PromptResult {
+  return offline(() => {
+    const base = { prompt: e.prompt, sources: e.sources, ids: e.ids };
+    let p: any, plan: any;
+    try { p = E.generateFromPrompt(builtFrom); plan = E.buildPlan(p); } catch (err) {
+      const items: HonorItem[] = e.demands.head_noun ? [{ demand: `noun "${e.demands.head_noun.quote}"`, kind: "noun", ok: false, shows: "build threw" }] : [];
+      return { ...base, grade: "fail", classes: ["X-build"], header: null, overall: null, pieces: null, usd: null, honor: { honored: 0, checkable: Math.max(1, items.length), demandsFrom: e.demandsFrom, items }, invariants: [], error: String(err).slice(0, 160) };
+    }
+    return gradeBuilt(E, e, p, plan, builtFrom);
   });
 }
 

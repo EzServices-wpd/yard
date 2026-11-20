@@ -59,6 +59,19 @@ test("a saved 3x6 ft reply is used when the regex build is 28 by 28, not 3 by 6 
   assert.equal(sum.spent, 0);
 });
 
+test("learner mode refuses a call that would pass the cap and does not fetch", () => {
+  const dir = mkdtempSync(join(tmpdir(), "reader-eval-"));
+  writeFileSync(join(dir, "p.json"), JSON.stringify(["bar cart"]));
+  const run = spawnSync("npx", ["-y", "tsx", script, "--prompts", join(dir, "p.json"), "--out", join(dir, "o"), "--learner", "--live", "--cap-usd", "0.01"], { encoding: "utf8", env: { ...process.env, XAI_API_KEY: "not-a-real-key" } });
+  assert.equal(run.status, 0, run.stderr);
+  const sum = JSON.parse(readFileSync(join(dir, "o", "summary.json"), "utf8"));
+  assert.equal(sum.learnerAsked, 1);
+  assert.ok(sum.learnerRefused >= 1, "the reserve is refused before the call");
+  assert.equal(sum.learnerLive, 0);
+  assert.equal(sum.spent, 0);
+  assert.doesNotMatch(run.stderr, /api\.x\.ai|fetch/);
+});
+
 test("a live run needs a cap within the hard ceiling and a key; nothing runs otherwise", () => {
   const dir = mkdtempSync(join(tmpdir(), "reader-eval-"));
   writeFileSync(join(dir, "p.json"), JSON.stringify(["fence panel 6 ft"]));
