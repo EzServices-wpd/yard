@@ -51,8 +51,10 @@ local rows = {}
 for k, v in pairs(kv) do rows[#rows+1] = k .. "\\t" .. tostring(v) end
 io.write(table.concat(out, ",") .. "\\n" .. table.concat(ops, "\\n") .. "\\n--kv--\\n" .. table.concat(rows, "\\n"))
 `;
-  const ran = spawnSync("lua5.4", ["-e", program], { encoding: "utf8" });
-  if (ran.status !== 0) throw new Error(ran.stderr || "lua5.4 failed");
+  const bin = ["lua5.4", "lua"].find((name) => spawnSync(name, ["-v"], { encoding: "utf8" }).status === 0);
+  if (!bin) throw new Error("lua5.4 (or lua) is not installed; the event-cap tests run EVENT_GATE_LUA");
+  const ran = spawnSync(bin, ["-e", program], { encoding: "utf8" });
+  if (ran.status !== 0) throw new Error(ran.stderr || `${bin} failed`);
   const [head, rest] = ran.stdout.split("\n--kv--\n");
   const [resultLine, ...opLines] = head.split("\n");
   const ops = opLines.filter(Boolean);
