@@ -11,7 +11,7 @@ import { coverAxesTalk } from "./headerSize";
 import { typedAssumedFailures } from "./typedNotAssumed";
 import type { YardProject } from "./types";
 
-(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
+(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
 const { useYard } = await import("./store");
 
 const HALF = "plywood-1-2-4x8";

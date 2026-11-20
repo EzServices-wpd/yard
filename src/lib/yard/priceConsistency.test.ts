@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { SWEEPS } from "../../../scripts/class-sweep-prompts";
 import "./pdf"; // before the window stub (jspdf reads the real global)
 
-(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
+(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
 const { generateFromPrompt } = await import("./promptMain");
 const { buildPlan } = await import("./report");
 const { checkBuild } = await import("./invariants");

@@ -1,0 +1,606 @@
+{
+ "source": "everyday150",
+ "note": "150 fresh everyday prompts written 2026-11-19, never tuned against: typed the way people type (misspellings, feet and inches mixed, vague sizes, 'for my garage'), with kid and outdoor builds. Demands come from the typed rules (no paid spec run).",
+ "prompts": [
+  {
+   "id": "e1",
+   "prompt": "shelfs for my garage"
+  },
+  {
+   "id": "e2",
+   "prompt": "garage shelving unit 8 ft long"
+  },
+  {
+   "id": "e3",
+   "prompt": "workbench for my garage 6' x 2'"
+  },
+  {
+   "id": "e4",
+   "prompt": "heavy duty garage shelf for paint cans"
+  },
+  {
+   "id": "e5",
+   "prompt": "wall shelf for tools above my workbench"
+  },
+  {
+   "id": "e6",
+   "prompt": "pegboard wall for tools 4x8"
+  },
+  {
+   "id": "e7",
+   "prompt": "storage bins shelf for the garage"
+  },
+  {
+   "id": "e8",
+   "prompt": "bike rack for 3 bikes garage"
+  },
+  {
+   "id": "e9",
+   "prompt": "overhead storage rack for garage ceiling"
+  },
+  {
+   "id": "e10",
+   "prompt": "garage cabinet with doors 36 wide"
+  },
+  {
+   "id": "e11",
+   "prompt": "small bookshelf for my sons room"
+  },
+  {
+   "id": "e12",
+   "prompt": "bookcase 5 ft tall 3 ft wide"
+  },
+  {
+   "id": "e13",
+   "prompt": "book shelf 30\" wide 48\" tall"
+  },
+  {
+   "id": "e14",
+   "prompt": "kids bookshelf with slanted shelves"
+  },
+  {
+   "id": "e15",
+   "prompt": "tall narrow bookshelf 12 inches wide"
+  },
+  {
+   "id": "e16",
+   "prompt": "corner shelf for living room"
+  },
+  {
+   "id": "e17",
+   "prompt": "floating shelfs for kitchen"
+  },
+  {
+   "id": "e18",
+   "prompt": "3 floating shelves 24 in each"
+  },
+  {
+   "id": "e19",
+   "prompt": "wall shelf for plants in the window"
+  },
+  {
+   "id": "e20",
+   "prompt": "ladder shelf leaning against wall"
+  },
+  {
+   "id": "e21",
+   "prompt": "nite stand with a drawer"
+  },
+  {
+   "id": "e22",
+   "prompt": "night stand 18x18"
+  },
+  {
+   "id": "e23",
+   "prompt": "bedside tabel, small"
+  },
+  {
+   "id": "e24",
+   "prompt": "end table for the couch"
+  },
+  {
+   "id": "e25",
+   "prompt": "coffee table 4 feet long"
+  },
+  {
+   "id": "e26",
+   "prompt": "rustic coffee table with shelf underneath"
+  },
+  {
+   "id": "e27",
+   "prompt": "farmhouse dining table seats 6"
+  },
+  {
+   "id": "e28",
+   "prompt": "dining table 72x36"
+  },
+  {
+   "id": "e29",
+   "prompt": "kitchen tabel for 4 ppl"
+  },
+  {
+   "id": "e30",
+   "prompt": "small desk for my kids homework not too big"
+  },
+  {
+   "id": "e31",
+   "prompt": "computer desk 5 ft"
+  },
+  {
+   "id": "e32",
+   "prompt": "standing desk frame 60x30"
+  },
+  {
+   "id": "e33",
+   "prompt": "desk with drawers on one side"
+  },
+  {
+   "id": "e34",
+   "prompt": "gamming desk w/ monitor shelf"
+  },
+  {
+   "id": "e35",
+   "prompt": "writing desk for a small apartment"
+  },
+  {
+   "id": "e36",
+   "prompt": "toddler bed fram"
+  },
+  {
+   "id": "e37",
+   "prompt": "twin bed frame with storage drawers"
+  },
+  {
+   "id": "e38",
+   "prompt": "full size bed frame"
+  },
+  {
+   "id": "e39",
+   "prompt": "queen headboard"
+  },
+  {
+   "id": "e40",
+   "prompt": "loft bed for a teenager twin"
+  },
+  {
+   "id": "e41",
+   "prompt": "bunk beds for 2 kids"
+  },
+  {
+   "id": "e42",
+   "prompt": "daybed with trundle"
+  },
+  {
+   "id": "e43",
+   "prompt": "baby crib, standard matress"
+  },
+  {
+   "id": "e44",
+   "prompt": "changing tabel for nursery"
+  },
+  {
+   "id": "e45",
+   "prompt": "toy box with lid for toddler"
+  },
+  {
+   "id": "e46",
+   "prompt": "toy chest with safety hinge"
+  },
+  {
+   "id": "e47",
+   "prompt": "kids table and 2 chairs"
+  },
+  {
+   "id": "e48",
+   "prompt": "play kitchen for my daughter"
+  },
+  {
+   "id": "e49",
+   "prompt": "doll house about 3 foot tall"
+  },
+  {
+   "id": "e50",
+   "prompt": "puppet theater for kids"
+  },
+  {
+   "id": "e51",
+   "prompt": "kid size picnic table"
+  },
+  {
+   "id": "e52",
+   "prompt": "childrens easel"
+  },
+  {
+   "id": "e53",
+   "prompt": "step stool for the bathroom sink"
+  },
+  {
+   "id": "e54",
+   "prompt": "2 step stool for kitchen"
+  },
+  {
+   "id": "e55",
+   "prompt": "learning tower for toddler"
+  },
+  {
+   "id": "e56",
+   "prompt": "tee pee play tent"
+  },
+  {
+   "id": "e57",
+   "prompt": "sandbox with seats"
+  },
+  {
+   "id": "e58",
+   "prompt": "backyard swing set"
+  },
+  {
+   "id": "e59",
+   "prompt": "balance beam for kids 8 ft"
+  },
+  {
+   "id": "e60",
+   "prompt": "raised garden bed 4 by 8"
+  },
+  {
+   "id": "e61",
+   "prompt": "raised planter box 2x6 feet"
+  },
+  {
+   "id": "e62",
+   "prompt": "garden bed 3x6 cedar"
+  },
+  {
+   "id": "e63",
+   "prompt": "vertical garden planter"
+  },
+  {
+   "id": "e64",
+   "prompt": "planter box for my deck railing"
+  },
+  {
+   "id": "e65",
+   "prompt": "window flower box 36\""
+  },
+  {
+   "id": "e66",
+   "prompt": "tomato cage wood"
+  },
+  {
+   "id": "e67",
+   "prompt": "trellis for cucumbers in my garden"
+  },
+  {
+   "id": "e68",
+   "prompt": "compost bin 3ft x 3ft x 3ft"
+  },
+  {
+   "id": "e69",
+   "prompt": "potting bench w/ a shelf underneath, about waist high"
+  },
+  {
+   "id": "e70",
+   "prompt": "outdoor bench for the patio"
+  },
+  {
+   "id": "e71",
+   "prompt": "porch swing 5 foot"
+  },
+  {
+   "id": "e72",
+   "prompt": "picnic tabel 8 foot"
+  },
+  {
+   "id": "e73",
+   "prompt": "patio table"
+  },
+  {
+   "id": "e74",
+   "prompt": "outdoor bar table"
+  },
+  {
+   "id": "e75",
+   "prompt": "deck box for cushions"
+  },
+  {
+   "id": "e76",
+   "prompt": "firewood rack 8 foot"
+  },
+  {
+   "id": "e77",
+   "prompt": "lean to shed against the house"
+  },
+  {
+   "id": "e78",
+   "prompt": "chicken coop for 6 chickens"
+  },
+  {
+   "id": "e79",
+   "prompt": "rabbit hutch 2 story"
+  },
+  {
+   "id": "e80",
+   "prompt": "cat house outdoor"
+  },
+  {
+   "id": "e81",
+   "prompt": "bird house for bluebirds"
+  },
+  {
+   "id": "e82",
+   "prompt": "bat house"
+  },
+  {
+   "id": "e83",
+   "prompt": "bee hive box"
+  },
+  {
+   "id": "e84",
+   "prompt": "fence panel 6 ft"
+  },
+  {
+   "id": "e85",
+   "prompt": "garden gate 3 ft wide"
+  },
+  {
+   "id": "e86",
+   "prompt": "arbor for the garden entrance"
+  },
+  {
+   "id": "e87",
+   "prompt": "privacy screen for patio"
+  },
+  {
+   "id": "e88",
+   "prompt": "trash can enclosure for 2 cans"
+  },
+  {
+   "id": "e89",
+   "prompt": "outdoor shower"
+  },
+  {
+   "id": "e90",
+   "prompt": "dog ramp for the couch"
+  },
+  {
+   "id": "e91",
+   "prompt": "cat tree 5'6\" tall"
+  },
+  {
+   "id": "e92",
+   "prompt": "cat scratching post"
+  },
+  {
+   "id": "e93",
+   "prompt": "dog bed frame raised"
+  },
+  {
+   "id": "e94",
+   "prompt": "dog feeding station with 2 bowls"
+  },
+  {
+   "id": "e95",
+   "prompt": "fish tank stand 40 gallon"
+  },
+  {
+   "id": "e96",
+   "prompt": "aquarium stand for 55 gal"
+  },
+  {
+   "id": "e97",
+   "prompt": "plant stand 3 tier"
+  },
+  {
+   "id": "e98",
+   "prompt": "shoe rack for the closet floor 2 ft 6 in wide"
+  },
+  {
+   "id": "e99",
+   "prompt": "shoe bench for the entryway"
+  },
+  {
+   "id": "e100",
+   "prompt": "coat rack with a bench, entry way"
+  },
+  {
+   "id": "e101",
+   "prompt": "entryway bench with cubbies"
+  },
+  {
+   "id": "e102",
+   "prompt": "hall tree"
+  },
+  {
+   "id": "e103",
+   "prompt": "mudroom locker"
+  },
+  {
+   "id": "e104",
+   "prompt": "boot tray rack"
+  },
+  {
+   "id": "e105",
+   "prompt": "key holder for wall"
+  },
+  {
+   "id": "e106",
+   "prompt": "mail organizer for the wall"
+  },
+  {
+   "id": "e107",
+   "prompt": "spice rack for back of the pantry door"
+  },
+  {
+   "id": "e108",
+   "prompt": "pantry shelves"
+  },
+  {
+   "id": "e109",
+   "prompt": "kitchen island on casters about 4 ft"
+  },
+  {
+   "id": "e110",
+   "prompt": "microwave cart"
+  },
+  {
+   "id": "e111",
+   "prompt": "butcher block cart"
+  },
+  {
+   "id": "e112",
+   "prompt": "pot rack hanging"
+  },
+  {
+   "id": "e113",
+   "prompt": "wine rack holds 12 bottles"
+  },
+  {
+   "id": "e114",
+   "prompt": "bar cart"
+  },
+  {
+   "id": "e115",
+   "prompt": "medicine cabinet"
+  },
+  {
+   "id": "e116",
+   "prompt": "towel rack for the bathroom"
+  },
+  {
+   "id": "e117",
+   "prompt": "over the toliet storage"
+  },
+  {
+   "id": "e118",
+   "prompt": "tall linnen cabinet"
+  },
+  {
+   "id": "e119",
+   "prompt": "laundry room shelf"
+  },
+  {
+   "id": "e120",
+   "prompt": "folding table for laundry room"
+  },
+  {
+   "id": "e121",
+   "prompt": "drying rack for clothes"
+  },
+  {
+   "id": "e122",
+   "prompt": "closet organizer for reach in closet"
+  },
+  {
+   "id": "e123",
+   "prompt": "dresser with 6 drawers 5 ft wide"
+  },
+  {
+   "id": "e124",
+   "prompt": "tv stand for a 65\" tv"
+  },
+  {
+   "id": "e125",
+   "prompt": "entertainment center for the living room"
+  },
+  {
+   "id": "e126",
+   "prompt": "media console low"
+  },
+  {
+   "id": "e127",
+   "prompt": "record player stand"
+  },
+  {
+   "id": "e128",
+   "prompt": "vinyl record storage"
+  },
+  {
+   "id": "e129",
+   "prompt": "wooden floor lamp"
+  },
+  {
+   "id": "e130",
+   "prompt": "picture frame 11 x 14"
+  },
+  {
+   "id": "e131",
+   "prompt": "frame for a mirror 2ft x 3ft"
+  },
+  {
+   "id": "e132",
+   "prompt": "cutting board"
+  },
+  {
+   "id": "e133",
+   "prompt": "serving tray with handles"
+  },
+  {
+   "id": "e134",
+   "prompt": "wall clock 12 inch"
+  },
+  {
+   "id": "e135",
+   "prompt": "coat hooks board"
+  },
+  {
+   "id": "e136",
+   "prompt": "headboard for a full bed"
+  },
+  {
+   "id": "e137",
+   "prompt": "queen murphy bed"
+  },
+  {
+   "id": "e138",
+   "prompt": "window seat w storage, window is 5 ft wide"
+  },
+  {
+   "id": "e139",
+   "prompt": "bench for the end of the bed"
+  },
+  {
+   "id": "e140",
+   "prompt": "sewing tabel"
+  },
+  {
+   "id": "e141",
+   "prompt": "craft table for scrapbooking in my spare room"
+  },
+  {
+   "id": "e142",
+   "prompt": "shelfs for the basement 6 foot tall"
+  },
+  {
+   "id": "e143",
+   "prompt": "work bench 8'"
+  },
+  {
+   "id": "e144",
+   "prompt": "tool shelf for my garge"
+  },
+  {
+   "id": "e145",
+   "prompt": "sawhorses pair"
+  },
+  {
+   "id": "e146",
+   "prompt": "outdoor storage bench for pool toys"
+  },
+  {
+   "id": "e147",
+   "prompt": "playhouse for my kids backyard 6x6"
+  },
+  {
+   "id": "e148",
+   "prompt": "kids art easel double sided"
+  },
+  {
+   "id": "e149",
+   "prompt": "bed for my dog 30 x 40"
+  },
+  {
+   "id": "e150",
+   "prompt": "bookshelf about 4 feet tall"
+  }
+ ]
+}
