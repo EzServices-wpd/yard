@@ -18,10 +18,56 @@ const HUMAN_USE =
 /** Words that make it a model of the piece, not the piece. */
 const MODEL_SCALE = /\b(?:doll|dollhouse|barbie|miniature|mini|model|toy|tiny|figurine|ornament|scale|diorama|fairy)\b/;
 
+/** It carries weight: a person stands, steps or sits on it, or it holds a load up off the floor. */
+const LOAD_BEARING =
+  /\b(?:steps?|step\s*ladders?|ladders?|stools?|seats?|risers?|ramps?|platforms?|stands?|racks?|posts?|crates?|carts?|benche?s?|kitchens?|armoires?|chests?\s+of\s+drawers|cornhole)\b|\bstore\s+my\b|\braise\s+my\b|\bto\s+(?:sit|stand|step)\b/;
+/** It lives outdoors or in the yard, where a stick model would not last a day. */
+const OUTDOOR_USE =
+  /\b(?:outdoors?|outside|garden|yard|backyard|patio|porch|deck|mailbox(?:es)?|sand\s*box(?:es)?|cold\s+frames?|chicken|coops?|compost|planters?|raised\s+beds?|fence|gate|cornhole)\b/;
+/** A child, a toddler or a climber uses it. */
+const CHILD_OR_CLIMB = /\b(?:toddlers?|kids?|kid's|child(?:ren)?|children's|baby|babies|climb(?:s|ing|er|ers)?|learning\s+towers?|pikler)\b/;
+/** Words for a place outdoors where a piece is used. */
+const OUTDOOR_PLACE = /\b(?:outdoors?|outside|garden|yard|backyard|patio|porch|lawn)\b/;
+/** Subjects built as models whatever their size (a 36" bridge, a 30" galleon). Size alone never makes them real. */
+const MODEL_SUBJECT =
+  /\b(?:bridges?|towers?|ships?|boats?|galleons?|schooners?|frigates?|longships?|submarines?|trains?|locomotives?|engines?|planes?|airplanes?|aeroplanes?|gliders?|jets?|rockets?|cars?|trucks?|tanks?|castles?|forts?|palaces?|temples?|cathedrals?|pyramids?|colosseum|eiffel|pisa|big\s+ben|space\s+needle|statue|opera\s+house|taj\s+mahal|white\s+house|empire\s+state|skyscrapers?|lighthouses?|windmills?|ferris\s+wheels?|roller\s+coasters?|catapults?|trebuchets?|dinosaurs?|skeletons?)\b/;
+/** A typed size a person's body or home sets: 12" or more on any axis (feet count), or a door or drawer to open. */
+function humanSized(lower: string): boolean {
+  for (const m of lower.matchAll(/(\d+(?:\.\d+)?)\s*(?:-|\s)?\s*(ft|feet|foot|'|in(?:ch(?:es)?)?|"|″)?/g)) {
+    const n = Number(m[1]);
+    const unit = m[2] ?? "";
+    const inches = /^(?:ft|feet|foot|')$/.test(unit) ? n * 12 : n;
+    // A bare count ("3 steps", "2 drawers") is not a size; a bare number of 12+ before an axis word is.
+    if (!unit && !new RegExp(`${m[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*(?:wide|tall|high|deep|long|x|×|by)\\b`).test(lower)) continue;
+    if (inches >= 12) return true;
+  }
+  return /\b(?:with|and)\s+(?:\w+\s+)?(?:doors?|drawers?)\b/.test(lower);
+}
+
 /** Furniture or a human-use piece with no stock typed: real lumber at real size (craft stock only when typed). */
 export function wantsRealStockDefault(prompt: string): boolean {
   const lower = prompt.toLowerCase().replace(/chair[\s-]+space/g, " ");
   return HUMAN_USE.test(lower) && !MODEL_SCALE.test(lower) && !CRAFT.test(lower);
+}
+
+/** The real stock a craft-defaulted build is built in instead: boards outdoors (no sheet on the ground), ¾" plywood indoors. */
+export function realStockFor(prompt: string): string {
+  const lower = prompt.toLowerCase();
+  return OUTDOOR_USE.test(lower) || OUTDOOR_PLACE.test(lower) ? "lumber-1x4-8" : "plywood-3-4-4x8";
+}
+
+/**
+ * Never craft sticks unless the words ask for a model or name craft stock: anything load-bearing (a step, a stand,
+ * a rack, a post), anything outdoors, anything sized for a person (12" or more typed, or doors and drawers).
+ * A model subject (a bridge, a windmill) is real only where it is put to use outdoors (a garden bridge).
+ */
+export function mustNotBeCraft(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  if (MODEL_SCALE.test(lower) || CRAFT.test(lower)) return false;
+  // A child or a climber uses it (a toddler learning tower, a climbing triangle): real, whatever it is called.
+  if (CHILD_OR_CLIMB.test(lower)) return true;
+  if (MODEL_SUBJECT.test(lower)) return OUTDOOR_PLACE.test(lower);
+  return HUMAN_USE.test(lower) || LOAD_BEARING.test(lower) || OUTDOOR_USE.test(lower) || humanSized(lower);
 }
 
 /** A house an animal lives in outdoors (birdhouse, wren or bluebird house): built in real boards at real size. */
