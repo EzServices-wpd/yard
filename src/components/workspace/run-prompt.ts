@@ -539,7 +539,7 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
     // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry). It is shown and
-    // proposed only when the eval gate grades it no worse than the build already on the bench and it is
+    // proposed only when the eval gate grades it strictly higher than the build already on the bench and it is
     // not a stand-in. Otherwise that deterministic build stays.
     if (learn) {
       let lookupId: string | undefined;

@@ -1,6 +1,6 @@
 /**
  * The keep rule, not a list of prompts: a learned build is saved and used only when the eval gate grades it
- * no worse than the deterministic build, and the honest checks do not mark it as a stand-in.
+ * strictly higher than the deterministic build, and the honest checks do not mark it as a stand-in.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -13,7 +13,7 @@ import type { YardProject } from "./types.ts";
 
 const donor = () => generateFromPrompt("bookcase 36 wide");
 
-describe("a learned recipe is kept only when the gate says it is no worse and not a stand-in", () => {
+describe("a learned recipe is kept only when the gate grades it strictly higher and it is not a stand-in", () => {
   it("a tie with the engine stays on the engine", async () => {
     const q = "bookcase 36 wide";
     const p = generateFromPrompt(q);
@@ -92,7 +92,7 @@ describe("a learned recipe is kept only when the gate says it is no worse and no
     assert.equal(await mayKeepLearned(q, p, thick), false);
   });
 
-  it("a recipe the gate grades no worse, and that is not a stand-in, is remembered", async () => {
+  it("a recipe the gate grades strictly higher, and that is not a stand-in, is remembered", async () => {
     const q = "mailbox post";
     const recipe = {
       key: "mailbox-post", synonyms: [], version: 1, trust: "candidate" as const, title: "Mailbox post", outdoor: true,

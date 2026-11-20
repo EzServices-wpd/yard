@@ -1,6 +1,6 @@
 /**
  * The eval gate's grade of one build (scripts/eval-gate-lib.ts gradeOne calls this). Browser-safe: no node:fs.
- * A learned recipe is kept only when this same grade is no worse than the deterministic build, and the honest
+ * A learned recipe is kept only when this same grade is strictly higher than the deterministic build, and the honest
  * checks do not mark it as a stand-in.
  */
 import { honestChecks } from "../../../scripts/eval-gate-honest";
