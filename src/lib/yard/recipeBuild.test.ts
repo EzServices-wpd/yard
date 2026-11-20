@@ -38,26 +38,37 @@ describe("recipe build and validate", () => {
     assert.ok(seen[1]?.length);
     assert.equal(out.rough, false);
   });
-  it("two failures ship a labelled rough shape, never a relabelled template", async () => {
+  it("two failures keep the engine build, never a rough stand-in", async () => {
+    const { generateFromPrompt } = await import("./promptMain.ts");
     const out = await lookupAndBuild("thing", async () => null, rough);
-    assert.equal(out.rough, true);
-    assert.match(out.project.notes[0], /Shown as a rough shape/);
+    const engine = generateFromPrompt("thing");
+    assert.equal(out.rough, false);
+    assert.equal(out.declined, true);
+    assert.equal(out.recipe, null);
+    assert.equal(out.project.name, engine.name);
+    assert.equal(out.project.panels.length, engine.panels.length);
+    assert.deepEqual(out.project.overall, engine.overall);
     assert.equal(out.calls, 2);
   });
   it("an unavailable AI keeps the engine build, unlabelled, after one call", async () => {
     const out = await lookupAndBuild("thing", timedLookup(async () => ({ ok: false, error: "AI is not available in this environment" })), rough);
     assert.deepEqual([out.rough, out.unavailable, out.calls, out.project.notes.length], [false, true, 1, 0]);
   });
-  it("a timeout counts as a failure: two tries, then the rough label", async () => {
+  it("a timeout counts as a failure: two tries, then the engine build", async () => {
     const out = await lookupAndBuild("thing", timedLookup(() => new Promise(() => {}), 5, 5), rough);
-    assert.equal(out.rough, true);
+    assert.equal(out.rough, false);
+    assert.equal(out.declined, true);
     assert.deepEqual(out.reasons, ["call 1: timeout", "call 2: timeout"]);
   });
   it("the retry gets the rest of the bound, not a fixed slice: a slow fix-the-checks retry still lands", async () => {
     let n = 0;
     const slow = timedLookup(() => new Promise((res) => setTimeout(() => res({ ok: true, recipeJson: n++ ? JSON.stringify(bin) : "null" }), n ? 60 : 10)), 50, 100);
     const out = await lookupAndBuild("cedar compost bin", slow, rough);
-    assert.ok(out.recipe, JSON.stringify(out.reasons));
+    // The retry is not cut off. This recipe is plywood for an outdoor cedar ask, so the gate does not keep it.
+    assert.equal(out.calls, 2);
+    assert.match(out.reasons?.join("\n") ?? "", /call 2: gate:/);
+    assert.equal(out.recipe, null);
+    assert.equal(out.declined, true);
   });
   it("a flat object (cutting board) may be one slab", () => {
     const board = { key: "cutting-board", synonyms: [], version: 1, trust: "candidate", title: "Cutting board", size: { width: 18, height: 1.5, depth: 12 }, defining: ["board"], notes: [],

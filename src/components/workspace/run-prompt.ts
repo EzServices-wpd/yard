@@ -503,7 +503,7 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
     typeof window !== "undefined" &&
     /(?:^|[?&])(?:local|offline)=1/.test(window.location.search);
   if (offline) {
-    if (learn) useYard.getState().setProject(block());
+    if (learn) useYard.getState().setProject(next);
     revealBench();
     return;
   }
@@ -538,8 +538,9 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
     }
 
     const namedStock = hasExplicitStock(prompt) ? detectMaterial(prompt).id : undefined;
-    // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry, cached in memory on
-    // a pass). A pass rebuilds through the engine; two failures label the engine's build a rough shape.
+    // Spec 001: a noun nothing owns gets a structured recipe (lookup plus one retry). It is shown and
+    // proposed only when the eval gate grades it no worse than the build already on the bench and it is
+    // not a stand-in. Otherwise that deterministic build stays.
     if (learn) {
       let lookupId: string | undefined;
       const lookup = timedLookup(async (feedback) => {
@@ -557,13 +558,9 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
       );
       // The learner's recipe, rough shape and grey 'no parts' block only land for the latest prompt.
       if (!run.live()) return;
-      if (!out.recipe && !out.rough) {
-        useYard.getState().setProject(out.unavailable ? { ...roughBlock(prompt, next), notes: [TRY_SAMPLE] } : block([]));
-        makePlan();
-        return;
-      }
       if (out.recipe) {
-        // Propose it for the committed store; quiet when the bot has no token.
+        // Propose it for the committed store; quiet when the bot has no token. The server keeps it only
+        // when the same gate passes again.
         if (lookupId) void proposeRecipeFn({ data: { lookupId } })
           .then((r) => console.info(`[recipe-bot] ${r.status}`))
           .catch((e) => console.warn(`[recipe-bot] call failed: ${(e as Error).message}`));
@@ -571,11 +568,15 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
         makePlan();
         return;
       }
-      if (out.rough) {
-        useYard.getState().setProject(out.project);
+      if ("unavailable" in out && out.unavailable) {
+        useYard.getState().setProject({ ...roughBlock(prompt, next), notes: [TRY_SAMPLE] });
         makePlan();
         return;
       }
+      // Declined, or a rough stand-in we no longer show: the deterministic build from before the lookup.
+      useYard.getState().setProject(next);
+      makePlan();
+      return;
     }
     // Every AI call is bounded: a slow hint or interpret reply never holds the Building overlay over a finished bench.
     const hint = await withDeadline(hintSubject({ data: { prompt }, signal }), opts.boundMs ?? 20_000, signal);

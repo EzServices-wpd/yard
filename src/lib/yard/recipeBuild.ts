@@ -2,11 +2,13 @@
  * Build and validate a recipe (spec 001 R3/R4): every part is a box placed by its shares of the overall
  * size, a typed count repeats the counted parts, and the build passes the standard checks (load path,
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
- * recipe that fails is retried once with the failures fed back; a second failure is a labelled rough shape.
+ * recipe that fails is retried once with the failures fed back. It is saved and used only when the eval gate
+ * grades it no worse than the deterministic build and it is not a stand-in; otherwise the engine's build stays.
  */
 import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
-import { UNVERIFIED } from "./promptMain";
+import { generateFromPrompt, UNVERIFIED } from "./promptMain";
+import { mayKeepLearned } from "./learnedKeep";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { pricedBoardId } from "./pricedStock";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
@@ -1773,8 +1775,21 @@ export function validateRecipe(recipe0: Recipe, built: RecipeBuild, prompt: stri
   return [...new Set(fail)];
 }
 
-export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number; unavailable?: boolean; reasons?: string[] };
+export type LookupOutcome = { project: YardProject; recipe: Recipe | null; rough: boolean; calls: number; unavailable?: boolean; declined?: boolean; reasons?: string[] };
 export type Lookup = (prompt: string, feedback?: string[]) => Promise<unknown>;
+
+/**
+ * A learned recipe is keyed by the noun the maker typed, never the model's head noun ("lap desk", not
+ * "desk"): a generic key would take over a noun the engine already builds. Shorter synonyms go too.
+ * The title names what was typed: the AI's own noun ("Table" for a dog feeder stand) is dropped.
+ */
+export function learnedRecipeFor(prompt: string, raw: unknown): Recipe | null {
+  const parsed = parseRecipe(raw);
+  const noun = normalizeNoun(prompt), n = noun.split(" ").length;
+  const title = parsed && (parsed.title.toLowerCase().includes(noun) ? parsed.title : noun.replace(/(^|\s)\w/g, (c) => c.toUpperCase()));
+  if (!parsed || !title) return null;
+  return { ...parsed, title, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
+}
 
 /**
  * The rough shape for a compound noun its builder only half matched ("chicken tractor" built as a toy
@@ -1816,8 +1831,9 @@ export function roughNote(title: string, failures: string[]): string {
 
 /**
  * The build-and-validate loop: ask the lookup for a recipe, build it, check it; on a failure ask once
- * more with the failures fed back; a second failure keeps the engine's own build, labelled as a rough
- * shape under the typed name. A passing recipe comes back as a candidate for the store.
+ * more with the failures fed back. A recipe is remembered and returned only when the eval gate grades it
+ * no worse than the deterministic build for this prompt and it is not a stand-in. Anything else leaves
+ * the engine's own build in place (no rough stand-in, nothing saved).
  */
 export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () => YardProject, materialOverride?: string): Promise<LookupOutcome> {
   let feedback: string[] = [];
@@ -1836,29 +1852,26 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
       feedback = [];
       continue;
     }
-    const parsed = parseRecipe(raw);
-    // A learned recipe is keyed by the noun the maker typed, never the model's head noun ("lap desk", not
-    // "desk"): a generic key would take over a noun the engine already builds. Shorter synonyms go too.
-    const noun = normalizeNoun(prompt), n = noun.split(" ").length;
-    // The title names what was typed: the AI's own noun ("Table" for a dog feeder stand) is dropped.
-    const title = parsed && (parsed.title.toLowerCase().includes(noun) ? parsed.title : noun.replace(/(^|\s)\w/g, (c) => c.toUpperCase()));
-    const recipe = parsed && title && { ...parsed, title, key: noun.replace(/\s+/g, "-"), synonyms: (parsed.synonyms ?? []).filter((w) => w.trim().split(/[\s-]+/).length >= n) };
+    const recipe = learnedRecipeFor(prompt, raw);
     if (!recipe) { feedback = [lastParseProblem || "the reply had no usable recipe"]; why(call, `parse: ${feedback[0]}`); continue; }
     const built = buildRecipe(recipe, prompt, materialOverride);
     const hard = validateRecipe(recipe, built, prompt);
-    // The learned-recipe gate runs here too: its failures go back in the retry; still failing on the
-    // second call, the recipe builds held (Unverified) instead of passing silently.
+    // Structural misses go back to the model. The keep decision is the eval gate, not these checks:
+    // a second call that still fails them used to be saved and shown anyway.
     const soft = hard.length ? [] : learnedRecipeFailures(recipe, prompt);
-    feedback = [...hard, ...soft];
-    if (!hard.length && (!soft.length || call === 2)) {
+    const keep = !hard.length && await mayKeepLearned(prompt, built.project);
+    feedback = [...hard, ...soft, ...(hard.length || keep ? [] : ["honest gate: no better than the deterministic build, or a stand-in"])];
+    if (keep) {
       const kept = soft.length ? { ...recipe, held: `Flagged by the learned-recipe checks: ${soft.slice(0, 3).join("; ")}` } : recipe;
       rememberRecipe(kept);
       return { project: soft.length ? { ...built.project, notes: [UNVERIFIED, ...built.project.notes] } : built.project, recipe: kept, rough: false, calls: call, reasons };
     }
     why(call, `gate: ${feedback.join("; ")}`);
   }
-  const shape = rough();
-  return { project: { ...shape, notes: [roughNote(shape.name, feedback), ...(shape.notes ?? [])] }, recipe: null, rough: true, calls: 2, reasons };
+  // Not saved and not shown. The deterministic build stays; a rough stand-in would grade worse.
+  let engine: YardProject;
+  try { engine = generateFromPrompt(prompt); } catch { engine = rough(); }
+  return { project: engine, recipe: null, rough: false, declined: true, calls: 2, reasons };
 }
 
 /**
