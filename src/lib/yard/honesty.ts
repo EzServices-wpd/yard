@@ -12,6 +12,7 @@ import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
 import { mattressDeck } from "./fittedParse";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
+import { placePair } from "./sizePhrases";
 import { lippedShelfYs } from "./shelfLips";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -266,6 +267,35 @@ export function typedExtents(prompt: string): TypedExtents | null {
       out.width = trip.a;
       out.height = trip.b;
       out.labeled = { width: true, height: true, depth: false };
+    }
+  }
+
+  // A place pair binds by the kind of place. An opening is width × height. A surface is width × depth.
+  // Spoken axis words stay. A triple is not a place pair, so release's order is untouched.
+  const place = placePair(t);
+  if (place && !(trip && trip.c != null)) {
+    const spokenH = height != null;
+    const spokenD = depth != null;
+    out.width = place.width;
+    out.labeled.width = true;
+    if (place.otherAxis === "height") {
+      if (!spokenH) {
+        out.height = place.other;
+        out.labeled.height = true;
+      }
+      if (!spokenD) {
+        delete out.depth;
+        out.labeled.depth = false;
+      }
+    } else {
+      if (!spokenD) {
+        out.depth = place.other;
+        out.labeled.depth = true;
+      }
+      if (!spokenH) {
+        delete out.height;
+        out.labeled.height = false;
+      }
     }
   }
 

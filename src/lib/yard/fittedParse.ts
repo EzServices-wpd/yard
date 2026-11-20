@@ -43,6 +43,7 @@ import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { clothesRodDefaultDepth } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
+import { placePair } from "./sizePhrases";
 import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
@@ -684,6 +685,37 @@ export function parseBrief(prompt: string): FittedSpec | null {
   } else if (footprintFeet(lower) && !/(?:tall|high|height)\b/.test(lower)) {
     ({ a: width, b: depth } = footprintFeet(lower)!);
     height = wholeCourses(lower, 16);
+  }
+
+  // A pair typed against a place. An opening is width × height (depth stays the class default).
+  // A surface is width × depth (height stays the class default). Feet are already inches.
+  // A triple never comes back from placePair, so release's order is untouched.
+  const place = placePair(t);
+  if (place && !trip.d) {
+    const spokenW = Number.isFinite(spokenAxisInches(t, "w"));
+    const spokenH = Number.isFinite(spokenAxisInches(t, "h"));
+    const spokenD = Number.isFinite(spokenAxisInches(t, "d"));
+    const rawSecond = trip.h;
+    if (!spokenW) width = place.width;
+    if (place.otherAxis === "depth") {
+      if (!spokenD) depth = place.other;
+      if (
+        !spokenH &&
+        rawSecond != null &&
+        Number.isFinite(height) &&
+        (Math.abs(height - rawSecond) < 0.05 || Math.abs(height - place.other) < 0.05)
+      ) {
+        height = NaN;
+      }
+      unlabeledWd = true;
+      if (!spokenH) trip.h = undefined;
+    } else {
+      if (!spokenH) height = place.other;
+      if (!spokenD && rawSecond != null && Number.isFinite(depth) && Math.abs(depth - rawSecond) < 0.05) depth = NaN;
+      unlabeledWd = false;
+      if (!spokenH) trip.h = place.other;
+    }
+    if (!spokenW && trip.w) trip.w = place.width;
   }
 
   if (!Number.isFinite(height) || height === 0) {

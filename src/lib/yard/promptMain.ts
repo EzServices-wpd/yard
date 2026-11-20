@@ -1,5 +1,6 @@
 import { seedIds } from "../stableId";
 import { partsAboveStatedHeight } from "./partsWithinHeight";
+import { carriesBind, classAxisBind } from "./classAxisBind";
 import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
@@ -446,22 +447,32 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
     if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
+    // 5b: a size typed with no axis binds the class's own axes (lead axis alone, the plan for a pair).
+    const first = generateSeeded(...args);
+    const axisBind = idDepth === 1 ? classAxisBind(typedAtIntake, first) : null;
+    const rebound = axisBind?.prompts.map((q) => ({ q, p: generateSeeded(q, ...(args.slice(1) as [])) })).find((x) => carriesBind(x.p, axisBind));
+    const seeded0 = rebound ? { ...rebound.p, prompt: first.prompt } : first;
     // Craft sticks are a default only for a model. A build that came out in craft stock with none typed, for
     // something load-bearing, outdoors or sized for a person, is built again in real stock (boards outdoors,
     // ¾" plywood indoors). A sheet that would also change the build's kind is built in 1×4 boards instead.
+    // The lift rebuilds the prompt that carries the bind, so a typed size survives the stock change.
     const craftBuilt = (p: YardProject) => /^(?:popsicle|craft|toothpick|bamboo-skewer|straw|balsa|cardboard|chipboard)/.test(p.primaryMaterialId ?? "");
-    const seeded0 = generateSeeded(...args);
+    const liftPrompt = rebound?.q ?? typedAtIntake;
     // A sheet rebuild that comes back as a closed shell of a different kind changed the form, not the stock
     // (a stick bicycle routed into a plywood shell). Boards keep that kind. A shell of the same kind stays
     // the sheet the stock rule asked for (an armoire keeps its typed width).
     const closedShell = (p: YardProject) => (p.notes ?? []).some((n) => /closed shell of the typed envelope/i.test(n));
     const liftStock = () => {
       const prefer = realStockFor(typedAtIntake);
-      const inStock = (stock: string) => generateSeeded(typedAtIntake, stock, ...(args.slice(2) as []));
+      const inStock = (stock: string) => {
+        const built = generateSeeded(liftPrompt, stock, ...(args.slice(2) as []));
+        if (axisBind && !carriesBind(built, axisBind)) return null;
+        return liftPrompt === typedAtIntake ? built : { ...built, prompt: first.prompt };
+      };
       const sheet = inStock(prefer);
-      if (prefer !== "lumber-1x4-8" && closedShell(sheet) && !closedShell(seeded0) && sheet.kind !== seeded0.kind) {
+      if (sheet && prefer !== "lumber-1x4-8" && closedShell(sheet) && !closedShell(seeded0) && sheet.kind !== seeded0.kind) {
         const boards = inStock("lumber-1x4-8");
-        if (!closedShell(boards) && boards.kind === seeded0.kind) return boards;
+        if (boards && !closedShell(boards) && boards.kind === seeded0.kind) return boards;
       }
       return sheet;
     };
@@ -473,12 +484,16 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const liftWanted = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake) && !releaseReads(typedAtIntake);
     const lifted = liftWanted ? liftStock() : null;
     const standInLift = !!lifted && (!!genericFormMark(lifted) || !!lifted.standIn || !!lifted.unmatched || closedShell(lifted) || seeded0.kind === "lattice" || (lifted.notes ?? []).some((n) => /built from short sticks braced together/i.test(n)) || genericBoxOverAsk(typedAtIntake, lifted));
-    const seeded = lifted && !standInLift
-      ? withinStatedHeight({
-          ...lifted,
-          craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
-        })
-      : seeded0;
+    const seeded = (() => {
+      if (!lifted || standInLift) return seeded0;
+      const marked = {
+        ...lifted,
+        craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
+      };
+      const stated = withinStatedHeight(marked);
+      if (!axisBind || carriesBind(stated, axisBind)) return stated;
+      return carriesBind(marked, axisBind) ? marked : seeded0;
+    })();
     const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(seeded), args[0]) : seeded;
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
@@ -1365,7 +1380,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (!held) {
     // Many of X (a count or a plural: "12 bottles", "jars", "my shoes") is storage furniture for X.
     if (holdsMany(phrase)) return null;
-    // "<X> shelf / rack" (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
+    // ‘<X> shelf / rack’ (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
     // class table knows X as one object (microwave shelf). Stand / holder / riser / cradle / cart keep X.
     if (!/\bfor\b/.test(lower) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
   }

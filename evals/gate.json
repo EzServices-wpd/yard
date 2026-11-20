@@ -2,14 +2,14 @@
  "note": "Eval gate (scripts/eval-gate.ts): engine-direct, no xAI. grade: fail = no build, head noun not honored, or a floats/miscount/missing-hardware/outdoor-ply invariant (I1/I3/I9/I13); partial = any other invariant or a typed word not honored; pass = clean. points = 2·pass + partial. Canaries are a hard fail, outside the totals.",
  "totals": {
   "prompts": 511,
-  "pass": 378,
-  "partial": 43,
-  "fail": 90,
-  "points": 799,
+  "pass": 383,
+  "partial": 40,
+  "fail": 88,
+  "points": 806,
   "maxPoints": 1022,
-  "honored": 919,
+  "honored": 930,
   "checkable": 981,
-  "honorPct": 93.7
+  "honorPct": 94.8
  },
  "canaries": {
   "ok": true,
@@ -104,7 +104,7 @@
   "note": "REPORT ONLY (not in the merge rule). Logic of yard-evals/answer-keys/score-answer-keys.ts. Leg counter is approximate; footprint is a sorted pair (ignores which axis is called width).",
   "file": "evals/corpus/answer-keys.json",
   "score": {
-   "ok": 299,
+   "ok": 300,
    "total": 536,
    "clean": 4,
    "keys": 85
@@ -201,7 +201,7 @@
     "clean": 0
    },
    "planter": {
-    "ok": 8,
+    "ok": 9,
     "total": 22,
     "keys": 4,
     "clean": 0
@@ -248,7 +248,7 @@
    "legs": 44,
    "stock": 30,
    "height": 25,
-   "footprint": 23,
+   "footprint": 22,
    "slats": 10,
    "drawers": 8,
    "shelves": 6,
@@ -763,16 +763,6 @@
    },
    {
     "type": "planter",
-    "check": "footprint",
-    "misses": 2,
-    "of": 4,
-    "examples": [
-     "square cedar planter 18 inch → want 18.5×18.5 got 36×16 (±4)",
-     "raised planter box with shelf 48 wide 24 deep 36 tall → want 48.5×24 got 84×24 (±2)"
-    ]
-   },
-   {
-    "type": "planter",
     "check": "stock",
     "misses": 2,
     "of": 4,
@@ -1164,6 +1154,15 @@
    },
    {
     "type": "planter",
+    "check": "footprint",
+    "misses": 1,
+    "of": 4,
+    "examples": [
+     "raised planter box with shelf 48 wide 24 deep 36 tall → want 48.5×24 got 84×24 (±2)"
+    ]
+   },
+   {
+    "type": "planter",
     "check": "height",
     "misses": 1,
     "of": 4,
@@ -1372,11 +1371,10 @@
     "id": "aw-cedar-planter-2x2",
     "type": "planter",
     "prompt": "square cedar planter 18 inch",
-    "built": "Cedar Planter box 36\" × 30\" × 16\" 36×16×30",
-    "ok": 1,
+    "built": "Cedar Planter box 18\" × 30\" × 16\" 18×16×30",
+    "ok": 2,
     "total": 5,
     "fails": [
-     "footprint: want 18.5×18.5 got 36×16 (±4)",
      "height: want 23.75 got 30 (±4)",
      "parts: want 31 got 5 (±50%)",
      "legs: want 4 got 0"
@@ -2371,14 +2369,14 @@
   },
   "grok100": {
    "prompts": 100,
-   "pass": 41,
-   "partial": 19,
-   "fail": 40,
-   "points": 101,
+   "pass": 46,
+   "partial": 16,
+   "fail": 38,
+   "points": 108,
    "maxPoints": 200,
-   "honored": 169,
+   "honored": 180,
    "checkable": 206,
-   "honorPct": 82
+   "honorPct": 87.4
   },
   "live-walk": {
    "prompts": 42,
@@ -2450,20 +2448,20 @@
  "byClass": {
   "H-standin": 34,
   "F21": 24,
-  "F1": 20,
   "T-noun": 19,
-  "T-size": 19,
+  "F1": 18,
   "F12": 14,
   "F17": 14,
   "F3": 11,
   "H-craft": 9,
+  "T-size": 8,
   "F2": 4,
   "F7": 4,
   "F9": 4,
   "T-count": 4,
   "C15": 3,
-  "F11": 3,
   "T-feature": 3,
+  "F11": 2,
   "F47": 1,
   "T-budget": 1,
   "T-material": 1
@@ -3751,7 +3749,7 @@
    "header": "Walnut TV console 55\" wide · 55\" W × 16\" D × 22\" H (D, H assumed)",
    "overall": "55W × 16D × 22H",
    "pieces": 16,
-   "usd": 780.65,
+   "usd": 804.51,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -5350,7 +5348,7 @@
    "header": "Adirondack chair · 25 7/8\" W × 23 7/8\" D × 37 7/8\" H (size assumed)",
    "overall": "25.875W × 23.875D × 37.875H",
    "pieces": 21,
-   "usd": 91.42,
+   "usd": 106.1,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -5564,15 +5562,14 @@
    ],
    "grade": "partial",
    "classes": [
-    "F9",
-    "T-size"
+    "F9"
    ],
-   "header": "Banquette · 48\" W × 16\" D × 18\" H (size assumed)",
-   "overall": "48W × 16D × 18H",
-   "pieces": 8,
+   "header": "Banquette · 60\" W × 16\" D × 18\" H (D, H assumed)",
+   "overall": "60W × 16D × 18H",
+   "pieces": 9,
    "usd": 85.33,
    "honor": {
-    "honored": 1,
+    "honored": 2,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -5580,13 +5577,13 @@
       "demand": "noun \"banquette\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Banquette 48\" × 18\" × 16\""
+      "shows": "Banquette 60\" × 18\" × 16\""
      },
      {
       "demand": "size \"60 inches\" W=60",
       "kind": "size",
-      "ok": false,
-      "shows": "48W×16D×18H"
+      "ok": true,
+      "shows": "60W×16D×18H"
      }
     ]
    },
@@ -7711,7 +7708,7 @@
    "header": "Pine Bookcase · 36\" W × 9 1/4\" D × 72\" H (D assumed)",
    "overall": "36W × 9.25D × 72H",
    "pieces": 16,
-   "usd": 54.9,
+   "usd": 200.28,
    "honor": {
     "honored": 4,
     "checkable": 4,
@@ -8254,7 +8251,7 @@
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
-   "usd": 388.44,
+   "usd": 449.88,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -8286,7 +8283,7 @@
    "header": "Bunk bed 80\" long x 42\" wide x 66\" tall · 80\" W × 42\" D × 66\" H (D assumed)",
    "overall": "80W × 42D × 66H",
    "pieces": 50,
-   "usd": 388.44,
+   "usd": 449.88,
    "honor": {
     "honored": 4,
     "checkable": 4,
@@ -8349,7 +8346,7 @@
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (D, H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
-   "usd": 388.44,
+   "usd": 449.88,
    "honor": {
     "honored": 3,
     "checkable": 3,
@@ -8405,7 +8402,7 @@
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
-   "usd": 388.44,
+   "usd": 449.88,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -8431,15 +8428,14 @@
    ],
    "grade": "fail",
    "classes": [
-    "T-noun",
-    "T-size"
+    "T-noun"
    ],
-   "header": "Butcher block cart · 36\" W × 16\" D × 30\" H (size assumed)",
-   "overall": "36W × 16D × 30H",
-   "pieces": 10,
-   "usd": 83.86,
+   "header": "Butcher block cart · 72\" W × 16\" D × 30\" H (D, H assumed)",
+   "overall": "72W × 16D × 30H",
+   "pieces": 13,
+   "usd": 122.29,
    "honor": {
-    "honored": 0,
+    "honored": 1,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -8447,13 +8443,13 @@
       "demand": "noun \"butcher block countertop\"",
       "kind": "noun",
       "ok": false,
-      "shows": "Butcher block cart 36\" × 30\" × 16\""
+      "shows": "Butcher block cart 72\" × 30\" × 16\""
      },
      {
       "demand": "size \"6 foot\" L=72",
       "kind": "size",
-      "ok": false,
-      "shows": "36W×16D×30H"
+      "ok": true,
+      "shows": "72W×16D×30H"
      }
     ]
    },
@@ -9291,12 +9287,12 @@
     "F7",
     "T-size"
    ],
-   "header": "Chicken coop · 48\" W × 36\" D × 72\" H (size assumed)",
-   "overall": "48W × 36D × 72H",
-   "pieces": 27,
-   "usd": 460.6,
+   "header": "Chicken coop · 72\" W × 48\" D × 72\" H (H assumed)",
+   "overall": "72W × 48D × 72H",
+   "pieces": 28,
+   "usd": 684.77,
    "honor": {
-    "honored": 2,
+    "honored": 1,
     "checkable": 3,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -9304,19 +9300,19 @@
       "demand": "noun \"chicken coop\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Chicken coop 48\" × 72\" × 36\""
+      "shows": "Chicken coop 72\" × 72\" × 48\""
      },
      {
       "demand": "size \"4 by 6\" W=48",
       "kind": "size",
-      "ok": true,
-      "shows": "48W×36D×72H"
+      "ok": false,
+      "shows": "72W×48D×72H"
      },
      {
       "demand": "size \"4 by 6\" D=72",
       "kind": "size",
       "ok": false,
-      "shows": "48W×36D×72H"
+      "shows": "72W×48D×72H"
      }
     ]
    },
@@ -12090,7 +12086,7 @@
    "header": "Cribbage Board · 15\" W × 4\" D × 1 1/2\" H (size assumed)",
    "overall": "15W × 4D × 0.75H",
    "pieces": 5,
-   "usd": 6.18,
+   "usd": 20.86,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -12220,15 +12216,14 @@
    ],
    "grade": "fail",
    "classes": [
-    "F21",
-    "T-size"
+    "F21"
    ],
-   "header": "Deck box · 36\" W × 16\" D × 30\" H (size assumed)",
-   "overall": "36W × 16D × 30H",
-   "pieces": 6,
-   "usd": 176.51,
+   "header": "Deck box 48\" wide · 48\" W × 16\" D × 30\" H (D, H assumed)",
+   "overall": "48W × 16D × 30H",
+   "pieces": 7,
+   "usd": 189.5,
    "honor": {
-    "honored": 2,
+    "honored": 3,
     "checkable": 3,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -12236,13 +12231,13 @@
       "demand": "noun \"deck box\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Deck box"
+      "shows": "Deck box 48\" wide"
      },
      {
       "demand": "size \"4 foot\" unknown=48",
       "kind": "size",
-      "ok": false,
-      "shows": "36W×16D×30H"
+      "ok": true,
+      "shows": "48W×16D×30H"
      },
      {
       "demand": "feature \"outdoor\"",
@@ -12287,6 +12282,20 @@
      "msg": "Right side is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
     }
    ]
   },
@@ -12609,15 +12618,14 @@
    ],
    "grade": "partial",
    "classes": [
-    "F9",
-    "T-size"
+    "F9"
    ],
-   "header": "Banquette · 48\" W × 16\" D × 18\" H (size assumed)",
-   "overall": "48W × 16D × 18H",
-   "pieces": 8,
-   "usd": 85.33,
+   "header": "Banquette · 72\" W × 16\" D × 18\" H (D, H assumed)",
+   "overall": "72W × 16D × 18H",
+   "pieces": 9,
+   "usd": 123.76,
    "honor": {
-    "honored": 1,
+    "honored": 2,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -12625,13 +12633,13 @@
       "demand": "noun \"dining banquette\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Banquette 48\" × 18\" × 16\""
+      "shows": "Banquette 72\" × 18\" × 16\""
      },
      {
       "demand": "size \"72 inches\" W=72",
       "kind": "size",
-      "ok": false,
-      "shows": "48W×16D×18H"
+      "ok": true,
+      "shows": "72W×16D×18H"
      }
     ]
    },
@@ -12825,7 +12833,7 @@
    "header": "Dog house · 36\" W × 16\" D × 30\" H (size assumed)",
    "overall": "36W × 16D × 30H",
    "pieces": 19,
-   "usd": 135.2,
+   "usd": 164.56,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -13417,7 +13425,7 @@
    "header": "Farm stand · 48\" W × 30\" D × 72 1/2\" H (size assumed)",
    "overall": "48W × 30D × 72.5H",
    "pieces": 16,
-   "usd": 235.48,
+   "usd": 259.71,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -14500,7 +14508,7 @@
    "header": "Garden bench · 48\" W × 16\" D × 18\" H (size assumed)",
    "overall": "48W × 16D × 18H",
    "pieces": 16,
-   "usd": 138.73,
+   "usd": 168.09,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -14595,7 +14603,7 @@
    "header": "Garden bench · 48\" W × 16\" D × 18\" H (D, H assumed)",
    "overall": "48W × 16D × 18H",
    "pieces": 16,
-   "usd": 138.73,
+   "usd": 168.09,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -15006,7 +15014,7 @@
    "header": "Guitar hanger · 5 1/2\" W × 4 7/8\" D × 10\" H (size assumed)",
    "overall": "5.5W × 4.875D × 10H",
    "pieces": 4,
-   "usd": 41.42,
+   "usd": 56.1,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -15085,7 +15093,7 @@
    "header": "Guitar hanger · 5 1/2\" W × 4 7/8\" D × 10\" H (size assumed)",
    "overall": "5.5W × 4.875D × 10H",
    "pieces": 4,
-   "usd": 41.42,
+   "usd": 56.1,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -15122,7 +15130,7 @@
    "header": "Guitar hanger · 5 1/2\" W × 4 7/8\" D × 10\" H (size assumed)",
    "overall": "5.5W × 4.875D × 10H",
    "pieces": 4,
-   "usd": 41.42,
+   "usd": 56.1,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -15609,7 +15617,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -15638,7 +15646,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -15667,7 +15675,7 @@
    "header": "Jewelry box · 12\" W × 5 1/2\" D × 3 7/16\" H (D, H assumed)",
    "overall": "12W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -15702,7 +15710,7 @@
    "header": "Jewelry box · 12\" W × 8\" D × 8\" H",
    "overall": "12W × 8D × 8H",
    "pieces": 27,
-   "usd": 143.79,
+   "usd": 158.47,
    "honor": {
     "honored": 5,
     "checkable": 5,
@@ -15826,7 +15834,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -15855,7 +15863,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 7 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 7.375H",
    "pieces": 22,
-   "usd": 104.33,
+   "usd": 119.01,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -15942,7 +15950,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 0,
     "checkable": 1,
@@ -16653,7 +16661,7 @@
    "header": "Lemonade stand · 48\" W × 30\" D × 72 1/2\" H (size assumed)",
    "overall": "48W × 30D × 72.5H",
    "pieces": 16,
-   "usd": 235.48,
+   "usd": 259.71,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -16718,7 +16726,7 @@
    "header": "Lemonade stand · 132\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "132W × 30D × 72.5H",
    "pieces": 32,
-   "usd": 520.58,
+   "usd": 569.04,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -16929,7 +16937,7 @@
    "header": "Lemonade stand · 144\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "144W × 30D × 72.5H",
    "pieces": 32,
-   "usd": 606.14,
+   "usd": 654.6,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -17143,7 +17151,7 @@
    "header": "Lemonade stand · 48\" W × 36\" D × 84 1/2\" H",
    "overall": "48W × 36D × 84.5H",
    "pieces": 16,
-   "usd": 243.38,
+   "usd": 267.61,
    "honor": {
     "honored": 4,
     "checkable": 4,
@@ -17240,7 +17248,7 @@
    "header": "Lemonade stand · 60\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "60W × 30D × 72.5H",
    "pieces": 18,
-   "usd": 299.15,
+   "usd": 323.38,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -17346,7 +17354,7 @@
    "header": "Lemonade stand · 72\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "72W × 30D × 72.5H",
    "pieces": 18,
-   "usd": 341.93,
+   "usd": 366.16,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -17636,7 +17644,7 @@
    "header": "Loft bed 82\" long x 44\" wide x 72\" tall · 82\" W × 44\" D × 72\" H (H assumed)",
    "overall": "82W × 44D × 72H",
    "pieces": 34,
-   "usd": 232.63,
+   "usd": 294.07,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -18837,7 +18845,7 @@
    "header": "Bench · 48\" W × 16\" D × 18\" H (size assumed)",
    "overall": "48W × 16D × 18H",
    "pieces": 16,
-   "usd": 138.73,
+   "usd": 168.09,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -19011,16 +19019,14 @@
    "ids": [
     "g98"
    ],
-   "grade": "partial",
-   "classes": [
-    "T-size"
-   ],
-   "header": "Compost bin · 3\" W × 3\" D × 36\" H",
-   "overall": "3W × 3D × 36H",
+   "grade": "pass",
+   "classes": [],
+   "header": "Compost bin · 36\" W × 36\" D × 36\" H",
+   "overall": "36W × 36D × 36H",
    "pieces": 21,
-   "usd": 124.32,
+   "usd": 150.21,
    "honor": {
-    "honored": 1,
+    "honored": 3,
     "checkable": 3,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -19033,25 +19039,18 @@
      {
       "demand": "size \"3x3\" W=36",
       "kind": "size",
-      "ok": false,
-      "shows": "3W×3D×36H"
+      "ok": true,
+      "shows": "36W×36D×36H"
      },
      {
       "demand": "size \"3x3\" D=36",
       "kind": "size",
-      "ok": false,
-      "shows": "3W×3D×36H"
+      "ok": true,
+      "shows": "36W×36D×36H"
      }
     ]
    },
    "invariants": [
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Back post 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
     {
      "id": "I26",
      "cls": "F30",
@@ -19084,55 +19083,6 @@
      "id": "I26",
      "cls": "F30",
      "msg": "Back post 1 runs into Back slats 5 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Bay wall 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Bay wall 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Bay wall 3 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Bay wall 4 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Bay wall 5 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Front post 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 1 runs into Front post 2 with no joint cut for it",
      "known": false,
      "scored": false
     },
@@ -19174,195 +19124,6 @@
     {
      "id": "I26",
      "cls": "F30",
-     "msg": "Back post 2 runs into Bay wall 10 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 2 runs into Bay wall 6 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 2 runs into Bay wall 7 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 2 runs into Bay wall 8 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 2 runs into Bay wall 9 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 2 runs into Front post 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back post 2 runs into Front post 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 1 runs into Bay wall 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 1 runs into Bay wall 6 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 2 runs into Bay wall 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 2 runs into Bay wall 7 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 3 runs into Bay wall 3 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 3 runs into Bay wall 8 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 4 runs into Bay wall 4 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 4 runs into Bay wall 9 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 5 runs into Bay wall 10 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Back slats 5 runs into Bay wall 5 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Bay wall 1 runs into Front slats 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Bay wall 2 runs into Front slats 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Bay wall 6 runs into Front slats 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Bay wall 7 runs into Front slats 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 1 runs into Bay wall 1 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 1 runs into Bay wall 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 1 runs into Bay wall 3 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 1 runs into Bay wall 4 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 1 runs into Bay wall 5 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 1 runs into Front post 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
      "msg": "Front post 1 runs into Front slats 1 with no joint cut for it",
      "known": false,
      "scored": false
@@ -19371,41 +19132,6 @@
      "id": "I26",
      "cls": "F30",
      "msg": "Front post 1 runs into Front slats 2 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 2 runs into Bay wall 10 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 2 runs into Bay wall 6 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 2 runs into Bay wall 7 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 2 runs into Bay wall 8 with no joint cut for it",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I26",
-     "cls": "F30",
-     "msg": "Front post 2 runs into Bay wall 9 with no joint cut for it",
      "known": false,
      "scored": false
     },
@@ -19435,15 +19161,14 @@
    ],
    "grade": "fail",
    "classes": [
-    "F21",
-    "T-size"
+    "F21"
    ],
-   "header": "Deck box · 36\" W × 16\" D × 30\" H (size assumed)",
-   "overall": "36W × 16D × 30H",
-   "pieces": 6,
-   "usd": 176.51,
+   "header": "Deck box 60\" wide · 60\" W × 16\" D × 30\" H (D, H assumed)",
+   "overall": "60W × 16D × 30H",
+   "pieces": 7,
+   "usd": 189.5,
    "honor": {
-    "honored": 1,
+    "honored": 2,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -19451,13 +19176,13 @@
       "demand": "noun \"outdoor deck box\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Deck box"
+      "shows": "Deck box 60\" wide"
      },
      {
       "demand": "size \"5 ft\" L=60",
       "kind": "size",
-      "ok": false,
-      "shows": "36W×16D×30H"
+      "ok": true,
+      "shows": "60W×16D×30H"
      }
     ]
    },
@@ -19496,6 +19221,20 @@
      "msg": "Right side is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
     }
    ]
   },
@@ -19510,16 +19249,14 @@
    "grade": "fail",
    "classes": [
     "F1",
-    "F11",
-    "T-noun",
-    "T-size"
+    "T-noun"
    ],
-   "header": "Deck · 144\" W × 120\" D × 26 1/4\" H",
-   "overall": "144W × 120D × 26.25H",
-   "pieces": 87,
-   "usd": 1009.01,
+   "header": "Deck · 72\" W × 120\" D × 26 1/4\" H (D, H assumed)",
+   "overall": "72W × 120D × 26.25H",
+   "pieces": 47,
+   "usd": 571.16,
    "honor": {
-    "honored": 0,
+    "honored": 1,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -19527,161 +19264,28 @@
       "demand": "noun \"outdoor deck storage box\"",
       "kind": "noun",
       "ok": false,
-      "shows": "Deck 12' × 10'"
+      "shows": "Deck 6' × 10'"
      },
      {
       "demand": "size \"6 foot\" L=72",
       "kind": "size",
-      "ok": false,
-      "shows": "144W×120D×26.25H"
+      "ok": true,
+      "shows": "72W×120D×26.25H"
      }
     ]
    },
    "invariants": [
     {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Deck board 21 left is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Deck board 21 right is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 1 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 10 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 10 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 2 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 3 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 4 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 5 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 6 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 6 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 7 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 7 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 8 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 8 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 9 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 9 front is placed before Rim joist front right, which it rests on",
+     "id": "I1",
+     "cls": "F1",
+     "msg": "Rim joist back reaches neither the floor nor a wall",
      "known": false,
      "scored": true
     },
     {
      "id": "I1",
      "cls": "F1",
-     "msg": "Rim joist back left reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist back right reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist front left reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist front right reaches neither the floor nor a wall",
+     "msg": "Rim joist front reaches neither the floor nor a wall",
      "known": false,
      "scored": true
     }
@@ -20392,16 +19996,14 @@
    "ids": [
     "g88"
    ],
-   "grade": "partial",
-   "classes": [
-    "T-size"
-   ],
-   "header": "Art easel · 30\" W × 24\" D × 66\" H",
-   "overall": "30W × 24D × 66H",
+   "grade": "pass",
+   "classes": [],
+   "header": "Art easel · 30\" W × 24\" D × 72\" H (W, D assumed)",
+   "overall": "30W × 24D × 72H",
    "pieces": 8,
    "usd": 51.55,
    "honor": {
-    "honored": 1,
+    "honored": 2,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -20409,13 +20011,13 @@
       "demand": "noun \"painting easel\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Art easel 30\" × 5' 6\""
+      "shows": "Art easel 30\" × 6'"
      },
      {
       "demand": "size \"6 ft\" H=72",
       "kind": "size",
-      "ok": false,
-      "shows": "30W×24D×66H"
+      "ok": true,
+      "shows": "30W×24D×72H"
      }
     ]
    },
@@ -21372,15 +20974,14 @@
    "ids": [
     "g15"
    ],
-   "grade": "fail",
+   "grade": "partial",
    "classes": [
-    "F1",
     "T-size"
    ],
-   "header": "Platform bed 82\" long x 82\" wide x · 82\" W × 39\" D × 75\" H",
-   "overall": "82W × 39D × 75H",
-   "pieces": 27,
-   "usd": 313.04,
+   "header": "Platform bed 82\" long x 39\" wide x 14\" tall · 82\" W × 39\" D × 14\" H (H assumed)",
+   "overall": "82W × 39D × 14H",
+   "pieces": 21,
+   "usd": 188.99,
    "honor": {
     "honored": 1,
     "checkable": 3,
@@ -21390,52 +20991,23 @@
       "demand": "noun \"platform bed\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Platform bed 82\" long × 82\" wide × 75\" × 39\""
+      "shows": "Platform bed 82\" long × 39\" wide × 14\" tall"
      },
      {
       "demand": "size \"39 by 75\" W=39",
       "kind": "size",
       "ok": false,
-      "shows": "82W×39D×75H"
+      "shows": "82W×39D×14H"
      },
      {
       "demand": "size \"39 by 75\" D=75",
       "kind": "size",
       "ok": false,
-      "shows": "82W×39D×75H"
+      "shows": "82W×39D×14H"
      }
     ]
    },
-   "invariants": [
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Foot guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Head guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Ladder-side guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Wall-side guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "plywood desk 48 wide 24 deep",
@@ -21976,15 +21548,14 @@
    "ids": [
     "g1"
    ],
-   "grade": "fail",
+   "grade": "partial",
    "classes": [
-    "F1",
     "T-size"
    ],
-   "header": "Platform bed 87\" long x 67\" wide x 80\" tall · 87\" W × 67\" D × 80\" H",
-   "overall": "87W × 67D × 80H",
-   "pieces": 27,
-   "usd": 313.04,
+   "header": "Platform bed 87\" long x 67\" wide x 14\" tall · 87\" W × 67\" D × 14\" H (H assumed)",
+   "overall": "87W × 67D × 14H",
+   "pieces": 23,
+   "usd": 261.64,
    "honor": {
     "honored": 1,
     "checkable": 3,
@@ -21994,52 +21565,23 @@
       "demand": "noun \"queen platform bed\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Platform bed 87\" long × 67\" wide × 80\" tall"
+      "shows": "Platform bed 87\" long × 67\" wide × 14\" tall"
      },
      {
       "demand": "size \"60\" W=60",
       "kind": "size",
       "ok": false,
-      "shows": "87W×67D×80H"
+      "shows": "87W×67D×14H"
      },
      {
       "demand": "size \"80\" D=80",
       "kind": "size",
       "ok": false,
-      "shows": "87W×67D×80H"
+      "shows": "87W×67D×14H"
      }
     ]
    },
-   "invariants": [
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Foot guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Head guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Ladder-side guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Wall-side guard reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "queen platform bed with drawers",
@@ -24025,7 +23567,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -24054,7 +23596,7 @@
    "header": "Snack stand · 48\" W × 30\" D × 72 1/2\" H (size assumed)",
    "overall": "48W × 30D × 72.5H",
    "pieces": 16,
-   "usd": 235.48,
+   "usd": 259.71,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -24311,16 +23853,14 @@
    "ids": [
     "g77"
    ],
-   "grade": "partial",
-   "classes": [
-    "T-size"
-   ],
-   "header": "Spice rack · 36\" W × 4\" D × 24\" H (size assumed)",
-   "overall": "36W × 4D × 24H",
+   "grade": "pass",
+   "classes": [],
+   "header": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)",
+   "overall": "30W × 4D × 24H",
    "pieces": 9,
    "usd": 79.32,
    "honor": {
-    "honored": 1,
+    "honored": 2,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -24328,13 +23868,13 @@
       "demand": "noun \"spice rack\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Spice rack 36\" × 24\" × 4\""
+      "shows": "Spice rack 30\" × 24\" × 4\""
      },
      {
       "demand": "size \"30 inches\" W=30",
       "kind": "size",
-      "ok": false,
-      "shows": "36W×4D×24H"
+      "ok": true,
+      "shows": "30W×4D×24H"
      }
     ]
    },
@@ -24739,16 +24279,14 @@
    "ids": [
     "g75"
    ],
-   "grade": "partial",
-   "classes": [
-    "T-size"
-   ],
-   "header": "Ottoman · 24\" W × 24\" D × 16\" H (size assumed)",
-   "overall": "24W × 24D × 16H",
+   "grade": "pass",
+   "classes": [],
+   "header": "Ottoman · 36\" W × 36\" D × 16\" H (size assumed)",
+   "overall": "36W × 36D × 16H",
    "pieces": 13,
-   "usd": 94.81,
+   "usd": 133.24,
    "honor": {
-    "honored": 2,
+    "honored": 3,
     "checkable": 3,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -24756,13 +24294,13 @@
       "demand": "noun \"storage ottoman\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Ottoman 24\" × 16\" × 24\""
+      "shows": "Ottoman 36\" × 16\" × 36\""
      },
      {
       "demand": "size \"36\" unknown=36",
       "kind": "size",
-      "ok": false,
-      "shows": "24W×24D×16H"
+      "ok": true,
+      "shows": "36W×36D×16H"
      },
      {
       "demand": "feature \"storage\"",
@@ -24853,7 +24391,7 @@
    "header": "Garden Pedestal Sundial · 16\" W × 16\" D × 41 1/2\" H (size assumed)",
    "overall": "16W × 16D × 41.5H",
    "pieces": 13,
-   "usd": 105.92,
+   "usd": 126.4,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -25526,7 +25064,7 @@
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
-   "usd": 388.44,
+   "usd": 449.88,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -26388,16 +25926,14 @@
    "ids": [
     "g25"
    ],
-   "grade": "partial",
-   "classes": [
-    "T-size"
-   ],
-   "header": "Spice rack · 36\" W × 4\" D × 24\" H (size assumed)",
-   "overall": "36W × 4D × 24H",
+   "grade": "pass",
+   "classes": [],
+   "header": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)",
+   "overall": "18W × 4D × 24H",
    "pieces": 9,
-   "usd": 79.32,
+   "usd": 70.85,
    "honor": {
-    "honored": 2,
+    "honored": 3,
     "checkable": 3,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
@@ -26405,13 +25941,13 @@
       "demand": "noun \"spice rack\"",
       "kind": "noun",
       "ok": true,
-      "shows": "Spice rack 36\" × 24\" × 4\""
+      "shows": "Spice rack 18\" × 24\" × 4\""
      },
      {
       "demand": "size \"18 inches\" W=18",
       "kind": "size",
-      "ok": false,
-      "shows": "36W×4D×24H"
+      "ok": true,
+      "shows": "18W×4D×24H"
      },
      {
       "demand": "feature \"wall mounted\"",
@@ -26564,7 +26100,7 @@
    "header": "Walnut TV stand · 60\" W × 16\" D × 22\" H (D, H assumed)",
    "overall": "60W × 16D × 22H",
    "pieces": 16,
-   "usd": 780.65,
+   "usd": 804.51,
    "honor": {
     "honored": 3,
     "checkable": 3,
@@ -26724,7 +26260,7 @@
    "header": "Walnut Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 123.1,
    "honor": {
     "honored": 2,
     "checkable": 2,
@@ -27727,7 +27263,7 @@
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
-   "usd": 63.39,
+   "usd": 78.07,
    "honor": {
     "honored": 1,
     "checkable": 1,

@@ -379,7 +379,7 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside. ¾" plywood. Finished depth is the ${D}" you typed; the door does not add a slab past that.`,
+        `${name}. Wall-mounted bathroom cabinet with a mirrored door and ${shelfN} shelves inside. ¾" plywood.${spec.typedAxes?.depth ? ` Finished depth is the ${D}" you typed; the door does not add a slab past that.` : ""}`,
         `${studNote} Typical center sits about 60–66" off the floor (eye height). Concealed hinges on the door. ${face.shelfDepth + backT >= box - 0.01 ? "Shelves run to the front edge, clear of the hinges." : `Shelves stop ${HINGE_ARM_CLEAR_IN}" short of the door so it can close.`} The mirror sits flush in a rabbet in the door's outer face.`,
       ],
       historic: false,
