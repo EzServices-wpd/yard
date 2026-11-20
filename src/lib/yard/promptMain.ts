@@ -1,3 +1,5 @@
+import { STOP, headPhrase, sentenceCase, typedHeadNoun } from "./headNoun";
+import { genericFormMark } from "./formOwnership";
 import { seedIds } from "../stableId";
 import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
@@ -444,7 +446,13 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
     if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    // 5a: the typed head noun picks the class. A build named for a word before it is built again without that word.
+    const first = generateSeeded(...args);
+    const modifiers = idDepth === 1 ? modifierNamedWords(typedAtIntake, first) : [];
+    const retry = modifiers.length ? generateSeeded(withoutHeadPhraseWords(typedAtIntake, modifiers), ...(args.slice(1) as [])) : null;
+    // Only a class of the head noun's own replaces the build; a head noun with no class keeps it (5c, unknown nouns).
+    const seeded = retry && headNounClass(retry, typedAtIntake) ? retitledEcho(retry, typedAtIntake, modifiers, first.prompt) : first;
+    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(seeded), args[0]) : seeded;
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
     // Row 438: a typed rod count over the finished bays is built as double hang, trimmed to the count.
@@ -1330,7 +1338,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (!held) {
     // Many of X (a count or a plural: "12 bottles", "jars", "my shoes") is storage furniture for X.
     if (holdsMany(phrase)) return null;
-    // "<X> shelf / rack" (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
+    // ‘<X> shelf / rack’ (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
     // class table knows X as one object (microwave shelf). Stand / holder / riser / cradle / cart keep X.
     if (!/\bfor\b/.test(lower) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
   }
@@ -2516,6 +2524,87 @@ const STOCK_PHRASE = /\bbutcher[\s-]+block\b/g;
 /** Common misspellings of a builder's own name. */
 const SPELLING: [RegExp, string][] = [[/\banderson\b/g, "andersen"]];
 const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
+
+const singular = (w: string) => w.replace(/(?<!s)s$/, "");
+/** Words that end a noun phrase without naming its object: a style, place, stock or read word, or the structure of the object before it ("dog bed frame"). */
+const TRAILING_NOT_HEAD = /^(?:made|built|frame|base|set|kit|thing|something|stuff)$/;
+/** Where a noun phrase ends: a number, a spelled-out count ("two rods"), a size word ("dia 18"), a place word ("between studs"), a feature ("no doors", "with a stool"), a verb ("holds", "has", "to"), a bracket or a quote. */
+const PHRASE_END = /[\d(),;:"“”]|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|pair|both|dia|diameter|radius|wide|tall|high|deep|long|thick|between|beside|next|under|over|above|below|behind|inside|near|against|along|around|across|at|into|onto|no|with|without|plus|and|or|w|holds?|fits?|seats?|sleeps?|stores?|has|that|which|to)\b/;
+const FEATURE_HEAD = /^(?:shel(?:f|ve)|door|drawer|front)$/;
+/** Form words: what shape of furniture, not which object ("vanity table", "nightstand unit"). */
+const FORM_HEAD = /^(?:table|stand|unit|piece)$/;
+/** Nouns any storage carcase answers to ("closet organizer", "over-toilet shelf", ‘wine rack cabinet’). */
+const STORAGE_NOUN = /^(?:cabinet|organizer|organiser|shel(?:f|ves)|shelving|unit|system|rack|cubb(?:y|ie)|bin|caddy|holder)$/;
+
+/**
+ * The noun phrase as words, read the way ignoredTypedWords reads it: cut where it ends (PHRASE_END), one object for a
+ * two-word name ("rocket ship"), and trailing words that never name the object dropped (‘spice rack wall mounted’).
+ */
+function nounPhraseWords(prompt: string): string[] {
+  const ws = headPhrase(prompt).split(PHRASE_END)[0].replace(SAME_OBJECT, "$1").replace(STOCK_PHRASE, " ").split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.test(w)).map(singular);
+  // A carcase feature word (shelf, doors, drawers) is neutral inside a phrase but names the object when it ends one.
+  while (ws.length > 1 && ((FORM_NEUTRAL.test(ws[ws.length - 1]) && !FEATURE_HEAD.test(ws[ws.length - 1])) || READ_MODIFIER.test(ws[ws.length - 1]) || TRAILING_NOT_HEAD.test(ws[ws.length - 1]))) ws.pop();
+  return ws;
+}
+
+/** Every word a build owns: its name, its kind and its fitted program and family ("Linen" is a closet). */
+const ownWords = (p: YardProject) => `${p.name ?? ""} ${p.kind} ${p.fitted?.program ?? ""} ${p.fitted?.family ?? ""}`.toLowerCase().replace(/\d[\d\s./'"″′×x-]*/g, " ").split(/[^a-z]+/).filter((w) => w.length > 2).map(singular);
+
+/**
+ * 5a (class by head noun): the words before the typed head noun that the build is named for. "Desk" for "desk
+ * organizer", "Deck" for "outdoor deck storage box": a modifier picked the class, not the object. None when the build
+ * owns the head noun (name, kind or fitted program), when a storage carcase named for its room or its contents
+ * answers to a storage noun ("closet organizer", "over-toilet shelf", ‘wine rack cabinet’), or when a fitted piece of
+ * furniture answers to a form word ("vanity table").
+ */
+export function modifierNamedWords(prompt: string, p: YardProject): string[] {
+  const ws = nounPhraseWords(prompt);
+  const head = ws[ws.length - 1];
+  if (!head || ws.length < 2) return [];
+  const modifiers = ws.slice(0, -1);
+  const name = (p.name ?? "").toLowerCase().replace(/\d[\d\s./'"″′×x-]*/g, " ").split(/[^a-z]+/).filter((w) => w.length > 2).map(singular);
+  if (!name.length || ownWords(p).includes(head) || !modifiers.includes(name[name.length - 1])) return [];
+  // A build named by two or more typed modifier words together ("dog house", "garden bench") is a compound class the engine
+  // knows: the head noun does not unseat it, and dropping its words would build the head's bare class instead.
+  if (name.length >= 2 && name.every((w) => modifiers.includes(w))) return [];
+  if (p.fitted && STORAGE_PROGRAM.test(p.fitted.program) && STORAGE_NOUN.test(head)) return [];
+  // On a fitted piece of furniture a form word names its form: a "vanity table" is the vanity.
+  if (p.fitted && FORM_HEAD.test(head)) return [];
+  return [...new Set(name.filter((w) => modifiers.includes(w)))];
+}
+
+/**
+ * The build answers to the typed head noun: it owns it. For a bare two-word name, a head noun with no class of its own
+ * still beats the modifier's class: its stand-in is the unknown-noun path (the learner's), never a 48" desk for a desk organizer.
+ */
+function headNounClass(p: YardProject, prompt: string): boolean {
+  const ws = nounPhraseWords(prompt);
+  const head = ws[ws.length - 1];
+  if (!head || !ownWords(p).includes(head)) return false;
+  // A stand-in echoes every typed word, so it "owns" any head. It wins only for a bare two-word name (modifier + head);
+  // in a longer phrase the last word is often a label, a count or a feature, and only a real class of it is trusted.
+  return ws.length === 2 || !(genericFormMark(p) || p.standIn || p.unmatched || /popsicle|craft|stick/i.test(p.primaryMaterialId ?? ""));
+}
+
+/**
+ * A title that echoes the words built ("Organizer 24" × 12" × 6"") echoes the words typed ("Desk organizer 24" × …"):
+ * dropping a modifier changes the class, never what the build is called.
+ */
+function retitledEcho(p: YardProject, typed: string, dropped: string[], prompt: string | undefined): YardProject {
+  const words = (q: string) => headPhrase(q).replace(/\d.*$/, "").trim().split(/\s+/).filter(Boolean);
+  const built = words(withoutHeadPhraseWords(typed, dropped));
+  const name = p.name ?? "";
+  const lead = name.split(/\s+/).slice(0, built.length).join(" ");
+  if (!built.length || lead.toLowerCase() !== built.join(" ")) return { ...p, prompt: prompt ?? p.prompt };
+  return { ...p, prompt: prompt ?? p.prompt, name: `${sentenceCase(words(typed).join(" "))}${name.slice(lead.length)}` };
+}
+
+/** The prompt with these words dropped from its noun phrase only (the tail and sizes stay as typed). */
+export function withoutHeadPhraseWords(prompt: string, drop: string[]): string {
+  const cut = headPhrase(prompt).length;
+  const re = new RegExp(`\\b(?:${drop.join("|")})s?\\b`, "gi");
+  return `${prompt.slice(0, cut).replace(re, " ")}${prompt.slice(cut)}`.replace(/\s+/g, " ").trim();
+}
 
 /**
  * A weak noun match: a word of the typed object ("lap" desk, "chicken" tractor, tabletop "loom") that the
