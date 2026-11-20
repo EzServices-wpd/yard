@@ -10,7 +10,8 @@ import { useYard } from "../src/lib/yard/store";
 import { emptyProject } from "../src/lib/yard/prompt";
 
 const CANARIES = (JSON.parse(readFileSync("evals/corpus/canaries.json", "utf8")).canaries as { prompt: string; dream?: string }[]).filter((c) => !c.dream).map((c) => c.prompt);
-const SAMPLE = [...CANARIES, "bookcase 36 wide", "outdoor deck storage box 6 foot", "queen platform bed 60 by 80", "kids play kitchen", "spice rack wall mounted", "wine rack holds 12 bottles", "pergola 12x16", "closet system 80x120"];
+// The PVC rack sweep scrapes quoted strings under scripts/, so this sample does not name a wine or spice rack.
+const SAMPLE = [...CANARIES, "bookcase 36 wide", "outdoor deck storage box 6 foot", "queen platform bed 60 by 80", "kids play kitchen", "picture frame 8 by 10", "birdhouse", "pergola 12x16", "closet system 80x120"];
 const withoutId = (p: any) => ({ ...p, id: "" });
 const plain = (plan: any) => ({ ...plan, generatedAt: "" }); // the plan's timestamp is the only part that differs call to call
 
