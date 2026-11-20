@@ -28,7 +28,7 @@ test("the digest counts the day, ranks the worst builds and lists what is worth 
   assert.match(page, /1 note\(s\) came from an older page with no build id/);
   const worst = page.split("## Worst builds")[1].split("##")[0];
   assert.ok(worst.indexOf("bookcase 36 wide") < worst.indexOf("pine bench"), "2 down + 2 notes ranks above 1 down");
-  assert.match(worst, /Price off: “boards cost more at my store”/);
+  assert.match(worst, /Price off: visitor-typed, unverified: “boards cost more at my store”/);
   assert.doesNotMatch(worst, /toy box/, "a build with only thumbs-up is not a worst build");
   assert.match(page, /Printed or copied, never sent to a store: visitor-typed, unverified: “bookcase 36 wide”/);
   assert.match(page, /Sent to a store, then thumbed down: visitor-typed, unverified: “pine bench”/);
@@ -63,6 +63,11 @@ test("the digest is stdout or a path outside the repo, never a GitHub issue", ()
   symlinkSync(process.cwd(), link);
   assert.equal(digestOutAllowed(`${link}/page.md`), false, "a symlink into the repo is refused");
   rmSync(link, { force: true });
+  const dangling = "/tmp/yard-digest-dangling";
+  rmSync(dangling, { force: true });
+  symlinkSync("/tmp/yard-digest-missing-target", dangling);
+  assert.equal(digestOutAllowed(dangling), false, "a dangling symlink is refused");
+  rmSync(dangling, { force: true });
   const src = readFileSync(new URL("./feedback-digest.ts", import.meta.url), "utf8");
   assert.doesNotMatch(src, /api\.github\.com|GH_TOKEN|YARD_FEEDBACK_GH/);
   assert.match(src, /realpathSync/);

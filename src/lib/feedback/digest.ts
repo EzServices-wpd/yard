@@ -74,7 +74,7 @@ export function digestMarkdown(input: DigestInput, worstN = 10): string {
     const b = facts(bid);
     const tip = builds[bid]?.tip;
     lines.push(`${i + 1}. ${name(bid)}${b?.size ? ` · ${md(b.size)}` : ""}${b?.family ? ` · ${md(b.family)}` : ""}${tip ? ` · tip ${md(tip)}` : ""} · ${r.down} down, ${r.up} up, ${r.notes.length} note(s), ${r.export} export(s), ${buys(r)} Buy click(s) · \`${bid}\``);
-    for (const n of r.notes.slice(0, 5)) lines.push(`   - ${n.chips.map((c) => CHIP_LABEL[c] ?? c).join(", ") || "note"}${n.note ? `: “${md(n.note)}”` : ""}`);
+    for (const n of r.notes.slice(0, 5)) lines.push(`   - ${n.chips.map((c) => CHIP_LABEL[c] ?? c).join(", ") || "note"}${n.note ? `: ${typed(n.note)}` : ""}`);
   });
   if (worst.length) lines.push("");
 
@@ -84,7 +84,7 @@ export function digestMarkdown(input: DigestInput, worstN = 10): string {
   if (!byChip.size) lines.push("No notes today.", "");
   for (const [c, list] of [...byChip.entries()].sort((a, b) => b[1].length - a[1].length)) {
     lines.push(`### ${CHIP_LABEL[c] ?? c} (${list.length})`);
-    for (const f of list.slice(0, 15)) lines.push(`- ${f.prompt ? typed(f.prompt) : "(no prompt)"}${f.size ? ` · ${md(f.size)}` : ""}${f.note ? `: ${md(f.note)}` : ""}`);
+    for (const f of list.slice(0, 15)) lines.push(`- ${f.prompt ? typed(f.prompt) : "(no prompt)"}${f.size ? ` · ${md(f.size)}` : ""}${f.note ? `: ${typed(f.note)}` : ""}`);
     if (list.length > 15) lines.push(`- … ${list.length - 15} more`);
     lines.push("");
   }

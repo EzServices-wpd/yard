@@ -11,7 +11,7 @@
  * the repo is refused, and this script never opens a GitHub issue. With no store env it says so and exits 2.
  * Reads count against the events command budget (ev:cmds), not the Ideas log.
  */
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { digestMarkdown, type DigestInput } from "../src/lib/feedback/digest";
@@ -24,10 +24,25 @@ export const DIGEST_REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
  * True when `out` is outside the repo after symlinks are followed. A path inside the repo, the repo
  * itself, or a symlink whose target is inside the repo, is refused.
  */
+/** A symlink whose target does not exist. lstat sees the link; realpath throws. */
+function danglingSymlink(p: string): boolean {
+  let link = false;
+  try { link = lstatSync(p).isSymbolicLink(); } catch { return false; }
+  if (!link) return false;
+  try { realpathSync(p); return false; } catch { return true; }
+}
+
 export function digestOutAllowed(out: string, repoRoot = DIGEST_REPO_ROOT): boolean {
   const abs = resolve(out);
   let root: string;
   try { root = realpathSync(resolve(repoRoot)); } catch { root = resolve(repoRoot); }
+  let walk = abs;
+  for (;;) {
+    if (danglingSymlink(walk)) return false;
+    const parent = dirname(walk);
+    if (parent === walk) break;
+    walk = parent;
+  }
   const missing: string[] = [];
   let cursor = abs;
   while (!existsSync(cursor)) {

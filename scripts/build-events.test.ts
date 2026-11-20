@@ -136,11 +136,28 @@ test("over the day cap a fresh instance spends one command and does not write th
   assert.equal(f.calls.filter((c) => c[0] === "EVAL").length, 1);
   assert.equal(f.calls.some((c) => c[0] === "HINCRBY"), false);
   assert.equal(f.kv.get(K.evCount("2026-11-19")), EV_DAY_CAP);
-  assert.equal(f.kv.get(K.evCmds("2026-11")), 1, "the refusal itself is counted");
+  assert.equal(f.kv.get(K.evCmds("2026-11")) ?? 0, 0, "a day-cap refusal does not spend the month budget");
   const s2 = new ShopStore(f.pipe);
   assert.equal(await s2.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", at)!, at), "limited");
   assert.equal(f.kv.get(K.evCount("2026-11-19")), EV_DAY_CAP);
   assert.equal([...f.kv.keys()].some((k) => String(k).startsWith("ideas:cmds")), false);
+});
+
+test("a warm instance that has seen the month spent refuses the rest with at most one store command", async () => {
+  const calls: (string | number)[][] = [];
+  // Answers the real EVAL script. Does not call applyEventGate.
+  const pipe = async (cmds: (string | number)[][]) => cmds.map((c) => {
+    calls.push(c);
+    assert.equal(c[0], "EVAL");
+    assert.equal(c[1], EVENT_GATE_LUA);
+    return [0, EV_MONTH_BUDGET, 0];
+  });
+  const s = new ShopStore(pipe);
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T12:00:00Z");
+  const ev = cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!;
+  for (let i = 0; i < 100; i++) assert.equal(await s.addEvent(ev, at), "limited");
+  assert.ok(calls.length <= 1, `one warm instance sent ${calls.length} store commands`);
 });
 
 test("with the month budget already spent, 100 fresh instances save nothing and leave ev:cmds unchanged", async () => {
@@ -199,6 +216,8 @@ test("cross-origin and text/plain are not events; a test page sends nothing", ()
   assert.equal(eventKeyScope({}), "");
   assert.equal(eventKeyScope({ VERCEL_ENV: "production" }), "");
   assert.equal(eventKeyScope({ VERCEL_ENV: "preview" }), "preview:", "preview events do not spend the production counters");
+  assert.equal(K.build("b0123456789abcde"), "bld:b0123456789abcde");
+  assert.equal(K.build("b0123456789abcde", "preview:"), "bld:preview:b0123456789abcde");
 });
 
 test("feedback carries the build id when it has one, and nothing new when it does not", () => {
