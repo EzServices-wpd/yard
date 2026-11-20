@@ -1,4 +1,5 @@
 import { seedIds } from "../stableId";
+import { carriesBind, classAxisBind } from "./classAxisBind";
 import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
@@ -444,7 +445,12 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     const ratio = idDepth === 1 && !args[2] && !args[3]?.sizeOverride ? suspensionRatioRefusal(typedAtIntake) : null;
     if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
-    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(generateSeeded(...args)), args[0]) : generateSeeded(...args);
+    // 5b: a size typed with no axis binds the class's own axes (lead axis alone, the plan for a pair).
+    const first = generateSeeded(...args);
+    const axisBind = idDepth === 1 ? classAxisBind(typedAtIntake, first) : null;
+    const rebound = axisBind?.prompts.map((q) => generateSeeded(q, ...(args.slice(1) as []))).find((p) => carriesBind(p, axisBind));
+    const seeded = rebound ? { ...rebound, prompt: first.prompt } : first;
+    const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(seeded), args[0]) : seeded;
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
     // Row 438: a typed rod count over the finished bays is built as double hang, trimmed to the count.
@@ -1330,7 +1336,7 @@ function placeHeldProduct(prompt: string): YardProject | null {
   if (!held) {
     // Many of X (a count or a plural: "12 bottles", "jars", "my shoes") is storage furniture for X.
     if (holdsMany(phrase)) return null;
-    // "<X> shelf / rack" (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
+    // ‘<X> shelf / rack’ (no "for") names shelving for X — a jar shelf, a corner shelf — unless the
     // class table knows X as one object (microwave shelf). Stand / holder / riser / cradle / cart keep X.
     if (!/\bfor\b/.test(lower) && !/\b(stands?|holders?|cradles?|risers?|carts?)\b/.test(lower)) return null;
   }
