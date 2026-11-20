@@ -185,20 +185,42 @@ function lumberNominal(a: number, b: number, c: number | undefined, unit: string
 }
 
 /**
+ * A bare partner shares a feet unit only when reading it as inches is not a real size for the class:
+ * under 7 inches (a 2" desk, a 2" workbench). 7–12 is a normal shelf, bench, bookcase, or console
+ * depth and stays inches ("3 ft by 12 deep" is 36 × 12, not 36 × 144).
+ */
+export function bareSharesFeet(n: number): boolean {
+  return n > 0 && n < 7;
+}
+
+/**
  * Inches for one number of a pair. A feet unit on this number is feet. An inch unit is inches.
- * A bare partner takes the other number's feet unit only when it is 12 or under (2 by 1.5 ft is
- * 24 × 18). A larger bare partner is already inches (4 ft by 18 is 48 × 18, not 48 × 216).
+ * A bare partner takes the other number's feet unit only when `bareSharesFeet` says the inch
+ * reading is implausible. A larger bare partner is already inches (4 ft by 18 is 48 × 18).
  */
 export function pairInches(n: number, unit: string, other: string, feet: boolean): number {
   if (/ft|feet|foot|'/i.test(unit)) return n * 12;
   if (/in(?:ch(?:es)?)?|"/i.test(unit)) return n;
-  if (!unit && /ft|feet|foot|'/i.test(other)) return n <= 12 ? n * 12 : n;
+  if (!unit && /ft|feet|foot|'/i.test(other)) return bareSharesFeet(n) ? n * 12 : n;
   return feet ? n * 12 : n;
 }
 
 /**
- * Depth the class fills in when nobody typed one. An opening's second number is the height only
- * when it is taller than this; a shallower second number is the depth, and the class height stays.
+ * Shortest height at which an opening's second number is the height. Shorter than this, it is the
+ * depth (a 14" or 20" bookcase nook) and the class height stays. A closet's 60–80 is tall enough.
+ */
+export function classMinHeightIn(prompt: string): number {
+  const p = prompt.toLowerCase();
+  if (/\bbook(?:case|shelf)\b/.test(p)) return 36;
+  if (/\bdresser\b/.test(p)) return 36;
+  if (/\bshel(?:f|ves)\b/.test(p) && !/\b(?:wardrobe|armoire)\b/.test(p)) return 18;
+  if (/\b(?:closet|wardrobe|pantry|armoire)\b/.test(p)) return 48;
+  if (/\bvanity\b/.test(p)) return 34;
+  return 30;
+}
+
+/**
+ * Depth the class fills in when nobody typed one.
  */
 export function classDepthIn(prompt: string): number {
   const p = prompt.toLowerCase();
@@ -256,9 +278,9 @@ export function placePair(prompt: string): PlacePair | null {
     const other = pairInches(b, unitB, unitA, feet);
     if (!(width > 0 && width <= 600 && other > 0 && other <= 600)) continue;
     const resolved: PlaceKind = kind ?? "surface";
-    // A shallow opening pair is a footprint (30 by 12 nook → 12 deep, class height). A second
-    // number taller than the class depth is the opening's height (30 by 80 closet → 80 tall).
-    const tallOpening = resolved === "opening" && other > classDepthIn(text);
+    // The second number is the opening's height only when it is at least the class's minimum
+    // height (30 by 80 closet → 80 tall). A shorter second number is the depth (30 by 14 nook).
+    const tallOpening = resolved === "opening" && other >= classMinHeightIn(text);
     return { kind: resolved, width, other, otherAxis: tallOpening ? "height" : "depth" };
   }
   return null;

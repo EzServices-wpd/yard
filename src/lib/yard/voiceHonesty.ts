@@ -3,7 +3,7 @@
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
 import { feetLengthAt, releaseReads } from "./lengthReader";
-import { placePair } from "./sizePhrases";
+import { bareSharesFeet, placePair } from "./sizePhrases";
 import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
@@ -977,9 +977,9 @@ export function normalizeUserPrompt(prompt: string): string {
     const keepFeet = (whole: string, offset: number) => asRelease || feetLengthAt(whole, offset);
     // "2x4x8 bench" names the stock (a 2×4, 8 ft long) — not a 2" × 4" × 8" piece of furniture.
     s = s.replace(/\b([12])\s*[x×]\s*(2|3|4|6|8|10|12)\s*[x×]\s*(6|8|10|12|14|16)\b(?!\s*(?:in\b|inch|"|[x×.]|\d))(?:\s*(?:ft|feet|foot|')\b)?/gi, "$1x$2");
-    // Any size pair, not only a place: a bare partner shares a feet unit only when it is 12 or under
-    // ("2 by 1.5 ft" is 24 × 18). A larger bare number is already inches ("6 ft by 30" is 72 × 30,
-    // not 72 × 360). (?![\d.]) keeps a decimal whole ("18.5", "30.5").
+    // Any house size pair, not only a place. A bare partner shares the feet unit only when an inch
+    // reading is implausible (under 7: "8 ft by 2" workbench is 96 × 24). A bare 7–12 stays inches
+    // ("3 ft by 12 deep" is 36 × 12). (?![\d.]) keeps a decimal whole ("18.5", "30.5").
     s = s.replace(
       /(\d+(?:\.\d+)?)(?![\d.])(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(?![\d.])(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
       (all, a, ua, sep, b, ub, offset: number, whole: string) => {
@@ -991,7 +991,7 @@ export function normalizeUserPrompt(prompt: string): string {
         const inches = (n: string, hasFeet: boolean) => {
           const v = parseFloat(n);
           if (hasFeet) return v * 12;
-          return v <= 12 ? v * 12 : v;
+          return bareSharesFeet(v) ? v * 12 : v;
         };
         return `${inches(a, feetA)} inch ${sep} ${inches(b, feetB)} inch`;
       },
