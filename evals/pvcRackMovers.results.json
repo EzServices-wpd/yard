@@ -1,6 +1,6 @@
 {
   "release": "645a038664c94050467197a13ade2e8798933995",
-  "prompts": 861,
+  "prompts": 881,
   "movers": 339,
   "rows": [
     {
@@ -5755,6 +5755,380 @@
       "omitted": []
     },
     {
+      "prompt": "Spice rack 18\" × 24\" × 4\"",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 79.32,
+        "pieces": 9,
+        "hud": [
+          18,
+          24,
+          4
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 79.32,
+        "pieces": 9,
+        "hud": [
+          18,
+          24,
+          4
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 3/4\" Plywood 4×8",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack 18\" × 24\" × 4\"",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack 18\" × 24\" × 4\" from pvc",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc Spice rack 18\" × 24\" × 4\"",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe Spice rack 18\" × 24\" × 4\"",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack 30\" × 24\" × 4\"",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 79.32,
+        "pieces": 9,
+        "hud": [
+          30,
+          24,
+          4
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 79.32,
+        "pieces": 9,
+        "hud": [
+          30,
+          24,
+          4
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 3/4\" Plywood 4×8",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack 30\" × 24\" × 4\"",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack 30\" × 24\" × 4\" from pvc",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc Spice rack 30\" × 24\" × 4\"",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe Spice rack 30\" × 24\" × 4\"",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 4\" × 24\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          24,
+          8
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
       "prompt": "Spice rack 36\" × 24\" × 4\"",
       "material": null,
       "before": {
@@ -5929,6 +6303,380 @@
         "buy": "3×3/4\" Schedule 40 PVC Pipe=17.28; 1×PVC solvent cement=7.48",
         "titles": [
           "Read this Spice rack 36\" × 4\" × 24\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 70.85,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 1×#8 x 1-1/4\" wood screws=8.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 70.85,
+        "pieces": 9,
+        "hud": [
+          18,
+          4,
+          24
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 1×#8 x 1-1/4\" wood screws=8.47; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 3/4\" Plywood 4×8",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed) from pvc",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": null,
+      "before": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 18\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          18,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 18\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 79.32,
+        "pieces": 9,
+        "hud": [
+          30,
+          4,
+          24
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 79.32,
+        "pieces": 9,
+        "hud": [
+          30,
+          4,
+          24
+        ],
+        "buy": "1×3/4\" Plywood 4×8=38.43; 2×#8 x 1-1/4\" wood screws=16.94; 1×Wood glue=4.98; 1×GRK RSS #9 x 3-1/8 structural screws=18.97",
+        "titles": [
+          "Confirm the hang before the first cut",
+          "Cut the 3/4\" Plywood 4×8",
+          "Stand the rack",
+          "Set the shelves",
+          "Glue the jar lips",
+          "Hang it on studs"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed) from pvc",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 24\" × 4\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 2 pieces",
+          "Run the rails — 2 pieces",
+          "Place the arm 1 — 2 pieces",
+          "Place the arm 2 — 2 pieces",
+          "Place the arm 3 — 2 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": null,
+      "before": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48"
+      },
+      "after": {
+        "name": "Spice rack 30\" × 24\" × 4\"",
+        "cost": 19,
+        "pieces": 10,
+        "hud": [
+          30,
+          6,
+          24
+        ],
+        "buy": "2×3/4\" Schedule 40 PVC Pipe=11.52; 1×PVC solvent cement=7.48",
+        "titles": [
+          "Read this Spice rack 30\" × 24\" × 4\" before you cut",
           "Lay out the footprint on the bench",
           "Cut every marked length",
           "Stand the sides — 2 pieces",
