@@ -446,12 +446,27 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
     // Craft sticks are a default only for a model. A build that came out in craft stock with none typed, for
-    // something load-bearing, outdoors or sized for a person, is built again in real stock (¾" plywood).
+    // something load-bearing, outdoors or sized for a person, is built again in real stock (boards outdoors,
+    // ¾" plywood indoors). A sheet that would also change the build's kind is built in 1×4 boards instead.
     const craftBuilt = (p: YardProject) => /^(?:popsicle|craft|toothpick|bamboo-skewer|straw|balsa|cardboard|chipboard)/.test(p.primaryMaterialId ?? "");
     const seeded0 = generateSeeded(...args);
+    // A sheet rebuild that comes back as a closed shell of a different kind changed the form, not the stock
+    // (a stick bicycle routed into a plywood shell). Boards keep that kind. A shell of the same kind stays
+    // the sheet the stock rule asked for (an armoire keeps its typed width).
+    const closedShell = (p: YardProject) => (p.notes ?? []).some((n) => /closed shell of the typed envelope/i.test(n));
+    const liftStock = () => {
+      const prefer = realStockFor(typedAtIntake);
+      const inStock = (stock: string) => generateSeeded(typedAtIntake, stock, ...(args.slice(2) as []));
+      const sheet = inStock(prefer);
+      if (prefer !== "lumber-1x4-8" && closedShell(sheet) && !closedShell(seeded0) && sheet.kind !== seeded0.kind) {
+        const boards = inStock("lumber-1x4-8");
+        if (!closedShell(boards) && boards.kind === seeded0.kind) return boards;
+      }
+      return sheet;
+    };
     const seeded = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake)
       ? withinStatedHeight({
-          ...generateSeeded(typedAtIntake, realStockFor(typedAtIntake), ...(args.slice(2) as [])),
+          ...liftStock(),
           craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
         })
       : seeded0;
