@@ -12,8 +12,16 @@ import { buildPlan, longerLumber } from "./report";
 import { getCatalogItem } from "./catalog";
 import { boardNominal, boardPickOf, boardPriceUsd, checkedSpeciesBoardUsd, pickNearestPricedLength, pricedBoardId, type BoardPick } from "./pricedStock";
 
-/** Sections with no priced length and no checked species listing. Prices that were once guessed are not restored. */
-export const UNPRICED_BOARD_IDS = ["lumber-1x6-8", "lumber-1x8-8", "lumber-1x10-8", "lumber-1x12-8"] as const;
+/** Sections with no priced length and no checked listing. 1×6, 1×8, 1×10 and 1×12 have listings, so this set is empty. */
+export const UNPRICED_BOARD_IDS: readonly string[] = [];
+
+/** Cheapest checked listing for the boards that had no catalog price. Home Depot when both stores list one. */
+const LISTED_BOARD_USD: Record<string, number> = {
+  "lumber-1x6-8": 14.68,
+  "lumber-1x8-8": 20.48,
+  "lumber-1x10-8": 24.23,
+  "lumber-1x12-8": 30.73,
+};
 
 const lumberIds = () =>
   FORGE_CATALOG.filter((c) => c.category === "lumber" && c.formFactor === "board").map((c) => c.id);
@@ -111,13 +119,14 @@ describe("reported board prompts and other widths", () => {
     assert.ok((row!.estimatedCost ?? 0) > 0 && plan.totals.estCostUsd > row!.estimatedCost!);
   });
 
-  it("a checked cedar 1x6 price is the listing, and a pine 1x board with no listing stays unpriced", () => {
+  it("a checked cedar 1x6 price is the listing, and pine 1x6, 1x8, 1x10 and 1x12 use their checked listings", () => {
     const sandbox = buildPlan(generateFromPrompt("sandbox cover 4 by 4")).bom.find((b) => b.catalogId === "lumber-1x6-8");
     assert.equal(sandbox?.estimatedCost, 79.92);
     for (const q of ["carry crate 1x6", "1x6 planter", "tote", "caddy", "bookshelf 36x12x72 pine 1x10", "bookcase from 1x12"]) {
-      const row = lumberRows(q).rows.find((b) => UNPRICED_BOARD_IDS.includes(b.catalogId as (typeof UNPRICED_BOARD_IDS)[number]));
-      assert.ok(row, q);
-      assert.ok(row!.estimatedCost == null || row!.estimatedCost === 0, `${q} invented ${row!.estimatedCost}`);
+      const row = lumberRows(q).rows.find((b) => b.catalogId != null && LISTED_BOARD_USD[b.catalogId] != null);
+      assert.ok(row?.catalogId, q);
+      const want = Math.round(LISTED_BOARD_USD[row!.catalogId!] * row!.quantity * 100) / 100;
+      assert.equal(Math.round((row!.estimatedCost ?? 0) * 100) / 100, want, `${q} ${row!.estimatedCost}`);
     }
   });
 
