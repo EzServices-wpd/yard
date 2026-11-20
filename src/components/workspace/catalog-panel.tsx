@@ -99,7 +99,7 @@ export function CatalogPanel() {
           }}
           placeholder="2×4 scraps 5 inches, Dasani, oak…"
           aria-label="Search stock"
-          className="mt-3 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none placeholder:text-faint"
+          className="mt-3 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/20 placeholder:text-faint focus:ring-2"
         />
         {joins.length > 0 && (
           <div className="mt-3">
