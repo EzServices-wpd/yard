@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { BID, buildIdOf } from "../src/lib/feedback/buildId";
 import { cleanEvent } from "../src/lib/feedback/events";
 import { cleanFeedback } from "../src/lib/feedback/shop";
@@ -64,6 +65,38 @@ test("events are counted per build and capped hard per day before any write", as
   for (let i = 0; i < EV_INSTANCE_PER_MIN; i++) await s2.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", next)!, next);
   assert.equal(await s2.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", next)!, next), "limited");
   assert.equal(await new ShopStore(null).addEvent(cleanEvent({ bid, ev: "export" }, "")!), "off");
+});
+
+test("a burst of 2,000 events stores nothing past the daily cap, and no personal detail", async () => {
+  const f = fakeRedis();
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T12:00:00Z");
+  let saved = 0, limited = 0;
+  // Each call is its own instance (its own minute window) on one shared store, the way a burst hits many servers.
+  for (let i = 0; i < 2000; i++) {
+    const s = new ShopStore(f.pipe);
+    const raw = { bid, ev: "buy", store: "homedepot", ip: "203.0.113.4", ua: "Mozilla/5.0", cookie: "sid=secret", email: "jane@doe.com" };
+    const out = await s.addEvent(cleanEvent(raw, "", at)!, at);
+    if (out === "saved") saved++;
+    else if (out === "limited") limited++;
+    else assert.fail(out);
+  }
+  assert.equal(saved, EV_DAY_CAP);
+  assert.equal(limited, 2000 - EV_DAY_CAP);
+  const hash = f.kv.get("ev:2026-11-19") as Record<string, number>;
+  assert.equal(Object.values(hash).reduce((a, b) => a + b, 0), EV_DAY_CAP, "the event hash stops at the cap");
+  const blob = JSON.stringify([...f.kv.entries()]);
+  assert.doesNotMatch(blob, /jane@doe\.com|203\.0\.113\.4|Mozilla|sid=secret/);
+  const poisoned = cleanEvent({ bid, ev: "build", prompt: "bookcase for jane@doe.com call 555-123-4567", size: "36x12x84", family: "closet", ip: "203.0.113.4" }, "abcdef12", at)!;
+  assert.equal(poisoned.build!.prompt, null);
+  assert.deepEqual(Object.keys(poisoned).sort(), ["at", "bid", "build", "detail", "ev"]);
+});
+
+test("the thumbs control stays off the page while its wording is still a draft", () => {
+  const src = readFileSync(new URL("../src/components/workspace/shop-feedback.tsx", import.meta.url), "utf8");
+  assert.match(src, /export const THUMBS_ENABLED: boolean = false/);
+  assert.match(src, /\{THUMBS_ENABLED \? \(/);
+  assert.match(src, /THUMBS_DRAFT/);
 });
 
 test("feedback carries the build id when it has one, and nothing new when it does not", () => {
