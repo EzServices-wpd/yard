@@ -106,7 +106,8 @@ test("a lumber nominal in front of a noun is still stock, not a place", () => {
   assert.equal(placePair("1x6x8 toolbox"), null);
   assert.equal(tool.project.name, "Toolbox");
   assert.deepEqual([tool.o.width, tool.o.height, tool.o.depth], [40, 34, 22]);
-  assert.equal(tool.price.toFixed(2), "13.45");
+  // 13 unpriced boards used to leave only the screws and glue ($13.45). Release now lists the 1×6 at $14.68, so 13 boards plus that hardware is $204.29.
+  assert.equal(tool.price.toFixed(2), "204.29");
   assert.equal(tool.pieces, 6);
 
   const bird = box("1x6x6 birdhouse");
