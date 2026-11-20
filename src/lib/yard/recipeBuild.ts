@@ -3,7 +3,8 @@
  * size, a typed count repeats the counted parts, and the build passes the standard checks (load path,
  * no closed shell, typed size and count honored, defining roles present) before it is used. A lookup
  * recipe that fails is retried once with the failures fed back. It is saved and used only when the eval gate
- * grades it strictly higher than the deterministic build and it is not a stand-in; otherwise the engine's build stays.
+ * grades it strictly higher than the deterministic build, it is not a stand-in, and its notes, parts and Buy
+ * agree; otherwise the engine's build stays.
  */
 import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
@@ -1837,8 +1838,8 @@ export function roughNote(title: string, failures: string[]): string {
 /**
  * The build-and-validate loop: ask the lookup for a recipe, build it, check it; on a failure ask once
  * more with the failures fed back. A recipe is remembered and returned only when the eval gate grades it
- * strictly higher than the deterministic build for this prompt and it is not a stand-in. Anything else leaves
- * the engine's own build in place (no rough stand-in, nothing saved).
+ * strictly higher than the deterministic build for this prompt, it is not a stand-in, and its notes, parts and
+ * Buy agree. Anything else leaves the engine's own build in place (no rough stand-in, nothing saved).
  */
 export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () => YardProject, materialOverride?: string): Promise<LookupOutcome> {
   let feedback: string[] = [];

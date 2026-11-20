@@ -1,15 +1,16 @@
 /**
  * The keep rule, not a list of prompts: a learned build is saved and used only when the eval gate grades it
- * strictly higher than the deterministic build, and the honest checks do not mark it as a stand-in.
+ * strictly higher than the deterministic build, the honest checks do not mark it as a stand-in, and the
+ * recipe's own notes, parts and Buy agree.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { findRecipe } from "./recipes.ts";
-import { lookupAndBuild, roughBlock } from "./recipeBuild.ts";
-import { demandsFor, engineMayShow, mayKeepLearned, solidBlockHits, standInHits } from "./learnedKeep.ts";
-import type { YardProject } from "./types.ts";
+import { buildRecipe, lookupAndBuild, roughBlock } from "./recipeBuild.ts";
+import { declarationHits, demandsFor, engineMayShow, mayKeepLearned, solidBlockHits, standInHits } from "./learnedKeep.ts";
+import type { BuildPlan, YardProject } from "./types.ts";
 
 const donor = () => generateFromPrompt("bookcase 36 wide");
 
@@ -132,5 +133,82 @@ describe("a learned recipe is kept only when the gate grades it strictly higher 
     }, { prompt: q, demands: await demandsFor(q), demandsFrom: entry.demandsFrom }, p, plan, q);
     assert.equal(mine.grade, row.grade);
     assert.deepEqual(mine.classes, row.classes);
+  });
+});
+
+const leg = (name: string, materialId = "lumber-2x4-8") => ({ ...donor().panels[0], id: name, name, materialId, size: { width: 3.5, height: 16, depth: 1.5 } });
+
+function said(notes: string[], panels: YardProject["panels"], bom: BuildPlan["bom"] = [], cutList: BuildPlan["cutList"] = []): string[] {
+  const project = { ...donor(), notes, panels } as YardProject;
+  const plan = { ...buildPlan(donor()), instructions: [], bom, cutList };
+  return declarationHits(project, plan);
+}
+
+describe("a learned recipe is kept only when its notes, parts and Buy agree", () => {
+  it("a stated part count that the build does not have is not kept", async () => {
+    const q = "mailbox post";
+    const recipe = {
+      key: "mailbox-post-counted", synonyms: [], version: 1, trust: "candidate" as const, title: "Mailbox post", outdoor: true,
+      size: { width: 36, height: 36, depth: 36 }, defining: ["post", "slat"], notes: ["Typically thirteen wooden slats spaced along the length"],
+      parts: [
+        { role: "post", name: "Post", box: [0, 0, 0, 0.1, 1, 0.1] as [number, number, number, number, number, number], kind: "member" as const, repeat: "between" as const },
+        { role: "slat", name: "Back slat", box: [0, 0.1, 0, 1, 0.8, 0.05] as [number, number, number, number, number, number], kind: "panel" as const, repeat: "each" as const, on: ["Post"] },
+      ],
+    };
+    const built = buildRecipe(recipe, q);
+    assert.match(declarationHits(built.project, buildPlan(built.project)).join(" "), /13/);
+    assert.equal(await mayKeepLearned(q, built.project), false);
+  });
+
+  it("four named legs, and a pair of hinges, agree with those counts", () => {
+    const panels = ["Front left leg", "Front right leg", "Rear left leg", "Rear right leg"].map((n) => leg(n));
+    panels.push(leg("Left butt hinge", "hardware"), leg("Right butt hinge", "hardware"));
+    assert.deepEqual(said(["Four corner legs and a pair of butt hinges."], panels), []);
+  });
+
+  it("a note that says floorless and wire mesh is not kept when a solid floor is built and mesh is not bought", () => {
+    const hits = said(
+      ["Open wire-mesh sides and a floorless design."],
+      [leg("Floor", "plywood-3-4-4x8"), leg("Post")],
+      [{ name: "2×4 Stud (8 ft)", quantity: 4, unit: "pcs", catalogId: "lumber-2x4-8" }],
+    );
+    assert.match(hits.join(" "), /mesh/);
+    assert.match(hits.join(" "), /no floor/);
+  });
+
+  it("a declared movement or species is kept only when the Buy sells it", () => {
+    const wood = [leg("Case", "plywood-3-4-2x4")];
+    assert.match(said(["A quartz movement in a wood case."], wood, [{ name: "Hanger", quantity: 1, unit: "pcs" }]).join(" "), /quartz/);
+    assert.match(said(["Edge-glued maple or similar hardwood strips."], [leg("Hardwood slab", "plywood-3-4-4x8")], [{ name: '3/4" Plywood 4×8', quantity: 1, unit: "sheet", catalogId: "plywood-3-4-4x8" }]).join(" "), /maple|hardwood/);
+    assert.deepEqual(said(["Frame is cedar or pressure-treated."], [leg("Post", "lumber-2x4-8")], [{ name: "2×4 pressure-treated (8 ft)", quantity: 2, unit: "pcs", catalogId: "lumber-2x4-8" }]), []);
+    assert.match(said(["A cedar or redwood frame."], [leg("Post", "plywood-3-4-4x8")], [{ name: '3/4" Plywood 4×8', quantity: 1, unit: "sheet", catalogId: "plywood-3-4-4x8" }]).join(" "), /cedar/);
+    assert.deepEqual(said(["The lid is glazed."], [leg("Lid", "acrylic-sheet")], [{ name: "Clear acrylic sheet", quantity: 1, unit: "sheet", catalogId: "acrylic-sheet" }]), []);
+    assert.deepEqual(said(["No mesh on this one."], [leg("Post")]), []);
+  });
+
+  it("a stated thickness has to be the part's thickness", () => {
+    const board = (name: string, thickness: number) => ({ ...donor().panels[0], id: name, name, materialId: "plywood-3-4-4x8", size: { width: 18, height: thickness, depth: 12 } });
+    assert.deepEqual(said(["All panels use 3/4 inch thick stock."], [board("Side", 0.75)]), []);
+    assert.match(said(["Typical 1.5 in thick slab."], [board("Slab", 0.75)]).join(" "), /1\.5/);
+  });
+
+  it("the Buy is not a full sheet or a stack of sheets for a small part, and a part is not itself a Buy line", () => {
+    const sheet = (qty: number, id: string, name: string, cut: { l: number; w: number; t: number }) => said(
+      [],
+      [leg("Part", id)],
+      [{ name, quantity: qty, unit: qty === 1 ? "sheet" : "sheets", catalogId: id }],
+      [{ id, name: "Part", quantity: 1, lengthIn: cut.l, widthIn: cut.w, thicknessIn: cut.t, material: name }],
+    );
+    assert.match(sheet(1, "plywood-3-4-4x8", '3/4" Plywood 4×8', { l: 2.4, w: 2.4, t: 0.375 }).join(" "), /full sheet/);
+    assert.match(sheet(21, "acrylic-sheet", "Clear acrylic sheet", { l: 46, w: 35, t: 0.08 }).join(" "), /21 sheets/);
+    assert.deepEqual(sheet(1, "plywood-3-4-4x8", '3/4" Plywood 4×8', { l: 36, w: 36, t: 0.75 }), []);
+    assert.deepEqual(sheet(1, "plywood-3-4-2x4", '3/4" Plywood Project Panel 2×4', { l: 10, w: 10, t: 0.75 }), []);
+    const named = said(
+      [],
+      [leg("Rear wheel stop 1"), leg("Left vesa mount 1", "hardware"), leg("Right vesa mount 1", "hardware")],
+      [{ name: "Rear wheel stop 1", quantity: 1, unit: "pcs" }, { name: "Vesa mounts", quantity: 2, unit: "pcs" }],
+    );
+    assert.match(named.join(" "), /Rear wheel stop 1/);
+    assert.equal(named.some((h) => /vesa/i.test(h)), false);
   });
 });
