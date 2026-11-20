@@ -31,14 +31,14 @@ describe("honesty leftovers change the plan", () => {
     assert.doesNotMatch(text, /shoe bay/i);
   });
 
-  it("an unpriced board adds nothing to the total", () => {
+  it("a 1x6 planter board is the checked listing, and the total includes it", () => {
     const plan = buildPlan(generateFromPrompt("1x6 planter"));
     const row = plan.bom.find((b) => /1×6|1x6/i.test(b.name));
     assert.ok(row, "missing 1x6 row");
-    assert.ok(row!.estimatedCost == null || row!.estimatedCost === 0);
+    assert.equal(Math.round((row!.estimatedCost ?? 0) * 100) / 100, Math.round(14.68 * row!.quantity * 100) / 100);
     const priced = plan.bom.filter((b) => (b.estimatedCost ?? 0) > 0).reduce((s, b) => s + (b.estimatedCost ?? 0), 0);
     assert.ok(Math.abs(plan.totals.estCostUsd - priced) < 0.05);
-    assert.match(plan.bom.map((b) => `${b.name} ${b.notes ?? ""}`).join("\n") + "plus unpriced items", /plus unpriced items/i);
+    assert.doesNotMatch([row!.name, row!.notes ?? ""].join(" "), /no price/i);
   });
 
   it("a plywood boat is a hull, not a closed crate", () => {

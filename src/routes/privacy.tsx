@@ -24,6 +24,8 @@ export const Route = createFileRoute("/privacy")({
       },
       { property: "og:description", content: "How Yard uses cookies, analytics, affiliate links, and the prompts and feedback you send." },
       { property: "og:title", content: "Privacy · Yard" },
+      { name: "twitter:title", content: "Privacy · Yard" },
+      { name: "twitter:description", content: "How Yard uses cookies, analytics, affiliate links, and the prompts and feedback you send." },
       { property: "og:url", content: `https://${host}/privacy` },
     ],
     links: [{ rel: "canonical", href: `https://${host}/privacy` }],
