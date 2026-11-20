@@ -828,6 +828,22 @@ function instanceTalk(project: YardProject, ids: string[], craft: boolean, out: 
 
 // ───────────────────────── the pass ─────────────────────────
 
+/**
+ * A placement fact is said once for one subject. A later step may omit a sentence only when this same
+ * subject already said that exact sentence. Another subject's copy stays, even when the words match.
+ * The sentence itself is never rewritten: a flush list is not shortened and a fact with no earlier copy stays.
+ */
+export function keepSubjectFacts(already: ReadonlySet<string>, sentences: string[]): { kept: string[]; said: Set<string> } {
+  const said = new Set(already);
+  const kept: string[] = [];
+  for (const sentence of sentences) {
+    if (said.has(sentence)) continue;
+    said.add(sentence);
+    kept.push(sentence);
+  }
+  return { kept, said };
+}
+
 /** Placement records per step, from the geometry. Same records feed text, arrows, guards. */
 export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutList: BuildPlan["cutList"], craft = false): StepPlacement[] {
   const panels = project.panels;
@@ -843,6 +859,17 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
   const placed = new Set<string>();
   const byId = new Map(panels.map((p) => [p.id, p]));
   const chain = rotorChain(panels);
+  // Keyed by the parts this talk locates, and kept across steps. Identical words for a different part stay.
+  const saidFor = new Map<string, Set<string>>();
+  const speak = (ids: string[], talk: () => void, out: StepPlacement) => {
+    const key = [...ids].sort().join("\0");
+    const before = out.sentences.length;
+    talk();
+    const added = out.sentences.slice(before);
+    const next = keepSubjectFacts(saidFor.get(key) ?? new Set(), added);
+    saidFor.set(key, next.said);
+    if (next.kept.length !== added.length) out.sentences = [...out.sentences.slice(0, before), ...next.kept];
+  };
   return steps.map((s, i) => {
     const out: StepPlacement = { sentences: [], measures: [], arrows: [], positioned: [], hardware: [] };
     const st = sp[i];
@@ -862,12 +889,12 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       }
       return [...g.values()];
     };
-    for (const g of groups("horizontal")) horizontalTalk(ctx, g, placed, s, out);
-    for (const g of groups("rail")) railTalk(ctx, g, out);
-    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) dividerTalk(ctx, p, out);
-    for (const p of fresh.filter((q) => q.type === "mirror")) hungTalk(ctx, p, out);
+    for (const g of groups("horizontal")) speak(g.map((p) => p.id), () => horizontalTalk(ctx, g, placed, s, out), out);
+    for (const g of groups("rail")) speak(g.map((p) => p.id), () => railTalk(ctx, g, out), out);
+    for (const p of pos.filter((q) => roles.get(q.id) === "divider")) speak([p.id], () => dividerTalk(ctx, p, out), out);
+    for (const p of fresh.filter((q) => q.type === "mirror")) speak([p.id], () => hungTalk(ctx, p, out), out);
     const brackets = pos.filter((q) => roles.get(q.id) === "bracket");
-    if (brackets.length) bracketTalk(ctx, brackets, out);
+    if (brackets.length) speak(brackets.map((p) => p.id), () => bracketTalk(ctx, brackets, out), out);
     // Hardware: doors, drawers and fronts this step hangs (fresh or already built).
     const inStep = st.ids.map((id) => byId.get(id)).filter((p): p is Panel => !!p);
     const pick = (role: PlaceRole, word: RegExp) => {
@@ -879,23 +906,23 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
     };
     if (/\bhinges?\b/.test(text)) {
       const doors = pick("door", /\bdoors?\b/);
-      if (doors.length) hingeTalk(ctx, doors, s, out);
+      if (doors.length) speak(doors.map((p) => p.id), () => hingeTalk(ctx, doors, s, out), out);
     }
     if (/\bpulls?\b|\bknobs?\b/.test(text)) {
       const fronts = pick("front", /drawer front/);
       const doorsNow = /\bdoors?\b/.test(text) ? pick("door", /\bdoors?\b/) : [];
       const drawers = fronts.length ? [] : /drawer/.test(text) ? pick("drawer", /drawer/) : [];
-      if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) pullTalk(ctx, doorsNow, "door", out);
-      if (fronts.length) pullTalk(ctx, fronts, "drawer front", out);
-      else if (drawers.length) pullTalk(ctx, drawers, "drawer front", out);
+      if (doorsNow.length && /\bhinges?\b|\bdoors?\b/.test(text)) speak(doorsNow.map((p) => p.id), () => pullTalk(ctx, doorsNow, "door", out), out);
+      if (fronts.length) speak(fronts.map((p) => p.id), () => pullTalk(ctx, fronts, "drawer front", out), out);
+      else if (drawers.length) speak(drawers.map((p) => p.id), () => pullTalk(ctx, drawers, "drawer front", out), out);
     }
     if (/drawer fronts?/.test(text)) {
       const fronts = pick("front", /drawer front/);
-      if (fronts.length) frontTalk(ctx, fronts, out);
+      if (fronts.length) speak(fronts.map((p) => p.id), () => frontTalk(ctx, fronts, out), out);
     }
     if (/\bslides?\b/.test(text)) {
       const drawers = pick("drawer", /drawer/);
-      if (drawers.length) slideTalk(ctx, drawers, placed, out);
+      if (drawers.length) speak(drawers.map((p) => p.id), () => slideTalk(ctx, drawers, placed, out), out);
     }
     // One arrow per span (two dividers share the gap between them).
     const key = (m: PlacementArrow) => [m.a, m.b].map((v) => `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`).sort().join("|");
@@ -907,7 +934,7 @@ export function stepPlacements(project: YardProject, steps: AssemblyStep[], cutL
       return true;
     });
     const instIds = st.fresh.filter((id) => !byId.has(id));
-    if (instIds.length) instanceTalk(project, instIds, craft, out);
+    if (instIds.length) speak(instIds, () => instanceTalk(project, instIds, craft, out), out);
     st.fresh.forEach((id) => placed.add(id));
     st.onto.forEach((id) => placed.add(id));
     return out;
