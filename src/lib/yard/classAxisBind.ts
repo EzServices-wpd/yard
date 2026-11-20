@@ -37,6 +37,14 @@ const PART_BEFORE = /\b(?:clear(?:ance)?|gaps?|spacing|spaced|legs?|rails?|slats
 const PART_AFTER = /^\s*\+?\s*(?:apart|each|clear(?:ance)?|gaps?|spacing|between|legs?|shel(?:f|ves)|tiers?|slats?|rails?|drawers?|doors?|cubb(?:y|ies)|on\s+center|o\.?c\.?)\b/i;
 const HELD_BEFORE = /\b(?:for|fits?|fitting|holds?|holding|hold)\s+(?:a|an|the|my|our|two|\d+)?\s*$/i;
 const fmt = (n: number) => `${Math.round(n * 100) / 100}`;
+/**
+ * The length reader takes the preposition in "6 in the corner" as inches. "6 inch" and 6" stay units.
+ * A place phrase is not this rule: #373 owns sizes typed against a place.
+ */
+function inIsPreposition(prompt: string, l: Length): boolean {
+  if (l.unit !== "in" || /inch|["″”]/i.test(l.raw)) return false;
+  return /^\s+(?:the|a|an|my|our|this|that|your)\b/i.test(prompt.slice(l.end));
+}
 
 /** The class's lead axis: its largest default, width first on a tie (the way a front reads). */
 function leadAxis(o: YardProject["overall"]): Axis {
@@ -55,6 +63,7 @@ export function classAxisBind(prompt: string, built: YardProject): ClassAxisBind
   });
   if (tuple && tuple.places.length === 2 && lens.length === 2) {
     const [a, b] = tuple.places;
+    if (inIsPreposition(prompt, a) || inIsPreposition(prompt, b)) return null;
     if (HELD_BEFORE.test(prompt.slice(0, tuple.start)) || HELD_AFTER.test(prompt.slice(tuple.end))) return null;
     if (PART_BEFORE.test(prompt.slice(0, tuple.start)) || PART_AFTER.test(prompt.slice(tuple.end))) return null;
     // Outdoors a bare pair is the footprint in feet ("pergola 12x16", "sandbox 4 by 4", "chicken coop 4 by 6");
@@ -86,6 +95,7 @@ export function classAxisBind(prompt: string, built: YardProject): ClassAxisBind
   }
   if (tuple || lens.length !== 1) return null;
   const [l] = lens;
+  if (inIsPreposition(prompt, l)) return null;
   if (HELD_BEFORE.test(prompt.slice(0, l.start)) || HELD_AFTER.test(prompt.slice(l.end))) return null;
   if (PART_BEFORE.test(prompt.slice(0, l.start)) || PART_AFTER.test(prompt.slice(l.end))) return null;
   if (!(l.inches >= 6 && l.inches <= 240)) return null;

@@ -29,8 +29,10 @@ test("a pair is the plan on a footprint, never a height; a front reads width x h
   assert.equal(o("pergola 12x16").depth, 192);
 });
 
-test("counts, grids and the size of what a build holds never bind an axis: they build as on release", () => {
+test("counts, grids, a place preposition and the size of what a build holds never bind an axis: they build as on release", () => {
   assert.deepEqual(o("media console for a 75 inch TV"), { width: 69, height: 22, depth: 16 });
   assert.deepEqual(o("shelf for a 12 inch record"), { width: 36, height: 29, depth: 14 });
   assert.ok(o("12 washer stack").width < 1, "a bare 12 is a count of washers");
+  // "in the corner" is a preposition. The reader takes that "in" as inches; the shelf stays the class height.
+  assert.equal(o("corner shelf 6 by 6 in the corner of a room").height, 60);
 });
