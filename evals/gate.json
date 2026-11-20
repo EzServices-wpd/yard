@@ -2,10 +2,10 @@
  "note": "Eval gate (scripts/eval-gate.ts): engine-direct, no xAI. grade: fail = no build, head noun not honored, or a floats/miscount/missing-hardware/outdoor-ply invariant (I1/I3/I9/I13); partial = any other invariant or a typed word not honored; pass = clean. points = 2·pass + partial. Canaries are a hard fail, outside the totals.",
  "totals": {
   "prompts": 511,
-  "pass": 383,
+  "pass": 382,
   "partial": 40,
-  "fail": 88,
-  "points": 806,
+  "fail": 89,
+  "points": 804,
   "maxPoints": 1022,
   "honored": 930,
   "checkable": 981,
@@ -2358,10 +2358,10 @@
  "bySource": {
   "eval46": {
    "prompts": 46,
-   "pass": 34,
+   "pass": 33,
    "partial": 4,
-   "fail": 8,
-   "points": 72,
+   "fail": 9,
+   "points": 70,
    "maxPoints": 92,
    "honored": 87,
    "checkable": 88,
@@ -2453,7 +2453,7 @@
   "F12": 14,
   "F17": 14,
   "F3": 11,
-  "H-craft": 9,
+  "H-craft": 10,
   "T-size": 8,
   "F2": 4,
   "F7": 4,
@@ -9400,12 +9400,14 @@
     "eval46"
    ],
    "ids": [],
-   "grade": "pass",
-   "classes": [],
-   "header": "Tractor · 12\" W × 5 7/8\" D × 8 3/16\" H (W, D assumed)",
-   "overall": "12W × 5.875D × 8.1875H",
-   "pieces": 18,
-   "usd": 22.14,
+   "grade": "fail",
+   "classes": [
+    "H-craft"
+   ],
+   "header": "Tractor · 10\" W × 5 1/2\" D × 5 3/16\" H (size assumed)",
+   "overall": "10W × 5.5D × 5.1875H",
+   "pieces": 354,
+   "usd": 21.16,
    "honor": {
     "honored": 1,
     "checkable": 1,
@@ -9419,7 +9421,13 @@
      }
     ]
    },
-   "invariants": []
+   "invariants": [],
+   "honest": [
+    {
+     "cls": "H-craft",
+     "msg": "craft stock (popsicle-standard) on a load-bearing, outdoor or person-sized ask"
+    }
+   ]
   },
   {
    "prompt": "clipper ship",
