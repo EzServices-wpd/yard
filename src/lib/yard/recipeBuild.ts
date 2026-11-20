@@ -1784,7 +1784,8 @@ const PLY = "plywood-3-4-4x8";
 export function roughBlock(prompt: string, like: YardProject): YardProject {
   const noun = prompt.trim().replace(/^\w/, (c) => c.toUpperCase());
   // With no craft cue typed, a craft-stock build (stick cloud, toy) never sets the scale: full-size default, typed sizes win.
-  const craftLike = /popsicle|craft|cardboard|skewer|paper|stick/i.test(like.primaryMaterialId ?? "") && !/popsicle|craft|cardboard|skewer|\btoy\b|model|miniature/i.test(prompt);
+  // A lift out of craft sticks changes the stock, not the scale: the rough block still uses the full-size default.
+  const craftLike = (like.craftLifted || /popsicle|craft|cardboard|skewer|paper|stick/i.test(like.primaryMaterialId ?? "")) && !/popsicle|craft|cardboard|skewer|\btoy\b|model|miniature/i.test(prompt);
   // A kitchen board's block is board scale (18x1.5x12), never furniture scale.
   const board = /\b(?:cutting|chopping|bread|serving|charcuterie|cheese|butcher)\s+board\b/i.test(prompt);
   // A tabletop object sits on a table: its block is never bigger than 24x18x18.
