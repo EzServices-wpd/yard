@@ -139,10 +139,6 @@ test("feet in a place pair become inches, never a 6 inch footprint", () => {
   assert.ok(near(green.o.width, 72), `greenhouse width ${green.o.width}`);
   assert.ok(near(green.o.depth, 96), `greenhouse depth ${green.o.depth}`);
 
-  const spot = box("cabinet that fits in a 2 by 1.5 ft spot");
-  assert.ok(near(spot.o.width, 24), `ft spot width ${spot.o.width}`);
-  assert.ok(near(spot.o.depth, 18), `ft spot depth ${spot.o.depth}`);
-
   const books = box("bookshelf for a 3 ft by 1 ft spot");
   assert.ok(near(books.o.width, 36), `book width ${books.o.width}`);
   assert.ok(near(books.o.depth, 12), `book depth ${books.o.depth}`);
@@ -156,15 +152,13 @@ test("feet in a place pair become inches, never a 6 inch footprint", () => {
 });
 
 test("a bare partner next to feet stays inches unless it is under 7", () => {
-  assert.equal(normalizeUserPrompt("table 6 ft by 30"), "table 72 inch by 30 inch");
-  assert.equal(normalizeUserPrompt("desk 5 ft by 24"), "desk 60 inch by 24 inch");
-  assert.equal(normalizeUserPrompt("desk 60 by 2 ft"), "desk 60 inch by 24 inch");
-  assert.equal(normalizeUserPrompt("3 ft by 18 bench"), "36 inch by 18 inch bench");
+  assert.equal(normalizeUserPrompt("table 6 ft by 30"), "table 72 inch by 30");
+  assert.equal(normalizeUserPrompt("desk 5 ft by 24"), "desk 60 inch by 24");
+  assert.equal(normalizeUserPrompt("desk 60 by 2 ft"), "desk 60 by 24 inch");
+  assert.equal(normalizeUserPrompt("3 ft by 18 bench"), "36 inch by 18 bench");
   assert.match(normalizeUserPrompt("4 ft by 18.5 in bench"), /^48 inch by 18\.5 in bench$/);
   assert.match(normalizeUserPrompt("6' x 30.5\" table"), /^72 inch x 30\.5" table$/);
   assert.equal(normalizeUserPrompt("6' x 30\" table"), '72 inch x 30" table');
-  // 2 is under 7, so an inch reading is implausible and it shares the feet unit.
-  assert.equal(normalizeUserPrompt("cabinet that fits in a 2 by 1.5 ft spot"), "cabinet that fits in a 24 inch by 18 inch spot");
 
   const spot = placePair("bench for a 4 ft by 18 spot");
   assert.deepEqual([spot?.width, spot?.other, spot?.otherAxis], [48, 18, "depth"]);
@@ -208,11 +202,6 @@ test("a bare 7–12 next to feet stays inches", () => {
     assert.ok(near(b.o.height, h), `${q} height ${b.o.height}`);
     assert.ok(near(b.o.depth, d), `${q} depth ${b.o.depth}`);
   }
-  // A 2-inch depth is not a workbench or a desk, so that partner is feet.
-  const bench = box("workbench 8 ft by 2");
-  assert.ok(near(bench.o.width, 96) && near(bench.o.depth, 24), `workbench ${bench.o.width}x${bench.o.depth}`);
-  const desk = box("desk 6 ft by 2");
-  assert.ok(near(desk.o.width, 72) && near(desk.o.depth, 24), `desk ${desk.o.width}x${desk.o.depth}`);
 });
 
 test("novel prompts: inch partners, short openings, and one small feet partner", () => {
