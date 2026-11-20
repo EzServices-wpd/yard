@@ -977,17 +977,23 @@ export function normalizeUserPrompt(prompt: string): string {
     const keepFeet = (whole: string, offset: number) => asRelease || feetLengthAt(whole, offset);
     // "2x4x8 bench" names the stock (a 2×4, 8 ft long) — not a 2" × 4" × 8" piece of furniture.
     s = s.replace(/\b([12])\s*[x×]\s*(2|3|4|6|8|10|12)\s*[x×]\s*(6|8|10|12|14|16)\b(?!\s*(?:in\b|inch|"|[x×.]|\d))(?:\s*(?:ft|feet|foot|')\b)?/gi, "$1x$2");
-    // "2 by 1.5 ft" is one pair. The unit on one number covers the bare partner; leaving that partner
-    // in inches builds a 2 inch cabinet beside an 18 inch depth.
+    // Any size pair, not only a place: a bare partner shares a feet unit only when it is 12 or under
+    // ("2 by 1.5 ft" is 24 × 18). A larger bare number is already inches ("6 ft by 30" is 72 × 30,
+    // not 72 × 360). (?![\d.]) keeps a decimal whole ("18.5", "30.5").
     s = s.replace(
-      /(\d+(?:\.\d+)?)(?!\d)(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(?!\d)(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
+      /(\d+(?:\.\d+)?)(?![\d.])(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(?![\d.])(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
       (all, a, ua, sep, b, ub, offset: number, whole: string) => {
         const feetA = /ft|feet|foot|'/i.test(ua ?? "");
         const feetB = /ft|feet|foot|'/i.test(ub ?? "");
         if (feetA === feetB) return all;
         const at = feetB ? offset + all.lastIndexOf(String(b)) : offset;
         if (!keepFeet(whole, at)) return all;
-        return `${parseFloat(a) * 12} inch ${sep} ${parseFloat(b) * 12} inch`;
+        const inches = (n: string, hasFeet: boolean) => {
+          const v = parseFloat(n);
+          if (hasFeet) return v * 12;
+          return v <= 12 ? v * 12 : v;
+        };
+        return `${inches(a, feetA)} inch ${sep} ${inches(b, feetB)} inch`;
       },
     );
     // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8. A count never starts inside a number

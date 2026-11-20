@@ -162,8 +162,16 @@ const PLACE_NOUN =
 /** A place lead. "in" counts only as the preposition ("in a niche"), never the inch unit and never the "in" of "built-in". */
 const PLACE_LEAD =
   /\b(?:fitted\s+to|to\s+fit|(?:that|which)\s+fits?|fits?(?:\s+in(?:to)?)?|into|inside|within|between|for)\b[^.]{0,60}$|\bin\s+(?:a|an|the|my|our)\b[^.]{0,40}$/i;
-const PLACE_PAIR =
-  /(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'|in(?:ch(?:es)?)?|"))?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'|in(?:ch(?:es)?)?|"))?(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?/gi;
+const NUM = String.raw`(\d+(?:\.\d+)?)(?![\d.])`;
+const PLACE_PAIR = new RegExp(
+  NUM +
+    String.raw`(\s*(?:ft|feet|foot|'|in(?:ch(?:es)?)?|"))?\s*(?:x|×|by)\s*` +
+    NUM +
+    String.raw`(\s*(?:ft|feet|foot|'|in(?:ch(?:es)?)?|"))?(?:\s*(?:x|×|by)\s*` +
+    NUM +
+    ")?",
+  "gi",
+);
 
 /**
  * A lumber nominal (1x6, 2x4, 1x6x8) is stock, not a place. The same numbers as the unlabeled-size
@@ -176,15 +184,37 @@ function lumberNominal(a: number, b: number, c: number | undefined, unit: string
   return a <= 4 && b <= 12;
 }
 
-function asInches(n: number, unit: string, other: string, feet: boolean): number {
+/**
+ * Inches for one number of a pair. A feet unit on this number is feet. An inch unit is inches.
+ * A bare partner takes the other number's feet unit only when it is 12 or under (2 by 1.5 ft is
+ * 24 × 18). A larger bare partner is already inches (4 ft by 18 is 48 × 18, not 48 × 216).
+ */
+export function pairInches(n: number, unit: string, other: string, feet: boolean): number {
   if (/ft|feet|foot|'/i.test(unit)) return n * 12;
   if (/in(?:ch(?:es)?)?|"/i.test(unit)) return n;
-  if (!unit && /ft|feet|foot|'/i.test(other)) return n * 12;
+  if (!unit && /ft|feet|foot|'/i.test(other)) return n <= 12 ? n * 12 : n;
   return feet ? n * 12 : n;
 }
 
 /**
- * A two-number size typed against a place. An opening reads width × height. A surface reads width × depth.
+ * Depth the class fills in when nobody typed one. An opening's second number is the height only
+ * when it is taller than this; a shallower second number is the depth, and the class height stays.
+ */
+export function classDepthIn(prompt: string): number {
+  const p = prompt.toLowerCase();
+  if (/\bbook(?:case|shelf)\b/.test(p)) return 12;
+  if (/\bdresser\b/.test(p)) return 18;
+  if (/\b(?:desk|workbench)\b/.test(p)) return 24;
+  if (/\bvanity\b/.test(p)) return 21;
+  if (/\b(?:sideboard|credenza|buffet)\b/.test(p)) return 16;
+  if (/\bshel(?:f|ves)\b/.test(p) && !/\b(?:wardrobe|armoire)\b/.test(p)) return 12;
+  if (/\bbench\b/.test(p)) return 16;
+  return 16;
+}
+
+/**
+ * A two-number size typed against a place. A tall opening reads width × height. A shallow opening,
+ * and a surface, read width × depth.
  * A triple is not one: release keeps its own order. A lumber nominal is not one either.
  * Feet in the pair become inches (6×6 on a yard, or a playhouse, is 72 × 72), never a 6 inch footprint.
  */
@@ -222,11 +252,14 @@ export function placePair(prompt: string): PlacePair | null {
       b <= 12 &&
       (FOOT_GROUND.test(noun) || FOOT_PLAN.test(text));
     const feet = feetSaid || bareFeet;
-    const width = asInches(a, unitA, unitB, feet);
-    const other = asInches(b, unitB, unitA, feet);
+    const width = pairInches(a, unitA, unitB, feet);
+    const other = pairInches(b, unitB, unitA, feet);
     if (!(width > 0 && width <= 600 && other > 0 && other <= 600)) continue;
     const resolved: PlaceKind = kind ?? "surface";
-    return { kind: resolved, width, other, otherAxis: resolved === "opening" ? "height" : "depth" };
+    // A shallow opening pair is a footprint (30 by 12 nook → 12 deep, class height). A second
+    // number taller than the class depth is the opening's height (30 by 80 closet → 80 tall).
+    const tallOpening = resolved === "opening" && other > classDepthIn(text);
+    return { kind: resolved, width, other, otherAxis: tallOpening ? "height" : "depth" };
   }
   return null;
 }

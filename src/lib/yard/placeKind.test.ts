@@ -7,7 +7,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { generateFromPrompt } from "./promptMain";
 import { buildPlan } from "./report";
-import { placeKind, placePair } from "./sizePhrases";
+import { normalizeUserPrompt } from "./voiceHonesty";
+import { placeKind, placePair, pairInches } from "./sizePhrases";
 
 globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof fetch;
 
@@ -46,8 +47,6 @@ test("an opening pair is width × height, and the depth stays the class default"
     ["shelf in a 16 by 48 alcove", 16, 48],
     ["cabinet for a 18 by 40 doorway", 18, 40],
     ["bookcase that fits in a 22 by 48 recess", 22, 48],
-    // Novel sentence, same kind: the second number is the height, not a deep footprint.
-    ["sideboard for a 42 by 15 recess", 42, 15],
   ];
   for (const [q, w, h] of rows) {
     const pair = placePair(q);
@@ -154,6 +153,49 @@ test("feet in a place pair become inches, never a 6 inch footprint", () => {
   assert.deepEqual([inches?.width, inches?.other], [10, 8]);
   const shed = placePair("shed for the yard 8x10");
   assert.deepEqual([shed?.width, shed?.other, shed?.otherAxis], [96, 120, "depth"]);
+});
+
+test("a bare partner next to feet stays inches unless it is 12 or under", () => {
+  assert.equal(normalizeUserPrompt("table 6 ft by 30"), "table 72 inch by 30 inch");
+  assert.equal(normalizeUserPrompt("desk 5 ft by 24"), "desk 60 inch by 24 inch");
+  assert.equal(normalizeUserPrompt("desk 60 by 2 ft"), "desk 60 inch by 24 inch");
+  assert.equal(normalizeUserPrompt("3 ft by 18 bench"), "36 inch by 18 inch bench");
+  assert.match(normalizeUserPrompt("4 ft by 18.5 in bench"), /^48 inch by 18\.5 in bench$/);
+  assert.match(normalizeUserPrompt("6' x 30.5\" table"), /^72 inch x 30\.5" table$/);
+  assert.equal(normalizeUserPrompt("6' x 30\" table"), '72 inch x 30" table');
+  // 2 is 12 or under, so it shares the feet unit.
+  assert.equal(normalizeUserPrompt("cabinet that fits in a 2 by 1.5 ft spot"), "cabinet that fits in a 24 inch by 18 inch spot");
+
+  const spot = placePair("bench for a 4 ft by 18 spot");
+  assert.deepEqual([spot?.width, spot?.other, spot?.otherAxis], [48, 18, "depth"]);
+  assert.equal(pairInches(18, "", " ft", true), 18);
+  assert.equal(pairInches(2, "", " ft", true), 24);
+
+  const table = box("table 6 ft by 30");
+  assert.deepEqual([table.o.width, table.o.depth, table.o.height], [72, 30, 30]);
+  const desk = box("desk 5 ft by 24");
+  assert.ok(near(desk.o.width, 60) && near(desk.o.depth, 24), `desk ${desk.o.width}x${desk.o.depth}x${desk.o.height}`);
+  assert.ok(desk.o.depth < 100 && desk.o.height < 100, "desk blew up");
+  const wide = box("desk 60 by 2 ft");
+  assert.ok(near(wide.o.width, 60), `60 by 2 ft width ${wide.o.width}`);
+  const bench = box("3 ft by 18 bench");
+  assert.ok(near(bench.o.depth, 18) || near(bench.o.height, 18), `3 ft by 18 ${bench.o.width}x${bench.o.height}x${bench.o.depth}`);
+  assert.ok(bench.o.depth < 100 && bench.o.height < 100);
+});
+
+test("a shallow opening is depth, and a tall opening is height", () => {
+  const shallow = placePair("bookshelf for a 30 by 12 nook");
+  assert.equal(shallow?.otherAxis, "depth");
+  const book = box("bookshelf for a 30 by 12 nook");
+  assert.deepEqual([book.o.width, book.o.height, book.o.depth], [30, 84, 12]);
+  assert.doesNotMatch(book.notes, /Assumed 12" deep/);
+  assert.match(book.notes, /Assumed 84" tall/);
+
+  const tall = placePair("shelves for a 30 by 80 closet");
+  assert.equal(tall?.otherAxis, "height");
+  const closet = box("shelves for a 30 by 80 closet");
+  assert.deepEqual([closet.o.width, closet.o.height, closet.o.depth], [30, 80, 16]);
+  assert.equal(closet.price.toFixed(2), "193.68");
 });
 
 test("a bare medicine cabinet does not claim a typed depth", () => {
