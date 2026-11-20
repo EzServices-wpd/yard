@@ -43,6 +43,22 @@ test("a dry run replays saved replies, builds both ways, grades both and spends 
   assert.match(readFileSync(join(dir, "out", "diff.md"), "utf8"), /# Reader eval · dry run/);
 });
 
+test("a saved 3x6 ft reply is used when the regex build is 28 by 28, not 3 by 6 ft", () => {
+  const dir = mkdtempSync(join(tmpdir(), "reader-eval-"));
+  const q = "garden bed 3x6 cedar";
+  writeFileSync(join(dir, "prompts.json"), JSON.stringify([q]));
+  writeFileSync(join(dir, "replies.json"), JSON.stringify({
+    [q]: JSON.stringify({ sizes: [size("3x6", "W", 3, "ft", 36), size("3x6", "D", 6, "ft", 72)], counts: [] }),
+  }));
+  execFileSync("npx", ["-y", "tsx", script, "--prompts", join(dir, "prompts.json"), "--out", join(dir, "out"), "--replies", join(dir, "replies.json")], { stdio: "ignore" });
+  const row = JSON.parse(readFileSync(join(dir, "out", "builds.jsonl"), "utf8"));
+  assert.equal(row.replied, "saved");
+  assert.equal(row.used, true, row.reason);
+  assert.equal(row.buildFrom, "garden bed 36 wide 72 deep cedar");
+  const sum = JSON.parse(readFileSync(join(dir, "out", "summary.json"), "utf8"));
+  assert.equal(sum.spent, 0);
+});
+
 test("a live run needs a cap within the hard ceiling and a key; nothing runs otherwise", () => {
   const dir = mkdtempSync(join(tmpdir(), "reader-eval-"));
   writeFileSync(join(dir, "p.json"), JSON.stringify(["fence panel 6 ft"]));

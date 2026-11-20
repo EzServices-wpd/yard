@@ -86,6 +86,19 @@ const FACTOR = { cm: 1 / 2.54, mm: 1 / 25.4, m: 100 / 2.54, ft: 12, in: 1 };
 const SIZE_TOKENS = /\b(?:cm|mm|m|centimet(?:er|re)s?|millimet(?:er|re)s?|met(?:er|re)s?|in|inch(?:es)?|ft|feet|foot|x|by|wide|width|deep|depth|tall|high|height|long|length|w|d|h|l)\b|[×*"″'′,\-]/g;
 export const sizeOnlyQuote = (quote: string) => fracs(quote).replace(NUM, " ").replace(SIZE_TOKENS, " ").trim() === "";
 
+/**
+ * A bare footprint with no unit word ("3x6", "4 by 8"), read in feet: each whole number above 2 and at most 12,
+ * times 12. 1x and 2x stay stock (a 2x4 is not 2 ft by 4 ft). The quote itself never says "ft"; the inches
+ * have to be that conversion or the size is dropped.
+ */
+export function bareFootprintInches(quote: string): number[] {
+  if (quoteUnit(quote) !== "in" || !/[x×]|\bby\b/i.test(quote)) return [];
+  const nums: number[] = [];
+  for (const m of fracs(quote).matchAll(NUM)) nums.push(m[4] ? +m[4] / +m[5] : +m[1] + (m[2] ? +m[2] / +m[3] : 0));
+  if (nums.length < 2 || nums.length > 3 || !nums.every((n) => Number.isInteger(n) && n > 2 && n <= 12)) return [];
+  return nums.map((n) => n * 12);
+}
+
 /** Every number the quote could mean, in inches, converted once by the quote's own unit (feet: also feet-inches). */
 export function inchCandidates(quote: string): number[] {
   const nums: number[] = [];
@@ -180,10 +193,13 @@ export function validateSpec(prompt: string, raw: unknown, opts: { allowList?: b
     const where = `size "${s?.quote}"`;
     if (s?.assumed !== false || !quoted(prompt, s.quote)) { dropped.push(`${where}: assumed or not in the request`); continue; }
     if (!AXES.includes(s.axis) || !UNITS.includes(s.unit) || !OF.includes(s.of) || AGE.test(s.quote) || !axisFits(s) || !nextAxisFits(prompt, s) || partOfMeasurement(prompt, s.quote) || axisNamedElsewhere(prompt, s) || axisCueBeside(prompt, s)) { dropped.push(`${where}: bad axis/unit/of, an age, or another axis's word`); continue; }
-    if (!sizeOnlyQuote(s.quote) || !UNIT_OK[quoteUnit(s.quote)].includes(s.unit)) { dropped.push(`${where}: holds a non-size word, or its unit is not the one typed`); continue; }
-    if (opts.allowList !== false && ALLOW_UNITS.has(quoteUnit(s.quote)) && !soleSize(prompt, s)) { dropped.push(`${where}: not one plain labelled size (the allow-list)`); continue; }
+    const feet = bareFootprintInches(s.quote);
     const inches = Number(s.inches);
-    if (!(inches > 0) || !inchCandidates(s.quote).some((c) => Math.abs(c - inches) <= 1 / 32)) { dropped.push(`${where}: ${s.inches}" is not a number in its quote`); continue; }
+    const unitOk = UNIT_OK[quoteUnit(s.quote)].includes(s.unit) || (s.unit === "ft" && feet.some((c) => Math.abs(c - inches) <= 1 / 32));
+    if (!sizeOnlyQuote(s.quote) || !unitOk) { dropped.push(`${where}: holds a non-size word, or its unit is not the one typed`); continue; }
+    if (opts.allowList !== false && ALLOW_UNITS.has(quoteUnit(s.quote)) && !soleSize(prompt, s)) { dropped.push(`${where}: not one plain labelled size (the allow-list)`); continue; }
+    const candidates = [...inchCandidates(s.quote), ...(s.unit === "ft" ? feet : [])];
+    if (!(inches > 0) || !candidates.some((c) => Math.abs(c - inches) <= 1 / 32)) { dropped.push(`${where}: ${s.inches}" is not a number in its quote`); continue; }
     spec.sizes.push({ axis: s.axis, value: Number(s.value), unit: s.unit, inches, of: s.of, quote: s.quote, confidence: clamp01(s.confidence), assumed: false });
   }
   for (const c of (Array.isArray(r.counts) ? r.counts : []) as ReaderCount[]) {

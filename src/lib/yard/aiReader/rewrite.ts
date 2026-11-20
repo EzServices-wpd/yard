@@ -6,11 +6,15 @@
  *  1. The reader may change a size or count, never the object: a rewrite that builds another kind, builder or
  *     stand-in, or turns a build into a refusal, falls back to the typed words.
  *  2. Every size the reader read is built (±1/8") or refused, never silently widened or dropped; else typed words.
- *  3. A size the regex build already has keeps its words (whole feet ±3": a "3 foot" Eiffel at 37 3/8" is 3 feet).
+ *  3. A size the regex build already has keeps its words. That is a real length of the model in inches — the
+ *     overall box, or a member cut running on that axis — within the precision typed (whole feet ±3": a "3 foot"
+ *     Eiffel at 37 3/8" is 3 feet; else ±1/8"). A digit in the quote is not a size the model has.
  *  4. Two different overall values on one axis settle nothing.
  *  5. A typed number is never rewritten: only one measurement in feet or metric (a unit the regex path may misread)
  *     becomes inches. A bare or inch number, and every pair or triple ("30x18x72", "60 by 80"), keep the typed words,
  *     so with the reader on or off a bare triple builds the same (what a bare triple means is row 457, Ezra's call).
+ *     One exception: a bare footprint read in feet ("3x6" → 3 ft by 6 ft) is labelled in inches when the model
+ *     does not already have those lengths.
  *  6. A count edit only turns a number word next to its noun into digits ("two-step" → "2 steps"): never lower, never moved.
  */
 import { generateFromPrompt } from "../promptMain";
@@ -51,6 +55,18 @@ export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: Read
   for (const s of usable) byQuote.set(s.quote, [...(byQuote.get(s.quote) ?? []), s]);
   let out = prompt;
   for (const [quote, sizes] of byQuote) {
+    // A bare footprint the reader read in feet ("3x6" → 36" by 72"), only when the model does not already
+    // have those lengths. Every other pair or triple keeps the typed words (rule 5).
+    if (sizes.length > 1) {
+      const axes = new Set(sizes.map((s) => s.axis));
+      const feet = /[x×]|\bby\b/i.test(quote) && sizes.every((s) => s.unit === "ft" && s.axis in WORD && s.of === "overall" && s.confidence >= MIN_CONFIDENCE);
+      if (feet && axes.size === sizes.length && sizes.every((s) => !honored(s))) {
+        const to = sizes.map((s) => `${inchFrac(s.inches)} ${WORD[s.axis as keyof typeof WORD]}`).join(" ");
+        const next = replaceOnce(out, quote, to);
+        if (next !== null) { out = next; edits.push({ from: quote, to }); used.push(...sizes); }
+      }
+      continue;
+    }
     if (sizes.length !== 1 || !rewritable(sizes[0]) || honored(sizes[0]) || (perAxis.get(sizes[0].axis)?.size ?? 0) > 1) continue;
     // The axis word already typed after the quote ("1.8 m tall") stays; only the number is rewritten.
     const to = typedAxisAfter(out, quote) ? inchFrac(sizes[0].inches) : `${inchFrac(sizes[0].inches)} ${WORD[sizes[0].axis as keyof typeof WORD]}`;
@@ -75,15 +91,38 @@ export function specToPrompt(prompt: string, spec: ReaderSpec, honored: (s: Read
   return { prompt: out.replace(/\s+/g, " ").trim(), edits, sizes: used };
 }
 
-/** The build already stands at this size, within the precision typed (whole feet ±3", else ±1/8"). */
+/** Lengths of members that run along one world axis, in inches (the cut, else the span). */
+function memberLengths(p: YardProject, axis: "x" | "y" | "z"): number[] {
+  const out: number[] = [];
+  for (const i of p.instances ?? []) {
+    if (!i.from || !i.to) continue;
+    const d = { x: Math.abs(i.to.x - i.from.x), y: Math.abs(i.to.y - i.from.y), z: Math.abs(i.to.z - i.from.z) };
+    const len = Math.hypot(d.x, d.y, d.z);
+    if (!(len > 0.5) || d[axis] < len - 0.25) continue;
+    out.push(typeof i.cutLength === "number" && i.cutLength > 0 ? i.cutLength : len);
+  }
+  return out;
+}
+
+/**
+ * The build already stands at this size. Compared in inches against the model's own lengths — the overall
+ * box on that axis, or a member cut running along it — never against a digit in the quote. Whole feet ±3"
+ * (a "3 foot" Eiffel at 37 3/8" is 3 feet); every other reading ±1/8". An axis the model does not name is
+ * honored only when some real length matches.
+ */
 export function honoredBy(p: YardProject, s: ReaderSize): boolean {
   const box = p.pocket?.unit ?? p.overall;
-  if (!box) return false;
+  if (!box || !(s.inches > 0)) return false;
   const nums = s.quote.match(/\d+(?:\.\d+)?/g) ?? [];
-  const wholeFeet = nums.length === 1 && Number.isInteger(+nums[0]) && /\b(?:ft|feet|foot)\b|['′]/i.test(s.quote);
-  const tol = wholeFeet ? 3 : 0.125; // the precision of the typed words, never the model's unit label
+  const wholeFeet = nums.length === 1 && Number.isInteger(+nums[0]) && (s.unit === "ft" || s.unit === "ft-in" || /\b(?:ft|feet|foot)\b|['′]/i.test(s.quote));
+  const tol = wholeFeet ? 3 : 0.125;
   const near = (v: number) => Math.abs(v - s.inches) <= tol;
-  return s.axis === "W" ? near(box.width) : s.axis === "D" ? near(box.depth) : s.axis === "H" ? near(box.height) : s.axis === "L" ? near(Math.max(box.width, box.depth)) : true;
+  const any = [box.width, box.height, box.depth, ...(p.instances ?? []).map((i) => i.cutLength ?? 0)].some((v) => v > 0 && near(v));
+  if (s.axis === "W") return near(box.width) || memberLengths(p, "x").some(near);
+  if (s.axis === "D") return near(box.depth) || memberLengths(p, "z").some(near);
+  if (s.axis === "H") return near(box.height) || memberLengths(p, "y").some(near);
+  if (s.axis === "L") return near(Math.max(box.width, box.depth)) || memberLengths(p, "x").some(near) || memberLengths(p, "z").some(near);
+  return any;
 }
 
 export type Choice = { buildPrompt: string; used: boolean; edits: Edit[]; reason: string };
