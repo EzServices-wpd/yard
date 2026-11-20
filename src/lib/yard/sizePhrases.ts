@@ -139,6 +139,18 @@ export type PlaceBinding = {
   axes: Partial<Record<Axis, number>>;
 };
 
+/**
+ * An unlabeled place pair names a footprint (width × depth) and no height.
+ * A triple, a labeled height, or a size of the build written first is not one.
+ * Every reader that would otherwise guess the pair's axes uses this, so the guess is made once.
+ */
+export function unlabeledPlacePair(place: PlaceBinding): { width: number; depth: number } | null {
+  if (!place.host || place.productFirst) return null;
+  const { width, depth, height } = place.axes;
+  if (width == null || depth == null || height != null) return null;
+  return { width, depth };
+}
+
 // "in" the preposition, not the inch unit in "70 in by 28 in".
 const PLACE_LEAD =
   /\b(?:fitted\s+(?:to|in(?:to)?)|to\s+fit|(?:that|which)\s+fits?|fits?(?:\s+in(?:to)?)?|fitting|into|inside|(?<![\d.][\s-]{0,2})in|within|between|for)\b/gi;

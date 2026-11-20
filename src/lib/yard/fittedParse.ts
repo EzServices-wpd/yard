@@ -43,7 +43,7 @@ import { cornerSpecFromPrompt, isCornerUnitPrompt } from "./corner";
 import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { clothesRodDefaultDepth } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
-import { placeBinding } from "./sizePhrases";
+import { placeBinding, unlabeledPlacePair } from "./sizePhrases";
 import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
@@ -449,6 +449,21 @@ export function parseBrief(prompt: string): FittedSpec | null {
     depth = trip.h;
     unlabeledWd = true;
   }
+  // The same pair placeBinding already called a footprint. Apply it here too, including when the second
+  // number is the larger one: that number is depth, and the height stays the class default.
+  const footprint = unlabeledPlacePair(place);
+  const placePair =
+    footprint != null &&
+    trip.w != null &&
+    trip.h != null &&
+    trip.d == null &&
+    Math.abs(trip.w - footprint.width) < 0.05 &&
+    Math.abs(trip.h - footprint.depth) < 0.05;
+  if (placePair && footprint) {
+    width = footprint.width;
+    depth = footprint.depth;
+    unlabeledWd = true;
+  }
 
   // A bookcase is never 84" deep and 12" tall. The bigger of the last two is the height.
   if (program === "bookcase" && !saidAxis && trip.w && trip.h && trip.d) {
@@ -680,8 +695,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
   const placeTyped = place.host && !place.productFirst ? place.axes : {};
   const typedAxes = classDefaultTitleHonesty
     ? (() => {
-        const t = typedClassDefaultAxes(prompt);
-        return { width: t.width || placeTyped.width != null, height: t.height || placeTyped.height != null, depth: t.depth || placeTyped.depth != null };
+        const axes = typedClassDefaultAxes(prompt);
+        const namedHeight = Number.isFinite(spokenAxisInches(t, "h"));
+        return {
+          width: axes.width || placeTyped.width != null,
+          // A place pair is not a height. A guessed height flag from that pair stays off.
+          height: placePair && !namedHeight ? false : axes.height || placeTyped.height != null,
+          depth: axes.depth || placeTyped.depth != null,
+        };
       })()
     : {
         width:
@@ -705,6 +726,17 @@ export function parseBrief(prompt: string): FittedSpec | null {
   } else if (footprintFeet(lower) && !/(?:tall|high|height)\b/.test(lower)) {
     ({ a: width, b: depth } = footprintFeet(lower)!);
     height = wholeCourses(lower, 16);
+  }
+
+  // Hide the pair's second number from the height cascade. It is already the depth.
+  let restorePairSecond: number | undefined;
+  if (placePair && footprint) {
+    width = footprint.width;
+    depth = footprint.depth;
+    if (!Number.isFinite(spokenAxisInches(t, "h")) && trip.h != null && Number.isFinite(height) && Math.abs(height - trip.h) < 0.05) height = NaN;
+    restorePairSecond = trip.h;
+    trip.h = undefined;
+    unlabeledWd = true;
   }
 
   if (!Number.isFinite(height) || height === 0) {
@@ -845,6 +877,7 @@ export function parseBrief(prompt: string): FittedSpec | null {
                       : 84);
     }
   }
+  if (restorePairSecond != null) trip.h = restorePairSecond;
   let boardSnapNote: string | null = null;
   if (!Number.isFinite(depth)) {
     depth =

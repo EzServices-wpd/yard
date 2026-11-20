@@ -12,7 +12,7 @@ import { hasExplicitSize } from "./promptHelpers";
 import { figureIdentityLabel } from "./weekendFamily";
 import { mattressDeck } from "./fittedParse";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
-import { placeBinding } from "./sizePhrases";
+import { placeBinding, unlabeledPlacePair } from "./sizePhrases";
 import { looksLikeFitted } from "./fittedDetect";
 import { lippedShelfYs } from "./shelfLips";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
@@ -280,12 +280,17 @@ export function typedExtents(prompt: string): TypedExtents | null {
       out.width = place.axes.width;
       out.labeled.width = true;
     }
+    const footprint = unlabeledPlacePair(place);
     if (place.axes.height != null && height == null) {
       out.height = place.axes.height;
       out.labeled.height = true;
-    } else if (height == null) {
-      // The place's numbers are its own axes. A pair is width × depth, so the same numbers never
-      // also stand for a typed height; the height stays the build's own.
+    } else if (
+      footprint &&
+      height == null &&
+      out.height != null &&
+      (Math.abs(out.height - footprint.width) < 0.05 || Math.abs(out.height - footprint.depth) < 0.05)
+    ) {
+      // The pair's own numbers are width and depth. A height guessed from those numbers is not typed.
       delete out.height;
       out.labeled.height = false;
     }
