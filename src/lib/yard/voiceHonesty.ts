@@ -980,7 +980,7 @@ export function normalizeUserPrompt(prompt: string): string {
     // "2 by 1.5 ft" is one pair. The unit on one number covers the bare partner; leaving that partner
     // in inches builds a 2 inch cabinet beside an 18 inch depth.
     s = s.replace(
-      /(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
+      /(\d+(?:\.\d+)?)(?!\d)(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(?!\d)(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
       (all, a, ua, sep, b, ub, offset: number, whole: string) => {
         const feetA = /ft|feet|foot|'/i.test(ua ?? "");
         const feetB = /ft|feet|foot|'/i.test(ub ?? "");
