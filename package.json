@@ -18,6 +18,7 @@
     "format": "prettier --write .",
     "rank-errors": "tsx scripts/rank-errors.ts",
     "eval:gate": "npx -y tsx scripts/eval-gate.ts",
+    "eval:stale": "npx -y tsx scripts/eval-gate-stale.ts",
     "eval:props": "npx -y tsx --test scripts/props.test.ts"
   },
   "dependencies": {

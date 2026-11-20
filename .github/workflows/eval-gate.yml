@@ -106,6 +106,16 @@ jobs:
           echo "code=$?" >> "$GITHUB_OUTPUT"
           cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
 
+      # The stored scorecards (evals/gate.json, evals/score.json) must say what the head scores today: a PR that
+      # moves a grade re-records them in the same PR (npm run eval:gate -- --write; scripts/eval-score.ts --write).
+      - name: Scorecard is current
+        id: stale
+        run: |
+          set +e
+          npx -y tsx scripts/eval-gate-stale.ts --fresh "$RUNNER_TEMP/gate-head.json" | tee "$RUNNER_TEMP/stale.log"
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          { echo; echo "#### Scorecard"; echo '```'; cat "$RUNNER_TEMP/stale.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Post or update the sticky comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
@@ -130,4 +140,4 @@ jobs:
           if-no-files-found: warn
 
       - name: Gate verdict
-        run: test "${{ steps.diff.outputs.code }}" = "0"
+        run: test "${{ steps.diff.outputs.code }}" = "0" && test "${{ steps.stale.outputs.code }}" = "0"
