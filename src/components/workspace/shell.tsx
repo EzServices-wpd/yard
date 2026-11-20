@@ -693,11 +693,11 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
               {workMode !== "walk" && (
                 <div data-yard-result-card="1" className="flex items-baseline justify-between gap-3 px-3.5 pt-2.5">
                   {/* The title lands with the model: a same-height skeleton holds its place while the lamp is up (CLS 0). */}
-                  <p className="min-w-0 truncate font-display text-[15px] text-fg">
+                  <h1 className="min-w-0 truncate font-display text-[15px] text-fg">
                     {titlePending ? (
                       <><span aria-hidden className="inline-block h-[0.8em] w-[11ch] rounded-sm bg-fg/10 align-[-0.05em]" /><span className="sr-only">Building</span></>
                     ) : headerTitle(project, { features: false })}
-                  </p>
+                  </h1>
                   <DecisionLine />
                 </div>
               )}

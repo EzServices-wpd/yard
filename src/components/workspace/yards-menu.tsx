@@ -77,7 +77,7 @@ export function YardsMenu({ inline = false, onOpened }: { inline?: boolean; onOp
                 deleteLocalYard(c.id);
                 refresh();
               }}
-              className="text-[10px] text-faint hover:text-muted"
+              className="inline-grid size-11 shrink-0 place-items-center text-sm text-faint hover:text-muted"
             >
               ×
             </button>
@@ -104,7 +104,7 @@ export function YardsMenu({ inline = false, onOpened }: { inline?: boolean; onOp
                       setRemote((rows) => rows.filter((r) => r.id !== c.id)),
                     );
                   }}
-                  className="text-[10px] text-faint hover:text-muted"
+                  className="inline-grid size-11 shrink-0 place-items-center text-sm text-faint hover:text-muted"
                 >
                   ×
                 </button>
