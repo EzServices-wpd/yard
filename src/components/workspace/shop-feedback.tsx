@@ -119,7 +119,7 @@ export function ShopFeedback() {
             ) : (
               <>
                 <span className="text-muted">{THUMBS_DRAFT.ask}</span>
-                <button type="button" aria-label={THUMBS_DRAFT.upLabel} aria-pressed={thumb === "up"} onClick={() => { setThumb("up"); sendEvent({ bid, ev: "thumb", up: true }); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
+                <button type="button" aria-label={THUMBS_DRAFT.upLabel} aria-pressed={false} onClick={() => { setThumb("up"); sendEvent({ bid, ev: "thumb", up: true }); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
                   <span aria-hidden="true">👍</span>&nbsp;{THUMBS_DRAFT.up}
                 </button>
                 <button type="button" aria-label={THUMBS_DRAFT.downLabel} aria-pressed={thumb === "down"} onClick={() => { setThumb("down"); sendEvent({ bid, ev: "thumb", up: false }); open(); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
