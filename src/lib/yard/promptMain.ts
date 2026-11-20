@@ -464,7 +464,9 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
       }
       return sheet;
     };
-    const seeded = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake)
+    // releaseReads text (an arch, a comma, a hyphenated inch) keeps the build release's readers made, stock
+    // included. Rebuilding it in another stock re-reads the span (a 2-foot garden arch became a 64" portal).
+    const seeded = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake) && !releaseReads(typedAtIntake)
       ? withinStatedHeight({
           ...liftStock(),
           craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
