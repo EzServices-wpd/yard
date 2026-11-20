@@ -29,6 +29,7 @@ export const GRADER_FILES = [
   "scripts/eval-gate-lib.ts",
   "scripts/eval-gate-typed.ts",
   "scripts/eval-gate-refusal.ts",
+  "scripts/eval-gate-honest.ts",
   "evals/expected-refusals.json",
 ] as const;
 
