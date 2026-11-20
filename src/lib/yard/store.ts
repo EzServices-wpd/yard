@@ -9,6 +9,7 @@ import { emptyProject, generateFromPrompt } from "./prompt";
 import { applyFollowOnSize, followOnNamesStock, hasExplicitStock, isRepeatPrompt, looksLikeFollowOn, materialUnlessNamed, refinedPrompt } from "./promptHelpers";
 import type { FormRecipe } from "./form";
 import { buildPlan } from "./report";
+import { takeBuild, takePlan, type EngineArgs } from "./engineCache";
 import { clearProject, loadProject, saveLocalYard, saveProject } from "./persist";
 import { defaultPlaceLength } from "./bom";
 import { toPrimitive } from "./geometry";
@@ -137,6 +138,8 @@ type YardState = {
   setBuildScale: (v: BuildScale) => void;
   setCutMode: (v: "auto" | "cut" | "whole") => void;
   makePlan: () => BuildPlan;
+  /** The engine call generate() would make for these words now (perf fix 1: the worker runs the same call). */
+  engineCallFor: (prompt: string, materialId?: string, form?: FormRecipe, opts?: Parameters<YardState["generate"]>[3]) => EngineArgs;
   setPlan: (plan: BuildPlan | null) => void;
   attachStepImage: (step: number, imageDataUrl: string) => void;
   setRender: (render: NonNullable<YardProject["render"]>) => void;
@@ -220,6 +223,84 @@ function stockFlag(mode: "auto" | "cut" | "whole"): boolean | undefined {
   return undefined;
 }
 
+
+type GenerateOpts = Parameters<YardState["generate"]>[3];
+/**
+ * The exact engine call generate() makes for these words on this bench (follow-on refinement, restock, stock carry-over,
+ * cut mode). Shared by generate() and run-prompt's worker prebuild (perf fix 1), so the call off the main thread is
+ * the same call, argument for argument.
+ */
+function resolveCall(get: () => YardState, prompt: string, materialId: string | undefined, form: FormRecipe | undefined, opts: GenerateOpts) {
+  const scale = opts?.scale ?? get().buildScale;
+  const current = get().project;
+  // Re-running the prompt already on the bench (or an empty box) rebuilds it; only different words refine.
+  const repeat =
+    isRepeatPrompt(prompt, current.prompt, current.name) || (!!current.typedPrompt && isRepeatPrompt(prompt, current.typedPrompt));
+  // Re-typing a fallback noun ("lemonade stand" on a bench built as "table 48 wide …") rebuilds the
+  // same primitive: the typed noun with the bench stock would skip the fallback and lose the build.
+  // A saved or just-learned recipe always wins: the bench's fallback prompt (a closet under a learning block) never replaces it.
+  // Row 517: never on a not-learned placeholder. Its bench prompt is the engine's discarded guess (a planter box under
+  // "toolbox"), so re-running the typed words there would silently price a different object.
+  const retypedFallback = !current.displayOnly && !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
+  let used = !prompt.trim() || retypedFallback ? current.prompt : prompt;
+  const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
+  let mode: "auto" | "cut" | "whole" = get().cutMode;
+  if (opts?.cutStock === true) mode = "cut";
+  else if (opts?.cutStock === false) mode = "whole";
+  else if (!follow && current.prompt.trim() !== prompt.trim()) mode = "auto";
+  const keepView = !!opts?.keepView;
+  const genOpts: {
+    includeSpine?: boolean;
+    joinMethod?: JoinMethod;
+    scale: BuildScale;
+    sizeOverride?: { width: number; height: number; depth: number };
+    cutStock?: boolean;
+    fittedOverride?: import("./types").FittedSpec;
+    pocketOverride?: PocketSpec;
+    honorUnit?: boolean;
+  } = { ...opts, scale, cutStock: stockFlag(mode) };
+  // Same object, new stock: a pocket or fitted unit rebuilds from the hole and unit on the bench
+  // (with every edit made there), not from re-reading the sentence.
+  // Restock rebuilds from the hole already on the bench. A caller that already
+  // passed a count (shelves, cubbies, drawers) keeps that override — copying the
+  // bench spec back would snap the field to the old count.
+  if (opts?.restock && materialId && !opts.fittedOverride && !opts.pocketOverride) {
+    const srcPocket = current.pocket ?? current.recastFrom?.pocket;
+    const srcFitted = current.fitted ?? current.recastFrom?.fitted;
+    if (srcPocket) genOpts.pocketOverride = srcPocket;
+    else if (srcFitted && !climbIdentityLabel((current.prompt || "").toLowerCase())) {
+      genOpts.fittedOverride = srcFitted;
+      genOpts.honorUnit = true;
+    }
+  }
+  if (follow) {
+    used = refinedPrompt(current.prompt, prompt);
+    genOpts.sizeOverride = applyFollowOnSize(current.overall, prompt);
+    if (!materialId && !followOnNamesStock(prompt)) materialId = current.primaryMaterialId;
+    if (/cut the sticks|cut each stick/.test(prompt.toLowerCase())) {
+      mode = "cut";
+      genOpts.cutStock = true;
+    }
+    if (/don'?t cut|whole sticks/.test(prompt.toLowerCase())) {
+      mode = "whole";
+      genOpts.cutStock = false;
+    }
+  }
+  // A new subject with no stock typed must not inherit the bench stock — that
+  // skipped honest fallback (popsicle birdhouse → "lemonade stand" stayed craft).
+  // Keep prior stock for ". Then:" refinements, exact repeats, Measure restock,
+  // or when the typed words name stock (hasExplicitStock / detectMaterial).
+  if (!materialId) {
+    // A placeholder's plywood is display only (roughBlock), never stock the visitor chose (row 517).
+    const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat && !current.displayOnly);
+    if (keepPrior || hasExplicitStock(used)) {
+      materialId = materialUnlessNamed(current.primaryMaterialId, used);
+    }
+  }
+  const args: EngineArgs = [used, materialId, form, genOpts];
+  return { current, used, follow, mode, keepView, genOpts, args };
+}
+
 export const useYard = create<YardState>((set, get) => ({
   project: emptyProject(),
   plan: null,
@@ -293,75 +374,13 @@ export const useYard = create<YardState>((set, get) => ({
     set({ project: next, plan: repriced });
     persist(next);
   },
+  engineCallFor: (prompt, materialId, form, opts) => resolveCall(get, prompt, materialId, form, opts).args,
   generate: (prompt, materialId, form, opts) => {
     get().beginBuild();
-    const scale = opts?.scale ?? get().buildScale;
-    const current = get().project;
-    // Re-running the prompt already on the bench (or an empty box) rebuilds it; only different words refine.
-    const repeat =
-      isRepeatPrompt(prompt, current.prompt, current.name) || (!!current.typedPrompt && isRepeatPrompt(prompt, current.typedPrompt));
-    // Re-typing a fallback noun ("lemonade stand" on a bench built as "table 48 wide …") rebuilds the
-    // same primitive: the typed noun with the bench stock would skip the fallback and lose the build.
-    // A saved or just-learned recipe always wins: the bench's fallback prompt (a closet under a learning block) never replaces it.
-    // Row 517: never on a not-learned placeholder. Its bench prompt is the engine's discarded guess (a planter box under
-    // "toolbox"), so re-running the typed words there would silently price a different object.
-    const retypedFallback = !current.displayOnly && !!current.typedPrompt && !!prompt.trim() && isRepeatPrompt(prompt, current.typedPrompt) && !findRecipe(prompt);
-    let used = !prompt.trim() || retypedFallback ? current.prompt : prompt;
-    const follow = !opts?.fresh && current.prompt.trim() && !repeat && looksLikeFollowOn(prompt, current.prompt);
-    let mode: "auto" | "cut" | "whole" = get().cutMode;
-    if (opts?.cutStock === true) mode = "cut";
-    else if (opts?.cutStock === false) mode = "whole";
-    else if (!follow && current.prompt.trim() !== prompt.trim()) mode = "auto";
-    const keepView = !!opts?.keepView;
-    const genOpts: {
-      includeSpine?: boolean;
-      joinMethod?: JoinMethod;
-      scale: BuildScale;
-      sizeOverride?: { width: number; height: number; depth: number };
-      cutStock?: boolean;
-      fittedOverride?: import("./types").FittedSpec;
-      pocketOverride?: PocketSpec;
-      honorUnit?: boolean;
-    } = { ...opts, scale, cutStock: stockFlag(mode) };
-    // Same object, new stock: a pocket or fitted unit rebuilds from the hole and unit on the bench
-    // (with every edit made there), not from re-reading the sentence.
-    // Restock rebuilds from the hole already on the bench. A caller that already
-    // passed a count (shelves, cubbies, drawers) keeps that override — copying the
-    // bench spec back would snap the field to the old count.
-    if (opts?.restock && materialId && !opts.fittedOverride && !opts.pocketOverride) {
-      const srcPocket = current.pocket ?? current.recastFrom?.pocket;
-      const srcFitted = current.fitted ?? current.recastFrom?.fitted;
-      if (srcPocket) genOpts.pocketOverride = srcPocket;
-      else if (srcFitted && !climbIdentityLabel((current.prompt || "").toLowerCase())) {
-        genOpts.fittedOverride = srcFitted;
-        genOpts.honorUnit = true;
-      }
-    }
-    if (follow) {
-      used = refinedPrompt(current.prompt, prompt);
-      genOpts.sizeOverride = applyFollowOnSize(current.overall, prompt);
-      if (!materialId && !followOnNamesStock(prompt)) materialId = current.primaryMaterialId;
-      if (/cut the sticks|cut each stick/.test(prompt.toLowerCase())) {
-        mode = "cut";
-        genOpts.cutStock = true;
-      }
-      if (/don'?t cut|whole sticks/.test(prompt.toLowerCase())) {
-        mode = "whole";
-        genOpts.cutStock = false;
-      }
-    }
-    // A new subject with no stock typed must not inherit the bench stock — that
-    // skipped honest fallback (popsicle birdhouse → "lemonade stand" stayed craft).
-    // Keep prior stock for ". Then:" refinements, exact repeats, Measure restock,
-    // or when the typed words name stock (hasExplicitStock / detectMaterial).
-    if (!materialId) {
-      // A placeholder's plywood is display only (roughBlock), never stock the visitor chose (row 517).
-      const keepPrior = !!opts?.restock || follow || (!opts?.fresh && repeat && !current.displayOnly);
-      if (keepPrior || hasExplicitStock(used)) {
-        materialId = materialUnlessNamed(current.primaryMaterialId, used);
-      }
-    }
-    const built = generateFromPrompt(used, materialId, form, genOpts);
+    const { current, used, follow, mode, keepView, genOpts, args } = resolveCall(get, prompt, materialId, form, opts);
+    materialId = args[1];
+    // Perf fix 1: the engine worker's answer for exactly this call, when run-prompt asked for it; else built here.
+    const built = takeBuild(args) ?? generateFromPrompt(...args);
     // A remapped primitive keeps showing the typed words across restock and refinement.
     const typedPrompt =
       built.typedPrompt ??
@@ -442,7 +461,7 @@ export const useYard = create<YardState>((set, get) => ({
   setCutMode: (v) => set({ cutMode: v }),
   makePlan: () => {
     const prev = get().plan;
-    const plan = buildPlan(get().project);
+    const plan = takePlan(get().project) ?? buildPlan(get().project);
     if (prev?.instructions?.length) {
       const photos = new Map(
         prev.instructions

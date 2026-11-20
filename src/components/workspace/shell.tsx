@@ -4,7 +4,7 @@ import { headerTitle } from "@/lib/yard/pdf";
 import { setErrContext } from "@/lib/err/report";
 import { NOTHING_BUILT_STOCK } from "@/lib/yard/stockPill";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -30,7 +30,9 @@ import { MeasureSheetGap } from "@/components/workspace/measure-sheet-card";
 import { BenchHost, PanelBackdrop } from "@/components/workspace/measure-sheet-gap";
 import { PlanDrawer } from "@/components/workspace/plan-drawer";
 import { ExportDialog } from "@/components/workspace/export-dialog";
-import { WorkspaceCanvas } from "@/components/workspace/canvas";
+import { warmEngine } from "@/lib/yard/engineWorker";
+// Perf fix 3: the 3D view (three.js, react-three-fiber, drei) loads after the shell, prompt and plan panel paint.
+const WorkspaceCanvas = lazy(() => import("@/components/workspace/canvas").then((m) => ({ default: m.WorkspaceCanvas })));
 import { LavaLamp } from "@/components/workspace/lava-lamp";
 import { BenchTools } from "@/components/workspace/bench-tools";
 import { ShopDrawingSheet } from "@/components/workspace/shop-drawing-print";
@@ -60,6 +62,8 @@ const STALL_IDEAS = ["linen closet 31.5 wide 78 tall 16 deep", "bookcase 36 wide
 
 export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: string; shareToken?: string }) {
   const [ready, setReady] = useState(false);
+  // Perf fix 1: the engine worker starts at idle, so the first build doesn't wait for it to load.
+  useEffect(() => { warmEngine(); }, []);
   const [side, setSide] = useState<"catalog" | "measure" | null>(null);
   const closeSide = useCallback(() => setSide(null), []);
   // The span/spine offer: dismissible per build; on a phone it lives in the Edit sheet, never over the model.
@@ -483,7 +487,9 @@ export function WorkspaceApp({ initialPrompt, shareToken }: { initialPrompt?: st
         )}
 
         <BenchHost sheetOpen={side === "measure"} onClose={closeSide}>
-          <WorkspaceCanvas />
+          <Suspense fallback={<div className="absolute inset-0" data-yard-canvas-loading="1" aria-hidden="true" />}>
+            <WorkspaceCanvas />
+          </Suspense>
           <MeasureSheetGap show={side === "measure"} />
           <RevealStatus />
           <BuildScrubber />

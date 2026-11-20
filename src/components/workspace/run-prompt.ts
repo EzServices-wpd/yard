@@ -16,6 +16,8 @@ import { climbIdentityLabel, detectHouseFamily, identityTitleStem, isWorkbench, 
 import { looksLikePocket } from "@/lib/yard/pocket";
 import { useYard } from "@/lib/yard/store";
 import { ignoredTypedWords } from "@/lib/yard/promptMain";
+import { prebuild } from "@/lib/yard/engineWorker";
+import { takeIgnored } from "@/lib/yard/engineCache";
 import { detectMaterial, hasExplicitStock } from "@/lib/yard/promptHelpers";
 import { isBareProductPrompt } from "@/lib/yard/productModel";
 import { detectWeekendMech, wantsMediaTipHold } from "@/lib/yard/weekendFamily";
@@ -440,14 +442,28 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
   const { lookupRecipe, hintSubject, interpretPrompt, briefHousePrompt, proposeRecipeFn } = { ...AI, ...opts.ai };
   if (!typed) return;
   let prompt = typed;
-  if (readerWanted(typed, opts.fresh)) {
-    prompt = await readerPrompt(typed, run);
-    if (!run.live()) return;
-  }
-
   const generate = useYard.getState().generate;
   const makePlan = useYard.getState().makePlan;
   const revealBench = useYard.getState().revealBench;
+  // Perf fix 1: the engine runs in a worker (the exact call generate() is about to make); the store takes the
+  // answer only for that call and builds on the main thread otherwise, so the bench is the same either way.
+  const prebuilt = async (words: string) => {
+    await prebuild(useYard.getState().engineCallFor(words, undefined, undefined, { fresh: opts.fresh }), words);
+    return run.live();
+  };
+  // Perf fix 2: the reader never holds the first model. The typed words build and show at once; the reader's answer
+  // replaces them only when it reads a different build (silently: no new words on the page).
+  let shownTyped = false;
+  if (readerWanted(typed, opts.fresh)) {
+    const reading = readerPrompt(typed, run);
+    if (!(await prebuilt(typed))) return;
+    generate(typed, undefined, undefined, { fresh: opts.fresh });
+    makePlan();
+    revealBench();
+    shownTyped = true;
+    prompt = await reading;
+    if (!run.live()) return;
+  }
 
   const weekendMech = detectWeekendMech(prompt);
   const tipHold = wantsMediaTipHold(prompt);
@@ -457,7 +473,10 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
       : parseBrief(prompt);
   // The bar builds exactly what the engine builds from the typed words: generateFromPrompt reads the
   // fitted brief itself when the prompt is a carcase, so a pre-parsed brief would only steal real classes.
-  generate(prompt, undefined, undefined, { fresh: opts.fresh });
+  if (!(shownTyped && prompt === typed)) {
+    if (!(await prebuilt(prompt))) return;
+    generate(prompt, undefined, undefined, { fresh: opts.fresh });
+  }
   // The bar keeps showing the words typed, never the reader's rewrite (I35).
   if (prompt !== typed) useYard.getState().setProject({ ...useYard.getState().project, typedPrompt: typed });
   if (bounded.note) {
@@ -469,7 +488,7 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
   // A noun the engine does not own goes to the learner, from every entry point (bar, ?q=, share link, idea):
   // while it learns, and if it fails, the bench shows the display-only block, never the engine's guess
   // (a stick cloud or thin frame with a price and piece count).
-  const half = ignoredTypedWords(next, prompt).length > 0;
+  const half = (takeIgnored(next, prompt) ?? ignoredTypedWords(next, prompt)).length > 0;
   // F47: a unit item (one clip, a clip chain, a washer tower) is built from the unit table, never learned.
   const unitItem = (next.notes ?? []).some((n) => n.startsWith(UNIT_ITEM_NOTE));
   // L1 + hotfix #41: an engine-owned shape always wins; the learner runs only when the engine has no form.
