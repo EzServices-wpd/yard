@@ -4,21 +4,41 @@ import { readFileSync } from "node:fs";
 import { BID, buildIdOf } from "../src/lib/feedback/buildId";
 import { cleanEvent } from "../src/lib/feedback/events";
 import { cleanFeedback } from "../src/lib/feedback/shop";
-import { ShopStore, EV_DAY_CAP, EV_INSTANCE_PER_MIN, EV_CLIENT_PER_MIN, EV_MONTH_BUDGET, K } from "../src/lib/feedback/store.server";
-import { clientHash, eventPageQuiet, eventPostDecision } from "../src/lib/feedback/eventGate";
+import { ShopStore, EV_DAY_CAP, EV_INSTANCE_PER_MIN, EV_MONTH_BUDGET, K, applyEventGate, EVENT_GATE_LUA, EVENT_BUDGET_LUA, eventKeyScope } from "../src/lib/feedback/store.server";
+import { eventPageQuiet, eventPostDecision } from "../src/lib/feedback/eventGate";
 
 function fakeRedis() {
   const kv = new Map<string, any>();
   const calls: (string | number)[][] = [];
-  const pipe = async (cmds: (string | number)[][]) => cmds.map((c) => { calls.push(c); const [op, k, ...a] = c as any[];
-    switch (op) {
-      case "GET": return kv.has(k) ? kv.get(k) : null;
-      case "INCRBY": kv.set(k, (kv.get(k) ?? 0) + Number(a[0])); return kv.get(k);
-      case "INCR": kv.set(k, (kv.get(k) ?? 0) + 1); return kv.get(k);
-      case "EXPIRE": return 1;
-      case "HINCRBY": { const h = kv.get(k) ?? {}; h[a[0]] = (h[a[0]] ?? 0) + Number(a[1]); kv.set(k, h); return h[a[0]]; }
-      case "SET": { if (a.includes("NX") && kv.has(k)) return null; kv.set(k, a[0]); return "OK"; }
-    } return null; });
+  // One round trip at a time, but each command array is applied without yielding, so a single EVAL cannot race itself.
+  let chain = Promise.resolve();
+  const pipe = (cmds: (string | number)[][]) => {
+    const job = chain.then(() => cmds.map((c) => { calls.push(c); const [op, k, ...a] = c as any[];
+      switch (op) {
+        case "EVAL": {
+          const numkeys = Number(a[0]);
+          const keys = a.slice(1, 1 + numkeys).map(String);
+          const args = a.slice(1 + numkeys).map(Number);
+          if (k === EVENT_GATE_LUA) return applyEventGate(kv, keys[0], keys[1], args[0], args[1], args[2]);
+          if (k === EVENT_BUDGET_LUA) {
+            const cur = Number(kv.get(keys[0]) ?? 0);
+            if (cur >= args[0]) return [0, cur];
+            if (cur + args[1] > args[0]) { kv.set(keys[0], cur + 1); return [0, cur + 1]; }
+            kv.set(keys[0], cur + args[1]);
+            return [1, cur + args[1]];
+          }
+          return [0, 0, 0];
+        }
+        case "GET": return kv.has(k) ? kv.get(k) : null;
+        case "INCRBY": kv.set(k, (kv.get(k) ?? 0) + Number(a[0])); return kv.get(k);
+        case "INCR": kv.set(k, (kv.get(k) ?? 0) + 1); return kv.get(k);
+        case "EXPIRE": return 1;
+        case "HINCRBY": { const h = kv.get(k) ?? {}; h[a[0]] = (h[a[0]] ?? 0) + Number(a[1]); kv.set(k, h); return h[a[0]]; }
+        case "SET": { if (a.includes("NX") && kv.has(k)) return null; kv.set(k, a[0]); return "OK"; }
+      } return null; }));
+    chain = job.then(() => undefined, () => undefined);
+    return job;
+  };
   return { kv, calls, pipe };
 }
 const build = { prompt: "bookcase 36 wide", kind: "closet", primaryMaterialId: "plywood-3-4-4x8", overall: { width: 36, height: 84, depth: 12 }, panels: [{ name: "Side" }, { name: "Side" }, { name: "Top" }] };
@@ -106,54 +126,61 @@ test("the thumbs control stays off the page while its wording is still a draft",
   assert.match(src, /THUMBS_DRAFT/);
 });
 
-test("a refused event costs one read, then nothing, and never the shared budget", async () => {
+test("over the day cap a fresh instance spends one command and does not write the event", async () => {
   const f = fakeRedis();
-  const s = new ShopStore(f.pipe);
   const bid = buildIdOf(build);
   const at = new Date("2026-11-19T12:00:00Z");
   f.kv.set(K.evCount("2026-11-19"), EV_DAY_CAP);
+  const s = new ShopStore(f.pipe);
   assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!, at), "limited");
-  assert.deepEqual(f.calls, [["GET", K.evCount("2026-11-19")]], "the first refusal is one read and no write");
-  f.calls.length = 0;
-  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", at)!, at), "limited");
-  assert.equal(f.calls.length, 0, "this instance remembers the cap and sends nothing");
+  assert.equal(f.calls.filter((c) => c[0] === "EVAL").length, 1);
+  assert.equal(f.calls.some((c) => c[0] === "HINCRBY"), false);
+  assert.equal(f.kv.get(K.evCount("2026-11-19")), EV_DAY_CAP);
+  assert.equal(f.kv.get(K.evCmds("2026-11")), 1, "the refusal itself is counted");
+  const s2 = new ShopStore(f.pipe);
+  assert.equal(await s2.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", at)!, at), "limited");
+  assert.equal(f.kv.get(K.evCount("2026-11-19")), EV_DAY_CAP);
   assert.equal([...f.kv.keys()].some((k) => String(k).startsWith("ideas:cmds")), false);
 });
 
-test("one client is limited in memory, and the hash is never stored", async () => {
+test("with the month budget already spent, 100 fresh instances save nothing and leave ev:cmds unchanged", async () => {
   const f = fakeRedis();
-  const s = new ShopStore(f.pipe);
   const bid = buildIdOf(build);
   const at = new Date("2026-11-19T12:00:00Z");
-  const hash = clientHash("203.0.113.9");
-  for (let i = 0; i < EV_CLIENT_PER_MIN; i++) assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "lowes" }, "", at)!, at, hash), "saved");
-  const before = f.calls.length;
-  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "lowes" }, "", at)!, at, hash), "limited");
-  assert.equal(f.calls.length, before, "over the per-client minute, no command is sent");
-  const blob = JSON.stringify([...f.kv.entries()]);
-  assert.equal(blob.includes(hash), false);
-  assert.equal(blob.includes("203.0.113.9"), false);
+  f.kv.set(K.evCmds("2026-11"), EV_MONTH_BUDGET);
+  let saved = 0;
+  for (let i = 0; i < 100; i++) {
+    const s = new ShopStore(f.pipe);
+    const out = await s.addEvent(cleanEvent({ bid, ev: "buy", store: "amazon" }, "", at)!, at);
+    if (out === "saved") saved++;
+    else assert.equal(out, "limited");
+  }
+  assert.equal(saved, 0);
+  assert.equal(f.kv.get(K.evCmds("2026-11")), EV_MONTH_BUDGET);
+  assert.equal(f.kv.has("ev:2026-11-19"), false);
+  assert.equal(f.kv.has("ideas:cmds:2026-11"), false);
 });
 
-test("the events sub-budget stops before a write and does not touch the Ideas counter", async () => {
+test("50 parallel calls at 1,199 do not pass 1,200", async () => {
   const f = fakeRedis();
-  const s = new ShopStore(f.pipe);
-  s.evBudget.month = "2026-11";
-  s.evBudget.saw(EV_MONTH_BUDGET);
   const bid = buildIdOf(build);
   const at = new Date("2026-11-19T12:00:00Z");
-  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "amazon" }, "", at)!, at), "limited");
-  assert.equal(f.calls.length, 0);
-  assert.equal(f.kv.has("ideas:cmds:2026-11"), false);
-  assert.equal(f.kv.has("ev:2026-11-19"), false);
+  f.kv.set(K.evCount("2026-11-19"), EV_DAY_CAP - 1);
+  const results = await Promise.all(Array.from({ length: 50 }, () => new ShopStore(f.pipe).addEvent(cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!, at)));
+  assert.equal(results.filter((r) => r === "saved").length, 1);
+  assert.equal(Number(f.kv.get(K.evCount("2026-11-19"))), EV_DAY_CAP);
+  const hash = (f.kv.get("ev:2026-11-19") ?? {}) as Record<string, number>;
+  assert.equal(Object.values(hash).reduce((a, b) => a + b, 0), 1);
 });
 
 test("cross-origin and text/plain are not events; a test page sends nothing", () => {
-  const env = { VERCEL_URL: "yard-git-cursor-build-id-events-build-hq.vercel.app" };
+  const preview = { VERCEL_ENV: "preview", VERCEL_URL: "yard-git-cursor-build-id-events-build-hq.vercel.app" };
   const ok = { contentType: "application/json", origin: "https://yard.wiki", referer: null, url: "https://yard.wiki/api/ev", testHeader: null };
   assert.equal(eventPostDecision(ok), "ok");
-  assert.equal(eventPostDecision({ ...ok, origin: "https://yard-git-cursor-build-id-events-build-hq.vercel.app" }, env), "ok");
+  assert.equal(eventPostDecision({ ...ok, origin: "https://yard-git-cursor-build-id-events-build-hq.vercel.app" }, preview), "ok");
+  assert.equal(eventPostDecision({ ...ok, origin: "https://yard-git-some-other-preview.vercel.app" }, { VERCEL_ENV: "production", VERCEL_URL: "yard.wiki" }), "cross", "a preview origin does not count on production");
   assert.equal(eventPostDecision({ ...ok, origin: "http://127.0.0.1:8080" }), "ok");
+  assert.equal(eventPostDecision({ ...ok, origin: "http://127.0.0.1:8080" }, { VERCEL_ENV: "production" }), "cross");
   assert.equal(eventPostDecision({ ...ok, origin: "https://evil.example", contentType: "text/plain" }), "type");
   assert.equal(eventPostDecision({ ...ok, contentType: "text/plain" }), "type");
   assert.equal(eventPostDecision({ ...ok, origin: "https://evil.example" }), "cross");
@@ -168,6 +195,10 @@ test("cross-origin and text/plain are not events; a test page sends nothing", ()
   assert.ok(sender.indexOf("eventPageQuiet") < sender.indexOf("fetch("), "a test page returns before the request");
   const route = readFileSync(new URL("../src/routes/api/ev.ts", import.meta.url), "utf8");
   assert.ok(route.indexOf("eventPostDecision") < route.indexOf("shopStore"), "origin and test traffic are decided before the store");
+  assert.doesNotMatch(route, /x-forwarded-for|x-real-ip|clientHash|remoteAddress/);
+  assert.equal(eventKeyScope({}), "");
+  assert.equal(eventKeyScope({ VERCEL_ENV: "production" }), "");
+  assert.equal(eventKeyScope({ VERCEL_ENV: "preview" }), "preview:", "preview events do not spend the production counters");
 });
 
 test("feedback carries the build id when it has one, and nothing new when it does not", () => {

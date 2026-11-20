@@ -1,7 +1,7 @@
 /**
  * Build events (launch plan A2): what happened to a build, keyed by its build id. Shared by the browser sender
- * (sendEvent.ts) and POST /api/ev. No identity is stored. The route hashes the caller address in memory
- * for a per-caller limit and then drops it. User agent, cookie and client id are not read.
+ * (sendEvent.ts) and POST /api/ev. The route does not read an IP address, user agent, cookie
+ * or client id. Caps are Redis counters, not a per-caller address.
  * Only the build event carries the scrubbed words (safePrompt) and the server tip. Client price, part count,
  * size and family are not stored, so a forged event cannot plant a number the digest would print as fact.
  */

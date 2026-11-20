@@ -47,11 +47,11 @@ export function digestMarkdown(input: DigestInput, worstN = 10): string {
   const chips: Record<string, number> = {};
   for (const f of fb) for (const c of f.chips) chips[c] = (chips[c] ?? 0) + 1;
 
+  const typed = (prompt: string | null | undefined) => (prompt ? `visitor-typed, unverified: “${md(prompt)}”` : "");
   const name = (bid: string) => {
     const b = builds[bid];
     const fromNote = per.get(bid)?.notes[0];
-    const prompt = b?.prompt ?? fromNote?.prompt ?? null;
-    return prompt ? `“${md(prompt)}”` : `build ${bid}`;
+    return typed(b?.prompt) || typed(fromNote?.prompt) || `build ${bid}`;
   };
   /** Size and family are printed only when the server verified them. Client numbers are never printed. */
   const facts = (bid: string) => (builds[bid]?.verified === true ? builds[bid] : undefined);
@@ -84,7 +84,7 @@ export function digestMarkdown(input: DigestInput, worstN = 10): string {
   if (!byChip.size) lines.push("No notes today.", "");
   for (const [c, list] of [...byChip.entries()].sort((a, b) => b[1].length - a[1].length)) {
     lines.push(`### ${CHIP_LABEL[c] ?? c} (${list.length})`);
-    for (const f of list.slice(0, 15)) lines.push(`- ${f.prompt ? `“${md(f.prompt)}”` : "(no prompt)"}${f.size ? ` · ${md(f.size)}` : ""}${f.note ? `: ${md(f.note)}` : ""}`);
+    for (const f of list.slice(0, 15)) lines.push(`- ${f.prompt ? typed(f.prompt) : "(no prompt)"}${f.size ? ` · ${md(f.size)}` : ""}${f.note ? `: ${md(f.note)}` : ""}`);
     if (list.length > 15) lines.push(`- … ${list.length - 15} more`);
     lines.push("");
   }

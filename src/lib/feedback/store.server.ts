@@ -25,16 +25,16 @@ export const K = {
   build: (bid: string) => `bld:${bid}`, // JSON: scrubbed words and the server tip. First write wins, 85 days.
 };
 /**
- * Hard daily cap on build events. The cap is read (one GET) and, once this instance has seen the day full,
- * remembered, so a refused request costs 1 command the first time and 0 after. Accepted events count against
- * EV_MONTH_BUDGET on `ev:cmds`, never against the shared 450K `ideas:cmds` key (Ideas log and Tell the shop).
- * 40,000 leaves the 50,000 gap between that 450K guard and the 500K free tier for the commands events do send.
+ * Hard daily cap and the events month budget. Both are decided by one Redis EVAL (eventGateLua), not by
+ * this process's memory, so a new instance and a burst of concurrent requests see the same counters.
+ * At the month budget the script writes nothing and the counter stays put (the EVAL is the one command).
+ * Under the budget, a day-cap refusal increments ev:cmds by 1 and does not take a day slot.
+ * 40,000 leaves the 50,000 gap between the shared 450K ideas guard and the 500K free tier.
+ * Preview (VERCEL_ENV=preview) uses a separate key prefix so it cannot spend the production counters.
  */
 export const EV_DAY_CAP = 1200;
 export const EV_MONTH_BUDGET = 40_000;
 export const EV_INSTANCE_PER_MIN = 60;
-/** Per caller, in memory only. One client cannot hold the instance's whole 60/min. The hash is never stored. */
-export const EV_CLIENT_PER_MIN = 10;
 export const EV_KEEP_SECONDS = 3 * 86_400;
 /** Builds the digest looks up per run (one MGET). */
 export const DIGEST_BUILDS = 200;
@@ -55,6 +55,90 @@ export const INSTANCE_PER_MIN = 12;
 
 const month = (now: Date) => now.toISOString().slice(0, 7);
 const day = (now: Date) => now.toISOString().slice(0, 10);
+/** Preview deploys share the store. Their events must not spend the production month. */
+export const eventKeyScope = (env: Record<string, string | undefined> = process.env) => (env.VERCEL_ENV === "preview" ? "preview:" : "");
+
+/**
+ * One Redis command. Keys: ev:cmds month, ev:n day. Args: budget, day cap, spend if accepted, month ttl, day ttl.
+ * Returns {ok, cmdsAfter, dayAfter}. ok is 1 only when a day slot was taken. At the month budget, cmds is unchanged.
+ * Keep applyEventGate in step with this script: the tests drive the script through that function.
+ */
+export const EVENT_GATE_LUA = `
+local budget = tonumber(ARGV[1])
+local cap = tonumber(ARGV[2])
+local spend = tonumber(ARGV[3])
+local monthTtl = tonumber(ARGV[4])
+local dayTtl = tonumber(ARGV[5])
+local cmds = tonumber(redis.call('GET', KEYS[1]) or '0')
+if cmds >= budget then
+  return {0, cmds, 0}
+end
+local day = tonumber(redis.call('GET', KEYS[2]) or '0')
+if day >= cap or (cmds + spend) > budget then
+  cmds = redis.call('INCRBY', KEYS[1], 1)
+  if monthTtl > 0 then redis.call('EXPIRE', KEYS[1], monthTtl) end
+  return {0, cmds, day}
+end
+local slot = redis.call('INCR', KEYS[2])
+if slot > cap then
+  redis.call('DECR', KEYS[2])
+  cmds = redis.call('INCRBY', KEYS[1], 1)
+  if monthTtl > 0 then redis.call('EXPIRE', KEYS[1], monthTtl) end
+  return {0, cmds, cap}
+end
+if dayTtl > 0 then redis.call('EXPIRE', KEYS[2], dayTtl) end
+cmds = redis.call('INCRBY', KEYS[1], spend)
+if monthTtl > 0 then redis.call('EXPIRE', KEYS[1], monthTtl) end
+return {1, cmds, slot}
+`;
+
+/** Digest and other event reads reserve budget only. They do not take a day slot. */
+export const EVENT_BUDGET_LUA = `
+local budget = tonumber(ARGV[1])
+local spend = tonumber(ARGV[2])
+local monthTtl = tonumber(ARGV[3])
+local cmds = tonumber(redis.call('GET', KEYS[1]) or '0')
+if cmds >= budget then
+  return {0, cmds}
+end
+if (cmds + spend) > budget then
+  cmds = redis.call('INCRBY', KEYS[1], 1)
+  if monthTtl > 0 then redis.call('EXPIRE', KEYS[1], monthTtl) end
+  return {0, cmds}
+end
+cmds = redis.call('INCRBY', KEYS[1], spend)
+if monthTtl > 0 then redis.call('EXPIRE', KEYS[1], monthTtl) end
+return {1, cmds}
+`;
+
+/** The same decision as EVENT_GATE_LUA, for the test double. Mutates kv the way the script mutates Redis. */
+export function applyEventGate(
+  kv: { get(k: string): unknown; set(k: string, v: number): void },
+  cmdsKey: string,
+  dayKey: string,
+  budget: number,
+  cap: number,
+  spend: number,
+): [number, number, number] {
+  const cmds = Number(kv.get(cmdsKey) ?? 0);
+  if (cmds >= budget) return [0, cmds, 0];
+  const dayn = Number(kv.get(dayKey) ?? 0);
+  if (dayn >= cap || cmds + spend > budget) {
+    const n = cmds + 1;
+    kv.set(cmdsKey, n);
+    return [0, n, dayn];
+  }
+  const slot = dayn + 1;
+  if (slot > cap) {
+    const n = cmds + 1;
+    kv.set(cmdsKey, n);
+    return [0, n, cap];
+  }
+  kv.set(dayKey, slot);
+  const n = cmds + spend;
+  kv.set(cmdsKey, n);
+  return [1, n, slot];
+}
 
 export type ReviewMark = { reviewed: boolean; grade: string | null; reviewedAt: string | null; lastSampledAt: string | null };
 export type ReviewRow = { key: string; prompt: string; size: string; resultKey: string } & ReviewMark;
@@ -62,7 +146,7 @@ export const GRADE = /^[A-Za-z0-9+-]{1,8}$/;
 
 export class ShopStore {
   private hits: number[] = [];
-  constructor(private pipe: Pipe | null = restPipe(), readonly budget = new Budget(), readonly evBudget = new Budget(EV_MONTH_BUDGET)) {}
+  constructor(private pipe: Pipe | null = restPipe(), readonly budget = new Budget()) {}
   get live() { return !!this.pipe; }
 
   private async run(n: number, cmds: (string | number)[][], now: Date): Promise<unknown[] | null> {
@@ -75,62 +159,57 @@ export class ShopStore {
   }
 
   private evHits: number[] = [];
-  private clientHits = new Map<string, number[]>();
-  /** Day this instance already saw at the cap. Later refusals send nothing. */
-  private evCappedDay = "";
 
-  /** True when this caller (an in-memory hash, never a stored address) is over its minute. */
-  private clientLimited(hash: string | undefined, t: number): boolean {
-    if (!hash) return false;
-    const fresh = (this.clientHits.get(hash) ?? []).filter((x) => t - x < 60_000);
-    if (fresh.length >= EV_CLIENT_PER_MIN) { this.clientHits.set(hash, fresh); return true; }
-    fresh.push(t);
-    this.clientHits.set(hash, fresh);
-    if (this.clientHits.size > 2000) for (const [k, v] of this.clientHits) if (v.every((x) => t - x >= 60_000)) this.clientHits.delete(k);
-    return false;
+  /** Month and day keys. Preview is a separate pair so it cannot spend production. */
+  private evKeys(now: Date) {
+    const scope = eventKeyScope();
+    const d = day(now);
+    return { cmds: `ev:cmds:${scope}${month(now)}`, day: `ev:n:${scope}${d}`, hash: `ev:${scope}${d}` };
   }
 
   /**
-   * A build event, counted per build and detail for the day. The day's cap and this instance's memory
-   * are checked before any write. A build event stores the scrubbed words only (first write wins).
-   * `clientHash` is an in-memory limit key. It is never sent to the store.
+   * A build event, counted per build and detail for the day. The month budget and the day cap are one
+   * atomic Redis script, shared by every instance. A build event stores the scrubbed words only (first write wins).
+   * No address is read.
    */
-  async addEvent(rec: EventRecord, now = new Date(), clientHash?: string): Promise<"saved" | "off" | "limited" | "dropped"> {
+  async addEvent(rec: EventRecord, now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
     if (!this.pipe) return "off";
     const t = now.getTime();
     this.evHits = this.evHits.filter((x) => t - x < 60_000);
     if (this.evHits.length >= EV_INSTANCE_PER_MIN) return "limited";
-    if (this.clientLimited(clientHash, t)) return "limited";
-    const d = day(now);
-    if (this.evCappedDay === d) return "limited";
-    // A buy/export/thumb is 5 commands; a build event adds the record (6). Refuse before the read when this month is spent.
-    if (!this.evBudget.allows(rec.build ? 6 : 5, now)) return "limited";
     this.evHits.push(t);
-    let peek: unknown[] | null;
-    try { peek = await this.pipe([["GET", K.evCount(d)]]); } catch { return "dropped"; }
-    if (!peek) return "dropped";
-    if (Number(peek[0] ?? 0) >= EV_DAY_CAP) { this.evCappedDay = d; return "limited"; }
+    const keys = this.evKeys(now);
     const field = `${rec.bid}|${rec.ev}|${rec.detail}`;
-    const cmds: (string | number)[][] = [["INCR", K.evCount(d)], ["EXPIRE", K.evCount(d), EV_KEEP_SECONDS], ["HINCRBY", K.ev(d), field, 1], ["EXPIRE", K.ev(d), EV_KEEP_SECONDS]];
-    if (rec.build) cmds.push(["SET", K.build(rec.bid), JSON.stringify({ ...rec.build, first: rec.at }), "NX", "EX", FEEDBACK_DAYS * 86_400]);
-    const n = cmds.length + 1;
+    const follow: (string | number)[][] = [["HINCRBY", keys.hash, field, 1], ["EXPIRE", keys.hash, EV_KEEP_SECONDS]];
+    if (rec.build) follow.push(["SET", K.build(rec.bid), JSON.stringify({ ...rec.build, first: rec.at }), "NX", "EX", FEEDBACK_DAYS * 86_400]);
+    const spend = 1 + follow.length;
+    let gate: unknown[] | null;
     try {
-      const out = await this.pipe([["INCRBY", K.evCmds(month(now)), n], ...cmds]);
-      if (!out) return "dropped";
-      this.evBudget.saw(Number(out[0]));
-      if (Number(out[1]) > EV_DAY_CAP) this.evCappedDay = d;
-      return "saved";
+      gate = await this.pipe([["EVAL", EVENT_GATE_LUA, 2, keys.cmds, keys.day, EV_MONTH_BUDGET, EV_DAY_CAP, spend, 40 * 86_400, EV_KEEP_SECONDS]]);
+    } catch { return "dropped"; }
+    if (!gate) return "dropped";
+    const row = gate[0];
+    const ok = Array.isArray(row) ? Number(row[0]) : Number(row);
+    if (ok !== 1) return "limited";
+    try {
+      const wrote = await this.pipe(follow);
+      return wrote ? "saved" : "dropped";
     } catch { return "dropped"; }
   }
 
-  /** Event reads and writes spend `ev:cmds`, not the shared ideas budget. */
+  /** Reserve n event-budget commands, or null when the month is spent. Does not touch the day cap or ideas:cmds. */
   private async evSpend(n: number, cmds: (string | number)[][], now: Date): Promise<unknown[] | null> {
-    if (!this.pipe || !this.evBudget.allows(n, now)) return null;
+    if (!this.pipe) return null;
+    const keys = this.evKeys(now);
+    let gate: unknown[] | null;
     try {
-      const out = await this.pipe([["INCRBY", K.evCmds(month(now)), n], ...cmds]);
-      this.evBudget.saw(Number(out?.[0]));
-      return out ? out.slice(1) : null;
+      gate = await this.pipe([["EVAL", EVENT_BUDGET_LUA, 1, keys.cmds, EV_MONTH_BUDGET, n, 40 * 86_400]]);
     } catch { return null; }
+    if (!gate) return null;
+    const row = gate[0];
+    const ok = Array.isArray(row) ? Number(row[0]) : Number(row);
+    if (ok !== 1) return null;
+    try { return await this.pipe(cmds); } catch { return null; }
   }
 
   /**

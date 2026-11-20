@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { digestMarkdown, type DigestInput } from "../src/lib/feedback/digest";
 import { ShopStore } from "../src/lib/feedback/store.server";
 import { digestOutAllowed } from "./feedback-digest.ts";
@@ -30,8 +30,8 @@ test("the digest counts the day, ranks the worst builds and lists what is worth 
   assert.ok(worst.indexOf("bookcase 36 wide") < worst.indexOf("pine bench"), "2 down + 2 notes ranks above 1 down");
   assert.match(worst, /Price off: “boards cost more at my store”/);
   assert.doesNotMatch(worst, /toy box/, "a build with only thumbs-up is not a worst build");
-  assert.match(page, /Printed or copied, never sent to a store: “bookcase 36 wide”; “toy box”/);
-  assert.match(page, /Sent to a store, then thumbed down: “pine bench”/);
+  assert.match(page, /Printed or copied, never sent to a store: visitor-typed, unverified: “bookcase 36 wide”/);
+  assert.match(page, /Sent to a store, then thumbed down: visitor-typed, unverified: “pine bench”/);
   assert.doesNotMatch(page, /yesterday's note/);
 });
 
@@ -48,7 +48,7 @@ test("a planted price, part count, size or family is not printed as fact", () =>
     events: { [`${A}|build|`]: 1, [`${A}|thumb|down`]: 2 },
     builds: { [A]: { prompt: "bookcase", size: "31.5x16x78", family: "linen", parts: 11, usd: 999999, tip: "abcdef1", unverified: true } },
   });
-  assert.match(page, /“bookcase”/);
+  assert.match(page, /visitor-typed, unverified: “bookcase”/);
   assert.match(page, /tip abcdef1/);
   assert.doesNotMatch(page, /999999|999,999|\$999|31\.5x16x78|\blinen\b/);
 });
@@ -57,9 +57,15 @@ test("the digest is stdout or a path outside the repo, never a GitHub issue", ()
   assert.equal(digestOutAllowed("/tmp/yard-digest.md"), true);
   assert.equal(digestOutAllowed("digests/2026-11-19.md"), false);
   assert.equal(digestOutAllowed("src/routes/privacy.tsx"), false);
+  const link = "/tmp/yard-digest-symlink-repo";
+  rmSync(link, { recursive: true, force: true });
+  mkdirSync("/tmp", { recursive: true });
+  symlinkSync(process.cwd(), link);
+  assert.equal(digestOutAllowed(`${link}/page.md`), false, "a symlink into the repo is refused");
+  rmSync(link, { force: true });
   const src = readFileSync(new URL("./feedback-digest.ts", import.meta.url), "utf8");
   assert.doesNotMatch(src, /api\.github\.com|GH_TOKEN|YARD_FEEDBACK_GH/);
-  assert.match(src, /digestOutAllowed/);
+  assert.match(src, /realpathSync/);
 });
 
 test("the store read fetches the list, the day's events and only the builds that matter", async () => {
@@ -70,6 +76,7 @@ test("the store read fetches the list, the day's events and only the builds that
     [`bld:${A}`]: JSON.stringify(input.builds[A]), [`bld:${B}`]: JSON.stringify(input.builds[B]),
   };
   const pipe = async (cmds: (string | number)[][]) => cmds.map((c) => { calls.push(c); const [op, k, ...a] = c as any[];
+    if (op === "EVAL") return [1, 1];
     if (op === "INCRBY") return 1;
     if (op === "LRANGE") return kv[k] ?? [];
     if (op === "HGETALL") return kv[k] ?? [];
@@ -79,6 +86,6 @@ test("the store read fetches the list, the day's events and only the builds that
   assert.equal(got.events[`${A}|thumb|down`], 2);
   assert.deepEqual(Object.keys(got.builds).sort(), [A, B, C].sort(), "builds with a thumb, a note, an export or a Buy click; never a build-only one");
   assert.equal(got.builds[C], null, "a build whose record expired reads as null, not an error");
-  assert.ok(calls.every(([op]) => ["INCRBY", "LRANGE", "HGETALL", "MGET"].includes(op as string)), "read-only, plus the budget counter");
+  assert.ok(calls.every(([op]) => ["EVAL", "INCRBY", "LRANGE", "HGETALL", "MGET"].includes(op as string)), "read-only, plus the budget gate");
   assert.equal(await new ShopStore(null).digestInput(day), null);
 });

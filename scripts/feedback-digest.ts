@@ -11,8 +11,8 @@
  * the repo is refused, and this script never opens a GitHub issue. With no store env it says so and exits 2.
  * Reads count against the events command budget (ev:cmds), not the Ideas log.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve, sep } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { digestMarkdown, type DigestInput } from "../src/lib/feedback/digest";
 import { ShopStore } from "../src/lib/feedback/store.server";
@@ -20,13 +20,28 @@ import { ShopStore } from "../src/lib/feedback/store.server";
 /** Repo root. A digest path inside it would be one commit away from the public repo. */
 export const DIGEST_REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
-/** True when `out` is outside the repo. A path inside the repo, or the repo itself, is refused. */
+/**
+ * True when `out` is outside the repo after symlinks are followed. A path inside the repo, the repo
+ * itself, or a symlink whose target is inside the repo, is refused.
+ */
 export function digestOutAllowed(out: string, repoRoot = DIGEST_REPO_ROOT): boolean {
   const abs = resolve(out);
-  const root = resolve(repoRoot);
-  if (abs === root) return false;
+  let root: string;
+  try { root = realpathSync(resolve(repoRoot)); } catch { root = resolve(repoRoot); }
+  const missing: string[] = [];
+  let cursor = abs;
+  while (!existsSync(cursor)) {
+    missing.push(basename(cursor));
+    const parent = dirname(cursor);
+    if (parent === cursor) return false;
+    cursor = parent;
+  }
+  let real: string;
+  try { real = realpathSync(cursor); } catch { return false; }
+  for (const part of missing.reverse()) real = join(real, part);
+  if (real === root) return false;
   const prefix = root.endsWith(sep) ? root : root + sep;
-  return !abs.startsWith(prefix);
+  return !real.startsWith(prefix);
 }
 
 const argv = process.argv.slice(2);
