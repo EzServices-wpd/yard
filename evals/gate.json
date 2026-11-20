@@ -7,9 +7,9 @@
   "fail": 91,
   "points": 797,
   "maxPoints": 1022,
-  "honored": 919,
+  "honored": 921,
   "checkable": 981,
-  "honorPct": 93.7
+  "honorPct": 93.9
  },
  "canaries": {
   "ok": true,
@@ -2376,9 +2376,9 @@
    "fail": 40,
    "points": 101,
    "maxPoints": 200,
-   "honored": 169,
+   "honored": 171,
    "checkable": 206,
-   "honorPct": 82
+   "honorPct": 83
   },
   "live-walk": {
    "prompts": 42,
@@ -2448,11 +2448,11 @@
   }
  },
  "byClass": {
-  "H-standin": 34,
-  "F21": 24,
-  "F1": 20,
-  "T-noun": 19,
+  "H-standin": 35,
+  "F21": 25,
+  "F1": 19,
   "T-size": 19,
+  "T-noun": 17,
   "F12": 14,
   "F17": 14,
   "F3": 11,
@@ -2462,8 +2462,8 @@
   "F9": 4,
   "T-count": 4,
   "C15": 3,
-  "F11": 3,
   "T-feature": 3,
+  "F11": 2,
   "F47": 1,
   "T-budget": 1,
   "T-material": 1
@@ -12578,32 +12578,52 @@
    "grade": "fail",
    "classes": [
     "F17",
-    "T-noun"
+    "H-standin"
    ],
-   "header": "Desk · 48\" W × 24 3/4\" D × 29\" H (size assumed)",
-   "overall": "48W × 24D × 29H",
-   "pieces": 41,
-   "usd": 356.99,
+   "header": "Desk organizer · 24\" W × 6\" D × 12\" H (size assumed)",
+   "overall": "24W × 6D × 12H",
+   "pieces": 3,
+   "usd": 51.44,
    "honor": {
-    "honored": 0,
+    "honored": 1,
     "checkable": 1,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
      {
       "demand": "noun \"desk organizer\"",
       "kind": "noun",
-      "ok": false,
-      "shows": "Desk 48\" × 29\" × 24\""
+      "ok": true,
+      "shows": "Desk organizer 24\" × 12\" × 6\""
      }
     ]
    },
    "invariants": [
     {
-     "id": "I23",
+     "id": "I22",
      "cls": "F17",
-     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "msg": "names \"Table\" but built a simple stand-in",
      "known": false,
      "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Desk organizer 24\" × 12\" × 6\"\" is not the asked-for object"
     }
    ]
   },
@@ -19517,179 +19537,65 @@
    ],
    "grade": "fail",
    "classes": [
-    "F1",
-    "F11",
-    "T-noun",
+    "F21",
     "T-size"
    ],
-   "header": "Deck · 144\" W × 120\" D × 26 1/4\" H",
-   "overall": "144W × 120D × 26.25H",
-   "pieces": 87,
-   "usd": 1009.01,
+   "header": "Storage box · 36\" W × 16\" D × 30\" H (size assumed)",
+   "overall": "36W × 16D × 30H",
+   "pieces": 6,
+   "usd": 176.51,
    "honor": {
-    "honored": 0,
+    "honored": 1,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
      {
       "demand": "noun \"outdoor deck storage box\"",
       "kind": "noun",
-      "ok": false,
-      "shows": "Deck 12' × 10'"
+      "ok": true,
+      "shows": "Storage box"
      },
      {
       "demand": "size \"6 foot\" L=72",
       "kind": "size",
       "ok": false,
-      "shows": "144W×120D×26.25H"
+      "shows": "36W×16D×30H"
      }
     ]
    },
    "invariants": [
     {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Deck board 21 left is placed before Rim joist front left, which it rests on",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Back is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
     },
     {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Deck board 21 right is placed before Rim joist front right, which it rests on",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Bottom is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
     },
     {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 1 front is placed before Rim joist front left, which it rests on",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Front is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
     },
     {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 10 back is placed before Rim joist back right, which it rests on",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left side is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
     },
     {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 10 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 2 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 3 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 4 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 5 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 6 front is placed before Rim joist front left, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 6 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 7 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 7 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 8 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 8 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 9 back is placed before Rim joist back right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I14",
-     "cls": "F11",
-     "msg": "Joist 9 front is placed before Rim joist front right, which it rests on",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist back left reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist back right reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist front left reaches neither the floor nor a wall",
-     "known": false,
-     "scored": true
-    },
-    {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist front right reaches neither the floor nor a wall",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right side is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
     }
