@@ -186,6 +186,19 @@ describe("a learned recipe is kept only when its notes, parts and Buy agree", ()
     assert.deepEqual(said(["No mesh on this one."], [leg("Post")]), []);
   });
 
+  it("parts of one assembly count once, and a finish or an optional extra is not a declared material", () => {
+    const drawer = ["Drawer front", "Drawer back", "Drawer left side", "Drawer right side", "Drawer bottom"].map((n) => leg(n, "plywood-3-4-4x8"));
+    assert.deepEqual(said(["A nightstand with one drawer."], drawer), []);
+    assert.match(said(["Three drawers for storage."], drawer).join(" "), /3 drawers/);
+    const cabinets = [1, 2, 3, 4].flatMap((i) => [`Base cabinet ${i} left side`, `Base cabinet ${i} right side`, `Base cabinet ${i} bottom`].map((n) => leg(n, "plywood-3-4-4x8")));
+    assert.deepEqual(said(["Four base cabinets."], cabinets), []);
+    const wood = [leg("Case", "plywood-3-4-4x8")];
+    assert.deepEqual(said(["Finish with a walnut stain."], wood), []);
+    assert.deepEqual(said(["Optional mesh liner keeps leaves out."], wood), []);
+    assert.match(said(["Built from solid walnut."], wood).join(" "), /walnut/);
+    assert.match(said(["Wire mesh sides keep critters out."], wood).join(" "), /mesh/);
+  });
+
   it("a stated thickness has to be the part's thickness", () => {
     const board = (name: string, thickness: number) => ({ ...donor().panels[0], id: name, name, materialId: "plywood-3-4-4x8", size: { width: 18, height: thickness, depth: 12 } });
     assert.deepEqual(said(["All panels use 3/4 inch thick stock."], [board("Side", 0.75)]), []);
@@ -200,7 +213,16 @@ describe("a learned recipe is kept only when its notes, parts and Buy agree", ()
       [{ id, name: "Part", quantity: 1, lengthIn: cut.l, widthIn: cut.w, thicknessIn: cut.t, material: name }],
     );
     assert.match(sheet(1, "plywood-3-4-4x8", '3/4" Plywood 4×8', { l: 2.4, w: 2.4, t: 0.375 }).join(" "), /full sheet/);
-    assert.match(sheet(21, "acrylic-sheet", "Clear acrylic sheet", { l: 46, w: 35, t: 0.08 }).join(" "), /21 sheets/);
+    assert.match(sheet(21, "acrylic-sheet", "Clear acrylic sheet", { l: 46, w: 35, t: 0.08 }).join(" "), /tiled from 15 sheets/);
+    // A big build buys sheets in proportion to its parts: ten sheets for eight sheets of cabinet parts is kept.
+    const big = (quantity: number) => said(
+      [],
+      [leg("Side", "plywood-3-4-4x8")],
+      [{ name: '3/4" Plywood 4×8', quantity: 10, unit: "sheets", catalogId: "plywood-3-4-4x8" }],
+      [{ id: "plywood-3-4-4x8", name: "Side", quantity, lengthIn: 96, widthIn: 24, thicknessIn: 0.75, material: '3/4" Plywood 4×8' }],
+    );
+    assert.deepEqual(big(16), []);
+    assert.match(big(2).join(" "), /10 sheets/);
     assert.deepEqual(sheet(1, "plywood-3-4-4x8", '3/4" Plywood 4×8', { l: 36, w: 36, t: 0.75 }), []);
     assert.deepEqual(sheet(1, "plywood-3-4-2x4", '3/4" Plywood Project Panel 2×4', { l: 10, w: 10, t: 0.75 }), []);
     const named = said(

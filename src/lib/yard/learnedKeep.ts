@@ -133,20 +133,27 @@ function stockHas(stock: string, w: string): boolean {
 /** A declared material is met by the Buy, or by the other side of an "or" that the Buy does sell. */
 function claimMet(sentence: string, w: string, stock: string): boolean {
   if (!word(w).test(sentence)) return true;
+  // A finish or look ("walnut stain"), or an optional extra, is not what the build is made of.
+  if (new RegExp(`\\b${w}[\\s-]+(?:stain|stained|look|finish|colou?r|tone|tint)\\b`, "i").test(sentence)) return true;
+  if (/\boptional(?:ly)?\b|\bif (?:you (?:want|like|prefer)|desired|preferred)\b/i.test(sentence)) return true;
   if (new RegExp(`\\bno\\s+(?:[\\w-]+\\s+){0,2}${w}|\\bwithout\\s+(?:a |any )?${w}`, "i").test(sentence)) return true;
   if (stockHas(stock, w)) return true;
   if (!/\bor\b/i.test(sentence)) return false;
   return sentence.split(/\bor\b/i).some((side) => CLAIM.some((m) => word(m).test(side) && stockHas(stock, m)));
 }
 
-function countMatching(words: string[], panels: Panel[]): number | null {
+/** How many parts the phrase names, read two ways: each part, and each assembly ("Drawer front" and "Drawer back" are one drawer). */
+function countMatching(words: string[], panels: Panel[]): number[] | null {
   let rest = words.slice();
   for (;;) {
     const last = rest[rest.length - 1].replace(/s$/, "");
     const pre = rest.slice(0, -1).join("\\s+");
-    const re = new RegExp(`\\b${pre ? `${pre}\\s+` : ""}${last}s?\\b`, "i");
-    const n = panels.filter((p) => re.test(p.name)).length;
-    if (n > 0) return n;
+    const noun = `\\b${pre ? `${pre}\\s+` : ""}${last}s?`;
+    const hit = panels.filter((p) => new RegExp(`${noun}\\b`, "i").test(p.name));
+    if (hit.length) {
+      const lead = new RegExp(`^(.*?${noun}(?:\\s+\\d+)?)\\b`, "i");
+      return [hit.length, new Set(hit.map((p) => (p.name.match(lead)?.[1] ?? p.name).toLowerCase())).size];
+    }
     if (rest.length <= 1 || !ADJ.has(rest[0])) return null;
     rest = rest.slice(1);
   }
@@ -177,7 +184,7 @@ function countHits(text: string, panels: Panel[], digits: boolean): string[] {
       if (/^\d+$/.test(tokens[start] ?? "")) continue;
       if (SKIP_NOUN.has(tokens[start] ?? "") || tokens[start] === "per") continue;
       const window = tokens.slice(start, start + 4);
-      let best: { words: number; have: number; label: string } | null = null;
+      let best: { words: number; have: number[]; label: string } | null = null;
       for (let j = 0; j < window.length && !SKIP_NOUN.has(window[j]) && !/^\d+$/.test(window[j]); j++) {
         if (tokens[start + j + 1] === "per") break;
         const phrase = window.slice(0, j + 1);
@@ -185,7 +192,8 @@ function countHits(text: string, panels: Panel[], digits: boolean): string[] {
         if (have == null) continue;
         if (!best || phrase.length >= best.words) best = { words: phrase.length, have, label: phrase.join(" ") };
       }
-      if (best && best.have !== num.value) hits.push(`notes say ${num.value} ${best.label}, the build has ${best.have}`);
+      // Contradicted only when neither reading of the parts has the stated count.
+      if (best && !best.have.includes(num.value)) hits.push(`notes say ${num.value} ${best.label}, the build has ${best.have[0]}`);
     }
   }
   return hits;
@@ -222,7 +230,7 @@ function thicknessHits(notes: string[], panels: Panel[]): string[] {
 }
 
 const FULL_SHEET = 2000;
-/** A full sheet bought for parts that fill under 1% of it, or more sheets of one stock than a lamination (MAX_PLIES). */
+/** A full sheet bought for parts that fill under 1% of it, one part tiled from more sheets than a lamination (MAX_PLIES), or sheets out of proportion to the parts. */
 function buyScaleHits(project: YardProject, plan: BuildPlan): string[] {
   const hits: string[] = [];
   const norm = (s: string) => s.toLowerCase().replace(/×/g, "x").replace(/\s+/g, " ");
@@ -231,9 +239,15 @@ function buyScaleHits(project: YardProject, plan: BuildPlan): string[] {
     if (!item || item.formFactor !== "sheet") continue;
     const face = (item.dims.length ?? 0) * (item.dims.width ?? 0);
     const thick = item.dims.thickness ?? 0;
-    if (line.quantity > MAX_PLIES) hits.push(`${line.quantity} sheets of ${line.name} for the parts`);
     const cuts = plan.cutList.filter((c) => norm(c.material) === norm(line.name) || (line.catalogId && (c.id ?? "").includes(line.catalogId)));
     const volume = cuts.reduce((s, c) => s + c.lengthIn * c.widthIn * c.thicknessIn * c.quantity, 0);
+    // Sheets in proportion to the parts: a big build may need many sheets, but one part is not tiled from more
+    // sheets than a lamination has layers, and the Buy is not more than twice the sheet area the parts cover.
+    const area = cuts.reduce((s, c) => s + c.lengthIn * c.widthIn * c.quantity, 0);
+    if (face > 0) {
+      for (const c of cuts) if (c.lengthIn * c.widthIn > face * MAX_PLIES) hits.push(`one ${c.lengthIn}" × ${c.widthIn}" part tiled from ${Math.ceil((c.lengthIn * c.widthIn) / face)} sheets of ${line.name}`);
+      if (line.quantity > MAX_PLIES && line.quantity > Math.ceil((2 * area) / face)) hits.push(`${line.quantity} sheets of ${line.name} for ${(area / face).toFixed(1)} sheets of parts`);
+    }
     const one = face * thick;
     if (face >= FULL_SHEET && one > 0 && volume > 0 && volume < one * 0.01) hits.push(`a full sheet of ${line.name} for ${volume.toFixed(0)} cu in of parts`);
   }
