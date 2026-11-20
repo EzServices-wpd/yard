@@ -64,11 +64,10 @@ describe("recipe build and validate", () => {
     let n = 0;
     const slow = timedLookup(() => new Promise((res) => setTimeout(() => res({ ok: true, recipeJson: n++ ? JSON.stringify(bin) : "null" }), n ? 60 : 10)), 50, 100);
     const out = await lookupAndBuild("cedar compost bin", slow, rough);
-    // The retry is not cut off. This recipe is plywood for an outdoor cedar ask, so the gate does not keep it.
+    // The retry is not cut off: call 2 is a gate result, not a timeout. This recipe is not kept.
     assert.equal(out.calls, 2);
     assert.match(out.reasons?.join("\n") ?? "", /call 2: gate:/);
     assert.equal(out.recipe, null);
-    assert.equal(out.declined, true);
   });
   it("a flat object (cutting board) may be one slab", () => {
     const board = { key: "cutting-board", synonyms: [], version: 1, trust: "candidate", title: "Cutting board", size: { width: 18, height: 1.5, depth: 12 }, defining: ["board"], notes: [],

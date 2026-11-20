@@ -14,11 +14,11 @@ import type { YardProject } from "./types.ts";
 const donor = () => generateFromPrompt("bookcase 36 wide");
 
 describe("a learned recipe is kept only when the gate says it is no worse and not a stand-in", () => {
-  it("the engine's own build, when it is not a stand-in, is no worse than itself", async () => {
+  it("a tie with the engine stays on the engine", async () => {
     const q = "bookcase 36 wide";
     const p = generateFromPrompt(q);
     assert.equal(standInHits(q, p, buildPlan(p)).length, 0);
-    assert.equal(await mayKeepLearned(q, p), true);
+    assert.equal(await mayKeepLearned(q, p), false);
   });
 
   it("a display-only stand-in grades worse than that bookcase and is not kept", async () => {

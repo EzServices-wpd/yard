@@ -55,16 +55,17 @@ async function gradeOf(prompt: string, project: ReturnType<typeof generateFromPr
 
 async function one(prompt: string) {
   const engine = generateFromPrompt(prompt);
-  const before = await gradeOf(prompt, engine);
+  const engineGrade = await gradeOf(prompt, engine);
   const raw = replies[prompt];
-  if (!raw) return { prompt, before, after: before, kept: false };
+  if (!raw) return { prompt, engineGrade, ungated: engineGrade, after: engineGrade, kept: false, hasReply: false };
   const recipe = parseRecipe(raw);
-  if (!recipe) return { prompt, before, after: before, kept: false };
+  if (!recipe) return { prompt, engineGrade, ungated: engineGrade, after: engineGrade, kept: false, hasReply: true };
   let learned;
-  try { learned = buildRecipe(recipe, prompt).project; } catch { return { prompt, before, after: before, kept: false }; }
+  try { learned = buildRecipe(recipe, prompt).project; } catch { return { prompt, engineGrade, ungated: engineGrade, after: engineGrade, kept: false, hasReply: true }; }
+  const ungated = await gradeOf(prompt, learned);
   const kept = await mayKeepLearned(prompt, learned);
-  const after = kept ? await gradeOf(prompt, learned) : before;
-  return { prompt, before, after, kept };
+  const after = kept ? ungated : engineGrade;
+  return { prompt, engineGrade, ungated, after, kept, hasReply: true };
 }
 
 const sets = [
@@ -73,21 +74,37 @@ const sets = [
   { id: "corpus511", prompts: rest },
 ];
 
+const summaryPath = join(HEAD_ROOT, ".reader-eval/friday/summary.json");
+const liveWorse = new Map<string, string[]>();
+if (existsSync(summaryPath)) {
+  const summary = JSON.parse(readFileSync(summaryPath, "utf8")) as { perSet: { id: string; learnerWorsePrompts?: string[] }[] };
+  for (const row of summary.perSet) liveWorse.set(row.id, row.learnerWorsePrompts ?? []);
+}
+
 let any = false;
 for (const set of sets) {
-  let better = 0, worse = 0, kept = 0;
-  const worsePrompts: string[] = [];
-  const betterPrompts: string[] = [];
+  let beforeBetter = 0, beforeWorse = 0, afterBetter = 0, afterWorse = 0, kept = 0;
+  const betterLines: string[] = [];
+  const beforeWorseLines: string[] = [];
   for (const prompt of set.prompts) {
     if (replies[prompt]) any = true;
     const row = await one(prompt);
-    const delta = GRADE_RANK[row.after] - GRADE_RANK[row.before];
+    const beforeDelta = GRADE_RANK[row.ungated] - GRADE_RANK[row.engineGrade];
+    const afterDelta = GRADE_RANK[row.after] - GRADE_RANK[row.engineGrade];
     if (row.kept) kept++;
-    if (delta > 0) { better++; betterPrompts.push(prompt); }
-    if (delta < 0) { worse++; worsePrompts.push(prompt); }
+    if (beforeDelta > 0) { beforeBetter++; betterLines.push(`${prompt} · kept ${row.kept} · ${row.engineGrade} → ${row.ungated}`); }
+    if (beforeDelta < 0) { beforeWorse++; beforeWorseLines.push(`${prompt} · kept ${row.kept} · stays ${row.after === row.engineGrade ? "on the engine" : "OFF the engine"}`); }
+    if (afterDelta > 0) afterBetter++;
+    if (afterDelta < 0) afterWorse++;
   }
-  console.log(`${set.id}: ${set.prompts.length} prompts · kept ${kept} · better ${better} · worse ${worse}`);
-  if (betterPrompts.length) console.log(`  better: ${betterPrompts.join("; ")}`);
-  if (worsePrompts.length) console.log(`  worse: ${worsePrompts.join("; ")}`);
+  console.log(`${set.id}: before better ${beforeBetter} worse ${beforeWorse} · after better ${afterBetter} worse ${afterWorse} · kept ${kept}`);
+  for (const line of betterLines) console.log(`  better: ${line}`);
+  for (const line of beforeWorseLines) console.log(`  was worse: ${line}`);
+  const named = liveWorse.get(set.id) ?? [];
+  for (const prompt of named) {
+    const row = await one(prompt);
+    const stayed = !row.kept && row.after === row.engineGrade;
+    console.log(`  live worse: ${prompt} · reply ${row.hasReply} · kept ${row.kept} · ${stayed ? "stays on the engine" : "STILL USED"}`);
+  }
 }
 if (!any) console.log(`no saved learner replies at ${repliesPath} (dry; every prompt stays on the deterministic build)`);

@@ -1,8 +1,9 @@
 /**
  * Save/use decision for a learned recipe. The grade is projectGrade, the same function the eval gate uses.
- * A recipe may be remembered, proposed, and shown only when that grade is no worse than the deterministic
- * engine's build for the same prompt, and the honest checks do not mark it as a stand-in (closed shell,
- * unmatched body, lattice, fallback box, craft-stick, or any other honest-gate stand-in).
+ * A recipe may be remembered, proposed, and shown only when that grade ranks strictly above the
+ * deterministic build for the same prompt, and the honest checks do not mark it as a stand-in (closed shell,
+ * unmatched body, lattice, fallback box, craft-stick, or any other honest-gate stand-in). A tie stays
+ * on the engine.
  */
 import { honestChecks } from "../../../scripts/eval-gate-honest";
 import { typedDemands, validateSpec, type Demands } from "../../../scripts/eval-gate-typed";
@@ -74,8 +75,8 @@ export function standInHits(prompt: string, project: YardProject, plan: BuildPla
 }
 
 /**
- * True only when the learned build's gate grade ranks at least as high as the deterministic build
- * and the learned build is not a stand-in.
+ * True only when the learned build is not a stand-in and its gate grade ranks strictly above the
+ * deterministic build. A tie stays on the engine: the catalog grows only when the recipe helps.
  */
 export async function mayKeepLearned(prompt: string, learned: YardProject, learnedPlan: BuildPlan = buildPlan(learned)): Promise<boolean> {
   if (standInHits(prompt, learned, learnedPlan).length) return false;
@@ -86,5 +87,5 @@ export async function mayKeepLearned(prompt: string, learned: YardProject, learn
   let base: YardProject;
   try { base = generateFromPrompt(prompt); } catch { return false; }
   const baseGrade = projectGrade(E, row, base, buildPlan(base), prompt).grade;
-  return GRADE_RANK[learnedGrade] >= GRADE_RANK[baseGrade];
+  return GRADE_RANK[learnedGrade] > GRADE_RANK[baseGrade];
 }

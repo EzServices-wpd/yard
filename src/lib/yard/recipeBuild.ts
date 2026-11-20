@@ -9,6 +9,7 @@ import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
 import { generateFromPrompt, UNVERIFIED } from "./promptMain";
 import { mayKeepLearned } from "./learnedKeep";
+import { buildSpec } from "./spec";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { pricedBoardId } from "./pricedStock";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
@@ -1669,6 +1670,9 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
     ...(cardNote ? { cardNote } : {}),
     assumptions: { load: "light", units: "inches", installMode: recipe.wall ? "wall" : "freestanding", wallType: "wood_stud" },
   };
+  // The engine stamps this at intake (generateFromPrompt). A learned build graded without it fails I42
+  // ("no spec") and looks worse than the engine's own build of the same words.
+  project.spec = buildSpec({ ...project, typedPrompt: project.typedPrompt ?? prompt }, prompt);
   return { project, count, size };
 }
 
