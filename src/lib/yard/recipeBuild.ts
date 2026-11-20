@@ -8,7 +8,7 @@
 import { withArticle } from "./article";
 import { learnedRecipeFailures } from "./learnedGate";
 import { generateFromPrompt, UNVERIFIED } from "./promptMain";
-import { mayKeepLearned } from "./learnedKeep";
+import { engineMayShow, mayKeepLearned } from "./learnedKeep";
 import { buildSpec } from "./spec";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { pricedBoardId } from "./pricedStock";
@@ -1842,6 +1842,8 @@ export function roughNote(title: string, failures: string[]): string {
  */
 export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () => YardProject, materialOverride?: string): Promise<LookupOutcome> {
   let feedback: string[] = [];
+  // True once the gate compared a structurally sound learned build with the engine's and found it no better.
+  let compared = false;
   // Why each call failed (timeout, error, parse, or the gate checks), logged so a miss is diagnosable.
   const reasons: string[] = [];
   const why = (call: number, r: string) => { reasons.push(`call ${call}: ${r}`); console.info(`[recipe-lookup] ${prompt} call ${call}: ${r}`); };
@@ -1865,6 +1867,7 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
     // a second call that still fails them used to be saved and shown anyway.
     const soft = hard.length ? [] : learnedRecipeFailures(recipe, prompt);
     const keep = !hard.length && await mayKeepLearned(prompt, built.project);
+    if (!hard.length && !keep) compared = true;
     feedback = [...hard, ...soft, ...(hard.length || keep ? [] : ["honest gate: no better than the deterministic build, or a stand-in"])];
     if (keep) {
       const kept = soft.length ? { ...recipe, held: `Flagged by the learned-recipe checks: ${soft.slice(0, 3).join("; ")}` } : recipe;
@@ -1873,10 +1876,14 @@ export async function lookupAndBuild(prompt: string, lookup: Lookup, rough: () =
     }
     why(call, `gate: ${feedback.join("; ")}`);
   }
-  // Not saved and not shown. The deterministic build stays; a rough stand-in would grade worse.
-  let engine: YardProject;
-  try { engine = generateFromPrompt(prompt); } catch { engine = rough(); }
-  return { project: engine, recipe: null, rough: false, declined: true, calls: 2, reasons };
+  // Not saved and not shown. The deterministic build stays only when the gate compared it with a learned build and
+  // it is itself no stand-in; with nothing compared (no reply, a timeout, a broken recipe) or a stand-in engine build,
+  // the labelled display-only rough block, as release does: never a wrong object with a price and a Buy list.
+  let engine: YardProject | null = null;
+  try { engine = compared ? generateFromPrompt(prompt) : null; } catch { engine = null; }
+  if (engine && (await engineMayShow(prompt, engine))) return { project: engine, recipe: null, rough: false, declined: true, calls: 2, reasons };
+  const shape = rough();
+  return { project: { ...shape, notes: [roughNote(shape.name, feedback), ...(shape.notes ?? [])] }, recipe: null, rough: true, declined: true, calls: 2, reasons };
 }
 
 /**

@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 const { runYardPrompt } = await import("../../components/workspace/run-prompt");
 const { useYard } = await import("./store");
 
-// The real bar handler with the AI calls stubbed. Half-read compound nouns reach the learner. A failed
-// lookup leaves the deterministic build: it does not install a learned recipe or a rough stand-in.
+// The real bar handler with the AI calls stubbed. Half-read compound nouns reach the learner, and a failed
+// lookup shows a labelled block: never the closet brief, the opening fit or the last word's build.
 function stubs(reply: () => Promise<{ ok: boolean; recipeJson?: string; error?: string }>, calls: string[]) {
   return {
     lookupRecipe: (() => (calls.push("lookup"), reply())) as never,
@@ -19,30 +19,28 @@ function stubs(reply: () => Promise<{ ok: boolean; recipeJson?: string; error?: 
 
 describe("uiPath: half-read compound nouns", () => {
   for (const noun of ["cold frame", "chicken tractor", "lap desk"]) {
-    it(`${noun} reaches the learner, then keeps the deterministic build`, async () => {
-      const { generateFromPrompt } = await import("./promptMain.ts");
+    it(`${noun} reaches the learner, then a labelled block`, async () => {
       const calls: string[] = [];
       await runYardPrompt(noun, { fresh: true, ai: stubs(async () => ({ ok: false, error: "bad" }), calls) });
       const p = useYard.getState().project;
       assert.ok(calls.includes("lookup"), calls.join());
       assert.ok(!calls.includes("house"));
-      const engine = generateFromPrompt(noun);
-      assert.equal(p.name, engine.name);
-      assert.equal(p.panels.length, engine.panels.length);
-      assert.deepEqual(p.overall, engine.overall);
+      assert.equal(p.panels.length, 1);
+      assert.equal(p.name.toLowerCase(), noun);
+      assert.ok(!p.fitted && p.kind !== "closet" && !/popsicle/.test(p.primaryMaterialId));
+      assert.match(p.notes.join(" "), /rough shape/);
     });
   }
   // Batch nouns: a failed lookup is a full-size labelled block, never a popsicle stick cloud or craft scale.
   for (const noun of ["spinning wheel", "butter churn", "wheelbarrow", "sundial", "sawbuck", "knife block", "chicken tractor"]) {
-    it(`${noun}: a failed lookup leaves the deterministic build`, async () => {
-      const { generateFromPrompt } = await import("./promptMain.ts");
+    it(`${noun}: failed lookup is full size, never craft`, async () => {
+      // Once the recipe bot saves this noun there is no lookup to fail: the saved build is tested elsewhere.
       if ((await import("./recipes")).findRecipe(noun)) return;
       await runYardPrompt(noun, { fresh: true, ai: stubs(async () => ({ ok: false, error: "bad" }), []) });
       const p = useYard.getState().project;
-      const engine = generateFromPrompt(noun);
-      assert.equal(p.name, engine.name);
-      assert.equal(p.panels.length, engine.panels.length);
-      assert.deepEqual(p.overall, engine.overall);
+      assert.ok(!/popsicle|craft|stick/.test(p.primaryMaterialId), p.primaryMaterialId);
+      assert.ok(Math.max(p.overall.width, p.overall.height, p.overall.depth) >= 24, JSON.stringify(p.overall));
+      assert.equal(p.name.toLowerCase(), noun);
     });
   }
   it("easel for kids is the kids' easel, not craft", async () => {
@@ -56,13 +54,10 @@ describe("uiPath: half-read compound nouns", () => {
     const p = useYard.getState().project;
     assert.ok(!calls.includes("lookup") && /^Bunk bed/.test(p.name) && p.panels.length > 10, `${p.name} ${calls}`);
   });
-  it("a failed tabletop loom lookup keeps the deterministic build", async () => {
-    const { generateFromPrompt } = await import("./promptMain.ts");
+  it("a tabletop loom is tabletop scale, never a storage cabinet", async () => {
     await runYardPrompt("tabletop loom", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
     const p = useYard.getState().project;
-    const engine = generateFromPrompt("tabletop loom");
-    assert.equal(p.name, engine.name);
-    assert.deepEqual(p.overall, engine.overall);
+    assert.ok(p.overall.width <= 24 && p.overall.height <= 18 && !/storage/i.test(p.name), `${p.name} ${JSON.stringify(p.overall)}`);
   });
   it("a typed twin mattress length is the mattress: 82 outside along W, with the fit note", async () => {
     await runYardPrompt("bunk bed twin over twin 75 long", { fresh: true, ai: stubs(async () => ({ ok: false }), []) });
@@ -87,10 +82,9 @@ describe("uiPath: half-read compound nouns", () => {
     assert.equal(p.overall.depth, 36);
     assert.ok(!/seat|bridge/i.test(p.name), p.name);
   });
-  it("a hung lookup restores the deterministic build within the bound", async () => {
-    const { generateFromPrompt } = await import("./promptMain.ts");
+  it("a hung lookup ends in the labelled block within the bound", async () => {
     await runYardPrompt("chicken tractor", { fresh: true, boundMs: 50, ai: stubs(() => new Promise((r) => setTimeout(() => r({ ok: false }), 300)), []) });
-    assert.equal(useYard.getState().project.name, generateFromPrompt("chicken tractor").name);
+    assert.equal(useYard.getState().project.name, "Chicken tractor");
     assert.equal(useYard.getState().grokBusy, false);
   });
 });
@@ -108,30 +102,22 @@ it("bed axes: 'long' is the mattress axis (W), 'wide' runs across it (D); the he
   assert.ok((bed("bunk bed").notes ?? []).some((n) => /Fits a 75" twin/.test(n)));
 });
 
-describe("uiPath: a failed lookup does not replace the deterministic build", () => {
+describe("uiPath: every entry point shows the display-only block, never the engine's guess", () => {
   const grok = ["knife block", "cold frame", "spinning wheel", "butter churn", "chicken tractor", "wheelbarrow", "sundial", "sawbuck", "sandbox with lid", "wooden ruler", "rolling pin", "wall clock", "rain gauge post", "flurbleglarp"];
   for (const noun of grok) {
-    it(`${noun}: while learning the bench is display-only, and a failed lookup restores the deterministic build`, async () => {
-      const { generateFromPrompt } = await import("./promptMain.ts");
+    it(`${noun}: while learning and after a failed lookup the bench is display-only`, async () => {
       let seen: unknown = null;
       const pending = () => new Promise<{ ok: boolean; error: string }>((res) => { seen = useYard.getState().project; res({ ok: false, error: "bad" }); });
       await runYardPrompt(noun, { fresh: true, ai: stubs(pending, []) });
       const p = useYard.getState().project;
       if (seen) assert.ok((seen as { displayOnly?: boolean }).displayOnly, `${noun} showed the engine guess while learning`);
-      const engine = generateFromPrompt(noun);
-      assert.equal(p.name, engine.name, `${noun}: ${p.name}`);
-      assert.equal(p.panels.length, engine.panels.length);
-      assert.deepEqual(p.overall, engine.overall);
+      assert.ok(p.displayOnly || /recipe/.test(p.id), `${noun}: ${p.name} ${p.primaryMaterialId}`);
+      assert.ok(!/popsicle|stick/.test(p.primaryMaterialId), p.primaryMaterialId);
     });
   }
-  it("a lookup that never answers restores the deterministic build", async () => {
-    const { generateFromPrompt } = await import("./promptMain.ts");
+  it("a lookup that never answers ends on the block (the ?q= and share paths call the same runYardPrompt)", async () => {
     await runYardPrompt("flurbleglarp", { fresh: true, boundMs: 20, ai: stubs(() => new Promise(() => {}), []) });
-    const engine = generateFromPrompt("flurbleglarp");
-    const p = useYard.getState().project;
-    assert.equal(p.name, engine.name);
-    assert.equal(p.panels.length, engine.panels.length);
-    assert.deepEqual(p.overall, engine.overall);
+    assert.ok(useYard.getState().project.displayOnly);
   });
 });
 

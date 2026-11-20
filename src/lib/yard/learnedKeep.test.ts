@@ -8,7 +8,7 @@ import { generateFromPrompt } from "./promptMain.ts";
 import { buildPlan } from "./report.ts";
 import { findRecipe } from "./recipes.ts";
 import { lookupAndBuild, roughBlock } from "./recipeBuild.ts";
-import { demandsFor, mayKeepLearned, standInHits } from "./learnedKeep.ts";
+import { demandsFor, engineMayShow, mayKeepLearned, solidBlockHits, standInHits } from "./learnedKeep.ts";
 import type { YardProject } from "./types.ts";
 
 const donor = () => generateFromPrompt("bookcase 36 wide");
@@ -50,18 +50,46 @@ describe("a learned recipe is kept only when the gate says it is no worse and no
     assert.equal(await mayKeepLearned(q, p), false);
   });
 
-  it("a lookup that never beats the gate is not remembered and does not replace the engine", async () => {
+  it("a lookup with no usable reply is not remembered and shows the labelled block, never the engine's guess", async () => {
     const q = "flurbleglarp";
     const engine = generateFromPrompt(q);
     const out = await lookupAndBuild(q, async () => null, () => roughBlock(q, engine));
     assert.equal(out.recipe, null);
     assert.equal(out.declined, true);
-    assert.equal(out.rough, false);
-    assert.equal(out.project.name, engine.name);
-    assert.equal(out.project.kind, engine.kind);
-    assert.equal(out.project.panels.length, engine.panels.length);
-    assert.deepEqual(out.project.overall, engine.overall);
+    assert.equal(out.rough, true);
+    assert.equal(out.project.displayOnly, true);
     assert.equal(findRecipe(q), null);
+  });
+
+  it("a learned build the gate grades no better leaves the engine build only when that build is no stand-in", async () => {
+    const q = "bookcase 36 wide";
+    const tie = generateFromPrompt(q);
+    const recipeOf = { key: "x", synonyms: [], version: 1, trust: "candidate" as const, title: "Bookcase", size: { width: 36, height: 72, depth: 12 }, defining: ["panel"], notes: [] as string[],
+      parts: [{ role: "panel", name: "Left side", box: [0, 0, 0, 0.05, 1, 1] as [number, number, number, number, number, number], kind: "panel" as const }, { role: "panel", name: "Right side", box: [0.95, 0, 0, 0.05, 1, 1] as [number, number, number, number, number, number], kind: "panel" as const }, { role: "shelf", name: "Shelf", box: [0.05, 0.5, 0, 0.9, 0.02, 1] as [number, number, number, number, number, number], kind: "panel" as const, on: ["Left side", "Right side"] }] };
+    const out = await lookupAndBuild(q, async () => recipeOf, () => roughBlock(q, tie));
+    if (out.recipe) return; // kept: covered above
+    assert.equal(out.declined, true);
+    if (out.rough) assert.equal(await engineMayShow(q, tie), false);
+    else assert.equal(out.project.name, tie.name);
+  });
+
+  it("a declined lookup keeps an engine build that is no stand-in and that the gate does not fail", async () => {
+    const q = "bookcase 36 wide";
+    const p = generateFromPrompt(q);
+    assert.equal(await engineMayShow(q, p), true);
+    const stand = roughBlock(q, p);
+    assert.equal(await engineMayShow(q, stand), false);
+  });
+
+  it("a part glued up from more than six layers is a solid block, not kept", async () => {
+    const q = "bookcase 36 wide";
+    const p = generateFromPrompt(q);
+    const plan = buildPlan(p);
+    assert.equal(solidBlockHits(plan).length, 0);
+    const thick = { ...plan, cutList: [...plan.cutList, { ...plan.cutList[0], note: "Glue up 21 layers face to face for each 15 3/4\" panel." }] };
+    assert.equal(solidBlockHits(thick).length, 1);
+    assert.equal(solidBlockHits({ ...plan, cutList: [...plan.cutList, { ...plan.cutList[0], note: "Glue up 2 layers face to face for each 1 1/2\" top." }] }).length, 0);
+    assert.equal(await mayKeepLearned(q, p, thick), false);
   });
 
   it("a recipe the gate grades no worse, and that is not a stand-in, is remembered", async () => {

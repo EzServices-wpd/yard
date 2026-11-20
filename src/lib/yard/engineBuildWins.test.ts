@@ -160,13 +160,10 @@ describe("row 51: a complete engine build always shows; the learner never replac
     });
   }
   for (const q of NOT_GENERIC) {
-    it(`${q}: the learner still runs, and a failed lookup keeps the deterministic build`, async () => {
+    it(`${q}: never the generic fallback box over the learner`, async () => {
       const got = await shows(q);
+      assert.ok(!genericBox(got.p), `${q}: the bar shows the generic ${got.p.name} (${got.p.panels.map((x) => x.name).join(", ")})`);
       assert.ok(got.calls.includes("lookup"), `${q}: the learner never ran`);
-      const engine = generateFromPrompt(q);
-      assert.equal(got.p.name, engine.name, q);
-      assert.equal(got.p.panels.length, engine.panels.length, q);
-      assert.equal(got.p.displayOnly, engine.displayOnly, q);
     });
   }
   for (const q of BOX_OWNS) {

@@ -38,26 +38,24 @@ describe("recipe build and validate", () => {
     assert.ok(seen[1]?.length);
     assert.equal(out.rough, false);
   });
-  it("two failures keep the engine build, never a rough stand-in", async () => {
-    const { generateFromPrompt } = await import("./promptMain.ts");
+  it("two failures with nothing to compare show the labelled rough block, never the engine's guess", async () => {
     const out = await lookupAndBuild("thing", async () => null, rough);
-    const engine = generateFromPrompt("thing");
-    assert.equal(out.rough, false);
     assert.equal(out.declined, true);
     assert.equal(out.recipe, null);
-    assert.equal(out.project.name, engine.name);
-    assert.equal(out.project.panels.length, engine.panels.length);
-    assert.deepEqual(out.project.overall, engine.overall);
     assert.equal(out.calls, 2);
+    assert.equal(out.rough, true);
+    assert.match(out.project.notes[0], /Shown as a rough shape/);
   });
   it("an unavailable AI keeps the engine build, unlabelled, after one call", async () => {
     const out = await lookupAndBuild("thing", timedLookup(async () => ({ ok: false, error: "AI is not available in this environment" })), rough);
     assert.deepEqual([out.rough, out.unavailable, out.calls, out.project.notes.length], [false, true, 1, 0]);
   });
-  it("a timeout counts as a failure: two tries, then the engine build", async () => {
+  it("a timeout counts as a failure: two tries, then the labelled rough block", async () => {
     const out = await lookupAndBuild("thing", timedLookup(() => new Promise(() => {}), 5, 5), rough);
-    assert.equal(out.rough, false);
     assert.equal(out.declined, true);
+    assert.equal(out.recipe, null);
+    assert.equal(out.rough, true);
+    assert.match(out.project.notes[0], /Shown as a rough shape/);
     assert.deepEqual(out.reasons, ["call 1: timeout", "call 2: timeout"]);
   });
   it("the retry gets the rest of the bound, not a fixed slice: a slow fix-the-checks retry still lands", async () => {

@@ -74,12 +74,40 @@ export function standInHits(prompt: string, project: YardProject, plan: BuildPla
   return honestChecks(engine(), prompt, project, plan);
 }
 
+/** More layers than this glued face to face for one part is a solid block, not how the part is built. */
+const MAX_PLIES = 6;
+
 /**
- * True only when the learned build is not a stand-in and its gate grade ranks strictly above the
- * deterministic build. A tie stays on the engine: the catalog grows only when the recipe helps.
+ * Solid-block parts: a learned part the cut list glues up from more than MAX_PLIES layers (a 15 3/4" seat box from
+ * 21 sheets, a 7" tower from 10). A real build frames those parts; a laminated block only stands in for them.
+ */
+export function solidBlockHits(plan: BuildPlan): string[] {
+  const text = JSON.stringify(plan.cutList ?? []);
+  return [...text.matchAll(/Glue up (\d+) layers face to face for each ([^"\\.]+)/g)].filter((m) => Number(m[1]) > MAX_PLIES).map((m) => `${m[1]} layers for each ${m[2]}`);
+}
+
+/**
+ * The deterministic build may stay on the bench after a declined lookup only when it is itself no stand-in, is not
+ * craft stock with no craft word typed, and the gate does not fail it. Otherwise the bench shows the labelled
+ * display-only block: never a wrong object with a Buy list.
+ */
+export async function engineMayShow(prompt: string, engineBuild: YardProject, plan: BuildPlan = buildPlan(engineBuild)): Promise<boolean> {
+  if (engineBuild.displayOnly) return false;
+  // Craft stock with no craft word typed (a popsicle wall clock) is a model standing in for the real thing.
+  const craft = engineBuild.craftLifted || /popsicle|craft|cardboard|skewer|paper|stick/i.test(engineBuild.primaryMaterialId ?? "");
+  if (craft && !/popsicle|craft|cardboard|skewer|\btoy\b|model|miniature/i.test(prompt)) return false;
+  if (standInHits(prompt, engineBuild, plan).length) return false;
+  const demands = await demandsFor(prompt);
+  return projectGrade(engine(), { prompt, demands, demandsFrom: "corpus-or-typed" }, engineBuild, plan, prompt).grade !== "fail";
+}
+
+/**
+ * True only when the learned build is not a stand-in (honest checks, or a solid laminated block for a part) and
+ * its gate grade ranks strictly above the deterministic build. A tie stays on the engine: the catalog grows only
+ * when the recipe helps.
  */
 export async function mayKeepLearned(prompt: string, learned: YardProject, learnedPlan: BuildPlan = buildPlan(learned)): Promise<boolean> {
-  if (standInHits(prompt, learned, learnedPlan).length) return false;
+  if (standInHits(prompt, learned, learnedPlan).length || solidBlockHits(learnedPlan).length) return false;
   const demands = await demandsFor(prompt);
   const E = engine();
   const row = { prompt, demands, demandsFrom: "corpus-or-typed" };

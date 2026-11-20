@@ -573,8 +573,8 @@ async function runOnce(raw: string, opts: RunOpts, run: PromptRun) {
         makePlan();
         return;
       }
-      // Declined, or a rough stand-in we no longer show: the deterministic build from before the lookup.
-      useYard.getState().setProject(next);
+      // Declined: the deterministic build from before the lookup when it is no stand-in, else the labelled rough block.
+      useYard.getState().setProject(out.rough ? out.project : next);
       makePlan();
       return;
     }
