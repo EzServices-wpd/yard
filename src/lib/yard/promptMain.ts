@@ -2528,8 +2528,8 @@ const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
 const singular = (w: string) => w.replace(/(?<!s)s$/, "");
 /** Words that end a noun phrase without naming its object: a style, place, stock or read word, or the structure of the object before it ("dog bed frame"). */
 const TRAILING_NOT_HEAD = /^(?:made|built|frame|base|set|kit|thing|something|stuff)$/;
-/** Where a noun phrase ends: a number, a spelled-out count ("two rods"), a size word ("dia 18"), a place word ("between studs"), a feature ("no doors", "with a stool") a bracket or a quote. */
-const PHRASE_END = /[\d(),;:"“”]|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|pair|both|dia|diameter|radius|wide|tall|high|deep|long|thick|between|beside|next|under|over|above|below|behind|inside|near|against|along|around|across|at|into|onto|no|with|without|plus|and|or|w|holds?|fits?|seats?|sleeps?|stores?|that|which|to)\b/;
+/** Where a noun phrase ends: a number, a spelled-out count ("two rods"), a size word ("dia 18"), a place word ("between studs"), a feature ("no doors", "with a stool"), a verb ("holds", "has", "to"), a bracket or a quote. */
+const PHRASE_END = /[\d(),;:"“”]|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|pair|both|dia|diameter|radius|wide|tall|high|deep|long|thick|between|beside|next|under|over|above|below|behind|inside|near|against|along|around|across|at|into|onto|no|with|without|plus|and|or|w|holds?|fits?|seats?|sleeps?|stores?|has|that|which|to)\b/;
 const FEATURE_HEAD = /^(?:shel(?:f|ve)|door|drawer|front)$/;
 /** Form words: what shape of furniture, not which object ("vanity table", "nightstand unit"). */
 const FORM_HEAD = /^(?:table|stand|unit|piece)$/;

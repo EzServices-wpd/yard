@@ -81,5 +81,8 @@ test("the head noun picks the class on prompts the rule was not written against"
     ["closet shelf organizer", /^Closet\b/],
     ["shelf for shoes", /\bshelf\b/i],
     ["crate for my records", /\bcrate\b/i],
+    // "has" is a verb, like "holds": "bookcase has 1 feet" is the bookcase, not a body named for "has".
+    ["bookcase has 1 feet", /^Bookcase$/],
+    ["bookcase has one feet", /^Bookcase$/],
   ] as const) assert.match(built(prompt).name ?? "", name, prompt);
 });
