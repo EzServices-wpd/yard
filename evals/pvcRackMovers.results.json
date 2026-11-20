@@ -1,7 +1,7 @@
 {
   "release": "645a038664c94050467197a13ade2e8798933995",
   "prompts": 861,
-  "movers": 338,
+  "movers": 339,
   "rows": [
     {
       "prompt": "12 bottle wine rack",
@@ -2341,7 +2341,7 @@
       "omitted": []
     },
     {
-      "prompt": "Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)",
+      "prompt": "Firewood rack · 96\" W × 24\" D × 48\" H (size assumed)",
       "material": null,
       "before": {
         "name": "Firewood unit 96\" × 48\" × 18 1/2\"",
@@ -2355,15 +2355,15 @@
         "buy": "4×3/4\" Plywood 4×8=153.72; 1×1/4\" plywood 4x8 (backer)=24.98; 2×#8 x 1-1/4\" wood screws=16.94; 2×3/16\" shelf pins=6.49; 1×Wood glue=4.98; 1×Furniture anti-tip kit=9.98"
       },
       "after": {
-        "name": "Firewood unit 96\" × 48\" × 18 1/2\"",
-        "cost": 217.09,
+        "name": "Firewood unit 96\" × 48\" × 24\"",
+        "cost": 255.52,
         "pieces": 28,
         "hud": [
           96,
-          18.5,
+          24,
           48
         ],
-        "buy": "4×3/4\" Plywood 4×8=153.72; 1×1/4\" plywood 4x8 (backer)=24.98; 2×#8 x 1-1/4\" wood screws=16.94; 2×3/16\" shelf pins=6.49; 1×Wood glue=4.98; 1×Furniture anti-tip kit=9.98",
+        "buy": "5×3/4\" Plywood 4×8=192.15; 1×1/4\" plywood 4x8 (backer)=24.98; 2×#8 x 1-1/4\" wood screws=16.94; 2×3/16\" shelf pins=6.49; 1×Wood glue=4.98; 1×Furniture anti-tip kit=9.98",
         "titles": [
           "Confirm the footprint before the first cut",
           "Cut the 3/4\" Plywood 4×8 and 1/4\" plywood (backer)",
@@ -2380,7 +2380,7 @@
       "omitted": []
     },
     {
-      "prompt": "Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)",
+      "prompt": "Firewood rack · 96\" W × 24\" D × 48\" H (size assumed)",
       "material": "pvc-3-4-sch40",
       "before": {
         "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
@@ -2394,21 +2394,21 @@
         "buy": "26×3/4\" Schedule 40 PVC Pipe=149.76; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98"
       },
       "after": {
-        "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
-        "cost": 388.66,
-        "pieces": 180,
+        "name": "Firewood rack 96\" × 48\" × 24\"",
+        "cost": 499.6,
+        "pieces": 236,
         "hud": [
           95.45,
-          18.55,
+          24.05,
           47.88
         ],
-        "buy": "24×3/4\" Schedule 40 PVC Pipe=138.24; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
+        "buy": "32×3/4\" Schedule 40 PVC Pipe=184.32; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 44×3/4\" PVC tee=51.92; 44×3/4\" PVC cross=137.94; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
         "titles": [
-          "Read this Firewood rack 96\" × 48\" × 18 1/2\" before you cut",
+          "Read this Firewood rack 96\" × 48\" × 24\" before you cut",
           "Lay out the footprint on the bench",
           "Cut every marked length",
           "Stand the sides — 32 pieces",
-          "Run the rails — 148 pieces",
+          "Run the rails — 204 pieces",
           "Check plumb and square"
         ]
       },
@@ -2418,7 +2418,7 @@
       ]
     },
     {
-      "prompt": "Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed) from pvc",
+      "prompt": "Firewood rack · 96\" W × 24\" D × 48\" H (size assumed) from pvc",
       "material": null,
       "before": {
         "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
@@ -2432,21 +2432,21 @@
         "buy": "26×3/4\" Schedule 40 PVC Pipe=149.76; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98"
       },
       "after": {
-        "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
-        "cost": 388.66,
-        "pieces": 180,
+        "name": "Firewood rack 96\" × 48\" × 24\"",
+        "cost": 499.6,
+        "pieces": 236,
         "hud": [
           95.45,
-          18.55,
+          24.05,
           47.88
         ],
-        "buy": "24×3/4\" Schedule 40 PVC Pipe=138.24; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
+        "buy": "32×3/4\" Schedule 40 PVC Pipe=184.32; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 44×3/4\" PVC tee=51.92; 44×3/4\" PVC cross=137.94; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
         "titles": [
-          "Read this Firewood rack 96\" × 48\" × 18 1/2\" before you cut",
+          "Read this Firewood rack 96\" × 48\" × 24\" before you cut",
           "Lay out the footprint on the bench",
           "Cut every marked length",
           "Stand the sides — 32 pieces",
-          "Run the rails — 148 pieces",
+          "Run the rails — 204 pieces",
           "Check plumb and square"
         ]
       },
@@ -2456,7 +2456,7 @@
       ]
     },
     {
-      "prompt": "pvc Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)",
+      "prompt": "pvc Firewood rack · 96\" W × 24\" D × 48\" H (size assumed)",
       "material": null,
       "before": {
         "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
@@ -2470,21 +2470,21 @@
         "buy": "26×3/4\" Schedule 40 PVC Pipe=149.76; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98"
       },
       "after": {
-        "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
-        "cost": 388.66,
-        "pieces": 180,
+        "name": "Firewood rack 96\" × 48\" × 24\"",
+        "cost": 499.6,
+        "pieces": 236,
         "hud": [
           95.45,
-          18.55,
+          24.05,
           47.88
         ],
-        "buy": "24×3/4\" Schedule 40 PVC Pipe=138.24; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
+        "buy": "32×3/4\" Schedule 40 PVC Pipe=184.32; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 44×3/4\" PVC tee=51.92; 44×3/4\" PVC cross=137.94; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
         "titles": [
-          "Read this Firewood rack 96\" × 48\" × 18 1/2\" before you cut",
+          "Read this Firewood rack 96\" × 48\" × 24\" before you cut",
           "Lay out the footprint on the bench",
           "Cut every marked length",
           "Stand the sides — 32 pieces",
-          "Run the rails — 148 pieces",
+          "Run the rails — 204 pieces",
           "Check plumb and square"
         ]
       },
@@ -2494,7 +2494,7 @@
       ]
     },
     {
-      "prompt": "pvc pipe Firewood rack · 96\" W × 18 1/2\" D × 48\" H (size assumed)",
+      "prompt": "pvc pipe Firewood rack · 96\" W × 24\" D × 48\" H (size assumed)",
       "material": null,
       "before": {
         "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
@@ -2508,21 +2508,21 @@
         "buy": "26×3/4\" Schedule 40 PVC Pipe=149.76; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98"
       },
       "after": {
-        "name": "Firewood rack 96\" × 48\" × 18 1/2\"",
-        "cost": 388.66,
-        "pieces": 180,
+        "name": "Firewood rack 96\" × 48\" × 24\"",
+        "cost": 499.6,
+        "pieces": 236,
         "hud": [
           95.45,
-          18.55,
+          24.05,
           47.88
         ],
-        "buy": "24×3/4\" Schedule 40 PVC Pipe=138.24; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 28×3/4\" PVC tee=33.04; 28×3/4\" PVC cross=91.96; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
+        "buy": "32×3/4\" Schedule 40 PVC Pipe=184.32; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 44×3/4\" PVC tee=51.92; 44×3/4\" PVC cross=137.94; 20×3/4\" PVC 4-way tee=62.97; 12×3/4\" PVC 5-way cross=35.98",
         "titles": [
-          "Read this Firewood rack 96\" × 48\" × 18 1/2\" before you cut",
+          "Read this Firewood rack 96\" × 48\" × 24\" before you cut",
           "Lay out the footprint on the bench",
           "Cut every marked length",
           "Stand the sides — 32 pieces",
-          "Run the rails — 148 pieces",
+          "Run the rails — 204 pieces",
           "Check plumb and square"
         ]
       },
