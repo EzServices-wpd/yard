@@ -10,7 +10,8 @@ test("a lone size with no axis is the class's lead axis (its largest default)", 
   assert.equal(o("window seat 60 inches").width, 60);
   assert.equal(o('coat rack 40 inches').width, 40);
   assert.equal(o("outdoor deck box 5 ft").width, 60);
-  assert.equal(o("bathroom towel ladder 4 ft").height, 48);
+  assert.equal(o("bathroom towel ladder 4 ft").height, 72, "below its default height a lone size is ambiguous: builds as on release");
+  assert.equal(o("porch swing 5 foot").height, 78);
   assert.equal(o("painting easel 6 ft").height, 72);
   const ottoman = o("storage ottoman 36 square");
   assert.deepEqual([ottoman.width, ottoman.depth], [36, 36]);

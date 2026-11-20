@@ -77,6 +77,9 @@ export function classAxisBind(prompt: string, built: YardProject): ClassAxisBind
     // A front: a tall indoor class (its height its largest default: closet, bookcase, cabinet) or a wall piece reads
     // the pair as width × height. A footprint: anything outdoors, or a low class (a bed, a table, a bench).
     const front = !outdoors && (leadAxis(o) === "height" || (o.depth < 12 && o.depth <= Math.min(o.width, o.height)));
+    // A second number that is not taller than the class's own depth is not a height ("bookshelf 3 ft by 12" is not a 12 inch
+    // tall bookcase; "desk 4 ft by 10"): release's taller-is-height reading stands.
+    if (front && s <= o.depth + 0.5) return null;
     const second: Axis = front ? "height" : "depth";
     // Already on that plane, either way round, in this reading or, bare, in feet: the class's own reader placed it
     // ("pergola 12x16", "sawbuck 30x40"). A bare small pair carried as inches outdoors is the misread (a 3" compost bin).
@@ -107,7 +110,11 @@ export function classAxisBind(prompt: string, built: YardProject): ClassAxisBind
   if (!l.unit) return null; // a bare lone number is a count ("12 washer stack"), not a size
   // Already on some axis: the class's own reader placed it.
   if (carried(o.width, l.inches) || carried(o.height, l.inches) || carried(o.depth, l.inches)) return null;
-  return edit(l.start, l.end, { [leadAxis(o)]: l.inches });
+  // A tall class's lone size below its default height could as well be its width ("porch swing 5 foot", "towel ladder
+  // 4 ft"): ambiguous, so it binds the height only when it is at least the default height; otherwise it builds as on release.
+  const lead = leadAxis(o);
+  if (lead === "height" && l.inches < o.height - 0.5) return null;
+  return edit(l.start, l.end, { [lead]: l.inches });
 }
 
 /**
