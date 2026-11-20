@@ -133,7 +133,7 @@ export function looksLikeFallback(project: YardProject, noun: string): boolean {
   }
   // Toy-scale nouns keep craft stock; remapping them to plywood is the honesty bug.
   if (TOY.test(lower)) return false;
-  if (/popsicle/.test(project.primaryMaterialId ?? "")) return true;
+  if (project.craftLifted || /popsicle/.test(project.primaryMaterialId ?? "")) return true;
   // A body with no class (lies along its long axis) is the fallback a known head noun replaces.
   if (project.unmatched) return true;
   const name = (project.name ?? "").toLowerCase().replace(/\s+/g, "");
