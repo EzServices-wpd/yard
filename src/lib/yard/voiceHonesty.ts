@@ -3,6 +3,7 @@
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
 import { feetLengthAt, releaseReads } from "./lengthReader";
+import { placePair } from "./sizePhrases";
 import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
@@ -976,6 +977,19 @@ export function normalizeUserPrompt(prompt: string): string {
     const keepFeet = (whole: string, offset: number) => asRelease || feetLengthAt(whole, offset);
     // "2x4x8 bench" names the stock (a 2×4, 8 ft long) — not a 2" × 4" × 8" piece of furniture.
     s = s.replace(/\b([12])\s*[x×]\s*(2|3|4|6|8|10|12)\s*[x×]\s*(6|8|10|12|14|16)\b(?!\s*(?:in\b|inch|"|[x×.]|\d))(?:\s*(?:ft|feet|foot|')\b)?/gi, "$1x$2");
+    // "2 by 1.5 ft" is one pair. The unit on one number covers the bare partner; leaving that partner
+    // in inches builds a 2 inch cabinet beside an 18 inch depth.
+    s = s.replace(
+      /(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
+      (all, a, ua, sep, b, ub, offset: number, whole: string) => {
+        const feetA = /ft|feet|foot|'/i.test(ua ?? "");
+        const feetB = /ft|feet|foot|'/i.test(ub ?? "");
+        if (feetA === feetB) return all;
+        const at = feetB ? offset + all.lastIndexOf(String(b)) : offset;
+        if (!keepFeet(whole, at)) return all;
+        return `${parseFloat(a) * 12} inch ${sep} ${parseFloat(b) * 12} inch`;
+      },
+    );
     // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8. A count never starts inside a number
     // ("2 1/2 ft 3" is never "2 1/27", row 658).
     s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})` + (lb ? String.raw`(?![\d/])` : String.raw`(?!\d)`), "g"), (all, ft, inch, offset: number, whole: string) => {
@@ -1205,6 +1219,18 @@ export function typedOpeningStorageAxes(prompt: string): {
         height = true;
         depth = false;
       }
+    }
+  }
+  // The same place-kind read as parseBrief and typedExtents. An opening types height; a surface types depth.
+  const place = placePair(prompt);
+  if (place && !(trip && trip[3])) {
+    width = true;
+    if (place.otherAxis === "height") {
+      height = true;
+      depth = Number.isFinite(labeledD);
+    } else {
+      depth = true;
+      height = Number.isFinite(labeledH);
     }
   }
   return { width, height, depth };

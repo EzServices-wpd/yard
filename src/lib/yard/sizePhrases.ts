@@ -62,7 +62,8 @@ export function sizePhrases(prompt: string): { prompt: string; axes: PhraseAxes;
   // A count of feet or a part's length is not that height ("bookcase with 2 foot shelves", "2 foot shelves" on a
   // bookcase). The one reader already dropped those, digits the same as words. A leading "N foot shelf" stays:
   // "shelf" is the product, and C2 pins that height.
-  if (TALL_FORMS.test(lower) && !/\d\s*(?:by|x|×)\s*\d/i.test(prompt)) {
+  // A pair is not one height, including when a feet unit sits between the numbers ("3 ft by 1 ft").
+  if (TALL_FORMS.test(lower) && !/\d\s*(?:ft|feet|foot|')?\s*(?:by|x|×)\s*\d/i.test(prompt)) {
     const re = /\b(\d+(?:\.\d+)?)\s*(?:-|\s)?(?:foot|feet|ft|')(?!\s*(?:wide|deep|tall|high|long|by|x|×))(?=\s+[a-z])/i;
     const hit = prompt.match(re);
     const leadingShelf = /^(?:(?:small|a|an|the|large|little|big|tall|short|narrow|wide|long)\s+){0,3}\d+(?:\.\d+)?\s*-?\s*(?:foot|feet|ft|')\s+shel(?:f|ves|ving)\b/i.test(prompt.trim());
@@ -122,4 +123,110 @@ export function fitClause(text: string): FitClause | null {
   // Only the measure and its noun phrase belong to the clause; the words after it stay where they were.
   const said = m[0].slice(0, m[0].length - m[3].length) + m[3].split(/\s+/).slice(0, words.length).join(" ");
   return { text: said, inches, noun, space: SPACE_NOUN.test(noun), ceiling: /^ceilings?$/.test(noun) };
+}
+
+/**
+ * One notion of the place a size is typed against. A wall opening is measured across and up.
+ * A floor or a surface is measured across and back. Every reader asks this, so the choice is not
+ * a list of prompts.
+ */
+export type PlaceKind = "opening" | "surface";
+
+const OPENING_PLACE =
+  /^(?:closets?|niches?|alcoves?|cut-?outs?|doorways?|nooks?|recess(?:es)?)$/i;
+/** Surfaces you set a build on. A garden is ground, the same kind as a yard. */
+const SURFACE_PLACE =
+  /^(?:spots?|corners?|floors?|garages?|backyards?|yards?|patios?|tables?|gardens?)$/i;
+/** Outdoor ground people size in feet. A spot, a corner, a floor and a table stay inches unless a feet unit is written. */
+const FOOT_GROUND = /^(?:yards?|backyards?|gardens?|patios?|garages?)$/i;
+/** A ground-plan building sold by the foot, the same reading as a 4×8 bed. */
+const FOOT_PLAN = /\b(?:playhouses?|greenhouses?|sheds?|cabins?)\b/i;
+
+export function placeKind(noun: string): PlaceKind | null {
+  if (OPENING_PLACE.test(noun)) return "opening";
+  if (SURFACE_PLACE.test(noun)) return "surface";
+  return null;
+}
+
+export type PlacePair = {
+  kind: PlaceKind;
+  /** Inches. A feet pair is already converted. */
+  width: number;
+  other: number;
+  /** Opening → the second number is height. Surface, and a pair with no place noun, → depth. */
+  otherAxis: "height" | "depth";
+};
+
+const PLACE_NOUN =
+  /\b(closets?|niches?|alcoves?|cut-?outs?|doorways?|nooks?|recess(?:es)?|spots?|corners?|floors?|garages?|backyards?|yards?|patios?|tables?|gardens?)\b/i;
+/** A place lead. "in" counts only as the preposition ("in a niche"), never the inch unit and never the "in" of "built-in". */
+const PLACE_LEAD =
+  /\b(?:fitted\s+to|to\s+fit|(?:that|which)\s+fits?|fits?(?:\s+in(?:to)?)?|into|inside|within|between|for)\b[^.]{0,60}$|\bin\s+(?:a|an|the|my|our)\b[^.]{0,40}$/i;
+const PLACE_PAIR =
+  /(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'|in(?:ch(?:es)?)?|"))?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)(\s*(?:ft|feet|foot|'|in(?:ch(?:es)?)?|"))?(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?/gi;
+
+/**
+ * A lumber nominal (1x6, 2x4, 1x6x8) is stock, not a place. The same numbers as the unlabeled-size
+ * reader. A feet unit or a fraction ("2 by 1.5 ft") is a place size, not a board name.
+ */
+function lumberNominal(a: number, b: number, c: number | undefined, unit: string): boolean {
+  if (/ft|feet|foot|'/i.test(unit)) return false;
+  if (!Number.isInteger(a) || !Number.isInteger(b) || (c != null && !Number.isInteger(c))) return false;
+  if (c != null && Number.isFinite(c)) return a <= 4 && b <= 12 && c <= 16;
+  return a <= 4 && b <= 12;
+}
+
+function asInches(n: number, unit: string, other: string, feet: boolean): number {
+  if (/ft|feet|foot|'/i.test(unit)) return n * 12;
+  if (/in(?:ch(?:es)?)?|"/i.test(unit)) return n;
+  if (!unit && /ft|feet|foot|'/i.test(other)) return n * 12;
+  return feet ? n * 12 : n;
+}
+
+/**
+ * A two-number size typed against a place. An opening reads width × height. A surface reads width × depth.
+ * A triple is not one: release keeps its own order. A lumber nominal is not one either.
+ * Feet in the pair become inches (6×6 on a yard, or a playhouse, is 72 × 72), never a 6 inch footprint.
+ */
+export function placePair(prompt: string): PlacePair | null {
+  const text = prompt.replace(/×/g, "x");
+  for (const m of text.matchAll(new RegExp(PLACE_PAIR.source, "gi"))) {
+    const third = m[5] != null ? Number(m[5]) : undefined;
+    const a = Number(m[1]);
+    const b = Number(m[3]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    // A third number is a triple. Release already orders it. A lumber triple is stock.
+    if (third != null || lumberNominal(a, b, third, `${m[2] ?? ""} ${m[4] ?? ""}`)) continue;
+    const at = m.index ?? 0;
+    const before = text.slice(Math.max(0, at - 80), at);
+    const after = text.slice(at + m[0].length, at + m[0].length + 40);
+    const lead = PLACE_LEAD.test(before);
+    const noun = (after.match(PLACE_NOUN)?.[1] ?? (lead ? before.match(PLACE_NOUN)?.[1] : undefined) ?? "").toLowerCase();
+    const kind = noun ? placeKind(noun) : null;
+    const unitA = m[2] ?? "";
+    const unitB = m[4] ?? "";
+    // The product's own pair ("side table 18 by 24", "bench 48 by 16") has no place lead and no place noun after it.
+    if (!lead && !kind) continue;
+    // "frame for a mirror 2ft x 3ft": the feet pair measures the object, not a place the build stands on.
+    // A bare pair after "for" ("bed for my dog 30 x 40") is still the build's footprint.
+    const feetLabeled = /ft|feet|foot|'/i.test(`${unitA} ${unitB}`);
+    if (lead && !kind && feetLabeled && !FOOT_PLAN.test(text)) continue;
+    const inch = /in(?:ch(?:es)?)?|"/i.test(unitA + unitB);
+    const feetSaid = /ft|feet|foot|'/i.test(unitA + unitB);
+    const bareFeet =
+      !inch &&
+      !feetSaid &&
+      a > 0 &&
+      a <= 12 &&
+      b > 0 &&
+      b <= 12 &&
+      (FOOT_GROUND.test(noun) || FOOT_PLAN.test(text));
+    const feet = feetSaid || bareFeet;
+    const width = asInches(a, unitA, unitB, feet);
+    const other = asInches(b, unitB, unitA, feet);
+    if (!(width > 0 && width <= 600 && other > 0 && other <= 600)) continue;
+    const resolved: PlaceKind = kind ?? "surface";
+    return { kind: resolved, width, other, otherAxis: resolved === "opening" ? "height" : "depth" };
+  }
+  return null;
 }
