@@ -62,7 +62,7 @@ export const eventKeyScope = (env: Record<string, string | undefined> = process.
 /**
  * One Redis command. Keys: ev:cmds month, ev:n day. Args: budget, day cap, spend if accepted, month ttl, day ttl.
  * Returns {ok, cmdsAfter, dayAfter}. ok is 1 only when a day slot was taken. At the month budget, cmds is unchanged.
- * Keep applyEventGate in step with this script: the tests drive the script through that function.
+ * Tests run this script with Lua 5.4. applyEventGate is the same decision for anything that cannot spawn Lua.
  */
 export const EVENT_GATE_LUA = `
 local budget = tonumber(ARGV[1])
@@ -158,8 +158,10 @@ export class ShopStore {
   }
 
   private evHits: number[] = [];
-  /** Month (YYYY-MM) this instance has seen with ev:cmds already spent. Later refusals send nothing. */
+  /** Month (YYYY-MM) this instance has seen with ev:cmds already spent. Later refusals send nothing until it rolls over. */
   private evMonthSpent = "";
+  /** UTC day (YYYY-MM-DD) this instance has seen at the day cap. Later refusals send nothing until the next day. */
+  private evDaySpent = "";
 
   /** Month and day keys. Preview is a separate pair so it cannot spend production. */
   private evKeys(now: Date) {
@@ -176,7 +178,8 @@ export class ShopStore {
   async addEvent(rec: EventRecord, now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
     if (!this.pipe) return "off";
     const m = month(now);
-    if (this.evMonthSpent === m) return "limited";
+    const d = day(now);
+    if (this.evMonthSpent === m || this.evDaySpent === d) return "limited";
     const t = now.getTime();
     this.evHits = this.evHits.filter((x) => t - x < 60_000);
     if (this.evHits.length >= EV_INSTANCE_PER_MIN) return "limited";
@@ -195,7 +198,9 @@ export class ShopStore {
     const ok = Array.isArray(row) ? Number(row[0]) : Number(row);
     if (ok !== 1) {
       const cmdsAfter = Array.isArray(row) ? Number(row[1] ?? 0) : 0;
+      const dayAfter = Array.isArray(row) ? Number(row[2] ?? 0) : 0;
       if (cmdsAfter >= EV_MONTH_BUDGET) this.evMonthSpent = m;
+      else if (dayAfter >= EV_DAY_CAP) this.evDaySpent = d;
       return "limited";
     }
     try {

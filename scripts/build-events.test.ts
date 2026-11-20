@@ -1,16 +1,75 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { BID, buildIdOf } from "../src/lib/feedback/buildId";
 import { cleanEvent } from "../src/lib/feedback/events";
 import { cleanFeedback } from "../src/lib/feedback/shop";
-import { ShopStore, EV_DAY_CAP, EV_INSTANCE_PER_MIN, EV_MONTH_BUDGET, K, applyEventGate, EVENT_GATE_LUA, EVENT_BUDGET_LUA, eventKeyScope } from "../src/lib/feedback/store.server";
+import { ShopStore, EV_DAY_CAP, EV_INSTANCE_PER_MIN, EV_MONTH_BUDGET, K, EVENT_GATE_LUA, eventKeyScope } from "../src/lib/feedback/store.server";
 import { eventPageQuiet, eventPostDecision } from "../src/lib/feedback/eventGate";
+
+const luaQuote = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+
+/** Run one Redis EVAL with the real Lua 5.4 interpreter. The script string is the one the server sends. */
+function runRedisLua(script: string, keys: string[], args: string[], kv: Map<string, any>): { result: number[]; ops: string[] } {
+  const seed = [...kv.entries()].filter(([, v]) => typeof v === "number").map(([k, v]) => `[${luaQuote(String(k))}]=${v}`).join(",");
+  const program = `
+local kv = { ${seed} }
+local ops = {}
+KEYS = { ${keys.map(luaQuote).join(",")} }
+ARGV = { ${args.map(luaQuote).join(",")} }
+redis = {}
+function redis.call(op, key, a)
+  ops[#ops+1] = op .. " " .. tostring(key)
+  if op == "GET" then
+    local v = kv[key]
+    if v == nil then return nil end
+    return tostring(v)
+  elseif op == "INCR" then
+    local n = (tonumber(kv[key]) or 0) + 1
+    kv[key] = n
+    return n
+  elseif op == "INCRBY" then
+    local n = (tonumber(kv[key]) or 0) + tonumber(a)
+    kv[key] = n
+    return n
+  elseif op == "DECR" then
+    local n = (tonumber(kv[key]) or 0) - 1
+    kv[key] = n
+    return n
+  elseif op == "EXPIRE" then
+    return 1
+  end
+  return nil
+end
+local fn, err = load([=[${script}]=], "eval")
+if not fn then error(err) end
+local result = fn()
+local out = {}
+for i = 1, #result do out[#out+1] = tostring(result[i]) end
+local rows = {}
+for k, v in pairs(kv) do rows[#rows+1] = k .. "\\t" .. tostring(v) end
+io.write(table.concat(out, ",") .. "\\n" .. table.concat(ops, "\\n") .. "\\n--kv--\\n" .. table.concat(rows, "\\n"))
+`;
+  const ran = spawnSync("lua5.4", ["-e", program], { encoding: "utf8" });
+  if (ran.status !== 0) throw new Error(ran.stderr || "lua5.4 failed");
+  const [head, rest] = ran.stdout.split("\n--kv--\n");
+  const [resultLine, ...opLines] = head.split("\n");
+  const ops = opLines.filter(Boolean);
+  for (const [k, v] of [...kv.entries()]) if (typeof v === "number") kv.delete(k);
+  for (const line of (rest ?? "").split("\n")) {
+    if (!line) continue;
+    const tab = line.indexOf("\t");
+    kv.set(line.slice(0, tab), Number(line.slice(tab + 1)));
+  }
+  return { result: resultLine.split(",").map(Number), ops };
+}
 
 function fakeRedis() {
   const kv = new Map<string, any>();
   const calls: (string | number)[][] = [];
-  // One round trip at a time, but each command array is applied without yielding, so a single EVAL cannot race itself.
+  const evalOps: string[] = [];
+  // One round trip at a time, so concurrent EVALs of the real script cannot pass the cap.
   let chain = Promise.resolve();
   const pipe = (cmds: (string | number)[][]) => {
     const job = chain.then(() => cmds.map((c) => { calls.push(c); const [op, k, ...a] = c as any[];
@@ -18,16 +77,10 @@ function fakeRedis() {
         case "EVAL": {
           const numkeys = Number(a[0]);
           const keys = a.slice(1, 1 + numkeys).map(String);
-          const args = a.slice(1 + numkeys).map(Number);
-          if (k === EVENT_GATE_LUA) return applyEventGate(kv, keys[0], keys[1], args[0], args[1], args[2]);
-          if (k === EVENT_BUDGET_LUA) {
-            const cur = Number(kv.get(keys[0]) ?? 0);
-            if (cur >= args[0]) return [0, cur];
-            if (cur + args[1] > args[0]) { kv.set(keys[0], cur + 1); return [0, cur + 1]; }
-            kv.set(keys[0], cur + args[1]);
-            return [1, cur + args[1]];
-          }
-          return [0, 0, 0];
+          const args = a.slice(1 + numkeys).map(String);
+          const ran = runRedisLua(String(k), keys, args, kv);
+          evalOps.splice(0, evalOps.length, ...ran.ops);
+          return ran.result;
         }
         case "GET": return kv.has(k) ? kv.get(k) : null;
         case "INCRBY": kv.set(k, (kv.get(k) ?? 0) + Number(a[0])); return kv.get(k);
@@ -39,7 +92,7 @@ function fakeRedis() {
     chain = job.then(() => undefined, () => undefined);
     return job;
   };
-  return { kv, calls, pipe };
+  return { kv, calls, pipe, evalOps };
 }
 const build = { prompt: "bookcase 36 wide", kind: "closet", primaryMaterialId: "plywood-3-4-4x8", overall: { width: 36, height: 84, depth: 12 }, panels: [{ name: "Side" }, { name: "Side" }, { name: "Top" }] };
 
@@ -136,6 +189,7 @@ test("over the day cap a fresh instance spends one command and does not write th
   assert.equal(f.calls.filter((c) => c[0] === "EVAL").length, 1);
   assert.equal(f.calls.some((c) => c[0] === "HINCRBY"), false);
   assert.equal(f.kv.get(K.evCount("2026-11-19")), EV_DAY_CAP);
+  assert.equal(f.evalOps.some((op) => op.startsWith("INCR ")), false, "the Lua day check returns before INCR");
   assert.equal(f.kv.get(K.evCmds("2026-11")) ?? 0, 0, "a day-cap refusal does not spend the month budget");
   const s2 = new ShopStore(f.pipe);
   assert.equal(await s2.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", at)!, at), "limited");
@@ -144,20 +198,48 @@ test("over the day cap a fresh instance spends one command and does not write th
 });
 
 test("a warm instance that has seen the month spent refuses the rest with at most one store command", async () => {
-  const calls: (string | number)[][] = [];
-  // Answers the real EVAL script. Does not call applyEventGate.
-  const pipe = async (cmds: (string | number)[][]) => cmds.map((c) => {
-    calls.push(c);
-    assert.equal(c[0], "EVAL");
-    assert.equal(c[1], EVENT_GATE_LUA);
-    return [0, EV_MONTH_BUDGET, 0];
-  });
-  const s = new ShopStore(pipe);
+  const f = fakeRedis();
+  f.kv.set(K.evCmds("2026-11"), EV_MONTH_BUDGET);
+  const s = new ShopStore(f.pipe);
   const bid = buildIdOf(build);
   const at = new Date("2026-11-19T12:00:00Z");
   const ev = cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!;
   for (let i = 0; i < 100; i++) assert.equal(await s.addEvent(ev, at), "limited");
-  assert.ok(calls.length <= 1, `one warm instance sent ${calls.length} store commands`);
+  assert.ok(f.calls.length <= 1, `one warm instance sent ${f.calls.length} store commands`);
+  assert.equal(f.calls[0]?.[0], "EVAL");
+  assert.equal(f.calls[0]?.[1], EVENT_GATE_LUA);
+  assert.equal(f.kv.get(K.evCmds("2026-11")), EV_MONTH_BUDGET, "the Lua month check does not move the counter");
+  assert.equal(f.evalOps.some((op) => op.startsWith("INCR")), false);
+});
+
+test("a warm instance that has seen the day cap sends at most one command until the next UTC day", async () => {
+  const f = fakeRedis();
+  f.kv.set(K.evCount("2026-11-19"), EV_DAY_CAP);
+  const s = new ShopStore(f.pipe);
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T23:00:00Z");
+  const ev = cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!;
+  for (let i = 0; i < 60; i++) assert.equal(await s.addEvent(ev, at), "limited");
+  assert.ok(f.calls.length <= 1, `one warm instance sent ${f.calls.length} store commands`);
+  assert.equal(f.evalOps.some((op) => op.startsWith("INCR ")), false, "the Lua day check returns before INCR");
+  assert.equal(f.kv.get(K.evCmds("2026-11")) ?? 0, 0);
+  const next = new Date("2026-11-20T00:00:00Z");
+  const before = f.calls.length;
+  const again = await s.addEvent(cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", next)!, next);
+  assert.equal(again, "saved");
+  assert.ok(f.calls.length > before, "a new UTC day asks the store again");
+});
+
+test("a store error sets no day or month memo", async () => {
+  let n = 0;
+  const pipe = async () => { n++; throw new Error("store down"); };
+  const s = new ShopStore(pipe);
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T12:00:00Z");
+  const ev = cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!;
+  assert.equal(await s.addEvent(ev, at), "dropped");
+  assert.equal(await s.addEvent(ev, at), "dropped");
+  assert.equal(n, 2, "the next call still reaches the store");
 });
 
 test("with the month budget already spent, 100 fresh instances save nothing and leave ev:cmds unchanged", async () => {
