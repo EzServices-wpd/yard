@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { digestMarkdown, type DigestInput } from "../src/lib/feedback/digest";
 import { ShopStore } from "../src/lib/feedback/store.server";
+import { digestOutAllowed } from "./feedback-digest.ts";
 
 const A = "b0123456789abcde", B = "bfedcba987654321", C = "b00000000000000c";
 const day = "2026-11-19";
@@ -37,6 +39,27 @@ test("an empty day still renders, and markdown in a note cannot break the page",
   const page = digestMarkdown({ day, feedback: [{ prompt: "x | y", size: "", partCount: 0, chips: [], note: "*bold* `code` <b>", tip: "local", at: `${day}T01:00:00Z` }], events: {}, builds: {} });
   assert.match(page, /No thumbs-down and no notes about a known build today/);
   assert.match(page, /\\\*bold\\\* \\`code\\` \\<b\\>/);
+});
+
+test("a planted price, part count, size or family is not printed as fact", () => {
+  const page = digestMarkdown({
+    day,
+    feedback: [],
+    events: { [`${A}|build|`]: 1, [`${A}|thumb|down`]: 2 },
+    builds: { [A]: { prompt: "bookcase", size: "31.5x16x78", family: "linen", parts: 11, usd: 999999, tip: "abcdef1", unverified: true } },
+  });
+  assert.match(page, /“bookcase”/);
+  assert.match(page, /tip abcdef1/);
+  assert.doesNotMatch(page, /999999|999,999|\$999|31\.5x16x78|\blinen\b/);
+});
+
+test("the digest is stdout or a path outside the repo, never a GitHub issue", () => {
+  assert.equal(digestOutAllowed("/tmp/yard-digest.md"), true);
+  assert.equal(digestOutAllowed("digests/2026-11-19.md"), false);
+  assert.equal(digestOutAllowed("src/routes/privacy.tsx"), false);
+  const src = readFileSync(new URL("./feedback-digest.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /api\.github\.com|GH_TOKEN|YARD_FEEDBACK_GH/);
+  assert.match(src, /digestOutAllowed/);
 });
 
 test("the store read fetches the list, the day's events and only the builds that matter", async () => {

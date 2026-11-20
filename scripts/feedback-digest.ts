@@ -3,17 +3,31 @@
  * Daily feedback digest: reads the feedback queue and the day's build events from Upstash and writes one markdown
  * summary (src/lib/feedback/digest.ts). Read-only: it never deletes, marks or rewrites anything in the store.
  *
- *   npx tsx scripts/feedback-digest.ts                      yesterday (UTC), printed
- *   npx tsx scripts/feedback-digest.ts --day 2026-11-19 --out digests/2026-11-19.md
+ *   npx tsx scripts/feedback-digest.ts                      yesterday (UTC), printed to stdout
+ *   npx tsx scripts/feedback-digest.ts --day 2026-11-19 --out /tmp/2026-11-19.md
  *   npx tsx scripts/feedback-digest.ts --input fixture.json  render a saved DigestInput, no store (tests, dry runs)
  *
- * Env: KV_REST_API_URL / KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_URL / _TOKEN), the same as the site. With no store
- * env it says so and exits 2. Reads count against the shared monthly command budget like every other call.
+ * The page quotes typed words, so it stays on stdout or a path outside this repo. The repo is public: --out inside
+ * the repo is refused, and this script never opens a GitHub issue. With no store env it says so and exits 2.
+ * Reads count against the events command budget (ev:cmds), not the Ideas log.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { digestMarkdown, type DigestInput } from "../src/lib/feedback/digest";
 import { ShopStore } from "../src/lib/feedback/store.server";
+
+/** Repo root. A digest path inside it would be one commit away from the public repo. */
+export const DIGEST_REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+/** True when `out` is outside the repo. A path inside the repo, or the repo itself, is refused. */
+export function digestOutAllowed(out: string, repoRoot = DIGEST_REPO_ROOT): boolean {
+  const abs = resolve(out);
+  const root = resolve(repoRoot);
+  if (abs === root) return false;
+  const prefix = root.endsWith(sep) ? root : root + sep;
+  return !abs.startsWith(prefix);
+}
 
 const argv = process.argv.slice(2);
 const arg = (k: string) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : undefined; };
@@ -32,7 +46,15 @@ async function main() {
   }
   const page = digestMarkdown(input);
   const out = arg("--out");
-  if (out) { mkdirSync(dirname(resolve(out)), { recursive: true }); writeFileSync(resolve(out), page + "\n"); console.error(`wrote ${out}`); }
-  else process.stdout.write(page + "\n");
+  if (out) {
+    if (!digestOutAllowed(out)) {
+      console.error("feedback-digest: --out must be outside the repo (the repo is public, and this page quotes typed words). Nothing written.");
+      process.exitCode = 2;
+      return;
+    }
+    mkdirSync(dirname(resolve(out)), { recursive: true });
+    writeFileSync(resolve(out), page + "\n");
+    console.error(`wrote ${out}`);
+  } else process.stdout.write(page + "\n");
 }
-await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) await main();

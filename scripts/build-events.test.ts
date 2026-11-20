@@ -4,19 +4,22 @@ import { readFileSync } from "node:fs";
 import { BID, buildIdOf } from "../src/lib/feedback/buildId";
 import { cleanEvent } from "../src/lib/feedback/events";
 import { cleanFeedback } from "../src/lib/feedback/shop";
-import { ShopStore, EV_DAY_CAP, EV_INSTANCE_PER_MIN } from "../src/lib/feedback/store.server";
+import { ShopStore, EV_DAY_CAP, EV_INSTANCE_PER_MIN, EV_CLIENT_PER_MIN, EV_MONTH_BUDGET, K } from "../src/lib/feedback/store.server";
+import { clientHash, eventPageQuiet, eventPostDecision } from "../src/lib/feedback/eventGate";
 
 function fakeRedis() {
   const kv = new Map<string, any>();
-  const pipe = async (cmds: (string | number)[][]) => cmds.map((c) => { const [op, k, ...a] = c as any[];
+  const calls: (string | number)[][] = [];
+  const pipe = async (cmds: (string | number)[][]) => cmds.map((c) => { calls.push(c); const [op, k, ...a] = c as any[];
     switch (op) {
+      case "GET": return kv.has(k) ? kv.get(k) : null;
       case "INCRBY": kv.set(k, (kv.get(k) ?? 0) + Number(a[0])); return kv.get(k);
       case "INCR": kv.set(k, (kv.get(k) ?? 0) + 1); return kv.get(k);
       case "EXPIRE": return 1;
       case "HINCRBY": { const h = kv.get(k) ?? {}; h[a[0]] = (h[a[0]] ?? 0) + Number(a[1]); kv.set(k, h); return h[a[0]]; }
       case "SET": { if (a.includes("NX") && kv.has(k)) return null; kv.set(k, a[0]); return "OK"; }
     } return null; });
-  return { kv, pipe };
+  return { kv, calls, pipe };
 }
 const build = { prompt: "bookcase 36 wide", kind: "closet", primaryMaterialId: "plywood-3-4-4x8", overall: { width: 36, height: 84, depth: 12 }, panels: [{ name: "Side" }, { name: "Side" }, { name: "Top" }] };
 
@@ -41,9 +44,11 @@ test("events keep only a build id, the event and its detail; only a build event 
   assert.equal(buy.detail, "lowes");
   assert.equal(cleanEvent({ bid, ev: "buy", store: "evil.example" }, "")!.detail, "other");
   assert.equal(cleanEvent({ bid, ev: "thumb", up: false }, "")!.detail, "down");
-  const b = cleanEvent({ bid, ev: "build", prompt: "bookcase for jane@doe.com", size: "36x12x84", family: "closet", parts: 9, usd: 131.756 }, "abcdef1234")!;
+  const b = cleanEvent({ bid, ev: "build", prompt: "bookcase for jane@doe.com", size: "36x12x84", family: "linen", parts: 11, usd: 999999 }, "abcdef1234")!;
   assert.equal(b.build!.prompt, null, "the build's words pass the query-log scrub");
-  assert.deepEqual({ ...b.build, prompt: null }, { prompt: null, size: "36x12x84", family: "closet", parts: 9, usd: 131.76, tip: "abcdef1" });
+  assert.equal(b.build!.unverified, true);
+  assert.equal(b.build!.tip, "abcdef1");
+  assert.deepEqual(Object.keys(b.build!).sort(), ["prompt", "tip", "unverified"], "client price, parts, size and family are not kept");
 });
 
 test("events are counted per build and capped hard per day before any write", async () => {
@@ -55,7 +60,9 @@ test("events are counted per build and capped hard per day before any write", as
   assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!, at), "saved");
   assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!, at), "saved");
   assert.equal(f.kv.get("ev:2026-11-19")[`${bid}|buy|homedepot`], 2);
-  assert.ok(String(f.kv.get(`bld:${bid}`)).includes('"family":"closet"'));
+  assert.ok(String(f.kv.get(`bld:${bid}`)).includes('"unverified":true'));
+  assert.ok(!String(f.kv.get(`bld:${bid}`)).includes("999"), "a planted price is not stored");
+  assert.equal(f.kv.has("ideas:cmds:2026-11"), false, "events do not spend the shared Ideas budget");
   f.kv.set("ev:n:2026-11-19", EV_DAY_CAP);
   const later = new Date("2026-11-19T11:00:00Z");
   assert.equal(await s.addEvent(cleanEvent({ bid, ev: "thumb", up: true }, "", later)!, later), "limited");
@@ -97,6 +104,70 @@ test("the thumbs control stays off the page while its wording is still a draft",
   assert.match(src, /export const THUMBS_ENABLED: boolean = false/);
   assert.match(src, /\{THUMBS_ENABLED \? \(/);
   assert.match(src, /THUMBS_DRAFT/);
+});
+
+test("a refused event costs one read, then nothing, and never the shared budget", async () => {
+  const f = fakeRedis();
+  const s = new ShopStore(f.pipe);
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T12:00:00Z");
+  f.kv.set(K.evCount("2026-11-19"), EV_DAY_CAP);
+  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "homedepot" }, "", at)!, at), "limited");
+  assert.deepEqual(f.calls, [["GET", K.evCount("2026-11-19")]], "the first refusal is one read and no write");
+  f.calls.length = 0;
+  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "export", kind: "pdf" }, "", at)!, at), "limited");
+  assert.equal(f.calls.length, 0, "this instance remembers the cap and sends nothing");
+  assert.equal([...f.kv.keys()].some((k) => String(k).startsWith("ideas:cmds")), false);
+});
+
+test("one client is limited in memory, and the hash is never stored", async () => {
+  const f = fakeRedis();
+  const s = new ShopStore(f.pipe);
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T12:00:00Z");
+  const hash = clientHash("203.0.113.9");
+  for (let i = 0; i < EV_CLIENT_PER_MIN; i++) assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "lowes" }, "", at)!, at, hash), "saved");
+  const before = f.calls.length;
+  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "lowes" }, "", at)!, at, hash), "limited");
+  assert.equal(f.calls.length, before, "over the per-client minute, no command is sent");
+  const blob = JSON.stringify([...f.kv.entries()]);
+  assert.equal(blob.includes(hash), false);
+  assert.equal(blob.includes("203.0.113.9"), false);
+});
+
+test("the events sub-budget stops before a write and does not touch the Ideas counter", async () => {
+  const f = fakeRedis();
+  const s = new ShopStore(f.pipe);
+  s.evBudget.month = "2026-11";
+  s.evBudget.saw(EV_MONTH_BUDGET);
+  const bid = buildIdOf(build);
+  const at = new Date("2026-11-19T12:00:00Z");
+  assert.equal(await s.addEvent(cleanEvent({ bid, ev: "buy", store: "amazon" }, "", at)!, at), "limited");
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.kv.has("ideas:cmds:2026-11"), false);
+  assert.equal(f.kv.has("ev:2026-11-19"), false);
+});
+
+test("cross-origin and text/plain are not events; a test page sends nothing", () => {
+  const env = { VERCEL_URL: "yard-git-cursor-build-id-events-build-hq.vercel.app" };
+  const ok = { contentType: "application/json", origin: "https://yard.wiki", referer: null, url: "https://yard.wiki/api/ev", testHeader: null };
+  assert.equal(eventPostDecision(ok), "ok");
+  assert.equal(eventPostDecision({ ...ok, origin: "https://yard-git-cursor-build-id-events-build-hq.vercel.app" }, env), "ok");
+  assert.equal(eventPostDecision({ ...ok, origin: "http://127.0.0.1:8080" }), "ok");
+  assert.equal(eventPostDecision({ ...ok, origin: "https://evil.example", contentType: "text/plain" }), "type");
+  assert.equal(eventPostDecision({ ...ok, contentType: "text/plain" }), "type");
+  assert.equal(eventPostDecision({ ...ok, origin: "https://evil.example" }), "cross");
+  assert.equal(eventPostDecision({ ...ok, origin: null, referer: null }), "cross");
+  assert.equal(eventPostDecision({ ...ok, url: "https://yard.wiki/api/ev?offline=1" }), "test");
+  assert.equal(eventPostDecision({ ...ok, referer: "https://yard.wiki/workspace?test=1" }), "test");
+  assert.equal(eventPostDecision({ ...ok, testHeader: "1" }), "test");
+  assert.equal(eventPageQuiet("?offline=1"), true);
+  assert.equal(eventPageQuiet("?q=bench&test=1"), true);
+  assert.equal(eventPageQuiet("?q=bench"), false);
+  const sender = readFileSync(new URL("../src/lib/feedback/sendEvent.ts", import.meta.url), "utf8");
+  assert.ok(sender.indexOf("eventPageQuiet") < sender.indexOf("fetch("), "a test page returns before the request");
+  const route = readFileSync(new URL("../src/routes/api/ev.ts", import.meta.url), "utf8");
+  assert.ok(route.indexOf("eventPostDecision") < route.indexOf("shopStore"), "origin and test traffic are decided before the store");
 });
 
 test("feedback carries the build id when it has one, and nothing new when it does not", () => {

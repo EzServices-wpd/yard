@@ -5,6 +5,7 @@
  * (the page URL carries the prompt), no identity.
  */
 import type { EventIn } from "./events";
+import { eventPageQuiet } from "./eventGate";
 
 const SENT = "yard.ev.v1:";
 const onceKey = (e: EventIn) => `${SENT}${e.bid}|${e.ev}|${e.store ?? e.kind ?? (e.up == null ? "" : e.up ? "up" : "down")}`;
@@ -12,6 +13,8 @@ const onceKey = (e: EventIn) => `${SENT}${e.bid}|${e.ev}|${e.store ?? e.kind ?? 
 export function sendEvent(e: EventIn): void {
   try {
     if (typeof window === "undefined") return;
+    // offline=1, local=1 and test=1 pages are test traffic. They send no events at all.
+    if (eventPageQuiet(window.location.search)) return;
     try {
       if (sessionStorage.getItem(onceKey(e)) === "1") return;
       sessionStorage.setItem(onceKey(e), "1");

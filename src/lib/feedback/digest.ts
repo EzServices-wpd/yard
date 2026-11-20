@@ -7,7 +7,12 @@
  */
 import type { FeedbackRecord } from "./shop";
 
-export type DigestBuild = { prompt: string | null; size: string; family: string; parts: number; usd: number; tip: string; first?: string };
+/**
+ * A stored build. `verified` is set only when the server itself computed the numbers.
+ * Anything else (including a record that simply lacks the flag) is not a fact: the page may quote the
+ * scrubbed words and must not print a client price, part count, size or family as if Yard measured it.
+ */
+export type DigestBuild = { prompt: string | null; size?: string; family?: string; parts?: number; usd?: number; tip?: string; first?: string; verified?: true; unverified?: true };
 export type DigestInput = {
   day: string; // YYYY-MM-DD, UTC
   feedback: FeedbackRecord[]; // newest first, as stored
@@ -48,7 +53,8 @@ export function digestMarkdown(input: DigestInput, worstN = 10): string {
     const prompt = b?.prompt ?? fromNote?.prompt ?? null;
     return prompt ? `“${md(prompt)}”` : `build ${bid}`;
   };
-  const sizeOf = (bid: string) => builds[bid]?.size || per.get(bid)?.notes[0]?.size || "";
+  /** Size and family are printed only when the server verified them. Client numbers are never printed. */
+  const facts = (bid: string) => (builds[bid]?.verified === true ? builds[bid] : undefined);
   const buys = (r: { buy: Record<string, number> }) => Object.values(r.buy).reduce((a, b) => a + b, 0);
   const lines: string[] = [];
   lines.push(`# Yard feedback digest · ${day}`, "");
@@ -65,8 +71,9 @@ export function digestMarkdown(input: DigestInput, worstN = 10): string {
   lines.push(`## Worst builds (${worst.length})`, "");
   if (!worst.length) lines.push("No thumbs-down and no notes about a known build today.", "");
   worst.forEach(({ bid, r }, i) => {
-    const b = builds[bid];
-    lines.push(`${i + 1}. ${name(bid)}${sizeOf(bid) ? ` · ${md(sizeOf(bid))}` : ""}${b?.family ? ` · ${md(b.family)}` : ""}${b?.tip ? ` · tip ${md(b.tip)}` : ""} · ${r.down} down, ${r.up} up, ${r.notes.length} note(s), ${r.export} export(s), ${buys(r)} Buy click(s) · \`${bid}\``);
+    const b = facts(bid);
+    const tip = builds[bid]?.tip;
+    lines.push(`${i + 1}. ${name(bid)}${b?.size ? ` · ${md(b.size)}` : ""}${b?.family ? ` · ${md(b.family)}` : ""}${tip ? ` · tip ${md(tip)}` : ""} · ${r.down} down, ${r.up} up, ${r.notes.length} note(s), ${r.export} export(s), ${buys(r)} Buy click(s) · \`${bid}\``);
     for (const n of r.notes.slice(0, 5)) lines.push(`   - ${n.chips.map((c) => CHIP_LABEL[c] ?? c).join(", ") || "note"}${n.note ? `: “${md(n.note)}”` : ""}`);
   });
   if (worst.length) lines.push("");

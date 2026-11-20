@@ -1,6 +1,8 @@
 /**
  * Upstash keys for build feedback and Critic's review marks. Outside src/lib/yard on purpose: it reuses the
- * engine's REST pipe, Budget and monthly command counter (`ideas:cmds:<month>`) by import, and changes none of it.
+ * engine's REST pipe and Budget by import, and changes none of the ideas log.
+ * Feedback and review still count against `ideas:cmds:<month>`. Build events do not: they have their own
+ * monthly counter (`ev:cmds:<month>`) so a flood of events cannot spend the Ideas or Tell-the-shop budget.
  * Missing env → every call is a no-op. Never throws.
  */
 import { restPipe, Budget, RETAIN_DAYS, type Pipe } from "@/lib/yard/ideaLog.server";
@@ -19,15 +21,20 @@ export const K = {
   client: (d: string, cid: string) => `feedback:cid:${d}:${cid}`, // a counter only, gone after a day
   ev: (d: string) => `ev:${d}`, // hash: field "<bid>|<event>|<detail>" → count, kept 3 days (the digest reads yesterday's)
   evCount: (d: string) => `ev:n:${d}`, // the day's event counter, for the hard cap
-  build: (bid: string) => `bld:${bid}`, // JSON: what the digest shows for a build; first write wins, 85 days
+  evCmds: (m: string) => `ev:cmds:${m}`, // events' own monthly command counter. Not ideas:cmds.
+  build: (bid: string) => `bld:${bid}`, // JSON: scrubbed words and the server tip. First write wins, 85 days.
 };
 /**
- * Hard daily cap on build events. One event costs at most 7 commands (budget INCRBY ×2, INCR, EXPIRE, HINCRBY,
- * EXPIRE, SET), so 1,200 a day × 7 × 31 ≈ 260K a month; with feedback's ≈ 102K that stays inside the shared 450K.
- * Over the cap the event is refused before any write (429), and the monthly Budget still stops everything at 450K.
+ * Hard daily cap on build events. The cap is read (one GET) and, once this instance has seen the day full,
+ * remembered, so a refused request costs 1 command the first time and 0 after. Accepted events count against
+ * EV_MONTH_BUDGET on `ev:cmds`, never against the shared 450K `ideas:cmds` key (Ideas log and Tell the shop).
+ * 40,000 leaves the 50,000 gap between that 450K guard and the 500K free tier for the commands events do send.
  */
 export const EV_DAY_CAP = 1200;
+export const EV_MONTH_BUDGET = 40_000;
 export const EV_INSTANCE_PER_MIN = 60;
+/** Per caller, in memory only. One client cannot hold the instance's whole 60/min. The hash is never stored. */
+export const EV_CLIENT_PER_MIN = 10;
 export const EV_KEEP_SECONDS = 3 * 86_400;
 /** Builds the digest looks up per run (one MGET). */
 export const DIGEST_BUILDS = 200;
@@ -55,7 +62,7 @@ export const GRADE = /^[A-Za-z0-9+-]{1,8}$/;
 
 export class ShopStore {
   private hits: number[] = [];
-  constructor(private pipe: Pipe | null = restPipe(), readonly budget = new Budget()) {}
+  constructor(private pipe: Pipe | null = restPipe(), readonly budget = new Budget(), readonly evBudget = new Budget(EV_MONTH_BUDGET)) {}
   get live() { return !!this.pipe; }
 
   private async run(n: number, cmds: (string | number)[][], now: Date): Promise<unknown[] | null> {
@@ -68,25 +75,62 @@ export class ShopStore {
   }
 
   private evHits: number[] = [];
+  private clientHits = new Map<string, number[]>();
+  /** Day this instance already saw at the cap. Later refusals send nothing. */
+  private evCappedDay = "";
+
+  /** True when this caller (an in-memory hash, never a stored address) is over its minute. */
+  private clientLimited(hash: string | undefined, t: number): boolean {
+    if (!hash) return false;
+    const fresh = (this.clientHits.get(hash) ?? []).filter((x) => t - x < 60_000);
+    if (fresh.length >= EV_CLIENT_PER_MIN) { this.clientHits.set(hash, fresh); return true; }
+    fresh.push(t);
+    this.clientHits.set(hash, fresh);
+    if (this.clientHits.size > 2000) for (const [k, v] of this.clientHits) if (v.every((x) => t - x >= 60_000)) this.clientHits.delete(k);
+    return false;
+  }
 
   /**
-   * A build event: counted per build, per event and detail, for the day. The day's hard cap is checked before any
-   * write. A build event also records what the digest shows for that build (the first write wins).
+   * A build event, counted per build and detail for the day. The day's cap and this instance's memory
+   * are checked before any write. A build event stores the scrubbed words only (first write wins).
+   * `clientHash` is an in-memory limit key. It is never sent to the store.
    */
-  async addEvent(rec: EventRecord, now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
+  async addEvent(rec: EventRecord, now = new Date(), clientHash?: string): Promise<"saved" | "off" | "limited" | "dropped"> {
     if (!this.pipe) return "off";
     const t = now.getTime();
     this.evHits = this.evHits.filter((x) => t - x < 60_000);
     if (this.evHits.length >= EV_INSTANCE_PER_MIN) return "limited";
-    this.evHits.push(t);
+    if (this.clientLimited(clientHash, t)) return "limited";
     const d = day(now);
-    const gate = await this.run(3, [["INCR", K.evCount(d)], ["EXPIRE", K.evCount(d), EV_KEEP_SECONDS]], now);
-    if (!gate) return "dropped";
-    if (Number(gate[0]) > EV_DAY_CAP) return "limited";
+    if (this.evCappedDay === d) return "limited";
+    // A buy/export/thumb is 5 commands; a build event adds the record (6). Refuse before the read when this month is spent.
+    if (!this.evBudget.allows(rec.build ? 6 : 5, now)) return "limited";
+    this.evHits.push(t);
+    let peek: unknown[] | null;
+    try { peek = await this.pipe([["GET", K.evCount(d)]]); } catch { return "dropped"; }
+    if (!peek) return "dropped";
+    if (Number(peek[0] ?? 0) >= EV_DAY_CAP) { this.evCappedDay = d; return "limited"; }
     const field = `${rec.bid}|${rec.ev}|${rec.detail}`;
-    const cmds: (string | number)[][] = [["HINCRBY", K.ev(d), field, 1], ["EXPIRE", K.ev(d), EV_KEEP_SECONDS]];
+    const cmds: (string | number)[][] = [["INCR", K.evCount(d)], ["EXPIRE", K.evCount(d), EV_KEEP_SECONDS], ["HINCRBY", K.ev(d), field, 1], ["EXPIRE", K.ev(d), EV_KEEP_SECONDS]];
     if (rec.build) cmds.push(["SET", K.build(rec.bid), JSON.stringify({ ...rec.build, first: rec.at }), "NX", "EX", FEEDBACK_DAYS * 86_400]);
-    return (await this.run(cmds.length + 1, cmds, now)) ? "saved" : "dropped";
+    const n = cmds.length + 1;
+    try {
+      const out = await this.pipe([["INCRBY", K.evCmds(month(now)), n], ...cmds]);
+      if (!out) return "dropped";
+      this.evBudget.saw(Number(out[0]));
+      if (Number(out[1]) > EV_DAY_CAP) this.evCappedDay = d;
+      return "saved";
+    } catch { return "dropped"; }
+  }
+
+  /** Event reads and writes spend `ev:cmds`, not the shared ideas budget. */
+  private async evSpend(n: number, cmds: (string | number)[][], now: Date): Promise<unknown[] | null> {
+    if (!this.pipe || !this.evBudget.allows(n, now)) return null;
+    try {
+      const out = await this.pipe([["INCRBY", K.evCmds(month(now)), n], ...cmds]);
+      this.evBudget.saw(Number(out?.[0]));
+      return out ? out.slice(1) : null;
+    } catch { return null; }
   }
 
   /**
@@ -95,7 +139,7 @@ export class ShopStore {
    */
   async digestInput(dayStr: string, now = new Date()): Promise<DigestInput | null> {
     if (!this.pipe) return null;
-    const got = await this.run(3, [["LRANGE", K.feedback, 0, FEEDBACK_KEEP - 1], ["HGETALL", K.ev(dayStr)]], now);
+    const got = await this.evSpend(3, [["LRANGE", K.feedback, 0, FEEDBACK_KEEP - 1], ["HGETALL", K.ev(dayStr)]], now);
     if (!got) return null;
     const feedback = ((got[0] as string[] | null) ?? []).flatMap((x) => { try { return [JSON.parse(x)]; } catch { return []; } });
     const flat = (got[1] as string[] | null) ?? [];
@@ -107,7 +151,7 @@ export class ShopStore {
     const bids = [...want].slice(0, DIGEST_BUILDS);
     const builds: Record<string, DigestBuild | null> = {};
     if (bids.length) {
-      const b = await this.run(2, [["MGET", ...bids.map(K.build)]], now);
+      const b = await this.evSpend(2, [["MGET", ...bids.map(K.build)]], now);
       const vals = (b?.[0] as (string | null)[] | null) ?? [];
       bids.forEach((bid, i) => { try { builds[bid] = vals[i] ? (JSON.parse(vals[i]!) as DigestBuild) : null; } catch { builds[bid] = null; } });
     }
