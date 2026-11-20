@@ -148,10 +148,9 @@ export function panelSupports(panels: Panel[], wall = false): Map<string, Suppor
               if (Math.abs(B.max[1] - A.min[1]) > 0.1 || overlap(A, B, 0) < 0.25 || overlap(A, B, 2) < 0.25) return false;
               const e = [0, 1, 2].map((k) => B.max[k] - B.min[k]);
               if (e[oa] < e[la]) return false;
-              // Under an end of the span (within a fifth of its length, at least 4"), not under its middle.
-              const c = (B.min[la] + B.max[la]) / 2;
-              const zone = Math.max(4, 0.2 * ext[la]);
-              return c - A.min[la] <= zone || A.max[la] - c <= zone;
+              // The ledger's body reaches the span's end. A board may overhang it by under 1/4"
+              // (a 60" bench floor). A bay divider sits a slot in from the end and still fastens later.
+              return B.min[la] <= A.min[la] + 0.25 || B.max[la] >= A.max[la] - 0.25;
             })
           : [];
         out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r, ...seat, ...ledger].map((q) => q.id) });

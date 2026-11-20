@@ -25,6 +25,16 @@ test("a ledger under a span's end, running along the wall, carries the span", ()
   assert.ok(on.includes("Left cleat"), JSON.stringify(on));
 });
 
+test("the first slot of a narrow rack is a bay divider, not a ledger", () => {
+  // Magazine rack: the top is 16 1/2" and slot 1's centre is under 4" from the end. It does not reach the end.
+  const top = part("Top", "top", 0, 23.25, 0.75, 16.5, 0.75, 11.25);
+  const left = part("Left upright", "upright", -0.75, 0, 0, 0.75, 24, 12);
+  const right = part("Right upright", "upright", 16.5, 0, 0, 0.75, 24, 12);
+  const slot = part("Slot 1", "divider", 3.56, 0.75, 0.75, 0.75, 22.5, 11.25);
+  const on = panelSupports([left, right, top, slot]).get("Top")?.on ?? [];
+  assert.ok(!on.includes("Slot 1"), JSON.stringify(on));
+});
+
 test("a strip across the span (kick strip) and a part under its middle (divider) do not", () => {
   const kick = panelSupports(frame(part("Kick strip", "rail", 0.75, 0, 1, 46.5, 3.5, 0.75))).get("Floor")?.on ?? [];
   assert.ok(!kick.includes("Kick strip"), JSON.stringify(kick));
