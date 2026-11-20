@@ -7,15 +7,17 @@ import { mustNotBeCraft } from "./jobFurniture";
 
 const craft = (prompt: string) => buildPlan(generateFromPrompt(prompt)).bom.some((b) => /popsicle|craft stick|toothpick/i.test(b.name));
 
-const REAL = [
+/** A lift that lands on a stand-in keeps release's craft build. Chicken tractor is the lift that comes out a real build. */
+const STAND_IN = [
   "small step for a toddler", "toddler learning tower", "kid's climbing triangle", "step ladder 3 steps", "cornhole boards set",
   "mailbox post", "a thing to raise my laptop", "guitar stand floor", "bedroom armoire 40 wide with doors", "sandbox with a lid",
-  "cold frame", "chicken tractor", "garden arbor", "garden bridge 6 ft", "cat climbing post", "something to store my bikes",
+  "cold frame", "garden arbor", "garden bridge 6 ft", "cat climbing post", "something to store my bikes",
 ];
 const MODELS = ["Space Needle model", "pirate ship", "toy airplane", "catapult", "Golden Gate Bridge 36 inches long", "galleon 30 inches long", "eiffel tower", "3 foot Eiffel Tower from popsicle sticks", "popsicle stick bridge"];
 
-test("load-bearing, outdoor, child or person-sized builds never come out in craft sticks", () => {
-  for (const p of REAL) assert.equal(craft(p), false, p);
+test("a craft-stick lift is kept only when the lifted build is not a stand-in", () => {
+  assert.equal(craft("chicken tractor"), false);
+  for (const p of STAND_IN) assert.equal(craft(p), true, p);
 });
 
 test("models and typed craft stock still build in craft sticks", () => {
@@ -36,9 +38,7 @@ test("a lifted build reads no word the craft build did not, and its fasteners ar
   // The lift changes the stock, never which typed words the engine read (the learner still gets the half-read ask).
   const q = "armoire with doors 36 wide 24 deep 72 tall";
   assert.deepEqual(ignoredTypedWords(generateFromPrompt(q), q), ["armoire"]);
-  for (const prompt of ["cold frame", "chicken tractor", "kids play kitchen", "mailbox post"]) {
-    const p = generateFromPrompt(prompt);
-    assert.ok(p.craftLifted, prompt);
-    assert.deepEqual(i46Ties(buildPlan(p)).generalWordTied, [], prompt);
-  }
+  const p = generateFromPrompt("chicken tractor");
+  assert.ok(p.craftLifted, "chicken tractor");
+  assert.deepEqual(i46Ties(buildPlan(p)).generalWordTied, []);
 });

@@ -14,7 +14,8 @@ import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
 import { builderOwnText, READ_MODIFIER } from "./builderName";
-import { FORM_NEUTRAL } from "./genericBox";
+import { FORM_NEUTRAL, genericBoxOverAsk } from "./genericBox";
+import { genericFormMark } from "./formOwnership";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards, typedSize } from "./recipeBuild";
 import { stabilizeOpenFrame } from "./openFrame";
@@ -466,9 +467,15 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     };
     // releaseReads text (an arch, a comma, a hyphenated inch) keeps the build release's readers made, stock
     // included. Rebuilding it in another stock re-reads the span (a 2-foot garden arch became a 64" portal).
-    const seeded = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake) && !releaseReads(typedAtIntake)
+    // split-X: a lift is kept only where it comes out a real build of the asked form. A lift that lands on a generic
+    // stand-in (a closed shell of the typed envelope, the stick-lattice model builder (a note or the lattice kind), an unmatched body, the fallback box over another ask) keeps the
+    // build release made, with its own honest note, so craft sticks are never swapped for a pricier wrong object.
+    const liftWanted = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake) && !releaseReads(typedAtIntake);
+    const lifted = liftWanted ? liftStock() : null;
+    const standInLift = !!lifted && (!!genericFormMark(lifted) || !!lifted.standIn || !!lifted.unmatched || closedShell(lifted) || seeded0.kind === "lattice" || (lifted.notes ?? []).some((n) => /built from short sticks braced together/i.test(n)) || genericBoxOverAsk(typedAtIntake, lifted));
+    const seeded = lifted && !standInLift
       ? withinStatedHeight({
-          ...liftStock(),
+          ...lifted,
           craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
         })
       : seeded0;
