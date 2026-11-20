@@ -42,3 +42,44 @@ test("a build that owns the head noun, or a storage carcase answering to a stora
     ["dining table seats 6", /table/i],
   ] as const) assert.match(built(prompt).name ?? "", name, prompt);
 });
+
+test("the head noun picks the class on prompts the rule was not written against", () => {
+  // None of these are the patch's examples. A class word before the head, or a purpose clause or a verb after it, is not the object.
+  for (const [prompt, not, maxW] of [
+    ["box for my plant stand", /^Plant stand\b/, 60],
+    ["stand for a bread box", /^Bread\b/, 60],
+    ["shelf to hold a lamp", /^Lamp\b/, 60],
+    ["vanity stool", /^Vanity\b(?! stool)/, 60],
+    ["bathroom vanity stool", /^Vanity\b(?! stool)/, 60],
+    ["desk shelf", /^Desk\b(?! shelf)/, 60],
+    ["wall desk shelf", /^(?:Floating desk|Desk)\b/, 60],
+    ["table lamp", /^Table\b(?! lamp)/, 60],
+    ["nightstand lamp", /^Nightstand\b(?! lamp)/, 60],
+    ["outdoor bench box", /^Bench\b/, 60],
+    ["bench box", /^Bench\b(?! box)/, 60],
+    ["vanity organizer", /^Vanity\b(?! organizer)/, 60],
+    ["bookcase holds 40 books", /^(?:Holds|Books)\b/, 60],
+    ["cabinet that holds towels", /^Holds\b/, 60],
+    ["bed sleeps 2", /^Sleeps\b/, 120],
+  ] as const) {
+    const p = built(prompt);
+    assert.doesNotMatch(p.name ?? "", not, `${prompt} → ${p.name}`);
+    assert.ok(p.overall.width < maxW, `${prompt}: ${p.name} is ${p.overall.width}" wide`);
+  }
+  // The title still names the typed object.
+  assert.match(built("box for my plant stand").name ?? "", /^Box\b/);
+  assert.match(built("stand for a bread box").name ?? "", /^Stand\b/);
+  assert.match(built("shelf to hold a lamp").name ?? "", /\bshelf\b/i);
+  assert.match(built("desk shelf").name ?? "", /^Desk shelf\b/);
+  assert.match(built("table lamp").name ?? "", /^Table lamp\b/);
+  assert.match(built("vanity organizer").name ?? "", /^Vanity organizer\b/);
+  assert.match(built("bookcase holds 40 books").name ?? "", /^Bookcase\b/);
+  assert.match(built("cabinet that holds towels").name ?? "", /^Cabinet\b/);
+  assert.match(built("bed sleeps 2").name ?? "", /^Bed\b/);
+  // A carcase that already owns the head, or a shelf/crate named for what it holds, stays that build.
+  for (const [prompt, name] of [
+    ["closet shelf organizer", /^Closet\b/],
+    ["shelf for shoes", /\bshelf\b/i],
+    ["crate for my records", /\bcrate\b/i],
+  ] as const) assert.match(built(prompt).name ?? "", name, prompt);
+});
