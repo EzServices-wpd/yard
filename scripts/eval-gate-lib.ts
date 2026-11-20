@@ -251,7 +251,7 @@ export type PromptResult = {
   honor: { honored: number; checkable: number; demandsFrom: string; items: HonorItem[] };
   /** Every checkBuild hit. scored = graded (not in REPORT_ONLY_IDS); a geometry report-only hit is listed but never grades. */
   invariants: { id: string; cls: string; msg: string; known: boolean; scored: boolean }[];
-  /** Honest-gate hits (H-standin, H-craft, H-unpriced): each is a hard fail. */
+  /** Honest-gate hits (H-standin, H-craft): each is a hard fail. */
   honest?: { cls: string; msg: string }[];
   /** Set when the build refused or was expected to: honest = graded pass, otherwise X-refusal (eval-gate-refusal.ts). */
   refusal?: Refusal;
@@ -281,7 +281,7 @@ export function gradeOne(E: Engine, e: Entry): PromptResult {
     for (const v of scored) classes.add(v.cls);
     for (const i of h.items) if (i.ok !== true) classes.add(`T-${i.kind}`);
     let grade = gradeOf({ empty: h.empty, nounOk: h.nounOk, scoredIds: scored.map((v) => v.id), honored, checkable });
-    // Honest gate: a stand-in, craft stock on a real build, or an unpriced Buy line is a hard fail.
+    // Honest gate: a stand-in or craft stock on a real build is a hard fail.
     const honest = h.empty ? [] : honestChecks(E, e.prompt, p, plan);
     for (const x of honest) classes.add(x.cls);
     if (honest.length) grade = "fail";

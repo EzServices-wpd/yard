@@ -8,12 +8,12 @@ test("craft stock is wrong only for load-bearing, outdoor or person-sized asks t
   for (const q of ["3 foot Eiffel Tower from popsicle sticks", "popsicle stick bridge", "model galleon 30 inches long", "galleon 30 inches long", "toy airplane", "Golden Gate Bridge 36 inches long", "coaster set"]) assert.ok(!realUseAsk(q), q);
 });
 
-test("a stand-in, craft on a real build and an unpriced Buy line are each a hit", () => {
+test("a stand-in and craft on a real build are each a hit; an unpriced Buy line is not", () => {
   const E = { genericFormMark: (p: any) => (p.notes?.includes("stand-in") ? "simple stand-in" : null), genericBoxOverAsk: () => false };
   const priced = { bom: [{ name: '3/4" Plywood 4×8', estimatedCost: 38.43 }] };
   assert.deepEqual(honestChecks(E, "pencil box", { name: "Pencil Box", notes: ["stand-in"] }, priced).map((h) => h.cls), ["H-standin"]);
   assert.deepEqual(honestChecks(E, "mailbox post", { name: "Mailbox", primaryMaterialId: "popsicle-standard" }, priced).map((h) => h.cls), ["H-craft"]);
-  assert.deepEqual(honestChecks(E, "bookcase", { name: "Bookcase" }, { bom: [{ name: "1×6 Board (8 ft)", estimatedCost: null }] }).map((h) => h.cls), ["H-unpriced"]);
+  assert.deepEqual(honestChecks(E, "bookcase", { name: "Bookcase" }, { bom: [{ name: "1×6 Board (8 ft)", estimatedCost: null }] }).map((h) => h.cls), []);
   assert.deepEqual(honestChecks(E, "bookcase", { name: "Bookcase", primaryMaterialId: "plywood-3-4-4x8" }, priced), []);
 });
 

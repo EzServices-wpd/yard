@@ -9,12 +9,13 @@
  *   H-craft     craft stock (sticks, skewers, straws, balsa, card) on an ask that is load-bearing, outdoor or sized
  *               for a person, when the words never asked for a model or for craft stock. The rule is the grader's
  *               own, read from the typed words only, so an engine change cannot grade itself.
- *   H-unpriced  a Buy line with no price: the total understates what the user will spend.
+ *   (A Buy line with no price is not a hit: a section with no checked listing is offered with no price on purpose,
+ *   and the Buy list says "plus unpriced items". See 8a4ac13d.)
  *
  * Each is a hard fail (grade "fail"). An honest, expected refusal is still a pass (no build to judge).
  */
 
-type Hit = { cls: "H-standin" | "H-craft" | "H-unpriced"; msg: string };
+type Hit = { cls: "H-standin" | "H-craft"; msg: string };
 export type HonestEngine = {
   genericFormMark?: (p: any) => string | null;
   genericBoxOverAsk?: (prompt: string, p: any) => boolean;
@@ -70,7 +71,5 @@ export function honestChecks(E: HonestEngine, prompt: string, p: any, plan: any)
   if (!mark && /built from short sticks braced together/i.test(notes) && realUseAsk(prompt)) mark = "stick-lattice model for a real-use ask";
   if (mark) hits.push({ cls: "H-standin", msg: `${mark}: "${p?.name ?? "?"}" is not the asked-for object` });
   if (craftBuilt(p, plan) && realUseAsk(prompt)) hits.push({ cls: "H-craft", msg: `craft stock (${p?.primaryMaterialId ?? "sticks"}) on a load-bearing, outdoor or person-sized ask` });
-  const unpriced = (plan?.bom ?? []).filter((b: any) => !(Number(b.estimatedCost) > 0)).map((b: any) => b.name);
-  if (unpriced.length) hits.push({ cls: "H-unpriced", msg: `${unpriced.length} Buy line(s) with no price: ${unpriced.slice(0, 3).join("; ")}` });
   return hits;
 }

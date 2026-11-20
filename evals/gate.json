@@ -2,10 +2,10 @@
  "note": "Eval gate (scripts/eval-gate.ts): engine-direct, no xAI. grade: fail = no build, head noun not honored, or a floats/miscount/missing-hardware/outdoor-ply invariant (I1/I3/I9/I13); partial = any other invariant or a typed word not honored; pass = clean. points = 2·pass + partial. Canaries are a hard fail, outside the totals.",
  "totals": {
   "prompts": 511,
-  "pass": 350,
-  "partial": 40,
-  "fail": 121,
-  "points": 740,
+  "pass": 377,
+  "partial": 43,
+  "fail": 91,
+  "points": 797,
   "maxPoints": 1022,
   "honored": 919,
   "checkable": 981,
@@ -2360,10 +2360,10 @@
  "bySource": {
   "eval46": {
    "prompts": 46,
-   "pass": 30,
-   "partial": 3,
-   "fail": 13,
-   "points": 63,
+   "pass": 33,
+   "partial": 4,
+   "fail": 9,
+   "points": 70,
    "maxPoints": 92,
    "honored": 87,
    "checkable": 88,
@@ -2393,10 +2393,10 @@
   },
   "nightly-sweep": {
    "prompts": 327,
-   "pass": 257,
-   "partial": 13,
-   "fail": 57,
-   "points": 527,
+   "pass": 275,
+   "partial": 14,
+   "fail": 38,
+   "points": 564,
    "maxPoints": 654,
    "honored": 592,
    "checkable": 600,
@@ -2426,10 +2426,10 @@
   },
   "sheet-stocks": {
    "prompts": 8,
-   "pass": 0,
-   "partial": 0,
-   "fail": 8,
-   "points": 0,
+   "pass": 7,
+   "partial": 1,
+   "fail": 0,
+   "points": 15,
    "maxPoints": 16,
    "honored": 15,
    "checkable": 15,
@@ -2448,7 +2448,6 @@
   }
  },
  "byClass": {
-  "H-unpriced": 37,
   "H-standin": 34,
   "F21": 24,
   "F1": 20,
@@ -5346,10 +5345,8 @@
    "ids": [
     "10-16:n02"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Adirondack chair · 25 7/8\" W × 23 7/8\" D × 37 7/8\" H (size assumed)",
    "overall": "25.875W × 23.875D × 37.875H",
    "pieces": 21,
@@ -5367,13 +5364,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "adirondack footrest",
@@ -7715,10 +7706,8 @@
    "ids": [
     "10-17:f14"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Pine Bookcase · 36\" W × 9 1/4\" D × 72\" H (D assumed)",
    "overall": "36W × 9.25D × 72H",
    "pieces": 16,
@@ -7754,13 +7743,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: Pine 1×10"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "bookshelf 36x12x72",
@@ -8266,10 +8249,8 @@
    "ids": [
     "sweep:d1-deterministic-steps"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
@@ -8287,13 +8268,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "bunk bed 80 long 42 wide 66 tall",
@@ -8303,11 +8278,10 @@
    "ids": [
     "sweep:g1-hung-glides-stud-tie"
    ],
-   "grade": "fail",
+   "grade": "partial",
    "classes": [
     "F2",
-    "F21",
-    "H-unpriced"
+    "F21"
    ],
    "header": "Bunk bed 80\" long x 42\" wide x 66\" tall · 80\" W × 42\" D × 66\" H (D assumed)",
    "overall": "80W × 42D × 66H",
@@ -8359,12 +8333,6 @@
      "known": false,
      "scored": true
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
-    }
    ]
   },
   {
@@ -8373,11 +8341,10 @@
     "eval46"
    ],
    "ids": [],
-   "grade": "fail",
+   "grade": "partial",
    "classes": [
     "F2",
-    "F21",
-    "H-unpriced"
+    "F21"
    ],
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (D, H assumed)",
    "overall": "82W × 44D × 65H",
@@ -8423,12 +8390,6 @@
      "known": true,
      "scored": true
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
-    }
    ]
   },
   {
@@ -8439,10 +8400,8 @@
    "ids": [
     "10-17:f01"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
@@ -8460,13 +8419,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "butcher block countertop 6 foot",
@@ -12140,10 +12093,8 @@
    "ids": [
     "sweep:c17-step-place-text"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Cribbage Board · 15\" W × 4\" D × 1 1/2\" H (size assumed)",
    "overall": "15W × 4D × 0.75H",
    "pieces": 5,
@@ -12168,12 +12119,6 @@
      "msg": "decimal-inch: decimal inches (note)",
      "known": true,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
   },
@@ -12883,8 +12828,7 @@
    "grade": "fail",
    "classes": [
     "F21",
-    "F7",
-    "H-unpriced"
+    "F7"
    ],
    "header": "Dog house · 36\" W × 16\" D × 30\" H (size assumed)",
    "overall": "36W × 16D × 30H",
@@ -12945,12 +12889,6 @@
      "msg": "steps or notes use latchs; Buy has none",
      "known": false,
      "scored": true
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
   },
@@ -13482,10 +13420,8 @@
    "ids": [
     "sheet-stocks-farm"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Farm stand · 48\" W × 30\" D × 72 1/2\" H (size assumed)",
    "overall": "48W × 30D × 72.5H",
    "pieces": 16,
@@ -13538,12 +13474,6 @@
      "msg": "Top rail front runs into Center support 1 with no joint cut for it",
      "known": false,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
     }
    ]
   },
@@ -14573,8 +14503,7 @@
    ],
    "grade": "fail",
    "classes": [
-    "F21",
-    "H-unpriced"
+    "F21"
    ],
    "header": "Garden bench · 48\" W × 16\" D × 18\" H (size assumed)",
    "overall": "48W × 16D × 18H",
@@ -14657,12 +14586,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
    ]
   },
   {
@@ -14675,8 +14598,7 @@
    ],
    "grade": "fail",
    "classes": [
-    "F21",
-    "H-unpriced"
+    "F21"
    ],
    "header": "Garden bench · 48\" W × 16\" D × 18\" H (D, H assumed)",
    "overall": "48W × 16D × 18H",
@@ -14764,12 +14686,6 @@
      "msg": "Back right leg is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
      "known": false,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
   },
@@ -15093,10 +15009,8 @@
    "ids": [
     "sweep:c13-typed-modifier"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Guitar hanger · 5 1/2\" W × 4 7/8\" D × 10\" H (size assumed)",
    "overall": "5.5W × 4.875D × 10H",
    "pieces": 4,
@@ -15121,12 +15035,6 @@
      "msg": "decimal-inch: decimal inches (note)",
      "known": true,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
   },
@@ -15180,10 +15088,8 @@
    "ids": [
     "sweep:c13-typed-modifier"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Guitar hanger · 5 1/2\" W × 4 7/8\" D × 10\" H (size assumed)",
    "overall": "5.5W × 4.875D × 10H",
    "pieces": 4,
@@ -15209,12 +15115,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
    ]
   },
   {
@@ -15225,10 +15125,8 @@
    "ids": [
     "sweep:c13-typed-modifier"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Guitar hanger · 5 1/2\" W × 4 7/8\" D × 10\" H (size assumed)",
    "overall": "5.5W × 4.875D × 10H",
    "pieces": 4,
@@ -15259,12 +15157,6 @@
      "msg": "decimal-inch: decimal inches (note)",
      "known": false,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
   },
@@ -15720,10 +15612,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -15741,13 +15631,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "jewelry box",
@@ -15757,10 +15641,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -15778,13 +15660,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "jewelry box 12 inches wide",
@@ -15794,10 +15670,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 12\" W × 5 1/2\" D × 3 7/16\" H (D, H assumed)",
    "overall": "12W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -15821,13 +15695,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "jewelry box 12 wide 8 tall 8 deep with 3 drawers",
@@ -15837,10 +15705,8 @@
    "ids": [
     "sweep:f17-before-after"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 12\" W × 8\" D × 8\" H",
    "overall": "12W × 8D × 8H",
    "pieces": 27,
@@ -15953,12 +15819,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
    ]
   },
   {
@@ -15969,10 +15829,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -15990,13 +15848,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "jewelry box with drawers",
@@ -16006,10 +15858,8 @@
    "ids": [
     "sweep:f17-before-after"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 7 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 7.375H",
    "pieces": 22,
@@ -16083,12 +15933,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
    ]
   },
   {
@@ -16101,7 +15945,6 @@
    ],
    "grade": "fail",
    "classes": [
-    "H-unpriced",
     "T-noun"
    ],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
@@ -16121,13 +15964,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "jumbo craft stick",
@@ -16819,10 +16656,8 @@
    "ids": [
     "sheet-stocks-lemonade"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Lemonade stand · 48\" W × 30\" D × 72 1/2\" H (size assumed)",
    "overall": "48W × 30D × 72.5H",
    "pieces": 16,
@@ -16876,12 +16711,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
-    }
    ]
   },
   {
@@ -16892,10 +16721,8 @@
    "ids": [
     "sheet-stocks-lemonade-132"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Lemonade stand · 132\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "132W × 30D × 72.5H",
    "pieces": 32,
@@ -17095,12 +16922,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
-    }
    ]
   },
   {
@@ -17111,10 +16932,8 @@
    "ids": [
     "sheet-stocks-lemonade-144"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Lemonade stand · 144\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "144W × 30D × 72.5H",
    "pieces": 32,
@@ -17314,12 +17133,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
-    }
    ]
   },
   {
@@ -17330,11 +17143,10 @@
    "ids": [
     "sheet-stocks-lemonade-48x84x36"
    ],
-   "grade": "fail",
+   "grade": "partial",
    "classes": [
     "F2",
-    "F21",
-    "H-unpriced"
+    "F21"
    ],
    "header": "Lemonade stand · 48\" W × 36\" D × 84 1/2\" H",
    "overall": "48W × 36D × 84.5H",
@@ -17421,12 +17233,6 @@
      "known": false,
      "scored": true
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
-    }
    ]
   },
   {
@@ -17437,10 +17243,8 @@
    "ids": [
     "sheet-stocks-lemonade-60"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Lemonade stand · 60\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "60W × 30D × 72.5H",
    "pieces": 18,
@@ -17535,12 +17339,6 @@
      "known": false,
      "scored": false
     }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
-    }
    ]
   },
   {
@@ -17551,10 +17349,8 @@
    "ids": [
     "sheet-stocks-lemonade-72"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Lemonade stand · 72\" W × 30\" D × 72 1/2\" H (D, H assumed)",
    "overall": "72W × 30D × 72.5H",
    "pieces": 18,
@@ -17648,12 +17444,6 @@
      "msg": "Top rail front runs into Center support 3 with no joint cut for it",
      "known": false,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
     }
    ]
   },
@@ -17849,10 +17639,8 @@
    "ids": [
     "sweep:d1-deterministic-steps"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Loft bed 82\" long x 44\" wide x 72\" tall · 82\" W × 44\" D × 72\" H (H assumed)",
    "overall": "82W × 44D × 72H",
    "pieces": 34,
@@ -17870,13 +17658,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "longship",
@@ -19058,8 +18840,7 @@
    ],
    "grade": "fail",
    "classes": [
-    "F21",
-    "H-unpriced"
+    "F21"
    ],
    "header": "Bench · 48\" W × 16\" D × 18\" H (size assumed)",
    "overall": "48W × 16D × 18H",
@@ -19147,12 +18928,6 @@
      "msg": "Back right leg is 2 layers of 1×4 Board (8 ft) but no glue-up step says so",
      "known": false,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
     }
    ]
   },
@@ -21608,7 +21383,6 @@
    "grade": "fail",
    "classes": [
     "F1",
-    "H-unpriced",
     "T-size"
    ],
    "header": "Platform bed 82\" long x 82\" wide x · 82\" W × 39\" D × 75\" H",
@@ -21668,12 +21442,6 @@
      "msg": "Wall-side guard reaches neither the floor nor a wall",
      "known": false,
      "scored": true
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
     }
    ]
   },
@@ -22219,7 +21987,6 @@
    "grade": "fail",
    "classes": [
     "F1",
-    "H-unpriced",
     "T-size"
    ],
    "header": "Platform bed 87\" long x 67\" wide x 80\" tall · 87\" W × 67\" D × 80\" H",
@@ -22279,12 +22046,6 @@
      "msg": "Wall-side guard reaches neither the floor nor a wall",
      "known": false,
      "scored": true
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
     }
    ]
   },
@@ -24267,10 +24028,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -24288,13 +24047,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "snack stand",
@@ -24304,10 +24057,8 @@
    "ids": [
     "sheet-stocks-snack"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Snack stand · 48\" W × 30\" D × 72 1/2\" H (size assumed)",
    "overall": "48W × 30D × 72.5H",
    "pieces": 16,
@@ -24360,12 +24111,6 @@
      "msg": "Top rail front runs into Center support 1 with no joint cut for it",
      "known": false,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×10 Board (8 ft)"
     }
    ]
   },
@@ -25111,10 +24856,8 @@
     "eval46"
    ],
    "ids": [],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Garden Pedestal Sundial · 16\" W × 16\" D × 41 1/2\" H (size assumed)",
    "overall": "16W × 16D × 41.5H",
    "pieces": 13,
@@ -25146,12 +24889,6 @@
      "msg": "Plinth is 2.94\" thick, not a whole number of 0.75\" 3/4\" Plywood 4×8 layers",
      "known": true,
      "scored": false
-    }
-   ],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
     }
    ]
   },
@@ -25792,10 +25529,8 @@
     "eval46"
    ],
    "ids": [],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Bunk bed 82\" long x 44\" wide x 65\" tall · 82\" W × 44\" D × 65\" H (H assumed)",
    "overall": "82W × 44D × 65H",
    "pieces": 50,
@@ -25813,13 +25548,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×8 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "two-step kitchen stool",
@@ -26998,10 +26727,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Walnut Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -27025,13 +26752,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: Walnut 1×6"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "wardrobe for a 7 ft ceiling",
@@ -28009,10 +27730,8 @@
    "ids": [
     "sweep:c14-small-forms"
    ],
-   "grade": "fail",
-   "classes": [
-    "H-unpriced"
-   ],
+   "grade": "pass",
+   "classes": [],
    "header": "Jewelry box · 10\" W × 5 1/2\" D × 3 7/16\" H (size assumed)",
    "overall": "10W × 5.5D × 3.4375H",
    "pieces": 8,
@@ -28030,13 +27749,7 @@
      }
     ]
    },
-   "invariants": [],
-   "honest": [
-    {
-     "cls": "H-unpriced",
-     "msg": "1 Buy line(s) with no price: 1×6 Board (8 ft)"
-    }
-   ]
+   "invariants": []
   },
   {
    "prompt": "wooden toy truck",
