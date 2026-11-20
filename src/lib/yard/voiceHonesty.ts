@@ -3,7 +3,7 @@
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
 import { feetLengthAt, releaseReads } from "./lengthReader";
-import { bareSharesFeet, placePair } from "./sizePhrases";
+import { placePair } from "./sizePhrases";
 import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
@@ -977,25 +977,6 @@ export function normalizeUserPrompt(prompt: string): string {
     const keepFeet = (whole: string, offset: number) => asRelease || feetLengthAt(whole, offset);
     // "2x4x8 bench" names the stock (a 2×4, 8 ft long) — not a 2" × 4" × 8" piece of furniture.
     s = s.replace(/\b([12])\s*[x×]\s*(2|3|4|6|8|10|12)\s*[x×]\s*(6|8|10|12|14|16)\b(?!\s*(?:in\b|inch|"|[x×.]|\d))(?:\s*(?:ft|feet|foot|')\b)?/gi, "$1x$2");
-    // Any house size pair, not only a place. A bare partner shares the feet unit only when an inch
-    // reading is implausible (under 7: "8 ft by 2" workbench is 96 × 24). A bare 7–12 stays inches
-    // ("3 ft by 12 deep" is 36 × 12). (?![\d.]) keeps a decimal whole ("18.5", "30.5").
-    s = s.replace(
-      /(\d+(?:\.\d+)?)(?![\d.])(\s*(?:ft|feet|foot|'))?\s*(x|×|by)\s*(\d+(?:\.\d+)?)(?![\d.])(\s*(?:ft|feet|foot|'))?(?!\s*(?:in\b|inch|"|″))/gi,
-      (all, a, ua, sep, b, ub, offset: number, whole: string) => {
-        const feetA = /ft|feet|foot|'/i.test(ua ?? "");
-        const feetB = /ft|feet|foot|'/i.test(ub ?? "");
-        if (feetA === feetB) return all;
-        const at = feetB ? offset + all.lastIndexOf(String(b)) : offset;
-        if (!keepFeet(whole, at)) return all;
-        const inches = (n: string, hasFeet: boolean) => {
-          const v = parseFloat(n);
-          if (hasFeet) return v * 12;
-          return bareSharesFeet(v) ? v * 12 : v;
-        };
-        return `${inches(a, feetA)} inch ${sep} ${inches(b, feetB)} inch`;
-      },
-    );
     // "6 foot 8" and 6'8" are feet plus leftover inches — not 72 and a stray 8. A count never starts inside a number
     // ("2 1/2 ft 3" is never "2 1/27", row 658).
     s = s.replace(new RegExp(lb + String.raw`(\d+(?:\.\d+)?)\s*'\s*(\d{1,2})` + (lb ? String.raw`(?![\d/])` : String.raw`(?!\d)`), "g"), (all, ft, inch, offset: number, whole: string) => {
