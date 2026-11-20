@@ -6,6 +6,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { parseRecipe, type Recipe, type RecipeStore } from "@/lib/yard/recipes";
 import { learnedRecipeFailures } from "@/lib/yard/learnedGate";
+import { mayKeepLearned } from "@/lib/yard/learnedKeep";
+import { buildRecipe, learnedRecipeFor } from "@/lib/yard/recipeBuild";
 import { shadowsBuiltIn } from "@/lib/yard/promptMain";
 import { cacheGet, cacheSet } from "./dailyCap.server";
 import { designKey } from "@/lib/yard/designKey";
@@ -117,9 +119,14 @@ export const proposeRecipeFn = createServerFn({ method: "POST" })
       const held = data.lookupId ? await cacheGet<string>(`yard-lookup:${data.lookupId}`) : undefined;
       if (!held) return { ok: false, status: "unknown lookup" };
       const { prompt, recipeJson } = JSON.parse(held) as { prompt: string; recipeJson: string };
+      const recipe = learnedRecipeFor(prompt, JSON.parse(recipeJson));
+      // The page already applied this gate. Apply it again, on the same keyed recipe, before the cache and
+      // the bot PR: a recipe the eval gate grades worse than the engine, or a stand-in, is not saved.
+      if (!recipe || !(await mayKeepLearned(prompt, buildRecipe(recipe, prompt).project))) return { ok: true, status: "skipped: not better than the engine" };
+      const keptJson = JSON.stringify(recipe);
       // It passed on the page: the next visitor typing the same design gets it with no AI call (30 days).
-      await cacheSet(`yard-design:${designKey(prompt)}`, recipeJson, 30 * 86_400);
-      const out = await proposeRecipe(JSON.parse(recipeJson));
+      await cacheSet(`yard-design:${designKey(prompt)}`, keptJson, 30 * 86_400);
+      const out = await proposeRecipe(recipe);
       console.info(`[recipe-bot] ${out.status}${out.pr ? ` pr=${out.pr}` : ""}`);
       return out;
     } catch (e) {

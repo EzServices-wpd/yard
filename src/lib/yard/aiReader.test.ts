@@ -144,7 +144,7 @@ test("I49 r2: guard errors fail closed; the reply and a cached reply are validat
 test("I49 r2: the browser asks only when the build-time flag is on (row 459)", async () => {
   const g = globalThis as { window?: unknown };
   const had = g.window;
-  g.window = { setTimeout, clearTimeout, location: { search: "" } };
+  g.window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
   try {
     const { readerWanted } = await import("../../components/workspace/run-prompt");
     assert.deepEqual([readerWanted(Q, true, "on"), readerWanted(Q, true, ""), readerWanted(Q, true, undefined), readerWanted(Q, true, "ON")], [true, false, false, false]);

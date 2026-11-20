@@ -11,7 +11,7 @@ import { checkBuild, i35 } from "./invariants";
 import { headerTitle } from "./pdf";
 import { buildPlan } from "./report";
 
-(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
+(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
 const { runYardPrompt } = await import("../../components/workspace/run-prompt");
 const { useYard } = await import("./store");
 

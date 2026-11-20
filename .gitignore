@@ -16,3 +16,5 @@ dist
 
 # Eval-gate row cache (scripts/build-cache.ts)
 .cache/
+# Reader/learner shadow output (scripts/learner-replay.ts). Not a scorecard.
+.reader-eval/
