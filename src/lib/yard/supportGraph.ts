@@ -138,7 +138,25 @@ export function panelSupports(panels: Panel[], wall = false): Map<string, Suppor
           const B = boxes.get(q.id)!;
           return !l.includes(q) && !r.includes(q) && Math.abs(B.max[1] - A.min[1]) <= 0.1 && overlap(A, B, 0) >= 0.25 && overlap(A, B, 2) >= 0.25;
         }) : [];
-        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r, ...seat].map((q) => q.id) });
+        // A part goes in after what supports it. A ledger under a flat span's end (a floor cleat running along the
+        // wall) bears that span, so the span waits for it. A part under the span that runs across it
+        // between the ends (a kick strip) or sits under its middle (a divider) still fastens on later.
+        const ledger = flat
+          ? others.filter((q) => {
+              if (l.includes(q) || r.includes(q)) return false;
+              const B = boxes.get(q.id)!;
+              if (Math.abs(B.max[1] - A.min[1]) > 0.1 || overlap(A, B, 0) < 0.25 || overlap(A, B, 2) < 0.25) return false;
+              const e = [0, 1, 2].map((k) => B.max[k] - B.min[k]);
+              // A ledger lies along the wall: its own length runs crosswise to the span. A post or slat
+              // standing under the span's end (a grille slat, a cubby divider) only meets it.
+              if (e[oa] < e[la] || e[oa] < e[1]) return false;
+              // The ledger's outer face is at the span's end. A board may overhang it by under 1/4"
+              // (a 60" bench floor). A bay divider sits a slot in from the end and still fastens later;
+              // a base that runs on past the end (a foot the span's end only grazes) is not under it.
+              return Math.abs(B.min[la] - A.min[la]) <= 0.25 || Math.abs(B.max[la] - A.max[la]) <= 0.25;
+            })
+          : [];
+        out.set(p.id, { key: p.id, name: p.name, how: "side", on: [...l, ...r, ...seat, ...ledger].map((q) => q.id) });
         continue;
       }
     }
