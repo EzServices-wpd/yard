@@ -481,9 +481,12 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     // split-X: a lift is kept only where it comes out a real build of the asked form. A lift that lands on a generic
     // stand-in (a closed shell of the typed envelope, the stick-lattice model builder (a note or the lattice kind), an unmatched body, the fallback box over another ask) keeps the
     // build release made, with its own honest note, so craft sticks are never swapped for a pricier wrong object.
+    // A dedicated scale-model builder (a wheels-block vehicle, a towers-block castle or fort) keeps its model form in any
+    // stock: re-stocking it gives a toy at model scale in boards (a 12" fort with $200 of screws), never the real build.
+    const MODEL_BUILDER_KINDS = new Set<string>(["vehicle", "castle"]);
     const liftWanted = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(typedAtIntake) && !releaseReads(typedAtIntake);
     const lifted = liftWanted ? liftStock() : null;
-    const standInLift = !!lifted && (!!genericFormMark(lifted) || !!lifted.standIn || !!lifted.unmatched || closedShell(lifted) || seeded0.kind === "lattice" || (lifted.notes ?? []).some((n) => /built from short sticks braced together/i.test(n)) || genericBoxOverAsk(typedAtIntake, lifted));
+    const standInLift = !!lifted && (!!genericFormMark(lifted) || !!lifted.standIn || !!lifted.unmatched || closedShell(lifted) || seeded0.kind === "lattice" || MODEL_BUILDER_KINDS.has(seeded0.kind) || (lifted.notes ?? []).some((n) => /built from short sticks braced together/i.test(n)) || genericBoxOverAsk(typedAtIntake, lifted));
     const seeded = (() => {
       if (!lifted || standInLift) return seeded0;
       const marked = {

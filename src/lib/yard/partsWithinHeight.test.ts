@@ -18,6 +18,7 @@ const ROLLING = ["rolling kitchen island", "kitchen island on casters", "mobile 
 /** Reported to SWE (16:30 EDT), SWE owns them; not fixed here: prompt → the parts above its stated height. The cribbage
  * board's pegs are tagged proud by its recipe (18:06), so it left this list. */
 const KNOWN: Record<string, string> = {
+  "chicken tractor": "popsicle-standard", // sticks 0.137" over the stated 5.2
   "catapult from popsicle sticks": "popsicle-standard", // a stick 0.122" over 4 5/8
   catapult: "popsicle-standard",
 };
