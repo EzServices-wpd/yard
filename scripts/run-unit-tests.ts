@@ -98,6 +98,8 @@ function report(file: string, r: Run) {
   if (unknown.length) {
     bad += unknown.length;
     for (const u of unknown) console.error(`FAIL ${file}: ${u}`);
+    // The child TAP is otherwise discarded, so a red shard only names the test.
+    console.error(out.length > 6000 ? out.slice(-6000) : out);
   } else {
     console.log(`PASS ${file} (${pass} ok${known.length ? `, ${known.length} known` : ""}) ${r.secs.toFixed(1)}s`);
   }
