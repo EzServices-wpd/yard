@@ -2,9 +2,9 @@ import { OPENING_SPACE } from "./fittedShared";
 import { withSaidHardware } from "./hardwareSaid";
 import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
-import { checkedOffer, storeTermsFromBuy } from "./listings";
-import { CEDAR, checkedRow, HARDWARE } from "./checkedStock";
-import { boardNominal, boardPriceUsd, checkedSpeciesBoardUsd, pricedBoardId } from "./pricedStock";
+import { storeTermsFromBuy } from "./listings";
+import { checkedRow, HARDWARE } from "./checkedStock";
+import { boardNominal, boardPriceUsd, pricedBoardId } from "./pricedStock";
 import { buyComplete, stepTextForPlace } from "./buyComplete";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
@@ -25,8 +25,8 @@ import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { fixedProfile, isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
-import { decorateBom, estimateOffers } from "./listings";
-import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
+import { decorateBom, speciesBoardLine } from "./listings";
+import { speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { applyOpenPipeFrame, openPipeDeal, openSplitAgrees } from "./openPipeJoints";
 import { withSocketCuts } from "./socketTakeoff";
@@ -1999,35 +1999,11 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
       const notes = b.notes.replace(/Cut to: (?:(?! · ).)*/, `Cut to: ${list}`);
       if (notes !== b.notes) line = { ...line, notes };
     }
-    const species = speciesOfBoardLabel(line.name);
-    const catalog = line.catalogId ? getCatalogItem(line.catalogId) : undefined;
-    const sold = catalog?.unitCostUsd != null && catalog.unitCostUsd > 0;
-    // Species price is per 1×4; a wider named board (Cedar 1×6) scales by its real face and keeps its size in the search.
-    const face = catalog?.dims.width ?? 3.5;
-    const thick = catalog?.dims.height ?? 0.75;
-    const size = line.name.match(/([1-4])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
-    const piece = thick >= 3 ? "post" : "board";
-    const per1x4 = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
-    const each = per1x4 != null ? Math.round(per1x4 * ((face * thick) / (3.5 * 0.75)) * 100) / 100 : null;
-    if (each != null && line.quantity > 0) {
-      const total = Math.round(each * line.quantity * 100) / 100;
-      const query = `${species!.display} ${size} ${piece} 8 ft`;
-      line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
-      changed = true;
-    } else if (species && species.id !== "pine" && catalog?.category === "lumber") {
-      const query = `${species.display} ${size} ${piece} 8 ft`;
-      // A checked listing for this species and this board (cedar 1×6) is the price. A missing listing stays unpriced.
-      const checked = !(line.estimatedCost != null && line.estimatedCost > 0) ? checkedSpeciesBoardUsd(line.catalogId ?? "", species.id) : null;
-      const listing = checked != null ? CEDAR[line.catalogId ?? ""] : undefined;
-      if (listing && line.quantity > 0) {
-        const { offers, lineTotal } = checkedOffer(listing, line.quantity);
-        const notes = line.notes?.replace(/ · No price — plus unpriced items/g, "");
-        line = { ...line, estimatedCost: lineTotal, offers, searchQuery: query, ...(notes != null ? { notes } : {}) };
-        changed = true;
-      } else {
-        // Unpriced row (no fake price): the search still names the species and size that was typed.
-        line = { ...line, searchQuery: query };
-      }
+    // A named species board is priced as that species: the one rule decorateBom uses (speciesBoardLine).
+    const species = speciesBoardLine(line, line.catalogId);
+    if (species) {
+      if (species.estimatedCost !== line.estimatedCost || species.searchQuery !== line.searchQuery || species.notes !== line.notes) changed = true;
+      line = species;
     }
     return line;
   });
