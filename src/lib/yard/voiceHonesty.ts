@@ -3,6 +3,7 @@
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
 import { feetLengthAt, releaseReads } from "./lengthReader";
+import { placeBinding, unlabeledPlacePair } from "./sizePhrases";
 import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
@@ -1200,11 +1201,21 @@ export function typedOpeningStorageAxes(prompt: string): {
         width = true;
         depth = true;
       } else {
-        // Closet opening order W×H
+        // Closet opening order W×H — a place pair below is the exception: it is a footprint.
         width = true;
         height = true;
         depth = false;
       }
+    }
+  }
+  const footprint = unlabeledPlacePair(placeBinding(prompt));
+  if (footprint && trip && !trip[3]) {
+    const a = parseFloat(trip[1]);
+    const b = parseFloat(trip[2]);
+    if (Math.abs(a - footprint.width) < 0.05 && Math.abs(b - footprint.depth) < 0.05) {
+      width = true;
+      depth = true;
+      height = Number.isFinite(labeledH);
     }
   }
   return { width, height, depth };

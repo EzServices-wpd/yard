@@ -5,6 +5,7 @@
  * Universal by word class, so any new noun with a known head word lands well.
  */
 import { landmarkTitle } from "./formLandmarks";
+import { placeBinding } from "./sizePhrases";
 import type { YardProject } from "./types";
 
 type Prim = { phrase: string; label: string; size: [number, number, number] };
@@ -185,12 +186,17 @@ export function fallbackNote(noun: string, label: string): string {
 }
 
 export function primitivePrompt(p: Prim, prompt: string): string {
-  const pick = (re: RegExp, d: number) => {
+  // A size bound to a place ("fits a 14 inch cutout") is that axis. The primitive's own
+  // number fills only an axis the person did not bind.
+  const place = placeBinding(prompt);
+  const pick = (re: RegExp, axis: "width" | "height" | "depth", d: number) => {
     const m = prompt.match(re);
-    return m ? Number(m[1]) : d;
+    if (m) return Number(m[1]);
+    if (!place.productFirst && place.axes[axis] != null) return place.axes[axis]!;
+    return d;
   };
-  const w = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*wide/i, p.size[0]);
-  const h = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tall|high)/i, p.size[1]);
-  const d = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*deep/i, p.size[2]);
+  const w = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*wide/i, "width", p.size[0]);
+  const h = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tall|high)/i, "height", p.size[1]);
+  const d = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*deep/i, "depth", p.size[2]);
   return `${p.phrase} ${w} wide ${h} tall ${d} deep`;
 }

@@ -1,4 +1,5 @@
 import { createId } from "@/lib/utils";
+import { placeBinding } from "./sizePhrases";
 import type { Panel, YardProject } from "./types";
 
 const PLY = "plywood-3-4-4x8";
@@ -70,10 +71,12 @@ export function buildClosetFromOpening(
   height: number,
   depth: number,
   prompt = "",
+  /** An axis the person typed stays at that number. The floor applies only to an axis they left blank. */
+  typed: { width?: boolean; height?: boolean; depth?: boolean } = {},
 ): YardProject {
-  const W = Math.max(12, width);
-  const H = Math.max(24, height);
-  const D = Math.max(8, depth);
+  const W = typed.width ? width : Math.max(12, width);
+  const H = typed.height ? height : Math.max(24, height);
+  const D = typed.depth ? depth : Math.max(8, depth);
   const p = 0.75;
   const inner = H - p;
   const count = H >= 72 ? 4 : H >= 48 ? 3 : 2;
@@ -121,7 +124,19 @@ export function buildClosetFromPrompt(prompt: string, size: { width: number; hei
     D = 18;
   }
 
-  const project = buildClosetFromOpening(W, H, D, prompt);
+  const place = placeBinding(prompt);
+  const said = (words: string) => new RegExp(String.raw`\d+(?:\.\d+)?\s*(?:["″]|in(?:ch(?:es)?)?)?\s*(?:${words})\b`, "i").test(prompt);
+  const widthTyped = said("wide|width") || place.axes.width != null;
+  const heightTyped = said("tall|high|height") || place.axes.height != null;
+  const depthTyped = said("deep|depth") || place.axes.depth != null;
+  // parseSize copies a typed width under 24" onto the cube's other axes. Those copies were not typed.
+  const typedW = place.axes.width ?? (widthTyped ? size.width : W);
+  if (widthTyped && !heightTyped && typedW < 24 && place.axes.height == null) H = 24;
+  if (widthTyped && !depthTyped && typedW < 24 && place.axes.depth == null) D = 24;
+  if (place.axes.width != null) W = place.axes.width;
+  if (place.axes.height != null) H = place.axes.height;
+  if (place.axes.depth != null) D = place.axes.depth;
+  const project = buildClosetFromOpening(W, H, D, prompt, { width: widthTyped, height: heightTyped, depth: depthTyped });
   project.name = /vanity/.test(lower)
     ? "Vanity"
     : /wardrobe/.test(lower)
