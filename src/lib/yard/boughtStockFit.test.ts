@@ -42,8 +42,9 @@ test("a 2x4 frame does not rebuild a plywood top from studs", () => {
   assert.match(p.panels.find((panel) => panel.name === "Work top")?.materialId ?? "", /^plywood-/);
 });
 
-test("an unpriced 1x board stays unpriced, not a scaled store price", () => {
+test("a 1x8 board takes the checked listing, not a scaled guess", () => {
   const row = buildPlan(generateFromPrompt("toolbox")).bom.find((b) => b.catalogId === "lumber-1x8-8");
   assert.ok(row);
-  assert.ok(!(row!.estimatedCost && row!.estimatedCost > 0), `1x8 price ${row!.estimatedCost}`);
+  assert.equal(Math.round((row!.estimatedCost ?? 0) * 100) / 100, Math.round(20.48 * row!.quantity * 100) / 100);
+  assert.ok(row!.offers?.some((o) => o.packPrice === 20.48));
 });
