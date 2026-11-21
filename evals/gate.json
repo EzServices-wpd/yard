@@ -4700,13 +4700,6 @@
    },
    "invariants": [
     {
-     "id": "I37",
-     "cls": "F9",
-     "msg": "engine-word: internal field (note)",
-     "known": false,
-     "scored": false
-    },
-    {
      "id": "I6",
      "cls": "F12",
      "msg": "step 6 \"Sand every edge and add the cushion\" lights every part",
@@ -4890,13 +4883,6 @@
     ]
    },
    "invariants": [
-    {
-     "id": "I37",
-     "cls": "F9",
-     "msg": "engine-word: No class matched (note)",
-     "known": false,
-     "scored": false
-    },
     {
      "id": "I37",
      "cls": "F9",
@@ -11790,13 +11776,6 @@
     {
      "id": "I37",
      "cls": "F9",
-     "msg": "engine-word: No class matched (note)",
-     "known": false,
-     "scored": false
-    },
-    {
-     "id": "I37",
-     "cls": "F9",
      "msg": "no-class: unmatched body (model)",
      "known": false,
      "scored": false
@@ -11844,13 +11823,6 @@
     ]
    },
    "invariants": [
-    {
-     "id": "I37",
-     "cls": "F9",
-     "msg": "engine-word: No class matched (note)",
-     "known": false,
-     "scored": false
-    },
     {
      "id": "I37",
      "cls": "F9",
@@ -12775,13 +12747,6 @@
      "msg": "the engine builds this form, but the live path sends it to the learner",
      "known": false,
      "scored": true
-    },
-    {
-     "id": "I37",
-     "cls": "F9",
-     "msg": "engine-word: internal field (note)",
-     "known": false,
-     "scored": false
     },
     {
      "id": "I6",
@@ -16115,13 +16080,6 @@
     ]
    },
    "invariants": [
-    {
-     "id": "I37",
-     "cls": "F9",
-     "msg": "engine-word: No class matched (note)",
-     "known": false,
-     "scored": false
-    },
     {
      "id": "I37",
      "cls": "F9",

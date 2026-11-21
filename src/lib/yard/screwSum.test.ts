@@ -10,6 +10,6 @@ describe("screw sum", () => {
     const total = note.match(/(\d+) screws from the model's joints/)?.[1];
     assert.ok(total);
     const steps = plan.instructions.map((step) => step.description).join(" ");
-    assert.match(steps, new RegExp(`${total} screws from the model's joints`));
+    assert.match(steps, new RegExp(`${total} screws where the parts meet`));
   });
 });

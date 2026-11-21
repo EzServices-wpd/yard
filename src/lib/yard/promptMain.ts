@@ -48,6 +48,7 @@ import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHou
 import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
 import { publishAssumedSize, typedAxisFlags } from "./assumedRecord";
+import { plainMakerTalk } from "./plainMakerTalk";
 import { normalizeUserPrompt, strangerPlainShopTalk } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
@@ -630,8 +631,11 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
       .filter((n) => !ENGINE_NOTE.test(n))
       .map((n) => n.replace(/^(\d+ glue joints?) hold \d+ pieces?$/, (_m, j: string) => `${j} hold ${pieces} piece${pieces === 1 ? "" : "s"}`))
       .map(positiveSentence)
-      // Notes are said in plain shop words, the same as the steps ("the carcase" → "the main box").
-      .map(strangerPlainShopTalk),
+      // Notes are said in plain shop words, the same as the steps ("the carcase" → "the main box",
+      // "from the model's joints" → "where the parts meet").
+      .map(strangerPlainShopTalk)
+      .map(plainMakerTalk)
+      .filter(Boolean),
   };
   const built = done.typedPrompt ? { ...tidy, typedPrompt: said } : tidy;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
@@ -2459,7 +2463,7 @@ function craftDisplay(project: YardProject, prompt: string): YardProject {
   const item = getCatalogItem(project.primaryMaterialId);
   const stock = `${item?.name ?? ""} ${item?.id ?? ""} ${prompt}`.toLowerCase();
   if (!CRAFT_STOCK.test(stock) || !LOADED.test(prompt.toLowerCase())) return project;
-  if ((project.notes ?? []).some((note) => note.startsWith("This is a display model"))) return project;
+  if ((project.notes ?? []).some((note) => note.startsWith("This is a display model") || note.startsWith("This is a display piece"))) return project;
   const lower = prompt.toLowerCase();
   const hold = /planter|outdoor|porch/.test(lower) ? HOLDS.planter : /shelf|rack/.test(lower) ? HOLDS.shelf : HOLDS.stool;
   const holdStockId = /planter|outdoor|porch/.test(lower) ? "lumber-1x4-8" : /shelf|rack/.test(lower) ? "plywood-3-4-4x8" : "lumber-2x4-8";

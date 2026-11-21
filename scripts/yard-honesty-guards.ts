@@ -6781,8 +6781,8 @@ console.log("STRANGER PLAN OK", {
     failHonesty("bare vanity title stem", bareVanity.name);
   }
   const vanityNotes = (bareVanity.notes ?? []).join(" ");
-  if (!/Assumed .*vanity class default/i.test(vanityNotes)) {
-    failHonesty("bare vanity missing Assumed class-default notes", bareVanity.notes);
+  if (!/Assumed /i.test(vanityNotes) || /class default/i.test(vanityNotes)) {
+    failHonesty("bare vanity missing Assumed size notes, or still naming the class", bareVanity.notes);
   }
   const vanityHud = fmtUnitEnvelopeInches(
     bareVanity.overall.width,
@@ -6808,8 +6808,8 @@ console.log("STRANGER PLAN OK", {
     failHonesty("bare cedar chest title stem", bareCedar.name);
   }
   const cedarNotes = (bareCedar.notes ?? []).join(" ");
-  if (!/Assumed .*chest class default/i.test(cedarNotes)) {
-    failHonesty("bare cedar chest missing Assumed class-default notes", bareCedar.notes);
+  if (!/Assumed /i.test(cedarNotes) || /class default/i.test(cedarNotes)) {
+    failHonesty("bare cedar chest missing Assumed size notes, or still naming the class", bareCedar.notes);
   }
   const cedarHud = fmtUnitEnvelopeInches(
     bareCedar.overall.width,
@@ -6850,8 +6850,8 @@ console.log("STRANGER PLAN OK", {
     failHonesty("bare cedar chest must densify hinged-lid anatomy", bareCedarNoLid.panels.map((p) => p.name));
   }
   const bareCedarNotes = (bareCedarNoLid.notes ?? []).join(" ");
-  if (!/Assumed .*chest class default/i.test(bareCedarNotes)) {
-    failHonesty("bare cedar chest missing Assumed class-default notes", bareCedarNoLid.notes);
+  if (!/Assumed /i.test(bareCedarNotes) || /class default/i.test(bareCedarNotes)) {
+    failHonesty("bare cedar chest missing Assumed size notes, or still naming the class", bareCedarNoLid.notes);
   }
   const blanketChest = generateFromPrompt("blanket chest");
   if (/\d+(?:\.\d+)?"\s*×/.test(blanketChest.name)) {
@@ -6869,8 +6869,8 @@ console.log("STRANGER PLAN OK", {
     failHonesty("bare hutch title stem", bareHutch.name);
   }
   const hutchNotes = (bareHutch.notes ?? []).join(" ");
-  if (!/Assumed .*hutch class default/i.test(hutchNotes)) {
-    failHonesty("bare hutch missing Assumed class-default notes", bareHutch.notes);
+  if (!/Assumed /i.test(hutchNotes) || /class default/i.test(hutchNotes)) {
+    failHonesty("bare hutch missing Assumed size notes, or still naming the class", bareHutch.notes);
   }
   // Soft leftover: bare hutch densified dresser drawer-bank while title/HUD already honest.
   // Storage-hutch class → china silhouette (lower doors + upper open shelves), never drawer bank.
@@ -6915,15 +6915,15 @@ console.log("STRANGER PLAN OK", {
 
   // Soft leftover: bare bookcase / dresser / media / shoe / entry bench / floating shelf
   // stamped stock W×H×D as typed — join shared class-default densify gate.
-  const stockStampCases: Array<{ prompt: string; stem: RegExp; klass: RegExp }> = [
-    { prompt: "bookcase", stem: /^Bookcase$/i, klass: /bookcase class default/i },
-    { prompt: "dresser", stem: /^Dresser$/i, klass: /dresser class default/i },
-    { prompt: "media console", stem: /^Media console$/i, klass: /media console class default/i },
-    { prompt: "sideboard", stem: /^Sideboard$/i, klass: /sideboard class default/i },
-    { prompt: "buffet", stem: /^Buffet$/i, klass: /buffet class default/i },
-    { prompt: "shoe rack", stem: /^Shoe rack$/i, klass: /shoe rack class default/i },
-    { prompt: "entry bench", stem: /^Entry bench$/i, klass: /entry bench class default/i },
-    { prompt: "floating shelf", stem: /^Floating shelf$/i, klass: /floating shelf class default/i },
+  const stockStampCases: Array<{ prompt: string; stem: RegExp }> = [
+    { prompt: "bookcase", stem: /^Bookcase$/i },
+    { prompt: "dresser", stem: /^Dresser$/i },
+    { prompt: "media console", stem: /^Media console$/i },
+    { prompt: "sideboard", stem: /^Sideboard$/i },
+    { prompt: "buffet", stem: /^Buffet$/i },
+    { prompt: "shoe rack", stem: /^Shoe rack$/i },
+    { prompt: "entry bench", stem: /^Entry bench$/i },
+    { prompt: "floating shelf", stem: /^Floating shelf$/i },
   ];
   for (const c of stockStampCases) {
     const proj = generateFromPrompt(c.prompt);
@@ -6934,8 +6934,8 @@ console.log("STRANGER PLAN OK", {
       failHonesty(`bare ${c.prompt} title stem`, proj.name);
     }
     const notes = (proj.notes ?? []).join(" ");
-    if (!c.klass.test(notes)) {
-      failHonesty(`bare ${c.prompt} missing Assumed class-default notes`, proj.notes);
+    if (!/Assumed /i.test(notes) || /class default/i.test(notes)) {
+      failHonesty(`bare ${c.prompt} missing Assumed size notes, or still naming the class`, proj.notes);
     }
     const hud = fmtUnitEnvelopeInches(proj.overall.width, proj.overall.height, proj.overall.depth, {
       prompt: c.prompt,

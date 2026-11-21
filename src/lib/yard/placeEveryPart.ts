@@ -13,7 +13,7 @@ import { supportsOf, type SupportInfo } from "./supportGraph";
 import { wantsFixedGlueShelves } from "./honesty";
 import { isFixedSpanShelf } from "./shelfSpan";
 import { rotorChain, type RotorLink } from "./solids";
-import { ANATOMY_NOTE } from "./classAnatomy";
+import { isAnatomyNote } from "./classAnatomy";
 import { countPlural } from "./shopPlural";
 
 type Part = { key: string; name: string; kind: string; ids?: Set<string> };
@@ -398,7 +398,7 @@ export function placeEveryPart(project: YardProject, steps: AssemblyStep[]): Ass
   const dependents = (key: string) => parts.filter((p) => supports.get(p.key)?.on.includes(key));
 
   // Class-anatomy steps are written in support order (floor, base, body, top) and name each support.
-  const handWritten = (project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE));
+  const handWritten = (project.notes ?? []).some((n) => isAnatomyNote(n));
   if (!handWritten) out = splitByLayer(project, out, parts, supports, fix);
   for (const part of parts) {
     const info = supports.get(part.key);

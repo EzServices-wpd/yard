@@ -48,6 +48,7 @@ import { planSolidBoards } from "./solidStock";
 import { packLengths } from "./linearPack";
 import { panelJoints, screwTalk } from "./modelJoints";
 import { withOutdoorPackage } from "./outdoor";
+import { plainPlanTalk } from "./plainMakerTalk";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CatalogItem, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
@@ -1678,7 +1679,8 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 
 export function buildPlan(project: YardProject): BuildPlan {
   // C12: the last pass: every store search a Buy row links to says that row's Buy name.
-  return liftedFastenersById(project, storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)))));
+  // Then shop wording: step titles, descriptions and tips, after the screw pass has counted.
+  return plainPlanTalk(liftedFastenersById(project, storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))))));
 }
 
 /**

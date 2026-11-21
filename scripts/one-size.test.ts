@@ -83,7 +83,7 @@ for (const [prompt, slug] of corpus) {
   // Step 1 says the size in words: "Unit 18" wide × 23 7/16" deep × 30 1/4" high".
   const m = plan.instructions.map((s) => s.description).join(" ").match(/Unit ([\d\s/]+)" wide × ([\d\s/]+)" deep × ([\d\s/]+)" high/);
   const notes: Row["notes"] = {};
-  for (const n of plan.instructions.map((s) => s.description).join(" ").matchAll(/Assumed ([\d\s/]+)" (wide|tall|deep) \(default size\)/g)) notes[n[2] === "wide" ? "width" : n[2] === "tall" ? "height" : "depth"] = n[1].trim();
+  for (const n of plan.instructions.map((s) => s.description).join(" ").matchAll(/Assumed ([\d\s/]+)" (wide|tall|deep)\b/g)) notes[n[2] === "wide" ? "width" : n[2] === "tall" ? "height" : "depth"] = n[1].trim();
   // The 3D view's W, H and D labels and its "W × H × D" caption, as printed.
   const iso = [...isoSvgString(p).matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((x) => x[1].replace(/&quot;|″/g, '"'));
   rows.push({ prompt, slug, notes, iso, header: headerTitle(p), drawn: ov && !ov.round ? f3(ov) : null, round: !!ov?.round, steps, unitText: m ? `${m[1].trim()} × ${m[2].trim()} × ${m[3].trim()}` : null, assumed: typedAxesTalk(p).assumed, size: headerSize(p) });

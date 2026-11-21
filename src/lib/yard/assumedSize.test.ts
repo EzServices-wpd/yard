@@ -100,8 +100,8 @@ test("pine 1x4 toolbox 18 long: the 1x4 is stock, not a typed depth, and the tit
   assert.equal(p.overall.height, 3.5);
   assert.equal(p.overall.depth, 10);
   assert.match(p.name, /18" × 3 1\/2" × 10"/);
-  assert.match((p.notes ?? []).join("\n"), /Assumed 3 1\/2" tall \(default size\) — type a height to lock it\./);
-  assert.match((p.notes ?? []).join("\n"), /Assumed 10" deep \(default size\) — type a depth to lock it\./);
+  assert.match((p.notes ?? []).join("\n"), /Assumed 3 1\/2" tall — type a height to lock it\./);
+  assert.match((p.notes ?? []).join("\n"), /Assumed 10" deep — type a depth to lock it\./);
   assert.doesNotMatch((p.notes ?? []).join("\n"), /Assumed 18" wide/);
   assert.match(headerTitle(p, { features: false }), /18" W × 10" D × 3 1\/2" H \(D, H assumed\)/);
   assert.equal(p.spec?.size.width.typed, true);
@@ -115,9 +115,9 @@ test("1x4 toolbox: every axis is assumed at the built box, and the title is W ×
   assert.deepEqual(
     (p.notes ?? []).filter((n) => /^Assumed/.test(n)),
     [
-      `Assumed 20" wide (default size) — type a width to lock it.`,
-      `Assumed 3 1/2" tall (default size) — type a height to lock it.`,
-      `Assumed 10" deep (default size) — type a depth to lock it.`,
+      `Assumed 20" wide — type a width to lock it.`,
+      `Assumed 3 1/2" tall — type a height to lock it.`,
+      `Assumed 10" deep — type a depth to lock it.`,
     ],
   );
   assert.match(headerTitle(p, { features: false }), /20" W × 10" D × 3 1\/2" H/);
@@ -130,6 +130,6 @@ test("a crate title uses the header's W × D × H order of the built box", () =>
   assert.match(headerTitle(dog, { features: false }), new RegExp(`36" W × ${inchFrac(dog.overall.depth)}" D × ${inchFrac(dog.overall.height)}" H`));
   const crate = generateFromPrompt("crate 36 long");
   assert.equal(crate.name, `Crate 36" × 30" × 24"`);
-  assert.match((crate.notes ?? []).join("\n"), /Assumed 30" tall \(default size\)/);
-  assert.match((crate.notes ?? []).join("\n"), /Assumed 24" deep \(default size\)/);
+  assert.match((crate.notes ?? []).join("\n"), /Assumed 30" tall — type a height to lock it/);
+  assert.match((crate.notes ?? []).join("\n"), /Assumed 24" deep — type a depth to lock it/);
 });
