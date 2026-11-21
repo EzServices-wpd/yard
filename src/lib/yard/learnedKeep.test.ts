@@ -262,4 +262,25 @@ describe("a learned recipe is kept only when its notes, parts and Buy agree", ()
       assert.equal(saidPrompt(q, [], shelves(6)).some((h) => /bed|mesh|movement|shelves/.test(h)), false, q);
     }
   });
+
+  it("a part, an essential or a sleep deck under another name is still that part", () => {
+    const legs = ["fl", "fr", "bl", "br"].map((c) => leg(`Leg ${c}`, "lumber-4x4-8"));
+    assert.deepEqual(said(["Top rests on four corner posts."], legs), []);
+    assert.deepEqual(said(["Top rests on four legs."], ["1", "2", "3", "4"].map((i) => leg(`Post ${i}`))), []);
+    assert.deepEqual(said(["Two shelves."], [leg("Lowershelf", "plywood-3-4-4x8"), leg("Uppershelf", "plywood-3-4-4x8")]), []);
+    assert.deepEqual(said(["Tall wardrobe with two full-height doors."], [leg("Wardrobe door 1", "plywood-3-4-4x8"), leg("Wardrobe door 2", "plywood-3-4-4x8")]), []);
+    assert.match(said(["Top rests on four corner posts."], legs.slice(0, 3)).join(" "), /4 posts, the build has 3/);
+    assert.match(said(["8 shelves."], [leg("Post")]).join(" "), /8 shelves, the build has 0/);
+    const flat = (name: string, w: number, d: number, z = 0) => ({ ...donor().panels[0], id: name, name, materialId: "plywood-3-4-4x8", position: { x: 0, y: 15, z }, size: { width: w, height: 0.75, depth: d } });
+    const bed = (parts: ReturnType<typeof donor>["panels"]) => saidPrompt("full size bed frame", [], parts, { width: 54, height: 16, depth: 75 });
+    assert.equal(bed([flat("Platform 1", 27, 75), flat("Platform 2", 27, 75)]).some((h) => /spanning/.test(h)), false);
+    assert.equal(bed(Array.from({ length: 9 }, (_, i) => flat(`Support board ${i + 1}`, 52, 3.5, i * 9))).some((h) => /spanning/.test(h)), false);
+    assert.match(bed([flat("Cross board 1", 52, 3.5), flat("Cross board 2", 52, 3.5, 70)]).join(" "), /spanning/);
+    for (const m of ["Chicken wire", "Welded wire fencing", "Poultry netting"]) {
+      assert.equal(saidPrompt("chicken tractor", [], [leg("Floor", "plywood-3-4-4x8")], undefined, [{ name: m, quantity: 1, unit: "roll" }]).some((h) => /mesh/.test(h)), false, m);
+    }
+    for (const m of ["Clock kit", "Clock mechanism", "Clock insert"]) {
+      assert.equal(saidPrompt("mantel clock", [], [leg("Case")], undefined, [{ name: m, quantity: 1, unit: "pc" }]).some((h) => /movement/.test(h)), false, m);
+    }
+  });
 });

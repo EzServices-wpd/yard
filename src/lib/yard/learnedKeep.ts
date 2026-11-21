@@ -161,6 +161,31 @@ function nounRe(w: string): string {
 /** A count of one of these with no such part is a miss. "three bikes" is not a part of the rack. */
 const PART_NOUN = new Set(["shelf", "slat", "drawer", "door", "leg", "post", "rail", "panel", "divider", "hinge", "tread", "rung", "apron", "stretcher", "deck", "platform", "lid", "cabinet", "brace", "stringer", "cleat", "spindle", "riser", "bowl", "side", "back", "front", "top", "bottom"]);
 
+/** One part, several trade names: a post is a leg, a tier is a shelf, an apron is a rail. */
+const PART_FAMILY: string[][] = [
+  ["leg", "post", "upright", "column"],
+  ["shelf", "tier"],
+  ["rail", "apron", "stretcher"],
+  ["deck", "platform", "floor"],
+  ["divider", "partition"],
+  ["brace", "strut"],
+  ["tread", "step"],
+];
+/**
+ * How many parts a counted part noun names: the noun itself, then its other names, then the noun closing a
+ * run-together name ("Lowershelf", "Flpost"). Null only when no part is that part under any of its names.
+ */
+function partCount(stem: string, panels: Panel[]): number[] | null {
+  const family = PART_FAMILY.find((f) => f.includes(stem)) ?? [stem];
+  for (const w of [stem, ...family.filter((f) => f !== stem)]) {
+    const have = countMatching([w], panels);
+    if (have) return have;
+  }
+  const tail = new RegExp(`[a-z](?:${family.map(nounRe).join("|")})\\b`, "i");
+  const hit = panels.filter((p) => tail.test(p.name)).length;
+  return hit ? [hit] : null;
+}
+
 /** How many parts the phrase names, read two ways: each part, and each assembly ("Drawer front" and "Drawer back" are one drawer). */
 function countMatching(words: string[], panels: Panel[]): number[] | null {
   let rest = words.slice();
@@ -219,7 +244,11 @@ function countHits(text: string, panels: Panel[], digits: boolean): string[] {
       // "two sides" is shop talk. "per board" is a rate. "three bikes" names no part.
       if (digits && !best && !/\bper\b/.test(sentence)) {
         const noun = window.find((t) => !ADJ.has(t) && !SKIP_NOUN.has(t) && !/^\d+$/.test(t));
-        if (noun && PART_NOUN.has(stemWord(noun))) hits.push(`notes say ${num.value} ${noun}, the build has ${0}`);
+        if (noun && PART_NOUN.has(stemWord(noun))) {
+          const have = partCount(stemWord(noun), panels);
+          if (!have) hits.push(`notes say ${num.value} ${noun}, the build has 0`);
+          else if (!have.includes(num.value)) hits.push(`notes say ${num.value} ${noun}, the build has ${have[0]}`);
+        }
       }
     }
   }
@@ -282,6 +311,10 @@ function buyScaleHits(project: YardProject, plan: BuildPlan): string[] {
   return hits;
 }
 
+/** An essential is met by any of its trade names: chicken wire, welded wire and poultry netting are mesh; a clock kit, mechanism or insert is a movement. */
+const MESH_STOCK = /mesh|hardware cloth|netting|\b(?:chicken|poultry|rabbit|welded|woven|hex|galvani[sz]ed|fence|fencing)\s+wire\b|\bwire\s+(?:fence|fencing|panels?|screen|cloth|netting)\b/i;
+const MOVEMENT_STOCK = /quartz|movement|mechanism|clockwork|\bclock\s*(?:kit|insert|works?|motor)\b|\bfit-?up\b/i;
+
 /**
  * The head noun's family, with or without notes. A bed is the sleep deck pushBedLevel builds (slats about
  * every 12" or one platform across the plan). A poultry pen is the hardware-cloth enclosure. A clock is a
@@ -297,10 +330,10 @@ function namedObjectHits(project: YardProject, plan: BuildPlan): string[] {
   }
   // buildPetEnclosure covers a fowl house in hardware cloth. A tractor is that pen on wheels.
   const pen = isPetEnclosure(lower) || /\b(?:tractor|coop|pen|run|ark|enclosure)\b/.test(lower);
-  if (/\b(?:chicken|hens?|duck|quail|coop|poultry)\b/.test(lower) && pen && !/\b(?:toy|model|miniature|doll)\b/.test(lower) && !/mesh|hardware cloth/.test(stock)) {
+  if (/\b(?:chicken|hens?|duck|quail|coop|poultry)\b/.test(lower) && pen && !/\b(?:toy|model|miniature|doll)\b/.test(lower) && !MESH_STOCK.test(stock)) {
     hits.push("a poultry pen needs mesh");
   }
-  if (typedHeadNoun(prompt) === "clock" && !/\btower\b|big ben|westminster/.test(lower) && !/quartz|clock movement|\bmovement\b/.test(stock)) {
+  if (typedHeadNoun(prompt) === "clock" && !/\btower\b|big ben|westminster/.test(lower) && !MOVEMENT_STOCK.test(stock)) {
     hits.push("a clock needs a movement");
   }
   for (const [f, n] of Object.entries(typedCounts(prompt))) {
@@ -323,7 +356,15 @@ function sleepSpans(project: YardProject): boolean {
   };
   if (wood.some(covers)) return true;
   const slats = wood.filter((p) => /\bslats?\b/i.test(p.name));
-  return slats.length >= Math.max(3, Math.ceil(length / 12) + 1);
+  if (slats.length >= Math.max(3, Math.ceil(length / 12) + 1)) return true;
+  // The sleep surface is read from the parts' shape, not their names: flat parts (thinnest side vertical) that
+  // together cover the plan (a platform cut in two or more sheets), or that many flat boards spanning the
+  // bed (slats called boards, cross members or supports).
+  const flat = wood.filter((p) => p.size.height <= Math.min(p.size.width, p.size.depth) && p.size.height <= 2);
+  if (flat.reduce((a, p) => a + p.size.width * p.size.depth, 0) >= 0.7 * o.width * o.depth) return true;
+  const spanX = flat.filter((p) => p.size.width >= 0.7 * o.width).length;
+  const spanZ = flat.filter((p) => p.size.depth >= 0.7 * o.depth).length;
+  return spanX >= Math.max(3, Math.ceil(o.depth / 12) + 1) || spanZ >= Math.max(3, Math.ceil(o.width / 12) + 1);
 }
 
 /**
