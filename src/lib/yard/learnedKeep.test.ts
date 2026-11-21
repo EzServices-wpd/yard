@@ -139,7 +139,10 @@ describe("a learned recipe is kept only when the gate grades it strictly higher 
 const leg = (name: string, materialId = "lumber-2x4-8") => ({ ...donor().panels[0], id: name, name, materialId, size: { width: 3.5, height: 16, depth: 1.5 } });
 
 function said(notes: string[], panels: YardProject["panels"], bom: BuildPlan["bom"] = [], cutList: BuildPlan["cutList"] = []): string[] {
-  const project = { ...donor(), notes, panels } as YardProject;
+  return saidPrompt(donor().prompt, notes, panels, undefined, bom, cutList);
+}
+function saidPrompt(prompt: string, notes: string[], panels: YardProject["panels"], overall?: { width: number; height: number; depth: number }, bom: BuildPlan["bom"] = [], cutList: BuildPlan["cutList"] = []): string[] {
+  const project = { ...donor(), prompt, notes, panels, ...(overall ? { overall } : {}) } as YardProject;
   const plan = { ...buildPlan(donor()), instructions: [], bom, cutList };
   return declarationHits(project, plan);
 }
@@ -232,5 +235,52 @@ describe("a learned recipe is kept only when its notes, parts and Buy agree", ()
     );
     assert.match(named.join(" "), /Rear wheel stop 1/);
     assert.equal(named.some((h) => /vesa/i.test(h)), false);
+  });
+
+  it("empty notes still have to build the named object, and a count or a hyphen fraction is read", () => {
+    const slat = (i: number) => ({ ...donor().panels[0], id: `s${i}`, name: `Support slat ${i}`, materialId: "lumber-1x3-8", size: { width: 50, height: 0.75, depth: 2.5 } });
+    const bed = (n: number, extra: ReturnType<typeof donor>["panels"] = []) => saidPrompt("full size bed frame", [], [...Array.from({ length: n }, (_, i) => slat(i + 1)), ...extra], { width: 54, height: 16, depth: 75 });
+    assert.match(bed(2).join(" "), /spanning its length/);
+    const deck = { ...donor().panels[0], id: "deck", name: "Platform", materialId: "plywood-3-4-4x8", size: { width: 54, height: 0.75, depth: 75 } };
+    assert.equal(bed(0, [deck]).some((h) => /spanning/.test(h)), false);
+    assert.match(saidPrompt("chicken tractor", [], [leg("Floor", "plywood-3-4-4x8")]).join(" "), /mesh/);
+    assert.equal(saidPrompt("chicken tractor", [], [leg("Floor", "plywood-3-4-4x8")], undefined, [{ name: "1/2\" hardware cloth", quantity: 1, unit: "roll" }]).some((h) => /mesh/.test(h)), false);
+    assert.match(saidPrompt("hen coop", [], [leg("Wall")]).join(" "), /mesh/);
+    assert.match(saidPrompt("wall clock 12 inch", [], [leg("Case", "plywood-3-4-2x4")]).join(" "), /movement/);
+    assert.match(saidPrompt("mantel clock", [], [leg("Case")]).join(" "), /movement/);
+    assert.equal(saidPrompt("wall clock 12 inch", [], [leg("Case")], undefined, [{ name: "Quartz clock movement", quantity: 1, unit: "pc" }]).some((h) => /movement/.test(h)), false);
+    const shelves = (n: number) => Array.from({ length: n }, (_, i) => leg(`Shelf ${i + 1}`, "plywood-3-4-4x8"));
+    assert.deepEqual(said(["8 shelves."], shelves(8)), []);
+    assert.match(said(["8 shelves."], shelves(3)).join(" "), /8 shelves/);
+    assert.match(said(["8 shelves."], [leg("Post")]).join(" "), /8 shelves/);
+    assert.deepEqual(said(["Holds three bikes."], [leg("Post"), leg("Rail")]), []);
+    const thick = (t: number) => ({ ...donor().panels[0], id: "top", name: "Top", materialId: "plywood-3-4-4x8", size: { width: 18, height: t, depth: 12 } });
+    assert.deepEqual(said(["The top is 1-1/2 in thick."], [thick(1.5)]), []);
+    assert.match(said(["The top is 1-1/2 in thick."], [thick(0.5)]).join(" "), /1-1\/2/);
+    assert.match(saidPrompt("bookcase with 8 shelves", [], shelves(2)).join(" "), /8 shelves/);
+    for (const q of ["built-in bookcase wall 12 ft", "closet system 8 ft", "garage cabinet wall 10 ft"]) {
+      assert.equal(saidPrompt(q, [], shelves(6)).some((h) => /bed|mesh|movement|shelves/.test(h)), false, q);
+    }
+  });
+
+  it("a part, an essential or a sleep deck under another name is still that part", () => {
+    const legs = ["fl", "fr", "bl", "br"].map((c) => leg(`Leg ${c}`, "lumber-4x4-8"));
+    assert.deepEqual(said(["Top rests on four corner posts."], legs), []);
+    assert.deepEqual(said(["Top rests on four legs."], ["1", "2", "3", "4"].map((i) => leg(`Post ${i}`))), []);
+    assert.deepEqual(said(["Two shelves."], [leg("Lowershelf", "plywood-3-4-4x8"), leg("Uppershelf", "plywood-3-4-4x8")]), []);
+    assert.deepEqual(said(["Tall wardrobe with two full-height doors."], [leg("Wardrobe door 1", "plywood-3-4-4x8"), leg("Wardrobe door 2", "plywood-3-4-4x8")]), []);
+    assert.match(said(["Top rests on four corner posts."], legs.slice(0, 3)).join(" "), /4 posts, the build has 3/);
+    assert.match(said(["8 shelves."], [leg("Post")]).join(" "), /8 shelves, the build has 0/);
+    const flat = (name: string, w: number, d: number, z = 0) => ({ ...donor().panels[0], id: name, name, materialId: "plywood-3-4-4x8", position: { x: 0, y: 15, z }, size: { width: w, height: 0.75, depth: d } });
+    const bed = (parts: ReturnType<typeof donor>["panels"]) => saidPrompt("full size bed frame", [], parts, { width: 54, height: 16, depth: 75 });
+    assert.equal(bed([flat("Platform 1", 27, 75), flat("Platform 2", 27, 75)]).some((h) => /spanning/.test(h)), false);
+    assert.equal(bed(Array.from({ length: 9 }, (_, i) => flat(`Support board ${i + 1}`, 52, 3.5, i * 9))).some((h) => /spanning/.test(h)), false);
+    assert.match(bed([flat("Cross board 1", 52, 3.5), flat("Cross board 2", 52, 3.5, 70)]).join(" "), /spanning/);
+    for (const m of ["Chicken wire", "Welded wire fencing", "Poultry netting"]) {
+      assert.equal(saidPrompt("chicken tractor", [], [leg("Floor", "plywood-3-4-4x8")], undefined, [{ name: m, quantity: 1, unit: "roll" }]).some((h) => /mesh/.test(h)), false, m);
+    }
+    for (const m of ["Clock kit", "Clock mechanism", "Clock insert"]) {
+      assert.equal(saidPrompt("mantel clock", [], [leg("Case")], undefined, [{ name: m, quantity: 1, unit: "pc" }]).some((h) => /movement/.test(h)), false, m);
+    }
   });
 });
