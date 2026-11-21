@@ -5,19 +5,25 @@
  * unmatched body, lattice, fallback box, craft-stick, or any other honest-gate stand-in). A tie stays
  * on the engine. The recipe's own notes, parts and joints must also agree with the Buy: a stated count or
  * material matches the parts, a declared essential (mesh, a movement, a named species) is on the Buy, and
- * the Buy is proportionate to the part volume.
+ * the Buy is proportionate to the part volume. Empty notes do not skip that: the head noun's family still
+ * requires the parts the engine builds for that object.
  */
 import { honestChecks } from "../../../scripts/eval-gate-honest";
 import { typedDemands, validateSpec, type Demands } from "../../../scripts/eval-gate-typed";
 import refusalsFile from "../../../evals/expected-refusals.json";
 import { getCatalogItem } from "./catalog";
+import { isBunkBed, isDaybed, isLoftBed, isPlatformBed } from "./family";
 import { genericBoxOverAsk } from "./genericBox";
 import { genericFormMark } from "./formOwnership";
 import { GRADE_RANK, REPORT_ONLY_IDS, projectGrade, type GradeEngine } from "./gateGrade";
+import { typedHeadNoun } from "./headNoun";
+import { isPetEnclosure } from "./petGear";
 import { checkBuild } from "./invariants";
+import { readNumber } from "./lengthReader";
 import { NAMED_LUMBER_SPECIES } from "./namedLumberSpecies";
 import { headerTitle } from "./pdf";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
+import { builtCount, typedCounts, type TypedFeature } from "./typedFeatures";
 import { buildPlan } from "./report";
 import type { BuildPlan, Panel, YardProject } from "./types";
 
@@ -142,13 +148,26 @@ function claimMet(sentence: string, w: string, stock: string): boolean {
   return sentence.split(/\bor\b/i).some((side) => CLAIM.some((m) => word(m).test(side) && stockHas(stock, m)));
 }
 
+/** "shelves" is shelf. Stripping one s would look for "shelve" and miss every shelf part. */
+function stemWord(w: string): string {
+  if (w === "shelves") return "shelf";
+  if (w.endsWith("ves")) return `${w.slice(0, -3)}f`;
+  return w.replace(/s$/, "");
+}
+function nounRe(w: string): string {
+  const s = stemWord(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return s === "shelf" ? "shel(?:f|ves)" : `${s}s?`;
+}
+/** A count of one of these with no such part is a miss. "three bikes" is not a part of the rack. */
+const PART_NOUN = new Set(["shelf", "slat", "drawer", "door", "leg", "post", "rail", "panel", "divider", "hinge", "tread", "rung", "apron", "stretcher", "deck", "platform", "lid", "cabinet", "brace", "stringer", "cleat", "spindle", "riser", "bowl", "side", "back", "front", "top", "bottom"]);
+
 /** How many parts the phrase names, read two ways: each part, and each assembly ("Drawer front" and "Drawer back" are one drawer). */
 function countMatching(words: string[], panels: Panel[]): number[] | null {
   let rest = words.slice();
   for (;;) {
-    const last = rest[rest.length - 1].replace(/s$/, "");
+    const last = nounRe(rest[rest.length - 1]);
     const pre = rest.slice(0, -1).join("\\s+");
-    const noun = `\\b${pre ? `${pre}\\s+` : ""}${last}s?`;
+    const noun = `\\b${pre ? `${pre}\\s+` : ""}${last}`;
     const hit = panels.filter((p) => new RegExp(`${noun}\\b`, "i").test(p.name));
     if (hit.length) {
       const lead = new RegExp(`^(.*?${noun}(?:\\s+\\d+)?)\\b`, "i");
@@ -180,6 +199,8 @@ function countHits(text: string, panels: Panel[], digits: boolean): string[] {
       if (!digits && /^\d+$/.test(tokens[i])) continue;
       const num = numberAt(tokens, i);
       if (!num) continue;
+      // "1×4 slats" and "2×6 side" are the board size, not a count of 4 slats or 6 sides.
+      if (/^\d+$/.test(tokens[i]) && /^(?:1|2|4)$/.test(tokens[i - 1] ?? "") && /^(?:2|3|4|6|8|10|12)$/.test(tokens[i])) continue;
       const start = i + num.consumed;
       if (/^\d+$/.test(tokens[start] ?? "")) continue;
       if (SKIP_NOUN.has(tokens[start] ?? "") || tokens[start] === "per") continue;
@@ -194,29 +215,27 @@ function countHits(text: string, panels: Panel[], digits: boolean): string[] {
       }
       // Contradicted only when neither reading of the parts has the stated count.
       if (best && !best.have.includes(num.value)) hits.push(`notes say ${num.value} ${best.label}, the build has ${best.have[0]}`);
+      // A count of a real part with none of that part is a miss, not a skip. Notes only: a step's
+      // "two sides" is shop talk. "per board" is a rate. "three bikes" names no part.
+      if (digits && !best && !/\bper\b/.test(sentence)) {
+        const noun = window.find((t) => !ADJ.has(t) && !SKIP_NOUN.has(t) && !/^\d+$/.test(t));
+        if (noun && PART_NOUN.has(stemWord(noun))) hits.push(`notes say ${num.value} ${noun}, the build has ${0}`);
+      }
     }
   }
   return hits;
 }
 
-function thicknessOf(raw: string): number | null {
-  const m = raw.match(/(\d+)\s+(\d+)\/(\d+)/);
-  if (m) return Number(m[1]) + Number(m[2]) / Number(m[3]);
-  const f = raw.match(/(\d+)\/(\d+)/);
-  if (f) return Number(f[1]) / Number(f[2]);
-  const n = raw.match(/(\d+(?:\.\d+)?)/);
-  return n ? Number(n[1]) : null;
-}
-
-/** "1.5 in thick" / "3/4 inch thick" against the parts that sentence names. */
+/** "1.5 in thick", "3/4 inch thick", "1-1/2 in thick" (the same reader as every other length: 1-1/2 is 1.5). */
 function thicknessHits(notes: string[], panels: Panel[]): string[] {
   const hits: string[] = [];
   const wood = panels.filter((p) => p.materialId !== "hardware");
+  const num = String.raw`\d+(?:\.\d+)?(?:\s+|-)\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?`;
   for (const sentence of notes) {
-    const m = sentence.match(/(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*(?:in(?:ch(?:es)?)?|")\s*thick/i);
+    const m = sentence.match(new RegExp(`(${num})\\s*(?:in(?:ch(?:es)?)?|")\\s*thick`, "i"));
     if (!m) continue;
-    const want = thicknessOf(m[1]);
-    if (want == null) continue;
+    const want = readNumber(m[1]);
+    if (!Number.isFinite(want)) continue;
     const tokens = sentence.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !SKIP_NOUN.has(t) && !ADJ.has(t));
     const named = wood.filter((p) => tokens.some((t) => word(t.replace(/s$/, "")).test(p.name)));
     const check = named.length ? named : wood;
@@ -264,15 +283,59 @@ function buyScaleHits(project: YardProject, plan: BuildPlan): string[] {
 }
 
 /**
- * Where the recipe's own notes, parts and joints disagree with the Buy. Empty when a stated count or thickness
- * matches the parts, a declared essential is on the Buy, and the Buy is proportionate to the part volume.
- * The builder's own outdoor sentence is not a declaration.
+ * The head noun's family, with or without notes. A bed is the sleep deck pushBedLevel builds (slats about
+ * every 12" or one platform across the plan). A poultry pen is the hardware-cloth enclosure. A clock is a
+ * movement. A count the prompt itself types ("8 shelves") is the same count the engine honors.
+ */
+function namedObjectHits(project: YardProject, plan: BuildPlan): string[] {
+  const prompt = project.prompt ?? "";
+  const lower = prompt.toLowerCase();
+  const hits: string[] = [];
+  const stock = `${stockText(project, plan)} ${project.panels.map((p) => `${p.name} ${p.materialId}`).join(" ")}`;
+  if ((isPlatformBed(lower) || isBunkBed(lower) || isLoftBed(lower) || isDaybed(lower)) && !sleepSpans(project)) {
+    hits.push("a bed needs a slat or platform surface spanning its length");
+  }
+  // buildPetEnclosure covers a fowl house in hardware cloth. A tractor is that pen on wheels.
+  const pen = isPetEnclosure(lower) || /\b(?:tractor|coop|pen|run|ark|enclosure)\b/.test(lower);
+  if (/\b(?:chicken|hens?|duck|quail|coop|poultry)\b/.test(lower) && pen && !/\b(?:toy|model|miniature|doll)\b/.test(lower) && !/mesh|hardware cloth/.test(stock)) {
+    hits.push("a poultry pen needs mesh");
+  }
+  if (typedHeadNoun(prompt) === "clock" && !/\btower\b|big ben|westminster/.test(lower) && !/quartz|clock movement|\bmovement\b/.test(stock)) {
+    hits.push("a clock needs a movement");
+  }
+  for (const [f, n] of Object.entries(typedCounts(prompt))) {
+    const have = builtCount(project, f as TypedFeature);
+    if (have !== n) hits.push(`asks for ${n} ${f}, the build has ${have}`);
+  }
+  return hits;
+}
+
+/** pushBedLevel: 1× slats about every 12" along the length, or one deck covering the plan. */
+function sleepSpans(project: YardProject): boolean {
+  const o = project.overall;
+  if (!o || o.width < 1 || o.depth < 1) return true;
+  const length = Math.max(o.width, o.depth);
+  const across = Math.min(o.width, o.depth);
+  const wood = project.panels.filter((p) => p.materialId !== "hardware");
+  const covers = (p: Panel) => {
+    const [a, b] = [p.size.width, p.size.height, p.size.depth].sort((x, y) => y - x);
+    return a >= length * 0.7 && b >= across * 0.7;
+  };
+  if (wood.some(covers)) return true;
+  const slats = wood.filter((p) => /\bslats?\b/i.test(p.name));
+  return slats.length >= Math.max(3, Math.ceil(length / 12) + 1);
+}
+
+/**
+ * Where the recipe's own notes, parts and joints disagree with the Buy, or the parts are not the named
+ * object. Empty notes do not skip the object's essentials. The builder's own outdoor sentence is not a declaration.
  */
 export function declarationHits(project: YardProject, plan: BuildPlan): string[] {
   const notes = recipeSaid(project.notes ?? []);
   const steps = (plan.instructions ?? []).map((s) => `${s.title} ${s.description ?? ""}`).join("\n");
   const stock = stockText(project, plan);
   const hits = [
+    ...namedObjectHits(project, plan),
     ...countHits(notes.join("\n"), project.panels, true),
     ...countHits(steps, project.panels, false),
     ...thicknessHits(notes, project.panels),
@@ -309,7 +372,8 @@ export async function engineMayShow(prompt: string, engineBuild: YardProject, pl
 
 /**
  * True only when the learned build is not a stand-in (honest checks, or a solid laminated block for a part),
- * its own notes, parts and Buy agree, and its gate grade ranks strictly above the deterministic build. A tie
+ * its own notes, parts and Buy agree (and empty notes still have to build the named object), and its gate
+ * grade ranks strictly above the deterministic build. A tie
  * stays on the engine: the catalog grows only when the recipe helps.
  */
 export async function mayKeepLearned(prompt: string, learned: YardProject, learnedPlan: BuildPlan = buildPlan(learned)): Promise<boolean> {
