@@ -110,11 +110,11 @@ function PrivacyPage() {
               A recipe holds only the shape, sizes and parts, never the words you typed or anything
               about your browser. Recipes stay in the library until we retire them.
             </p>
-            {/* DRAFT (needs Ezra's yes): build events (build id, launch plan A1–A3). */}
-            <p className="mt-2" data-yard-draft="build-events">
+            <p className="mt-2">
               Yard also counts which builds are opened, exported, sent to a store or rated, by a code
-              made from the build itself. It is never tied to you, your device or your IP address, and
-              it is deleted within 90 days.
+              made from the build itself. The words you typed for that build are stored with that code
+              for 85 days. The counts of those events are kept for 3 days. None of this is tied to you,
+              your device or your IP address.
             </p>
             <p className="mt-2">Please don&apos;t put personal information in your prompt or note.</p>
           </section>

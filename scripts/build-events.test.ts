@@ -174,11 +174,17 @@ test("a burst of 2,000 events stores nothing past the daily cap, and no personal
   assert.deepEqual(Object.keys(poisoned).sort(), ["at", "bid", "build", "detail", "ev"]);
 });
 
-test("the thumbs control stays off the page while its wording is still a draft", () => {
+test("the thumbs control is on and shows the decided wording", () => {
   const src = readFileSync(new URL("../src/components/workspace/shop-feedback.tsx", import.meta.url), "utf8");
-  assert.match(src, /export const THUMBS_ENABLED: boolean = false/);
+  assert.match(src, /export const THUMBS_ENABLED: boolean = true/);
   assert.match(src, /\{THUMBS_ENABLED \? \(/);
-  assert.match(src, /THUMBS_DRAFT/);
+  assert.doesNotMatch(src, /THUMBS_DRAFT/);
+  for (const s of ["Would you build this?", "Yes", "Not like this", "I would build this", "I would not build this as shown", "Thanks. That tells the shop this one works."]) {
+    assert.ok(src.includes(s), s);
+  }
+  const privacy = readFileSync(new URL("../src/routes/privacy.tsx", import.meta.url), "utf8");
+  assert.match(privacy, /Yard also counts which builds are opened, exported, sent to a store or rated, by a code\s+made from the build itself\. The words you typed for that build are stored with that code\s+for 85 days\. The counts of those events are kept for 3 days\. None of this is tied to you,\s+your device or your IP address\./);
+  assert.match(privacy, /The\s+one place we use your IP address is the daily limit on AI lookups/);
 });
 
 test("over the day cap a fresh instance spends one command and does not write the event", async () => {

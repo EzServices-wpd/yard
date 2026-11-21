@@ -7,11 +7,8 @@ import { safePrompt } from "@/lib/yard/ideaLog";
 import { buildIdOf } from "@/lib/feedback/buildId";
 import { sendEvent } from "@/lib/feedback/sendEvent";
 
-/**
- * DRAFT (needs Ezra's yes): the thumbs wording, from claude-out/feedback-analytics-spec.md section 4.
- * Every string the thumbs control shows is here, so the yes (or a rewrite) is one edit.
- */
-export const THUMBS_DRAFT = {
+/** Every string the thumbs control shows. */
+export const THUMBS = {
   ask: "Would you build this?",
   up: "Yes",
   down: "Not like this",
@@ -20,11 +17,8 @@ export const THUMBS_DRAFT = {
   thanksUp: "Thanks. That tells the shop this one works.",
 } as const;
 
-/**
- * Off until Ezra approves THUMBS_DRAFT. While this is false the control renders nothing,
- * so none of those strings show on the page.
- */
-export const THUMBS_ENABLED: boolean = false;
+/** Ezra turned the thumbs control on. */
+export const THUMBS_ENABLED: boolean = true;
 
 const sentKey = (k: string) => `yard.told.v1:${k}`;
 const LOG = "yard.told.log.v1"; // send times, this browser: one per 30 s, 10 a day (the server caps again)
@@ -113,17 +107,17 @@ export function ShopFeedback() {
     <>
       <p data-yard-shop-feedback={told ? "told" : "1"} className={THUMBS_ENABLED ? "flex flex-wrap items-center gap-x-3 border-t border-border/60 px-3 py-1 text-xs" : "flex items-center border-t border-border/60 px-3 py-1 text-xs"}>
         {THUMBS_ENABLED ? (
-          <span data-yard-thumbs={thumb ?? "0"} className="inline-flex items-center gap-1" role="group" aria-label={THUMBS_DRAFT.ask}>
+          <span data-yard-thumbs={thumb ?? "0"} className="inline-flex items-center gap-1" role="group" aria-label={THUMBS.ask}>
             {thumb === "up" ? (
-              <span role="status" className="text-muted">{THUMBS_DRAFT.thanksUp}</span>
+              <span role="status" className="text-muted">{THUMBS.thanksUp}</span>
             ) : (
               <>
-                <span className="text-muted">{THUMBS_DRAFT.ask}</span>
-                <button type="button" aria-label={THUMBS_DRAFT.upLabel} aria-pressed={false} onClick={() => { setThumb("up"); sendEvent({ bid, ev: "thumb", up: true }); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
-                  <span aria-hidden="true">👍</span>&nbsp;{THUMBS_DRAFT.up}
+                <span className="text-muted">{THUMBS.ask}</span>
+                <button type="button" aria-label={THUMBS.upLabel} aria-pressed={false} onClick={() => { setThumb("up"); sendEvent({ bid, ev: "thumb", up: true }); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
+                  <span aria-hidden="true">👍</span>&nbsp;{THUMBS.up}
                 </button>
-                <button type="button" aria-label={THUMBS_DRAFT.downLabel} aria-pressed={thumb === "down"} onClick={() => { setThumb("down"); sendEvent({ bid, ev: "thumb", up: false }); open(); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
-                  <span aria-hidden="true">👎</span>&nbsp;{THUMBS_DRAFT.down}
+                <button type="button" aria-label={THUMBS.downLabel} aria-pressed={thumb === "down"} onClick={() => { setThumb("down"); sendEvent({ bid, ev: "thumb", up: false }); open(); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
+                  <span aria-hidden="true">👎</span>&nbsp;{THUMBS.down}
                 </button>
               </>
             )}
