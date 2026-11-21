@@ -4,6 +4,7 @@
  * same PII scrub as the query log (safePrompt), and a scrubbed-out field is dropped, not stored.
  */
 import { safePrompt } from "@/lib/yard/ideaLog";
+import { BID } from "./buildId";
 
 export const CHIPS = [
   { id: "wrong-object", label: "Wrong object" },
@@ -27,7 +28,7 @@ export function scrubNote(note: string): { ok: boolean; note: string | null } {
 }
 /** The anonymous client id's shape check (never stored with the feedback; only counted for a day). */
 export const cleanCid = (raw: unknown) => (typeof raw === "string" && CID.test(raw) ? raw : "none");
-export type FeedbackRecord = { prompt: string | null; size: string; partCount: number; chips: ChipId[]; note: string | null; tip: string; at: string };
+export type FeedbackRecord = { prompt: string | null; size: string; partCount: number; chips: ChipId[]; note: string | null; tip: string; at: string; /** The build id (buildId.ts), when the sheet sent one. */ bid?: string };
 
 const SIZE = /^[0-9 x×."'/-]{1,40}$/i;
 
@@ -42,5 +43,7 @@ export function cleanFeedback(raw: unknown, tip: string, now = new Date()): Feed
   const size = typeof b.size === "string" && SIZE.test(b.size.trim()) ? b.size.trim() : "";
   const n = Number(b.partCount);
   const partCount = Number.isInteger(n) && n >= 0 && n < 10_000 ? n : 0;
-  return { prompt, size, partCount, chips, note, tip: /^[0-9a-f]{7,40}$/i.test(tip) ? tip.slice(0, 7) : "local", at: now.toISOString() };
+  const rec: FeedbackRecord = { prompt, size, partCount, chips, note, tip: /^[0-9a-f]{7,40}$/i.test(tip) ? tip.slice(0, 7) : "local", at: now.toISOString() };
+  if (typeof b.bid === "string" && BID.test(b.bid)) rec.bid = b.bid;
+  return rec;
 }

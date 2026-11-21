@@ -15,6 +15,8 @@ import { fmtUnitEnvelopeInches } from "@/lib/yard/voiceHonesty";
 import { shortSheetTalk } from "@/lib/yard/pdfFormat";
 import { ideaSignature } from "@/lib/yard/ideaLibrary";
 import { candidateFromPrint, keepPrintedIdea } from "@/lib/yard/ideaKeep";
+import { buildIdOf } from "@/lib/feedback/buildId";
+import { sendEvent } from "@/lib/feedback/sendEvent";
 
 export function ExportDialog({
   project,
@@ -72,9 +74,13 @@ export function ExportDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [printSig]);
 
+  // A2: each export of this build is an export event (sent once per kind per tab).
+  const exported = (kind: "pdf" | "md" | "copy") => sendEvent({ bid: buildIdOf(project), ev: "export", kind });
+
   async function copyMd() {
     try {
       await navigator.clipboard.writeText(md);
+      exported("copy");
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -93,6 +99,7 @@ export function ExportDialog({
       document.body.appendChild(a);
       a.click();
       a.remove();
+      exported("md");
       window.setTimeout(() => URL.revokeObjectURL(url), 2000);
       setDlNote("If no file appeared, this preview blocks downloads — use Copy instead.");
     } catch {
@@ -116,6 +123,7 @@ export function ExportDialog({
       document.body.appendChild(a);
       a.click();
       a.remove();
+      exported("pdf");
       setDlNote(
         "Saved. Every step picture in the file is drawn from the same model as the cut list.",
       );

@@ -4,6 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { useYard } from "@/lib/yard/store";
 import { CHIPS, NOTE_CAP, scrubNote, type ChipId } from "@/lib/feedback/shop";
 import { safePrompt } from "@/lib/yard/ideaLog";
+import { buildIdOf } from "@/lib/feedback/buildId";
+import { sendEvent } from "@/lib/feedback/sendEvent";
+
+/** Every string the thumbs control shows. */
+export const THUMBS = {
+  ask: "Would you build this?",
+  up: "Yes",
+  down: "Not like this",
+  upLabel: "I would build this",
+  downLabel: "I would not build this as shown",
+  thanksUp: "Thanks. That tells the shop this one works.",
+} as const;
+
+/** Ezra turned the thumbs control on. */
+export const THUMBS_ENABLED: boolean = true;
 
 const sentKey = (k: string) => `yard.told.v1:${k}`;
 const LOG = "yard.told.log.v1"; // send times, this browser: one per 30 s, 10 a day (the server caps again)
@@ -48,10 +63,18 @@ export function ShopFeedback() {
   const size = sizeOf(project.overall);
   const buildKey = `${project.prompt}|${size}|${project.primaryMaterialId ?? ""}`;
   const [told, setTold] = useState(false);
+  const [thumb, setThumb] = useState<"up" | "down" | null>(null);
+  const bid = buildIdOf(project);
   useEffect(() => {
     try { setTold(sessionStorage.getItem(sentKey(buildKey)) === "1"); } catch { setTold(false); }
-    setChips([]); setNote(""); setState("idle");
+    setChips([]); setNote(""); setState("idle"); setThumb(null);
   }, [buildKey]);
+  // A1/A2: one build event per build shown (sendEvent sends each event about a build once per tab).
+  const shown = !!plan && !!project.prompt?.trim() && !project.displayOnly;
+  useEffect(() => {
+    if (!shown || !plan) return;
+    sendEvent({ bid, ev: "build", prompt: safePrompt(project.prompt), size, family: project.kind, parts: plan.totals.pieces, usd: plan.totals.estCostUsd });
+  }, [bid, shown]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!plan || !project.prompt?.trim() || project.displayOnly) return null;
 
   const open = () => { setState(told ? "thanks" : "idle"); ref.current?.showModal(); };
@@ -69,7 +92,7 @@ export function ShopFeedback() {
         headers: { "Content-Type": "application/json" },
         credentials: "omit",
         referrerPolicy: "no-referrer", // the page URL carries the prompt (?q=); keep it out of the request
-        body: JSON.stringify({ prompt: safePrompt(project.prompt), size, partCount: plan.totals.pieces, chips, note: scrub.note, cid: clientId() }),
+        body: JSON.stringify({ prompt: safePrompt(project.prompt), size, partCount: plan.totals.pieces, chips, note: scrub.note, cid: clientId(), bid }),
       });
       if (res.status === 429) return setState("busy");
       if (!res.ok && res.status !== 204) return setState("error");
@@ -82,7 +105,24 @@ export function ShopFeedback() {
   const ready = chips.length > 0 || note.trim().length > 0;
   return (
     <>
-      <p data-yard-shop-feedback={told ? "told" : "1"} className="flex items-center border-t border-border/60 px-3 py-1 text-xs">
+      <p data-yard-shop-feedback={told ? "told" : "1"} className={THUMBS_ENABLED ? "flex flex-wrap items-center gap-x-3 border-t border-border/60 px-3 py-1 text-xs" : "flex items-center border-t border-border/60 px-3 py-1 text-xs"}>
+        {THUMBS_ENABLED ? (
+          <span data-yard-thumbs={thumb ?? "0"} className="inline-flex items-center gap-1" role="group" aria-label={THUMBS.ask}>
+            {thumb === "up" ? (
+              <span role="status" className="text-muted">{THUMBS.thanksUp}</span>
+            ) : (
+              <>
+                <span className="text-muted">{THUMBS.ask}</span>
+                <button type="button" aria-label={THUMBS.upLabel} aria-pressed={false} onClick={() => { setThumb("up"); sendEvent({ bid, ev: "thumb", up: true }); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
+                  <span aria-hidden="true">👍</span>&nbsp;{THUMBS.up}
+                </button>
+                <button type="button" aria-label={THUMBS.downLabel} aria-pressed={thumb === "down"} onClick={() => { setThumb("down"); sendEvent({ bid, ev: "thumb", up: false }); open(); }} className="inline-flex min-h-11 items-center rounded-full px-2 text-muted hover:text-fg">
+                  <span aria-hidden="true">👎</span>&nbsp;{THUMBS.down}
+                </button>
+              </>
+            )}
+          </span>
+        ) : null}
         <button ref={opener} type="button" onClick={open} className="min-h-11 text-muted underline-offset-4 hover:text-fg hover:underline">
           {told ? "Told the shop. Thanks." : "Something's off? Tell the shop"}
         </button>
