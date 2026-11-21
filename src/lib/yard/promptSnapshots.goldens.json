@@ -582,7 +582,7 @@
     ],
     "notesHead": [
       "Kitchen chair 18\" × 18\" seat, every part from 1×4. Each leg is two boards glued face to face (1 1/2\" × 3 1/2\"). 4 seat boards lie side by side across the aprons and cover the 18\" × 14 3/4\" seat. Full-size wood — no craft stock was named.",
-      "Assumed 18\" wide (default size) — type a width to lock it."
+      "Assumed 18\" wide — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -612,8 +612,8 @@
       "Side wall board"
     ],
     "notesHead": [
-      "Class anatomy: low bed. Dog bed 36\" × 28\", 7 3/4\" tall, at dog scale from Pallet board. A floor of boards side by side, walls stacked on its edges, and a lower front so the dog steps in. Add a cushion about 34\" × 26\".",
-      "Assumed 36\" wide (default size) — type a width to lock it."
+      "Low bed. Dog bed 36\" × 28\", 7 3/4\" tall, at dog scale from Pallet board. A floor of boards side by side, walls stacked on its edges, and a lower front so the dog steps in. Add a cushion about 34\" × 26\".",
+      "Assumed 36\" wide — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -981,8 +981,8 @@
       "Leg tube side"
     ],
     "notesHead": [
-      "Class anatomy: box figure. Built from folded cardboard boxes: two leg tubes, a body box, a head box and two arm tubes, joined with hot glue. Each face is cut from the sheet; fold each box on scored lines with a 1\" glue tab.",
-      "Assumed 15 3/8\" wide (default size) — type a width to lock it."
+      "Box figure. Built from folded cardboard boxes: two leg tubes, a body box, a head box and two arm tubes, joined with hot glue. Each face is cut from the sheet; fold each box on scored lines with a 1\" glue tab.",
+      "Assumed 15 3/8\" wide — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1379,7 +1379,7 @@
     ],
     "notesHead": [
       "Toy chest. Hinged-lid toy chest — floor main box with a real lid on a piano hinge along the back edge. ¾\" plywood.",
-      "Lid 36\" × 16\". Class defaults fill untyped axes — type Measure to lock size. Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid closes gently."
+      "Lid 36\" × 16\". Sizes you did not type are filled in — type them in Measure to lock the size. Piano hinge (a long continuous hinge) along the back edge of the lid into the main box back/top edge. Add a lid stay so the lid closes gently."
     ],
     "signals": {
       "mentionsYardBuilt": false,
@@ -1449,7 +1449,7 @@
     ],
     "notesHead": [
       "Glue and screw the sides between the ends, then screw the bottom in from the sides and ends. A hand hold in each end makes it a carry crate.",
-      "Assumed 20\" wide (default size) — type a width to lock it."
+      "Assumed 20\" wide — type a width to lock it."
     ],
     "signals": {
       "mentionsYardBuilt": false,

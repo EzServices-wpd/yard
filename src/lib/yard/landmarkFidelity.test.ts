@@ -52,7 +52,7 @@ describe("a landmark without its own spec takes the nearest family and says so",
   });
   it("an arch bridge carries its deck under the arch crown", () => {
     const p = generateFromPrompt("arch bridge from popsicle sticks");
-    assert.ok(p.notes.some((n) => /through-arch family/.test(n)));
+    assert.ok(p.notes.some((n) => /through arch/.test(n)));
     const top = Math.max(...p.instances.map((i) => i.position.y));
     const mid = p.instances.filter((i) => Math.abs(i.position.x) < 2).map((i) => i.position.y);
     assert.ok(Math.max(...mid) >= top * 0.9, "the arch crown stands over mid-span");
