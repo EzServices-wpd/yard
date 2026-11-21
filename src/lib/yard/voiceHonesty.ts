@@ -3,6 +3,7 @@
 import { getCatalogItem, searchCatalog } from "./catalog";
 import { inchFrac } from "./inchText";
 import { feetLengthAt, releaseReads } from "./lengthReader";
+import { placePair } from "./sizePhrases";
 import { canonicalMeasures } from "./measureText";
 import { namedLumberFromPrompt } from "./namedLumberSpecies";
 import type { AssemblyStep, CatalogItem, CutLine } from "./types";
@@ -1205,6 +1206,18 @@ export function typedOpeningStorageAxes(prompt: string): {
         height = true;
         depth = false;
       }
+    }
+  }
+  // The same place-kind read as parseBrief and typedExtents. An opening types height; a surface types depth.
+  const place = placePair(prompt);
+  if (place && !(trip && trip[3])) {
+    width = true;
+    if (place.otherAxis === "height") {
+      height = true;
+      depth = Number.isFinite(labeledD);
+    } else {
+      depth = true;
+      height = Number.isFinite(labeledH);
     }
   }
   return { width, height, depth };

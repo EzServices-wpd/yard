@@ -7,7 +7,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
+(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
 const { runYardPrompt } = await import("../../components/workspace/run-prompt");
 const { useYard } = await import("./store");
 const { generateFromPrompt, ignoredTypedWords } = await import("./promptMain");
@@ -107,7 +107,8 @@ function complete(q: string) {
   const parts = p.panels.length + p.instances.length;
   // A dedicated model builder (a figure, a vehicle, a custom or landmark form) builds in sticks by design.
   const model = ["figure", "vehicle", "custom"].includes(p.kind) || isLockedForm(p.kind);
-  const ok = !genericFormMark(p) && !genericBox(p) && !p.standIn && !p.unmatched && !p.displayOnly && parts >= 1 &&
+  // A lift out of craft sticks changes the stock, not the form the engine owns. It still routes as a craft guess.
+  const ok = !genericFormMark(p) && !genericBox(p) && !p.standIn && !p.unmatched && !p.displayOnly && !p.craftLifted && parts >= 1 &&
     !(/popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !craftAsked.test(q) && !model);
   return { p, ok };
 }

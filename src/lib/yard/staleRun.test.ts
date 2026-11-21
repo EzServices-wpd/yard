@@ -18,6 +18,8 @@ let fakeId = 1e9;
     return id;
   },
   clearTimeout: (id: number) => (busyTimers.has(id) ? busyTimers.delete(id) : clearTimeout(id as never)),
+  atob,
+  btoa,
   location: { search: "" },
 };
 const { runYardPrompt } = await import("../../components/workspace/run-prompt");

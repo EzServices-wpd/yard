@@ -10,7 +10,7 @@ import { roughBlock, roughNote } from "../src/lib/yard/recipeBuild";
 import { engineKeepsPrompt, routesToLearner } from "../src/lib/yard/formOwnership";
 import { ignoredTypedWords } from "../src/lib/yard/promptMain";
 
-(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
+(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
 const { useYard } = await import("../src/lib/yard/store");
 
 // run-prompt's learner gate (learn0), minus the unit-item and pocket checks these prompts never hit.
