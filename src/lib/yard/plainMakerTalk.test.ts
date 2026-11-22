@@ -106,3 +106,23 @@ test("generated steps and notes across the corpus stay free of engine terms", ()
   }
   assert.deepEqual(hits, []);
 });
+
+test("the prompt's own words and numbers are never reworded", () => {
+  for (const s of [
+    "Yard built a stand for the model ship as a simple counter on legs sized for it.",
+    "Set the model train on the layout board.",
+    "A low-profile family room bench.",
+    "Shelf 11 1/4\" deep (from the 12\" class default).",
+    "Space the slats 1 1/2\" apart (default size).",
+    "The derived height is 30\".",
+  ]) assert.equal(plainMakerTalk(s), s, s);
+});
+
+test("the display card and the fallback-step gate still find their notes", async () => {
+  const { buildPlanUnworded } = await import("./report.ts");
+  const p = generateFromPrompt("craft stick planter");
+  assert.ok(p.holdStockId && (p.notes ?? []).some((n) => /^This is a display (?:model|piece)\b/.test(n)));
+  const q = generateFromPrompt("sandbox");
+  assert.ok(buildPlanUnworded(q).instructions.some((s) => /not yet in a step/.test(s.tips ?? "")));
+  assert.ok(!buildPlan(q).instructions.some((s) => /not yet in a step/.test(s.tips ?? "")));
+});

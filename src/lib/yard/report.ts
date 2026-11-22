@@ -1678,9 +1678,14 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
-  // C12: the last pass: every store search a Buy row links to says that row's Buy name.
   // Then shop wording: step titles, descriptions and tips, after the screw pass has counted.
-  return plainPlanTalk(liftedFastenersById(project, storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))))));
+  return plainPlanTalk(buildPlanUnworded(project));
+}
+
+/** The plan before shop wording: gates that read engine markers (a fallback step's tip) read this one. */
+export function buildPlanUnworded(project: YardProject): BuildPlan {
+  // C12: the last pass: every store search a Buy row links to says that row's Buy name.
+  return liftedFastenersById(project, storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)))));
 }
 
 /**
