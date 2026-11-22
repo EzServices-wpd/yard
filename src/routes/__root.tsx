@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { NotFound } from "@/components/site/not-found";
+import { VercelAnalytics } from "@/components/site/vercel-analytics";
 import { createRootRoute, HeadContent, Outlet, Scripts, retainSearchParams } from "@tanstack/react-router";
 import { TEST_FLAGS, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { AuthProvider } from "@/lib/auth/provider";
@@ -28,19 +29,6 @@ function LateFonts() {
     l.rel = "stylesheet";
     l.href = FONTS_CSS;
     document.head.appendChild(l);
-  }, []);
-  return null;
-}
-
-/** Vercel Web Analytics (free tier): Vercel's own script, served from this site's /_vercel path. No cookies. */
-function VercelAnalytics() {
-  useEffect(() => {
-    if (!/yard\.wiki$/.test(location.hostname) || document.querySelector("script[data-yard-va]")) return;
-    const s = document.createElement("script");
-    s.defer = true;
-    s.dataset.yardVa = "1";
-    s.src = "/_vercel/insights/script.js";
-    document.head.appendChild(s);
   }, []);
   return null;
 }
