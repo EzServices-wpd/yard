@@ -14,6 +14,11 @@ import type { AssemblyStep, CatalogItem, Panel, StructureKind, YardProject } fro
 
 export const ANATOMY_NOTE = "Class anatomy:";
 
+/** The anatomy note, before or after shop wording drops the engine prefix. */
+export function isAnatomyNote(n: string): boolean {
+  return n.startsWith(ANATOMY_NOTE) || /^low bed\b/i.test(n) || /^box figure\b/i.test(n);
+}
+
 const PET_BED = /\b(dogs?|doggy|pupp(?:y|ies)|cats?|kitty|kittens?|pets?)\s*-?\s*beds?\b/;
 
 export type Anatomy = "pet-bed" | "box-figure";
@@ -145,10 +150,10 @@ export function buildBoxFigure(prompt: string, item: CatalogItem, size: { width:
 }
 
 export function classAnatomySteps(project: YardProject): AssemblyStep[] | null {
-  const note = (project.notes ?? []).find((n) => n.startsWith(ANATOMY_NOTE));
+  const note = (project.notes ?? []).find((n) => isAnatomyNote(n));
   if (!note) return null;
   const names = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).map((p) => p.name);
-  if (/low bed/.test(note)) {
+  if (/low bed/i.test(note)) {
     const floor = names(/^Floor/);
     const walls = names(/^(Back|Side) wall/);
     const front = names(/^Low front/);
@@ -173,7 +178,7 @@ export function classAnatomySteps(project: YardProject): AssemblyStep[] | null {
       { step: 6, title: "Sand every edge and add the cushion", description: "Round every edge and corner with sandpaper so nothing snags fur or paws. Set a cushion inside.", partsUsed: ["*"] },
     ];
   }
-  if (/box figure/.test(note)) {
+  if (/box figure/i.test(note)) {
     const glue = "hot glue on the tab from a low-temp glue gun, hold 15–30 seconds until it grabs";
     return [
       { step: 1, title: "Read the figure before you cut", description: `${project.name}. Six boxes: two leg tubes, a body box, a head box and two arm tubes. Every face is on the cut list.${(project.notes ?? []).filter((n) => /^No material typed/.test(n)).map((n) => ` ${n}`).join("")}`, partsUsed: ["*"] },
