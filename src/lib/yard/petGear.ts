@@ -171,6 +171,11 @@ export function buildScratchingPost(prompt: string): YardProject {
  * flat 2×4 roost above it on two cleats.
  */
 export const ENCLOSURE_NOTE = "Raised enclosure class:";
+
+/** The enclosure note, before or after shop wording drops the word "class". */
+export function isEnclosureNote(n: string): boolean {
+  return n.startsWith(ENCLOSURE_NOTE) || n.startsWith("Raised enclosure:");
+}
 export function buildPetEnclosure(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
   const lower = prompt.toLowerCase();
   const species = namedLumberFromPrompt(prompt);
@@ -280,7 +285,7 @@ export function buildPetEnclosure(prompt: string, size?: { width: number; height
 
 /** Steps for the raised-enclosure class, from its parts: each part goes in after what it fastens to. */
 export function enclosureSteps(project: YardProject): AssemblyStep[] | null {
-  const note = (project.notes ?? []).find((n) => n.startsWith(ENCLOSURE_NOTE));
+  const note = (project.notes ?? []).find((n) => isEnclosureNote(n));
   if (!note) return null;
   const outdoor = /outdoor/.test(note);
   const names = (re: RegExp) => project.panels.filter((p) => re.test(p.name)).map((p) => p.name);

@@ -350,10 +350,10 @@ function combinedSteps(project: YardProject): AssemblyStep[] {
 }
 
 function withDisplayModel(project: YardProject, steps: AssemblyStep[]): AssemblyStep[] {
-  const line = (project.notes ?? []).find((n) => n.startsWith("This is a display model"));
+  const line = (project.notes ?? []).find((n) => n.startsWith("This is a display model") || n.startsWith("This is a display piece"));
   if (!line || !steps.length) return steps;
   const first = steps[0];
-  if ((first.description ?? "").includes("display model")) return steps;
+  if (/display (?:model|piece)/i.test(first.description ?? "")) return steps;
   return [{ ...first, description: `${line} ${first.description ?? ""}`.trim() }, ...steps.slice(1)];
 }
 

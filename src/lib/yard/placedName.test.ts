@@ -176,7 +176,7 @@ describe("canaries keep their model, buy, price, cuts, and step text", () => {
     assert.equal(plan.bom.length, 8);
     assert.equal(plan.instructions.length, 9);
     const hash = createHash("sha256").update(plan.instructions.map((s) => `${s.step}|${s.title}|${s.description}`).join("\n")).digest("hex").slice(0, 16);
-    assert.equal(hash, "6de4416b65527f1c");
+    assert.equal(hash, "5cd4b414bca8bb8b");
   });
 
   it("Andersen 36x48, the popsicle Eiffel, pocket vanity, and the desk keep buy and cuts", () => {

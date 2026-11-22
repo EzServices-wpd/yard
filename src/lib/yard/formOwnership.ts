@@ -15,6 +15,8 @@ import type { YardProject } from "./types";
 /** The marks a generic stand-in leaves: a placeholder, an unmatched body, a "simple X sized for it", the spine-only boat. */
 export function genericFormMark(p: YardProject): string | null {
   if (p.displayOnly) return "Not learned yet";
+  // The note says it in shop words after plainMakerTalk; the flag is the same mark.
+  if (p.unmatched) return "unmatched body";
   const notes = (p.notes ?? []).join(" / ");
   if (/No class matched/.test(notes)) return "unmatched body";
   if (/Yard built an? .{1,80}? as a simple /.test(notes)) return "simple stand-in";
