@@ -43,7 +43,8 @@ export function slugPlan(name: string) {
 
 
 export { typedAxesTalk } from "./headerSize";
-import { NAME_SIZE_RE, coverAxesTalk, headerSize, typedAxesTalk } from "./headerSize";
+import { NAME_SIZE_RE, coverAxesTalk, headerBox, typedAxesTalk } from "./headerSize";
+import { inchFrac } from "./inchText";
 
 const CRAFT_GLOSSARY = [
   { term: "Whole stock", def: "Pieces stay full length from the pack. Glue them as they come." },
@@ -1178,7 +1179,7 @@ export function refusedSubline(refused: string): string {
 export function headerTitle(project: YardProject, opts: { features?: boolean } = {}): string {
   // A refused build names what was asked for and says nothing was built: never a size it didn't build, never a fallback.
   if (project.refused && !project.panels.length) return `${clean(project.name).trim() || "Yard plan"} · ${NOTHING_BUILT_HEADER}`;
-  return [`${headerName(project)} · ${headerAxes(project)}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
+  return [`${headerSpoken(project)} · ${headerAxes(project)}`, ...(opts.features === false ? [] : headerFeatures(project))].join(" · ");
 }
 
 /** The build's name without its bare typed size ("File cabinet 30" x 24" x 30"" → "File cabinet"). */
@@ -1186,14 +1187,55 @@ export function headerName(project: YardProject): string {
   return clean(project.name).replace(NAME_SIZE_RE, "").trim() || "Yard plan";
 }
 
+/** Feet and inches the way a swing set's name already says them: 120 → "10'", 92 → "7' 8"". */
+function feetInches(n: number): string {
+  let feet = Math.floor(n / 12);
+  let inches = Math.round(n - feet * 12);
+  if (inches === 12) { feet += 1; inches = 0; }
+  return inches ? `${feet}' ${inches}"` : `${feet}'`;
+}
+
+/** A bed's name says long × wide × tall. The long axis is the longer plan side of the built box. */
+const BED_SIZE = /^(.*?)\s+[\d\s/]+"\s+long\s+[×x]\s+[\d\s/]+"\s+wide\s+[×x]\s+[\d\s/]+"\s+tall\s*$/;
+/** A swing set's name says the beam and the height. The beam runs the depth of the built frame. */
+const BEAM_SIZE = /^(.*?)\s+\d+'(?: \d+")?\s+beam\s+[×x]\s+\d+'(?: \d+")?\s+tall\s*$/;
+
+/**
+ * The box the header prints. A bed whose built depth is the long side says that side as wide (W) and the short
+ * side as deep (D), the same way every other bed's "long" is its W. Other families keep width and depth.
+ */
+function headerDisplay(project: YardProject): { width: number; depth: number; height: number; swapped: boolean } {
+  const box = headerBox(project);
+  if (BED_SIZE.test(project.name ?? "") && box.depth > box.width + 0.5) {
+    return { width: box.depth, depth: box.width, height: box.height, swapped: true };
+  }
+  return { ...box, swapped: false };
+}
+
+/** The name the header prints: the same words, with a beam / long / wide / tall taken from the built box. */
+function headerSpoken(project: YardProject): string {
+  const box = headerDisplay(project);
+  const raw = project.name ?? "";
+  const bed = raw.match(BED_SIZE);
+  if (bed) return clean(`${bed[1]} ${inchFrac(box.width)}" long × ${inchFrac(box.depth)}" wide × ${inchFrac(box.height)}" tall`);
+  const beam = raw.match(BEAM_SIZE);
+  if (beam) return clean(`${beam[1]} ${feetInches(box.depth)} beam × ${feetInches(box.height)} tall`);
+  return headerName(project);
+}
+
 /** The one size in one order: `31 1/2" W × 16" D × 78" H`, axes nobody typed marked assumed. Header, bench, PDF. */
 export function headerAxes(project: YardProject): string {
   const { assumed } = typedAxesTalk(project);
-  // One size (headerSize): a typed axis is the size said back (the linen closet's 16″, doors standing proud are
-  // a note); an assumed axis is the model's own extent, the number the drawings label.
-  const { width: W, depth: d, height: H } = headerSize(project);
+  // The built outside when the parts stand past the typed box (headerBox); otherwise the size said back.
+  const shown = headerDisplay(project);
+  const assumedAxis = {
+    width: shown.swapped ? !!assumed.depth : !!assumed.width,
+    depth: shown.swapped ? !!assumed.width : !!assumed.depth,
+    height: !!assumed.height,
+  };
+  const { width: W, depth: d, height: H } = shown;
   const axes = [["W", W, "width"], ["D", d, "depth"], ["H", H, "height"]] as const;
-  const guess = axes.filter(([, , a]) => assumed[a]).map(([l]) => l);
+  const guess = axes.filter(([, , a]) => assumedAxis[a]).map(([l]) => l);
   // C3: a purchased item's size is the unit table's real piece, never an assumption.
   if (isUnitItem(project)) guess.length = 0;
   const mark = guess.length === 3 ? " (size assumed)" : guess.length ? ` (${guess.join(", ")} assumed)` : "";

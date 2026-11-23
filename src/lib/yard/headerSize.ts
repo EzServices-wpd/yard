@@ -5,7 +5,7 @@
  */
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { clean, frac } from "./pdfKit";
-import { drawnExtent } from "./pdfDraw";
+import { drawnExtent, projectSolids, truePts } from "./pdfDraw";
 import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { isUnitItem } from "./unitItems";
 import { specOf, type YardSpec } from "./spec";
@@ -70,6 +70,53 @@ function shownSize(project: YardProject, assumed: Partial<Record<Axis, boolean>>
 /** The build's one size (W, D, H in inches) every surface prints through inchFrac. */
 export function headerSize(project: YardProject): { width: number; depth: number; height: number } {
   return shownSize(project, typedAxesTalk(project).assumed);
+}
+
+/** A peg standing in its hole is not the body's outside (a cribbage board stays the board). */
+function isStandingPeg(p: YardProject["panels"][number]): boolean {
+  return p.type === "cleat" && /^dowel-/.test(p.materialId ?? "") && /\bpegs?\b/i.test(p.name);
+}
+
+/**
+ * The header's outside box. headerSize says the typed or catalog box back. When the parts stand more than one
+ * board outside that box, the header follows the parts on every axis they exceed: the panels' own box, from the
+ * floor. A proud door or drawer front stays the note, not a new depth. A pocket unit stays the unit. A board
+ * edge under 1 1/2" (a compost bin's lip, a linen door) is not a new outside.
+ */
+const PAST_A_BOARD = 1.5;
+
+export function headerBox(project: YardProject): { width: number; depth: number; height: number } {
+  const cur = headerSize(project);
+  if (project.pocket?.unit || !project.panels.length) return cur;
+  const body = project.panels.filter((p) => !isWallAccessoryAbove(p, cur.height));
+  if (!body.length) return cur;
+  // Measure each part as the drawings draw it (a sloped roof board, a leaning rail, a rod), never its raw box:
+  // the header's outside is the drawn outside, so it can never say a size the drawings do not show.
+  const ids = new Map(body.map((p) => [p.id, p]));
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxZ = -Infinity, bodyTop = -Infinity;
+  for (const s of projectSolids(project)) {
+    const p = ids.get(s.id);
+    if (!p) continue;
+    for (const q of truePts(project, s)) {
+      minX = Math.min(minX, q.x);
+      minY = Math.min(minY, q.y);
+      minZ = Math.min(minZ, q.z);
+      maxX = Math.max(maxX, q.x);
+      maxZ = Math.max(maxZ, q.z);
+      if (!isStandingPeg(p)) bodyTop = Math.max(bodyTop, q.y);
+    }
+  }
+  if (!Number.isFinite(minX)) return cur;
+  const env = { width: maxX - minX, depth: maxZ - minZ, height: bodyTop - Math.min(0, minY) };
+  const proud = !!modelProudNote(project.panels, project.overall.depth);
+  const past = (a: Axis) => (a === "depth" && proud ? false : env[a] > cur[a] + PAST_A_BOARD);
+  if (!past("width") && !past("height") && !past("depth")) return cur;
+  return {
+    width: env.width > cur.width ? env.width : cur.width,
+    depth: proud || !(env.depth > cur.depth) ? cur.depth : env.depth,
+    height: env.height > cur.height ? env.height : cur.height,
+  };
 }
 
 export type Axis = "width" | "height" | "depth";
