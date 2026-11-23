@@ -13,7 +13,9 @@
 import { placementIndex } from "./placeEveryPart";
 import { partLetters } from "./pdfDraw";
 import { cutListName } from "./shopPlural";
-import { BUY_JOINTS, stepScrewCount } from "./stepJointScrews";
+import { getCatalogItem } from "./catalog";
+import { fastenerStickJoints } from "./joints";
+import { BUY_JOINTS, panelsForLetter, stepScrewCount } from "./stepJointScrews";
 import type { AssemblyStep, BuildPlan, Panel, YardProject } from "./types";
 
 type Joint = { a: string; b: string; screws: number };
@@ -305,7 +307,76 @@ function screwLength(plan: BuildPlan): string | null {
   return raw ? raw.replace(/-/g, " ") : null;
 }
 
-function recount(steps: AssemblyStep[], at: Map<string, number>, joints: Joint[], plan: BuildPlan): AssemblyStep[] | null {
+/** Panels a join phrase names, by the same letter match that wrote the "with N" (panelsForLetter). */
+function letterPanels(phrase: string, project: YardProject, cutList: BuildPlan["cutList"]): Panel[] | null {
+  const letters = phrase.match(/\b[A-Z]{1,2}\b/g);
+  if (!letters?.length) return null;
+  const seen = new Set<string>();
+  const out: Panel[] = [];
+  for (const letter of letters) {
+    for (const p of panelsForLetter(project, cutList, letter)) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      out.push(p);
+    }
+  }
+  return out.length ? out : null;
+}
+
+function pairScrews(joints: Joint[], as: Set<string>, bs: Set<string>, at: Map<string, number>, onlyStep: number | null): number {
+  let n = 0;
+  for (const j of joints) {
+    if (!j.screws) continue;
+    if (!((as.has(j.a) && bs.has(j.b)) || (as.has(j.b) && bs.has(j.a)))) continue;
+    if (onlyStep != null) {
+      const a = at.get(j.a);
+      const b = at.get(j.b);
+      if (a == null || b == null || Math.max(a, b) !== onlyStep) continue;
+    }
+    n += j.screws;
+  }
+  return n;
+}
+
+const JOIN_N =
+  /\b((?:attach|fasten)\s+(?:the\s+)?)(.+?)\s+to\s+(?:the back edges of\s+)?(.+?)\s+with\s+(\d+)\s+×\s+(#8\s+×\s+[\d/ ]+"\s+screws)(\s+\(\d+\s+per\s+\w+\))?/i;
+
+/**
+ * A "with N" that sums every joint between the named parts, including joints a later step closes,
+ * or every same-size namesake, is a running total. N becomes the screws those named parts close in this step.
+ * A smaller N (2 per end) is the clause's own count and stays.
+ */
+function capJoinSentence(sentence: string, i: number, project: YardProject, cutList: BuildPlan["cutList"], at: Map<string, number>, joints: Joint[]): string {
+  const m = sentence.match(JOIN_N);
+  if (!m) return sentence;
+  const n = Number(m[4]);
+  const sub = letterPanels(m[2], project, cutList);
+  const obj = letterPanels(m[3], project, cutList);
+  if (!sub || !obj) return sentence;
+  const as = new Set(sub.map((p) => p.id));
+  const bs = new Set(obj.map((p) => p.id));
+  const all = pairScrews(joints, as, bs, at, null);
+  const here = pairScrews(joints, as, bs, at, i);
+  // Only the joints of this named pair that close on another step come out of N.
+  // An N larger than the pair is left alone: those screws belong to parts the words did not resolve.
+  const elsewhere = all - here;
+  if (!(all > 0) || elsewhere <= 0 || n < all) return sentence;
+  const next = n - elsewhere;
+  const hw = m[5];
+  const old = `with ${m[4]} × ${hw}${m[6] ?? ""}`;
+  if (next <= 0) return sentence.replace(old, "").replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
+  if (next >= n) return sentence;
+  let per = m[6] ?? "";
+  const word = per.match(/per\s+(\w+)/i)?.[1];
+  if (word) per = obj.length > 1 && next % obj.length === 0 ? ` (${next / obj.length} per ${word})` : "";
+  return sentence.replace(old, `with ${next} × ${hw}${per}`);
+}
+
+function capOverclaimedJoins(desc: string, i: number, project: YardProject, cutList: BuildPlan["cutList"], at: Map<string, number>, joints: Joint[]): string {
+  return joinSentences(sentencesOf(desc).map((s) => capJoinSentence(s, i, project, cutList, at, joints)));
+}
+
+function recount(steps: AssemblyStep[], at: Map<string, number>, joints: Joint[], plan: BuildPlan, project: YardProject): AssemblyStep[] | null {
   const per = new Map<number, number>();
   for (const j of joints) {
     if (!(j.screws > 0)) continue;
@@ -318,7 +389,7 @@ function recount(steps: AssemblyStep[], at: Map<string, number>, joints: Joint[]
   const len = screwLength(plan);
   if (!len) return null;
   const total = joints.reduce((n, j) => n + (j.screws > 0 ? j.screws : 0), 0);
-  const out = steps.map((s) => ({ ...s, description: stripAccounting(s.description ?? "") }));
+  const out = steps.map((s, i) => ({ ...s, description: capOverclaimedJoins(stripAccounting(s.description ?? ""), i, project, plan.cutList, at, joints) }));
   out.forEach((s, i) => {
     const want = per.get(i) ?? 0;
     const have = contribution(s.description);
@@ -379,6 +450,22 @@ function closableAt(project: YardProject, steps: AssemblyStep[], cutList: BuildP
   return at;
 }
 
+/** Screws whose later part is attached in each step. Null when a screwed part is in no step. */
+export function screwsClosedByStep(project: YardProject, plan: BuildPlan): number[] | null {
+  const joints = BUY_JOINTS.get(project);
+  if (!joints) return null;
+  const at = closableAt(project, plan.instructions, plan.cutList);
+  const per = plan.instructions.map(() => 0);
+  for (const j of joints) {
+    if (!(j.screws > 0)) continue;
+    const a = at.get(j.a);
+    const b = at.get(j.b);
+    if (a == null || b == null) return null;
+    per[Math.max(a, b)] += j.screws;
+  }
+  return per;
+}
+
 export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): BuildPlan {
   if (!project.panels.length || plan.instructions.length < 2) return plan;
   const before = plan.instructions;
@@ -388,7 +475,7 @@ export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): B
   const joints = (BUY_JOINTS.get(project) ?? []) as Joint[];
   let instructions = rewriteDescriptions(before, panels, letters, at, joints);
   if (joints.length && joints.some((j) => j.screws > 0)) {
-    const counted = recount(instructions, at, joints, plan);
+    const counted = recount(instructions, at, joints, plan, project);
     if (counted && stepScrewCount({ ...plan, instructions: counted }) === joints.reduce((n, j) => n + (j.screws > 0 ? j.screws : 0), 0)) {
       // A step never states a total below the "with N" it already tells the reader to drive.
       if (understated(counted) && !understated(before)) return plan;
@@ -399,5 +486,62 @@ export function applyFastenedPlacement(project: YardProject, plan: BuildPlan): B
     throw new Error("fastened placement changed step order");
   }
   if (instructions.every((s, i) => s.description === before[i].description)) return plan;
+  return { ...plan, instructions };
+}
+
+function roleJoinStep(steps: AssemblyStep[], role: string): number {
+  const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const plural = role.endsWith("s") ? role : role.endsWith("y") ? `${role.slice(0, -1)}ies` : `${role}s`;
+  const re = new RegExp(`\\b(?:${esc(role)}|${esc(plural)})\\b`, "i");
+  const verb = /\b(?:build|join|set|attach|fasten|stand|screw|glue|lay|add)\b/i;
+  return steps.findIndex((s) => re.test(s.title) && verb.test(s.title));
+}
+
+/**
+ * A stick build never reached the per-step count, so the whole Buy note was pasted onto the first
+ * step that says "screw". When those joints close on more than one step, each step says how many
+ * it drives and the pasted total comes off.
+ */
+export function spreadPastedJointNote(project: YardProject, plan: BuildPlan): BuildPlan {
+  const line = plan.bom.find((b) => /screws from the model's joints/.test(b.notes ?? ""));
+  const sentence = line?.notes;
+  if (!sentence) return plan;
+  const host = plan.instructions.findIndex((s) => (s.description ?? "").includes(sentence));
+  if (host < 0) return plan;
+  const total = Number(sentence.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+  const item = getCatalogItem(project.primaryMaterialId ?? "");
+  if (!item || !project.instances.length || !Number.isFinite(total)) return plan;
+  const joints = fastenerStickJoints(item, project.instances);
+  if (joints.reduce((n, j) => n + j.screws, 0) !== total) return plan;
+  const roleOf = new Map(project.instances.map((inst) => [inst.id, inst.role || "member"]));
+  const atRole = new Map<string, number>();
+  for (const role of new Set(roleOf.values())) {
+    const at = roleJoinStep(plan.instructions, role);
+    if (at < 0) return plan;
+    atRole.set(role, at);
+  }
+  const per = new Map<number, number>();
+  for (const j of joints) {
+    const a = atRole.get(roleOf.get(j.a) ?? "");
+    const b = atRole.get(roleOf.get(j.b) ?? "");
+    if (a == null || b == null) return plan;
+    const at = Math.max(a, b);
+    per.set(at, (per.get(at) ?? 0) + j.screws);
+  }
+  if (per.size <= 1 && per.has(host)) return plan;
+  const lenRaw = line.name.match(/#8\s*[x×]\s*([\d/.-]+)"/i)?.[1];
+  if (!lenRaw) return plan;
+  const len = lenRaw.replace(/-/g, " ");
+  const last = Math.max(...per.keys());
+  const instructions = plan.instructions.map((step, i) => {
+    let description = step.description ?? "";
+    if (i === host) description = description.replace(sentence, "").replace(/\s{2,}/g, " ").trim();
+    const n = per.get(i) ?? 0;
+    if (!n) return description === (step.description ?? "") ? step : { ...step, description };
+    const base = description.trim();
+    description = `${base}${/[.!?]$/.test(base) || !base ? "" : "."} Drive ${n} × #8 × ${len}" screws in this step, from the model's joints: one about every 8" along each joint (at least 2).`;
+    if (i === last) description += ` That brings the build to ${total} screws from the model's joints, the count on the Buy list.`;
+    return { ...step, description };
+  });
   return { ...plan, instructions };
 }

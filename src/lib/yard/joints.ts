@@ -583,6 +583,14 @@ export function stockRunCouplings(panels: Panel[], item: CatalogItem): number {
   return n;
 }
 
+/** The stick joints binderBom counts as #8 screws, with the same reach and screws-per-joint. */
+export function fastenerStickJoints(item: CatalogItem, instances: YardInstance[]) {
+  const across = Math.max(item.dims.width ?? 0, item.dims.thickness ?? 0, item.dims.diameter ?? 0, 0.25);
+  // Reach is the member as drawn: a 1" strip ripped from a sheet is 1" across, not the 48" sheet face.
+  const reachOf = (i: YardInstance) => (i.section ? Math.max(i.section.width, i.section.height) : across) * 0.6 + 0.1;
+  return stickJoints(instances, item.category === "lumber" || item.category === "sheet_goods" || item.formFactor === "board" ? 2 : 1, reachOf);
+}
+
 export function binderBom(
   item: CatalogItem,
   instances: YardInstance[],
@@ -620,10 +628,7 @@ export function binderBom(
   }
   if (kind === "fastener") {
     // Screws follow the joints in the model: members meeting at welded ends, 2 per joint on lumber.
-    const across = Math.max(item.dims.width ?? 0, item.dims.thickness ?? 0, item.dims.diameter ?? 0, 0.25);
-    // Reach is the member as drawn: a 1" strip ripped from a sheet is 1" across, not the 48" sheet face.
-    const reachOf = (i: YardInstance) => (i.section ? Math.max(i.section.width, i.section.height) : across) * 0.6 + 0.1;
-    const talk = screwTalk(stickJoints(instances, item.category === "lumber" || item.category === "sheet_goods" || item.formFactor === "board" ? 2 : 1, reachOf));
+    const talk = screwTalk(fastenerStickJoints(item, instances));
     const screws = Math.max(4, talk.screws);
     // Screw length follows the stick's thickness: 3/4" boards take 1 1/4", a 2x (1 1/2") takes 2 1/2".
     const len = inchFrac(faceScrewInches(item.dims.thickness ?? item.dims.height ?? 0.75)).replace(" ", "-");
