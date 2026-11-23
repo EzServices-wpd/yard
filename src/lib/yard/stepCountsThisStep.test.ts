@@ -79,3 +79,24 @@ describe("each step counts only the joins it closes", () => {
     });
   }
 });
+
+describe("a stick build whose titles do not pin each part keeps the Buy note", () => {
+  // "axle" sits inside "axle block"; "Build the head on the neck" names the neck before "— 2 necks" sets it.
+  for (const prompt of ["fire engine from 1x6", "plywood fire engine", "rocking horse", "2x4 dog planter"]) {
+    it(prompt, () => {
+      const plan = buildPlan(generateFromPrompt(prompt));
+      const text = plan.instructions.map((s) => s.description ?? "").join("\n");
+      assert.doesNotMatch(text, /screws in this step, where the parts meet/, prompt);
+    });
+  }
+});
+
+describe("an outdoor stick build keeps its screw warning on the step", () => {
+  for (const prompt of ["garden trug from poplar", "poplar garden trug 22 long"]) {
+    it(prompt, () => {
+      const plan = buildPlan(generateFromPrompt(prompt));
+      const text = plan.instructions.map((s) => s.description ?? "").join("\n");
+      assert.match(text, /Exterior-coated or stainless so they stay bright in the rain/, prompt);
+    });
+  }
+});

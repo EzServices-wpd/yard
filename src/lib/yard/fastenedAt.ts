@@ -497,6 +497,13 @@ function roleJoinStep(steps: AssemblyStep[], role: string): number {
   return steps.findIndex((s) => re.test(s.title) && verb.test(s.title));
 }
 
+function roleCountStep(steps: AssemblyStep[], role: string): number {
+  const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const plural = role.endsWith("s") ? role : role.endsWith("y") ? `${role.slice(0, -1)}ies` : `${role}s`;
+  const re = new RegExp(`— \\d+ (?:${esc(role)}|${esc(plural)})\\b`, "i");
+  return steps.findIndex((s) => re.test(s.title));
+}
+
 /**
  * A stick build never reached the per-step count, so the whole Buy note was pasted onto the first
  * step that says "screw". When those joints close on more than one step, each step says how many
@@ -514,10 +521,18 @@ export function spreadPastedJointNote(project: YardProject, plan: BuildPlan): Bu
   const joints = fastenerStickJoints(item, project.instances);
   if (joints.reduce((n, j) => n + j.screws, 0) !== total) return plan;
   const roleOf = new Map(project.instances.map((inst) => [inst.id, inst.role || "member"]));
+  const roles = [...new Set(roleOf.values())];
+  // A role whose name sits inside another role's name ("axle" in "axle block") cannot be placed by title words.
+  const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (roles.some((r) => roles.some((o) => o !== r && new RegExp(`\\b${esc(r)}\\b`, "i").test(o)))) return plan;
   const atRole = new Map<string, number>();
-  for (const role of new Set(roleOf.values())) {
+  for (const role of roles) {
     const at = roleJoinStep(plan.instructions, role);
     if (at < 0) return plan;
+    // The step whose title counts this role ("— 2 necks") is where it goes on. A first title that only names it
+    // as the place another part lands ("Build the head on the neck") does not close its joints: leave the note.
+    const own = roleCountStep(plan.instructions, role);
+    if (own >= 0 && own !== at) return plan;
     atRole.set(role, at);
   }
   const per = new Map<number, number>();
@@ -533,14 +548,18 @@ export function spreadPastedJointNote(project: YardProject, plan: BuildPlan): Bu
   if (!lenRaw) return plan;
   const len = lenRaw.replace(/-/g, " ");
   const last = Math.max(...per.keys());
+  // Only the count comes off the host step; any other sentence of the note (an outdoor screw warning) stays on it.
+  const keep = sentence.replace(/^\d+ screws from the model's joints:[^.]*\.\s*/, "").trim();
   const instructions = plan.instructions.map((step, i) => {
     let description = step.description ?? "";
     if (i === host) description = description.replace(sentence, "").replace(/\s{2,}/g, " ").trim();
     const n = per.get(i) ?? 0;
+    if (!n && i === host && keep) description = `${description}${/[.!?]$/.test(description) || !description ? "" : "."} ${keep}`.trim();
     if (!n) return description === (step.description ?? "") ? step : { ...step, description };
     const base = description.trim();
     description = `${base}${/[.!?]$/.test(base) || !base ? "" : "."} Drive ${n} × #8 × ${len}" screws in this step, from the model's joints: one about every 8" along each joint (at least 2).`;
     if (i === last) description += ` That brings the build to ${total} screws from the model's joints, the count on the Buy list.`;
+    if (i === host && keep) description += ` ${keep}`;
     return { ...step, description };
   });
   return { ...plan, instructions };
