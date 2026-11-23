@@ -1,13 +1,18 @@
 /**
  * The live Ideas feed (REVIEW.md (a)–(e), PR-PLAN.md (a)): the visitor log grouped by build type, test traffic
  * dropped, then today's curated sections. Built on the server from the store snapshot (never in the browser),
- * served by /api/ideas behind the CDN. Pure: no engine, no store. Deletes nothing: test rows are only skipped.
+ * served by /api/ideas behind the CDN. No store. Deletes nothing: test rows are only skipped.
+ * A log-only card's title is the build page's header name (headerName, read-only) of Yard's own prompt for
+ * that type. Never the result key with its numbers stripped (that left "Step stool with"), and never words
+ * a visitor typed.
  */
 import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
 import { IDEAS } from "@/lib/yard/ideas";
 import TYPES from "./types.json";
 import { isHeldType } from "./held";
-import { drawingForType, sizeOf, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
+import { curatedFeed, drawingForType, endsOnJoiner, rememberIdeaSlug, sizeOf, slugifyTitle, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
+import { genericHeaderName, headerTitleFor } from "./ideaTitle";
+import RECIPES from "./recipes.json";
 import { isLoggedTest } from "./testTraffic";
 import TWINS from "./typeTwins.json";
 import LOG_PROMPTS from "./logPrompts.json";
@@ -75,6 +80,37 @@ export const MIN_TITLE_LETTERS = 3;
 export const isJunkTitle = (title: string) => (title.match(/[a-z]/gi)?.length ?? 0) < MIN_TITLE_LETTERS;
 
 const titleOf = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+/** Authored card titles (curated ideas and recipe cards). First section wins, same as liveFeed's curated map. */
+let authoredTitles: Map<string, string> | null = null;
+function authoredTitle(type: string): string | undefined {
+  if (!authoredTitles) {
+    authoredTitles = new Map();
+    for (const s of curatedFeed(RECIPES).sections) for (const c of s.cards) if (!authoredTitles.has(c.buildType)) authoredTitles.set(c.buildType, c.title);
+  }
+  return authoredTitles.get(type);
+}
+
+/**
+ * Title and slug for a log-only type. The title is the header name of Yard's prompt for that type.
+ * A generic stand-in header ("Storage unit") does not replace a real type name. The slug stays the
+ * build type when the title did not change; a renamed title gets a slug from its words, and the old
+ * slug still resolves (rememberIdeaSlug).
+ */
+export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: string; slug: string } {
+  const plain = titleOf(type);
+  const header = headerTitleFor(logCardPrompt(type, dims));
+  const title = header && !(genericHeaderName(header) && !genericHeaderName(plain)) ? header : plain;
+  const next = slugifyTitle(title);
+  const slug = next && next !== type && title.toLowerCase() !== plain.toLowerCase() ? next : type;
+  if (slug !== type) rememberIdeaSlug(type, slug);
+  return { title, slug };
+}
+
+/** The title a card of this type shows: the authored label, else the header name. */
+export function ideaRowTitle(type: string, dims: IdeaCard["dims"]): string {
+  return authoredTitle(type) ?? logOnlyName(type, dims).title;
+}
 
 export function dimsOf(size: string): IdeaCard["dims"] {
   const m = /^(\d+(?:\.\d+)?)×(\d+(?:\.\d+)?)×(\d+(?:\.\d+)?)$/.exec(size.trim());
@@ -152,7 +188,7 @@ export type PublicSnapshot = { at: string; live: boolean; rows: PublicRow[]; pop
 export function publicRows(rows: SnapshotRow[], cutoff = TEST_CUTOFF): PublicRow[] {
   return rows.filter((r) => !isTestRow(r, cutoff)).map((r) => {
     const buildType = typeKey(r.resultKey);
-    return { buildType, recipe: r.resultKey.startsWith("recipe:"), title: titleOf(buildType), size: r.size, status: r.status, count: r.count, lastSeen: r.lastSeen! };
+    return { buildType, recipe: r.resultKey.startsWith("recipe:"), title: ideaRowTitle(buildType, dimsOf(r.size)), size: r.size, status: r.status, count: r.count, lastSeen: r.lastSeen! };
   }).filter((r) => !isJunkTitle(r.title));
 }
 
@@ -187,9 +223,11 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>, 
   const recipe = top.resultKey.startsWith("recipe:");
   const drawing = draw(g.type);
   const logged = LOG_PROMPT[g.type]?.dims ?? dimsOf(size);
+  const named = logOnlyName(g.type, logged);
   // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
-    slug: g.type, buildType: g.type, title: titleOf(g.type), count: g.count, lastSeen: g.lastSeen, examplePrompt: logCardPrompt(g.type, logged),
+    slug: named.slug, buildType: g.type, title: named.title, ...(named.slug !== g.type ? { aliases: [g.type] } : {}),
+    count: g.count, lastSeen: g.lastSeen, examplePrompt: logCardPrompt(g.type, logged),
     recipeKey: recipe ? g.type : null, dims: logged, ...sizeOf(drawing?.dims ?? logged), status, section: "Popular", drawing,
   };
 }
@@ -290,6 +328,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
       // A counted card from the log never shows a test prompt: our release prompts, or a row logged as test traffic.
       if (c.count > 0 && (TEST_PROMPTS.has(p) || loggedTest.has(p))) out.push(`${c.slug}: test prompt "${c.examplePrompt}"`);
       if (!c.title.trim() || c.title.trim() === c.examplePrompt.trim() || /^[a-z]/.test(c.title)) out.push(`${c.slug}: title "${c.title}" is not a display title`);
+      if (endsOnJoiner(c.title)) out.push(`${c.slug}: title "${c.title}" ends on a joining word`);
       if (isJunkTitle(c.title)) out.push(`${c.slug}: junk title "${c.title}" (fewer than ${MIN_TITLE_LETTERS} letters)`);
       if (c.status !== "checked" && c.status !== "new") out.push(`${c.slug}: status ${c.status}`);
       if (graded && ((c.count > 0 && c.status === "checked") || s.id === "popular") && !graded.has(c.buildType)) out.push(`${c.slug}: not graded by Critic, in ${s.id} as ${c.status}`);
@@ -310,7 +349,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
   for (const c of feed.all ?? []) {
     if (allTypes.has(c.buildType)) out.push(`all: build type ${c.buildType} twice`);
     allTypes.add(c.buildType);
-    if (isJunkTitle(c.title) || /^[a-z]/.test(c.title)) out.push(`all: ${c.slug} title "${c.title}"`);
+    if (isJunkTitle(c.title) || /^[a-z]/.test(c.title) || endsOnJoiner(c.title)) out.push(`all: ${c.slug} title "${c.title}"`);
     if (GENERIC_TYPES.has(c.buildType) || isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`all: ${c.slug} is held or generic`);
     if (c.unverified && c.drawing) out.push(`${c.slug}: Unverified row has a drawing`);
   }

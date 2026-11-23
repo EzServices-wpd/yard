@@ -69,7 +69,7 @@ test("ungraded types are marked new and stay out of Popular and the hero; undraw
   assert.ok(feed.sections.find((s) => s.id === "popular")!.cards.every((c) => c.status === "checked"));
   assert.ok(feed.hero && graded.has(feed.hero.slug));
   const goal = all.find((c) => c.buildType === "soccer-goal")!;
-  assert.deepEqual([goal.title, goal.size, goal.drawing, goal.status, goal.examplePrompt], ["Soccer goal", "48 × 12 × 36 in", null, "new", "soccer goal 48 wide 36 tall 12 deep from 3/4 PVC pipe"]);
+  assert.deepEqual([goal.title, goal.slug, goal.size, goal.drawing, goal.status, goal.examplePrompt], ["PVC Soccer Goal", "pvc-soccer-goal", "48 × 12 × 36 in", null, "new", "soccer goal 48 wide 36 tall 12 deep from 3/4 PVC pipe"]);
 });
 
 test("a type's size is its most-built size; a tie goes to the newest", () => {
@@ -102,7 +102,7 @@ test("the page: no flat list; every listed type is one link in its group (card o
   assert.doesNotMatch(html, /data-idea-no-drawing/, "a card always has its drawing");
   // An undrawn type is a row once See all opens, title, New mark and size kept (the flat list's row).
   const toys = renderToStaticMarkup(createElement(IdeaRow, { card: all.find((c) => c.buildType === "soccer-goal")!, href: "/workspace?q=x", onOpen: () => {} }));
-  assert.match(toys, /data-idea-row="soccer-goal"[^>]*>.*?Soccer goal.*?New, not checked yet.*?48 × 12 × 36 in/);
+  assert.match(toys, /data-idea-row="pvc-soccer-goal"[^>]*>.*?PVC Soccer Goal.*?New, not checked yet.*?48 × 12 × 36 in/);
   assert.equal(ALL_SHOW, 24);
   // The fallback feed (store down) groups its sections the same way, with no rows until a See all opens.
   assert.match(page(base), /data-ideas-group="furniture"/);
@@ -122,7 +122,7 @@ test("search reaches every listed type with the page's aliases; an undrawn hit i
   }
   const html = page(feed, "soccer goal");
   const res = html.slice(html.indexOf("data-ideas-results"));
-  assert.match(res, /data-idea-row="soccer-goal"/);
+  assert.match(res, /data-idea-row="pvc-soccer-goal"/);
   assert.ok(!res.includes("data-idea-no-drawing"));
   // A drawn log type (the baked rocket) is a card with its own drawing, not a row.
   const hit = page(feed, "rocket");

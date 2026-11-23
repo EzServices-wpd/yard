@@ -34,6 +34,8 @@ export type IdeaCard = {
   status: "checked" | "new";
   /** The log has only ever seen this type as Unverified. A search / See-all row, never a picture card. */
   unverified?: boolean;
+  /** Slugs this card used to publish. An old link still resolves to the card. */
+  aliases?: string[];
   blurb?: string;
   /** Feature note printed after the size in the text face ("from 2×4", "for a 36 × 48 double-hung"). */
   stock?: string;
@@ -59,11 +61,47 @@ export function showAllLabel(s: Pick<IdeaSection, "cards" | "total">): string {
 }
 
 type Manifest = Record<string, { v: string; w: number; h: number; parts: number; model?: string; dims?: SolvedDims }>;
+
+/** Old public slug → the slug the card uses now. Filled when a title change renames the slug. */
+const SLUG_ALIAS = new Map<string, string>();
+export function rememberIdeaSlug(from: string, to: string) {
+  if (from && to && from !== to) SLUG_ALIAS.set(from, to);
+}
+/** The slug a card publishes now. An unknown or current slug comes back unchanged. */
+export function resolveIdeaSlug(slug: string): string {
+  const seen = new Set<string>();
+  let s = slug;
+  while (SLUG_ALIAS.has(s) && !seen.has(s)) {
+    seen.add(s);
+    s = SLUG_ALIAS.get(s)!;
+  }
+  return s;
+}
+function manifestKey(slug: string, manifest: Manifest): string | null {
+  if (manifest[slug]) return slug;
+  const next = resolveIdeaSlug(slug);
+  if (manifest[next]) return next;
+  for (const [from, to] of SLUG_ALIAS) if ((to === slug || from === slug) && manifest[from]) return from;
+  return null;
+}
+
 export function drawingFor(slug: string, manifest: Manifest = DRAWINGS as Manifest): DrawingRef | null {
-  const m = manifest[slug];
-  if (!m) return null;
-  const base = `/ideas/drawings/${slug}.${m.v}`;
+  const key = manifestKey(slug, manifest);
+  if (!key) return null;
+  const m = manifest[key];
+  const base = `/ideas/drawings/${key}.${m.v}`;
   return { src: `${base}.svg`, ...(m.model ? { model: m.model } : {}), w: m.w, h: m.h, parts: m.parts, v: m.v, ...(m.dims ? { dims: m.dims } : {}) };
+}
+
+/** Joining words a display title must not end on ("Step stool with"). */
+export const TITLE_JOINERS = new Set("a an and at by for from in into nor of on or plus the to via vs with".split(" "));
+export function endsOnJoiner(title: string): boolean {
+  const words = title.trim().toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const last = words[words.length - 1];
+  return !!last && TITLE_JOINERS.has(last);
+}
+export function slugifyTitle(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 /**
@@ -146,7 +184,7 @@ export const LEARNED_SECTION = "Learned from visitors";
 export function curatedFeed(recipes: { popular: RecipeLike[]; fresh: RecipeLike[]; counts?: Record<string, number> } = { popular: [], fresh: [] }): IdeasFeed {
   const sections: IdeaSection[] = IDEA_SECTIONS.map((title, order) => {
     const cards = byCount(CURATED_IDEAS.filter((d) => d.section === title).map(fromIdea));
-    return { id: slugify(title), title, order, total: cards.length, cards };
+    return { id: slugifyTitle(title), title, order, total: cards.length, cards };
   });
   const learned = byCount([
     ...recipes.popular.map((r) => fromRecipe(r, "checked", LEARNED_SECTION, recipes.counts?.[r.prompt] ?? 0)),
@@ -224,6 +262,3 @@ export function buildHref(prompt: string, flags: TestFlags = {}): string {
   return `/workspace?${new URLSearchParams({ q: prompt.trim(), ...Object.fromEntries(Object.entries(flags).map(([k, v]) => [k, String(v)])) })}`;
 }
 
-function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
