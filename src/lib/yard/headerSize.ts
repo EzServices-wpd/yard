@@ -72,6 +72,45 @@ export function headerSize(project: YardProject): { width: number; depth: number
   return shownSize(project, typedAxesTalk(project).assumed);
 }
 
+/** A peg standing in its hole is not the body's outside (a cribbage board stays the board). */
+function isStandingPeg(p: YardProject["panels"][number]): boolean {
+  return p.type === "cleat" && /^dowel-/.test(p.materialId ?? "") && /\bpegs?\b/i.test(p.name);
+}
+
+/**
+ * The header's outside box. headerSize says the typed or catalog box back. When the parts stand more than one
+ * board outside that box, the header follows the parts on every axis they exceed: the panels' own box, from the
+ * floor. A proud door or drawer front stays the note, not a new depth. A pocket unit stays the unit. A board
+ * edge under 1 1/2" (a compost bin's lip, a linen door) is not a new outside.
+ */
+const PAST_A_BOARD = 1.5;
+
+export function headerBox(project: YardProject): { width: number; depth: number; height: number } {
+  const cur = headerSize(project);
+  if (project.pocket?.unit || !project.panels.length) return cur;
+  const body = project.panels.filter((p) => !isWallAccessoryAbove(p, cur.height));
+  if (!body.length) return cur;
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxZ = -Infinity, bodyTop = -Infinity;
+  for (const p of body) {
+    minX = Math.min(minX, p.position.x);
+    minY = Math.min(minY, p.position.y);
+    minZ = Math.min(minZ, p.position.z);
+    maxX = Math.max(maxX, p.position.x + p.size.width);
+    maxZ = Math.max(maxZ, p.position.z + p.size.depth);
+    if (!isStandingPeg(p)) bodyTop = Math.max(bodyTop, p.position.y + p.size.height);
+  }
+  const env = { width: maxX - minX, depth: maxZ - minZ, height: bodyTop - Math.min(0, minY) };
+  const proud = !!modelProudNote(project.panels, project.overall.depth);
+  const past = (a: Axis) => (a === "depth" && proud ? false : env[a] > cur[a] + PAST_A_BOARD);
+  if (!past("width") && !past("height") && !past("depth")) return cur;
+  return {
+    width: env.width > cur.width ? env.width : cur.width,
+    depth: proud || !(env.depth > cur.depth) ? cur.depth : env.depth,
+    height: env.height > cur.height ? env.height : cur.height,
+  };
+}
+
 export type Axis = "width" | "height" | "depth";
 const AXIS_WORD: Record<Axis, string> = { width: "wide", height: "tall", depth: "deep" };
 
