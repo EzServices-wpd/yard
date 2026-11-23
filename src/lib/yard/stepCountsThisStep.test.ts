@@ -91,6 +91,63 @@ describe("a stick build whose titles do not pin each part keeps the Buy note", (
   }
 });
 
+/**
+ * A stamped "with N" is not this step's joins when the named parts do not close a screw joint here:
+ * a drawer tray bottom lettered like a carcase bottom, a 2x2 apron the model does not screw,
+ * a top or bottom too thin to take a screw. The step then states the screws it does close,
+ * in the sentences the per-step pass already writes.
+ */
+describe("a stamped count that is not this step's joins", () => {
+  const sums = (prompt: string) => {
+    const project = generateFromPrompt(prompt);
+    const plan = buildPlan(project);
+    const text = plan.instructions.map((s) => s.description ?? "").join("\n");
+    assert.doesNotMatch(text, /counted in another step/, prompt);
+    const buy = buyScrews(plan);
+    if (Number.isFinite(buy) && buy > 0) {
+      assert.equal(stepScrewCount(plan), buy, prompt);
+      const closed = screwsClosedByStep(project, plan);
+      let run = 0;
+      plan.instructions.forEach((s, i) => {
+        const n = stated(s.description ?? "");
+        run += n;
+        if (closed && closed[i] !== n) assert.equal(n, closed[i], `${prompt} ${s.title}`);
+      });
+      assert.equal(run, buy, prompt);
+    }
+    return plan;
+  };
+
+  for (const prompt of [
+    "cabinet that fits in a 2 by 1.5 ft spot",
+    "jewelry box 12x8x8 with 3 drawers",
+    "jewelry box with drawers",
+    "workbench 60x24x36 from 2x2",
+    "wall cabinet 24 wide 30 tall 12 deep from 2x2",
+  ]) {
+    it(prompt, () => {
+      sums(prompt);
+    });
+  }
+
+  it("a synonym: trinket box with drawers counts the tray bottom on the step that sets it", () => {
+    const plan = sums("trinket box with drawers");
+    const stand = plan.instructions.find((s) => /Stand the main box/.test(s.title));
+    const bottom = plan.instructions.find((s) => s.title === "Attach B Bottom to both uprights");
+    assert.match(stand?.description ?? "", /In all, this step drives 10 × #8 × 1 1\/4" screws, where the parts meet/);
+    assert.match(bottom?.description ?? "", /Drive 2 × #8 × 1 1\/4" screws in this step, where the parts meet/);
+    assert.doesNotMatch(bottom?.description ?? "", /with \d+ × #8 /);
+  });
+
+  it("a near-miss: jewelry box without drawers keeps its own counts", () => {
+    const plan = sums("jewelry box");
+    const text = plan.instructions.map((s) => s.description ?? "").join("\n");
+    assert.doesNotMatch(text, /Attach B Bottom to both uprights/);
+    assert.match(text, /That brings the build to 8 screws where the parts meet, the count on the Buy list/);
+    assert.equal(plan.instructions.filter((s) => /Drive 4 × #8 × 1 1\/4" screws in this step/.test(s.description ?? "")).length, 2);
+  });
+});
+
 describe("an outdoor stick build keeps its screw warning on the step", () => {
   for (const prompt of ["garden trug from poplar", "poplar garden trug 22 long"]) {
     it(prompt, () => {
