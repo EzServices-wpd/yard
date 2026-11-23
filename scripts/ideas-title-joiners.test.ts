@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { curatedFeed, drawingFor, endsOnJoiner, resolveIdeaSlug, type IdeaCard } from "../src/lib/ideas/feed";
+import { curatedFeed, drawingFor, endsOnJoiner, resolveIdeaSlug, titleFromHeader, titleHasMeasure, type IdeaCard } from "../src/lib/ideas/feed";
 import { TEST_CUTOFF, feedViolations, liveFeed, publicRows, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import LIVE23 from "./fixtures/ideas-snapshot-2026-10-23.json";
@@ -43,8 +43,30 @@ test("no Ideas title ends on a joining word, on the curated feed or either saved
     assert.deepEqual(feedViolations(feed, snap).filter((v) => /joining word/.test(v)), []);
   }
   for (const word of JOIN) assert.equal(endsOnJoiner(`Step stool ${word}`), true, word);
-  assert.equal(endsOnJoiner("Step stool with 2 steps"), false);
+  assert.equal(endsOnJoiner("Step stool, 2 steps"), false);
   assert.equal(endsOnJoiner("Coat rack with bench"), false);
+});
+
+test("no Ideas title carries a size or measurement; a count is not one", () => {
+  const measured = (cards: Pick<IdeaCard, "slug" | "title">[]) => cards.filter((c) => titleHasMeasure(c.title)).map((c) => `${c.slug}: ${c.title}`);
+  assert.deepEqual(measured(cardsOf(base)), []);
+  for (const { snap, feed } of feeds) {
+    assert.deepEqual(measured(cardsOf(feed)), [], feed.at);
+    assert.deepEqual(measured(publicRows(snap.rows)), []);
+    assert.deepEqual(feedViolations(feed, snap).filter((v) => /carries a size/.test(v)), []);
+  }
+  assert.equal(titleFromHeader("Step stool with 2 steps"), "Step stool, 2 steps");
+  assert.equal(titleFromHeader("Picnic table 5' 3\" x 29\" tall"), "Picnic table");
+  assert.equal(titleFromHeader("Swing set 1' beam x 1' tall"), "Swing set");
+  assert.equal(titleFromHeader("Cardboard robot 18\" tall"), "Cardboard robot");
+  assert.equal(titleFromHeader("L-shaped corner desk 60\" x 48\" · 30\" tall"), "L-shaped corner desk");
+  assert.equal(titleFromHeader("Platform bed 39\" long x 82\" wide x 75\" tall"), "Platform bed");
+  assert.equal(titleFromHeader("PVC Soccer Goal"), "PVC Soccer Goal");
+  assert.equal(titleFromHeader("2×4 ladder"), "Ladder");
+  assert.equal(titleHasMeasure("Step stool, 2 steps"), false);
+  assert.equal(titleHasMeasure("Round 3-leg table"), false);
+  assert.equal(titleHasMeasure("2×4 ladder"), true);
+  assert.equal(titleHasMeasure("Picnic table 5' 3\" x 29\" tall"), true);
 });
 
 const plainTitle = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -52,19 +74,15 @@ const plainTitle = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.to
 const MOVED: [string, string, string][] = [
   ["bike-rack", "bike-rack", "Bike Rack"],
   ["brooklyn-bridge", "brooklyn-bridge", "Brooklyn Bridge"],
-  ["cardboard-robot", "cardboard-robot-18-tall", "Cardboard robot 18\" tall"],
   ["covered-bridge", "covered-bridge", "Covered Bridge"],
   ["empire-state-building", "empire-state-building", "Empire State Building"],
   ["firewood-unit", "firewood-rack", "Firewood rack"],
   ["garden-arch-base-molding", "garden-arch-base-molding", "Garden Arch Base Molding"],
   ["key-holder-wall-mounted", "peg-rail", "Peg rail"],
-  ["l-shaped-corner-desk", "l-shaped-corner-desk-60-x-48-30-tall", "L-shaped corner desk 60\" x 48\" · 30\" tall"],
-  ["picnic-table", "picnic-table-5-3-x-29-tall", "Picnic table 5' 3\" x 29\" tall"],
-  ["platform-bed", "platform-bed-39-long-x-82-wide-x-75-tall", "Platform bed 39\" long x 82\" wide x 75\" tall"],
+  ["l-shaped-corner-desk", "l-shaped-corner-desk", "L-shaped corner desk"],
   ["shelf", "shelf-unit", "Shelf unit"],
   ["soccer-goal", "pvc-soccer-goal", "PVC Soccer Goal"],
   ["space-needle", "space-needle", "Space Needle"],
-  ["swing-set", "swing-set-1-beam-x-1-tall", "Swing set 1' beam x 1' tall"],
   ["white-house", "white-house", "White House"],
 ];
 
@@ -103,12 +121,13 @@ test("a step-stool result key stripped down to 'with' titles the header name, an
   const feed = liveFeed(snap, base, now);
   const card = cardsOf(feed).find((c) => c.buildType === "step-stool-with");
   assert.ok(card, "step stool card");
-  assert.equal(card.title, "Step stool with 2 steps");
-  assert.equal(card.slug, "step-stool-with-2-steps");
+  assert.equal(card.title, "Step stool, 2 steps");
+  assert.equal(card.slug, "step-stool-2-steps");
   assert.deepEqual(card.aliases, ["step-stool-with"]);
   assert.equal(card.examplePrompt, "step stool with 16 wide 18 tall 22 deep");
-  assert.equal(resolveIdeaSlug("step-stool-with"), "step-stool-with-2-steps");
-  assert.equal(publicRows(snap.rows).find((r) => r.buildType === "step-stool-with")?.title, "Step stool with 2 steps");
+  assert.equal(resolveIdeaSlug("step-stool-with"), "step-stool-2-steps");
+  assert.equal(publicRows(snap.rows).find((r) => r.buildType === "step-stool-with")?.title, "Step stool, 2 steps");
+  assert.equal(titleHasMeasure(card.title), false);
   const body = JSON.stringify({ feed, rows: publicRows(snap.rows) }).toLowerCase();
   assert.equal(body.includes(prompt), false);
   assert.equal(endsOnJoiner(card.title), false);

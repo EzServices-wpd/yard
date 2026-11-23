@@ -100,6 +100,78 @@ export function endsOnJoiner(title: string): boolean {
   const last = words[words.length - 1];
   return !!last && TITLE_JOINERS.has(last);
 }
+
+const DIM_WORD = /^(?:wide|tall|long|deep|high|beam|feet|foot|ft|inches|inch)$/i;
+const wordOf = (t: string) => t.replace(/^[("']+|[).,;:]+$/g, "");
+const isDimWord = (t: string) => DIM_WORD.test(wordOf(t));
+const isUnitNum = (t: string) => /\d/.test(t) && /['"″′]/.test(t);
+const isCross = (t: string) => /^\d[\d./-]*[×x]\d/i.test(wordOf(t));
+const isBareNum = (t: string) => /^\d+(?:\/\d+)?$/.test(wordOf(t));
+const isSizeOp = (t: string) => /^[×x·]$/.test(wordOf(t));
+const isJoinerWord = (t: string) => TITLE_JOINERS.has(wordOf(t).toLowerCase());
+
+/**
+ * The header name with measurements taken out. A count stays, after a comma ("Step stool with 2 steps"
+ * → "Step stool, 2 steps"). Feet, inches, crosses (2×4, 8x10), and dimension words next to a number
+ * (wide, tall, long, deep, beam) go. Not a per-build list.
+ */
+export function titleFromHeader(header: string): string {
+  const tokens = header.replace(/[″”]/g, '"').replace(/[′’]/g, "'").trim().split(/\s+/).filter(Boolean);
+  const role = tokens.map(() => "name" as "name" | "measure" | "count" | "drop");
+  for (let i = 0; i < tokens.length; i++) if (isUnitNum(tokens[i]) || isCross(tokens[i])) role[i] = "measure";
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < tokens.length; i++) {
+      if (role[i] === "measure") continue;
+      const prev = i > 0 && role[i - 1] === "measure";
+      const next = i + 1 < tokens.length && role[i + 1] === "measure";
+      const t = wordOf(tokens[i]);
+      const beside = prev || next;
+      if (beside && (isBareNum(t) || isSizeOp(t) || isDimWord(t) || /^(?:to|by|in)$/i.test(t))) {
+        role[i] = "measure";
+        changed = true;
+      }
+    }
+  }
+  for (let i = 0; i < tokens.length; i++) {
+    if (role[i] !== "name" || !isBareNum(tokens[i])) continue;
+    const noun = tokens[i + 1];
+    if (!noun || role[i + 1] !== "name" || isJoinerWord(noun) || isDimWord(noun) || isSizeOp(noun)) continue;
+    role[i] = "count";
+    role[i + 1] = "count";
+    if (i > 0 && role[i - 1] === "name" && isJoinerWord(tokens[i - 1])) role[i - 1] = "drop";
+  }
+  const name: string[] = [];
+  const counts: string[] = [];
+  let count: string[] = [];
+  const flush = () => {
+    if (count.length) counts.push(count.join(" "));
+    count = [];
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    if (role[i] === "count") count.push(tokens[i]);
+    else {
+      flush();
+      if (role[i] === "name") name.push(tokens[i]);
+    }
+  }
+  flush();
+  while (name.length && isJoinerWord(name[name.length - 1])) name.pop();
+  let title = name.join(" ").replace(/\s+/g, " ").replace(/^[,·×.\s-]+|[,·×.\s-]+$/g, "").trim();
+  if (!title) title = header.trim();
+  if (counts.length) title = `${title}, ${counts.join(", ")}`;
+  if (/^[a-z]/.test(title)) title = title[0].toUpperCase() + title.slice(1);
+  return title;
+}
+
+/** A size or measurement still in a display title (a count such as "2 steps" is not one). */
+export function titleHasMeasure(title: string): boolean {
+  if (/\b(?:wide|tall|long|deep|high|beam|feet|foot|ft|inches|inch)\b/i.test(title)) return true;
+  if (/['"″′·×]/.test(title)) return true;
+  if (/\d\s*[x×]\s*\d/i.test(title)) return true;
+  return false;
+}
 export function slugifyTitle(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -137,14 +209,14 @@ export function sizeOf(dims: SolvedDims | null | undefined): Pick<IdeaCard, "siz
 function fromIdea(d: Idea): IdeaCard {
   const drawing = drawingFor(d.id);
   return {
-    slug: d.id, buildType: typeFor(d.id, d.prompt), title: TITLE_FIX[d.id] ?? d.label, count: 0, lastSeen: null, examplePrompt: d.prompt,
+    slug: d.id, buildType: typeFor(d.id, d.prompt), title: titleFromHeader(TITLE_FIX[d.id] ?? d.label), count: 0, lastSeen: null, examplePrompt: d.prompt,
     recipeKey: null, dims: null, ...sizeOf(drawing?.dims), typedSize: d.size, status: "checked", blurb: d.blurb, stock: NOTE_FIX[d.id] ?? d.stock, section: d.section, drawing,
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {
   const drawing = drawingFor(r.id);
   return {
-    slug: r.id, buildType: typeFor(r.id, r.prompt), title: r.label, count, lastSeen: null, examplePrompt: r.prompt,
+    slug: r.id, buildType: typeFor(r.id, r.prompt), title: titleFromHeader(r.label), count, lastSeen: null, examplePrompt: r.prompt,
     recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, ...sizeOf(drawing?.dims), typedSize: r.size, status, blurb: r.blurb, section, drawing,
   };
 }

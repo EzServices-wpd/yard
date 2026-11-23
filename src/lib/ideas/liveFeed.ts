@@ -10,7 +10,7 @@ import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
 import { IDEAS } from "@/lib/yard/ideas";
 import TYPES from "./types.json";
 import { isHeldType } from "./held";
-import { curatedFeed, drawingForType, endsOnJoiner, rememberIdeaSlug, sizeOf, slugifyTitle, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
+import { curatedFeed, drawingForType, endsOnJoiner, rememberIdeaSlug, sizeOf, slugifyTitle, titleFromHeader, titleHasMeasure, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 import { genericHeaderName, headerTitleFor } from "./ideaTitle";
 import RECIPES from "./recipes.json";
 import { isLoggedTest } from "./testTraffic";
@@ -92,15 +92,16 @@ function authoredTitle(type: string): string | undefined {
 }
 
 /**
- * Title and slug for a log-only type. The title is the header name of Yard's prompt for that type.
- * A generic stand-in header ("Storage unit") does not replace a real type name. The slug stays the
- * build type when the title did not change; a renamed title gets a slug from its words, and the old
- * slug still resolves (rememberIdeaSlug).
+ * Title and slug for a log-only type. The title is the header name of Yard's prompt, with measurements
+ * removed and a count kept after a comma. A generic stand-in header ("Storage unit") does not replace
+ * a real type name. The slug stays the build type when the title still slugifies to it; a renamed
+ * title keeps the old slug as an alias.
  */
 export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: string; slug: string } {
   const plain = titleOf(type);
   const header = headerTitleFor(logCardPrompt(type, dims));
-  const title = header && !(genericHeaderName(header) && !genericHeaderName(plain)) ? header : plain;
+  const raw = header && !(genericHeaderName(header) && !genericHeaderName(plain)) ? header : plain;
+  const title = titleFromHeader(raw);
   const next = slugifyTitle(title);
   const slug = next && next !== type && title.toLowerCase() !== plain.toLowerCase() ? next : type;
   if (slug !== type) rememberIdeaSlug(type, slug);
@@ -329,6 +330,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
       if (c.count > 0 && (TEST_PROMPTS.has(p) || loggedTest.has(p))) out.push(`${c.slug}: test prompt "${c.examplePrompt}"`);
       if (!c.title.trim() || c.title.trim() === c.examplePrompt.trim() || /^[a-z]/.test(c.title)) out.push(`${c.slug}: title "${c.title}" is not a display title`);
       if (endsOnJoiner(c.title)) out.push(`${c.slug}: title "${c.title}" ends on a joining word`);
+      if (titleHasMeasure(c.title)) out.push(`${c.slug}: title "${c.title}" carries a size`);
       if (isJunkTitle(c.title)) out.push(`${c.slug}: junk title "${c.title}" (fewer than ${MIN_TITLE_LETTERS} letters)`);
       if (c.status !== "checked" && c.status !== "new") out.push(`${c.slug}: status ${c.status}`);
       if (graded && ((c.count > 0 && c.status === "checked") || s.id === "popular") && !graded.has(c.buildType)) out.push(`${c.slug}: not graded by Critic, in ${s.id} as ${c.status}`);
@@ -349,7 +351,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
   for (const c of feed.all ?? []) {
     if (allTypes.has(c.buildType)) out.push(`all: build type ${c.buildType} twice`);
     allTypes.add(c.buildType);
-    if (isJunkTitle(c.title) || /^[a-z]/.test(c.title) || endsOnJoiner(c.title)) out.push(`all: ${c.slug} title "${c.title}"`);
+    if (isJunkTitle(c.title) || /^[a-z]/.test(c.title) || endsOnJoiner(c.title) || titleHasMeasure(c.title)) out.push(`all: ${c.slug} title "${c.title}"`);
     if (GENERIC_TYPES.has(c.buildType) || isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`all: ${c.slug} is held or generic`);
     if (c.unverified && c.drawing) out.push(`${c.slug}: Unverified row has a drawing`);
   }
