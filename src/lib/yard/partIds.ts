@@ -4,7 +4,7 @@
  * canary reads these fields.
  */
 import { partLetters } from "./pdfDraw";
-import { applyFastenedPlacement } from "./fastenedAt";
+import { applyFastenedPlacement, spreadPastedJointNote } from "./fastenedAt";
 import { fastenAfterPlacement } from "./placedName";
 import { orderStepsBySupport } from "./supportOrder";
 import { cutListName } from "./shopPlural";
@@ -94,5 +94,5 @@ export function withPartIds(project: YardProject, plan: BuildPlan): BuildPlan {
     const sheetNest = plan.sheetNest ? { sheets: piecesWithIds(plan.sheetNest.sheets, cutList), backer: piecesWithIds(plan.sheetNest.backer, cutList) } : plan.sheetNest;
     plan = { ...plan, cutList, ...(plan.sheetNest !== undefined ? { sheetNest } : {}) };
   }
-  return applyFastenedPlacement(project, plan);
+  return spreadPastedJointNote(project, applyFastenedPlacement(project, plan));
 }
