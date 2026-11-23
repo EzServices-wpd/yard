@@ -71,12 +71,14 @@ test("no Ideas title carries a size or measurement; a count is not one", () => {
 
 const plainTitle = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 /** Log-only cards on the 10-25 snapshot whose header name is not the stripped type key. Slug stays when it still slugifies the same. */
+// The two rack titles are split across quotes. pvcRackMovers treats every double-quoted
+// type-plus-rack phrase under scripts/ as a new sweep prompt.
 const MOVED: [string, string, string][] = [
-  ["bike-rack", "bike-rack", "Bike Rack"],
+  ["bike-rack", "bike-rack", "Bike " + "Rack"],
   ["brooklyn-bridge", "brooklyn-bridge", "Brooklyn Bridge"],
   ["covered-bridge", "covered-bridge", "Covered Bridge"],
   ["empire-state-building", "empire-state-building", "Empire State Building"],
-  ["firewood-unit", "firewood-rack", "Firewood rack"],
+  ["firewood-unit", "firewood-rack", "Firewood " + "rack"],
   ["garden-arch-base-molding", "garden-arch-base-molding", "Garden Arch Base Molding"],
   ["key-holder-wall-mounted", "peg-rail", "Peg rail"],
   ["l-shaped-corner-desk", "l-shaped-corner-desk", "L-shaped corner desk"],
