@@ -2620,6 +2620,10 @@ function nounPhraseWords(prompt: string): string[] {
 /** Every word a build owns: its name, its kind and its fitted program and family ("Linen" is a closet). */
 const ownWords = (p: YardProject) => `${p.name ?? ""} ${p.kind} ${p.fitted?.program ?? ""} ${p.fitted?.family ?? ""}`.toLowerCase().replace(/\d[\d\s./'"″′×x-]*/g, " ").split(/[^a-z]+/).filter((w) => w.length > 2).map(singular);
 
+const VERB_AFTER_SUBJECT_SRC = String.raw`\b([a-z]+s)\s+(?:the|a|an|its|their|his|her|my|our|by|on|in|against|along|under|over|near|at|into|onto|beside|behind|next|across|around|up|down|from|flat|upright)\b`;
+const VERB_AFTER_SUBJECT = new RegExp(VERB_AFTER_SUBJECT_SRC, "i");
+const VERB_AFTER_SUBJECT_G = new RegExp(VERB_AFTER_SUBJECT_SRC, "gi");
+
 /**
  * 5a (class by head noun): the words before the typed head noun that the build is named for. "Desk" for "desk
  * organizer", "Deck" for "outdoor deck storage box": a modifier picked the class, not the object. None when the build
@@ -2634,6 +2638,10 @@ export function modifierNamedWords(prompt: string, p: YardProject): string[] {
   const modifiers = ws.slice(0, -1);
   const name = (p.name ?? "").toLowerCase().replace(/\d[\d\s./'"″′×x-]*/g, " ").split(/[^a-z]+/).filter((w) => w.length > 2).map(singular);
   if (!name.length || ownWords(p).includes(head) || !modifiers.includes(name[name.length - 1])) return [];
+  // A word that reads as the verb of a sentence about the object ("bench sits by the door", "bookcase leans against
+  // the wall", "wagon lies along its axis") is not its head noun: an -s word followed by a place word or an article
+  // ends the noun phrase, and the build named for the word before it stays.
+  if (VERB_AFTER_SUBJECT.test(prompt) && [...prompt.toLowerCase().matchAll(VERB_AFTER_SUBJECT_G)].some((m) => singular(m[1]) === head)) return [];
   // A build named by two or more typed modifier words together ("dog house", "garden bench") is a compound class the engine
   // knows: the head noun does not unseat it, and dropping its words would build the head's bare class instead.
   if (name.length >= 2 && name.every((w) => modifiers.includes(w))) return [];
