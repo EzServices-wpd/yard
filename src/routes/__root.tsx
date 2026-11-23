@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { NotFound } from "@/components/site/not-found";
+import { VercelAnalytics } from "@/components/site/vercel-analytics";
 import { createRootRoute, HeadContent, Outlet, Scripts, retainSearchParams } from "@tanstack/react-router";
 import { TEST_FLAGS, pickTestFlags, type TestFlags } from "@/lib/ideas/testFlags";
 import { AuthProvider } from "@/lib/auth/provider";
@@ -11,7 +12,8 @@ const APP_NAME = "Yard";
 /** Production domain. Env override still wins if set on Vercel. */
 const host = (import.meta.env.VITE_PUBLIC_HOSTNAME as string | undefined) || "yard.wiki";
 const ogImage = `https://${host}/og.jpg`;
-const xBanner = `https://og.grok.me/v1/banner.png?host=${encodeURIComponent(host)}&title=${encodeURIComponent(APP_NAME)}`;
+/** The X banner, served from our own origin (public/x-banner.jpg, 1200 × 264): no meta points at a third-party host. */
+const xBanner = `https://${host}/x-banner.jpg`;
 
 
 /**
@@ -27,19 +29,6 @@ function LateFonts() {
     l.rel = "stylesheet";
     l.href = FONTS_CSS;
     document.head.appendChild(l);
-  }, []);
-  return null;
-}
-
-/** Vercel Web Analytics (free tier): Vercel's own script, served from this site's /_vercel path. No cookies. */
-function VercelAnalytics() {
-  useEffect(() => {
-    if (!/yard\.wiki$/.test(location.hostname) || document.querySelector("script[data-yard-va]")) return;
-    const s = document.createElement("script");
-    s.defer = true;
-    s.dataset.yardVa = "1";
-    s.src = "/_vercel/insights/script.js";
-    document.head.appendChild(s);
   }, []);
   return null;
 }
@@ -65,7 +54,9 @@ export const Route = createRootRoute({
       { title: "Page not found · Yard" },
       { name: "description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { property: "og:title", content: "Page not found · Yard" },
+      { property: "og:description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { name: "twitter:title", content: "Page not found · Yard" },
+      { name: "twitter:description", content: "That page isn't here. Type what you want to build, or browse Ideas." },
       { name: "robots", content: "noindex" },
     ],
     links: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }, { rel: "icon", href: "/favicon.ico", sizes: "any" }, { rel: "stylesheet", href: appCss }],

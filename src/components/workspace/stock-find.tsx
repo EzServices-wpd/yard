@@ -206,7 +206,7 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
                 onChange={(e) => setLengthIn(e.target.value)}
                 inputMode="decimal"
                 aria-label="Length in inches"
-                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none"
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/20 focus:ring-2"
               />
             </label>
             <label className="block text-xs text-muted">
@@ -216,7 +216,7 @@ export function StockFind({ query, onUse }: { query: string; onUse: (item: Catal
                 onChange={(e) => setAcrossIn(e.target.value)}
                 inputMode="decimal"
                 aria-label={round ? "Diameter in inches" : "Width in inches"}
-                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none"
+                className="mt-1 h-10 w-full rounded-md border border-border bg-bg px-3 text-sm text-fg outline-none ring-fg/20 focus:ring-2"
               />
             </label>
           </div>

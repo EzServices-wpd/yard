@@ -385,6 +385,11 @@ export type YardProject = {
   instances: YardInstance[];
   panels: Panel[];
   primaryMaterialId: string;
+  /**
+   * Built again in real stock because craft sticks were only its default (load-bearing, outdoor or person-sized). It keeps
+   * the craft build's shape signature: which words the engine read is judged on the build it would have made, not the lift.
+   */
+    craftLifted?: { kind: StructureKind; panels: number; instances: number; overall: { width: number; height: number; depth: number } };
   joinMethod?: JoinMethod;
   /** Shop join the person picked. Buy and steps follow this, not the stock default. */
   shopJoin?: "screw" | "pocket" | "dowel" | "biscuit" | "glue";

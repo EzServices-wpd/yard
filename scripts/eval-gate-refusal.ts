@@ -7,9 +7,7 @@
  *         builds instead of refusing, or a listed refusal that misses any of (1)-(4).
  * The gate only grades: the engine is untouched.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { lengthIn, type Demands } from "./eval-gate-typed.ts";
+import { lengthIn, type Demands } from "./eval-gate-typed";
 
 type Axis = "W" | "D" | "H";
 export type Minimum = { axis: Axis; value_in: number; quote: string };
@@ -22,11 +20,6 @@ type Grader = {
   checkBuild: (p: any, q: string, plan?: any) => { id: string }[];
   graded: (id: string) => boolean;
 };
-
-export function loadExpectedRefusals(root: string): ExpectedRefusals {
-  const f = join(root, "evals/expected-refusals.json");
-  return existsSync(f) ? JSON.parse(readFileSync(f, "utf8")).refusals : {};
-}
 
 const AXIS: Record<string, Axis> = { wide: "W", long: "W", deep: "D", tall: "H", high: "H" };
 const LEN = String.raw`(\d+\s+\d+\/\d+|\d+(?:\.\d+)?|\d+\/\d+)\s*(?:"|in(?:ches)?\b)?`;

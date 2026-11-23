@@ -15,6 +15,8 @@ import type { YardProject } from "./types";
 /** The marks a generic stand-in leaves: a placeholder, an unmatched body, a "simple X sized for it", the spine-only boat. */
 export function genericFormMark(p: YardProject): string | null {
   if (p.displayOnly) return "Not learned yet";
+  // The note says it in shop words after plainMakerTalk; the flag is the same mark.
+  if (p.unmatched) return "unmatched body";
   const notes = (p.notes ?? []).join(" / ");
   if (/No class matched/.test(notes)) return "unmatched body";
   if (/Yard built an? .{1,80}? as a simple /.test(notes)) return "simple stand-in";
@@ -62,7 +64,9 @@ export function engineBuiltForm(prompt: string, p: YardProject): boolean {
   if (genericFormMark(p) || p.standIn || p.unmatched) return false;
   // Hotfix #41: locked landmarks and a dedicated builder's custom build (submarine) are forms too.
   // Row 51 widened: a dedicated builder whose own name carries the typed head noun ("Train engine" for "a steam train").
-  return isLockedForm(p.kind) || p.kind === "custom" || !!resolvePurpose(prompt) || namedFormOwnsHead(prompt) || namedFormOwnsHead(withoutReadModifiers(prompt)) || !!detectWeekendMech(prompt) ||
+  // A build lifted out of craft sticks owns the form the craft build owned: the lift changes stock, never routing.
+  const kind = p.craftLifted?.kind ?? p.kind;
+  return isLockedForm(kind) || kind === "custom" || !!resolvePurpose(prompt) || namedFormOwnsHead(prompt) || namedFormOwnsHead(withoutReadModifiers(prompt)) || !!detectWeekendMech(prompt) ||
     builderNameCarries(p, prompt, typedHeadNoun(prompt));
 }
 
@@ -93,7 +97,8 @@ export function routesToLearner(prompt: string, p: YardProject, half: boolean): 
   // A real half-read ("lap desk" → Desk) still learns; "Dutch Windmill" / a purpose ask read every word.
   if (half && !readAll(prompt, p)) return true;
   if (engineKeepsPrompt(prompt, p, half)) return false;
-  const craftGuess = /popsicle|craft|stick/i.test(p.primaryMaterialId ?? "") && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
+  // A build lifted out of craft sticks (mustNotBeCraft) was still a craft guess: it routes as one.
+  const craftGuess = (p.craftLifted || /popsicle|craft|stick/i.test(p.primaryMaterialId ?? "")) && !/popsicle|craft|stick|toy|model|miniature|kids?'? craft/i.test(prompt);
   return craftGuess || needsRecipeLookup(p, prompt, engineOwnsForm(prompt, p), false);
 }
 

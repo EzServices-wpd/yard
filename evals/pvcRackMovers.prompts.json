@@ -496,6 +496,38 @@
       "prompt": "pvc pipe Spice rack"
     },
     {
+      "prompt": "Spice rack 18\" × 24\" × 4\""
+    },
+    {
+      "prompt": "Spice rack 18\" × 24\" × 4\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack 18\" × 24\" × 4\" from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack 18\" × 24\" × 4\""
+    },
+    {
+      "prompt": "pvc pipe Spice rack 18\" × 24\" × 4\""
+    },
+    {
+      "prompt": "Spice rack 30\" × 24\" × 4\""
+    },
+    {
+      "prompt": "Spice rack 30\" × 24\" × 4\"",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack 30\" × 24\" × 4\" from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack 30\" × 24\" × 4\""
+    },
+    {
+      "prompt": "pvc pipe Spice rack 30\" × 24\" × 4\""
+    },
+    {
       "prompt": "Spice rack 36\" × 24\" × 4\""
     },
     {
@@ -510,6 +542,38 @@
     },
     {
       "prompt": "pvc pipe Spice rack 36\" × 24\" × 4\""
+    },
+    {
+      "prompt": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "pvc pipe Spice rack · 18\" W × 4\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)",
+      "material": "pvc-3-4-sch40"
+    },
+    {
+      "prompt": "Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed) from pvc"
+    },
+    {
+      "prompt": "pvc Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)"
+    },
+    {
+      "prompt": "pvc pipe Spice rack · 30\" W × 4\" D × 24\" H (D, H assumed)"
     },
     {
       "prompt": "Spice rack · 36\" W × 4\" D × 24\" H (W, D assumed)"

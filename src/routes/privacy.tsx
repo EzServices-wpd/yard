@@ -24,6 +24,8 @@ export const Route = createFileRoute("/privacy")({
       },
       { property: "og:description", content: "How Yard uses cookies, analytics, affiliate links, and the prompts and feedback you send." },
       { property: "og:title", content: "Privacy · Yard" },
+      { name: "twitter:title", content: "Privacy · Yard" },
+      { name: "twitter:description", content: "How Yard uses cookies, analytics, affiliate links, and the prompts and feedback you send." },
       { property: "og:url", content: `https://${host}/privacy` },
     ],
     links: [{ rel: "canonical", href: `https://${host}/privacy` }],
@@ -107,6 +109,12 @@ function PrivacyPage() {
               anonymous recipe in Yard&apos;s Ideas library.
               A recipe holds only the shape, sizes and parts, never the words you typed or anything
               about your browser. Recipes stay in the library until we retire them.
+            </p>
+            <p className="mt-2">
+              Yard also counts which builds are opened, exported, sent to a store or rated, by a code
+              made from the build itself. The words you typed for that build are stored with that code
+              for 85 days. The counts of those events are kept for 3 days. None of this is tied to you,
+              your device or your IP address.
             </p>
             <p className="mt-2">Please don&apos;t put personal information in your prompt or note.</p>
           </section>

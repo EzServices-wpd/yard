@@ -11,7 +11,7 @@ import { rotorChain } from "./solids";
 import { doorHingeCount, hingeCenters } from "./hingedLeaf";
 import { leafDoor } from "./face";
 import { doorHingesLeft } from "./operateFaces";
-import { ANATOMY_NOTE } from "./classAnatomy";
+import { isAnatomyNote } from "./classAnatomy";
 import { panelWorldCorners } from "./geometry";
 import { partLetters } from "./pdfDraw";
 import { frac } from "./pdfKit";
@@ -930,7 +930,7 @@ export function withPlacementTalk(project: YardProject, plan: BuildPlan): BuildP
   // Door/window framing plans carry their own stud-layout numbers (kings, jacks, header) — see framing steps.
   if ((!project.panels.length && !project.instances.length) || !plan.instructions.length || project.windowPkg || project.kind === "opening") return plan;
   // Glued sheet figures (cardboard) are folded boxes; their steps place each box by hand, no marks or spacers.
-  if ((project.notes ?? []).some((n) => n.startsWith(ANATOMY_NOTE)) && project.kind === "figure") return plan;
+  if ((project.notes ?? []).some((n) => isAnatomyNote(n)) && project.kind === "figure") return plan;
   const pls = stepPlacements(project, plan.instructions, plan.cutList, plan.partsKind === "whole");
   const instructions = plan.instructions.map((s, i) => {
     const pl = pls[i];

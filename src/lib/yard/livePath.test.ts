@@ -5,7 +5,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, location: { search: "" } };
+(globalThis as { window?: unknown }).window = { setTimeout, clearTimeout, atob, btoa, location: { search: "" } };
 const { runYardPrompt } = await import("../../components/workspace/run-prompt");
 const { useYard } = await import("./store");
 const { SWEEPS } = await import("../../../scripts/class-sweep-prompts");

@@ -2,9 +2,9 @@ import { OPENING_SPACE } from "./fittedShared";
 import { withSaidHardware } from "./hardwareSaid";
 import { drawerBoxes, sheetWallT } from "./hollowDrawers";
 import { withTypedFinish } from "./typedFinish";
-import { checkedOffer, storeTermsFromBuy } from "./listings";
-import { CEDAR, checkedRow, HARDWARE } from "./checkedStock";
-import { boardNominal, boardPriceUsd, checkedSpeciesBoardUsd, pricedBoardId } from "./pricedStock";
+import { storeTermsFromBuy } from "./listings";
+import { checkedRow, HARDWARE } from "./checkedStock";
+import { boardNominal, boardPriceUsd, pricedBoardId } from "./pricedStock";
 import { buyComplete, stepTextForPlace } from "./buyComplete";
 import { unletterWhole } from "./wholeItems";
 import { withPartIds } from "./partIds";
@@ -17,7 +17,7 @@ import { featureBay } from "./heldObjects";
 import { hookCount, SCREWS_PER_HOOK } from "./hookCount";
 import { stepsDriveJointScrews, stepsStateJointScrews, BUY_JOINTS } from "./stepJointScrews";
 import { adjustableShelfTalk, isFixedSpanShelf } from "./shelfSpan";
-import { LAG_ROW, stepsInstallWallAnchors } from "./wallAnchorSteps";
+import { LAG_ROW, anchorKind, fastenerId, stepsInstallWallAnchors, tiedById } from "./wallAnchorSteps";
 import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { fractionizeInches, inchFrac } from "./inchText";
 import { positivePlan } from "./positiveWording";
@@ -25,8 +25,8 @@ import { usesHotGlue, hotGlueBom } from "./adhesive";
 import { fixedProfile, isWholeStock, panelWorldCorners, toPrimitive } from "./geometry";
 import { bomLinesFromForge, buildForgeBom, nestSheets } from "./bom";
 import { uniqueSteps } from "./uniqueSteps";
-import { decorateBom, estimateOffers } from "./listings";
-import { speciesBoardUsd, speciesOfBoardLabel } from "./speciesPrice";
+import { decorateBom, speciesBoardLine } from "./listings";
+import { speciesOfBoardLabel } from "./speciesPrice";
 import { binderBom, buyCatalogWays, countSlipFittings, effectiveJoin, screwBoxUnit, SCREWS_PER_BOX } from "./joints";
 import { applyOpenPipeFrame, openPipeDeal, openSplitAgrees } from "./openPipeJoints";
 import { withSocketCuts } from "./socketTakeoff";
@@ -48,6 +48,7 @@ import { planSolidBoards } from "./solidStock";
 import { packLengths } from "./linearPack";
 import { panelJoints, screwTalk } from "./modelJoints";
 import { withOutdoorPackage } from "./outdoor";
+import { plainPlanTalk } from "./plainMakerTalk";
 import { strangerPlainShopTalk, densifyKitCraftInstructions, densifyDrawerExplodeTalk, stampPartsPlate, speciesStockHonestyTalk, honestNamedLumberBuyWoodNote, densifyConfirmAssumedNotes, measureRefitTalk } from "./voiceHonesty";
 import type { AssemblyStep, BuildPlan, CatalogItem, CutLine, FeasibilityIssue, Panel, YardProject } from "./types";
 import { withPlacementTalk } from "./placement";
@@ -1677,8 +1678,40 @@ function foodContact(_project: YardProject, plan: BuildPlan): BuildPlan {
 }
 
 export function buildPlan(project: YardProject): BuildPlan {
+  // Then shop wording: step titles, descriptions and tips, after the screw pass has counted.
+  return plainPlanTalk(buildPlanUnworded(project));
+}
+
+/** The plan before shop wording: gates that read engine markers (a fallback step's tip) read this one. */
+export function buildPlanUnworded(project: YardProject): BuildPlan {
   // C12: the last pass: every store search a Buy row links to says that row's Buy name.
-  return storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project))));
+  return liftedFastenersById(project, storeTermsFromBuy(withPartIds(project, wholeItemsUncut(project, buildPlanOuter(project)))));
+}
+
+/**
+ * A build lifted out of craft sticks into real stock is new to Buy = steps: its screw, nail and brad lines are carried
+ * by id on the build steps that drive them (the I46 direction), so it never adds a word-tied fastener line.
+ */
+function liftedFastenersById(project: YardProject, plan: BuildPlan): BuildPlan {
+  if (!project.craftLifted) return plan;
+  const general = plan.bom.filter((b) => !tiedById(b) && !anchorKind(b) && /screw|nail|brad/i.test(b.name));
+  if (!general.length) return plan;
+  const driving = plan.instructions.filter((s) => !/^(?:Cut|Confirm)\b/i.test(s.title) && /\b(?:screws?|nails?|brads?|fasten)\b/i.test(`${s.title} ${s.description ?? ""}`));
+  const steps = driving.length ? driving : plan.instructions.filter((s) => !/^(?:Cut|Confirm|Level)\b/i.test(s.title)).slice(0, 1);
+  if (!steps.length) return plan;
+  const share = (b: (typeof general)[number], k: number) => {
+    // The joint count Buy states (I46 checks the steps sum to it); else the line's own quantity.
+    const joints = Number(b.notes?.match(/(\d+) screws from the model's joints/)?.[1] ?? NaN);
+    const n = Number.isFinite(joints) ? joints : Math.max(1, Math.round(b.quantity));
+    return Math.floor(n / steps.length) + (k < n % steps.length ? 1 : 0);
+  };
+  const instructions = plan.instructions.map((s) => {
+    const k = steps.indexOf(s);
+    if (k < 0) return s;
+    const add = general.map((b) => ({ id: fastenerId(b), qty: share(b, k) })).filter((f) => f.qty > 0);
+    return add.length ? { ...s, fastenersUsed: [...(s.fastenersUsed ?? []), ...add] } : s;
+  });
+  return { ...plan, instructions };
 }
 
 /**
@@ -1999,35 +2032,11 @@ export function buyReadsModel(plan: BuildPlan): BuildPlan {
       const notes = b.notes.replace(/Cut to: (?:(?! · ).)*/, `Cut to: ${list}`);
       if (notes !== b.notes) line = { ...line, notes };
     }
-    const species = speciesOfBoardLabel(line.name);
-    const catalog = line.catalogId ? getCatalogItem(line.catalogId) : undefined;
-    const sold = catalog?.unitCostUsd != null && catalog.unitCostUsd > 0;
-    // Species price is per 1×4; a wider named board (Cedar 1×6) scales by its real face and keeps its size in the search.
-    const face = catalog?.dims.width ?? 3.5;
-    const thick = catalog?.dims.height ?? 0.75;
-    const size = line.name.match(/([1-4])\s*[×x]\s*(\d+)/)?.slice(1).join("x") ?? "1x4";
-    const piece = thick >= 3 ? "post" : "board";
-    const per1x4 = sold && species && species.id !== "pine" ? speciesBoardUsd(species) : null;
-    const each = per1x4 != null ? Math.round(per1x4 * ((face * thick) / (3.5 * 0.75)) * 100) / 100 : null;
-    if (each != null && line.quantity > 0) {
-      const total = Math.round(each * line.quantity * 100) / 100;
-      const query = `${species!.display} ${size} ${piece} 8 ft`;
-      line = { ...line, estimatedCost: total, searchQuery: query, offers: estimateOffers(query, line.quantity, total) };
-      changed = true;
-    } else if (species && species.id !== "pine" && catalog?.category === "lumber") {
-      const query = `${species.display} ${size} ${piece} 8 ft`;
-      // A checked listing for this species and this board (cedar 1×6) is the price. A missing listing stays unpriced.
-      const checked = !(line.estimatedCost != null && line.estimatedCost > 0) ? checkedSpeciesBoardUsd(line.catalogId ?? "", species.id) : null;
-      const listing = checked != null ? CEDAR[line.catalogId ?? ""] : undefined;
-      if (listing && line.quantity > 0) {
-        const { offers, lineTotal } = checkedOffer(listing, line.quantity);
-        const notes = line.notes?.replace(/ · No price — plus unpriced items/g, "");
-        line = { ...line, estimatedCost: lineTotal, offers, searchQuery: query, ...(notes != null ? { notes } : {}) };
-        changed = true;
-      } else {
-        // Unpriced row (no fake price): the search still names the species and size that was typed.
-        line = { ...line, searchQuery: query };
-      }
+    // A named species board is priced as that species: the one rule decorateBom uses (speciesBoardLine).
+    const species = speciesBoardLine(line, line.catalogId);
+    if (species) {
+      if (species.estimatedCost !== line.estimatedCost || species.searchQuery !== line.searchQuery || species.notes !== line.notes) changed = true;
+      line = species;
     }
     return line;
   });

@@ -8,7 +8,7 @@ import { binderKind, SLIP_FITTING_IDS } from "./joints";
 import { bearingFailures, glueUpFailures, boardSection, buildRecipe, ROUND_WORD, validateRecipe } from "./recipeBuild";
 import { recipePrompt } from "./recipeIdeas";
 import type { Recipe } from "./recipes";
-import { buildPlan, cutStepCount, dedupeBuy, duplicateBuyLines, overlongCuts } from "./report";
+import { buildPlan, buildPlanUnworded, cutStepCount, dedupeBuy, duplicateBuyLines, overlongCuts } from "./report";
 import { isOutdoorPrompt } from "./outdoor";
 import type { BuildPlan, Panel } from "./types";
 import { generateFromPrompt } from "./promptMain";
@@ -63,7 +63,7 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
   }
   fail.push(...definingFailures(recipe, built.project, plan));
   fail.push(...hingeDrift(plan));
-  fail.push(...mountParentFailures(built.project, plan));
+  fail.push(...mountParentFailures(built.project, buildPlanUnworded(built.project)));
   fail.push(...wallHangFailures(built.project, plan));
   fail.push(...shallowShelfFailures(built.project));
   // A learned open frame that is still tippy (a typed depth too shallow to stand) is not certified.
@@ -93,7 +93,8 @@ export function learnedRecipeFailures(recipe: Recipe, prompt = recipePrompt(reci
     if (hit) fail.push(`fitted wording "${hit[0]}" on a freestanding build`);
   }
   // Every part has a real step: no "not yet in a step" fallback.
-  if (plan.instructions.some((s) => /not yet in a step/i.test(`${s.tips ?? ""} ${s.description}`))) fail.push("a part has only a fallback step");
+  // Read before shop wording: the published plan drops the marker sentence.
+  if (buildPlanUnworded(built.project).instructions.some((s) => /not yet in a step/i.test(`${s.tips ?? ""} ${s.description}`))) fail.push("a part has only a fallback step");
   // A ring floats unless some other part reaches across its open centre to the rim (spokes, a web).
   for (const ring of panels.filter((p) => p.polygon?.holes?.length && recipe.parts.some((q) => q.shape === "ring" && (q.name === p.name || q.name === p.name.replace(/ \d+$/, ""))))) {
     const [a, b] = ring.polygon!.plane === "zy" ? (["z", "y"] as const) : ring.polygon!.plane === "xy" ? (["x", "y"] as const) : (["x", "z"] as const);

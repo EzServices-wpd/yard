@@ -1,6 +1,7 @@
 import { STOP, headPhrase, sentenceCase, typedHeadNoun } from "./headNoun";
-import { genericFormMark } from "./formOwnership";
 import { seedIds } from "../stableId";
+import { partsAboveStatedHeight } from "./partsWithinHeight";
+import { carriesBind, classAxisBind } from "./classAxisBind";
 import { hollowDrawers } from "./hollowDrawers";
 import { withFeatureNotes } from "./typedFeatures";
 import { resolvePurpose } from "./purposeForms";
@@ -15,7 +16,8 @@ import { sizePhrases } from "./sizePhrases";
 import { buildUnitItem, unitItemAsk } from "./unitItems";
 import { boundPrompt } from "./promptLimits";
 import { builderOwnText, READ_MODIFIER } from "./builderName";
-import { FORM_NEUTRAL } from "./genericBox";
+import { FORM_NEUTRAL, genericBoxOverAsk } from "./genericBox";
+import { genericFormMark } from "./formOwnership";
 import { findRecipe } from "./recipes";
 import { buildRecipe, exteriorBoards, typedSize } from "./recipeBuild";
 import { stabilizeOpenFrame } from "./openFrame";
@@ -29,7 +31,7 @@ import { hooksShowInModel } from "./boughtHardware";
 import { bedCourses, CASTER_H, mobilityAsk, takesCasters, withCasters, withMount } from "./typedModifiers";
 import { spokenJoin } from "./shopJoin";
 import { projectBoxes } from "./contact";
-import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
+import { buildJobFurniture, wantsJobFurniture, wantsRealStockDefault, mustNotBeCraft, realStockFor, REAL_STOCK_NOTE, wantsRealShelterDefault, REAL_SHELTER_NOTE } from "./jobFurniture";
 import { solveModel } from "./solve";
 import { createId } from "@/lib/utils";
 import { FORGE_CATALOG, getCatalogItem } from "./catalog";
@@ -47,6 +49,7 @@ import { climbIdentityLabel, detectHouseFamily, isAvTower, isBedsideShelf, isHou
 import { climbRiseRun, climbStepCount, isAccessRamp, figureWordModifiesHead, detectWeekendFamily, detectWeekendMech, isClimbSingleStep, isClimbStepStool, isLauncherRamp, launcherRampLengthIn, mediaTipTalk, mediaHoldHeldLabel, wantsMediaTipHold, wantsClimbHandrail, weekendUsesLatticeGraph } from "./weekendFamily";
 import { classifyAnatomy } from "./anatomy";
 import { publishAssumedSize, typedAxisFlags } from "./assumedRecord";
+import { plainMakerTalk } from "./plainMakerTalk";
 import { normalizeUserPrompt, strangerPlainShopTalk } from "./voiceHonesty";
 import { axisOrderNote, enforceHonesty, typedExtents } from "./honesty";
 import { cutsToSpans, enforceWeekendHonesty, applyNamedLumberPrimaryHonesty, applyExplicitBoardCarcase, applyExplicitSheetCarcase, typedStockKeptNote, withSpeciesTitle, withPlainStockNotes } from "./weekendStockHonesty";
@@ -447,11 +450,65 @@ export function generateFromPrompt(...args: Parameters<typeof generateRaw>): Yar
     if (ratio) return { ...emptyProject(), name: ratio.name, prompt: typedAtIntake, kind: "bridge", primaryMaterialId: (args[1] && getCatalogItem(args[1])?.id) || detectMaterial(typedAtIntake).id, refused: ratio.why, cardNote: ratio.why };
     // Every drawer leaves the engine as a hollow five-part box (the finished model, once, at the outermost call).
     // 5a: the typed head noun picks the class. A build named for a word before it is built again without that word.
-    const first = generateSeeded(...args);
-    const modifiers = idDepth === 1 ? modifierNamedWords(typedAtIntake, first) : [];
-    const retry = modifiers.length ? generateSeeded(withoutHeadPhraseWords(typedAtIntake, modifiers), ...(args.slice(1) as [])) : null;
+    // The choice is read on the raw build. A size with no axis, and a lift out of craft stock, then run on the class that was kept.
+    const firstRaw = generateSeeded(...args);
+    const modifiers = idDepth === 1 ? modifierNamedWords(typedAtIntake, firstRaw) : [];
+    const retryPrompt = modifiers.length ? withoutHeadPhraseWords(typedAtIntake, modifiers) : null;
+    const retry = retryPrompt ? generateSeeded(retryPrompt, ...(args.slice(1) as [])) : null;
+    const nounSwap = !!(retry && retryPrompt && headNounClass(retry, typedAtIntake));
+    const first = nounSwap && retry ? { ...retry, prompt: firstRaw.prompt } : firstRaw;
+    const intakeText = nounSwap && retryPrompt ? retryPrompt : typedAtIntake;
+    // 5b: a size typed with no axis binds the class's own axes (lead axis alone, the plan for a pair).
+    const axisBind = idDepth === 1 ? classAxisBind(intakeText, first) : null;
+    const rebound = axisBind?.prompts.map((q) => ({ q, p: generateSeeded(q, ...(args.slice(1) as [])) })).find((x) => carriesBind(x.p, axisBind));
+    const seeded0 = rebound ? { ...rebound.p, prompt: first.prompt } : first;
+    // Craft sticks are a default only for a model. A build that came out in craft stock with none typed, for
+    // something load-bearing, outdoors or sized for a person, is built again in real stock (boards outdoors,
+    // ¾" plywood indoors). A sheet that would also change the build's kind is built in 1×4 boards instead.
+    // The lift rebuilds the prompt that carries the bind, so a typed size survives the stock change.
+    const craftBuilt = (p: YardProject) => /^(?:popsicle|craft|toothpick|bamboo-skewer|straw|balsa|cardboard|chipboard)/.test(p.primaryMaterialId ?? "");
+    const liftPrompt = rebound?.q ?? intakeText;
+    // A sheet rebuild that comes back as a closed shell of a different kind changed the form, not the stock
+    // (a stick bicycle routed into a plywood shell). Boards keep that kind. A shell of the same kind stays
+    // the sheet the stock rule asked for (an armoire keeps its typed width).
+    const closedShell = (p: YardProject) => (p.notes ?? []).some((n) => /closed shell of the typed envelope/i.test(n));
+    const liftStock = () => {
+      const prefer = realStockFor(intakeText);
+      const inStock = (stock: string) => {
+        const built = generateSeeded(liftPrompt, stock, ...(args.slice(2) as []));
+        if (axisBind && !carriesBind(built, axisBind)) return null;
+        return liftPrompt === intakeText ? built : { ...built, prompt: first.prompt };
+      };
+      const sheet = inStock(prefer);
+      if (sheet && prefer !== "lumber-1x4-8" && closedShell(sheet) && !closedShell(seeded0) && sheet.kind !== seeded0.kind) {
+        const boards = inStock("lumber-1x4-8");
+        if (boards && !closedShell(boards) && boards.kind === seeded0.kind) return boards;
+      }
+      return sheet;
+    };
+    // releaseReads text (an arch, a comma, a hyphenated inch) keeps the build release's readers made, stock
+    // included. Rebuilding it in another stock re-reads the span (a 2-foot garden arch became a 64" portal).
+    // split-X: a lift is kept only where it comes out a real build of the asked form. A lift that lands on a generic
+    // stand-in (a closed shell of the typed envelope, the stick-lattice model builder (a note or the lattice kind), an unmatched body, the fallback box over another ask) keeps the
+    // build release made, with its own honest note, so craft sticks are never swapped for a pricier wrong object.
+    // A dedicated scale-model builder (a wheels-block vehicle, a towers-block castle or fort) keeps its model form in any
+    // stock: re-stocking it gives a toy at model scale in boards (a 12" fort with $200 of screws), never the real build.
+    const MODEL_BUILDER_KINDS = new Set<string>(["vehicle", "castle"]);
+    const liftWanted = idDepth === 1 && !args[1] && craftBuilt(seeded0) && mustNotBeCraft(intakeText) && !releaseReads(intakeText);
+    const lifted = liftWanted ? liftStock() : null;
+    const standInLift = !!lifted && (!!genericFormMark(lifted) || !!lifted.standIn || !!lifted.unmatched || closedShell(lifted) || seeded0.kind === "lattice" || MODEL_BUILDER_KINDS.has(seeded0.kind) || (lifted.notes ?? []).some((n) => /built from short sticks braced together/i.test(n)) || genericBoxOverAsk(intakeText, lifted));
+    const seededBuilt = (() => {
+      if (!lifted || standInLift) return seeded0;
+      const marked = {
+        ...lifted,
+        craftLifted: { kind: seeded0.kind, panels: seeded0.panels.length, instances: seeded0.instances.length, overall: seeded0.overall },
+      };
+      const stated = withinStatedHeight(marked);
+      if (!axisBind || carriesBind(stated, axisBind)) return stated;
+      return carriesBind(marked, axisBind) ? marked : seeded0;
+    })();
     // Only a class of the head noun's own replaces the build; a head noun with no class keeps it (5c, unknown nouns).
-    const seeded = retry && headNounClass(retry, typedAtIntake) ? retitledEcho(retry, typedAtIntake, modifiers, first.prompt) : first;
+    const seeded = nounSwap ? retitledEcho(seededBuilt, typedAtIntake, modifiers, firstRaw.prompt) : seededBuilt;
     const raw0 = idDepth === 1 ? withFeatureNotes(hollowDrawers(seeded), args[0]) : seeded;
     // I38: a typed size too small to hold its parts is refused, naming the smallest size that builds (tooSmall.ts).
     const rebuild = (q: string) => generateFromPrompt(q, ...(args.slice(1) as []));
@@ -585,8 +642,11 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
       .filter((n) => !ENGINE_NOTE.test(n))
       .map((n) => n.replace(/^(\d+ glue joints?) hold \d+ pieces?$/, (_m, j: string) => `${j} hold ${pieces} piece${pieces === 1 ? "" : "s"}`))
       .map(positiveSentence)
-      // Notes are said in plain shop words, the same as the steps ("the carcase" → "the main box").
-      .map(strangerPlainShopTalk),
+      // Notes are said in plain shop words, the same as the steps ("the carcase" → "the main box",
+      // "from the model's joints" → "where the parts meet").
+      .map(strangerPlainShopTalk)
+      .map(plainMakerTalk)
+      .filter(Boolean),
   };
   const built = done.typedPrompt ? { ...tidy, typedPrompt: said } : tidy;
   // Title rule: the species reaches the title when a lumber size was typed ("cedar 1x6", any builder) or
@@ -2414,7 +2474,7 @@ function craftDisplay(project: YardProject, prompt: string): YardProject {
   const item = getCatalogItem(project.primaryMaterialId);
   const stock = `${item?.name ?? ""} ${item?.id ?? ""} ${prompt}`.toLowerCase();
   if (!CRAFT_STOCK.test(stock) || !LOADED.test(prompt.toLowerCase())) return project;
-  if ((project.notes ?? []).some((note) => note.startsWith("This is a display model"))) return project;
+  if ((project.notes ?? []).some((note) => note.startsWith("This is a display model") || note.startsWith("This is a display piece"))) return project;
   const lower = prompt.toLowerCase();
   const hold = /planter|outdoor|porch/.test(lower) ? HOLDS.planter : /shelf|rack/.test(lower) ? HOLDS.shelf : HOLDS.stool;
   const holdStockId = /planter|outdoor|porch/.test(lower) ? "lumber-1x4-8" : /shelf|rack/.test(lower) ? "plywood-3-4-4x8" : "lumber-2x4-8";
@@ -2523,6 +2583,16 @@ const SAME_OBJECT = /\b(rocket)\s+ship\b/g;
 const STOCK_PHRASE = /\bbutcher[\s-]+block\b/g;
 /** Common misspellings of a builder's own name. */
 const SPELLING: [RegExp, string][] = [[/\banderson\b/g, "andersen"]];
+/**
+ * A build lifted into real stock states the height its parts reach: a stand-in sized for sticks, rebuilt in ¾" boards,
+ * can stand a board's thickness taller than the size it was given (the stated size is the parts' envelope).
+ */
+function withinStatedHeight(p: YardProject): YardProject {
+  const over = partsAboveStatedHeight(p);
+  if (!over.length || p.pocket?.unit) return p;
+  return { ...p, overall: { ...p.overall, height: p.overall.height + Math.max(...over.map((o) => o.over)) } };
+}
+
 const STORAGE_PROGRAM = /^(?:closet|pantry|wardrobe|bookcase|storage|linen)$/;
 
 const singular = (w: string) => w.replace(/(?<!s)s$/, "");
@@ -2618,7 +2688,11 @@ export function ignoredTypedWords(project: YardProject, prompt: string): string[
     .replace(/[a-z]+/g, (w) => SPELLING.reduce((x, [re, to]) => x.replace(re, to), w)).split(/\s+(?:with|for|from|of|out|in|that|to|made|using|on|at|by|x)\s+|\s*\d/)[0];
   // Row 51: the size is part of the signature. A word read as a size ("knee high", "as wide as a queen bed", "a full
   // sheet of plywood") changes the build's overall size, so it is read, not ignored.
-  const sig = (q: YardProject) => `${q.kind}|${q.panels.length}|${q.instances.length}|${q.overall.width}|${q.overall.height}|${q.overall.depth}`;
+  // A build lifted out of craft sticks is judged on the craft build it replaced: the lift reads no word.
+  const sig = (q: YardProject) => {
+    const s = q.craftLifted ?? { kind: q.kind, panels: q.panels.length, instances: q.instances.length, overall: q.overall };
+    return `${s.kind}|${s.panels}|${s.instances}|${s.overall.width}|${s.overall.height}|${s.overall.depth}`;
+  };
   // Row 51 widened: the builder owns its own name (not a title that only echoes the typed words) and its kind's nouns.
   const own = builderOwnText(project, prompt);
   // Row 51: on a fitted carcase, a carcase noun ("closet organizer", "over the toilet cabinet") names the carcase itself.

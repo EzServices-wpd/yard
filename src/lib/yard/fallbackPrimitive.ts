@@ -5,6 +5,7 @@
  * Universal by word class, so any new noun with a known head word lands well.
  */
 import { landmarkTitle } from "./formLandmarks";
+import { placePair } from "./sizePhrases";
 import type { YardProject } from "./types";
 
 type Prim = { phrase: string; label: string; size: [number, number, number] };
@@ -132,7 +133,7 @@ export function looksLikeFallback(project: YardProject, noun: string): boolean {
   }
   // Toy-scale nouns keep craft stock; remapping them to plywood is the honesty bug.
   if (TOY.test(lower)) return false;
-  if (/popsicle/.test(project.primaryMaterialId ?? "")) return true;
+  if (project.craftLifted || /popsicle/.test(project.primaryMaterialId ?? "")) return true;
   // A body with no class (lies along its long axis) is the fallback a known head noun replaces.
   if (project.unmatched) return true;
   const name = (project.name ?? "").toLowerCase().replace(/\s+/g, "");
@@ -185,12 +186,18 @@ export function fallbackNote(noun: string, label: string): string {
 }
 
 export function primitivePrompt(p: Prim, prompt: string): string {
-  const pick = (re: RegExp, d: number) => {
+  // A size bound to a place fills the axes that kind names. The primitive's own number fills the rest.
+  // A labeled axis word still wins.
+  const place = placePair(prompt);
+  const pick = (re: RegExp, axis: "width" | "height" | "depth", d: number) => {
     const m = prompt.match(re);
-    return m ? Number(m[1]) : d;
+    if (m) return Number(m[1]);
+    if (place && axis === "width") return place.width;
+    if (place && axis === place.otherAxis) return place.other;
+    return d;
   };
-  const w = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*wide/i, p.size[0]);
-  const h = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tall|high)/i, p.size[1]);
-  const d = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*deep/i, p.size[2]);
+  const w = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*wide/i, "width", p.size[0]);
+  const h = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*(?:tall|high)/i, "height", p.size[1]);
+  const d = pick(/(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?)?\s*deep/i, "depth", p.size[2]);
   return `${p.phrase} ${w} wide ${h} tall ${d} deep`;
 }

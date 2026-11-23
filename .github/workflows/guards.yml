@@ -126,6 +126,10 @@ jobs:
       - name: Install
         run: npm ci
 
+      # scripts/build-events.test.ts runs EVENT_GATE_LUA with the real interpreter.
+      - name: Lua
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua5.4
+
       # Includes invariants I1-I14 + eval scoreboard, the I37 hunter (known hits in evals/hunter-baseline.json)
       # and the weekend canaries, which used to run a second time as their own steps.
       # N comes from the matrix itself, so adding a shard can never leave files unrun.

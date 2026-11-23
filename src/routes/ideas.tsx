@@ -18,6 +18,7 @@ export const Route = createFileRoute("/ideas")({
       { property: "og:title", content: "Ideas · Yard" },
       { property: "og:description", content: "Build ideas for Yard: shelves, benches, toys and weekend projects, each with a model, cut list and Buy list." },
       { name: "twitter:title", content: "Ideas · Yard" },
+      { name: "twitter:description", content: "Build ideas for Yard: shelves, benches, toys and weekend projects, each with a model, cut list and Buy list." },
       ...canonical("/ideas").meta,
     ],
     links: canonical("/ideas").links,
