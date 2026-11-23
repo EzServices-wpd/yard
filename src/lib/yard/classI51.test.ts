@@ -106,7 +106,7 @@ test("I51 fires when a sheet is opened for a kick strip that fits an earlier she
 });
 
 test("I51 (Critic #175): a strip is turned only when that saves a sheet; on a tie the grain-kept layout is used", () => {
-  for (const [q, usd] of [["sink base cabinet 51 wide", "428.38"], ["desk organizer", "356.99"], ["bathroom vanity 43 wide", "159.23"], ["kitchen island 48 long 22 deep 36 tall with slat shelf", "303.01"]] as const) {
+  for (const [q, usd] of [["sink base cabinet 51 wide", "428.38"], ["desk", "356.99"], ["bathroom vanity 43 wide", "159.23"], ["kitchen island 48 long 22 deep 36 tall with slat shelf", "303.01"]] as const) {
     assert.deepEqual(turned(q), [], q);
     assert.equal(plan(q).totals.estCostUsd.toFixed(2), usd, q);
     assert.equal(plan(q).cutList.some((c) => /across the grain/.test(c.notes ?? "")), false, q);

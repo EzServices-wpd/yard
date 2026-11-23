@@ -7,9 +7,9 @@
   "fail": 89,
   "points": 804,
   "maxPoints": 1022,
-  "honored": 930,
+  "honored": 932,
   "checkable": 981,
-  "honorPct": 94.8
+  "honorPct": 95
  },
  "canaries": {
   "ok": true,
@@ -2374,9 +2374,9 @@
    "fail": 38,
    "points": 108,
    "maxPoints": 200,
-   "honored": 180,
+   "honored": 182,
    "checkable": 206,
-   "honorPct": 87.4
+   "honorPct": 88.3
   },
   "live-walk": {
    "prompts": 42,
@@ -2446,10 +2446,10 @@
   }
  },
  "byClass": {
-  "H-standin": 34,
-  "F21": 24,
-  "T-noun": 19,
-  "F1": 18,
+  "H-standin": 35,
+  "F21": 25,
+  "F1": 17,
+  "T-noun": 17,
   "F12": 14,
   "F17": 14,
   "F3": 11,
@@ -12559,32 +12559,52 @@
    "grade": "fail",
    "classes": [
     "F17",
-    "T-noun"
+    "H-standin"
    ],
-   "header": "Desk · 48\" W × 24 3/4\" D × 29\" H (size assumed)",
-   "overall": "48W × 24D × 29H",
-   "pieces": 41,
-   "usd": 356.99,
+   "header": "Desk organizer · 24\" W × 6\" D × 12\" H (size assumed)",
+   "overall": "24W × 6D × 12H",
+   "pieces": 3,
+   "usd": 51.44,
    "honor": {
-    "honored": 0,
+    "honored": 1,
     "checkable": 1,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
      {
       "demand": "noun \"desk organizer\"",
       "kind": "noun",
-      "ok": false,
-      "shows": "Desk 48\" × 29\" × 24\""
+      "ok": true,
+      "shows": "Desk organizer 24\" × 12\" × 6\""
      }
     ]
    },
    "invariants": [
     {
-     "id": "I23",
+     "id": "I22",
      "cls": "F17",
-     "msg": "the engine builds this form, but the live path sends it to the learner",
+     "msg": "names \"Table\" but built a simple stand-in",
      "known": false,
      "scored": true
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: simple stand-in (model)",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I37",
+     "cls": "F9",
+     "msg": "no-class: stand-in body (model)",
+     "known": false,
+     "scored": false
+    }
+   ],
+   "honest": [
+    {
+     "cls": "H-standin",
+     "msg": "simple stand-in: \"Desk organizer 24\" × 12\" × 6\"\" is not the asked-for object"
     }
    ]
   },
@@ -19214,46 +19234,94 @@
    ],
    "grade": "fail",
    "classes": [
-    "F1",
-    "T-noun"
+    "F21"
    ],
-   "header": "Deck · 72\" W × 120\" D × 26 1/4\" H (D, H assumed)",
-   "overall": "72W × 120D × 26.25H",
-   "pieces": 47,
-   "usd": 571.16,
+   "header": "Storage box 72\" wide · 72\" W × 16\" D × 30\" H (D, H assumed)",
+   "overall": "72W × 16D × 30H",
+   "pieces": 8,
+   "usd": 240.81,
    "honor": {
-    "honored": 1,
+    "honored": 2,
     "checkable": 2,
     "demandsFrom": "grok-spec-2026-10-19",
     "items": [
      {
       "demand": "noun \"outdoor deck storage box\"",
       "kind": "noun",
-      "ok": false,
-      "shows": "Deck 6' × 10'"
+      "ok": true,
+      "shows": "Storage box 72\" wide"
      },
      {
       "demand": "size \"6 foot\" L=72",
       "kind": "size",
       "ok": true,
-      "shows": "72W×120D×26.25H"
+      "shows": "72W×16D×30H"
      }
     ]
    },
    "invariants": [
     {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist back reaches neither the floor nor a wall",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Back is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
     },
     {
-     "id": "I1",
-     "cls": "F1",
-     "msg": "Rim joist front reaches neither the floor nor a wall",
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Bottom is interior plywood on the ground outdoors",
      "known": false,
      "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Front is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Left side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I13",
+     "cls": "F21",
+     "msg": "Right side is interior plywood on the ground outdoors",
+     "known": false,
+     "scored": true
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Back runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front runs into Center support 1 with no joint cut for it",
+     "known": false,
+     "scored": false
+    },
+    {
+     "id": "I26",
+     "cls": "F30",
+     "msg": "Front runs into Center support 2 with no joint cut for it",
+     "known": false,
+     "scored": false
     }
    ]
   },
