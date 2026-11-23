@@ -341,30 +341,84 @@ function pairScrews(joints: Joint[], as: Set<string>, bs: Set<string>, at: Map<s
 const JOIN_N =
   /\b((?:attach|fasten)\s+(?:the\s+)?)(.+?)\s+to\s+(?:the back edges of\s+)?(.+?)\s+with\s+(\d+)\s+×\s+(#8\s+×\s+[\d/ ]+"\s+screws)(\s+\(\d+\s+per\s+\w+\))?/i;
 
+/** Shop words for a part the cut list does not letter in the sentence ("both uprights", "the aprons"). */
+function familyPanels(phrase: string, project: YardProject): Panel[] | null {
+  const words = phrase.toLowerCase().match(/\b(?:uprights?|legs?|aprons?)\b/g);
+  if (!words) return null;
+  const word = words[words.length - 1].replace(/s$/, "");
+  const hit = project.panels.filter((p) => {
+    if (word === "upright") return p.type === "upright" || /\buprights?\b/i.test(p.name);
+    if (word === "leg") return /\blegs?\b/i.test(p.name);
+    return /\baprons?\b/i.test(p.name);
+  });
+  return hit.length ? hit : null;
+}
+
+function phrasePanels(phrase: string, project: YardProject, cutList: BuildPlan["cutList"]): Panel[] | null {
+  return letterPanels(phrase, project, cutList) ?? familyPanels(phrase, project);
+}
+
+/** Screws of these parts that close on one step (or on any step). */
+function screwsTouching(joints: Joint[], ids: Set<string>, at: Map<string, number>, onlyStep: number | null): number {
+  let n = 0;
+  for (const j of joints) {
+    if (!j.screws) continue;
+    if (!ids.has(j.a) && !ids.has(j.b)) continue;
+    if (onlyStep != null) {
+      const a = at.get(j.a);
+      const b = at.get(j.b);
+      if (a == null || b == null || Math.max(a, b) !== onlyStep) continue;
+    }
+    n += j.screws;
+  }
+  return n;
+}
+
+/** Take the "with N × #8 … screws" span off a sentence, including a trailing "per end". */
+function dropWithCount(sentence: string, m: RegExpMatchArray): string {
+  const hw = m[5];
+  const old = `with ${m[4]} × ${hw}${m[6] ?? ""}`;
+  const at = sentence.indexOf(old);
+  if (at < 0) return sentence;
+  const tail = sentence.slice(at + old.length).match(/^\s+per\s+\w+/);
+  const end = at + old.length + (tail?.[0].length ?? 0);
+  return `${sentence.slice(0, at)}${sentence.slice(end)}`.replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
+}
+
 /**
  * A "with N" that sums every joint between the named parts, including joints a later step closes,
  * or every same-size namesake, is a running total. N becomes the screws those named parts close in this step.
- * A smaller N (2 per end) is the clause's own count and stays.
+ * A smaller N (2 per end) is the clause's own count and stays when this step closes some of that pair.
+ * A stamped N for a pair this step does not close (a drawer tray, a 2x2 apron, a top too thin to screw) comes off.
  */
 function capJoinSentence(sentence: string, i: number, project: YardProject, cutList: BuildPlan["cutList"], at: Map<string, number>, joints: Joint[]): string {
   const m = sentence.match(JOIN_N);
   if (!m) return sentence;
   const n = Number(m[4]);
-  const sub = letterPanels(m[2], project, cutList);
-  const obj = letterPanels(m[3], project, cutList);
-  if (!sub || !obj) return sentence;
+  const sub = phrasePanels(m[2], project, cutList);
+  const obj = phrasePanels(m[3], project, cutList);
+  if (!sub) return sentence;
+  if (!obj) {
+    // "to both uprights" with no letter: the stamped N is this part's screws only when it matches them.
+    const here = screwsTouching(joints, new Set(sub.map((p) => p.id)), at, i);
+    if (here < n) return dropWithCount(sentence, m);
+    return sentence;
+  }
   const as = new Set(sub.map((p) => p.id));
   const bs = new Set(obj.map((p) => p.id));
   const all = pairScrews(joints, as, bs, at, null);
   const here = pairScrews(joints, as, bs, at, i);
+  // None of this pair closes here: the stamped count is not this step's joins.
+  if (here === 0) return dropWithCount(sentence, m);
   // Only the joints of this named pair that close on another step come out of N.
   // An N larger than the pair is left alone: those screws belong to parts the words did not resolve.
+  // A smaller N (2 per end) is this step's own count and stays.
   const elsewhere = all - here;
   if (!(all > 0) || elsewhere <= 0 || n < all) return sentence;
   const next = n - elsewhere;
   const hw = m[5];
   const old = `with ${m[4]} × ${hw}${m[6] ?? ""}`;
-  if (next <= 0) return sentence.replace(old, "").replace(/\s{2,}/g, " ").replace(/\s+([,.;])/g, "$1").trim();
+  if (next <= 0) return dropWithCount(sentence, m);
   if (next >= n) return sentence;
   let per = m[6] ?? "";
   const word = per.match(/per\s+(\w+)/i)?.[1];
@@ -392,13 +446,26 @@ function recount(steps: AssemblyStep[], at: Map<string, number>, joints: Joint[]
   const out = steps.map((s, i) => ({ ...s, description: capOverclaimedJoins(stripAccounting(s.description ?? ""), i, project, plan.cutList, at, joints) }));
   out.forEach((s, i) => {
     const want = per.get(i) ?? 0;
+    // A single stamped "with N" bigger than the joints this step closes (a back that also names
+    // pinned shelves) is that step's own count, not a second total.
+    const over = [...s.description.matchAll(/with (\d+) × (#8 × [\d/ ]+" screws)(?: \(\d+ per \w+\))?/g)];
+    if (over.length === 1 && want > 0 && Number(over[0][1]) > want) {
+      s.description = s.description.replace(over[0][0], `with ${want} × ${over[0][2]}`);
+    }
     const have = contribution(s.description);
     if (have === want) return;
     if (firstDrive(s.description) != null) return;
     const stated = statedWith(s.description);
     let extra = "";
-    if (want === 0 && stated > 0) extra = "These screws are counted in another step's total.";
-    else if (want > 0 && stated > 0) extra = `In all, this step drives ${want} × #8 × ${len}" screws, from the model's joints.`;
+    // A stamped "with N" on a step that closes no joint is not a count. Drop it; do not point at another step.
+    if (want === 0 && stated > 0) {
+      s.description = s.description
+        .replace(/\s*with \d+ × #8 × [\d/ ]+" screws(?: \(\d+ per \w+\))?(?:\s+per \w+)?/g, "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+([,.;])/g, "$1")
+        .trim();
+      return;
+    } else if (want > 0 && stated > 0) extra = `In all, this step drives ${want} × #8 × ${len}" screws, from the model's joints.`;
     else if (want > 0) extra = `Drive ${want} × #8 × ${len}" screws in this step, from the model's joints: one about every 8" along each joint (at least 2).`;
     if (!extra) return;
     s.description = addAccounting(s.description, extra);
