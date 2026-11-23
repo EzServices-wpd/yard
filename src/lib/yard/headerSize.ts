@@ -5,7 +5,7 @@
  */
 import { modelFinishedDepth, modelProudNote, stampFinishedDepth } from "./modelSize";
 import { clean, frac } from "./pdfKit";
-import { drawnExtent } from "./pdfDraw";
+import { drawnExtent, projectSolids, truePts } from "./pdfDraw";
 import { isSeatedPipeFrame } from "./pipeRackFrame";
 import { isUnitItem } from "./unitItems";
 import { specOf, type YardSpec } from "./spec";
@@ -90,16 +90,24 @@ export function headerBox(project: YardProject): { width: number; depth: number;
   if (project.pocket?.unit || !project.panels.length) return cur;
   const body = project.panels.filter((p) => !isWallAccessoryAbove(p, cur.height));
   if (!body.length) return cur;
+  // Measure each part as the drawings draw it (a sloped roof board, a leaning rail, a rod), never its raw box:
+  // the header's outside is the drawn outside, so it can never say a size the drawings do not show.
+  const ids = new Map(body.map((p) => [p.id, p]));
   let minX = Infinity, minY = Infinity, minZ = Infinity;
   let maxX = -Infinity, maxZ = -Infinity, bodyTop = -Infinity;
-  for (const p of body) {
-    minX = Math.min(minX, p.position.x);
-    minY = Math.min(minY, p.position.y);
-    minZ = Math.min(minZ, p.position.z);
-    maxX = Math.max(maxX, p.position.x + p.size.width);
-    maxZ = Math.max(maxZ, p.position.z + p.size.depth);
-    if (!isStandingPeg(p)) bodyTop = Math.max(bodyTop, p.position.y + p.size.height);
+  for (const s of projectSolids(project)) {
+    const p = ids.get(s.id);
+    if (!p) continue;
+    for (const q of truePts(project, s)) {
+      minX = Math.min(minX, q.x);
+      minY = Math.min(minY, q.y);
+      minZ = Math.min(minZ, q.z);
+      maxX = Math.max(maxX, q.x);
+      maxZ = Math.max(maxZ, q.z);
+      if (!isStandingPeg(p)) bodyTop = Math.max(bodyTop, q.y);
+    }
   }
+  if (!Number.isFinite(minX)) return cur;
   const env = { width: maxX - minX, depth: maxZ - minZ, height: bodyTop - Math.min(0, minY) };
   const proud = !!modelProudNote(project.panels, project.overall.depth);
   const past = (a: Axis) => (a === "depth" && proud ? false : env[a] > cur[a] + PAST_A_BOARD);

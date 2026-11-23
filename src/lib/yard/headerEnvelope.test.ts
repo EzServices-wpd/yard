@@ -8,6 +8,8 @@ import { describe, it } from "node:test";
 import { generateFromPrompt } from "./promptMain.ts";
 import { headerTitle } from "./pdf.ts";
 import { buildPlan } from "./report.ts";
+import { headerBox, headerSize as headerSizeOf } from "./headerSize.ts";
+import { drawnExtent } from "./pdfDraw.ts";
 
 const header = (q: string) => headerTitle(generateFromPrompt(q), { features: false });
 
@@ -57,4 +59,26 @@ describe("the same outside rule on other prompts", () => {
     ["3 foot Eiffel Tower from popsicle sticks", 'Eiffel Tower · 15 3/16" W × 15 3/16" D × 37 3/8" H'],
   ];
   for (const [q, expect] of cases) it(q, () => assert.equal(header(q), expect));
+});
+
+describe("the header's outside is the drawn outside (sloped boards, leaning rails, rods measured as drawn)", () => {
+  // Critic #422 B1: a part's raw box (a sloped roof board, a leaning ladder rail) is not where it stands.
+  const qs = [
+    "tool shed", "tool shed from 2x4", "lean to shed against the house", "lean to shed 8x6", "firewood shed",
+    "firewood shed from 2x4", "log store from 4x4 and 1x6", "ladder shelf", "ladder shelf from 2x3",
+    "swing set 12 wide 12 tall 8 deep", "platform bed 82 wide 75 tall 39 deep", "porch swing 60 wide 24 deep",
+    "marble run from 3/4 inch dowel", "barn birdhouse from 3/4 inch dowel",
+  ];
+  for (const q of qs) it(q, () => {
+    const p = generateFromPrompt(q);
+    const box = headerBox(p), e = drawnExtent(p)!;
+    const drawn = { width: e.max.x - e.min.x, depth: e.max.z - e.min.z, height: e.max.y - Math.min(0, e.min.y) };
+    for (const a of ["width", "depth", "height"] as const) {
+      assert.ok(box[a] <= drawn[a] + 1 / 16 || box[a] === headerSizeOf(p)[a], `${q}: header ${a} ${box[a]} past the drawn ${drawn[a]}`);
+    }
+  });
+  it("a 6' × 4' tool shed says its drawn 78\" × 55 7/16\"", () => {
+    assert.equal(header("tool shed"), 'Tool shed · 78" W × 55 7/16" D × 89 15/16" H (size assumed)');
+    assert.equal(header("ladder shelf"), 'Ladder shelf · 24" W × 17" D × 70" H (size assumed)');
+  });
 });
