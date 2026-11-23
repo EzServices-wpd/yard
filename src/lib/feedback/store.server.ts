@@ -264,6 +264,26 @@ export class ShopStore {
     return true;
   }
 
+  /** Newest first, from the same `feedback:list` LPUSH. `since` is exclusive. Null when the store is off or over budget. */
+  async listFeedback(limit: number, since: string | null, now = new Date()): Promise<FeedbackRecord[] | null> {
+    const n = Math.min(FEEDBACK_KEEP, Math.max(1, Math.floor(limit) || 1));
+    const got = await this.run(2, [["LRANGE", K.feedback, 0, FEEDBACK_KEEP - 1]], now);
+    if (!got) return null;
+    const sinceMs = since ? Date.parse(since) : NaN;
+    const rows: FeedbackRecord[] = [];
+    for (const raw of (got[0] as string[] | null) ?? []) {
+      try {
+        const rec = JSON.parse(raw) as FeedbackRecord;
+        if (!rec || typeof rec !== "object" || typeof rec.at !== "string") continue;
+        if (since && !(Date.parse(rec.at) > sinceMs)) continue;
+        rows.push(rec);
+      } catch { /* unreadable entry is not returned */ }
+    }
+    const atMs = (at: string) => { const t = Date.parse(at); return Number.isFinite(t) ? t : 0; };
+    rows.sort((a, b) => atMs(b.at) - atMs(a.at));
+    return rows.slice(0, n);
+  }
+
   async addFeedback(rec: FeedbackRecord, cid = "none", now = new Date()): Promise<"saved" | "off" | "limited" | "dropped"> {
     if (!this.pipe) return "off";
     if (!this.allowLocal(now.getTime())) return "limited";
