@@ -44,6 +44,7 @@ import { isOddShapePrompt, oddSpecFromPrompt } from "./oddShapes";
 import { clothesRodDefaultDepth } from "./hangingClearance";
 import { detectProgram, looksLikeFitted } from "./fittedDetect";
 import { placePair } from "./sizePhrases";
+import { countGrid, withoutCountGrid } from "./countGrid";
 import { isSinkVanityPrompt } from "./sinkVanity";
 import { purposeOf } from "./purpose";
 import {
@@ -76,7 +77,8 @@ export function wholeCourses(lower: string, near: number): number {
 
 export function triple(text: string): { w?: number; h?: number; d?: number } {
   // 4x4 / 2x4 is the stick, not the footprint. "table with 4x4 legs 36 inches" is 36 wide.
-  const stripped = text.replace(
+  // A unitless pair tied to a count noun ("3 by 3 cubbies") is a grid count, not inches.
+  const stripped = withoutCountGrid(text).replace(
     /\b(?:[124]\s*[x×]\s*(?:2|4|6|8|10|12)|1x2|1\s*[x×]\s*3|1x3|1x4|1x6|1x8|1x12|2x2|2x4|2x6|2x8|2x10|2x12|4x4)(?:\s*[x×]\s*\d+)?(?:\s*(?:ft|foot|feet|in|inch|inches))?(?:'s|s)?\b/gi,
     " ",
   );
@@ -1252,6 +1254,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
       if (bare || !said("deep|depth")) depth = small.item.clear.d + 1;
     }
   }
+  // A unitless "N by N" on a count noun is a grid. The pair is not inches (triple already skipped it).
+  // Overall = cells × cell size + the stock the carcase already uses.
+  const grid = countGrid(lower);
+  if (grid) {
+    width = grid.width;
+    height = grid.height;
+    if (grid.depth != null) depth = grid.depth;
+  }
   const unit: FittedUnit = {
 
     width,
@@ -1260,11 +1270,14 @@ export function parseBrief(prompt: string): FittedSpec | null {
     counterH,
     kneeW,
     upperStart,
-    shelfCount: shelfCount || undefined,
-    cubbies: Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
-    drawersPerBank: drawers
-      ? spokenDrawerCount(lower) ?? (isBedsideShelf(lower) ? undefined : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) ? 1 : 3)
-      : undefined,
+    shelfCount: grid && grid.family !== "drawer" ? (grid.rows > 1 ? grid.rows - 1 : undefined) : shelfCount || undefined,
+    cubbies: grid && grid.family === "opening" && grid.cols >= 2 ? grid.cols : Number.isFinite(cubbies) && cubbies >= 2 ? cubbies : undefined,
+    drawersPerBank: grid && grid.family === "drawer"
+      ? grid.cols * grid.rows
+      : drawers
+        ? spokenDrawerCount(lower) ?? (isBedsideShelf(lower) ? undefined : /nightstand/.test(lower) || (/bedside/.test(lower) && !isBedsideShelf(lower)) ? 1 : 3)
+        : undefined,
+    grid: grid ? { cols: grid.cols, rows: grid.rows, cell: grid.cell, family: grid.family } : undefined,
     doors: doorsFinal,
     mirror,
     rod,

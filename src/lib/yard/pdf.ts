@@ -16,6 +16,7 @@ import { buyListCart } from "./amazonCart";
 import { drawQr } from "./pdfQr";
 import { cutListName } from "./shopPlural";
 import { headerShelfCount } from "./shelfSpan";
+import { countGrid } from "./countGrid";
 import { KIT, GRID, clean, frac, sentences, type RGB } from "./pdfKit";
 import {
   TOOL_LABEL,
@@ -1265,9 +1266,11 @@ export function headerFeatures(project: YardProject): string[] {
     if (n) out.push(plural(n, "shelf", "shelves"));
   }
   if (typed("cubb(?:y|ies)\\b")) {
-    // Cubbies said back as the model's own count: dividers split the run into dividers + 1 openings.
+    // A count grid ("3 by 3 cubbies") is columns × rows. Otherwise dividers split one run into dividers + 1 openings.
+    const grid = countGrid(lower);
     const dividers = count(/^cubby divider$/);
-    if (dividers) out.push(plural(dividers + 1, "cubby", "cubbies"));
+    if (grid && grid.family === "opening" && /cubb/.test(grid.noun) && dividers) out.push(plural(grid.cols * grid.rows, "cubby", "cubbies"));
+    else if (dividers) out.push(plural(dividers + 1, "cubby", "cubbies"));
     else if (count(/cubby/)) out.push("cubbies");
   }
   if (typed("(?:hanging )?(?:rod|bar)\\b") && count(/\b(?:rod|hanging bar|closet rod)\b/)) out.push("with rod");

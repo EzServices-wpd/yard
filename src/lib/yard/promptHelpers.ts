@@ -7,6 +7,7 @@ import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses, spe
 import { stripHeldPurpose } from "./heldObjects";
 import { toPrimitive } from "./geometry";
 import { typedExtents } from "./honesty";
+import { withoutCountGrid } from "./countGrid";
 import { withHome } from "./assembly";
 import { detectForm, hasPublishedProportions } from "./form";
 import { classifyAnatomy } from "./anatomy";
@@ -49,7 +50,7 @@ export function parseSize(lower: string): { height: number; width: number; depth
     if (!/^\s*(?:wide|width|deep|depth|long|length)\b/.test(after)) height = parseFloat(inAny[1]);
   }
 
-  const pair = dimText.match(
+  const pair = withoutCountGrid(dimText).match(
     /(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/,
   );
   if (pair && !isLumberPair(parseFloat(pair[1]), parseFloat(pair[2]), pair[3] ? parseFloat(pair[3]) : undefined)) {
@@ -373,7 +374,7 @@ function isLumberPair(a: number, b: number, c?: number): boolean {
 
 export function hasExplicitSize(prompt: string): boolean {
   const lower = prompt.toLowerCase();
-  const dim = stripLumberStock(lower);
+  const dim = stripLumberStock(withoutCountGrid(lower));
   if (/\d+(?:\.\d+)?\s*-?\s*(?:ft|foot|feet|in|inch|inches)\s*(?:tall|high|wide|deep|long|span)/.test(lower)) return true;
   if (/\d+(?:\.\d+)?\s*-\s*(?:ft|foot|feet)\b/.test(lower)) return true;
   // Bare labeled dims — same cues parseSize already honors ("24 wide", "72 high", "16 deep", "60" wide").
@@ -709,7 +710,8 @@ export function stripJoinWords(prompt: string): string {
 
 export function detectMaterial(prompt: string): CatalogItem {
   // Contents are not stock. A from / in / out of clause, or a leading material word, still is.
-  const stockPrompt = stripJoinWords(stripHeldPurpose(prompt));
+  // A count grid ("2 x 4 drawers") is not a 2×4.
+  const stockPrompt = stripJoinWords(stripHeldPurpose(withoutCountGrid(prompt)));
   const clauses = bodyStockClauses(stockPrompt);
   for (let i = clauses.length - 1; i >= 0; i--) {
     const item = detectMaterialPhrases(clauses[i].tail);

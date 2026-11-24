@@ -4,6 +4,7 @@
  * Typed and phrase axes always win (I21: each holds within 1/2").
  */
 import { feetLengthAt, releaseReads } from "./lengthReader";
+import { withoutCountGrid } from "./countGrid";
 export type Axis = "width" | "height" | "depth";
 export type PhraseAxes = Partial<Record<Axis, number>>;
 
@@ -86,7 +87,7 @@ export function typedWidth(prompt: string): boolean {
  * (2x4, 1x6, 4x4) are stock, not a build size, so a tuple that starts under 6" is not one.
  */
 export function typedSizeTuple(prompt: string): number[] | null {
-  for (const m of prompt.matchAll(/(?<![\d.\/])(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?|w)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?|d)?(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?/gi)) {
+  for (const m of withoutCountGrid(prompt).matchAll(/(?<![\d.\/])(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?|w)?\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)\s*(?:"|in(?:ch(?:es)?)?|d)?(?:\s*(?:x|×|by)\s*(\d+(?:\.\d+)?))?/gi)) {
     if (Number(m[1]) >= 6) return [m[1], m[2], m[3]].filter((x) => x != null).map(Number);
   }
   return null;

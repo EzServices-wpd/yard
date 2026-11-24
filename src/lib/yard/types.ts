@@ -292,6 +292,12 @@ export type FittedUnit = {
   shelfCount?: number;
   cubbies?: number;
   drawersPerBank?: number;
+  /**
+   * A unitless "N by N" count noun ("3 by 3 cubbies"): columns × rows of `cell` inch openings.
+   * Overall size is already on width/height. Drawers use `cols` as the column count.
+   */
+  grid?: { cols: number; rows: number; cell: number; family: "opening" | "drawer" | "shelf" };
+
   doors?: boolean;
   mirror?: boolean;
   rod?: boolean;
