@@ -53,11 +53,12 @@ test("every Ideas card (and every search card with a drawing) prints the pattern
 test("manifest dims are exactly the drawing's own labels (else the engine's box), with the round flag for dia labels", () => {
   const m = DRAWINGS as Record<string, { v: string; dims: Box & { round?: boolean } }>;
   for (const c of cards) {
-    const svg = fs.readFileSync(`public/ideas/drawings/${c.slug}.${m[c.slug].v}.svg`, "utf8");
+    const key = c.drawing?.src.match(/\/ideas\/drawings\/([^.]+)\./)?.[1] ?? c.slug;
+    const svg = fs.readFileSync(`public/ideas/drawings/${key}.${m[key].v}.svg`, "utf8");
     const drawn = drawnDims(svg);
-    const labels = drawn && TURNED.has(c.slug) ? { ...drawn, width: drawn.depth, depth: drawn.width } : drawn;
+    const labels = drawn && TURNED.has(key) ? { ...drawn, width: drawn.depth, depth: drawn.width } : drawn;
     const want = labels ?? generateFromPrompt(c.examplePrompt).overall;
-    const d = m[c.slug].dims;
+    const d = m[key].dims;
     const sorted = (x: Box) => [x.width, x.height, x.depth].sort((a, b) => a - b);
     // Exact (row 57): labelled drawings print 1/16ths, so the manifest keeps them to 1e-4, not 2 decimals.
     if (labels) for (const k of ["width", "depth", "height"] as const) assert.ok(Math.abs(d[k] - labels[k]) < 1e-9, `${c.slug}: ${k} ${d[k]} vs drawn ${labels[k]}`);
@@ -71,13 +72,14 @@ test("a card with a labelled drawing prints exactly the drawing's labels (no 1/1
   const m = DRAWINGS as Record<string, { v: string }>;
   let labelled = 0;
   for (const c of [...cards, ...searchPool(feed)]) {
-    if (!c.drawing || !m[c.slug]) continue;
-    const svg = fs.readFileSync(`public/ideas/drawings/${c.slug}.${m[c.slug].v}.svg`, "utf8");
+    const key = c.drawing?.src.match(/\/ideas\/drawings\/([^.]+)\./)?.[1];
+    if (!c.drawing || !key || !m[key]) continue;
+    const svg = fs.readFileSync(`public/ideas/drawings/${key}.${m[key].v}.svg`, "utf8");
     const d = drawnDims(svg);
     if (!d) continue;
     labelled++;
     const texts = [...svg.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((x) => x[1].replace(/&quot;/g, '"')).filter((t) => /\d[^"]*"/.test(t)).map((t) => t.match(/(\d+(?: \d+\/\d+)?|\d+\/\d+)\s*"/)![1]);
-    const [w, dp, h] = TURNED.has(c.slug) ? [texts[1], texts[0], texts[2]] : [texts[0], texts[1], texts[2]];
+    const [w, dp, h] = TURNED.has(key) ? [texts[1], texts[0], texts[2]] : [texts[0], texts[1], texts[2]];
     const want = d.round ? `${texts[0]} dia × ${texts[1]} in` : `${w} × ${dp} × ${h} in`;
     assert.equal(c.size, want, `${c.slug}: card "${c.size}" vs drawing "${want}"`);
   }
@@ -85,13 +87,13 @@ test("a card with a labelled drawing prints exactly the drawing's labels (no 1/1
   // The seven row-57 cards that printed 1/16″ off their drawings.
   const by = Object.fromEntries([...cards, ...searchPool(feed)].map((c) => [c.slug, c.size]));
   assert.equal(by["birdhouse"], "6 7/8 × 7 1/2 × 11 13/16 in");
-  assert.equal(by["recipe-wall-mounted-mail-organizer"], "12 × 3 3/4 × 14 3/16 in");
+  assert.equal(by["wall-mounted-mail-organizer"], "12 × 3 3/4 × 14 3/16 in");
   assert.deepEqual([...TURNED], ["recipe-water-wheel"]);
-  assert.equal(by["recipe-water-wheel"], "18 × 23 7/16 × 30 1/4 in");
-  assert.equal(by["recipe-laptop-stand"], "11 3/8 × 8 7/8 × 6 5/16 in");
-  assert.equal(by["recipe-jewelry-box"], "10 × 5 1/2 × 3 7/16 in");
-  assert.equal(by["recipe-bird-feeder"], "10 × 7 11/16 × 10 5/8 in");
-  assert.equal(by["recipe-outdoor-storage-bench"], "48 × 20 × 19 3/16 in");
+  assert.equal(by["water-wheel"], "18 × 23 7/16 × 30 1/4 in");
+  assert.equal(by["laptop-stand"], "11 3/8 × 8 7/8 × 6 5/16 in");
+  assert.equal(by["jewelry-box"], "10 × 5 1/2 × 3 7/16 in");
+  assert.equal(by["bird-feeder"], "10 × 7 11/16 × 10 5/8 in");
+  assert.equal(by["outdoor-storage-bench"], "48 × 20 × 19 3/16 in");
 });
 
 test("window card: framing title, size of the drawn framing, the unit it is for as a note", () => {
