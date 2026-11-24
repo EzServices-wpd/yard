@@ -24,9 +24,11 @@ import {
   isWineRack, isShoeStorage, isOverToilet, isSpiceRack, isSpiceCabinet,
   isIroningCabinet, isMedicineCabinet, pick, CRAFT, MAKER, BUILDER,
 } from "./fittedShared";
+import { countGrid } from "./countGrid";
 
 export function looksLikeFitted(prompt: string) {
   const lower = prompt.toLowerCase();
+  if (countGrid(lower)) return true;
   if (looksLikePocket(prompt)) return true;
   if (isOverToilet(lower)) return true;
   // Corner-unit class (corner / right-angle / triangle / quarter-round shelves) is house.

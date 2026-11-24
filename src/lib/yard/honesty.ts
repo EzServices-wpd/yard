@@ -13,6 +13,7 @@ import { figureIdentityLabel } from "./weekendFamily";
 import { mattressDeck } from "./fittedParse";
 import { deskWidthFromPrompt, tableSpanFromPrompt, openingWidthFromPrompt, stampTypedAxesTitle, stripSizeStamp, isOpeningStoragePrompt, isClassDefaultDensifyPrompt, typedClassDefaultAxes, normalizeUserPrompt, spokenDiameterInches } from "./voiceHonesty";
 import { placePair } from "./sizePhrases";
+import { withoutCountGrid } from "./countGrid";
 import { lippedShelfYs } from "./shelfLips";
 import type { BuildPlan, FittedSpec, Panel, YardProject } from "./types";
 
@@ -70,7 +71,8 @@ function pickLetter(text: string, letter: "w" | "h" | "d"): number | undefined {
 }
 
 function unlabeledTriple(text: string): { a: number; b: number; c?: number } | null {
-  const m = stripLumber(text).match(
+  // Same skip as triple(): a unitless pair on a count noun is a grid, not this size.
+  const m = stripLumber(withoutCountGrid(text)).match(
     /(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)(?:\s*(?:in|inch|inches|")?\s*(?:x|by|×)\s*(\d+(?:\.\d+)?))?/i,
   );
   if (!m) return null;

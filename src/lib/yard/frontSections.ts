@@ -76,8 +76,11 @@ export type DrawerSection = {
  * (the bottom's top face). It fills the carcase when nothing else shares the front; otherwise it takes a sensible
  * height at the top and sits on its own floor, so the doors or shelves below have their own opening.
  */
-export function drawerSection(o: { x0: number; innerW: number; yBottom: number; yTop: number; depth: number; count: number; width: number; shares: boolean; rowIn?: number; atFoot?: boolean }): DrawerSection {
-  const columns = drawerColumns(o.count, o.width);
+export function drawerSection(o: { x0: number; innerW: number; yBottom: number; yTop: number; depth: number; count: number; width: number; shares: boolean; rowIn?: number; atFoot?: boolean; columns?: number }): DrawerSection {
+  const forced = o.columns != null && o.columns >= 1 ? Math.max(1, Math.min(o.count, Math.round(o.columns))) : 0;
+  const columns = forced
+    ? Array.from({ length: forced }, (_, k) => Math.floor(o.count / forced) + (k < o.count % forced ? 1 : 0))
+    : drawerColumns(o.count, o.width);
   const rows = Math.max(...columns);
   const clear = o.yTop - o.yBottom;
   const secH = o.shares ? Math.round(Math.min(clear / 2, rows * (o.rowIn ?? SHARED_DRAWER_ROW_IN)) * 8) / 8 : clear;

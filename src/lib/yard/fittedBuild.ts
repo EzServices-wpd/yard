@@ -1084,16 +1084,25 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
   }
 
   // Open cubby wall / mudroom / toy·kids cubbies — floor carcase with N divider bays (never bare Storage / empty box).
-  if (isOpenCubbyWall(prompt.toLowerCase()) || isMudroomCubbyWall(prompt.toLowerCase())) {
+  // A count grid ("3 by 3 cubbies", "4 by 2 cubes") is the same carcase: cells × cell size + stock, one board between cells.
+  const openingGrid = u.grid && u.grid.family !== "drawer" ? u.grid : undefined;
+  if (isOpenCubbyWall(prompt.toLowerCase()) || isMudroomCubbyWall(prompt.toLowerCase()) || openingGrid) {
     const lower = prompt.toLowerCase();
-    const stem = openCubbyWallTitle(lower);
-    const cubbyN =
-      u.cubbies && u.cubbies >= 2
+    const stem =
+      isOpenCubbyWall(lower) || isMudroomCubbyWall(lower)
+        ? openCubbyWallTitle(lower)
+        : openingGrid?.family === "shelf"
+          ? "Shelf unit"
+          : "Storage unit";
+    const cubbyN = openingGrid
+      ? openingGrid.cols
+      : u.cubbies && u.cubbies >= 2
         ? Math.max(2, Math.min(12, u.cubbies))
         : Math.max(3, Math.min(6, Math.round(W / 12)));
     const backT = 0.25;
-    const shelfN =
-      u.shelfCount && u.shelfCount >= 1
+    const shelfN = openingGrid
+      ? Math.max(0, openingGrid.rows - 1)
+      : u.shelfCount && u.shelfCount >= 1
         ? Math.min(6, u.shelfCount)
         : H >= 40
           ? 1
@@ -1104,18 +1113,19 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
     panels.push(panel("bottom", "Bottom", x0 + P, 0, backT, W - P * 2, P, D - backT));
     panels.push(panel("top", "Top", x0 + P, H - P, backT, W - P * 2, P, D - backT));
     for (let i = 1; i < cubbyN; i++) {
-      const x = x0 + (W * i) / cubbyN - P / 2;
+      const x = openingGrid ? x0 + P + i * openingGrid.cell + (i - 1) * P : x0 + (W * i) / cubbyN - P / 2;
       panels.push(panel("divider", `Cubby divider ${i}`, x, P, backT, P, H - 2 * P, D - backT));
     }
     if (shelfN >= 1) {
       for (let s = 1; s <= shelfN; s++) {
-        const y = Math.round(((H * s) / (shelfN + 1)) * 8) / 8;
+        const y = openingGrid ? P + s * openingGrid.cell + (s - 1) * P : Math.round(((H * s) / (shelfN + 1)) * 8) / 8;
         panels.push(
           panel("shelf", shelfN === 1 ? "Cubby shelf" : `Cubby shelf ${s}`, x0 + P, y, backT, W - P * 2, P, D - backT),
         );
       }
     }
-    const bayW = Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
+    const bayCount = openingGrid ? openingGrid.cols * openingGrid.rows : cubbyN;
+    const bayW = openingGrid ? openingGrid.cell : Math.round(((W - P * (cubbyN + 1)) / cubbyN) * 10) / 10;
     const name = `${stem} ${W}" × ${H}" × ${D}"`;
     return {
       id: createId("proj"),
@@ -1127,7 +1137,7 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
       panels,
       primaryMaterialId: PLY,
       notes: [
-        `${name}. Open cubby wall with ${cubbyN} bays (~${bayW}" wide) and dividers — not a hollow Storage box and not a sit bench. ¾" plywood.`,
+        `${name}. Open cubby wall with ${bayCount} bays (~${bayW}" wide) and dividers — not a hollow Storage box and not a sit bench. ¾" plywood.`,
         `Glue and screw each cubby divider into the shelves and back. Hit studs if wall-lagged. Guidance only — confirm the ${W}" × ${H}" × ${D}" opening.`,
       ],
       historic: false,
@@ -1144,7 +1154,7 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
           height: H,
           depth: D,
           doors: false,
-          cubbies: cubbyN,
+          cubbies: openingGrid ? bayCount : cubbyN,
           shelfCount: shelfN,
           drawersPerBank: undefined,
           rod: false,
@@ -2826,7 +2836,19 @@ export function buildFitted(spec: FittedSpec, prompt = "", primitive = false, ma
     const yTop = upper ? u.upperStart! : H - P;
     // A carcase too tall for its drawers alone keeps a drawer bank at its foot and the rest stays an open section.
     const bank = !lowerShared && !upper && drawersTooTallToFill(u.drawersPerBank, W, yTop - (bottomY + P));
-    const sec = drawerSection({ x0: x0 + P, innerW: W - P * 2, yBottom: bottomY + P, yTop, depth: D, count: u.drawersPerBank, width: W, shares: lowerShared || bank, atFoot: bank, rowIn: bank ? BANK_DRAWER_ROW_IN : undefined });
+    const sec = drawerSection({
+      x0: x0 + P,
+      innerW: W - P * 2,
+      yBottom: bottomY + P,
+      yTop,
+      depth: D,
+      count: u.drawersPerBank,
+      width: W,
+      shares: lowerShared || bank,
+      atFoot: bank,
+      rowIn: bank ? BANK_DRAWER_ROW_IN : undefined,
+      columns: u.grid?.family === "drawer" ? u.grid.cols : undefined,
+    });
     panels.push(...sec.panels);
     drawerSectionY0 = sec.y0;
     drawerBelowTop = sec.belowTop;

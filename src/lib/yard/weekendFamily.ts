@@ -13,6 +13,7 @@
  * stock. Unnamed stock stays the wire-frame placeholder.
  */
 
+import { countGrid } from "./countGrid";
 import { detectHouseFamily, isAdirondackChair, isAvTower, isBedsideShelf, isHouseMediaCarcase, isPictureLedge, isPlatformBed, isPorchSwingFrame, isSeatingLoungeClass, isWallMediaLedge } from "./family";
 import type { StructureKind } from "./types";
 
@@ -696,6 +697,8 @@ function looksHay(prompt: string): string {
 export function detectWeekendFamily(prompt: string): WeekendHit | null {
   const hay = looksHay(prompt);
   if (isNotWeekend(hay)) return null;
+  // "4 by 2 cubes" is a grid of cells, not a stick cube.
+  if (countGrid(hay)) return null;
 
   if (/eiffel/.test(hay)) {
     return { family: "lattice", override: "eiffel", kind: "eiffel", name: "Eiffel" };
