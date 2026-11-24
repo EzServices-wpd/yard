@@ -35,11 +35,11 @@ test("every listed build type is in exactly one group; a type no group names fai
   // Every catalog card shows once across the groups (cards plus See all rows): 100 types on 10-25.
   const seen = groupCards(all).flatMap((g) => { const v = groupView(g.cards, true, Infinity); return [...v.top, ...v.rows].map((c) => c.buildType); });
   assert.deepEqual([seen.length, new Set(seen).size], [all.length, all.length]);
-  assert.equal(all.length, 105);
+  assert.equal(all.length, 143);
 });
 
 test("a type no group names is never hidden: it lands in More builds as a row, its New mark kept", () => {
-  const stray = { ...all.find((c) => c.buildType === "soccer-goal")!, slug: "zz-new-type", buildType: "zz-new-type", title: "Zz stool" };
+  const stray = { ...all.find((c) => c.buildType === "soccer-goal")!, slug: "zz-new-type", buildType: "zz-new-type", title: "Zz stool", drawing: null };
   const html = page({ ...feed, all: [...all, stray] });
   const more = html.slice(html.indexOf('data-ideas-group="more"'));
   assert.match(more, /<h2 id="ideas-more"[^>]*>More builds<\/h2>/);
@@ -50,7 +50,7 @@ test("featured: Chief's five, checked and drawn, first drawing eager and every o
   const html = page(feed);
   assert.match(html, /<h1[^>]*>Pick a build\. See how it goes together\.<\/h1>/);
   const sec = html.slice(html.indexOf("data-ideas-featured"), html.indexOf("data-ideas-group="));
-  assert.deepEqual([...sec.matchAll(/data-idea="([^"]+)"/g)].map((m) => m[1]), ["eiffel", "pocket", "bridge", "recipe-abacus", "bunk"]);
+  assert.deepEqual([...sec.matchAll(/data-idea="([^"]+)"/g)].map((m) => m[1]), ["eiffel", "pocket", "bridge", "abacus", "bunk"]);
   assert.equal(FEATURED.length, 5);
   // Two <img> per drawing (pencil and wood): only the first featured card's pair loads eagerly.
   assert.equal((html.match(/loading="eager"/g) ?? []).length, 2);
@@ -86,25 +86,26 @@ test("See all opens in place: SECTION_SHOW drawn cards, then the rest as rows AL
   const drawn = furniture.filter((c) => c.drawing).length;
   // 59 furniture types on 10-25 (58 Trusted/curated, plus the Unverified utility cart, which keeps no picture).
   const pictured = furniture.filter((c) => !c.unverified);
-  assert.equal(furniture.length, 59);
+  assert.equal(furniture.length, 79);
   assert.equal(drawn, pictured.filter((c) => c.drawing).length);
-  assert.equal(drawn, pictured.filter((c) => drawingForType(c.buildType)).length);
+  // Gate cards carry their own drawing; it is not in the manifest, so a log row of that type stays a row.
+  assert.equal(drawn, pictured.filter((c) => drawingForType(c.buildType) || (c.section === "Catalog" && c.drawing)).length);
   assert.ok(drawn >= SECTION_SHOW);
   const shut = groupView(furniture, false, ALL_SHOW);
-  assert.deepEqual([shut.top.length, shut.rows.length, shut.button, shut.label], [SECTION_SHOW, 0, true, "See all 59"]);
+  assert.deepEqual([shut.top.length, shut.rows.length, shut.button, shut.label], [SECTION_SHOW, 0, true, "See all 79"]);
   assert.ok(shut.top.every((c) => c.drawing && !c.unverified), "cards are drawn and graded enough to picture; undrawn and Unverified types wait in the rows");
   const open = groupView(furniture, true, ALL_SHOW);
-  assert.deepEqual([open.rows.length, open.left, open.shown], [ALL_SHOW, 59 - SECTION_SHOW - ALL_SHOW, SECTION_SHOW + ALL_SHOW]);
+  assert.deepEqual([open.rows.length, open.left, open.shown], [ALL_SHOW, 79 - SECTION_SHOW - ALL_SHOW, SECTION_SHOW + ALL_SHOW]);
   const more = groupView(furniture, true, 3 * ALL_SHOW);
-  assert.deepEqual([more.rows.length, more.left, more.shown], [59 - SECTION_SHOW, 0, 59]);
+  assert.deepEqual([more.rows.length, more.left, more.shown], [79 - SECTION_SHOW, 0, 79]);
   // Toys: 11 types. Yard Design keeps drawing more (rocket, viking ship on 10-26/27), so the cards are exactly the toys the
   // drawings manifest has (drawingForType, read here, not the page) and the rest are rows; abacus and catapult always draw.
   const toyCards = groupCards(all).find((g) => g.id === "toys")!.cards;
-  const drawnToys = toyCards.filter((c) => drawingForType(c.buildType)).map((c) => c.buildType).sort();
+  const drawnToys = toyCards.filter((c) => drawingForType(c.buildType) || (c.section === "Catalog" && c.drawing)).map((c) => c.buildType).sort();
   const toys = groupView(toyCards, true, ALL_SHOW);
   assert.ok(drawnToys.includes("abacus") && drawnToys.includes("catapult"));
-  assert.deepEqual([toys.top.map((c) => c.buildType).sort(), toys.rows.length], [drawnToys, 11 - drawnToys.length]);
-  assert.ok(toys.rows.some((c) => c.buildType === "soccer-goal" && c.status === "new"));
+  assert.deepEqual([toys.top.map((c) => c.buildType).sort(), toys.rows.length], [drawnToys, toyCards.length - drawnToys.length]);
+  assert.ok(toys.top.some((c) => c.buildType === "soccer-goal" && c.status === "new" && c.drawing), "the recipe drawing puts the soccer goal with the pictures");
 });
 
 test("stock chips: only stocks the feed names, and a chip keeps only its cards", () => {

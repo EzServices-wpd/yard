@@ -218,7 +218,8 @@ test("held recipes never render on Ideas: HELD_TYPES is recipes.json's held set,
   const { HELD_TYPES, isHeldType } = await import("../src/lib/ideas/held");
   const ALL = (await import("../src/lib/yard/recipes.json")).default as unknown as { recipes: { key: string; synonyms?: string[]; held?: string }[] };
   const slug = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const want = new Set(ALL.recipes.filter((r) => r.held).flatMap((r) => [r.key, ...(r.synonyms ?? [])].map(slug)));
+  // Keys only. A synonym (planter-box on the held window box) is not held, so the built-in stays.
+  const want = new Set(ALL.recipes.filter((r) => r.held).map((r) => slug(r.key)));
   assert.deepEqual([...HELD_TYPES].sort(), [...want].sort(), "src/lib/ideas/held.ts is stale");
   assert.ok(isHeldType("ferris-wheel") && isHeldType("colosseum"));
   const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("ferris wheel", "recipe:ferris-wheel", 80, after(3), "Trusted"), row("colosseum", "recipe:colosseum", 60, after(4), "Unverified")] };
@@ -353,7 +354,7 @@ test("I-draw on the saved live snapshot (main 48460cc, 10-23): every card the fe
   }
   assert.deepEqual(feedViolations(liveF, live, gradedTypes(liveBase)), []);
   // The live blanks are gone: no undrawn log type takes a slot (they were soccer goal, rocket, dollhouse, cat tree…).
-  for (const t of ["soccer-goal", "brooklyn-bridge", "windmill", "barn", "empire-state-building", "space-needle", "firewood-unit", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
+  for (const t of ["brooklyn-bridge", "windmill", "barn", "empire-state-building", "space-needle", "firewood-unit", "toolbox", "pine-toolbox", "cedar-birdhouse", "pantry-cabinet", "corner-shelf"]) assert.ok(!cards.some(({ c }) => c.buildType === t), t);
   // Log types baked under their type from the prompt each card builds on tap (gen-idea-drawings LOG_TYPES), with the build's stock.
   assert.equal(cards.find(({ c }) => c.buildType === "rocket")?.c.examplePrompt, "rocket 9.875 wide 28 tall 9.875 deep");
   assert.equal(cards.find(({ c }) => c.buildType === "lighthouse")?.c.examplePrompt, "2 foot lighthouse from popsicle sticks");
@@ -395,7 +396,7 @@ test("one log type per drawn build: a leading lumber species is the stock (pine 
   assert.deepEqual(pieces("walnut nightstand"), pieces("nightstand"));
   // A type keys straight to the drawing baked for a card of that engine type (types.json), curated or not.
   assert.equal(drawingForType("jar-rack")?.src.split("/").pop()?.split(".")[0], "jarshelf");
-  assert.equal(drawingForType("soccer-goal"), null);
+  assert.match(drawingForType("soccer-goal")?.src ?? "", /\/ideas\/drawings\/recipe-goal\.[0-9a-f]{8}\.svg/);
   // typeTwins.json: data next to drawings.json. Each key is an undrawn log type, each target a drawn type, same pieces.
   for (const [from, to] of Object.entries(TWINS as Record<string, string>)) {
     assert.equal(typeKey(`builtin:${from}`), to, from);

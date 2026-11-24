@@ -76,14 +76,18 @@ const plainTitle = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.to
 // The two rack titles are split across quotes. pvcRackMovers treats every double-quoted
 // type-plus-rack phrase under scripts/ as a new sweep prompt.
 const MOVED: [string, string, string][] = [
+  ["big-ben", "big-ben", "Big Ben"],
   ["brooklyn-bridge", "brooklyn-bridge", "Brooklyn Bridge"],
   ["empire-state-building", "empire-state-building", "Empire State Building"],
   ["firewood-unit", "firewood-rack", "Firewood " + "rack"],
   ["key-holder-wall-mounted", "peg-rail", "Peg rail"],
   ["l-shaped-corner-desk", "l-shaped-corner-desk", "L-shaped corner desk"],
-  ["shelf", "shelf-unit", "Shelf unit"],
-  ["soccer-goal", "pvc-soccer-goal", "PVC soccer goal"],
+  ["shelf", "shelf", "Shelf unit"],
   ["space-needle", "space-needle", "Space Needle"],
+  ["step-stool-with", "step-stool-with", "Step stool, 2 steps"],
+  ["stool", "stool", "Stool seat"],
+  ["tier-plant-stand", "tier-plant-stand", "3-tier plant stand"],
+  ["tv-stand", "tv-stand", "TV stand"],
   ["white-house", "white-house", "White House"],
 ];
 
@@ -100,6 +104,11 @@ test("log-only titles that are not the stripped type key use the header name, an
     assert.equal(drawingFor(type)?.src ?? null, drawingFor(slug)?.src ?? null, type);
     if (slug !== type) assert.deepEqual(cardsOf(feed).find((c) => c.buildType === type)?.aliases, [type]);
   }
+  // Old public slugs still resolve after the card is keyed by build type (#412).
+  assert.equal(resolveIdeaSlug("shelf-unit"), "shelf");
+  assert.equal(resolveIdeaSlug("pvc-soccer-goal"), "soccer-goal");
+  assert.equal(resolveIdeaSlug("recipe-goal"), "soccer-goal");
+  assert.equal(resolveIdeaSlug("recipe-abacus"), "abacus");
   // A generic stand-in header does not rename the card (a sailboat is not a Storage unit).
   const sail = cardsOf(feed).find((c) => c.buildType === "sailboat");
   assert.equal(sail?.title, "Sailboat");
@@ -167,6 +176,16 @@ test("every Ideas title names an object, carries no size adjective, and is sente
   assert.equal(ideasTitle("TV console"), "TV console");
   assert.equal(ideasTitle("Wall-Mounted Mail Organizer"), "Wall-mounted mail organizer");
   assert.equal(sentenceCaseTitle("Big Ben"), "Big Ben");
+});
+
+test("old-title aliases are part of Ideas search", () => {
+  const proto = searchPool(feeds[1].feed)[0];
+  const card: IdeaCard = { ...proto, slug: "zz-alias", buildType: "zz-alias", title: "Bookcase", aka: undefined, blurb: "", aliases: ["zzoldtitle"], examplePrompt: "bookcase", stock: undefined, typedSize: undefined, section: "Store" };
+  const feed = { ...feeds[1].feed, sections: [{ id: "s", title: "S", order: 0, total: 1, cards: [card] }], all: [card] };
+  assert.ok(searchCards(searchPool(feed), "zzoldtitle").some((c) => c.slug === "zz-alias"), "the alias is searchable");
+  const bare = { ...card, aliases: undefined };
+  const stripped = { ...feed, sections: [{ id: "s", title: "S", order: 0, total: 1, cards: [bare] }], all: [bare] };
+  assert.equal(searchCards(searchPool(stripped), "zzoldtitle").some((c) => c.slug === "zz-alias"), false);
 });
 
 test("old names still find the idea after the title changed", () => {

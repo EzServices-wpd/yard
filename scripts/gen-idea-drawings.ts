@@ -17,8 +17,13 @@ import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import type { YardProject } from "../src/lib/yard/types";
 import { drawnDims } from "../src/lib/ideas/size";
 import { cardLabels } from "../src/lib/ideas/drawingLabels";
-import { logCardPrompt, typeKey } from "../src/lib/ideas/liveFeed";
+import { isJunkTitle, listRule, logCardPrompt, typeKey } from "../src/lib/ideas/liveFeed";
+import { endsOnJoiner, ideasTitle, titleHasMeasure } from "../src/lib/ideas/feed";
 import { nameBase } from "./gen-idea-types";
+import { recordFromPrompt } from "../src/lib/yard/ideaLog.server";
+import { headerSize } from "../src/lib/yard/headerSize";
+import { buildPlan } from "../src/lib/yard/report";
+import { headerName } from "../src/lib/yard/pdf";
 
 export const DRAW_W = 480, DRAW_H = 360;
 /** Raw bytes per wood drawing; past it coordinates are rounded harder (big models). */
@@ -244,9 +249,70 @@ for (const c of cards) {
     manifest[c.slug].model = `/ideas/models/${c.slug}.${mv}.json`;
   }
 }
-fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 1) + "\n");
 // Recipe cards baked too, so /ideas never builds a recipe in the browser (a full bake only).
 const card = (r: ReturnType<typeof popularIdeas>[number]) => ({ id: r.id, label: r.label, prompt: r.prompt, size: r.size, blurb: r.blurb, box: r.box });
 if (!only) fs.writeFileSync(path.join("src", "lib", "ideas", "recipes.json"), JSON.stringify({ popular: popularIdeas().map(card), fresh: newIdeas().map(card) }, null, 1) + "\n");
+
+/**
+ * Passing gate prompts (evals/gate.json, grade pass) that recordFromPrompt calls Trusted, after the same
+ * generic and held filters as the feed, with at least 3 pieces and 2 cut rows. One card per build type:
+ * the shortest prompt. A title slug the alias map folds into the type is kept as an alias, not a second card.
+ */
+async function writeGateCatalog() {
+  const gate = JSON.parse(fs.readFileSync(path.join("evals", "gate.json"), "utf8")) as { prompts: { prompt: string; grade: string }[] };
+  const allow = listRule([], "catalog");
+  const best = new Map<string, { prompt: string; title: string; dims: { width: number; height: number; depth: number }; recipe: boolean; aliases: string[] }>();
+  const skipped = new Map<string, number>();
+  const skip = (why: string) => skipped.set(why, (skipped.get(why) ?? 0) + 1);
+  for (const row of gate.prompts) {
+    if (row.grade !== "pass") continue;
+    const rec = await recordFromPrompt(row.prompt);
+    if (!rec || rec.status !== "Trusted") { skip(rec?.status ?? "no-record"); continue; }
+    const recipe = rec.resultKey.startsWith("recipe:");
+    const bare = rec.resultKey.replace(/^[a-z]+:/, "").replace(/^(?:\d+-)+(?=[a-z])/, "").replace(/-\d.*$/, "");
+    const type = typeKey(rec.resultKey);
+    if (!allow(type, recipe ? type : null)) { skip(`held-or-generic:${type}`); continue; }
+    const built = generateFromPrompt(row.prompt);
+    if (built.refused || built.standIn || built.unmatched || built.displayOnly) { skip(`not-a-build:${type}`); continue; }
+    const plan = buildPlan(built);
+    if (plan.totals.pieces < 3 || plan.cutList.length < 2) { skip(`pieces:${type}:${plan.totals.pieces}/${plan.cutList.length}`); continue; }
+    const title = ideasTitle(headerName(built), { type, prompt: row.prompt });
+    if (isJunkTitle(title) || endsOnJoiner(title) || titleHasMeasure(title) || /^[a-z]/.test(title)) { skip(`title:${title}`); continue; }
+    const prev = best.get(type);
+    const aliases = [...new Set([...(prev?.aliases ?? []), bare].filter((s) => s && s !== type))];
+    if (prev && prev.prompt.length <= row.prompt.length) { prev.aliases = aliases; continue; }
+    const hs = headerSize(built);
+    best.set(type, { prompt: row.prompt, title, dims: { width: hs.width, height: hs.height, depth: hs.depth }, recipe, aliases });
+  }
+  const drawn = new Set(Object.keys(manifest));
+  const types = JSON.parse(fs.readFileSync(path.join("src", "lib", "ideas", "types.json"), "utf8")) as Record<string, string>;
+  for (const [slug, type] of Object.entries(types)) if (manifest[slug]) drawn.add(type);
+  let baked = 0;
+  for (const [type, c] of best) {
+    if (drawn.has(type) || manifest[type]) continue;
+    const view = VIEW[type] ?? {};
+    const built = generateFromPrompt(c.prompt);
+    const project = (view.turn && quarterTurn(built)) || built;
+    const raw = planOverviewSvg(view.ghostUnit ? sashes(project) : project, DRAW_W, DRAW_H).svg;
+    let svg = view.custom ? view.custom(project) : tidy(view.ghostUnit ? ghosted(raw) : raw, 1);
+    if (!view.custom && svg.length > BUDGET) svg = tidy(view.ghostUnit ? ghosted(raw) : raw, 0);
+    svg = cardLabels(svg);
+    const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
+    fs.writeFileSync(path.join(OUT, `${type}.${v}.svg`), svg);
+    const labelled = !view.custom ? drawnDims(raw) : null;
+    const o = labelled && project !== built ? { ...labelled, width: labelled.depth, depth: labelled.width } : labelled || project.overall;
+    const parts = built.panels.length + built.instances.length;
+    const dims = { width: r4(o.width), height: r4(o.height), depth: r4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) };
+    // On the card only. A manifest key would make an undrawn log row of this type take a picture slot.
+    (c as { drawing?: { src: string; w: number; h: number; parts: number; v: string; dims: typeof dims } }).drawing = { src: `/ideas/drawings/${type}.${v}.svg`, w: DRAW_W, h: DRAW_H, parts, v, dims };
+    baked++;
+  }
+  const cards = [...best.entries()].map(([buildType, c]) => ({ buildType, prompt: c.prompt, title: c.title, dims: c.dims, recipe: c.recipe, ...(c.aliases.length ? { aliases: c.aliases } : {}), ...("drawing" in c && c.drawing ? { drawing: c.drawing } : {}) })).sort((a, b) => a.buildType.localeCompare(b.buildType));
+  fs.writeFileSync(path.join("src", "lib", "ideas", "catalog.json"), JSON.stringify({ cards }, null, 1) + "\n");
+  console.log(`gate catalog: ${cards.length} types, ${baked} new drawings`);
+  console.log(`gate catalog skipped: ${[...skipped.entries()].map(([k, n]) => `${k}=${n}`).join(" ")}`);
+}
+if (!only) await writeGateCatalog();
+fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 1) + "\n");
 const sizes = Object.values(manifest).map((m) => m.bytes).sort((a, b) => b - a);
 console.log(`ideas drawings: ${sizes.length} cards, largest ${sizes[0]} B, median ${sizes[sizes.length >> 1]} B`);

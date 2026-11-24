@@ -178,7 +178,7 @@ export function titleHasMeasure(title: string): boolean {
 /** Size words a title must not claim. The size is already printed beside the card. "Big" stays inside a proper name. */
 const SIZE_ADJ = /^(?:jumbo|mini|giant|tall|small|big|large|tiny|compact|huge|little|miniature|micro|slim|oversized|narrow|short|xl|xxl)$/i;
 /** A word that names the thing being built. Place words (slope, toilet, base) are not in here. */
-const OBJECT = /\b(?:abacus|arch|barn|bed|bench|bin|birdhouse|boat|bookcase|bookshelf|box|bridge|bunk|cabinet|cart|catapult|chest|closet|colosseum|console|coop|cover|crate|daybed|desk|dinosaur|dog|dollhouse|dresser|easel|engine|feeder|frame|glider|goal|hanger|headboard|hood|house|island|ladder|lighthouse|mailbox|nightstand|opening|organizer|ottoman|pantry|pergola|rack|rail|robot|rocket|sailboat|seat|shelf|shelves|ship|sideboard|sorter|stand|stool|swing|table|toolbox|tower|train|tree|trellis|vanity|wardrobe|wheel|windmill|window|workbench)\b/i;
+const OBJECT = /\b(?:abacus|arch|barn|bed|bench|bin|birdhouse|boat|bookcase|bookshelf|box|bridge|bunk|cabinet|cart|castle|catapult|chair|chest|closet|colosseum|console|coop|cover|crate|daybed|desk|dinosaur|dog|dollhouse|dresser|easel|engine|feeder|fort|frame|glider|goal|hanger|headboard|hood|house|island|ladder|lighthouse|mailbox|nightstand|opening|organizer|ottoman|pantry|pegboard|pergola|rack|rail|robot|rocket|sailboat|sawhorse|seat|shelf|shelves|ship|sideboard|sorter|stand|stool|submarine|swing|table|toolbox|tower|train|tree|trellis|vanity|wardrobe|wheel|windmill|window|workbench)\b/i;
 const PROPER = ["Brooklyn Bridge", "Empire State Building", "Space Needle", "White House", "Taj Mahal", "Statue of Liberty", "CN Tower", "Big Ben", "Eiffel", "Warren"];
 
 function properWords(title: string): Map<string, string> {
@@ -316,10 +316,13 @@ function fromIdea(d: Idea): IdeaCard {
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {
-  const drawing = drawingFor(r.id);
   const type = typeFor(r.id, r.prompt);
+  const slug = type || r.id;
+  if (r.id !== slug) rememberIdeaSlug(r.id, slug);
+  const drawing = drawingFor(slug);
+  const aliases = r.id !== slug ? [r.id] : undefined;
   return {
-    slug: r.id, buildType: type, ...titled(r.label, type, r.prompt), count, lastSeen: null, examplePrompt: r.prompt,
+    slug, buildType: type, ...titled(r.label, type, r.prompt), ...(aliases ? { aliases } : {}), count, lastSeen: null, examplePrompt: r.prompt,
     recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, ...sizeOf(drawing?.dims), typedSize: r.size, status, blurb: r.blurb, section, drawing,
   };
 }

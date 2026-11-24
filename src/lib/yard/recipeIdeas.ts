@@ -22,7 +22,7 @@ export function recipePrompt(r: Recipe): string {
 export function recipeIdeas(recipes: Recipe[] = RECIPES.recipes): RecipeIdea[] {
   const out: RecipeIdea[] = [];
   for (const r of recipes) {
-    // Held or flagged learned recipes never reach Ideas or Popular until a Critic grade trusts them.
+    // Held by this recipe's own key (r.held), never by a synonym or the built-in's name.
     if (r.held || (r.learned && r.trust !== "trusted" && learnedRecipeFailures(r).length)) continue;
     const prompt = recipePrompt(r);
     const built = buildRecipe(r, prompt);

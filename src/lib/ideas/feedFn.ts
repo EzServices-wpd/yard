@@ -11,5 +11,7 @@ export const loadIdeasFeed = createServerFn({ method: "GET" }).handler(async ():
   ]);
   let snap = EMPTY_SNAPSHOT;
   try { snap = await ideaStore().served(); } catch { /* fallback */ }
-  return liveFeed(snap, curatedFeed((RECIPES as { default: Parameters<typeof curatedFeed>[0] }).default));
+  const feed = liveFeed(snap, curatedFeed((RECIPES as { default: Parameters<typeof curatedFeed>[0] }).default));
+  // Gate cards load with See all and search (/api/ideas?view=catalog), so the first HTML stays the picture sections.
+  return { ...feed, all: feed.all?.filter((c) => c.section !== "Catalog") };
 });
