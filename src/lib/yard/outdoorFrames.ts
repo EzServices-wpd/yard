@@ -253,14 +253,26 @@ function aFramePanels({ beamL, Hb, spread, beamId, bd, legId, legW, inset }: AFr
       // Legs meet at the apex under the beam centre, so the beam bears on both leg tops.
       const footX = side < 0 ? -spread / 2 : spread / 2 - across;
       const topX = side < 0 ? -across : 0;
-      const minX = Math.min(footX, topX);
-      const w = Math.max(footX, topX) + across - minX;
-      const pts: [number, number][] = [[footX - minX, 0], [footX - minX + across, 0], [topX - minX + across, beamY], [topX - minX, beamY]];
+      // A shallow leg's board projects past the spread. The outer edge stays on the typed spread:
+      // a member does not run past the width it stands in.
+      const lo = -spread / 2, hi = spread / 2;
+      let xFootL = footX, xFootR = footX + across, xTopL = topX, xTopR = topX + across;
+      const past = [xFootL, xFootR, xTopL, xTopR].some((x) => x < lo - 1e-6 || x > hi + 1e-6);
+      if (past) {
+        const clamp = (x: number) => Math.min(hi, Math.max(lo, x));
+        xFootL = clamp(xFootL); xFootR = clamp(xFootR); xTopL = clamp(xTopL); xTopR = clamp(xTopR);
+      }
+      const minX = Math.min(xFootL, xFootR, xTopL, xTopR);
+      const w = Math.max(Math.max(xFootL, xFootR, xTopL, xTopR) - minX, 0.5);
+      const pts: [number, number][] = [[xFootL - minX, 0], [xFootR - minX, 0], [xTopR - minX, beamY], [xTopL - minX, beamY]];
+      const cutLen = past
+        ? Math.ceil(Math.max(Math.hypot(xTopL - xFootL, beamY), Math.hypot(xTopR - xFootR, beamY)) * 8) / 8
+        : Math.ceil((legLen + legW * (legRun / beamY)) * 8) / 8;
       panels.push(
         panel("upright", `A-frame ${e} leg ${side < 0 ? "left" : "right"}`, minX, 0, z, w, beamY, 1.5, legId, {
           polygon: { plane: "xy", pts },
-          blank: { lengthIn: Math.ceil((legLen + legW * (legRun / beamY)) * 8) / 8, widthIn: legW, thicknessIn: 1.5 },
-          cutNote: `Cut ${inchFrac(legLen)}" long with both ends at ${angle}° — level on the ground, tight under the beam.`,
+          blank: { lengthIn: cutLen, widthIn: legW, thicknessIn: 1.5 },
+          cutNote: `Cut ${inchFrac(past ? cutLen : legLen)}" long with both ends at ${angle}° — level on the ground, tight under the beam.`,
         }),
       );
     }
@@ -279,10 +291,14 @@ function aFramePanels({ beamL, Hb, spread, beamId, bd, legId, legW, inset }: AFr
  */
 export function buildSwingSet(prompt: string, size?: { width: number; height: number; depth: number }): YardProject {
   const lower = prompt.toLowerCase();
-  // Beam one 10' 2×10, legs one 8' 2×6 each.
-  const beamL = Math.min(120, size?.depth ?? axis(lower, /long|length|wide|width/) ?? 120);
+  // Beam one 10' 2×10, legs one 8' 2×6 each. The beam runs the depth. A typed width is the spread at the
+  // ground when a depth or a length is also typed; alone, "N wide" stays the beam, as it always has.
+  const wide = size?.width ?? axis(lower, /wide|width|across/);
+  const deep = size?.depth ?? axis(lower, /deep|depth/);
+  const long = axis(lower, /long|length/);
+  const beamL = Math.min(120, deep ?? long ?? wide ?? 120);
   const Hb = Math.min(94, size?.height ?? axis(lower, /tall|high|height/) ?? 92);
-  const spread = size?.width ?? Math.round(Hb * 0.75);
+  const spread = deep != null || long != null ? (wide ?? Math.round(Hb * 0.75)) : Math.round(Hb * 0.75);
   const swings = Math.max(1, Math.min(4, num(lower, /(\d)\s*swings?/) ?? (beamL >= 96 ? 2 : 1)));
   const panels = aFramePanels({ beamL, Hb, spread, beamId: "lumber-2x10-10", bd: 9.25, legId: L.two6, legW: 5.5, inset: 0.5 });
   // The steel A-frame bracket at each end wraps the beam and the leg tops.
