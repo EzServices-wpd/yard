@@ -584,8 +584,9 @@ function closetBom(project: YardProject, allCuts: CutLine[], nest: PlanSheetNest
       });
     }
   } else if (sheets8 > 0 || (project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber && structural.length > 0)) {
+    // The species board line is a board: a prompt whose stock word is a sheet ("maple plywood box") nests that sheet only.
     const isNamedLumberPrimary =
-      project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber;
+      project.primaryMaterialId === CATALOG_LUMBER_BIND && !!namedLumber && namedLumber.category === "lumber";
     // Solid named lumber (teak outdoor etc.): Buy pcs = honest cut wood qty, not
     // 4×8 nest sheet count (silent undercount vs Confirm/chip).
     // When densify still nests sheet faces (table tops/aprons stay plywood-*),

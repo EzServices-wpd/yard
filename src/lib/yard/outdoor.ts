@@ -9,6 +9,7 @@ import type { AssemblyStep, BomLine, BuildPlan, YardProject } from "./types";
 import { decorateBom } from "./listings";
 import { getCatalogItem } from "./catalog";
 import { contactBuild, materialSwaps } from "./materialForUse";
+import { withoutSpeciesSheet } from "./namedLumberSpecies";
 
 /** Deck as a place: "for the deck", "on my deck", "deck box", "deck chair". A skateboard deck is a board. */
 const DECK_PLACE =
@@ -200,7 +201,8 @@ function pressureTreated(b: BomLine): BomLine {
     name: pt.name,
     searchQuery: pt.query,
     estimatedCost: lineTotal,
-    notes: `${b.notes ?? ""} Pressure-treated for outdoors (ground-contact rated); let it dry a few weeks before you finish it.`.trim(),
+    // The species line ("Stock is …") names the stock this row now buys.
+    notes: `${(b.notes ?? "").split(`Stock is ${b.name} `).join(`Stock is ${pt.name} `)} Pressure-treated for outdoors (ground-contact rated); let it dry a few weeks before you finish it.`.trim(),
     offers: [{ retailer: "homedepot", label: "Home Depot", title: pt.title, href: pt.href ?? `https://www.homedepot.com/s/${encodeURIComponent(pt.query)}`, packQty: 1, packPrice: pt.price, unitPrice: pt.price, packsNeeded: b.quantity, lineTotal, best: true, checkedAt: "2026-10-15" }],
   } as BomLine;
 }
@@ -320,7 +322,8 @@ export function withOutdoorPackage(project: YardProject, plan: BuildPlan): Build
         instructions = instructions.map((s) => ({ ...s, title: swap(s.title)!, description: swap(s.description)!, tips: swap(s.tips) }));
       }
     }
-    if (!contact && (project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(prompt)) {
+    // A species against a sheet form ("cedar plywood") names the sheet, not a species that gets bought.
+    if (!contact && (project.notes ?? []).some((n) => /\bpressure-treated\b/i.test(n)) && !species.test(withoutSpeciesSheet(prompt))) {
       bom = bom.map((b) => (species.test(b.name) ? b : pressureTreated(b)));
       // F21/I9: the cut list and the steps name the same PT stock Buy prices, never the kiln-dried catalogue name.
       for (const b of bom) {

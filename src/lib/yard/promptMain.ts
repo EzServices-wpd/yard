@@ -657,7 +657,9 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
   // A switched stock replaces the typed species: the species leaves the title.
-  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
+  // A species typed against a sheet form ("cedar plywood") is said on Buy as "Cedar in the title", so the title carries it.
+  const speciesSheet = speciesBesideSheet(prompt) && (built.panels ?? []).some((p) => /^plywood-/.test(p.materialId ?? ""));
+  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched || speciesSheet) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
 }
 
 /**
