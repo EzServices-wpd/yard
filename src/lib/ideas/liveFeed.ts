@@ -10,7 +10,7 @@ import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
 import { IDEAS } from "@/lib/yard/ideas";
 import TYPES from "./types.json";
 import { isHeldType } from "./held";
-import { curatedFeed, drawingForType, endsOnJoiner, rememberIdeaSlug, sizeOf, slugifyTitle, titleFromHeader, titleHasMeasure, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
+import { curatedFeed, drawingForType, endsOnJoiner, formerNames, ideasTitle, rememberIdeaSlug, sizeOf, slugifyTitle, titleFromHeader, titleHasMeasure, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
 import { genericHeaderName, headerTitleFor } from "./ideaTitle";
 import RECIPES from "./recipes.json";
 import { isLoggedTest } from "./testTraffic";
@@ -97,15 +97,19 @@ function authoredTitle(type: string): string | undefined {
  * a real type name. The slug stays the build type when the title still slugifies to it; a renamed
  * title keeps the old slug as an alias.
  */
-export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: string; slug: string } {
+export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: string; slug: string; aka?: string } {
   const plain = titleOf(type);
-  const header = headerTitleFor(logCardPrompt(type, dims));
+  const prompt = logCardPrompt(type, dims);
+  const header = headerTitleFor(prompt);
   const raw = header && !(genericHeaderName(header) && !genericHeaderName(plain)) ? header : plain;
-  const title = titleFromHeader(raw);
+  const before = titleFromHeader(raw);
+  const title = ideasTitle(raw, { type, prompt });
   const next = slugifyTitle(title);
+  const prev = slugifyTitle(before);
   const slug = next && next !== type && title.toLowerCase() !== plain.toLowerCase() ? next : type;
   if (slug !== type) rememberIdeaSlug(type, slug);
-  return { title, slug };
+  if (prev && prev !== slug) rememberIdeaSlug(prev, slug);
+  return { title, slug, aka: formerNames(before, title, type) };
 }
 
 /** The title a card of this type shows: the authored label, else the header name. */
@@ -227,7 +231,7 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>, 
   const named = logOnlyName(g.type, logged);
   // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
-    slug: named.slug, buildType: g.type, title: named.title, ...(named.slug !== g.type ? { aliases: [g.type] } : {}),
+    slug: named.slug, buildType: g.type, title: named.title, ...(named.aka ? { aka: named.aka } : {}), ...(named.slug !== g.type ? { aliases: [g.type] } : {}),
     count: g.count, lastSeen: g.lastSeen, examplePrompt: logCardPrompt(g.type, logged),
     recipeKey: recipe ? g.type : null, dims: logged, ...sizeOf(drawing?.dims ?? logged), status, section: "Popular", drawing,
   };

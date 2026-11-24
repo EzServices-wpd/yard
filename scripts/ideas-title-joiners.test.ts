@@ -5,7 +5,8 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { curatedFeed, drawingFor, endsOnJoiner, resolveIdeaSlug, titleFromHeader, titleHasMeasure, type IdeaCard } from "../src/lib/ideas/feed";
+import { curatedFeed, drawingFor, endsOnJoiner, ideasTitle, resolveIdeaSlug, searchCards, searchPool, sentenceCaseTitle, titleFromHeader, titleHasMeasure, titleHasObjectNoun, titleHasSizeAdjective, titleIsSentenceCase, type IdeaCard } from "../src/lib/ideas/feed";
+import { genericHeaderName } from "../src/lib/ideas/ideaTitle";
 import { TEST_CUTOFF, feedViolations, liveFeed, publicRows, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import LIVE23 from "./fixtures/ideas-snapshot-2026-10-23.json";
@@ -62,6 +63,7 @@ test("no Ideas title carries a size or measurement; a count is not one", () => {
   assert.equal(titleFromHeader("L-shaped corner desk 60\" x 48\" · 30\" tall"), "L-shaped corner desk");
   assert.equal(titleFromHeader("Platform bed 39\" long x 82\" wide x 75\" tall"), "Platform bed");
   assert.equal(titleFromHeader("PVC Soccer Goal"), "PVC Soccer Goal");
+  assert.equal(ideasTitle("PVC Soccer Goal"), "PVC soccer goal");
   assert.equal(titleFromHeader("2×4 ladder"), "Ladder");
   assert.equal(titleHasMeasure("Step stool, 2 steps"), false);
   assert.equal(titleHasMeasure("Round 3-leg table"), false);
@@ -74,16 +76,13 @@ const plainTitle = (k: string) => k.replace(/-/g, " ").replace(/^./, (c) => c.to
 // The two rack titles are split across quotes. pvcRackMovers treats every double-quoted
 // type-plus-rack phrase under scripts/ as a new sweep prompt.
 const MOVED: [string, string, string][] = [
-  ["bike-rack", "bike-rack", "Bike " + "Rack"],
   ["brooklyn-bridge", "brooklyn-bridge", "Brooklyn Bridge"],
-  ["covered-bridge", "covered-bridge", "Covered Bridge"],
   ["empire-state-building", "empire-state-building", "Empire State Building"],
   ["firewood-unit", "firewood-rack", "Firewood " + "rack"],
-  ["garden-arch-base-molding", "garden-arch-base-molding", "Garden Arch Base Molding"],
   ["key-holder-wall-mounted", "peg-rail", "Peg rail"],
   ["l-shaped-corner-desk", "l-shaped-corner-desk", "L-shaped corner desk"],
   ["shelf", "shelf-unit", "Shelf unit"],
-  ["soccer-goal", "pvc-soccer-goal", "PVC Soccer Goal"],
+  ["soccer-goal", "pvc-soccer-goal", "PVC soccer goal"],
   ["space-needle", "space-needle", "Space Needle"],
   ["white-house", "white-house", "White House"],
 ];
@@ -133,4 +132,55 @@ test("a step-stool result key stripped down to 'with' titles the header name, an
   const body = JSON.stringify({ feed, rows: publicRows(snap.rows) }).toLowerCase();
   assert.equal(body.includes(prompt), false);
   assert.equal(endsOnJoiner(card.title), false);
+  assert.equal(titleIsSentenceCase(card.title), true);
+  assert.equal(titleHasObjectNoun(card.title), true);
+  assert.equal(titleHasSizeAdjective(card.title), false);
+  const pool = searchPool(feed);
+  assert.ok(searchCards(pool, "step stool").some((c) => c.buildType === "step-stool-with"), "step stool");
+  assert.ok(searchCards(pool, "step stool with").some((c) => c.buildType === "step-stool-with"), "old words");
+});
+
+test("every Ideas title names an object, carries no size adjective, and is sentence case", () => {
+  const bad = (cards: Pick<IdeaCard, "slug" | "title">[]) => cards.flatMap((c) => {
+    const why = [!titleHasObjectNoun(c.title) && "no object noun", titleHasSizeAdjective(c.title) && "size adjective", !titleIsSentenceCase(c.title) && "not sentence case"].filter(Boolean);
+    return why.length ? [`${c.slug}: ${c.title} (${why.join(", ")})`] : [];
+  });
+  assert.deepEqual(bad(cardsOf(base)), []);
+  for (const { snap, feed } of feeds) {
+    assert.deepEqual(bad(cardsOf(feed)), [], feed.at);
+    assert.deepEqual(bad(publicRows(snap.rows).filter((r) => !genericHeaderName(r.title))), []);
+  }
+  assert.equal(titleHasObjectNoun("Under the slope"), false);
+  assert.equal(titleHasObjectNoun("Over-toilet"), false);
+  assert.equal(titleHasSizeAdjective("Jumbo lattice tower"), true);
+  assert.equal(titleIsSentenceCase("Bike " + "Rack"), false);
+  assert.equal(titleIsSentenceCase("PVC soccer goal"), true);
+  assert.equal(titleIsSentenceCase("Brooklyn Bridge"), true);
+  assert.equal(titleIsSentenceCase("White House"), true);
+  assert.equal(ideasTitle("Jumbo lattice tower", { type: "lattice-tower" }), "Lattice tower");
+  assert.equal(ideasTitle("Under the slope", { type: "sloped-ceiling-bookcase" }), "Sloped ceiling bookcase");
+  assert.equal(ideasTitle("Over-toilet", { type: "over-toilet", prompt: "over the toilet cabinet 27 wide 68 high 9 deep" }), "Over-toilet cabinet");
+  assert.equal(ideasTitle("Kitchen base", { type: "kitchen-base", prompt: "kitchen base cabinet 24 wide" }), "Kitchen base cabinet");
+  assert.equal(ideasTitle("Bike " + "Rack"), "Bike " + "rack");
+  assert.equal(ideasTitle("PVC Soccer Goal"), "PVC soccer goal");
+  assert.equal(ideasTitle("L-shaped corner desk"), "L-shaped corner desk");
+  assert.equal(ideasTitle("TV console"), "TV console");
+  assert.equal(ideasTitle("Wall-Mounted Mail Organizer"), "Wall-mounted mail organizer");
+  assert.equal(sentenceCaseTitle("Big Ben"), "Big Ben");
+});
+
+test("old names still find the idea after the title changed", () => {
+  const pool = searchPool(feeds[1].feed);
+  const hit = (q: string, type: string) => assert.ok(searchCards(pool, q).some((c) => c.buildType === type), `${q} -> ${type}`);
+  hit("firewood unit", "firewood-unit");
+  hit("soccer goal", "soccer-goal");
+  hit("shelf", "shelf");
+  hit("key holder wall mounted", "key-holder-wall-mounted");
+  hit("2x4 ladder", "ladder");
+  hit("jumbo lattice tower", "lattice-tower");
+  hit("under the slope", "sloped-ceiling-bookcase");
+  hit("over-toilet", "over-toilet");
+  hit("over toilet", "over-toilet");
+  hit("bike " + "rack", "bike-rack");
+  hit("wall mounted mail organizer", "wall-mounted-mail-organizer");
 });

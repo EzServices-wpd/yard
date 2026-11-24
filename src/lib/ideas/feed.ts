@@ -36,6 +36,8 @@ export type IdeaCard = {
   unverified?: boolean;
   /** Slugs this card used to publish. An old link still resolves to the card. */
   aliases?: string[];
+  /** Earlier names (the header before this title, the build type). Search only, never printed. */
+  aka?: string;
   blurb?: string;
   /** Feature note printed after the size in the text face ("from 2×4", "for a 36 × 48 double-hung"). */
   stock?: string;
@@ -172,6 +174,100 @@ export function titleHasMeasure(title: string): boolean {
   if (/\d\s*[x×]\s*\d/i.test(title)) return true;
   return false;
 }
+
+/** Size words a title must not claim. The size is already printed beside the card. "Big" stays inside a proper name. */
+const SIZE_ADJ = /^(?:jumbo|mini|giant|tall|small|big|large|tiny|compact|huge|little|miniature|micro|slim|oversized|narrow|short|xl|xxl)$/i;
+/** A word that names the thing being built. Place words (slope, toilet, base) are not in here. */
+const OBJECT = /\b(?:abacus|arch|barn|bed|bench|bin|birdhouse|boat|bookcase|bookshelf|box|bridge|bunk|cabinet|cart|catapult|chest|closet|colosseum|console|coop|cover|crate|daybed|desk|dinosaur|dog|dollhouse|dresser|easel|engine|feeder|frame|glider|goal|hanger|headboard|hood|house|island|ladder|lighthouse|mailbox|nightstand|opening|organizer|ottoman|pantry|pergola|rack|rail|robot|rocket|sailboat|seat|shelf|shelves|ship|sideboard|sorter|stand|stool|swing|table|toolbox|tower|train|tree|trellis|vanity|wardrobe|wheel|windmill|window|workbench)\b/i;
+const PROPER = ["Brooklyn Bridge", "Empire State Building", "Space Needle", "White House", "Taj Mahal", "Statue of Liberty", "CN Tower", "Big Ben", "Eiffel", "Warren"];
+
+function properWords(title: string): Map<string, string> {
+  const lower = title.toLowerCase();
+  const map = new Map<string, string>();
+  for (const phrase of [...PROPER].sort((a, b) => b.length - a.length)) {
+    if (!lower.includes(phrase.toLowerCase())) continue;
+    for (const w of phrase.split(/\s+/)) map.set(w.toLowerCase(), w);
+  }
+  return map;
+}
+
+export function titleHasSizeAdjective(title: string): boolean {
+  const keep = properWords(title);
+  return title.split(/\s+/).some((w) => { const bare = wordOf(w).toLowerCase(); return !!bare && SIZE_ADJ.test(bare) && !keep.has(bare); });
+}
+
+export function titleHasObjectNoun(title: string): boolean {
+  return OBJECT.test(title) || PROPER.some((p) => title.toLowerCase().includes(p.toLowerCase()));
+}
+
+function caseToken(raw: string, first: boolean, proper: Map<string, string>): string {
+  const lead = raw.match(/^[("']*/)?.[0] ?? "";
+  const tail = raw.match(/[).,;:]*$/)?.[0] ?? "";
+  const bare = raw.slice(lead.length, raw.length - tail.length);
+  const known = proper.get(bare.toLowerCase());
+  if (known) return lead + known + tail;
+  if (/^[A-Z]{2,}$/.test(bare) || /\d/.test(bare)) return raw;
+  if (/^[A-Za-z]-/.test(bare)) return lead + bare[0].toUpperCase() + bare.slice(1).toLowerCase() + tail;
+  const low = bare.toLowerCase();
+  const cased = first ? low.slice(0, 1).toUpperCase() + low.slice(1) : low;
+  return lead + cased + tail;
+}
+
+export function sentenceCaseTitle(title: string): string {
+  const proper = properWords(title);
+  return title.split(/\s+/).filter(Boolean).map((w, i) => caseToken(w, i === 0, proper)).join(" ");
+}
+
+export function titleIsSentenceCase(title: string): boolean {
+  return sentenceCaseTitle(title) === title;
+}
+
+function dropSizeWords(title: string): string {
+  const keep = properWords(title);
+  return title.split(/\s+/).filter((w) => { const bare = wordOf(w).toLowerCase(); return !bare || keep.has(bare) || !SIZE_ADJ.test(bare); }).join(" ").replace(/\s+/g, " ").trim();
+}
+
+function typePhrase(type: string): string {
+  const parts = type.split("-");
+  const words: string[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    if (p.length === 1 && parts[i + 1]) words.push(`${p}-${parts[++i]}`);
+    else if (!SIZE_ADJ.test(p)) words.push(p);
+  }
+  return words.join(" ");
+}
+
+function lastObject(s?: string): string | null {
+  if (!s) return null;
+  const words = s.toLowerCase().replace(/-/g, " ").split(/[^a-z]+/).filter(Boolean);
+  for (let i = words.length - 1; i >= 0; i--) if (OBJECT.test(words[i])) return words[i];
+  return null;
+}
+
+/**
+ * The Ideas title: the header name, measurements already out, then one rule. Sentence case (proper names,
+ * acronyms and tokens like PVC or 2×4 keep their form). Size adjectives drop. A header with no object noun
+ * takes the noun from the build type, or from the prompt when the type has none.
+ */
+export function ideasTitle(header: string, src?: { type?: string; prompt?: string }): string {
+  let title = dropSizeWords(titleFromHeader(header));
+  if (!titleHasObjectNoun(title)) {
+    const phrase = src?.type ? typePhrase(src.type) : "";
+    const noun = lastObject(src?.prompt) || lastObject(src?.type);
+    if (phrase && titleHasObjectNoun(phrase)) title = phrase;
+    else if (noun && !title.toLowerCase().includes(noun)) title = `${title} ${noun}`.trim();
+  }
+  return sentenceCaseTitle(title);
+}
+
+/** Names a search should still hit after the title changed. Not shown. */
+export function formerNames(raw: string, title: string, type?: string): string | undefined {
+  const have = new Set(title.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 1));
+  const bits = [raw, ...(type ? [type.replace(/-/g, " ")] : [])];
+  const keep = [...new Set(bits.map((s) => s.trim()).filter((s) => s && s.toLowerCase().split(/[^a-z0-9×]+/).filter((w) => w.length > 1).some((w) => !have.has(w) && !have.has(w.replace(/×/g, "x")))))];
+  return keep.length ? keep.join(" ") : undefined;
+}
 export function slugifyTitle(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -206,17 +302,24 @@ export function sizeOf(dims: SolvedDims | null | undefined): Pick<IdeaCard, "siz
   return { size: f.text, sizeAria: f.aria };
 }
 
+function titled(raw: string, type: string, prompt: string): Pick<IdeaCard, "title" | "aka"> {
+  const title = ideasTitle(raw, { type, prompt });
+  const aka = formerNames(raw, title, type);
+  return { title, ...(aka ? { aka } : {}) };
+}
 function fromIdea(d: Idea): IdeaCard {
   const drawing = drawingFor(d.id);
+  const type = typeFor(d.id, d.prompt);
   return {
-    slug: d.id, buildType: typeFor(d.id, d.prompt), title: titleFromHeader(TITLE_FIX[d.id] ?? d.label), count: 0, lastSeen: null, examplePrompt: d.prompt,
+    slug: d.id, buildType: type, ...titled(TITLE_FIX[d.id] ?? d.label, type, d.prompt), count: 0, lastSeen: null, examplePrompt: d.prompt,
     recipeKey: null, dims: null, ...sizeOf(drawing?.dims), typedSize: d.size, status: "checked", blurb: d.blurb, stock: NOTE_FIX[d.id] ?? d.stock, section: d.section, drawing,
   };
 }
 function fromRecipe(r: RecipeLike, status: IdeaCard["status"], section: string, count = 0): IdeaCard {
   const drawing = drawingFor(r.id);
+  const type = typeFor(r.id, r.prompt);
   return {
-    slug: r.id, buildType: typeFor(r.id, r.prompt), title: titleFromHeader(r.label), count, lastSeen: null, examplePrompt: r.prompt,
+    slug: r.id, buildType: type, ...titled(r.label, type, r.prompt), count, lastSeen: null, examplePrompt: r.prompt,
     recipeKey: r.id.replace(/^recipe-/, ""), dims: r.box ?? null, ...sizeOf(drawing?.dims), typedSize: r.size, status, blurb: r.blurb, section, drawing,
   };
 }
@@ -311,10 +414,10 @@ export function queryVariants(query: string): string[] {
 const bestScore = (idea: Parameters<typeof ideaSearchScore>[0], variants: string[]) => Math.max(-1, ...variants.map((v) => ideaSearchScore(idea, v)));
 
 export function searchCards(pool: IdeaCard[], query: string): IdeaCard[] {
-  const vs = queryVariants(query);
+  const vs = queryVariants(query.replace(/-/g, " "));
   if (!vs.length) return [];
   return pool
-    .map((c, index) => ({ c, index, score: bestScore({ label: c.title, size: [c.size, c.typedSize].filter(Boolean).join(" "), blurb: [c.blurb ?? "", isSmallBuild(c) ? SMALL_TAG : ""].join(" "), section: c.section, stock: c.stock, prompt: c.examplePrompt }, vs) }))
+    .map((c, index) => ({ c, index, score: bestScore({ label: c.title, size: [c.size, c.typedSize].filter(Boolean).join(" "), blurb: [c.blurb ?? "", c.aka ?? "", (c.aliases ?? []).join(" ").replace(/-/g, " "), c.buildType.replace(/-/g, " "), isSmallBuild(c) ? SMALL_TAG : ""].join(" "), section: c.section, stock: c.stock, prompt: c.examplePrompt }, vs) }))
     .filter((h) => h.score >= 0)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((h) => h.c);

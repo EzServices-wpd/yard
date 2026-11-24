@@ -31,6 +31,7 @@ import { scrubShown, scrubState, scrubTrack, subscribeScrub } from "@/components
 import { PROP_LAYER, figureBox, useScale } from "@/components/workspace/scale-props";
 import { STAGE } from "@/components/workspace/stage-palette";
 import { measureBoxStrokes } from "@/components/workspace/measure-box";
+import { refusedEmpty, stageBox } from "@/components/workspace/refusedStage";
 import { clipCentre, shareState, subscribeShare } from "@/components/workspace/share-clip";
 import { sheetGapOpen, subscribeSheetGap } from "@/components/workspace/measure-sheet-gap";
 
@@ -109,7 +110,7 @@ function footprintTexture() {
 function FootprintShadow({ project }: { project: YardProject }) {
   const box = useMemo(() => benchModelBox(project), [project]);
   const tex = footprintTexture();
-  if (!tex) return null;
+  if (refusedEmpty(project) || !tex) return null;
   const w = box.maxX - box.minX, d = box.maxZ - box.minZ;
   const pad = Math.max(6, Math.min(w, d) * 0.35);
   return (
@@ -297,8 +298,8 @@ export function WorkspaceCanvas() {
           selectedId={selectedId}
           onSelect={select}
           onPlace={placePiece}
-          showHull={showHull && !pending}
-          showHistoric={showHistoric && !pending && (hasHistoricProfile(project.kind) || !!project.historic)}
+          showHull={showHull && !pending && !refusedEmpty(project)}
+          showHistoric={showHistoric && !pending && !refusedEmpty(project) && (hasHistoricProfile(project.kind) || !!project.historic)}
           workMode={workMode}
           stepIds={stepIds}
           placedIds={placedIds}
@@ -465,7 +466,7 @@ function CameraRig({
       // One framing path for every build: the solved model's box, the free canvas, a 3/4 view.
       // Exploded: the exploded box (every part's final pose, with the built box), so condition (d) of
       // every-piece-visible holds by construction: all corners inside the free rect, none under the cards.
-      const shut = benchModelBox(projectRef.current);
+      const shut = stageBox(projectRef.current);
       // Operate with drawers open: frame the pulled-out drawers too and look down into them from >= 40°.
       const pulled = useYard.getState().facesOpen && !(staged && explode) ? maxOpenPull(projectRef.current.panels, soloDrawer) : 0;
       const cavity = pulled > 0 && drawerGroups(projectRef.current.panels).length > 0;
@@ -910,7 +911,7 @@ function BenchScene({
     <group ref={setArRoot}>
       {showHull && <GhostLines strokes={hull} color={HULL} alpha={[MARK_ALPHA.ghostMain, MARK_ALPHA.ghostFine]} />}
       {showHistoric && <GhostLines strokes={historic} color={HIST} />}
-      {measureOpen && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
+      {measureOpen && !refusedEmpty(project) && mw > 0 && mh > 0 && <MeasureGhost width={mw} height={mh} depth={md || 16} />}
       {!pending && (
         <StickCloud
           instances={shownMembers}
