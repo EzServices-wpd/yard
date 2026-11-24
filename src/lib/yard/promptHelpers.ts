@@ -3,7 +3,7 @@ import { checkParts } from "./partCeiling";
 import { createId } from "@/lib/utils";
 import { getCatalogItem } from "./catalog";
 import { pricedBoardId } from "./pricedStock";
-import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses } from "./namedLumberSpecies";
+import { namedLumberDetectPhrases, promptNamesNamedLumber, bodyStockClauses, speciesBesideSheet } from "./namedLumberSpecies";
 import { stripHeldPurpose } from "./heldObjects";
 import { toPrimitive } from "./geometry";
 import { typedExtents } from "./honesty";
@@ -631,16 +631,44 @@ export function spokenWeekendCraftStock(lower: string): boolean {
   );
 }
 
+/**
+ * Species against a sheet-form word is that sheet, not the species' default 1×4.
+ * Thickness phrases already in the catalog pick the sheet ("1/2 oak plywood" → 1/2").
+ * A bare "ply" or "sheet" with no thickness phrase is the 3/4" 4×8.
+ */
+function speciesSheetCatalogId(text: string): string | null {
+  if (!speciesBesideSheet(text)) return null;
+  for (const [re, id] of weekendSizedStockPhrases()) {
+    if (id.startsWith("plywood-") && re.test(text)) return id;
+  }
+  return "plywood-3-4-4x8";
+}
+
 function detectMaterialPhrases(text: string): CatalogItem {
   const lower = text.toLowerCase();
   const phrases: [RegExp, string][] = [
     ...weekendCraftStockPhrases(),
     // "pine 2x4" / "oak 1x3" is that stick, not the species default 1×4.
     ...weekendSizedStockPhrases().filter(([, id]) => id.startsWith("lumber-")),
+  ];
+  for (const [re, id] of phrases) {
+    if (re.test(lower)) {
+      const item = getCatalogItem(id);
+      if (item) return item;
+    }
+  }
+  // Form word wins over the species default. Species stays on the prompt and narrows
+  // inside the sheet (thickness), or the stated substitute when that species has no sheet row.
+  const sheetId = speciesSheetCatalogId(lower);
+  if (sheetId) {
+    const item = getCatalogItem(sheetId);
+    if (item) return item;
+  }
+  const rest: [RegExp, string][] = [
     ...namedLumberDetectPhrases(),
     ...weekendSizedStockPhrases().filter(([, id]) => !id.startsWith("lumber-")),
   ];
-  for (const [re, id] of phrases) {
+  for (const [re, id] of rest) {
     if (re.test(lower)) {
       const item = getCatalogItem(id);
       if (item) return item;
@@ -666,6 +694,7 @@ function detectMaterialPhrases(text: string): CatalogItem {
 /**
  * The stock a sentence names. The last real stock clause wins
  * ("from popsicle sticks from 3/4 plywood" is plywood, "pine desk from oak" is oak).
+ * A species against a sheet form ("oak plywood", "maple ply") is that sheet, not the species' 1×4.
  * A prompt with no stock clause keeps first-match ("pine 2x4", "jumbo stick tower").
  */
 /** A join word is the joint, not the stock. "Dowel-jointed" is not a dowel. */

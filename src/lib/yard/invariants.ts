@@ -17,6 +17,7 @@ import { askedDrawerCount, asksDoors, asksDrawers, DRAWER_COLUMN_MAX_IN } from "
 import { slideForDepth } from "./stockLook";
 import { inchFrac } from "./inchText";
 import { generateFromPrompt, ignoredTypedWords } from "./promptMain";
+import { promptTypedSheet } from "./namedLumberSpecies";
 import { resolvePurpose } from "./purposeForms";
 import { namedFormOf } from "./form";
 import { typedHeadNoun } from "./headNoun";
@@ -217,7 +218,7 @@ function i12(p: YardProject, prompt: string): Violation[] {
 
 /** I13: outdoors, nothing on the ground is interior plywood. */
 function i13(p: YardProject, prompt: string): Violation[] {
-  if (!outdoorBuild(p, prompt) || /plywood/i.test(prompt)) return [];
+  if (!outdoorBuild(p, prompt) || promptTypedSheet(prompt)) return [];
   return p.panels.filter((q) => /^plywood-/.test(q.materialId) && q.position.y < 0.5).map((q) => v("I13", `${q.name} is interior plywood on the ground outdoors`));
 }
 
