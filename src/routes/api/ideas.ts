@@ -15,8 +15,9 @@ export const Route = createFileRoute("/api/ideas")({
         let snap = EMPTY_SNAPSHOT;
         try { snap = await ideaStore().served(); } catch { /* fallback */ }
         const feed = liveFeed(snap, curatedFeed(RECIPES));
-        const strip = new URL(request.url).searchParams.get("view") === "strip";
-        return Response.json(strip ? { rows: makingNow(feed) } : feed, { headers: { "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400" } });
+        const view = new URL(request.url).searchParams.get("view");
+        const body = view === "strip" ? { rows: makingNow(feed) } : view === "catalog" ? (feed.all ?? []).filter((c) => c.section === "Catalog") : feed;
+        return Response.json(body, { headers: { "Cache-Control": "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400" } });
       },
     },
   },

@@ -68,6 +68,7 @@ function walkStrings(x: unknown, into: Set<string>) {
   else if (x && typeof x === "object") for (const v of Object.values(x as Record<string, unknown>)) walkStrings(v, into);
 }
 
+/** Quoted rack phrases in the sources the sweep already read. The Ideas catalog (src/lib/ideas/catalog.json) is generated from the gate and is not one of those sources. */
 function quotedRackPrompts(): string[] {
   const out: string[] = [];
   const roots = [new URL("../src/", import.meta.url), new URL("../scripts/", import.meta.url), new URL("../evals/", import.meta.url)];
@@ -78,7 +79,7 @@ function quotedRackPrompts(): string[] {
       if (name.isDirectory()) {
         if (name.name === "node_modules") continue;
         walkDir(url);
-      } else if (/\.(ts|json)$/.test(name.name) && !name.name.startsWith("pvcRackMovers")) files.push(url.pathname);
+      } else if (/\.(ts|json)$/.test(name.name) && !name.name.startsWith("pvcRackMovers") && !url.pathname.endsWith("/ideas/catalog.json")) files.push(url.pathname);
     }
   };
   for (const root of roots) walkDir(root);

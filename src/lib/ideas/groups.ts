@@ -16,7 +16,20 @@ export const GROUPS: { id: string; title: string; line: string; types: string }[
 export const OTHER = { id: "more", title: "More builds", line: "", types: "" };
 
 const GROUP_OF = new Map(GROUPS.flatMap((g) => g.types.split(" ").map((t) => [t, g.id] as const)));
-export const groupOf = (buildType: string): string | undefined => GROUP_OF.get(buildType);
+/** A type no row names yet, from its words. Explicit rows win. "zz-new-type" matches nothing and stays in More builds. */
+const FALLBACK: [RegExp, string][] = [
+  [/\b(?:toy|doll|ship|train|fort)\b/, "toys"],
+  [/\b(?:windmill|pisa|ben|submarine|tower|bridge|barn|lighthouse|castle|needle|empire)\b/, "landmarks"],
+  [/\b(?:trellis|planter|farm|lemonade|potting|snack|firewood|garden|plant|sawhorse)\b/, "weekend"],
+  [/\b(?:easel|pegboard|box|frame|organizer|hanger)\b/, "crafts"],
+  [/\b(?:chair|cabinet|bench|chest|console|stand|stool|bed|table|rack|cart|closet|shelf|desk|seat)\b/, "furniture"],
+];
+export const groupOf = (buildType: string): string | undefined => {
+  const named = GROUP_OF.get(buildType);
+  if (named) return named;
+  const words = ` ${buildType.replace(/-/g, " ")} `;
+  return FALLBACK.find(([re]) => re.test(words))?.[1];
+};
 
 /** Hand-picked (Chief 10-26): checked, drawn builds that show what Yard does. A missing or unchecked one is skipped. */
 export const FEATURED = ["eiffel-tower", "bathroom-pocket-vanity", "bridge", "abacus", "bunk-bed"];

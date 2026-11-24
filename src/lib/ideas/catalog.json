@@ -1,0 +1,1643 @@
+{
+ "cards": [
+  {
+   "buildType": "abacus",
+   "prompt": "abacus",
+   "title": "Abacus",
+   "dims": {
+    "width": 16,
+    "height": 10.600000000000001,
+    "depth": 3.5
+   },
+   "recipe": true
+  },
+  {
+   "buildType": "adirondack-chair",
+   "prompt": "adirondack chair",
+   "title": "Adirondack chair",
+   "dims": {
+    "width": 25.9,
+    "height": 37.9,
+    "depth": 23.9
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/adirondack-chair.5a775e64.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 21,
+    "v": "5a775e64",
+    "dims": {
+     "width": 25.9,
+     "height": 37.9,
+     "depth": 23.9
+    }
+   }
+  },
+  {
+   "buildType": "art-easel",
+   "prompt": "painting easel 6 ft",
+   "title": "Art easel",
+   "dims": {
+    "width": 30,
+    "height": 72,
+    "depth": 24
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/art-easel.8bb51185.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 8,
+    "v": "8bb51185",
+    "dims": {
+     "width": 30,
+     "height": 72,
+     "depth": 24
+    }
+   }
+  },
+  {
+   "buildType": "bathroom-cabinet",
+   "prompt": "bathroom cabinet 24 wide 32 tall 18 deep with 1 drawer and 2 doors",
+   "title": "Bathroom cabinet",
+   "dims": {
+    "width": 24,
+    "height": 32,
+    "depth": 18
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/bathroom-cabinet.0140e49c.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 15,
+    "v": "0140e49c",
+    "dims": {
+     "width": 24,
+     "height": 32,
+     "depth": 18
+    }
+   }
+  },
+  {
+   "buildType": "bathroom-pocket-vanity",
+   "prompt": "pocket vanity",
+   "title": "Bathroom pocket vanity",
+   "dims": {
+    "width": 38,
+    "height": 102,
+    "depth": 17
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "bench",
+   "prompt": "shoe bench",
+   "title": "Bench",
+   "dims": {
+    "width": 48,
+    "height": 18,
+    "depth": 16
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "big-ben",
+   "prompt": "Big Ben",
+   "title": "Big Ben",
+   "dims": {
+    "width": 5,
+    "height": 24.5,
+    "depth": 5
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/big-ben.52c31da1.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 385,
+    "v": "52c31da1",
+    "dims": {
+     "width": 5,
+     "height": 24.5,
+     "depth": 5
+    }
+   }
+  },
+  {
+   "buildType": "birdhouse",
+   "prompt": "birdhouse",
+   "title": "Birdhouse",
+   "dims": {
+    "width": 6.875,
+    "height": 11.8125,
+    "depth": 7.5
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "bookcase",
+   "prompt": "bookcase",
+   "title": "Bookcase",
+   "dims": {
+    "width": 36,
+    "height": 84,
+    "depth": 12
+   },
+   "recipe": false,
+   "aliases": [
+    "pine-bookcase"
+   ]
+  },
+  {
+   "buildType": "bridge",
+   "prompt": "bridge from 3/8 inch dowels",
+   "title": "Bridge",
+   "dims": {
+    "width": 9,
+    "height": 8,
+    "depth": 8
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "broom-closet-cabinet",
+   "prompt": "broom closet cabinet to fit a 22 inch gap 80 tall 14 deep",
+   "title": "Broom closet cabinet",
+   "dims": {
+    "width": 22,
+    "height": 80,
+    "depth": 14
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/broom-closet-cabinet.e761109f.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 7,
+    "v": "e761109f",
+    "dims": {
+     "width": 22,
+     "height": 80,
+     "depth": 14
+    }
+   }
+  },
+  {
+   "buildType": "bunk-bed",
+   "prompt": "bunk bed",
+   "title": "Bunk bed",
+   "dims": {
+    "width": 82,
+    "height": 65,
+    "depth": 44
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "cabinet",
+   "prompt": "5 foot cabinet",
+   "title": "Cabinet",
+   "dims": {
+    "width": 36,
+    "height": 60,
+    "depth": 16.75
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/cabinet.072f5ad2.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 12,
+    "v": "072f5ad2",
+    "dims": {
+     "width": 36,
+     "height": 60,
+     "depth": 16.75
+    }
+   }
+  },
+  {
+   "buildType": "castle",
+   "prompt": "cardboard castle",
+   "title": "Castle",
+   "dims": {
+    "width": 27,
+    "height": 23.8,
+    "depth": 24
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/castle.2c2fbe57.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 48,
+    "v": "2c2fbe57",
+    "dims": {
+     "width": 27,
+     "height": 23.8,
+     "depth": 24
+    }
+   }
+  },
+  {
+   "buildType": "cat-tree",
+   "prompt": "cat tree with three platforms",
+   "title": "Cat tree",
+   "dims": {
+    "width": 20,
+    "height": 48,
+    "depth": 20
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "chest",
+   "prompt": "chest of drawers 30 wide 44 tall 18 deep with 5 drawers",
+   "title": "Chest",
+   "dims": {
+    "width": 30,
+    "height": 44,
+    "depth": 18
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/chest.e16e5bca.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 30,
+    "v": "e16e5bca",
+    "dims": {
+     "width": 30,
+     "height": 44,
+     "depth": 18
+    }
+   }
+  },
+  {
+   "buildType": "closet",
+   "prompt": "closet with drawers",
+   "title": "Closet",
+   "dims": {
+    "width": 36,
+    "height": 84,
+    "depth": 16.75
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "coffee-table",
+   "prompt": "coffee table",
+   "title": "Coffee table",
+   "dims": {
+    "width": 40,
+    "height": 18,
+    "depth": 40
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/coffee-table.41ee552b.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 9,
+    "v": "41ee552b",
+    "dims": {
+     "width": 40,
+     "height": 18,
+     "depth": 40
+    }
+   }
+  },
+  {
+   "buildType": "console-table",
+   "prompt": "console table 48 long 12 deep",
+   "title": "Console table",
+   "dims": {
+    "width": 48,
+    "height": 30,
+    "depth": 12
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/console-table.fe35339e.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 9,
+    "v": "fe35339e",
+    "dims": {
+     "width": 48,
+     "height": 30,
+     "depth": 12
+    }
+   }
+  },
+  {
+   "buildType": "corner-bookshelf",
+   "prompt": "corner shelf",
+   "title": "Corner shelf",
+   "dims": {
+    "width": 12,
+    "height": 60,
+    "depth": 12
+   },
+   "recipe": false,
+   "aliases": [
+    "corner-shelf"
+   ]
+  },
+  {
+   "buildType": "craft-cabinet",
+   "prompt": "craft cabinet 30 wide 60 tall 16 deep with 2 doors and 2 drawers",
+   "title": "Craft cabinet",
+   "dims": {
+    "width": 30,
+    "height": 60,
+    "depth": 16
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/craft-cabinet.aa0b522f.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 20,
+    "v": "aa0b522f",
+    "dims": {
+     "width": 30,
+     "height": 60,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "desk",
+   "prompt": "60\" desk",
+   "title": "Desk",
+   "dims": {
+    "width": 60,
+    "height": 29,
+    "depth": 24.75
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "dining-table",
+   "prompt": "dining table 72 by 36",
+   "title": "Dining table",
+   "dims": {
+    "width": 72,
+    "height": 30,
+    "depth": 36
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/dining-table.11c306bd.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 9,
+    "v": "11c306bd",
+    "dims": {
+     "width": 72,
+     "height": 30,
+     "depth": 36
+    }
+   }
+  },
+  {
+   "buildType": "dog-crate",
+   "prompt": "dog crate 36 wide",
+   "title": "Dog crate",
+   "dims": {
+    "width": 36,
+    "height": 25,
+    "depth": 23
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "dollhouse",
+   "prompt": "doll house",
+   "title": "Doll house",
+   "dims": {
+    "width": 24,
+    "height": 30,
+    "depth": 12
+   },
+   "recipe": false,
+   "aliases": [
+    "doll-house"
+   ],
+   "drawing": {
+    "src": "/ideas/drawings/catalog-dollhouse.e64b2811.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 10,
+    "v": "e64b2811",
+    "dims": {
+     "width": 24,
+     "height": 30,
+     "depth": 12
+    }
+   }
+  },
+  {
+   "buildType": "dresser",
+   "prompt": "dresser",
+   "title": "Dresser",
+   "dims": {
+    "width": 36,
+    "height": 36,
+    "depth": 18.75
+   },
+   "recipe": false,
+   "aliases": [
+    "walnut-dresser"
+   ]
+  },
+  {
+   "buildType": "drying-rack",
+   "prompt": "dowel drying rack",
+   "title": "Drying rack",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 12
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/drying-rack.98004136.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 8,
+    "v": "98004136",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 12
+    }
+   }
+  },
+  {
+   "buildType": "dutch-windmill",
+   "prompt": "Dutch windmill",
+   "title": "Dutch windmill",
+   "dims": {
+    "width": 17.8,
+    "height": 26.2,
+    "depth": 8.7
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/dutch-windmill.6fa97b4b.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 207,
+    "v": "6fa97b4b",
+    "dims": {
+     "width": 17.8,
+     "height": 26.2,
+     "depth": 8.7
+    }
+   }
+  },
+  {
+   "buildType": "empire-state-building",
+   "prompt": "Empire State Building model",
+   "title": "Empire State Building",
+   "dims": {
+    "width": 11.6,
+    "height": 24.5,
+    "depth": 11.6
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/empire-state-building.d22e4aa9.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 264,
+    "v": "d22e4aa9",
+    "dims": {
+     "width": 11.6,
+     "height": 24.5,
+     "depth": 11.6
+    }
+   }
+  },
+  {
+   "buildType": "farm-stand",
+   "prompt": "farm stand",
+   "title": "Farm stand",
+   "dims": {
+    "width": 48,
+    "height": 72.5,
+    "depth": 30
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/farm-stand.2c6e3071.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 16,
+    "v": "2c6e3071",
+    "dims": {
+     "width": 48,
+     "height": 72.5,
+     "depth": 30
+    }
+   }
+  },
+  {
+   "buildType": "file-cabinet",
+   "prompt": "file cabinet",
+   "title": "File cabinet",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 16.75
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/file-cabinet.aa68ea4f.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 28,
+    "v": "aa68ea4f",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 16.75
+    }
+   }
+  },
+  {
+   "buildType": "firewood-rack",
+   "prompt": "something to hold my firewood",
+   "title": "Firewood rack",
+   "dims": {
+    "width": 96,
+    "height": 48,
+    "depth": 24
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/firewood-rack.78d65884.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 11,
+    "v": "78d65884",
+    "dims": {
+     "width": 96,
+     "height": 48,
+     "depth": 24
+    }
+   }
+  },
+  {
+   "buildType": "floating-shelves",
+   "prompt": "floating shelves 36 wide 10 deep",
+   "title": "Floating shelves",
+   "dims": {
+    "width": 36,
+    "height": 24.75,
+    "depth": 10
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "fort",
+   "prompt": "PVC pipe fort for kids",
+   "title": "Fort",
+   "dims": {
+    "width": 11.3,
+    "height": 9.9,
+    "depth": 10
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/fort.f357e5dc.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 135,
+    "v": "f357e5dc",
+    "dims": {
+     "width": 11.3,
+     "height": 9.9,
+     "depth": 10
+    }
+   }
+  },
+  {
+   "buildType": "garden-trellis",
+   "prompt": "garden trellis 6 foot tall",
+   "title": "Garden trellis",
+   "dims": {
+    "width": 25.7,
+    "height": 72,
+    "depth": 2
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/garden-trellis.25cbeb64.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 17,
+    "v": "25cbeb64",
+    "dims": {
+     "width": 25.7,
+     "height": 72,
+     "depth": 2
+    }
+   }
+  },
+  {
+   "buildType": "hall-cabinet",
+   "prompt": "hall cabinet 30x36x12",
+   "title": "Hall cabinet",
+   "dims": {
+    "width": 30,
+    "height": 12,
+    "depth": 36
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/hall-cabinet.6f636d74.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 9,
+    "v": "6f636d74",
+    "dims": {
+     "width": 30,
+     "height": 12,
+     "depth": 36
+    }
+   }
+  },
+  {
+   "buildType": "ironing-cabinet",
+   "prompt": "wall mounted ironing board cabinet 48 high 16 wide 6 deep",
+   "title": "Ironing cabinet",
+   "dims": {
+    "width": 16,
+    "height": 48,
+    "depth": 6
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "jar-rack",
+   "prompt": "wall shelf for jars 24 wide",
+   "title": "Jar rack",
+   "dims": {
+    "width": 24,
+    "height": 18,
+    "depth": 4
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "kitchen-cart",
+   "prompt": "rolling kitchen cart",
+   "title": "Kitchen cart",
+   "dims": {
+    "width": 36,
+    "height": 33,
+    "depth": 16
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/kitchen-cart.d90d343e.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 14,
+    "v": "d90d343e",
+    "dims": {
+     "width": 36,
+     "height": 33,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "kitchen-island",
+   "prompt": "kitchen island",
+   "title": "Kitchen island",
+   "dims": {
+    "width": 36,
+    "height": 36,
+    "depth": 16.75
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "ladder",
+   "prompt": "6 foot ladder from 2x4",
+   "title": "Ladder",
+   "dims": {
+    "width": 18,
+    "height": 72,
+    "depth": 6
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "leaning-tower-of-pisa",
+   "prompt": "leaning tower of pisa",
+   "title": "Leaning Tower of Pisa",
+   "dims": {
+    "width": 8.9,
+    "height": 24.5,
+    "depth": 7.6
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/leaning-tower-of-pisa.715f03a8.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 350,
+    "v": "715f03a8",
+    "dims": {
+     "width": 8.9,
+     "height": 24.5,
+     "depth": 7.6
+    }
+   }
+  },
+  {
+   "buildType": "lemonade-stand",
+   "prompt": "lemonade stand",
+   "title": "Lemonade stand",
+   "dims": {
+    "width": 48,
+    "height": 72.5,
+    "depth": 30
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/lemonade-stand.2c6e3071.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 16,
+    "v": "2c6e3071",
+    "dims": {
+     "width": 48,
+     "height": 72.5,
+     "depth": 30
+    }
+   }
+  },
+  {
+   "buildType": "lighthouse",
+   "prompt": "lighthouse",
+   "title": "Lighthouse",
+   "dims": {
+    "width": 8,
+    "height": 24.5,
+    "depth": 8
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "linen",
+   "prompt": "linen closet",
+   "title": "Linen closet",
+   "dims": {
+    "width": 36,
+    "height": 78,
+    "depth": 16.75
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "loft-bed",
+   "prompt": "loft bed",
+   "title": "Loft bed",
+   "dims": {
+    "width": 82,
+    "height": 72,
+    "depth": 44
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/loft-bed.37e5b8f0.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 34,
+    "v": "37e5b8f0",
+    "dims": {
+     "width": 82,
+     "height": 72,
+     "depth": 44
+    }
+   }
+  },
+  {
+   "buildType": "media-console",
+   "prompt": "about waist high console",
+   "title": "Media console",
+   "dims": {
+    "width": 60,
+    "height": 36,
+    "depth": 16
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/media-console.be94d112.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 12,
+    "v": "be94d112",
+    "dims": {
+     "width": 60,
+     "height": 36,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "mudroom-bench",
+   "prompt": "mudroom bench 48 wide 18 high 16 deep",
+   "title": "Mudroom bench",
+   "dims": {
+    "width": 48,
+    "height": 18,
+    "depth": 16
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "nightstand",
+   "prompt": "nightstand",
+   "title": "Nightstand",
+   "dims": {
+    "width": 20,
+    "height": 24,
+    "depth": 16.75
+   },
+   "recipe": false,
+   "aliases": [
+    "walnut-nightstand"
+   ]
+  },
+  {
+   "buildType": "ottoman",
+   "prompt": "storage ottoman 36 square",
+   "title": "Ottoman",
+   "dims": {
+    "width": 36,
+    "height": 16,
+    "depth": 36
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/ottoman.a5592504.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 9,
+    "v": "a5592504",
+    "dims": {
+     "width": 36,
+     "height": 16,
+     "depth": 36
+    }
+   }
+  },
+  {
+   "buildType": "over-toilet",
+   "prompt": "over-toilet shelf",
+   "title": "Over-toilet shelf",
+   "dims": {
+    "width": 27,
+    "height": 68,
+    "depth": 9
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "pantry",
+   "prompt": "pantry cabinet 24 wide 84 tall 16 deep",
+   "title": "Pantry cabinet",
+   "dims": {
+    "width": 24,
+    "height": 84,
+    "depth": 16
+   },
+   "recipe": false,
+   "aliases": [
+    "pantry-cabinet"
+   ]
+  },
+  {
+   "buildType": "pegboard",
+   "prompt": "organize my tools",
+   "title": "Pegboard",
+   "dims": {
+    "width": 36,
+    "height": 36,
+    "depth": 3.04
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/pegboard.0ccf1a1b.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 6,
+    "v": "0ccf1a1b",
+    "dims": {
+     "width": 36,
+     "height": 36,
+     "depth": 3.0625
+    }
+   }
+  },
+  {
+   "buildType": "plate-rack",
+   "prompt": "wall plate rack",
+   "title": "Plate rack",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 12
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/plate-rack.e0db3da3.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 7,
+    "v": "e0db3da3",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 12
+    }
+   }
+  },
+  {
+   "buildType": "potting-bench",
+   "prompt": "potting bench",
+   "title": "Potting bench",
+   "dims": {
+    "width": 48,
+    "height": 36,
+    "depth": 24
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/potting-bench.a360567c.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 7,
+    "v": "a360567c",
+    "dims": {
+     "width": 48,
+     "height": 36,
+     "depth": 24
+    }
+   }
+  },
+  {
+   "buildType": "raised-garden-bed",
+   "prompt": "garden bed",
+   "title": "Garden bed",
+   "dims": {
+    "width": 83.9,
+    "height": 14.5,
+    "depth": 57.9
+   },
+   "recipe": false,
+   "aliases": [
+    "garden-bed"
+   ]
+  },
+  {
+   "buildType": "range-hood",
+   "prompt": "30 inch range hood",
+   "title": "Range hood",
+   "dims": {
+    "width": 30,
+    "height": 24,
+    "depth": 18
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "record-shelf",
+   "prompt": "record shelf 24 wide",
+   "title": "Record shelf",
+   "dims": {
+    "width": 24,
+    "height": 42,
+    "depth": 14
+   },
+   "recipe": false,
+   "aliases": [
+    "record-shelf-unit"
+   ],
+   "drawing": {
+    "src": "/ideas/drawings/record-shelf.000692c1.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 10,
+    "v": "000692c1",
+    "dims": {
+     "width": 24,
+     "height": 42,
+     "depth": 14
+    }
+   }
+  },
+  {
+   "buildType": "sawhorse",
+   "prompt": "sawhorse",
+   "title": "Sawhorse",
+   "dims": {
+    "width": 21,
+    "height": 30,
+    "depth": 36
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/sawhorse.29fba842.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 8,
+    "v": "29fba842",
+    "dims": {
+     "width": 21,
+     "height": 30,
+     "depth": 36
+    }
+   }
+  },
+  {
+   "buildType": "shelf",
+   "prompt": "shelf 24 1/2\" wide",
+   "title": "Shelf unit",
+   "dims": {
+    "width": 24.5,
+    "height": 18,
+    "depth": 12
+   },
+   "recipe": false,
+   "aliases": [
+    "shelf-unit"
+   ],
+   "drawing": {
+    "src": "/ideas/drawings/shelf.1f8552df.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 8,
+    "v": "1f8552df",
+    "dims": {
+     "width": 24.5,
+     "height": 18,
+     "depth": 12
+    }
+   }
+  },
+  {
+   "buildType": "shoe-rack",
+   "prompt": "shoe rack",
+   "title": "Shoe rack",
+   "dims": {
+    "width": 36,
+    "height": 18,
+    "depth": 12
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "sideboard",
+   "prompt": "sideboard 60 wide 34 tall 18 deep with 2 doors and 3 drawers",
+   "title": "Sideboard",
+   "dims": {
+    "width": 60,
+    "height": 34,
+    "depth": 18
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/sideboard.70a2efa6.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 31,
+    "v": "70a2efa6",
+    "dims": {
+     "width": 60,
+     "height": 34,
+     "depth": 18
+    }
+   }
+  },
+  {
+   "buildType": "sloped-ceiling-bookcase",
+   "prompt": "bookshelf under a sloped ceiling 48 wide 60 tall at the high side 30 at the low side",
+   "title": "Sloped-ceiling bookcase",
+   "dims": {
+    "width": 48,
+    "height": 60,
+    "depth": 12
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "snack-stand",
+   "prompt": "snack stand",
+   "title": "Snack stand",
+   "dims": {
+    "width": 48,
+    "height": 72.5,
+    "depth": 30
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/snack-stand.2c6e3071.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 16,
+    "v": "2c6e3071",
+    "dims": {
+     "width": 48,
+     "height": 72.5,
+     "depth": 30
+    }
+   }
+  },
+  {
+   "buildType": "space-needle",
+   "prompt": "Space Needle",
+   "title": "Space Needle",
+   "dims": {
+    "width": 8.7,
+    "height": 24.5,
+    "depth": 8.7
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/space-needle.4f7c81c7.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 372,
+    "v": "4f7c81c7",
+    "dims": {
+     "width": 8.7,
+     "height": 24.5,
+     "depth": 8.7
+    }
+   }
+  },
+  {
+   "buildType": "spice-rack",
+   "prompt": "spice rack",
+   "title": "Spice rack",
+   "dims": {
+    "width": 36,
+    "height": 24,
+    "depth": 4
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "step-stool-with",
+   "prompt": "step stool for kitchen 2 steps",
+   "title": "Step stool, 2 steps",
+   "dims": {
+    "width": 16,
+    "height": 18,
+    "depth": 22
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/step-stool-with.54e823da.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 18,
+    "v": "54e823da",
+    "dims": {
+     "width": 16,
+     "height": 18,
+     "depth": 22
+    }
+   }
+  },
+  {
+   "buildType": "stool",
+   "prompt": "bar height stool",
+   "title": "Stool seat",
+   "dims": {
+    "width": 18,
+    "height": 30,
+    "depth": 16
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/stool.fb00f734.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 13,
+    "v": "fb00f734",
+    "dims": {
+     "width": 18,
+     "height": 30,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "storage-box",
+   "prompt": "keepsake box",
+   "title": "Storage box",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 16
+   },
+   "recipe": false,
+   "aliases": [
+    "storage-bo"
+   ],
+   "drawing": {
+    "src": "/ideas/drawings/storage-box.e1da5083.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 6,
+    "v": "e1da5083",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "submarine",
+   "prompt": "submarine",
+   "title": "Submarine",
+   "dims": {
+    "width": 12,
+    "height": 8.4,
+    "depth": 6
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/submarine.9d62268e.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 278,
+    "v": "9d62268e",
+    "dims": {
+     "width": 12,
+     "height": 8.4,
+     "depth": 6
+    }
+   }
+  },
+  {
+   "buildType": "table",
+   "prompt": "bar height table",
+   "title": "Table",
+   "dims": {
+    "width": 40,
+    "height": 42,
+    "depth": 40
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/table.b03e9ec3.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 9,
+    "v": "b03e9ec3",
+    "dims": {
+     "width": 40,
+     "height": 42,
+     "depth": 40
+    }
+   }
+  },
+  {
+   "buildType": "tier-plant-stand",
+   "prompt": "plants by the window",
+   "title": "3-tier plant stand",
+   "dims": {
+    "width": 30,
+    "height": 32,
+    "depth": 27
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/tier-plant-stand.64bf5074.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 19,
+    "v": "64bf5074",
+    "dims": {
+     "width": 30,
+     "height": 32,
+     "depth": 27
+    }
+   }
+  },
+  {
+   "buildType": "tool-cabinet",
+   "prompt": "tool cabinet with drawers",
+   "title": "Tool cabinet",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 16.75
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/tool-cabinet.bc641dec.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 20,
+    "v": "bc641dec",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 16.75
+    }
+   }
+  },
+  {
+   "buildType": "towel-ladder",
+   "prompt": "towel ladder 5 ft tall",
+   "title": "Towel ladder",
+   "dims": {
+    "width": 20,
+    "height": 60,
+    "depth": 3.5
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/towel-ladder.d357eea2.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 6,
+    "v": "d357eea2",
+    "dims": {
+     "width": 20,
+     "height": 60,
+     "depth": 3.5
+    }
+   }
+  },
+  {
+   "buildType": "toy-chest",
+   "prompt": "toy box",
+   "title": "Toy chest",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 16
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/toy-chest.e1da5083.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 6,
+    "v": "e1da5083",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "train-engine",
+   "prompt": "a steam train",
+   "title": "Train engine",
+   "dims": {
+    "width": 12,
+    "height": 6.7,
+    "depth": 6.2
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/train-engine.1a4e2ccb.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 566,
+    "v": "1a4e2ccb",
+    "dims": {
+     "width": 12,
+     "height": 6.7,
+     "depth": 6.2
+    }
+   }
+  },
+  {
+   "buildType": "tv-console",
+   "prompt": "tv console 60 inch",
+   "title": "TV console",
+   "dims": {
+    "width": 60,
+    "height": 22,
+    "depth": 16
+   },
+   "recipe": false,
+   "aliases": [
+    "walnut-tv-console"
+   ]
+  },
+  {
+   "buildType": "tv-stand",
+   "prompt": "tv stand",
+   "title": "TV stand",
+   "dims": {
+    "width": 60,
+    "height": 22,
+    "depth": 16
+   },
+   "recipe": false,
+   "aliases": [
+    "walnut-tv-stand"
+   ],
+   "drawing": {
+    "src": "/ideas/drawings/tv-stand.ad5dcd8f.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 12,
+    "v": "ad5dcd8f",
+    "dims": {
+     "width": 60,
+     "height": 22,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "under-stairs-shelves",
+   "prompt": "under-stairs shelf",
+   "title": "Under-stairs shelves",
+   "dims": {
+    "width": 48,
+    "height": 72,
+    "depth": 12
+   },
+   "recipe": true
+  },
+  {
+   "buildType": "utility-cabinet",
+   "prompt": "utility cabinet 30 wide 72 tall 16 deep with 4 shelves and 2 doors",
+   "title": "Utility cabinet",
+   "dims": {
+    "width": 30,
+    "height": 72,
+    "depth": 16
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/utility-cabinet.abb17e78.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 11,
+    "v": "abb17e78",
+    "dims": {
+     "width": 30,
+     "height": 72,
+     "depth": 16
+    }
+   }
+  },
+  {
+   "buildType": "vanity",
+   "prompt": "vanity with drawers",
+   "title": "Vanity",
+   "dims": {
+    "width": 36,
+    "height": 34,
+    "depth": 21.75
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/vanity.5f6202aa.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 40,
+    "v": "5f6202aa",
+    "dims": {
+     "width": 36,
+     "height": 34,
+     "depth": 21.75
+    }
+   }
+  },
+  {
+   "buildType": "wall-cabinet",
+   "prompt": "wall cabinet 30 wide 30 tall 12 deep",
+   "title": "Wall cabinet",
+   "dims": {
+    "width": 30,
+    "height": 30,
+    "depth": 12
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "wall-mounted-mail-organizer",
+   "prompt": "wall mounted mail organizer",
+   "title": "Wall-mounted mail organizer",
+   "dims": {
+    "width": 12,
+    "height": 14.2,
+    "depth": 3.745
+   },
+   "recipe": true
+  },
+  {
+   "buildType": "water-wheel",
+   "prompt": "water wheel",
+   "title": "Water wheel",
+   "dims": {
+    "width": 18,
+    "height": 30.228955624828444,
+    "depth": 23.457911249656892
+   },
+   "recipe": true
+  },
+  {
+   "buildType": "windmill",
+   "prompt": "windmill",
+   "title": "Windmill",
+   "dims": {
+    "width": 17.8,
+    "height": 26.2,
+    "depth": 8.7
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/windmill.6fa97b4b.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 207,
+    "v": "6fa97b4b",
+    "dims": {
+     "width": 17.8,
+     "height": 26.2,
+     "depth": 8.7
+    }
+   }
+  },
+  {
+   "buildType": "window-seat",
+   "prompt": "window seat 60 wide",
+   "title": "Window seat",
+   "dims": {
+    "width": 60,
+    "height": 18,
+    "depth": 16
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "wine-cabinet",
+   "prompt": "wine cabinet",
+   "title": "Wine cabinet",
+   "dims": {
+    "width": 36,
+    "height": 30,
+    "depth": 16.75
+   },
+   "recipe": false,
+   "drawing": {
+    "src": "/ideas/drawings/wine-cabinet.38c761c0.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 11,
+    "v": "38c761c0",
+    "dims": {
+     "width": 36,
+     "height": 30,
+     "depth": 16.75
+    }
+   }
+  },
+  {
+   "buildType": "wine-rack",
+   "prompt": "wine rack 12 bottles",
+   "title": "Wine rack",
+   "dims": {
+    "width": 24,
+    "height": 14.25,
+    "depth": 12
+   },
+   "recipe": false
+  },
+  {
+   "buildType": "workbench",
+   "prompt": "workbench",
+   "title": "Workbench",
+   "dims": {
+    "width": 48,
+    "height": 36,
+    "depth": 24
+   },
+   "recipe": false
+  }
+ ]
+}

@@ -26,7 +26,11 @@ function realSince(raw: string): boolean {
   if (!m) return false;
   const y = +m[1], mo = +m[2], d = +m[3], h = +m[4], mi = +m[5], s = +m[6];
   if (mo < 1 || mo > 12 || d < 1 || h > 23 || mi > 59 || s > 59) return false;
-  const dt = new Date(Date.UTC(y, mo - 1, d));
+  // Date.UTC maps years 0–99 onto 1900–1999, and 1900 is not a leap year, so year 0's Feb 29
+  // overflows before the year can be put back. 400 is a leap year; then set the real year.
+  const pivot = y < 100 ? y + 400 : y;
+  const dt = new Date(Date.UTC(pivot, mo - 1, d));
+  if (y < 100) dt.setUTCFullYear(y);
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
 }
 

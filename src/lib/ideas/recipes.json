@@ -51,6 +51,18 @@
  ],
  "fresh": [
   {
+   "id": "recipe-goal",
+   "label": "PVC Soccer Goal",
+   "prompt": "goal",
+   "size": "48″ W × 18″ D × 36″ H",
+   "blurb": "Frame built from 3/4 inch Schedule 40 PVC pipe and fittings",
+   "box": {
+    "width": 48,
+    "height": 36,
+    "depth": 18
+   }
+  },
+  {
    "id": "recipe-laptop-stand",
    "label": "Laptop Stand",
    "prompt": "laptop stand",

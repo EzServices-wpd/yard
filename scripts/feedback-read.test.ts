@@ -116,6 +116,11 @@ test("a well-formed impossible since is 400 after the secret check, and the same
   assert.equal(body.includes("13") || body.includes("99"), false);
   assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=2026-02-31T00:00:00.000Z", { headers: bearer }), env))!.status, 400);
   assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=2026-11-01T00:00:00.000Z", { headers: bearer }), env))!.status, 200);
+  // Years 0–99 are real UTC years. Date.UTC would read 0099 as 1999 and reject a valid instant.
+  assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=0099-01-15T00:00:00.000Z", { headers: bearer }), env))!.status, 200);
+  assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=0099-02-31T00:00:00.000Z", { headers: bearer }), env))!.status, 400);
+  // Year 0 is a leap year. Date.UTC would read it as 1900 and reject Feb 29.
+  assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=0000-02-29T00:00:00.000Z", { headers: bearer }), env))!.status, 200);
 });
 
 test("the list is not on any public page or public API", async () => {

@@ -8,6 +8,11 @@
  */
 import type { IdeasSnapshot, SnapshotRow } from "@/lib/yard/ideaLog";
 import { IDEAS } from "@/lib/yard/ideas";
+import { generateFromPrompt } from "@/lib/yard/promptMain";
+import { buildInfo } from "@/lib/yard/buildInfo";
+import { buildPlan } from "@/lib/yard/report";
+import { nothingBuilt } from "@/lib/yard/stockPill";
+import YARD_RECIPES from "@/lib/yard/recipes.json";
 import TYPES from "./types.json";
 import { isHeldType } from "./held";
 import { curatedFeed, drawingForType, endsOnJoiner, formerNames, ideasTitle, rememberIdeaSlug, sizeOf, slugifyTitle, titleFromHeader, titleHasMeasure, type DrawingRef, type IdeaCard, type IdeaHero, type IdeaSection, type IdeasFeed } from "./feed";
@@ -16,6 +21,7 @@ import RECIPES from "./recipes.json";
 import { isLoggedTest } from "./testTraffic";
 import TWINS from "./typeTwins.json";
 import LOG_PROMPTS from "./logPrompts.json";
+import CATALOG from "./catalog.json";
 import { NAMED_LUMBER_SPECIES } from "@/lib/yard/namedLumberSpecies";
 
 /** #56 merged (2026-10-16 12:24 ET): from then the log records no offline, x-yard-test or preview traffic. */
@@ -49,7 +55,13 @@ export function isTestRow(r: Pick<SnapshotRow, "prompt" | "resultKey"> & { lastS
 }
 
 /** Synonyms the engine names differently but a visitor sees as one build. */
-const ALIAS: Record<string, string> = { bookshelf: "bookcase", "raised-bed": "raised-garden-bed", "garden-bed": "raised-garden-bed", "planter-bo": "planter-box", "jewelry-bo": "jewelry-box" };
+const ALIAS: Record<string, string> = {
+  bookshelf: "bookcase", "raised-bed": "raised-garden-bed", "garden-bed": "raised-garden-bed", "planter-bo": "planter-box", "jewelry-bo": "jewelry-box",
+  // Near-duplicates the engine keys apart. The card's slug is the type; the other name stays an alias.
+  "shelf-unit": "shelf", "pvc-soccer-goal": "soccer-goal",
+  "record-shelf-unit": "record-shelf", "viking-longship": "viking-ship", longship: "viking-ship", "doll-house": "dollhouse",
+};
+for (const [from, to] of Object.entries(ALIAS)) rememberIdeaSlug(from, to);
 
 /**
  * Drawn twins (I-draw): a log type the engine keys apart from a curated card that builds the same parts
@@ -97,7 +109,7 @@ function authoredTitle(type: string): string | undefined {
  * a real type name. The slug stays the build type when the title still slugifies to it; a renamed
  * title keeps the old slug as an alias.
  */
-export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: string; slug: string; aka?: string } {
+export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: string; slug: string; aka?: string; aliases?: string[] } {
   const plain = titleOf(type);
   const prompt = logCardPrompt(type, dims);
   const header = headerTitleFor(prompt);
@@ -106,10 +118,14 @@ export function logOnlyName(type: string, dims: IdeaCard["dims"]): { title: stri
   const title = ideasTitle(raw, { type, prompt });
   const next = slugifyTitle(title);
   const prev = slugifyTitle(before);
-  const slug = next && next !== type && title.toLowerCase() !== plain.toLowerCase() ? next : type;
+  const titled = next && next !== type && title.toLowerCase() !== plain.toLowerCase() ? next : type;
+  // A title slug that is only another name of this type (shelf-unit, pvc-soccer-goal) is not a second card.
+  const slug = titled !== type && typeKey(`builtin:${titled}`) === type ? type : titled;
+  const aliases = [...new Set([titled, prev, type].filter((s) => s && s !== slug))];
+  for (const s of aliases) rememberIdeaSlug(s, slug);
   if (slug !== type) rememberIdeaSlug(type, slug);
-  if (prev && prev !== slug) rememberIdeaSlug(prev, slug);
-  return { title, slug, aka: formerNames(before, title, type) };
+  const aka = formerNames(before, title, type);
+  return { title, slug, ...(aka ? { aka } : {}), ...(aliases.length ? { aliases } : {}) };
 }
 
 /** The title a card of this type shows: the authored label, else the header name. */
@@ -136,14 +152,52 @@ export function gradedTypes(base: IdeasFeed): Set<string> {
 
 type Group = { type: string; count: number; lastSeen: string; trusted: boolean; rows: SnapshotRow[] };
 
+const HELD_KEYS = new Set(
+  (YARD_RECIPES as { recipes: { key: string; held?: string }[] }).recipes.filter((r) => r.held).map((r) => slugifyTitle(r.key)),
+);
+const builtInOk = new Map<string, boolean>();
+
+/** The spoken name now builds a real built-in: not the held recipe, and not a 1-part stub. */
+function realBuiltIn(type: string): boolean {
+  const hit = builtInOk.get(type);
+  if (hit !== undefined) return hit;
+  const project = generateFromPrompt(type.replace(/-/g, " "));
+  const info = buildInfo(project);
+  let ok = false;
+  if (info.source === "Built-in shape" && !nothingBuilt(project) && !project.unmatched && !project.displayOnly && !project.standIn) {
+    const plan = buildPlan(project);
+    ok = plan.totals.pieces >= 3 && plan.cutList.length >= 2;
+  }
+  builtInOk.set(type, ok);
+  return ok;
+}
+
+/**
+ * Held for listing. The static set still names every held key and synonym. A recipe row (resultKey `recipe:`)
+ * stays held. A synonym stays held unless routing its name builds a real built-in (planter box). Keys stay held.
+ */
+export function heldOffIdeas(type: string, recipeKey?: string | null): boolean {
+  if (recipeKey && (isHeldType(recipeKey) || isHeldType(type))) return true;
+  if (!isHeldType(type)) return false;
+  if (HELD_KEYS.has(slugifyTitle(type))) return true;
+  return !realBuiltIn(type);
+}
+
 /**
  * The one listing rule (Chief 10-25 (b), opened for rows 11-07): a held recipe or a generic fallback renders nowhere
- * on Ideas. A type the log has only ever seen Unverified stays off picture sections (`sections`: Popular, Popular
- * recently, curated). `catalog` lets that type through as a search / See-all row. Its rows stay in the log.
+ * on Ideas. A synonym stays held when it still routes to the held recipe; it lists only when that name now builds
+ * a real built-in. A type the log has only ever seen Unverified stays off picture sections (`sections`: Popular,
+ * Popular recently, curated). `catalog` lets that type through as a search / See-all row. Its rows stay in the log.
  */
 export function listRule(groups: Pick<Group, "type" | "trusted">[], where: "sections" | "catalog" = "sections"): (type: string, recipeKey?: string | null) => boolean {
   const unverified = new Set(groups.filter((g) => !g.trusted).map((g) => g.type));
-  return (type, recipeKey) => !GENERIC_TYPES.has(type) && !isHeldType(type) && !isHeldType(recipeKey) && (where === "catalog" || !unverified.has(type));
+  return (type, recipeKey) => !GENERIC_TYPES.has(type) && !heldOffIdeas(type, recipeKey) && (where === "catalog" || !unverified.has(type));
+}
+
+/** The row the card is named from. A recipe result keeps the type held even when the name is only a synonym. */
+function recipeKeyFor(g: Pick<Group, "type" | "rows">): string | null {
+  const top = [...g.rows].sort((a, b) => b.count - a.count)[0];
+  return top?.resultKey.startsWith("recipe:") ? g.type : null;
 }
 
 /** Log rows that are real visitor builds, folded by build type. */
@@ -231,7 +285,7 @@ function cardFor(g: Group, curated: Map<string, IdeaCard>, graded: Set<string>, 
   const named = logOnlyName(g.type, logged);
   // The size is the engine's: the drawing's own labels when there is a drawing, else the logged W×D×H.
   return {
-    slug: named.slug, buildType: g.type, title: named.title, ...(named.aka ? { aka: named.aka } : {}), ...(named.slug !== g.type ? { aliases: [g.type] } : {}),
+    slug: named.slug, buildType: g.type, title: named.title, ...(named.aka ? { aka: named.aka } : {}), ...(named.aliases?.length ? { aliases: named.aliases } : {}),
     count: g.count, lastSeen: g.lastSeen, examplePrompt: logCardPrompt(g.type, logged),
     recipeKey: recipe ? g.type : null, dims: logged, ...sizeOf(drawing?.dims ?? logged), status, section: "Popular", drawing,
   };
@@ -270,13 +324,19 @@ export function pickHero(cards: IdeaCard[], now: Date): IdeaHero | null {
  */
 export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(), cutoff = TEST_CUTOFF, draw: DrawType = drawingForType): IdeasFeed {
   const groups = groupRows(snap.rows, cutoff);
-  if (!snap.live || !groups.length) return { ...base, live: false };
+  if (!snap.live || !groups.length) {
+    const allow = listRule([], "catalog");
+    const sections = base.sections.map((s) => ({ ...s, cards: s.cards.filter((c) => allow(c.buildType, c.recipeKey)) })).filter((s) => s.cards.length);
+    const all = appendCatalog(mergeAliases(sections.flatMap((s) => s.cards)), allow, draw);
+    stampSearchAliases([...sections.flatMap((s) => s.cards), ...all]);
+    return { ...base, live: false, sections, all };
+  }
   const curated = new Map<string, IdeaCard>();
   for (const s of base.sections) for (const c of s.cards) if (!curated.has(c.buildType)) curated.set(c.buildType, c);
   const graded = gradedTypes(base);
   const inSections = listRule(groups);
   const inCatalog = listRule(groups, "catalog");
-  const cards = groups.filter((g) => inCatalog(g.type)).map((g) => {
+  const cards = groups.filter((g) => inCatalog(g.type, recipeKeyFor(g))).map((g) => {
     const c = cardFor(g, curated, graded, draw);
     // Unverified-only: a titled row. Drop the drawing so it cannot take a picture slot.
     return g.trusted ? c : { ...c, drawing: null, status: "new" as const, unverified: true };
@@ -302,11 +362,80 @@ export function liveFeed(snap: IdeasSnapshot, base: IdeasFeed, now = new Date(),
     }),
   ].filter((s) => s.cards.length).map((s, order) => ({ ...s, order }));
   // All ideas (Chief 10-25): every catalog type once, drawn or not, then each curated idea nobody has built yet.
-  // Unverified-only types are in here (search and See all) and in no picture section. No cap.
-  const types = new Set<string>();
-  const all = sortCards([...cards, ...base.sections.flatMap((s) => s.cards).filter((c) => inCatalog(c.buildType, c.recipeKey))])
-    .filter((c) => !isJunkTitle(c.title) && !types.has(c.buildType) && !!types.add(c.buildType));
+  // Gate cards (section Catalog) come last, status new, and never enter a picture section. No cap.
+  const listed = sortCards([...cards, ...base.sections.flatMap((s) => s.cards).filter((c) => inCatalog(c.buildType, c.recipeKey))]);
+  const all = appendCatalog(mergeAliases(listed.filter((c) => !isJunkTitle(c.title))), inCatalog, draw);
+  stampSearchAliases([...sections.flatMap((s) => s.cards), ...all]);
   return { at: snap.at || now.toISOString(), live: true, countsLive: true, hero: pickHero(cards, now), sections, all };
+}
+
+/** Names the alias map folds into this type, so search for "doll house" or "longship" hits the card. */
+function searchAliases(type: string, card: IdeaCard): void {
+  const extra = Object.entries(ALIAS).filter(([, to]) => to === type).map(([from]) => from).filter((s) => s !== card.slug && !(card.aliases ?? []).includes(s) && !(s in TWIN));
+  if (extra.length) card.aliases = [...(card.aliases ?? []), ...extra];
+}
+function stampSearchAliases(cards: IdeaCard[]): void {
+  for (const c of cards) searchAliases(c.buildType, c);
+}
+
+function appendCatalog(all: IdeaCard[], allow: (type: string, recipeKey?: string | null) => boolean, draw: DrawType): IdeaCard[] {
+  const taken = new Set(all.map((c) => c.title.toLowerCase()));
+  for (const c of catalogCards(draw)) {
+    if (!allow(c.buildType, c.recipeKey)) continue;
+    const prev = all.find((x) => x.buildType === c.buildType || x.slug === c.slug);
+    if (prev) {
+      // The log card stays. Its search names include the catalog's (doll house finds the dollhouse).
+      const extra = (c.aliases ?? []).filter((s) => s !== prev.slug && !(prev.aliases ?? []).includes(s) && !(s in (TWINS as Record<string, string>)));
+      if (extra.length) prev.aliases = [...(prev.aliases ?? []), ...extra];
+      for (const s of extra) rememberIdeaSlug(s, prev.slug);
+      continue;
+    }
+    // A slug another card already publishes (the Mudroom bench is "bench") is not a second card.
+    if (isJunkTitle(c.title) || taken.has(c.title.toLowerCase())) continue;
+    taken.add(c.title.toLowerCase());
+    all.push(c);
+  }
+  return all;
+}
+
+function dimsAgree(a?: { width: number; height: number; depth: number } | null, b?: { width: number; height: number; depth: number } | null): boolean {
+  if (!a || !b) return false;
+  const near = (x: number, y: number) => Math.abs(x - y) < 1 / 8;
+  return (near(a.width, b.width) && near(a.depth, b.depth) && near(a.height, b.height)) || (near(a.width, b.depth) && near(a.depth, b.width) && near(a.height, b.height));
+}
+
+type CatalogFile = { cards: { buildType: string; prompt: string; title: string; dims: { width: number; height: number; depth: number }; recipe: boolean; aliases?: string[]; drawing?: IdeaCard["drawing"] }[] };
+
+/** Passing gate builds baked by scripts/gen-idea-drawings.ts. Status stays new; Popular never sees them.
+ * Their drawings stay on the card, not in drawings.json, so a log row of the same type does not suddenly
+ * take a picture slot. */
+export function catalogCards(draw: DrawType = drawingForType): IdeaCard[] {
+  return ((CATALOG as CatalogFile).cards ?? []).map((c) => {
+    const own = c.drawing ?? null;
+    const shared = own ? null : draw(c.buildType);
+    // A borrowed picture is this card's only when it is the same size the example prompt builds.
+    const drawing = own ?? (shared && dimsAgree(shared.dims, c.dims) ? shared : null);
+    for (const a of c.aliases ?? []) if (!(a in (TWINS as Record<string, string>))) rememberIdeaSlug(a, c.buildType);
+    return {
+      slug: c.buildType, buildType: c.buildType, title: c.title, ...(c.aliases?.length ? { aliases: c.aliases } : {}),
+      count: 0, lastSeen: null, examplePrompt: c.prompt, recipeKey: c.recipe ? c.buildType : null,
+      dims: c.dims, ...sizeOf(drawing?.dims ?? c.dims), status: "new" as const, section: "Catalog", drawing,
+    };
+  });
+}
+
+/** One card per build type. A later card's slug and aliases stick to the one that stays, so recipe-goal still resolves. */
+function mergeAliases(list: IdeaCard[]): IdeaCard[] {
+  const out: IdeaCard[] = [];
+  const by = new Map<string, IdeaCard>();
+  for (const c of list) {
+    const prev = by.get(c.buildType);
+    if (!prev) { by.set(c.buildType, c); out.push(c); continue; }
+    const extra = [c.slug, ...(c.aliases ?? [])].filter((s) => s !== prev.slug && !(prev.aliases ?? []).includes(s));
+    if (extra.length) prev.aliases = [...(prev.aliases ?? []), ...extra];
+    for (const s of extra) rememberIdeaSlug(s, prev.slug);
+  }
+  return out;
 }
 
 /**
@@ -340,7 +469,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
       if (graded && ((c.count > 0 && c.status === "checked") || s.id === "popular") && !graded.has(c.buildType)) out.push(`${c.slug}: not graded by Critic, in ${s.id} as ${c.status}`);
       if (s.id === "popular" && c.status !== "checked") out.push(`${c.slug}: Popular shows only checked cards (${c.status})`);
       if (GENERIC_TYPES.has(c.buildType)) out.push(`${c.slug}: generic fallback card`);
-      if (isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`${c.slug}: held recipe on Ideas (${s.id})`);
+      if (heldOffIdeas(c.buildType, c.recipeKey)) out.push(`${c.slug}: held recipe on Ideas (${s.id})`);
       if (/bo$/.test(c.title) && !/(?:jum|gum|com|ho|lim|bim|ram|dum)bo$/i.test(c.title)) out.push(`${c.slug}: cut-off title "${c.title}"`);
       if (!c.drawing) out.push(`${c.slug}: no drawing in ${s.id}`);
       if (c.drawing && !/^\/ideas\/drawings\/[\w-]+\.[0-9a-f]+(?:\.\w+)?\.svg$/.test(c.drawing.src)) out.push(`${c.slug}: drawing ${c.drawing.src}`);
@@ -356,7 +485,7 @@ export function feedViolations(feed: IdeasFeed, snap?: Pick<IdeasSnapshot, "rows
     if (allTypes.has(c.buildType)) out.push(`all: build type ${c.buildType} twice`);
     allTypes.add(c.buildType);
     if (isJunkTitle(c.title) || /^[a-z]/.test(c.title) || endsOnJoiner(c.title) || titleHasMeasure(c.title)) out.push(`all: ${c.slug} title "${c.title}"`);
-    if (GENERIC_TYPES.has(c.buildType) || isHeldType(c.buildType) || isHeldType(c.recipeKey)) out.push(`all: ${c.slug} is held or generic`);
+    if (GENERIC_TYPES.has(c.buildType) || heldOffIdeas(c.buildType, c.recipeKey)) out.push(`all: ${c.slug} is held or generic`);
     if (c.unverified && c.drawing) out.push(`${c.slug}: Unverified row has a drawing`);
   }
   for (const s of feed.sections) for (const c of s.cards) if (c.unverified) out.push(`${c.slug}: Unverified on a picture section (${s.id})`);

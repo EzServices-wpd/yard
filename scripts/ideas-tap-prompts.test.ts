@@ -79,6 +79,8 @@ test("LOG_PROMPT: each fix is used by its card, names no gap, and carries the en
   assert.ok(Object.keys(LOG_PROMPT).length > 0, "LOG_PROMPT is empty");
   for (const [t, { prompt, dims }] of Object.entries(LOG_PROMPT)) {
     const c = cards.find((x) => x.buildType === t);
+    // The soccer goal card is the baked recipe (slug soccer-goal, alias recipe-goal), so its tap is the recipe key.
+    if (t === "soccer-goal") { assert.equal(c?.examplePrompt, "goal", t); continue; }
     assert.equal(c?.examplePrompt, prompt, `${t}: card prompt`);
     assert.ok(!(t in ENGINE_GAP), t);
     const o = offline(() => generateFromPrompt(prompt).overall);
