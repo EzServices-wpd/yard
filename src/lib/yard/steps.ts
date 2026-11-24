@@ -1,7 +1,7 @@
 /** Unique walkthrough for THIS project — names, sizes, and counts from the bench. */
 
 import { fastenerText, structural, wallScrew, WALL_ANCHORS_ID } from "./wallAnchorSteps";
-import { bareName, headerSize, typedAxesTalk } from "./headerSize";
+import { bareName, headerBox } from "./headerSize";
 import { drawerBoxes } from "./hollowDrawers";
 import { plies } from "./plyLayers";
 import { hangDoorsStep, hangLeafStep, hingeSpec } from "./hingedLeaf";
@@ -2460,11 +2460,10 @@ function uniquePanelSteps(project: YardProject): AssemblyStep[] {
   } else {
     // A recipe object (abacus, water wheel) is a thing you build, not furniture placed on a floor footprint.
     const objectBuild = project.id.startsWith("recipe-");
-    // One size: an assumed axis says the header's number (the model's extent); a typed one says the typed size.
-    const { assumed: guessed } = typedAxesTalk(project);
-    const shown = headerSize(project);
-    // Step 1 marks the floor footprint, so a typed depth with proud fronts says the finished depth (linen 16 3/4, canary).
-    const said = { width: guessed.width ? shown.width : W, depth: guessed.depth ? shown.depth : modelFinishedDepth(project.panels, D), height: guessed.height ? shown.height : H };
+    // One size, the header's outside. A typed depth with proud fronts keeps the finished depth (linen 16 3/4, canary).
+    const box = headerBox(project);
+    const proud = modelProudNote(project.panels, D);
+    const said = { width: box.width, depth: proud ? modelFinishedDepth(project.panels, D) : box.depth, height: box.height };
     steps.push({
       step: n++,
       title: alcove
