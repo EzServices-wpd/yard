@@ -1,6 +1,6 @@
 {
   "release": "645a038664c94050467197a13ade2e8798933995",
-  "prompts": 881,
+  "prompts": 886,
   "movers": 339,
   "rows": [
     {
@@ -33051,6 +33051,216 @@
           "Add the diagonals and web — 44 braces",
           "Lace the horizontal rails — 16 rails",
           "Check plumb and square"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Firewood rack",
+      "material": null,
+      "before": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98"
+      },
+      "after": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×4 pressure-treated (8 ft)",
+          "Glue up the thick parts",
+          "Set the 3 sleepers",
+          "Set the Base rail front",
+          "Set the Upright right front",
+          "Set the Upright left front",
+          "Set the Base rail back",
+          "Set the Upright right back",
+          "Fasten the Top tie right",
+          "Set the Upright left back",
+          "Fasten the Top tie left",
+          "Seal it for outdoors — finish and end grain",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "Firewood rack",
+      "material": "pvc-3-4-sch40",
+      "before": {
+        "name": "Firewood rack 36\" × 30\" × 12\"",
+        "cost": 101.97,
+        "pieces": 42,
+        "hud": [
+          35.45,
+          12.05,
+          30.45
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 12×3/4\" PVC 4-way tee=41.98"
+      },
+      "after": {
+        "name": "Firewood rack 36\" × 30\" × 12\"",
+        "cost": 101.97,
+        "pieces": 42,
+        "hud": [
+          35.45,
+          12.05,
+          30.45
+        ],
+        "buy": "5×3/4\" Schedule 40 PVC Pipe=28.8; 1×PVC solvent cement=7.48; 8×3/4\" PVC 3-way corner=18.99; 4×3/4\" PVC tee=4.72; 12×3/4\" PVC 4-way tee=41.98",
+        "titles": [
+          "Read this Firewood rack 36\" × 30\" × 12\" before you cut",
+          "Lay out the footprint on the bench",
+          "Cut every marked length",
+          "Stand the sides — 16 pieces",
+          "Run the rails — 26 pieces",
+          "Check plumb and square"
+        ]
+      },
+      "omitted": [
+        "plumb-height",
+        "set-rails"
+      ]
+    },
+    {
+      "prompt": "Firewood rack from pvc",
+      "material": null,
+      "before": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98"
+      },
+      "after": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×4 pressure-treated (8 ft)",
+          "Glue up the thick parts",
+          "Set the 3 sleepers",
+          "Set the Base rail front",
+          "Set the Upright right front",
+          "Set the Upright left front",
+          "Set the Base rail back",
+          "Set the Upright right back",
+          "Fasten the Top tie right",
+          "Set the Upright left back",
+          "Fasten the Top tie left",
+          "Seal it for outdoors — finish and end grain",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc Firewood rack",
+      "material": null,
+      "before": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98"
+      },
+      "after": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×4 pressure-treated (8 ft)",
+          "Glue up the thick parts",
+          "Set the 3 sleepers",
+          "Set the Base rail front",
+          "Set the Upright right front",
+          "Set the Upright left front",
+          "Set the Base rail back",
+          "Set the Upright right back",
+          "Fasten the Top tie right",
+          "Set the Upright left back",
+          "Fasten the Top tie left",
+          "Seal it for outdoors — finish and end grain",
+          "Level it"
+        ]
+      },
+      "omitted": []
+    },
+    {
+      "prompt": "pvc pipe Firewood rack",
+      "material": null,
+      "before": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98"
+      },
+      "after": {
+        "name": "Firewood rack 8' × 4'",
+        "cost": 70.22,
+        "pieces": 11,
+        "hud": [
+          96,
+          24,
+          48
+        ],
+        "buy": "6×2×4 pressure-treated (8 ft)=29.28; 1×#8 x 2-1/2\" exterior-coated or stainless wood screws=12.99; 1×Titebond III Ultimate wood glue (waterproof, exterior)=8.97; 1×Exterior finish — spar urethane or exterior oil, 1 quart (also seals the end grain)=18.98",
+        "titles": [
+          "Confirm the footprint before the first cut",
+          "Cut the 2×4 pressure-treated (8 ft)",
+          "Glue up the thick parts",
+          "Set the 3 sleepers",
+          "Set the Base rail front",
+          "Set the Upright right front",
+          "Set the Upright left front",
+          "Set the Base rail back",
+          "Set the Upright right back",
+          "Fasten the Top tie right",
+          "Set the Upright left back",
+          "Fasten the Top tie left",
+          "Seal it for outdoors — finish and end grain",
+          "Level it"
         ]
       },
       "omitted": []
