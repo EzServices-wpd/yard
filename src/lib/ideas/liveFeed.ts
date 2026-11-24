@@ -411,10 +411,10 @@ type CatalogFile = { cards: { buildType: string; prompt: string; title: string; 
  * take a picture slot. */
 export function catalogCards(draw: DrawType = drawingForType): IdeaCard[] {
   return ((CATALOG as CatalogFile).cards ?? []).map((c) => {
-    const own = c.drawing;
-    const shared = own ? undefined : draw(c.buildType);
+    const own = c.drawing ?? null;
+    const shared = own ? null : draw(c.buildType);
     // A borrowed picture is this card's only when it is the same size the example prompt builds.
-    const drawing = own ?? (shared && dimsAgree(shared.dims, c.dims) ? shared : undefined);
+    const drawing = own ?? (shared && dimsAgree(shared.dims, c.dims) ? shared : null);
     for (const a of c.aliases ?? []) if (!(a in (TWINS as Record<string, string>))) rememberIdeaSlug(a, c.buildType);
     return {
       slug: c.buildType, buildType: c.buildType, title: c.title, ...(c.aliases?.length ? { aliases: c.aliases } : {}),
