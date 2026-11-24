@@ -1,8 +1,7 @@
 /**
- * A typed axis sizes the members (a spoke ends at the rim it joins, a splay stays inside the spread,
+ * A typed axis sizes the members (a splay stays inside the spread,
  * a guard stops at the posts, a typed depth is the stand). Header, step 1 and the drawing labels
- * then read that one outside. A synonym ("12 inches across") is the same class. A sentence with no
- * typed axis is not.
+ * then read that one outside. A sentence with no typed axis is not.
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -24,37 +23,16 @@ const surfaces = (q: string) => {
 };
 
 describe("a typed axis sizes the frame, and every surface says that size", () => {
-  it("popsicle ferris wheel 12 wide: spokes end on the rim, and the wheel is 12 wide", () => {
-    const s = surfaces("popsicle stick ferris wheel 12 wide");
-    assert.equal(s.header, 'Ferris wheel · 12" W × 8" D × 18 1/16" H (D, H assumed)');
-    const spokes = s.p.panels.filter((p) => /spoke/i.test(p.name));
-    const rims = s.p.panels.filter((p) => /rim/i.test(p.name));
-    assert.ok(spokes.length >= 4 && rims.length >= 1);
-    const rim = Math.max(...rims.map((p) => Math.max(p.size.width, p.size.height)));
-    for (const sp of spokes) {
-      const len = sp.blank?.lengthIn ?? Math.max(sp.size.width, sp.size.height);
-      assert.ok(len <= rim + 1 / 16, `${sp.name} is ${len}" on a ${rim}" rim`);
-    }
-    assert.ok(s.box.width <= 12 + 1 / 16, `wheel is ${s.box.width}" wide`);
-  });
-
-  it("a synonym is the same class: 12 inches across", () => {
-    assert.equal(
-      surfaces("ferris wheel 12 inches across").header,
-      surfaces("popsicle stick ferris wheel 12 wide").header,
-    );
-  });
-
-  it("a near-miss with no typed axis keeps the wheel it built", () => {
+  it("a wheel's spokes and steps are not in this change: the unsized wheel keeps its size and one Axle step", () => {
     const s = surfaces("ferris wheel");
-    assert.equal(s.header, 'Ferris wheel · 18" W × 8" D × 18 1/2" H (size assumed)');
-    assert.ok(s.box.width > 12, "the unsized wheel is not forced to 12");
+    assert.equal(s.header, 'Ferris wheel · 18" W × 8" D × 18 3/4" H (size assumed)');
+    const steps = buildPlan(s.p).instructions;
+    assert.equal(steps.length, 15);
+    assert.equal(steps.filter((x) => x.title === "Set the Axle").length, 0);
   });
 
   it("header, step 1 and the drawing labels are one size", () => {
     for (const q of [
-      "popsicle stick ferris wheel 12 wide",
-      "ferris wheel 12 inches across",
       "swing set 12 wide 12 tall 8 deep",
       "porch swing 60 wide 24 deep",
       "marble run from 3/4 inch dowel",

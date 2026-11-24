@@ -160,9 +160,9 @@ function notesAxes(project: YardProject) {
   // dimension triple and no bare length, an axis no "N wide/tall/deep" names is assumed.
   {
     const lp = prompt.toLowerCase();
-    const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(lp) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|across|long|length|tall|high|height|deep|depth))/.test(lp);
+    const sized = /\d\s*(?:"|″|in\b|inch|ft\b|feet|foot|'|cm\b|mm\b)?\s*(?:[x×]|by)\s*\d/.test(lp) || /\d\s*(?:'|ft\b|feet|foot|cm\b|mm\b|"|″|in\b|inch(?:es)?\b)(?!\s*(?:wide|width|long|length|tall|high|height|deep|depth))/.test(lp);
     if (!noDigits && !sized) {
-      const named: Record<Axis, RegExp> = { width: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:wide|width|across|long|length)\b|\b(?:width|length)\s*(?:of\s*)?\d/, height: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b|\bheight\s*(?:of\s*)?\d/, depth: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:deep|depth)\b|\bdepth\s*(?:of\s*)?\d/ };
+      const named: Record<Axis, RegExp> = { width: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:wide|width|long|length)\b|\b(?:width|length)\s*(?:of\s*)?\d/, height: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:tall|high|height)\b|\bheight\s*(?:of\s*)?\d/, depth: /\d[\d\s./]*\s*(?:"|″|in(?:ch(?:es)?)?)?\s*(?:deep|depth)\b|\bdepth\s*(?:of\s*)?\d/ };
       for (const a of ["width", "height", "depth"] as Axis[]) if (!named[a].test(lp)) assumed[a] = true;
     }
   }
