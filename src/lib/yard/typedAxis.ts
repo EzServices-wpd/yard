@@ -6,7 +6,7 @@ import { readLengths, releaseReads } from "./lengthReader";
  */
 export function typedAxisNumber(prompt: string, kind: "length" | "width" | "height" | "depth"): number | null {
   const t = prompt.toLowerCase().replace(/[″”]/g, '"');
-  const words = { length: "long|length", width: "wide|width", height: "tall|high|height", depth: "deep|depth" }[kind];
+  const words = { length: "long|length", width: "wide|width|across", height: "tall|high|height", depth: "deep|depth" }[kind];
   if (releaseReads(t)) {
     // Release's reading, kept for releaseReads text (NR-1 r3; NR-2/NR-3 own it).
     const n = String.raw`(\d+(?:\.\d+)?)`;

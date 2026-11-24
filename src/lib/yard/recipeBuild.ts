@@ -41,9 +41,10 @@ export function typedSize(prompt: string, recipe: Recipe): Partial<Size> {
   const out: Partial<Size> = {};
   const axis = { wide: "width", long: "width", tall: "height", high: "height", deep: "depth" } as const;
   // A shop size may carry a fraction: "8 1/4 wide", "8-1/4\" wide", "3/4 deep" (the size a refusal names).
-  for (const m of lower.matchAll(/(\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+)\s*(ft|feet|foot|'|in|inch|inches|")?\s*(wide|long|tall|high|deep)\b/g)) {
-    // "48 wide 96 long": with a width typed too, "long" is the other plan side.
-    const k = m[3] === "long" && /\d\s*(?:ft|feet|foot|'|in|inch|inches|")?\s*wide\b/.test(lower) ? "depth" : axis[m[3] as keyof typeof axis];
+  for (const m of lower.matchAll(/(\d+(?:\.\d+)?(?:(?:\s+|-)\d+\/\d+)?|\d+\/\d+)\s*(ft|feet|foot|'|in|inch|inches|")?\s*(wide|long|tall|high|deep|across)\b/g)) {
+    // "48 wide 96 long": with a width typed too, "long" is the other plan side. "12 inches across" is the width.
+    const word = m[3] === "across" ? "wide" : m[3];
+    const k = word === "long" && /\d\s*(?:ft|feet|foot|'|in|inch|inches|")?\s*(?:wide|across)\b/.test(lower) ? "depth" : axis[word as keyof typeof axis];
     out[k] = shopNumber(m[1]) * (m[2] && /^(ft|feet|foot|')$/.test(m[2]) ? 12 : 1);
   }
   const pair = lower.match(/\b(\d+(?:\.\d+)?)\s*(?:x|by|×)\s*(\d+(?:\.\d+)?)\b(?!\s*x)/);
@@ -346,8 +347,16 @@ function curvedParts(recipe: Recipe, panels: Panel[], size: { width: number; hei
       continue;
     }
     if (part?.spokes && part.spokes > 1) {
-      const n = Math.round(part.spokes), D = Math.max(p.size.width, p.size.height), t = p.size.depth;
-      const c = { x: p.position.x + p.size.width / 2, y: p.position.y + p.size.height / 2 };
+      // A spoke joins the rim: its length is the rim's diameter, never a share of an axis the rim did not take.
+      const host = (part.on ?? [])
+        .map((n) => panels.find((q) => q.name === n || q.name.replace(/\s+\d+$/, "") === n))
+        .find((q) => q);
+      const n = Math.round(part.spokes);
+      const D = host ? Math.max(host.size.width, host.size.height) : Math.max(p.size.width, p.size.height);
+      const t = p.size.depth;
+      const c = host
+        ? { x: host.position.x + host.size.width / 2, y: host.position.y + host.size.height / 2 }
+        : { x: p.position.x + p.size.width / 2, y: p.position.y + p.size.height / 2 };
       const base = p.name.replace(/ \d+$/, "");
       for (let k = 0; k < n; k++) {
         const th = (k * Math.PI) / n, hx = (Math.sin(th) * D) / 2, hy = (Math.cos(th) * D) / 2;

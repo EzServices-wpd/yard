@@ -3,7 +3,7 @@
  */
 import { doorHingeCount, doorLeaves, doorRise } from "./hingedLeaf";
 import { createId } from "@/lib/utils";
-import { typedAxisNumber } from "./typedAxis";
+import { typedAxisNumber, typedDepth } from "./typedAxis";
 import { inchFrac } from "./inchText";
 import type { FittedSpec, Panel, YardProject } from "./types";
 import type { HouseAffordance } from "./family";
@@ -436,7 +436,9 @@ export function buildPorchSwing(spec: FittedSpec, prompt: string): YardProject {
   const W = typedAxisNumber(prompt, "width") ?? typedAxisNumber(prompt, "length") ?? (u.width >= 36 ? u.width : 48);
   const standH = typedAxisOrUsual(prompt, "height", u.height >= 48 ? u.height : 78);
   const seatD = 18;
-  const standD = Math.max(36, u.depth || 0, seatD + 16);
+  // A typed depth is the stand. The 36" swing clearance is the untyped default, not a floor under a typed depth.
+  const typedD = typedDepth(prompt);
+  const standD = typedD != null ? Math.max(typedD, seatD + 4) : Math.max(36, u.depth || 0, seatD + 16);
   const x0 = -W / 2;
   const z0 = -standD / 2;
   const seatY = 18;
@@ -1709,6 +1711,8 @@ export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: 
   pushBedPosts(panels, x0, W, D, H, false);
   pushBedLevel(panels, { label: "", x0, W, D, postX: 3.5, postZ: 3.5, deckTop: H - 1.5, floorUnder: true });
   ({ W, D } = bedAlongWidth(panels, x0, W, D, u, prompt));
+  const deck = panels.find((p) => p.name === "Sleep deck");
+  const deckAt = deck ? deck.position.y + deck.size.height : H - 1.5;
   const sized = `${inchFrac(W)}" × ${inchFrac(H)}" × ${inchFrac(D)}"`;
   const name = spec.name.match(/platform\s*bed/i)
     ? spec.name.replace(/\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"\s*×\s*\d+(?:\.\d+)?"/, sized)
@@ -1723,7 +1727,7 @@ export function buildPlatformBed(spec: FittedSpec, prompt: string, affordances: 
     panels,
     primaryMaterialId: PLY,
     notes: [
-      `${name}. Sleep deck at ${inchFrac(H - 1.5)}" — mattress on the platform, inside side rails that stand 1 1/2" above it.`,
+      `${name}. Sleep deck at ${inchFrac(deckAt)}" — mattress on the platform, inside side rails that stand 1 1/2" above it.`,
       `Four 4×4 legs; 2×6 side and end rails bolt between them with 16 3/8" × 5 1/2" bed-rail bolts; 2×2 ledgers screwed inside the side rails with structural screws carry 1×4 slats, and the ¾" plywood sleep deck lies on the slats. A 2×4 centre rail on legs holds the slats mid-span. Guidance only — confirm mattress size before you cut.`,
     ],
     historic: false,
@@ -1844,7 +1848,14 @@ export function pushBedLevel(
   panels: Panel[],
   o: { label: string; x0: number; W: number; D: number; postX: number; postZ: number; deckTop: number; floorUnder: boolean; ladder?: { top: number } },
 ): { bolts: number; guardTop?: number } {
-  const { label, x0, W, D, postX, postZ, deckTop: Y } = o;
+  const { label, x0, W, D, postX, postZ } = o;
+  // Guards join the posts. When the deck sits so high that a guard would stand past the post tops, the deck
+  // drops until the guard tops land on the posts: a typed height is the outside, not a deck the guards overshoot.
+  const posts = panels.filter((p) => /^(?:Leg|Post) /.test(p.name));
+  const postTop = posts.length ? Math.max(...posts.map((p) => p.position.y + p.size.height)) : Infinity;
+  let Y = o.deckTop;
+  const guardNeed = BED_MATTRESS_T + 5;
+  if (Y + 1.5 - BED_RAIL_H > 30 && Y + guardNeed > postTop + 0.01) Y = postTop - guardNeed;
   const pre = label ? `${label} ` : "";
   const innerW = W - postX * 2;
   const innerD = D - postZ * 2;

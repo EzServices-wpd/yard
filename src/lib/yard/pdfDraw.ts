@@ -7,7 +7,7 @@ import type { jsPDF } from "jspdf";
 import { getCatalogItem } from "./catalog";
 import { panelWorldCorners, toPrimitive } from "./geometry";
 import { homeOf } from "./ghost";
-import { headerSize } from "./headerSize";
+import { headerBox } from "./headerSize";
 import { outlineRingXZ, polygonHoleCircles, polygonHoleRings, polygonRings, type HoleCircle } from "./iso";
 import { cutListName } from "./shopPlural";
 import type { CutLine, Panel, YardProject } from "./types";
@@ -992,15 +992,16 @@ function drawDims(
 
 /**
  * What a drawing's three dimension lines print, and how long each line is. A full view (the drawing measures the
- * whole build) prints headerSize on every axis where the header is a part of the drawn extent (a typed body under
- * a mirror, inside proud fronts); the line then spans just that part. Anything else (a sub-assembly, a floating
- * desk whose header height is from the floor) prints what it measures, full length.
+ * whole build) prints headerBox, the same outside the header prints (a typed body under a mirror, inside proud
+ * fronts); the line then spans just that part. Anything else (a sub-assembly, a floating desk whose header height
+ * is from the floor) prints what it measures, full length.
  */
 export function lineSpans(project: YardProject, measured: { min: V3; max: V3 }) {
   const m = { width: measured.max.x - measured.min.x, height: measured.max.y - measured.min.y, depth: measured.max.z - measured.min.z };
   const all = drawnExtent(project);
   const full = !!all && (["x", "y", "z"] as const).every((k) => Math.abs(all.min[k] - measured.min[k]) <= 0.05 && Math.abs(all.max[k] - measured.max[k]) <= 0.05);
-  const head = full && !project.instances.length ? headerSize(project) : null;
+  // The header's outside (headerBox): labels print the same size the header prints.
+  const head = full && !project.instances.length ? headerBox(project) : null;
   const pick = (a: "width" | "height" | "depth") => (head && head[a] > 0 && head[a] <= m[a] + 1 / 32 ? head[a] : m[a]);
   const out = { width: pick("width"), height: pick("height"), depth: pick("depth") };
   const header = { width: !!head && out.width === head.width, height: !!head && out.height === head.height, depth: !!head && out.depth === head.depth };
