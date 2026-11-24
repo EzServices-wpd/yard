@@ -64,7 +64,7 @@ import { pickPrimitive, looksLikeFallback, fallbackNote, primitiveNotes, primiti
 import { buildToyBedFrame } from "./toyBed";
 import type { BuildScale, CatalogItem, JoinMethod, Panel, StructureKind, YardInstance, YardProject } from "./types";
 import { detectStructure, detectMaterial, parseSize, toProject, defaultSizeFor, isWireStock, hasExplicitSize, stripLumberStock, hasExplicitStock } from "./promptHelpers";
-import { bodyStockClauses, CATALOG_LUMBER_BIND } from "./namedLumberSpecies";
+import { bodyStockClauses, CATALOG_LUMBER_BIND, promptTypedSheet, speciesBesideSheet } from "./namedLumberSpecies";
 import { pricedBoardId } from "./pricedStock";
 import { attachFunction } from "./function";
 import { wantsSheetBox, buildSheetBox, wantsUnmatchedSheetShell, buildTypedSheetShell, wantsContainerBox } from "./sheetBox";
@@ -219,6 +219,9 @@ function finishHouse(
       next.panels.every((p) => !/^plywood-3-4-4x10|^plywood-1-2/.test(p.materialId ?? ""));
     if (!already) next = applyExplicitSheetCarcase(next, stock);
   }
+  // The sheet keeps the species in the title so the existing substitute sentence
+  // ("Oak in the title means optional oak lining") still names the title.
+  if (kind === "sheet" && speciesBesideSheet(prompt)) next = withSpeciesTitle(next, prompt);
   return next;
 }
 
@@ -620,7 +623,7 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   }
   const members0 = args[1] || hasExplicitStock(prompt) ? typedBuild : primaryFromParts(withOutdoorFurnitureStock(withHeavyFrame(withLumberMembers(typedBuild)), prompt));
   // Outdoors, flat parts are exterior boards, never plywood (unless plywood was typed).
-  const members = outdoorBuild(members0, prompt) && !/plywood/i.test(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
+  const members = outdoorBuild(members0, prompt) && !promptTypedSheet(prompt) && !args[1] && (members0.panels ?? []).some((p) => /^plywood/.test(p.materialId)) ? (() => { const panels = (members0.panels ?? []).map((p) => ({ ...p })); exteriorBoards(panels); return { ...members0, panels }; })() : members0;
   // Fit sheet parts onto the board stock already in the build before any per-part sheet purchase.
   const fittedBoards = fitSheetPartsOntoBoughtBoards(members);
   // Before the assumed-size notes, so an untyped depth that was deepened is the depth those notes name.
@@ -654,7 +657,9 @@ function generateSeeded(...args: Parameters<typeof generateRaw>): YardProject {
   // ("pine step stool") keeps its builder's own title; notes, cut list and Buy still carry the species.
   const sized = built.primaryMaterialId !== CATALOG_LUMBER_BIND && getCatalogItem(built.primaryMaterialId)?.category === "lumber";
   // A switched stock replaces the typed species: the species leaves the title.
-  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
+  // A species typed against a sheet form ("cedar plywood") is said on Buy as "Cedar in the title", so the title carries it.
+  const speciesSheet = speciesBesideSheet(prompt) && (built.panels ?? []).some((p) => /^plywood-/.test(p.materialId ?? ""));
+  return withOutdoorPosts(withPurposeTitle(!args[1] && (sized || built.unmatched || speciesSheet) ? withSpeciesTitle(built, prompt) : built, prompt), prompt);
 }
 
 /**

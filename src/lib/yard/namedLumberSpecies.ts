@@ -634,6 +634,47 @@ export function namedLumberDetectPhrases(): [RegExp, string][] {
   return out;
 }
 
+/**
+ * A species word sitting against a sheet-form word. Thickness and a 4×8 / 4×10 may sit between
+ * ("oak plywood", "oak ply", "3/4 oak sheet", "plywood of walnut"). A part word may not
+ * ("oak table with a plywood top" is not this). "boards" is the board form, not a sheet.
+ * Longest alias is first in the alternation, so "red oak" wins over "oak".
+ */
+const SHEET_GAP_THICK = String.raw`(?:\d+\s*\/\s*\d+|\d+(?:\.\d+)?|half(?:\s*|-)?inch|quarter(?:\s*|-)?inch|three[\s-]?quarters?)`;
+const SHEET_GAP_UNIT = String.raw`(?:inch(?:es)?|in\b|["″])`;
+const SHEET_GAP_SIZE = String.raw`(?:4\s*[x×]\s*(?:8|10))`;
+const SHEET_GAP = String.raw`(?:\s+${SHEET_GAP_THICK}(?:\s*${SHEET_GAP_UNIT})?|\s+${SHEET_GAP_UNIT}|\s+thick|\s+${SHEET_GAP_SIZE})*`;
+const SHEET_FORM = String.raw`(?:plywood|ply|sheets?)`;
+/** A sheet phrase that names a part ("a maple plywood top", "oak ply back") is that part's stock, not the build's. */
+const SHEET_PART = String.raw`(?!\s+(?:tops?|backs?|backers?|backboards?|sides?|shel(?:f|ves)|bottoms?|drawers?|doors?|panels?|lids?|fronts?|dividers?|legs?|seats?|floors?|faces?|edg(?:e|es|ing)|trim|siding|sheathing|roofs?)\b)`;
+
+let speciesSheetRe: RegExp | null = null;
+function speciesBesideSheetPattern(): RegExp {
+  if (speciesSheetRe) return speciesSheetRe;
+  const alt = ALIAS_INDEX.map(({ alias }) => alias.trim().split(/\s+/).map(escapeRe).join("\\s+")).join("|");
+  speciesSheetRe = new RegExp(
+    String.raw`\b(?:${alt})\b${SHEET_GAP}\s+${SHEET_FORM}\b${SHEET_PART}|\b${SHEET_FORM}\b(?:\s+of)?${SHEET_GAP}\s+(?:${alt})\b${SHEET_PART}|\b${SHEET_GAP_THICK}(?:\s*${SHEET_GAP_UNIT})?\s+(?:${alt})\b${SHEET_GAP}\s+${SHEET_FORM}\b${SHEET_PART}`,
+    "i",
+  );
+  return speciesSheetRe;
+}
+
+/** True when a species word and a sheet-form word (plywood, ply, sheet) name one stock. */
+export function speciesBesideSheet(text: string): boolean {
+  return speciesBesideSheetPattern().test(text || "");
+}
+
+/** The text with each species-against-sheet phrase said as the plain sheet ("cedar plywood" → "plywood"). */
+export function withoutSpeciesSheet(text: string): string {
+  const re = new RegExp(speciesBesideSheetPattern().source, "gi");
+  return (text || "").replace(re, " plywood ");
+}
+
+/** The prompt named sheet stock: the word plywood, or a species against a sheet-form word. */
+export function promptTypedSheet(prompt: string): boolean {
+  return /\bplywood\b/i.test(prompt || "") || speciesBesideSheet(prompt || "");
+}
+
 /** Spoken-stock test used by followOnNamesStock / explicit-stock paths. */
 export function namedLumberSpokenTest(): RegExp {
   const alts = ALIAS_INDEX.map(({ alias }) => {
