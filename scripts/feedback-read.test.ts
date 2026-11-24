@@ -86,6 +86,38 @@ test("unauthenticated and wrong secret: empty 404; the right secret lists notes 
   assert.ok(!logs.some((l) => l.includes("Marker9f3a")), "the secret is never logged");
 });
 
+test("newest first follows at, not the order the notes were stored", async () => {
+  const { feedbackReadHandler } = await import("../src/lib/server/feedbackReadHandler");
+  const row = (at: string, note: string) => JSON.stringify({ prompt: "bookcase", size: "30x12", partCount: 4, chips: ["other"], note, tip: "local", at });
+  // LPUSH leaves the last write at the front, so the store order is mid, early, late.
+  for (const rec of [row("2026-12-01T00:00:00.000Z", "sort-late"), row("2026-01-01T00:00:00.000Z", "sort-early"), row("2026-06-01T00:00:00.000Z", "sort-mid")])
+    await fetch("https://store.test/pipeline", { method: "POST", body: JSON.stringify([["LPUSH", "feedback:list", rec]]) });
+  const res = (await feedbackReadHandler(new Request("https://yard.test/api/feedback?limit=50", { headers: bearer }), env))!;
+  assert.equal(res.status, 200);
+  const notes = ((await res.json()) as { rows: { note: string }[] }).rows.map((r) => r.note).filter((n) => n.startsWith("sort-"));
+  assert.deepEqual(notes, ["sort-late", "sort-mid", "sort-early"]);
+});
+
+test("a well-formed impossible since is 400 after the secret check, and the same empty 404 without it", async () => {
+  const { feedbackReadHandler } = await import("../src/lib/server/feedbackReadHandler");
+  const bad = "2026-13-45T99:99:99Z";
+  for (const auth of [undefined, "Bearer nope"]) {
+    const open = (await feedbackReadHandler(new Request(`https://yard.test/api/feedback?since=${bad}`, { headers: auth ? { authorization: auth } : {} }), env))!;
+    assert.equal(open.status, 404, auth ?? "none");
+    assert.equal(open.headers.get("cache-control"), "no-store");
+    assert.equal(open.headers.get("content-type"), null);
+    assert.equal(await open.text(), "");
+  }
+  const res = (await feedbackReadHandler(new Request(`https://yard.test/api/feedback?since=${bad}`, { headers: bearer }), env))!;
+  assert.equal(res.status, 400);
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  const body = await res.text();
+  assert.equal(body, JSON.stringify({ error: "since" }));
+  assert.equal(body.includes("13") || body.includes("99"), false);
+  assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=2026-02-31T00:00:00.000Z", { headers: bearer }), env))!.status, 400);
+  assert.equal((await feedbackReadHandler(new Request("https://yard.test/api/feedback?since=2026-11-01T00:00:00.000Z", { headers: bearer }), env))!.status, 200);
+});
+
 test("the list is not on any public page or public API", async () => {
   for (const p of [...walk("src/routes"), ...walk("src/components")]) {
     if (p === "src/routes/api/feedback.ts") continue;

@@ -274,7 +274,7 @@ test("junk titles never render: the shared card-quality rule drops digit-only or
   assert.deepEqual(feedViolations(feed), []);
   const cards = feed.sections.flatMap((s) => s.cards);
   assert.deepEqual(cards.filter((c) => isJunkTitle(c.title)).map((c) => c.title), []);
-  assert.ok(cards.some((c) => c.buildType === "soccer-goal" && c.title === "PVC Soccer Goal"), "the soccer goal shows the build page's header name");
+  assert.ok(cards.some((c) => c.buildType === "soccer-goal" && c.title === "PVC soccer goal"), "the soccer goal shows the build page's header name");
   // And the invariant names one if it ever gets through.
   const bad: IdeasFeed = { ...feed, sections: [{ ...feed.sections[0], cards: [{ ...feed.sections[0].cards[0], title: "3" }, ...feed.sections[0].cards.slice(1)] }] };
   assert.ok(feedViolations(bad).some((v) => /junk title "3"/.test(v)));
