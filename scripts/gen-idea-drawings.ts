@@ -16,6 +16,8 @@ import { generateFromPrompt } from "../src/lib/yard/prompt";
 import { planOverviewSvg } from "../src/lib/yard/planStepPicture";
 import type { YardProject } from "../src/lib/yard/types";
 import { drawnDims } from "../src/lib/ideas/size";
+import { curatedFeed, drawingForType } from "../src/lib/ideas/feed";
+import RECIPE_CARDS from "../src/lib/ideas/recipes.json";
 import { cardLabels } from "../src/lib/ideas/drawingLabels";
 import { isJunkTitle, listRule, logCardPrompt, typeKey } from "../src/lib/ideas/liveFeed";
 import { endsOnJoiner, ideasTitle, titleHasMeasure } from "../src/lib/ideas/feed";
@@ -177,6 +179,46 @@ export const LOG_TYPES: Record<string, string> = {
   wardrobe: logCardPrompt("wardrobe", { width: 40, depth: 22, height: 72 }),
 };
 
+/** Re-bake a catalog card whose picture is a different size from the build its example prompt makes. */
+async function patchCatalogDrawings() {
+  const near = (a: number, b: number) => Math.abs(a - b) < 1 / 8;
+  const same = (d: { width: number; height: number; depth: number } | undefined, hs: { width: number; height: number; depth: number }) =>
+    !!d && ((near(d.width, hs.width) && near(d.depth, hs.depth) && near(d.height, hs.height)) || (near(d.width, hs.depth) && near(d.depth, hs.width) && near(d.height, hs.height)));
+  const round4 = (n: number) => Math.round(n * 10000) / 10000;
+  const file = path.join("src", "lib", "ideas", "catalog.json");
+  const catalog = JSON.parse(fs.readFileSync(file, "utf8")) as { cards: { buildType: string; prompt: string; dims: { width: number; height: number; depth: number }; drawing?: { dims?: { width: number; height: number; depth: number } } }[] };
+  const curated = new Set(curatedFeed(RECIPE_CARDS).sections.flatMap((s) => s.cards).map((c) => c.buildType));
+  let n = 0;
+  for (const c of catalog.cards) {
+    // A type the curated feed already shows keeps that card. This only bakes the picture the catalog card itself shows.
+    if (curated.has(c.buildType)) continue;
+    const built = generateFromPrompt(c.prompt);
+    const hs = headerSize(built);
+    const shown = c.drawing?.dims ?? drawingForType(c.buildType)?.dims ?? undefined;
+    if (shown && same(shown, hs)) continue;
+    const view = VIEW[c.buildType] ?? {};
+    const project = (view.turn && quarterTurn(built)) || built;
+    const raw = planOverviewSvg(view.ghostUnit ? sashes(project) : project, DRAW_W, DRAW_H).svg;
+    let svg = view.custom ? view.custom(project) : tidy(view.ghostUnit ? ghosted(raw) : raw, 1);
+    if (!view.custom && svg.length > BUDGET) svg = tidy(view.ghostUnit ? ghosted(raw) : raw, 0);
+    svg = cardLabels(svg);
+    const stamp = `catalog-${c.buildType}`;
+    for (const name of fs.readdirSync(OUT)) if (name.startsWith(`${stamp}.`) && name.endsWith(".svg")) fs.rmSync(path.join(OUT, name));
+    const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
+    fs.writeFileSync(path.join(OUT, `${stamp}.${v}.svg`), svg);
+    const labelled = !view.custom ? drawnDims(raw) : null;
+    const o = labelled && project !== built ? { ...labelled, width: labelled.depth, depth: labelled.width } : labelled || project.overall;
+    const dims = { width: round4(o.width), height: round4(o.height), depth: round4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) };
+    const parts = built.panels.length + built.instances.length;
+    c.dims = { width: hs.width, height: hs.height, depth: hs.depth };
+    c.drawing = { src: `/ideas/drawings/${stamp}.${v}.svg`, w: DRAW_W, h: DRAW_H, parts, v, dims };
+    n++;
+    console.log(`catalog drawing ${c.buildType}: ${dims.width}x${dims.depth}x${dims.height} (prompt ${hs.width}x${hs.depth}x${hs.height})`);
+  }
+  fs.writeFileSync(file, JSON.stringify(catalog, null, 1) + "\n");
+  console.log(`patched ${n} catalog drawings`);
+}
+
 const cards = [
   ...IDEAS.map((d) => ({ slug: d.id, prompt: d.prompt })),
   ...[...popularIdeas(), ...newIdeas()].map((r) => ({ slug: r.id, prompt: r.prompt })),
@@ -184,6 +226,10 @@ const cards = [
 ];
 const onlyArg = process.argv.indexOf("--only");
 const only = onlyArg > 0 ? new Set(process.argv[onlyArg + 1].split(",")) : null;
+if (process.argv.includes("--catalog-drawings")) {
+  await patchCatalogDrawings();
+  process.exit(0);
+}
 const seen = new Set<string>();
 /** Hero models: panel boxes only (no engine on /ideas), for builds light enough to turn live on a phone. */
 export const HERO_MAX_PARTS = 150;
@@ -288,8 +334,14 @@ async function writeGateCatalog() {
   const types = JSON.parse(fs.readFileSync(path.join("src", "lib", "ideas", "types.json"), "utf8")) as Record<string, string>;
   for (const [slug, type] of Object.entries(types)) if (manifest[slug]) drawn.add(type);
   let baked = 0;
+  const near = (a: number, b: number) => Math.abs(a - b) < 1 / 8;
+  const sameBox = (d: { width: number; height: number; depth: number } | undefined, hs: { width: number; height: number; depth: number }) =>
+    !!d && ((near(d.width, hs.width) && near(d.depth, hs.depth) && near(d.height, hs.height)) || (near(d.width, hs.depth) && near(d.depth, hs.width) && near(d.height, hs.height)));
   for (const [type, c] of best) {
-    if (drawn.has(type) || manifest[type]) continue;
+    const existing = manifest[type];
+    // An idea drawing of a different size is not this card's picture. Bake the prompt's own drawing beside it.
+    if ((drawn.has(type) || existing) && sameBox(existing?.dims, c.dims)) continue;
+    const stamp = drawn.has(type) || existing ? `catalog-${type}` : type;
     const view = VIEW[type] ?? {};
     const built = generateFromPrompt(c.prompt);
     const project = (view.turn && quarterTurn(built)) || built;
@@ -298,13 +350,13 @@ async function writeGateCatalog() {
     if (!view.custom && svg.length > BUDGET) svg = tidy(view.ghostUnit ? ghosted(raw) : raw, 0);
     svg = cardLabels(svg);
     const v = crypto.createHash("sha1").update(svg).digest("hex").slice(0, 8);
-    fs.writeFileSync(path.join(OUT, `${type}.${v}.svg`), svg);
+    fs.writeFileSync(path.join(OUT, `${stamp}.${v}.svg`), svg);
     const labelled = !view.custom ? drawnDims(raw) : null;
     const o = labelled && project !== built ? { ...labelled, width: labelled.depth, depth: labelled.width } : labelled || project.overall;
     const parts = built.panels.length + built.instances.length;
     const dims = { width: r4(o.width), height: r4(o.height), depth: r4(o.depth), ...("round" in o && o.round ? { round: true as const } : {}) };
     // On the card only. A manifest key would make an undrawn log row of this type take a picture slot.
-    (c as { drawing?: { src: string; w: number; h: number; parts: number; v: string; dims: typeof dims } }).drawing = { src: `/ideas/drawings/${type}.${v}.svg`, w: DRAW_W, h: DRAW_H, parts, v, dims };
+    (c as { drawing?: { src: string; w: number; h: number; parts: number; v: string; dims: typeof dims } }).drawing = { src: `/ideas/drawings/${stamp}.${v}.svg`, w: DRAW_W, h: DRAW_H, parts, v, dims };
     baked++;
   }
   const cards = [...best.entries()].map(([buildType, c]) => ({ buildType, prompt: c.prompt, title: c.title, dims: c.dims, recipe: c.recipe, ...(c.aliases.length ? { aliases: c.aliases } : {}), ...("drawing" in c && c.drawing ? { drawing: c.drawing } : {}) })).sort((a, b) => a.buildType.localeCompare(b.buildType));

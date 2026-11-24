@@ -82,6 +82,7 @@ const MOVED: [string, string, string][] = [
   ["firewood-unit", "firewood-rack", "Firewood " + "rack"],
   ["key-holder-wall-mounted", "peg-rail", "Peg rail"],
   ["l-shaped-corner-desk", "l-shaped-corner-desk", "L-shaped corner desk"],
+  ["leaning-tower-of-pisa", "leaning-tower-of-pisa", "Leaning Tower of Pisa"],
   ["shelf", "shelf", "Shelf unit"],
   ["space-needle", "space-needle", "Space Needle"],
   ["step-stool-with", "step-stool-with", "Step stool, 2 steps"],

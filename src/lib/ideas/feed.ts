@@ -179,7 +179,7 @@ export function titleHasMeasure(title: string): boolean {
 const SIZE_ADJ = /^(?:jumbo|mini|giant|tall|small|big|large|tiny|compact|huge|little|miniature|micro|slim|oversized|narrow|short|xl|xxl)$/i;
 /** A word that names the thing being built. Place words (slope, toilet, base) are not in here. */
 const OBJECT = /\b(?:abacus|arch|barn|bed|bench|bin|birdhouse|boat|bookcase|bookshelf|box|bridge|bunk|cabinet|cart|castle|catapult|chair|chest|closet|colosseum|console|coop|cover|crate|daybed|desk|dinosaur|dog|dollhouse|dresser|easel|engine|feeder|fort|frame|glider|goal|hanger|headboard|hood|house|island|ladder|lighthouse|mailbox|nightstand|opening|organizer|ottoman|pantry|pegboard|pergola|rack|rail|robot|rocket|sailboat|sawhorse|seat|shelf|shelves|ship|sideboard|sorter|stand|stool|submarine|swing|table|toolbox|tower|train|tree|trellis|vanity|wardrobe|wheel|windmill|window|workbench)\b/i;
-const PROPER = ["Brooklyn Bridge", "Empire State Building", "Space Needle", "White House", "Taj Mahal", "Statue of Liberty", "CN Tower", "Big Ben", "Eiffel", "Warren"];
+const PROPER = ["Brooklyn Bridge", "Empire State Building", "Space Needle", "White House", "Taj Mahal", "Statue of Liberty", "CN Tower", "Big Ben", "Eiffel", "Leaning Tower of Pisa", "Warren"];
 
 function properWords(title: string): Map<string, string> {
   const lower = title.toLowerCase();

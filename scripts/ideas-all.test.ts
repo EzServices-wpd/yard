@@ -12,8 +12,7 @@ import { IdeasPageView } from "../src/components/ideas/IdeasPageView";
 import { IdeaRow } from "../src/components/ideas/IdeaCard";
 import { groupCards, groupView } from "../src/lib/ideas/groups";
 import { ALL_SHOW, curatedFeed, searchCards, searchPool, type IdeasFeed } from "../src/lib/ideas/feed";
-import { GENERIC_TYPES, feedViolations, gradedTypes, liveFeed, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
-import { isHeldType } from "../src/lib/ideas/held";
+import { GENERIC_TYPES, feedViolations, gradedTypes, heldOffIdeas, liveFeed, type PublicSnapshot } from "../src/lib/ideas/liveFeed";
 import RECIPES from "../src/lib/ideas/recipes.json";
 import LIVE from "./fixtures/ideas-snapshot-2026-10-25.json";
 import type { IdeasSnapshot, SnapshotRow } from "../src/lib/yard/ideaLog";
@@ -31,7 +30,7 @@ const trusted = new Set(PUB.rows.filter((r) => r.status === "Trusted").map((r) =
 const unverifiedOnly = [...new Set(PUB.rows.map((r) => r.buildType))].filter((t) => !trusted.has(t));
 
 test("All ideas lists every Trusted, unheld, non-generic build type exactly once, plus each curated idea nobody built", () => {
-  const want = [...trusted].filter((t) => !isHeldType(t) && !GENERIC_TYPES.has(t));
+  const want = [...trusted].filter((t) => !heldOffIdeas(t, null) && !GENERIC_TYPES.has(t));
   const types = all.map((c) => c.buildType);
   assert.deepEqual(types.filter((t, i) => types.indexOf(t) !== i), [], "one row per build type");
   for (const t of want) assert.ok(types.includes(t), `${t} is missing`);
@@ -39,7 +38,7 @@ test("All ideas lists every Trusted, unheld, non-generic build type exactly once
   const unvRows = all.filter((c) => c.unverified);
   for (const c of curatedOnly) assert.equal(c.count, 0, `${c.slug} has builds but no Trusted row`);
   assert.equal(all.length, want.length + curatedOnly.length + unvRows.length);
-  // 10-25 Trusted types, plus the built-in planter-box (no longer held by the window-box synonym), curated ideas
+  // 10-25 Trusted types, plus the built-in planter-box (the synonym stays in the held set; routing it builds a real built-in), curated ideas
   // nobody has built, the gate catalog, and 5 Unverified-only rows.
   assert.deepEqual([want.length, all.filter((c) => !c.drawing).length, curatedOnly.length, unvRows.length], [86, 43, 52, 5]);
   assert.deepEqual(feedViolations(feed, snap, gradedTypes(base)), []);
@@ -48,15 +47,15 @@ test("All ideas lists every Trusted, unheld, non-generic build type exactly once
 test("one rule: held and generic types are nowhere; Unverified-only types are catalog rows, not picture cards", () => {
   assert.deepEqual(unverifiedOnly.sort(), ["bird-feeder", "colosseum", "compost-bin", "ferris-wheel", "glider", "jewelry-box", "outdoor-storage-bench", "pergola", "picnic-table", "taj-mahal", "utility-cart"]);
   const shown = [...feed.sections.flatMap((s) => s.cards), ...all];
-  const rowOnly = unverifiedOnly.filter((t) => !isHeldType(t));
+  const rowOnly = unverifiedOnly.filter((t) => !heldOffIdeas(t, null));
   assert.deepEqual(rowOnly.sort(), ["bird-feeder", "jewelry-box", "outdoor-storage-bench", "picnic-table", "utility-cart"]);
-  for (const c of shown) assert.ok(!isHeldType(c.buildType) && !isHeldType(c.recipeKey) && !GENERIC_TYPES.has(c.buildType), `${c.slug} held or generic`);
+  for (const c of shown) assert.ok(!heldOffIdeas(c.buildType, c.recipeKey) && !GENERIC_TYPES.has(c.buildType), `${c.slug} held or generic`);
   for (const c of feed.sections.flatMap((s) => s.cards)) assert.ok(!c.unverified && !rowOnly.includes(c.buildType), `${c.slug} Unverified on a picture section`);
   for (const t of rowOnly) {
     const c = all.find((x) => x.buildType === t);
     assert.ok(c && c.unverified && !c.drawing, `${t} is not an undrawn catalog row`);
   }
-  for (const t of unverifiedOnly.filter((t) => isHeldType(t))) assert.ok(!shown.some((c) => c.buildType === t), `${t} held type shows`);
+  for (const t of unverifiedOnly.filter((t) => heldOffIdeas(t, null))) assert.ok(!shown.some((c) => c.buildType === t), `${t} held type shows`);
   // The guard names a generic that slips into the catalog, and an Unverified card that grows a drawing.
   const bad: IdeasFeed = { ...feed, all: [...all, { ...all[0], slug: "storage-unit", buildType: "storage-unit", title: "Storage unit" }] };
   assert.ok(feedViolations(bad, snap).some((v) => v.includes("storage-unit") && /held or generic|not in the catalog/.test(v)));

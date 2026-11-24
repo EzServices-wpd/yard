@@ -218,8 +218,7 @@ test("held recipes never render on Ideas: HELD_TYPES is recipes.json's held set,
   const { HELD_TYPES, isHeldType } = await import("../src/lib/ideas/held");
   const ALL = (await import("../src/lib/yard/recipes.json")).default as unknown as { recipes: { key: string; synonyms?: string[]; held?: string }[] };
   const slug = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  // Keys only. A synonym (planter-box on the held window box) is not held, so the built-in stays.
-  const want = new Set(ALL.recipes.filter((r) => r.held).map((r) => slug(r.key)));
+  const want = new Set(ALL.recipes.filter((r) => r.held).flatMap((r) => [r.key, ...(r.synonyms ?? [])].map(slug)));
   assert.deepEqual([...HELD_TYPES].sort(), [...want].sort(), "src/lib/ideas/held.ts is stale");
   assert.ok(isHeldType("ferris-wheel") && isHeldType("colosseum"));
   const snap: IdeasSnapshot = { ...SNAP, rows: [...SNAP.rows, row("ferris wheel", "recipe:ferris-wheel", 80, after(3), "Trusted"), row("colosseum", "recipe:colosseum", 60, after(4), "Unverified")] };

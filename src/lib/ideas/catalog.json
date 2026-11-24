@@ -426,7 +426,19 @@
    "recipe": false,
    "aliases": [
     "doll-house"
-   ]
+   ],
+   "drawing": {
+    "src": "/ideas/drawings/catalog-dollhouse.e64b2811.svg",
+    "w": 480,
+    "h": 360,
+    "parts": 10,
+    "v": "e64b2811",
+    "dims": {
+     "width": 24,
+     "height": 30,
+     "depth": 12
+    }
+   }
   },
   {
    "buildType": "dresser",
@@ -730,7 +742,7 @@
   {
    "buildType": "leaning-tower-of-pisa",
    "prompt": "leaning tower of pisa",
-   "title": "Leaning tower of pisa",
+   "title": "Leaning Tower of Pisa",
    "dims": {
     "width": 8.9,
     "height": 24.5,

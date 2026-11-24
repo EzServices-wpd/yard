@@ -28,16 +28,20 @@ const ROW = "relative -mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-aut
 export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ideasFeed(), flags = {} }: { incoming: string; learned: LearnedIdea[]; onBuild: Build; onIntent?: (q: string) => void; feed?: IdeasFeed; flags?: TestFlags }) {
   const [query, setQuery] = useState(incoming);
   const [catalog, setCatalog] = useState<Card[]>([]);
+  const catalogOnce = useRef<AbortController | null>(null);
   useEffect(() => setQuery(incoming), [incoming]);
-  // Gate cards are not in the first HTML. They join See all and search after this fetch.
-  useEffect(() => {
+  // Gate cards are not in the first HTML. Fetch them once, only when See all opens or a search is typed.
+  const loadCatalog = () => {
+    if (catalogOnce.current && !catalogOnce.current.signal.aborted) return;
     const ac = new AbortController();
+    catalogOnce.current = ac;
     fetch("/api/ideas?view=catalog", { signal: ac.signal })
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows: Card[]) => { if (Array.isArray(rows)) setCatalog(rows.filter((c) => c?.section === "Catalog")); })
-      .catch(() => {});
-    return () => ac.abort();
-  }, []);
+      .then((rows: Card[]) => { if (!ac.signal.aborted && Array.isArray(rows)) setCatalog(rows.filter((c) => c?.section === "Catalog")); })
+      .catch(() => { if (catalogOnce.current === ac) catalogOnce.current = null; });
+  };
+  useEffect(() => { if (incoming.trim()) loadCatalog(); }, [incoming]);
+  useEffect(() => () => catalogOnce.current?.abort(), []);
   const shownFeed = useMemo(() => {
     if (!catalog.length) return feed;
     const base = feed.all ?? feed.sections.flatMap((s) => s.cards);
@@ -87,7 +91,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
           <span className="sr-only">Search ideas, or describe what to build</span>
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { const v = e.target.value; setQuery(v); if (v.trim()) loadCatalog(); }}
             placeholder="bookshelf, closet, birdhouse…"
             autoComplete="off"
             enterKeyHint="go"
@@ -150,7 +154,7 @@ export function IdeasPageView({ incoming, learned, onBuild, onIntent, feed = ide
               </ul>
             </section>
           ) : null}
-          {groups.map((g) => <Group key={g.id} group={g} sub={g.id === "furniture" && fitted.types.size ? fitted : undefined} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} flags={flags} />)}
+          {groups.map((g) => <Group key={g.id} group={g} sub={g.id === "furniture" && fitted.types.size ? fitted : undefined} onBuild={onBuild} onIntent={onIntent} showCount={feed.countsLive} flags={flags} onExpand={loadCatalog} />)}
         </>
       )}
     </main>
@@ -176,7 +180,7 @@ function Rows({ cards, onBuild, onIntent, flags, id, listRef }: RowsProps & { id
  * chip inside the group (Furniture: Fitted to a hole). An offscreen group skips layout (content-visibility).
  * groupView (groups.ts) decides what shows; this only renders it.
  */
-function Group({ group, sub, showCount, ...rest }: { group: G; sub?: { label: string; types: Set<string> }; showCount: boolean } & Omit<RowsProps, "cards">) {
+function Group({ group, sub, showCount, onExpand, ...rest }: { group: G; sub?: { label: string; types: Set<string> }; showCount: boolean; onExpand?: () => void } & Omit<RowsProps, "cards">) {
   const [open, setOpen] = useState(false);
   const [only, setOnly] = useState(false);
   const [n, setN] = useState(ALL_SHOW);
@@ -196,7 +200,7 @@ function Group({ group, sub, showCount, ...rest }: { group: G; sub?: { label: st
       <div className="flex min-h-11 items-center justify-between gap-3">
         <h2 id={id} className="font-display text-xl text-ink">{group.title}</h2>
         {v.button ? (
-          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-controls={`${id}-all`} data-ideas-show-all={v.label} className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
+          <button type="button" onClick={() => { setOpen((v) => !v); if (!open) onExpand?.(); }} aria-expanded={open} aria-controls={`${id}-all`} data-ideas-show-all={v.label} className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm text-ink hover:underline lg:min-h-9">
             {open ? "Show fewer" : v.label}
             <span className="sr-only"> {group.title}</span>
           </button>
