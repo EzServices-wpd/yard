@@ -15,6 +15,7 @@ import { CATALOG_BY_ID, FORGE_CATALOG, getCatalogItem } from "./catalog";
 import { pricedBoardId } from "./pricedStock";
 import { boxGap, projectBoxes, CONTACT_GAP } from "./contact";
 import { detectMaterial, isWireStock } from "./promptHelpers";
+import { promptTypedSheet } from "./namedLumberSpecies";
 import { findRecipe, lastParseProblem, normalizeNoun, parseRecipe, rememberRecipe, type Recipe, type RecipePart } from "./recipes";
 import type { Panel, PanelType, YardProject } from "./types";
 import { isOutdoorPrompt } from "./outdoor";
@@ -1616,9 +1617,9 @@ function buildRecipeBody(recipe0: Recipe, prompt: string, materialOverride?: str
   rotors(recipe, panels, pins);
   realBoards(recipe, panels);
   // Outdoors the flat parts become exterior boards instead (exteriorBoards).
-  if (!((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride)) oneSheetThick(recipe, panels);
+  if (!((recipe.outdoor || isOutdoorPrompt(prompt)) && !promptTypedSheet(prompt) && !materialOverride)) oneSheetThick(recipe, panels);
   bearOnCarriers(recipe, panels);
-  if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !/plywood/i.test(prompt) && !materialOverride) { exteriorBoards(panels); oneSheetThick(recipe, panels); }
+  if ((recipe.outdoor || isOutdoorPrompt(prompt)) && !promptTypedSheet(prompt) && !materialOverride) { exteriorBoards(panels); oneSheetThick(recipe, panels); }
   const sized = dowelSizes(panels);
   // Ground contacts are real: a part below the floor (a wheel recentred on its axle) lifts with its axle
   // and the parts that turn on it, so it stands on the floor, never through it.
